@@ -1,0 +1,1519 @@
+[
+ {
+  "n": 1,
+  "id": "A",
+  "title": "Accounts and access",
+  "sops": [
+   {
+    "fr": "FR-A1",
+    "title": "Candidate Registration E2E SOP",
+    "purpose": "To register a candidate account securely and confirm ownership of the email address before any use of the platform",
+    "scope": "Candidate accounts",
+    "owner": "Platform / Candidate",
+    "inputs": [
+     "Email address",
+     "Password meeting policy",
+     "Age attestation",
+     "Current Terms and Privacy versions"
+    ],
+    "steps": [
+     "Open sign-up: Candidate selects 'I'm a worker' and enters email and password.",
+     "Validate password: System checks minimum 12 characters and rejects passwords found in breach lists.",
+     "Capture attestations: Candidate ticks age (18+) and consent to Terms and Privacy; versions are recorded.",
+     "Create account: Auth record and profile row are created in 'pending confirmation' state.",
+     "Send confirmation: Confirmation email is sent via the EU email service; link valid 24 hours.",
+     "Confirm email: Candidate clicks the link; account becomes active; audit entry written.",
+     "Redirect to onboarding: Candidate is guided to create the profile.",
+     "Handle failures: Expired links can be re-requested; repeated attempts are rate-limited."
+    ],
+    "outputs": [
+     "Active candidate account",
+     "Consent records",
+     "Audit entry"
+    ],
+    "kpis": [
+     "Sign-up completion rate",
+     "Confirmation within 24 h rate",
+     "Failed sign-up rate"
+    ],
+    "risks": "Fake accounts, weak credentials, unconfirmed emails",
+    "controls": "Breached-password check, email confirmation, rate limiting, consent versioning",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-A2",
+    "title": "Employer Registration & Organisation Creation E2E SOP",
+    "purpose": "To register an employer user and create the company organisation with a single owner in one atomic step",
+    "scope": "Employer accounts",
+    "owner": "Platform / Employer owner",
+    "inputs": [
+     "Work email, password",
+     "Legal company name, country, industry",
+     "Website (optional)",
+     "Consent to Terms and Privacy"
+    ],
+    "steps": [
+     "Open sign-up: User selects 'I'm an employer'.",
+     "Create user: Steps of SOP FR-A1 apply (password policy, consent, confirmation).",
+     "Capture company details: Legal name, display name, country (ISO list), industry (ISIC list), website.",
+     "Create organisation atomically: System creates organisation, owner membership and a trial subscription placeholder in one transaction.",
+     "Verify uniqueness: Slug generated and checked; duplicate legal name warns but does not block.",
+     "Audit: Creation recorded with actor and organisation id.",
+     "Prompt security set-up: Owner is prompted to enrol two-step verification (SOP FR-A4).",
+     "Land on dashboard: Owner sees empty dashboard with guided next steps."
+    ],
+    "outputs": [
+     "Organisation record",
+     "Owner membership",
+     "Trial subscription placeholder"
+    ],
+    "kpis": [
+     "Employer sign-up completion rate",
+     "Time to first vacancy",
+     "Duplicate organisation rate"
+    ],
+    "risks": "Duplicate companies, impersonation of real employers, orphaned organisations",
+    "controls": "Atomic creation, one-owner rule, audit, later business verification (Phase 3)",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-A3",
+    "title": "Login, Logout & Password Recovery E2E SOP",
+    "purpose": "To authenticate users securely and allow self-service recovery",
+    "scope": "All users",
+    "owner": "Platform",
+    "inputs": [
+     "Email and password",
+     "Reset link (recovery)"
+    ],
+    "steps": [
+     "Login: User submits credentials; failures are rate-limited and never reveal whether the email exists.",
+     "Issue session: Short-lived access token (30 min) and refresh cookie (7 days) are set; cookies are HTTP-only and secure.",
+     "Refresh transparently: The request proxy refreshes tokens before expiry.",
+     "Enforce MFA step-up: Privileged pages require two-step verification (SOP FR-A4).",
+     "Logout: Session revoked on the server; cookies cleared.",
+     "Request reset: User enters email; a single-use link valid 1 hour is emailed regardless of whether the account exists.",
+     "Reset password: New password validated against policy; all other sessions ended; confirmation email sent.",
+     "Audit: Login failures above threshold and all resets are logged."
+    ],
+    "outputs": [
+     "Authenticated session",
+     "Reset confirmation"
+    ],
+    "kpis": [
+     "Login success rate",
+     "Reset completion rate",
+     "Account lockouts per month"
+    ],
+    "risks": "Credential stuffing, session theft, account enumeration",
+    "controls": "Rate limits, breached-password check, secure cookies, uniform responses, session revocation",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-A4",
+    "title": "Two-Step Verification Enrolment & Enforcement E2E SOP",
+    "purpose": "To require a second factor for roles that can see candidate documents, manage teams or payments",
+    "scope": "Owners, administrators, platform staff",
+    "owner": "Platform / Account holder",
+    "inputs": [
+     "Authenticator app",
+     "Recovery codes"
+    ],
+    "steps": [
+     "Prompt enrolment: On first access to a protected area the user is redirected to the MFA page.",
+     "Generate secret: System shows a QR code and manual key.",
+     "Verify: User enters the first code; enrolment is confirmed.",
+     "Issue recovery codes: Ten single-use codes shown once; user confirms storage.",
+     "Elevate session: Session is marked at assurance level 2 for its lifetime.",
+     "Enforce: Database policies and page guards reject privileged actions without level 2.",
+     "Recover: Lost device uses a recovery code; support resets only after identity check and audit entry.",
+     "Review: Enrolment status visible in team and staff lists."
+    ],
+    "outputs": [
+     "Enrolled factor",
+     "Recovery codes",
+     "Elevated session"
+    ],
+    "kpis": [
+     "Privileged users enrolled (target 100 %)",
+     "MFA challenge failure rate",
+     "Recovery events per quarter"
+    ],
+    "risks": "Account takeover of privileged users, lost devices",
+    "controls": "Mandatory enrolment, restrictive policies at database level, audited recovery",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-A5",
+    "title": "Team Membership Management E2E SOP",
+    "purpose": "To add, change and remove organisation members with a single accountable owner at all times",
+    "scope": "Employer organisations",
+    "owner": "Organisation owner / administrator",
+    "inputs": [
+     "Invitee email and role",
+     "Owner approval for ownership transfer"
+    ],
+    "steps": [
+     "Invite: Owner/admin enters email and role; invitation with single-use token (7 days) is created and emailed.",
+     "Accept: Invitee signs in or registers as a company user and accepts; membership becomes active.",
+     "Reject workers: System refuses acceptance by a candidate account.",
+     "Change role: Owner/admin changes member role; system prevents removing the last owner.",
+     "Transfer ownership: Owner designates a new owner; both confirm; old owner becomes admin.",
+     "Remove member: Owner/admin removes; sessions of the removed member are revoked; access ends immediately.",
+     "Expire: Unaccepted invitations expire automatically.",
+     "Audit: Every invitation, acceptance, role change and removal is logged."
+    ],
+    "outputs": [
+     "Updated membership list",
+     "Audit entries"
+    ],
+    "kpis": [
+     "Invitation acceptance rate",
+     "Time to accept",
+     "Orphaned organisations (target 0)"
+    ],
+    "risks": "Unauthorised access after departure, loss of owner, invitation link abuse",
+    "controls": "Immediate revocation, one-owner rule, single-use expiring tokens, audit",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-A6",
+    "title": "Account Kind Assignment E2E SOP",
+    "purpose": "To fix each account as either candidate or company user at onboarding so that privacy and payment rules apply cleanly",
+    "scope": "All accounts",
+    "owner": "Platform",
+    "inputs": [
+     "Onboarding choice"
+    ],
+    "steps": [
+     "Present choice: After confirmation the user chooses 'worker' or 'company'.",
+     "Record kind: The choice is written once; later changes are rejected by the database.",
+     "Route onboarding: Workers go to profile creation; company users to organisation creation or invitation acceptance.",
+     "Enforce rules: Workers cannot be organisation members or start checkout; company users cannot create a worker profile.",
+     "Handle exceptions: A person needing both roles uses two accounts with different emails.",
+     "Audit: Kind assignment is logged."
+    ],
+    "outputs": [
+     "Account kind recorded"
+    ],
+    "kpis": [
+     "Onboarding completion rate",
+     "Support requests about account kind"
+    ],
+    "risks": "Role confusion, workers charged by mistake",
+    "controls": "Immutable kind, database checks, clear UI copy",
+    "freq": "Annual"
+   },
+   {
+    "fr": "FR-A7",
+    "title": "Platform Staff Role Management E2E SOP",
+    "purpose": "To grant and revoke CHARA staff roles under four-eyes-style control with full audit",
+    "scope": "CHARA staff",
+    "owner": "Platform administrator",
+    "inputs": [
+     "Staff member's user id",
+     "Role to grant",
+     "Justification"
+    ],
+    "steps": [
+     "Request: An administrator opens the staff page and enters the user and role with a reason.",
+     "Verify: System requires the administrator's session at assurance level 2 and rejects self-grant.",
+     "Grant: Role row is written; audit entry records grantor, grantee, role and reason.",
+     "End sessions: The affected user's sessions are revoked so the new rights apply on next login.",
+     "Revoke: Same path with revocation timestamp; sessions revoked.",
+     "Bootstrap: The first administrator is created by a ticketed database insert recorded in the deploy runbook.",
+     "Review: Quarterly access review lists all staff roles."
+    ],
+    "outputs": [
+     "Staff role record",
+     "Audit entries"
+    ],
+    "kpis": [
+     "Staff with MFA (100 %)",
+     "Quarterly review completed on time"
+    ],
+    "risks": "Privilege escalation, dormant staff accounts",
+    "controls": "Admin+MFA only, no self-grant, audit, quarterly review",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-A8",
+    "title": "Consent Capture & Re-consent E2E SOP",
+    "purpose": "To record lawful consent to the current legal documents and refresh it when documents change",
+    "scope": "All users",
+    "owner": "Platform / Legal",
+    "inputs": [
+     "Current legal document versions",
+     "User action"
+    ],
+    "steps": [
+     "Display: Sign-up form links to the current Terms and Privacy versions.",
+     "Record: On submit, one consent row per document with version and timestamp is written.",
+     "Publish new version: Legal publication (SOP FR-F1) marks the new version current.",
+     "Detect: On next login the session helper compares consented versions with current versions.",
+     "Re-consent: User is shown the change summary and must accept before continuing.",
+     "Withdraw: Withdrawal inserts a new row; access that depends on the consent ends.",
+     "Evidence: Consent rows are append-only and exportable for audits."
+    ],
+    "outputs": [
+     "Consent ledger entries"
+    ],
+    "kpis": [
+     "Re-consent completion within 7 days",
+     "Consent records with missing version (target 0)"
+    ],
+    "risks": "Invalid consent, untracked changes",
+    "controls": "Versioned documents, append-only ledger, forced re-consent",
+    "freq": "On each legal change; annual"
+   },
+   {
+    "fr": "FR-A9",
+    "title": "Age Attestation E2E SOP",
+    "purpose": "To ensure candidates confirm legal working age without collecting a date of birth",
+    "scope": "Candidate accounts",
+    "owner": "Platform",
+    "inputs": [
+     "Candidate attestation"
+    ],
+    "steps": [
+     "Present: Sign-up shows a mandatory 'I am 18 or older' checkbox.",
+     "Record: Attestation is stored as a consent purpose with version and time; no date of birth is stored.",
+     "Block: Sign-up cannot complete without attestation.",
+     "Handle reports: Trust & safety acts on reports of underage users under SOP FR-F1.",
+     "Review: Legal confirms the attestation wording per launch country."
+    ],
+    "outputs": [
+     "Attestation record"
+    ],
+    "kpis": [
+     "Sign-ups without attestation (target 0)"
+    ],
+    "risks": "Underage users, unnecessary data collection",
+    "controls": "Mandatory checkbox, data minimisation, moderation path",
+    "freq": "Annual"
+   }
+  ]
+ },
+ {
+  "n": 2,
+  "id": "B",
+  "title": "Candidate profile (CHARA Passport v1)",
+  "sops": [
+   {
+    "fr": "FR-B1",
+    "title": "Candidate Profile Creation & Maintenance E2E SOP",
+    "purpose": "To create a structured, reusable candidate profile using international code lists",
+    "scope": "Candidate profile",
+    "owner": "Candidate",
+    "inputs": [
+     "Personal and professional details",
+     "Occupation, skills, languages, availability",
+     "Work-authorisation countries"
+    ],
+    "steps": [
+     "Create: Candidate enters name, headline and current country.",
+     "Select occupation: From the ISCO-08 list with search.",
+     "Add skills and languages: Skills as tags with suggestions; languages with CEFR level.",
+     "Set experience and availability: Years of experience; available now / from date / unavailable.",
+     "Set preferences: Preferred countries and industries.",
+     "Record work authorisation: Countries where the candidate may work and expiry dates.",
+     "Save: Data validated; profile private by default; audit of creation.",
+     "Maintain: Candidate edits at any time; completeness meter updates (SOP FR-B4)."
+    ],
+    "outputs": [
+     "Candidate profile record"
+    ],
+    "kpis": [
+     "Profile completion rate",
+     "Profiles with occupation set (%)"
+    ],
+    "risks": "Inaccurate data, sensitive data entered in free text",
+    "controls": "Controlled lists, validation, privacy by default, free-text guidance",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-B2",
+    "title": "Document Upload & Management E2E SOP",
+    "purpose": "To store CVs and certificates privately and keep metadata consistent",
+    "scope": "Candidate documents",
+    "owner": "Candidate",
+    "inputs": [
+     "Document file (PDF/JPG/PNG ≤ 15 MB)",
+     "Document type and title"
+    ],
+    "steps": [
+     "Register: Candidate chooses type and title; a metadata row is created first.",
+     "Issue upload link: System issues a short-lived signed upload URL to the candidate's private folder.",
+     "Upload: File is uploaded directly to private storage; type and size validated.",
+     "Mark status: Scan status recorded (download-only until scanning is introduced).",
+     "List and rename: Candidate manages documents from the Passport page.",
+     "Delete: Deletion removes the file and metadata; active shares referencing it are revoked.",
+     "Expire: Expiry dates (e.g. certificates) are stored and surfaced as reminders."
+    ],
+    "outputs": [
+     "Stored document",
+     "Metadata record"
+    ],
+    "kpis": [
+     "Upload success rate",
+     "Average documents per active candidate"
+    ],
+    "risks": "Malware, oversized files, orphaned files",
+    "controls": "Type/size validation, metadata-first rule, private bucket, deletion cascade",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-B3",
+    "title": "Profile Privacy by Default E2E SOP",
+    "purpose": "To guarantee that no employer sees candidate data without an application the candidate made",
+    "scope": "Candidate data",
+    "owner": "Platform",
+    "inputs": [
+     "Profile and documents",
+     "Applications and shares"
+    ],
+    "steps": [
+     "Default: Profiles are created non-searchable; no employer-facing listing exists in Phase 1.",
+     "Access path: Employers see a candidate only through an application the candidate submitted.",
+     "Scope: Access is limited to the profile snapshot and the documents selected at application time.",
+     "Enforce: Database policies grant access only to members of the organisation that owns the job, while the share is active.",
+     "Revoke: Withdrawal or deletion ends access immediately.",
+     "Test: Cross-tenant negative tests run in every build."
+    ],
+    "outputs": [
+     "Enforced access rules"
+    ],
+    "kpis": [
+     "Policy tests passing (100 %)",
+     "Privacy incidents (target 0)"
+    ],
+    "risks": "Data exposure through misconfiguration",
+    "controls": "Row-level security, negative tests, no search listing",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-B4",
+    "title": "Profile Completeness Guidance E2E SOP",
+    "purpose": "To help candidates complete profiles that employers can act on",
+    "scope": "Candidate profile",
+    "owner": "Candidate / Product",
+    "inputs": [
+     "Profile and document data"
+    ],
+    "steps": [
+     "Compute: Weighted score across identity, occupation, skills, languages, experience, availability, work authorisation and CV.",
+     "Display: Percentage and the next suggested item.",
+     "Nudge: Reminder email after 7 days below 60 % (respecting preferences).",
+     "Measure: Completion distribution reviewed monthly."
+    ],
+    "outputs": [
+     "Completeness score"
+    ],
+    "kpis": [
+     "Median completeness",
+     "Share of profiles ≥ 80 %"
+    ],
+    "risks": "Misleading score",
+    "controls": "Transparent weights, periodic review",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-B5",
+    "title": "Document Access Log Transparency E2E SOP",
+    "purpose": "To let candidates see exactly who accessed their documents and when",
+    "scope": "Candidate documents",
+    "owner": "Candidate / Platform",
+    "inputs": [
+     "Access-log entries"
+    ],
+    "steps": [
+     "Log: Every grant decision (allowed or denied) for a document writes an access-log entry with organisation, time and outcome.",
+     "Expose: A view returns only the candidate's own entries.",
+     "Display: Passport page lists accesses by organisation and document.",
+     "Retain: Entries kept 24 months.",
+     "Investigate: Candidate can report suspicious access to trust & safety."
+    ],
+    "outputs": [
+     "Access-log view"
+    ],
+    "kpis": [
+     "Access-log coverage of downloads (100 %)"
+    ],
+    "risks": "Unlogged access",
+    "controls": "Logging inside the grant function, no alternative download path",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-B6",
+    "title": "Account Deletion & Erasure E2E SOP",
+    "purpose": "To honour deletion requests with a cooling-off period and lawful record keeping",
+    "scope": "Candidate accounts",
+    "owner": "Candidate / Platform / Privacy officer",
+    "inputs": [
+     "Deletion request",
+     "Legal hold status"
+    ],
+    "steps": [
+     "Request: Candidate requests deletion from settings; confirmation email sent.",
+     "Cooling-off: 30 days during which the candidate can cancel; account marked 'deletion requested'.",
+     "Check holds: Legal hold or open dispute pauses erasure; privacy officer informed.",
+     "Erase: Scheduler triggers erasure: profile and documents deleted, applications and audit entries pseudonymised, auth user removed.",
+     "Confirm: Completion recorded in audit; confirmation email to the address on file.",
+     "Report: Monthly count of requests and completion times."
+    ],
+    "outputs": [
+     "Erased account",
+     "Completion record"
+    ],
+    "kpis": [
+     "Erasure within 30 days of cooling-off end (100 %)"
+    ],
+    "risks": "Incomplete erasure, deleting data under legal hold",
+    "controls": "Scheduled job with checklist, legal-hold flag, audit",
+    "freq": "Quarterly"
+   }
+  ]
+ },
+ {
+  "n": 3,
+  "id": "C",
+  "title": "Vacancies",
+  "sops": [
+   {
+    "fr": "FR-C1",
+    "title": "Vacancy Creation E2E SOP",
+    "purpose": "To create complete, well-classified vacancies",
+    "scope": "Employer vacancies",
+    "owner": "Employer administrator",
+    "inputs": [
+     "Vacancy details",
+     "Reference lists (occupation, industry, country)"
+    ],
+    "steps": [
+     "Open form: Admin starts a new vacancy (draft).",
+     "Enter details: Title, description, occupation (ISCO-08), industry (ISIC), country, city, employment type.",
+     "Enter terms: Salary range and currency, accommodation, visa support, recruitment preference (local/international/both).",
+     "Validate: Required fields and value lists checked; prohibited attributes are not available.",
+     "Save draft: Vacancy stored in Draft; audit entry.",
+     "Preview: Admin reviews the public rendering before publishing (SOP FR-C2)."
+    ],
+    "outputs": [
+     "Draft vacancy"
+    ],
+    "kpis": [
+     "Vacancies published within 1 day of creation",
+     "Validation error rate"
+    ],
+    "risks": "Discriminatory wording, incomplete postings",
+    "controls": "Controlled lists, validation, platform rules link, moderation",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-C2",
+    "title": "Vacancy Lifecycle Management E2E SOP",
+    "purpose": "To control the states a vacancy passes through and what the public sees",
+    "scope": "Employer vacancies",
+    "owner": "Employer administrator",
+    "inputs": [
+     "Draft vacancy",
+     "Plan limits"
+    ],
+    "steps": [
+     "Publish: Admin sets Open; system checks plan limit (SOP FR-C6) and visibility rules.",
+     "Expose: Only Open and not-hidden vacancies are public and searchable.",
+     "Pause: Admin pauses; vacancy hidden from search but applications retained.",
+     "Close or fill: Admin closes or marks filled; open applications receive a final state update prompt.",
+     "Guard transitions: Database allows only valid transitions.",
+     "Audit: Every state change recorded."
+    ],
+    "outputs": [
+     "Vacancy state"
+    ],
+    "kpis": [
+     "Average time Open",
+     "Stale Open vacancies (> 90 days)"
+    ],
+    "risks": "Stale postings, accidental exposure",
+    "controls": "Transition guard, reminders for stale vacancies, moderation",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-C3",
+    "title": "Public Vacancy Search E2E SOP",
+    "purpose": "To let visitors and candidates find relevant vacancies quickly",
+    "scope": "Public website",
+    "owner": "Platform",
+    "inputs": [
+     "Open vacancies",
+     "Search filters"
+    ],
+    "steps": [
+     "Enter criteria: Keyword and filters (country, city, occupation, industry, employment type, minimum salary, accommodation, visa support, local/international).",
+     "Execute: Search function returns only public vacancies, ranked by relevance then date, paginated.",
+     "Display: Result cards with key facts; no personal data.",
+     "Refine: Filters update results; URL reflects state for sharing.",
+     "Measure: Query performance monitored against the 500 ms target.",
+     "Index: Database indexes maintained for every filter."
+    ],
+    "outputs": [
+     "Search results"
+    ],
+    "kpis": [
+     "95th percentile search time",
+     "Zero-result rate"
+    ],
+    "risks": "Slow search, exposure of non-public vacancies",
+    "controls": "Indexed function, public-only rule in database, monitoring",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-C4",
+    "title": "Vacancy Page Presentation E2E SOP",
+    "purpose": "To present a vacancy with the employer's public profile and clear actions",
+    "scope": "Public website",
+    "owner": "Platform",
+    "inputs": [
+     "Vacancy",
+     "Employer public profile"
+    ],
+    "steps": [
+     "Render: Vacancy details and employer card (name, country, industry, website).",
+     "Actions: Apply (requires candidate login) and Save.",
+     "Structured data: JobPosting markup added for search engines.",
+     "Hidden handling: Hidden or closed vacancies show a neutral 'no longer available' page.",
+     "Accessibility: Page passes automated checks."
+    ],
+    "outputs": [
+     "Vacancy page"
+    ],
+    "kpis": [
+     "Apply click-through rate"
+    ],
+    "risks": "Outdated content, broken actions",
+    "controls": "Server rendering from live data, tests",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-C5",
+    "title": "Saved Vacancies E2E SOP",
+    "purpose": "To let candidates keep a shortlist of vacancies",
+    "scope": "Candidate",
+    "owner": "Candidate",
+    "inputs": [
+     "Vacancy id"
+    ],
+    "steps": [
+     "Save: Candidate saves from search or vacancy page.",
+     "List: Saved page shows status (Open/closed) and quick apply.",
+     "Unsave: Candidate removes items.",
+     "Clean-up: Closed vacancies flagged; removed after 90 days."
+    ],
+    "outputs": [
+     "Saved list"
+    ],
+    "kpis": [
+     "Saved-to-applied conversion"
+    ],
+    "risks": "Clutter",
+    "controls": "Status flags, clean-up job",
+    "freq": "Annual"
+   },
+   {
+    "fr": "FR-C6",
+    "title": "Vacancy Plan Limit Enforcement E2E SOP",
+    "purpose": "To apply the number of open vacancies allowed by the organisation's plan",
+    "scope": "Billing / vacancies",
+    "owner": "Platform / Finance",
+    "inputs": [
+     "Plan limits",
+     "Enforcement setting"
+    ],
+    "steps": [
+     "Configure: Limits per plan stored as records; enforcement switch off until CHARA confirms values.",
+     "Check: On publish, a database trigger compares open count with the limit when enforcement is on.",
+     "Block and prompt: If exceeded, publish is refused with an upgrade prompt.",
+     "Downgrade handling: Oldest excess vacancies are paused, never deleted.",
+     "Go-live gate: Enforcement must be on in production (automated check)."
+    ],
+    "outputs": [
+     "Enforced limit"
+    ],
+    "kpis": [
+     "Upgrade conversions from limit prompts"
+    ],
+    "risks": "Revenue leakage, accidental blocking",
+    "controls": "Data-driven limits, go-live check, pause-not-delete",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-C7",
+    "title": "Vacancy Moderation E2E SOP",
+    "purpose": "To remove unlawful or rule-breaking vacancies with a documented reason",
+    "scope": "Platform administration",
+    "owner": "Trust & safety",
+    "inputs": [
+     "Report or review finding",
+     "Platform rules"
+    ],
+    "steps": [
+     "Receive: Report or routine review flags a vacancy.",
+     "Assess: Staff checks against platform rules and law.",
+     "Act: Hide with a mandatory statement of reasons; employer notified by email with appeal route.",
+     "Appeal: Employer responds; staff decides within 7 days; decision recorded.",
+     "Restore: Unhide when resolved; audit entry.",
+     "Report: Monthly moderation statistics."
+    ],
+    "outputs": [
+     "Moderation action record",
+     "Employer notification"
+    ],
+    "kpis": [
+     "Decision within 7 days (%)",
+     "Appeals upheld (%)"
+    ],
+    "risks": "Arbitrary removal, legal exposure",
+    "controls": "Mandatory reasons, appeal path, audit, two-person review for suspensions",
+    "freq": "Quarterly"
+   }
+  ]
+ },
+ {
+  "n": 4,
+  "id": "D",
+  "title": "Applications and journey tracker",
+  "sops": [
+   {
+    "fr": "FR-D1",
+    "title": "Job Application Submission E2E SOP",
+    "purpose": "To submit an application with explicit document sharing and consent",
+    "scope": "Candidate / Employer",
+    "owner": "Candidate",
+    "inputs": [
+     "Open vacancy",
+     "Candidate profile",
+     "Selected documents"
+    ],
+    "steps": [
+     "Start: Candidate clicks Apply on an Open vacancy (login required).",
+     "Compose: Optional cover note; select which documents to share.",
+     "Consent: Candidate confirms sharing with the named employer for this application.",
+     "Create atomically: Consent, share, application, 'applied' event, audit and notification queue entry are written in one transaction.",
+     "Snapshot: Profile snapshot stored with the application.",
+     "Confirm: Candidate sees the application in the journey tracker; employer notified (SOP FR-D6).",
+     "Reject invalid: Closed vacancy, duplicate or missing profile fields are refused with guidance."
+    ],
+    "outputs": [
+     "Application record",
+     "Share and consent"
+    ],
+    "kpis": [
+     "Application completion rate",
+     "Applications per vacancy"
+    ],
+    "risks": "Unintended sharing, duplicates",
+    "controls": "Explicit selection and consent, atomic transaction, duplicate rule",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-D2",
+    "title": "Application Status Pipeline E2E SOP",
+    "purpose": "To move applications through defined states with a complete event history",
+    "scope": "Applications",
+    "owner": "Employer member / Candidate",
+    "inputs": [
+     "Application",
+     "Target state",
+     "Note"
+    ],
+    "steps": [
+     "Define states: Applied, Viewed, Shortlisted, Interview, Offer, Hired, Not selected, Withdrawn.",
+     "Change: Employer selects a new state (and optional note) from the applicant view or board.",
+     "Guard: Database allows only permitted transitions and actors.",
+     "Record: An event row with actor, from, to, note and time is appended.",
+     "Notify: Candidate email on each change except Viewed (SOP FR-D6).",
+     "Final states: Hired, Not selected, Withdrawn end the pipeline; shares expire after 30 days."
+    ],
+    "outputs": [
+     "Updated application",
+     "Event history"
+    ],
+    "kpis": [
+     "Time in each stage",
+     "Applications left in Applied > 14 days"
+    ],
+    "risks": "Inconsistent states, silent changes",
+    "controls": "Transition guard, append-only events, notifications",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-D3",
+    "title": "Candidate Journey Tracker E2E SOP",
+    "purpose": "To give candidates a clear view of every application's progress",
+    "scope": "Candidate",
+    "owner": "Candidate",
+    "inputs": [
+     "Application events"
+    ],
+    "steps": [
+     "List: 'My applications' shows all applications with current stage and filters.",
+     "Timeline: Each application shows events in order with dates and notes shared with the candidate.",
+     "Next step: Plain-language text explains what usually happens next at each stage.",
+     "Act: Withdraw button available on non-final states.",
+     "Access: Only the candidate's own rows are readable (database rule)."
+    ],
+    "outputs": [
+     "Journey view"
+    ],
+    "kpis": [
+     "Tracker visits per application",
+     "Support requests about status"
+    ],
+    "risks": "Confusing status, data leakage",
+    "controls": "Clear stage copy, own-rows-only policy",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-D4",
+    "title": "Application Withdrawal E2E SOP",
+    "purpose": "To let candidates withdraw and immediately end the employer's document access",
+    "scope": "Applications",
+    "owner": "Candidate",
+    "inputs": [
+     "Application id"
+    ],
+    "steps": [
+     "Request: Candidate selects Withdraw and confirms.",
+     "Update: State set to Withdrawn; event appended.",
+     "Revoke: The share for that employer is revoked; further document access is denied and logged.",
+     "Notify: Employer sees the withdrawal in the pipeline; optional email.",
+     "Retain: Record kept per retention schedule for audit."
+    ],
+    "outputs": [
+     "Withdrawn application",
+     "Revoked share"
+    ],
+    "kpis": [
+     "Withdrawal rate"
+    ],
+    "risks": "Lingering access after withdrawal",
+    "controls": "Revocation inside the same transaction, access tests",
+    "freq": "Annual"
+   },
+   {
+    "fr": "FR-D5",
+    "title": "Application Visibility Control E2E SOP",
+    "purpose": "To ensure each party sees only the applications they are entitled to",
+    "scope": "Applications",
+    "owner": "Platform",
+    "inputs": [
+     "Membership and ownership data"
+    ],
+    "steps": [
+     "Define: Candidates see own applications; organisation members see applications to their organisation's vacancies.",
+     "Enforce: Row-level policies implement the rule for applications, events and notes.",
+     "Separate notes: Internal notes are visible to the organisation only, never to the candidate.",
+     "Test: Positive and negative tests per role run in every build.",
+     "Audit: Attempts to access other organisations' data are logged by the database."
+    ],
+    "outputs": [
+     "Enforced visibility"
+    ],
+    "kpis": [
+     "Policy tests passing (100 %)"
+    ],
+    "risks": "Cross-tenant exposure",
+    "controls": "Row-level security, negative tests",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-D6",
+    "title": "Application Notifications E2E SOP",
+    "purpose": "To inform candidates and employers of application events reliably",
+    "scope": "Notifications",
+    "owner": "Platform",
+    "inputs": [
+     "Application events",
+     "Notification preferences"
+    ],
+    "steps": [
+     "Queue: Each event enqueues a notification unless preferences disable it.",
+     "Batch: Employer notifications are sent immediately or as a daily summary per preference.",
+     "Render: Templates filled with non-sensitive data only (no documents, no notes).",
+     "Send: Email service delivers; status recorded; retries with back-off on failure.",
+     "Monitor: Failed deliveries alert operations after 3 retries.",
+     "Review: Template wording reviewed with legal for tone and content."
+    ],
+    "outputs": [
+     "Sent notifications",
+     "Delivery status"
+    ],
+    "kpis": [
+     "Delivery success rate",
+     "Median time to send"
+    ],
+    "risks": "Spam, leakage in emails, missed updates",
+    "controls": "Preferences, minimal payloads, retries, monitoring",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-D7",
+    "title": "Duplicate Application Prevention E2E SOP",
+    "purpose": "To keep one active application per candidate and vacancy",
+    "scope": "Applications",
+    "owner": "Platform",
+    "inputs": [
+     "Application attempts"
+    ],
+    "steps": [
+     "Check: Database unique rule rejects a second non-withdrawn application for the same vacancy.",
+     "Guide: UI shows the existing application instead of an error.",
+     "Allow re-apply: After withdrawal a new application is possible if the vacancy is still Open.",
+     "Monitor: Duplicate attempts counted for abuse detection."
+    ],
+    "outputs": [
+     "Single active application"
+    ],
+    "kpis": [
+     "Duplicate attempts per month"
+    ],
+    "risks": "Spam applications",
+    "controls": "Unique rule, rate limit",
+    "freq": "Annual"
+   }
+  ]
+ },
+ {
+  "n": 5,
+  "id": "E",
+  "title": "Employer applicant management (ATS core)",
+  "sops": [
+   {
+    "fr": "FR-E1",
+    "title": "Applicant List & Pipeline Board E2E SOP",
+    "purpose": "To give employers an organised view of applicants per vacancy",
+    "scope": "Employer ATS",
+    "owner": "Employer member",
+    "inputs": [
+     "Applications and events"
+    ],
+    "steps": [
+     "Open vacancy: Member selects a vacancy from the dashboard.",
+     "List view: Applicants with stage, date, completeness and document count; sortable and filterable.",
+     "Board view: Columns per stage; drag or menu to move (triggers SOP FR-D2).",
+     "Counts: Stage counts update live.",
+     "Export: CSV export of the list without documents (plan-dependent)."
+    ],
+    "outputs": [
+     "Applicant views"
+    ],
+    "kpis": [
+     "Time to first review of new applicants"
+    ],
+    "risks": "Overlooked applicants",
+    "controls": "New-applicant highlighting, digest emails",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-E2",
+    "title": "Applicant Detail Review E2E SOP",
+    "purpose": "To review an applicant's profile and documents securely and keep team notes",
+    "scope": "Employer ATS",
+    "owner": "Employer member",
+    "inputs": [
+     "Application snapshot",
+     "Shared documents",
+     "Notes"
+    ],
+    "steps": [
+     "Open: Member opens the applicant; first open sets state Viewed.",
+     "Review snapshot: Profile as submitted; indicator if the live profile changed since.",
+     "Open documents: Each click requests a 60-second link through the access broker; access is logged for the candidate.",
+     "Add notes: Internal notes visible to the organisation only.",
+     "See history: Stage timeline with actors and notes.",
+     "Act: Change stage, shortlist, decline with reason."
+    ],
+    "outputs": [
+     "Reviewed applicant",
+     "Notes"
+    ],
+    "kpis": [
+     "Applicants reviewed within 7 days (%)"
+    ],
+    "risks": "Document leakage, notes exposed to candidate",
+    "controls": "Brokered links, access log, org-only note policy",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-E3",
+    "title": "Bulk Applicant Actions E2E SOP",
+    "purpose": "To process many applicants consistently",
+    "scope": "Employer ATS",
+    "owner": "Employer administrator",
+    "inputs": [
+     "Selected applications",
+     "Target state and reason template"
+    ],
+    "steps": [
+     "Select: Admin selects applicants in list or board.",
+     "Choose action: Move to stage or decline with a reason template.",
+     "Confirm: Summary shown; confirm.",
+     "Apply: Each application processed under the same transition guard; events and notifications generated individually.",
+     "Report: Result summary with any refused items."
+    ],
+    "outputs": [
+     "Updated applications"
+    ],
+    "kpis": [
+     "Bulk actions per month"
+    ],
+    "risks": "Mass mistakes",
+    "controls": "Confirmation step, per-item guard, undo window for declines (24 h)",
+    "freq": "Annual"
+   },
+   {
+    "fr": "FR-E4",
+    "title": "Shortlisting E2E SOP",
+    "purpose": "To mark preferred applicants when the plan includes shortlisting",
+    "scope": "Employer ATS",
+    "owner": "Employer member",
+    "inputs": [
+     "Plan features"
+    ],
+    "steps": [
+     "Check feature: Database verifies the organisation's plan includes shortlisting.",
+     "Flag: Member marks applicant as shortlisted; event appended.",
+     "Filter: Shortlist filter available in list and board.",
+     "Upsell: If not included, UI shows upgrade prompt."
+    ],
+    "outputs": [
+     "Shortlist flags"
+    ],
+    "kpis": [
+     "Shortlist usage by plan"
+    ],
+    "risks": "Feature leakage across plans",
+    "controls": "Feature check in database",
+    "freq": "Annual"
+   },
+   {
+    "fr": "FR-E5",
+    "title": "Employer Dashboard E2E SOP",
+    "purpose": "To summarise hiring activity and account status at a glance",
+    "scope": "Employer",
+    "owner": "Employer member",
+    "inputs": [
+     "Vacancies, applications, subscription"
+    ],
+    "steps": [
+     "Aggregate: Open vacancies, new applications (7 days), applicants by stage, plan and trial status.",
+     "Display: Cards with links to detail views.",
+     "Refresh: Values computed from indexed queries on each load.",
+     "Alert: Trial-ending and payment issues shown prominently."
+    ],
+    "outputs": [
+     "Dashboard"
+    ],
+    "kpis": [
+     "Dashboard load time"
+    ],
+    "risks": "Stale or wrong numbers",
+    "controls": "Direct queries, tests",
+    "freq": "Semi-annual"
+   }
+  ]
+ },
+ {
+  "n": 6,
+  "id": "F",
+  "title": "Platform administration",
+  "sops": [
+   {
+    "fr": "FR-F1",
+    "title": "Platform Administration Console E2E SOP",
+    "purpose": "To administer users, organisations, vacancies, legal documents and staff with accountability",
+    "scope": "CHARA administration",
+    "owner": "Platform administrator / Trust & safety",
+    "inputs": [
+     "Staff role",
+     "MFA session",
+     "Reason for each action"
+    ],
+    "steps": [
+     "Access: Staff signs in with MFA; console available only to staff roles.",
+     "Users: Search; suspend or reinstate with reason; view activity counts.",
+     "Organisations: View; suspend with reason; see members and vacancies.",
+     "Vacancies: Hide or unhide with statement of reasons (SOP FR-C7).",
+     "Statistics: Application counts only; no personal documents.",
+     "Legal: Publish a new document version with change summary (triggers re-consent).",
+     "Audit: Search the audit log by actor, action, entity and date.",
+     "Staff: Grant or revoke roles (SOP FR-A7)."
+    ],
+    "outputs": [
+     "Administrative actions",
+     "Audit entries"
+    ],
+    "kpis": [
+     "Actions with reason recorded (100 %)",
+     "Time to resolve reports"
+    ],
+    "risks": "Abuse of admin rights, missing reasons",
+    "controls": "MFA, mandatory reasons, audit, quarterly access review",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-F2",
+    "title": "Administrative Action Audit E2E SOP",
+    "purpose": "To keep an immutable record of every administrative action",
+    "scope": "CHARA administration",
+    "owner": "Platform",
+    "inputs": [
+     "Admin RPC calls"
+    ],
+    "steps": [
+     "Capture: Every administrative RPC writes an audit row with actor, target, reason, time and request id.",
+     "Protect: Audit table permits inserts only; updates and deletes are blocked for all roles.",
+     "Retain: 6 years.",
+     "Export: Monthly export to an immutable archive outside the platform.",
+     "Review: Sampled quarterly by the privacy officer."
+    ],
+    "outputs": [
+     "Audit log"
+    ],
+    "kpis": [
+     "Admin actions without audit row (target 0)"
+    ],
+    "risks": "Tampering, gaps",
+    "controls": "Database trigger, off-platform archive, review",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-F3",
+    "title": "Staff Document Access Restriction E2E SOP",
+    "purpose": "To ensure platform staff cannot access candidate documents in Phase 1",
+    "scope": "CHARA administration",
+    "owner": "Platform",
+    "inputs": [
+     "Access rules"
+    ],
+    "steps": [
+     "Design: No administrative function requests document links.",
+     "Enforce: Database policies deny staff roles any read on document metadata and storage objects.",
+     "Test: Automated test asserts the denial in every build.",
+     "Exception process: Any future need requires a documented change, a legal basis and candidate-visible logging."
+    ],
+    "outputs": [
+     "Enforced restriction"
+    ],
+    "kpis": [
+     "Policy test passing (100 %)"
+    ],
+    "risks": "Insider access",
+    "controls": "No code path, policy denial, tests",
+    "freq": "Annual"
+   }
+  ]
+ },
+ {
+  "n": 7,
+  "id": "G",
+  "title": "Subscriptions and billing",
+  "sops": [
+   {
+    "fr": "FR-G1",
+    "title": "Plan Configuration E2E SOP",
+    "purpose": "To define employer plans, prices, limits and features as controlled configuration",
+    "scope": "Billing",
+    "owner": "Finance / Product",
+    "inputs": [
+     "Pricing decisions",
+     "Feature matrix"
+    ],
+    "steps": [
+     "Define: Plan code, name, price, currency, trial days, visibility.",
+     "Set limits: Open vacancies, members, applications per month etc. per plan; empty means unlimited.",
+     "Set features: Shortlisting, analytics etc. per plan.",
+     "Load: Values stored as records via versioned seed; change requires review.",
+     "Mirror in Stripe: Products and prices created/updated by script; identifiers stored.",
+     "Publish: Pricing page reads the records (SOP FR-H2).",
+     "Review: Quarterly pricing review."
+    ],
+    "outputs": [
+     "Plan records",
+     "Stripe products"
+    ],
+    "kpis": [
+     "Plans with all limits defined (100 % before launch)"
+    ],
+    "risks": "Code/config mismatch, unapproved price changes",
+    "controls": "Data-driven plans, reviewed seeds, Stripe sync script, go-live check",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-G2",
+    "title": "Subscription Checkout & Customer Portal E2E SOP",
+    "purpose": "To start and manage subscriptions through Stripe without handling card data",
+    "scope": "Billing",
+    "owner": "Organisation owner / administrator",
+    "inputs": [
+     "Plan choice",
+     "Billing country and VAT ID",
+     "MFA session"
+    ],
+    "steps": [
+     "Start: Owner/admin chooses a plan on the billing page.",
+     "Validate: Function checks role, MFA and that the account is not a worker.",
+     "Collect tax data: Billing country and VAT ID captured; Stripe Tax enabled.",
+     "Create session: Stripe Checkout session with 30-day trial and card required.",
+     "Return: On success the webhook (SOP FR-G3) activates the trial; user returns to billing page.",
+     "Manage: Customer Portal link for card updates, plan change, cancellation and invoices.",
+     "Audit: Checkout start and portal visits logged."
+    ],
+    "outputs": [
+     "Stripe customer and subscription",
+     "Order record"
+    ],
+    "kpis": [
+     "Checkout conversion",
+     "Trial-to-paid conversion"
+    ],
+    "risks": "Card data exposure, wrong tax",
+    "controls": "Hosted checkout, Stripe Tax, role/MFA checks",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-G3",
+    "title": "Payment Webhook Processing E2E SOP",
+    "purpose": "To apply Stripe events exactly once and keep subscription state correct",
+    "scope": "Billing",
+    "owner": "Platform / Finance",
+    "inputs": [
+     "Signed Stripe events"
+    ],
+    "steps": [
+     "Receive: Webhook function receives the event.",
+     "Verify: Signature checked; invalid signatures rejected and logged.",
+     "Ingest: Event stored by provider event id; duplicates acknowledged without re-processing.",
+     "Apply: Subscription state updated according to event type; audit row written.",
+     "Retry: Failed applications retried by scheduler every 5 minutes; alert after 1 hour.",
+     "Reconcile: Weekly comparison of Stripe subscriptions with records."
+    ],
+    "outputs": [
+     "Applied events",
+     "Subscription state"
+    ],
+    "kpis": [
+     "Events applied within 1 minute (%)",
+     "Reconciliation differences (target 0)"
+    ],
+    "risks": "Forged events, double application",
+    "controls": "Signature verification, idempotency, reconciliation",
+    "freq": "Monthly"
+   },
+   {
+    "fr": "FR-G4",
+    "title": "Subscription State & Fallback E2E SOP",
+    "purpose": "To manage trial, active, past-due and cancelled states and what each allows",
+    "scope": "Billing",
+    "owner": "Platform / Finance",
+    "inputs": [
+     "Subscription events",
+     "Grace settings"
+    ],
+    "steps": [
+     "Trial: Starts at checkout; ends after 30 days; reminder 3 days before.",
+     "Active: Paid invoice sets active; full plan rights.",
+     "Past due: Failed payment sets past due with 7-day grace; email and dashboard warning.",
+     "Cancelled: After grace or on cancellation; organisation falls to the free plan: no open vacancies, read-only applicants.",
+     "Reactivate: Checkout again restores the plan; paused vacancies can be reopened.",
+     "Record: Every transition audited."
+    ],
+    "outputs": [
+     "Subscription state"
+    ],
+    "kpis": [
+     "Involuntary churn rate",
+     "Recovery within grace (%)"
+    ],
+    "risks": "Service cut-off errors, revenue loss",
+    "controls": "Scheduled transitions, grace period, data retained",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-G5",
+    "title": "Billing Page E2E SOP",
+    "purpose": "To show owners their plan, usage and invoices and let them act",
+    "scope": "Billing",
+    "owner": "Organisation owner / administrator",
+    "inputs": [
+     "Subscription, usage counters, invoices"
+    ],
+    "steps": [
+     "Display: Current plan, state, trial or renewal date, usage versus limits.",
+     "Actions: Upgrade, downgrade, open portal, change tax details.",
+     "Invoices: Link to Stripe-hosted invoices.",
+     "Access: Owners/admins with MFA only."
+    ],
+    "outputs": [
+     "Billing page"
+    ],
+    "kpis": [
+     "Self-service resolution rate"
+    ],
+    "risks": "Unauthorised changes",
+    "controls": "Role and MFA gate",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-G6",
+    "title": "Worker No-Fee Guarantee E2E SOP",
+    "purpose": "To ensure candidates can never be charged",
+    "scope": "Billing",
+    "owner": "Platform / Compliance",
+    "inputs": [
+     "Account kind"
+    ],
+    "steps": [
+     "Rule: Database rejects checkout and subscriptions for worker accounts.",
+     "UI: No pricing or payment elements in candidate areas.",
+     "Test: Automated test attempts a worker checkout and expects refusal.",
+     "Policy: Platform Rules state that workers never pay; reports of fee requests go to trust & safety."
+    ],
+    "outputs": [
+     "Enforced guarantee"
+    ],
+    "kpis": [
+     "Worker checkout attempts refused (100 %)"
+    ],
+    "risks": "Regulatory breach (ILO C181)",
+    "controls": "Database rule, tests, policy",
+    "freq": "Annual"
+   }
+  ]
+ },
+ {
+  "n": 8,
+  "id": "H",
+  "title": "Public website and legal",
+  "sops": [
+   {
+    "fr": "FR-H1",
+    "title": "Public Website Publication E2E SOP",
+    "purpose": "To publish and maintain the public pages",
+    "scope": "Public website",
+    "owner": "Marketing / Platform",
+    "inputs": [
+     "Approved texts and brand assets"
+    ],
+    "steps": [
+     "Prepare: Texts for Home, How CHARA Works, Trust & Safety, About, Contact approved by CHARA.",
+     "Build: Pages rendered server-side with shared layout and accessibility checks.",
+     "Review: Content and legal review before release.",
+     "Publish: Deployed with the release; sitemap updated.",
+     "Maintain: Quarterly content review."
+    ],
+    "outputs": [
+     "Published pages"
+    ],
+    "kpis": [
+     "Accessibility violations (target 0 serious)"
+    ],
+    "risks": "Outdated or non-compliant content",
+    "controls": "Review workflow, automated checks",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-H2",
+    "title": "Pricing Page from Configuration E2E SOP",
+    "purpose": "To display prices that always match the billing configuration",
+    "scope": "Public website",
+    "owner": "Finance / Platform",
+    "inputs": [
+     "Plan records"
+    ],
+    "steps": [
+     "Read: Page reads public plan records at render time.",
+     "Display: Worker free; employer plans with trial note; VAT note.",
+     "Change: Price changes made in configuration (SOP FR-G1) appear automatically.",
+     "Verify: Test compares page values with records."
+    ],
+    "outputs": [
+     "Pricing page"
+    ],
+    "kpis": [
+     "Pricing mismatches (target 0)"
+    ],
+    "risks": "Advertised price differs from charged price",
+    "controls": "Single source of truth, test",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-H3",
+    "title": "Legal Document Versioning & Publication E2E SOP",
+    "purpose": "To publish legal documents with version control and consent linkage",
+    "scope": "Legal",
+    "owner": "Legal adviser / Platform administrator",
+    "inputs": [
+     "Approved document text",
+     "Change summary"
+    ],
+    "steps": [
+     "Draft: Legal supplies text and change summary.",
+     "Review: Administrator checks formatting and links.",
+     "Publish: New version created with number and date (SOP FR-F1); previous versions retained.",
+     "Trigger: Re-consent required at next login (SOP FR-A8).",
+     "Display: Legal pages show current version, date and change log.",
+     "Archive: All versions exportable for audit."
+    ],
+    "outputs": [
+     "Published legal version"
+    ],
+    "kpis": [
+     "Users re-consented within 30 days (%)"
+    ],
+    "risks": "Unversioned changes",
+    "controls": "Versioned records, audit",
+    "freq": "On change; annual"
+   },
+   {
+    "fr": "FR-H4",
+    "title": "Public Statistics E2E SOP",
+    "purpose": "To show real platform numbers without exposing individuals",
+    "scope": "Public website",
+    "owner": "Platform",
+    "inputs": [
+     "Aggregated counts"
+    ],
+    "steps": [
+     "Compute: Scheduled job refreshes counts of open vacancies, employers, candidates and countries.",
+     "Threshold: Any value below 5 is hidden.",
+     "Display: Home page reads the anonymised view.",
+     "Verify: Test checks threshold behaviour."
+    ],
+    "outputs": [
+     "Statistics block"
+    ],
+    "kpis": [
+     "Refresh success rate"
+    ],
+    "risks": "Re-identification, inflated numbers",
+    "controls": "Threshold, real data only",
+    "freq": "Semi-annual"
+   },
+   {
+    "fr": "FR-H5",
+    "title": "Search Engine Readiness E2E SOP",
+    "purpose": "To make vacancies discoverable by search engines",
+    "scope": "Public website",
+    "owner": "Marketing / Platform",
+    "inputs": [
+     "Open vacancies"
+    ],
+    "steps": [
+     "Metadata: Each page has title and description.",
+     "Sitemap and robots: Generated from live data; private areas excluded.",
+     "Structured data: JobPosting markup on vacancy pages validated.",
+     "Monitor: Search console errors reviewed monthly."
+    ],
+    "outputs": [
+     "SEO assets"
+    ],
+    "kpis": [
+     "Indexed vacancies (%)"
+    ],
+    "risks": "Indexing of private pages",
+    "controls": "Robots rules, tests",
+    "freq": "Quarterly"
+   }
+  ]
+ },
+ {
+  "n": 9,
+  "id": "I",
+  "title": "Notifications",
+  "sops": [
+   {
+    "fr": "FR-I1",
+    "title": "Account Email Delivery E2E SOP",
+    "purpose": "To deliver authentication emails reliably from a verified domain",
+    "scope": "Notifications",
+    "owner": "Platform / Operations",
+    "inputs": [
+     "Sending domain",
+     "Email provider account"
+    ],
+    "steps": [
+     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails.",
+     "Templates: Confirmation, reset, invitation, MFA recovery reviewed for wording.",
+     "Send: Authentication service sends on each event.",
+     "Monitor: Bounce and complaint rates reviewed weekly.",
+     "Rotate: Provider credentials rotated per key-rotation runbook."
+    ],
+    "outputs": [
+     "Delivered emails"
+    ],
+    "kpis": [
+     "Delivery rate",
+     "Bounce rate"
+    ],
+    "risks": "Deliverability failures",
+    "controls": "Domain authentication, monitoring",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-I2",
+    "title": "Transactional Email Queue E2E SOP",
+    "purpose": "To send platform emails through a queue with retries and status",
+    "scope": "Notifications",
+    "owner": "Platform / Operations",
+    "inputs": [
+     "Notification records",
+     "Templates"
+    ],
+    "steps": [
+     "Enqueue: Events add messages to the queue respecting preferences.",
+     "Consume: Scheduled function picks messages every minute.",
+     "Render: Templates filled with minimal data.",
+     "Send and record: Provider response stored; failures retried with back-off up to 3 times.",
+     "Alert: Backlog above threshold or repeated failures alert operations.",
+     "Retain: Notification records 13 months."
+    ],
+    "outputs": [
+     "Sent messages",
+     "Delivery status"
+    ],
+    "kpis": [
+     "Send success rate",
+     "Queue latency"
+    ],
+    "risks": "Lost messages, duplicates",
+    "controls": "Queue with visibility timeout, idempotent send keys",
+    "freq": "Quarterly"
+   },
+   {
+    "fr": "FR-I3",
+    "title": "Notification Preferences E2E SOP",
+    "purpose": "To respect user choices about notifications",
+    "scope": "Notifications",
+    "owner": "User",
+    "inputs": [
+     "Preference settings"
+    ],
+    "steps": [
+     "Default: Application updates on; employer digest off (immediate).",
+     "Change: User updates preferences in settings; stored per user.",
+     "Apply: Enqueue step checks preferences; mandatory security and legal emails are always sent.",
+     "Audit: Preference changes logged."
+    ],
+    "outputs": [
+     "Preference record"
+    ],
+    "kpis": [
+     "Opt-out rate"
+    ],
+    "risks": "Ignoring preferences",
+    "controls": "Check at enqueue, tests",
+    "freq": "Annual"
+   }
+  ]
+ }
+]
