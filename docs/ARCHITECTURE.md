@@ -1,8 +1,8 @@
 # CHARA Architecture — Supabase backend + Next.js 16 frontend
 
-- Status: Accepted. Reconciled with the Phase-1 handoff on 2026-10-02: the owner decisions (§2) and the one-page architecture (§5) of `docs/phase-1/HANDOFF.md` are incorporated, and this is the single current architecture document (see ADR-0002 to ADR-0005).
+- Status: Accepted. Reconciled with the Phase-1 handoff on 2026-10-02: the owner decisions (§2) and the one-page architecture (§5) of `docs/phase-1/HANDOFF.md` are incorporated, and this is the single current architecture document (see ADR-0002 to ADR-0005). The owner's decisions reply (2026-10-02; client document, not in git) is incorporated as well; its points are tracked in `docs/OPEN_QUESTIONS.md` (R20–R31).
 - Last verified against: Next.js 16.3.8 bundled docs, Supabase CLI 2.119.0 config/command specs, supabase/postgres role definitions, product spec (36 sections) and pricing document (both kept locally in `docs/spec`, not in git).
-- Markers: "(later phase)" = designed here, not built in Phase 1. "(proposed — see OPEN_QUESTIONS.md, D<n>)" = recommended resolution of a design conflict that is not yet decided.
+- Markers: "(later phase)" = designed here, not built in Phase 1. "(proposed — see OPEN_QUESTIONS.md, D<n>)" = recommended resolution of a design conflict that is not yet decided. "(decided — OPEN_QUESTIONS.md, <ID>)" = settled by the owner.
 
 CHARA is a global workforce network (Search → Match → Connect → Collaborate), not a job board. Four participants (Worker, Employer, Recruitment Company, Staffing Company) plus CHARA platform staff. Workers never pay. Paying ≠ verified ≠ boosted. Candidate documents are private unless the candidate shares them for a specific application.
 
@@ -30,7 +30,7 @@ Phase 1 scope: candidate (worker) and employer accounts only — public site, va
                  └───────────────┬───────────────┘               │
                                  │ supabase-js over HTTPS, user session (RLS applies)
 ┌────────────────────────────────▼───────────────────────────────▼─────────────────────────────┐
-│                               Supabase project (EU region)                                    │
+│                               Supabase project (Frankfurt)                                    │
 │                                                                                               │
 │  Auth (GoTrue)      PostgREST Data API        Storage (S3, EU)       Realtime (Broadcast)      │
 │  email+pw, TOTP     exposed: public           private buckets        private topics, RLS on   │
@@ -52,7 +52,7 @@ Phase 1 scope: candidate (worker) and employer accounts only — public site, va
 │   document-url · billing-webhook · billing-checkout · account-ops · notify · scan-document    │
 └───────────────────────────────────────────────────────────────────────────────────────────────┘
           ▲                                        ▲
-          │ Stripe webhooks (signature-verified)    │ Resend (EU) email · AV scanner (vendor undecided)
+          │ Stripe webhooks (signature-verified)    │ Email provider (EU, not yet selected) · AV scanner (vendor undecided)
 ```
 
 Two tiers, one trust boundary: Postgres Row Level Security decides who may read or write what; the Next.js tier can never bypass it because it has no privileged key.
@@ -64,13 +64,13 @@ Two tiers, one trust boundary: Postgres Row Level Security decides who may read 
 | Component | Responsibility | Technology / notes |
 |---|---|---|
 | Postgres (Supabase) | System of record and authorization engine. Constraints, RLS, triggers, SECURITY DEFINER RPCs for multi-table writes, matching functions, materialized statistics. | Cloud: Postgres 17 (confirm in dashboard; `db.major_version` must match). Local: the same Supabase stack in Docker (§14.3). Extensions: pgcrypto, pg_trgm, unaccent, citext, btree_gin, pg_stat_statements, pg_cron, pg_net, pgmq, supabase_vault, pgtap (tests). |
-| Supabase Auth | Sign-up/in, email confirmation, password policy, TOTP MFA with `aal` claim, session cookies via @supabase/ssr. Trigger creates `public.profiles`. | GoTrue; asymmetric ES256 signing key; `jwt_expiry = 1800`; custom SMTP through Resend (EU region). |
+| Supabase Auth | Sign-up/in, email confirmation, password policy, TOTP MFA with `aal` claim, session cookies via @supabase/ssr. Trigger creates `public.profiles`. | GoTrue; asymmetric ES256 signing key; `jwt_expiry = 1800`; custom SMTP through the transactional email provider (see Email). |
 | Supabase Storage | Private buckets only: passport documents, DSAR exports, organization media; (later phase) verification evidence, safety evidence. | RLS on `storage.objects`, owner-only policies; signed URLs (60 s download, 10 min upload). |
 | Supabase Realtime | Messaging (later phase) and notification badges. | Broadcast on private channels; `realtime.broadcast_changes` triggers; no `postgres_changes`. |
 | Edge Functions | Only work that needs a secret, outbound network or long processing. Reach the database only through public RPCs granted to `service_role` (§8). | Deno; `verify_jwt = true` except `billing-webhook` (provider signature) and `scan-document` (shared-secret header). Limits: 150 s free / 400 s paid wall-clock, 2 s CPU, 256 MB. |
 | Scheduler and queues | MV refresh, expiries, retention, billing retries, notifications. | pg_cron → SQL or `net.http_post` to Edge Functions (secret header from Vault); pgmq for retryable jobs. |
 | Payments | Subscriptions, checkout, customer portal, tax, webhooks. | Stripe (Checkout, Customer Portal, Tax, webhooks) behind the provider-neutral `BillingProvider` adapter (§10.2); the null/HMAC provider is used in dev, CI and e2e. |
-| Email | Auth emails and transactional emails. | Resend, EU region. Auth emails: Supabase custom SMTP. Transactional emails: Resend API called from the `notify` Edge Function, React Email templates in `apps/web/emails`. |
+| Email | Auth emails and transactional emails. | Provider not yet selected by the owner; Resend, EU region, is the team's working recommendation (OPEN_QUESTIONS.md, O10). The design is provider-neutral. Auth emails: Supabase custom SMTP. Transactional emails: the provider's API called from the `notify` Edge Function, React Email templates in `apps/web/emails`. Local development uses the mail catcher. |
 | apps/web | Public site, auth + onboarding, worker and employer dashboards (recruitment and staffing dashboards: later phase), admin console. | `@chara-pinnacle/web`. Next.js 16.3 App Router, React 19.2, TypeScript, Tailwind 4, @supabase/ssr 0.12, supabase-js 2.117, zod, `server-only`. Portable: `output: 'standalone'`, Node runtime, no vendor adapters. Dev server on port 3100. |
 | packages/db-types | Generated `Database` type from `npx supabase gen types`. | Created with the first tables. Committed; CI drift check. |
 | packages/shared | zod schemas, enums mirrored from DB, application stage machine, limit/feature keys, ISO code helpers. | Pure TypeScript. Created only when a second consumer needs it; until then this code lives in `apps/web/lib`. |
@@ -86,13 +86,13 @@ Legend: `[now]` exists in the repository today · no marker = target, created by
 
 ```
 chara-pinnacle-platform/
-  package.json                [now] workspaces: apps/*, packages/*; scripts: dev, build, lint, typecheck;
-                                    db:start, db:stop, db:reset, db:test (wrap `npx supabase …`) are added with the Supabase setup
+  package.json                [now] workspaces: apps/*, packages/*; scripts: dev, build, lint, typecheck,
+                                    db:start, db:stop, db:reset, db:test (run the Supabase CLI devDependency)
   .nvmrc (24)                 [now] engines.node >=22
   .editorconfig · .gitignore · README.md · .github/CODEOWNERS      [now]
   SECURITY.md
-  .github/workflows/ci.yml    [now] jobs today: web · security; db is added with the Supabase setup,
-                                    functions and e2e with the first Edge Function / first user flow (§14.5)
+  .github/workflows/ci.yml    [now] jobs today: web · db · security; functions and e2e are added with the
+                                    first Edge Function / first user flow (§14.5)
   .github/workflows/deploy-supabase.yml   on push to main (environment "production", required reviewer)
   apps/web/                   [now] @chara-pinnacle/web, the only app; never holds a secret key (ADR-0003); dev server on port 3100.
                                     Today: Next.js 16 skeleton (next.config.ts, app/[lang]/layout.tsx, app/[lang]/page.tsx).
@@ -114,8 +114,10 @@ chara-pinnacle-platform/
                                     (later phase) workforce profile, availability, requirements, verification
     app/[lang]/(app)/passport/      sections, documents, shares + access log, consents
     app/[lang]/(app)/applications/  candidate applications and journey tracker
-    app/[lang]/(admin)/admin/       job moderation, suspensions, legal documents, staff, audit search (platform role + aal2);
-                                    (later phase) verification queue, reports
+    app/[lang]/(admin)/admin/       job moderation, suspensions, legal documents, staff, audit search (aal2 and a per-page role:
+                                    moderation and suspensions trust_safety; legal documents and staff admin);
+                                    (later phase) verification queue (role verification_reviewer), reports,
+                                    plans, limits and settings editor (role admin)
     app/auth/callback/route.ts      PKCE exchangeCodeForSession → redirect (validated `next`)
     app/auth/confirm/route.ts       verifyOtp(token_hash) for email links
     app/api/health/route.ts         build id only
@@ -134,8 +136,8 @@ chara-pinnacle-platform/
     tests/unit, tests/e2e, playwright.config.ts, vitest.config.mts, .env.example (public vars only)
   packages/db-types/                src/database.ts (generated, public schema); created with the first tables
   packages/shared/                  zod schemas, enums, stage machine, limit/feature keys; created only when a second consumer needs it
-  supabase/                         created by the Supabase setup work package
-    config.toml                     generated by `npx supabase init`, then edited; see §15.1 for the values that matter
+  supabase/                   [now] today: config.toml, .gitignore and tests/database/000_stack.test.sql; the rest below is the target
+    config.toml               [now] generated by `npx supabase init`, then edited; see §15.1 for the values that matter
     migrations/                     <timestamp>_<name>.sql, small and forward-only, one pull request each:
                                     foundation · reference data · profiles and consents · organizations · billing core · …
     seeds/ref/*.sql                 reference data, plans, legal documents; listed in config.toml [db.seed] sql_paths
@@ -147,7 +149,7 @@ chara-pinnacle-platform/
     functions/_tests/               Deno tests (a directory named tests/ would deploy as a function)
     functions/document-url · billing-checkout · billing-webhook · notify · account-ops · scan-document
     functions/.env.example          committed, names only; local values go in functions/.env (gitignored)
-    tests/database/*.test.sql       pgTAP tests, run with `npx supabase test db`
+    tests/database/*.test.sql [now] pgTAP tests, run with `npx supabase test db` (`npm run db:test`)
   scripts/gen-ref-seeds.mjs         writes supabase/seeds/ref/*.sql from Intl plus committed code lists
   docs/ARCHITECTURE.md (this) · OPEN_QUESTIONS.md                  [now]
   docs/adr/                   [now] 0001 (superseded) · 0002-supabase-backend · 0003-no-secret-keys-in-web ·
@@ -170,7 +172,7 @@ Table catalogue. Enum values are lower-case snake_case Postgres enums. Tables ar
 |---|---|---|
 | Reference data | `public.countries`, `languages`, `currencies`, `occupations`, `industries` | Read-only for users. ISO 3166-1, ISO 639-1, ISO 4217, ISCO-08, ISIC Rev.4 codes and labels; versioned seeds in `supabase/seeds/ref`. `occupations.label` trigram index, `synonyms text[]`. |
 | Identity | `auth.users` (Supabase) + `public.profiles(id = auth.users.id, account_kind worker/company, display_name, preferred_lang, status, deleted_at)` | Created by trigger on sign-up. No email, no password hash in public. `account_kind` is set once at onboarding by the RPC `set_account_kind` and protected by an immutability trigger, both in the profiles migration (proposed — see OPEN_QUESTIONS.md, D9). |
-| Platform staff | `public.platform_staff(user_id, role, granted_by, granted_at, revoked_at)` | Separate table so a profile update can never escalate privilege. `role` values: `admin`, `trust_safety` now; `verification_reviewer` is added in the verification phase (proposed — see OPEN_QUESTIONS.md, D1). |
+| Platform staff | `public.platform_staff(user_id, role, granted_by, granted_at, revoked_at)` | Separate table so a profile update can never escalate privilege. `role` values from the first migration: `admin`, `verification_reviewer`, `trust_safety`, with separate permissions and named users, no shared administrator account (decided — OPEN_QUESTIONS.md, D1). Phase 1 builds the administrator console only; the reviewer queue is later phase. |
 | Legal documents | `public.legal_documents(slug, version, title, body, change_summary, published_at)`, unique `(slug, version)` | Current version = highest published version per slug (proposed — see OPEN_QUESTIONS.md, D2). |
 | Consents | `public.consents(id, user_id, purpose, version, action granted/withdrawn, created_at)` | Append-only; withdrawal inserts a row with `action = 'withdrawn'`; there is no `withdrawn_at` column. Age attestation (FR-A9) is the purpose `age_18_plus` (proposed — see OPEN_QUESTIONS.md, D3). |
 | Organizations | `public.organizations(id, type, legal_name, display_name, slug, based_in_country, industry_code, website, status)`, `organization_members(organization_id, user_id, role owner/admin/member, invited_by, accepted_at)`, `organization_invitations(email, role, token_hash, expires_at, accepted_at)` | Slug unique; created only via `create_organization`. Exactly one owner (partial unique index); workers cannot be members (trigger). Invitations are single use with a 7-day expiry. The `organization_type` enum keeps all three company types; Phase 1 creates employer organizations only (proposed — see OPEN_QUESTIONS.md, D7). |
@@ -182,7 +184,7 @@ Table catalogue. Enum values are lower-case snake_case Postgres enums. Tables ar
 | Applications (ATS) | `public.job_applications(id, job_id, worker_user_id, status, cover_note, passport_share_id, profile_snapshot jsonb, shortlisted, created_at)`, `application_events(application_id, from_status, to_status, actor_id, note, created_at)`, `application_notes(application_id, organization_id, author_id, body)` | `status`: applied, viewed, shortlisted, interview, offer, hired, rejected, withdrawn. Unique partial index on `(job_id, worker_user_id) where status <> 'withdrawn'`. Profile snapshot taken at apply. `application_events` is append-only and written by RPCs only. `application_notes` is visible to members of the job's organization only. Writes go through `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`. Read: `worker_user_id = auth.uid()` or member of the job's organization. |
 | Notifications | `public.notifications(user_id, kind, payload, channel, status, sent_at)`, `notification_preferences(user_id, application_updates, digest)` | Queued via pgmq and delivered by the `notify` Edge Function; preferences are checked by the enqueue trigger. |
 | Hiring network (later phase) | `public.workforce_requirements` (+ `requirement_occupations`), `requirement_invitations`, `partner_responses`, `candidate_submissions`, `connections`, `conversations`, `conversation_participants`, `messages`, `saved_items`, `follows` | Spec §21–§23. |
-| Billing | `billing.plans`, `plan_limits`, `plan_features`, `subscriptions`, `customers`, `orders`, `provider_events`; (later phase) `boosts`, `boost_products`, `verification_products`, `verification_fees` | Unexposed schema, owner `billing_owner`; read through public views. Columns in §10.1. |
+| Billing | `billing.plans`, `plan_limits`, `plan_features`, `subscriptions`, `customers`, `orders`, `provider_events`; (later phase) `boosts`, `boost_products`, `verification_products`, `verification_fees`, `organization_limit_overrides` | Unexposed schema, owner `billing_owner`; read through public views. Columns in §10.1. |
 | Verification (later phase) | `public.verifications` (+ `verification_evidence`, `verification_events`, `badge_definitions`, view `org_badges`) | Writes only via RPC; guard trigger. |
 | Moderation | `public.moderation_actions(target_type, target_id, action, statement_of_reasons not null, actor_id)`; (later phase) `reports`, `report_appeals` | Reason mandatory. DSA notice-and-action (reports, appeals) is later phase (§11). |
 | Matching (later phase) | `public.match_rules`, `match_runs`, `match_results(reasons jsonb not null)` | Explainable matching (ADR-0005). |
@@ -248,7 +250,7 @@ Every table is then granted explicitly to `anon` / `authenticated` (column lists
 
 - `auth.users` → `public.profiles` (1:1, created by trigger `private.handle_new_user()`; `account_kind` null until onboarding, then `worker` or `company`, immutable afterwards; set by `set_account_kind` and guarded by a trigger — proposed, see OPEN_QUESTIONS.md, D9).
 - `public.organizations` (`type` employer | recruitment_company | staffing_company, `slug citext unique`, `based_in_country`), `public.organization_members` (`role` owner | admin | member, `accepted_at`), `public.organization_invitations` (email citext, token_hash, role, expires_at). Phase 1 has employer organizations only: the enum keeps all three values and `create_organization` rejects the other two (proposed — see OPEN_QUESTIONS.md, D7).
-- `public.platform_staff` (`role` admin | trust_safety; `verification_reviewer` is added in the verification phase — proposed, see OPEN_QUESTIONS.md, D1).
+- `public.platform_staff` (`role` admin | verification_reviewer | trust_safety, all three in the `platform_role` enum from the first migration — decided, OPEN_QUESTIONS.md, D1). One row per named person and role; further staff are added as rows, without code changes. Phase 1 builds the administrator console only; the verification reviewer queue is later phase.
 - A user may belong to several organizations; the active organization is chosen by URL (`/org/[slug]`) and validated by the DAL against membership, never trusted from a cookie alone.
 
 ### 5.3 Claims vs lookups
@@ -287,6 +289,7 @@ language sql stable security definer set search_path = '' as $$
   select o.type from public.organizations o where o.id = p_org
 $$;
 
+-- public.platform_role is enum ('admin', 'verification_reviewer', 'trust_safety') (decided — OPEN_QUESTIONS.md, D1)
 create or replace function private.has_platform_role(p_role public.platform_role) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.platform_staff s
@@ -396,7 +399,7 @@ This is exactly how PostgREST sets the role and claims, so the tests exercise th
 - Providers: email + password (minimum 12 characters, email confirmation required, `secure_password_change = true`), OAuth (Google/Microsoft) for company users later via the same callback. Magic link optional for workers later. Anonymous sign-ins disabled.
 - MFA: TOTP enrol/verify enabled. Mandatory for platform staff and organization owners/admins (enforced three ways: `as restrictive` aal2 policies on sensitive tables, aal2 checks inside RPCs, `requireAal2()` in the DAL which redirects to `/[lang]/mfa`). Optional for workers.
 - JWT: asymmetric ES256 signing key enabled at project creation so `getClaims()` verifies locally against JWKS; `jwt_expiry = 1800`; refresh-token rotation and reuse detection on.
-- Rate limits: `[auth.rate_limit]` defaults, tuned after launch; Auth emails go through Supabase custom SMTP on Resend (EU region); transactional emails are sent by the `notify` Edge Function through the Resend API.
+- Rate limits: `[auth.rate_limit]` defaults, tuned after launch; Auth emails go through Supabase custom SMTP on the transactional email provider; transactional emails are sent by the `notify` Edge Function through that provider's API. The provider is not yet selected; Resend, EU region, is the working recommendation (OPEN_QUESTIONS.md, O10).
 
 ### 6.2 Next.js 16 wiring (verified against bundled docs)
 
@@ -415,10 +418,10 @@ This is exactly how PostgREST sets the role and claims, so the tests exercise th
 1. Sign-up collects email + password, versioned consent to terms and privacy, and the age attestation (FR-A9, consent purpose `age_18_plus`; no date of birth is stored) (proposed — see OPEN_QUESTIONS.md, D3). The `accept_consents` RPC writes the `consents` rows after confirmation.
 2. `/[lang]/onboarding`: "Who are you?" sets `profiles.account_kind` once, through the RPC `set_account_kind`; a trigger makes the column immutable afterwards (proposed — see OPEN_QUESTIONS.md, D9).
    - Worker → `create_worker_passport(first_name, last_name, current_country, preferred_lang)` → `worker_profiles` (`searchable = false`) → worker dashboard with passport completion checklist.
-   - Employer → `create_organization(type, legal_name, display_name, based_in_country, website)` inserts organization + owner membership + audit row atomically → MFA enrolment (blocking for the owner). No subscription row is inserted at this point: the plan resolves to `free_employer`, and the `trialing` subscription row arrives through the billing webhook after checkout, where the card is collected (FR-G2) (proposed — see OPEN_QUESTIONS.md, D4). In Phase 1 `create_organization` rejects the recruitment and staffing types (proposed — see OPEN_QUESTIONS.md, D7).
+   - Employer → `create_organization(type, legal_name, display_name, based_in_country, website)` inserts organization + owner membership + audit row atomically → MFA enrolment (blocking for the owner). No subscription row is inserted at this point: the plan resolves to `free_employer`, and the `trialing` subscription row arrives through the billing webhook after checkout, where the card is collected before the trial starts (FR-G2) (decided — OPEN_QUESTIONS.md, D4; card timing to be confirmed — OPEN_QUESTIONS.md, C15; trial rules in §10.1). In Phase 1 `create_organization` rejects the recruitment and staffing types (proposed — see OPEN_QUESTIONS.md, D7).
    - Recruitment / Staffing (later phase) → same RPC, then the "Where do you serve?" wizard (three geographies, industries, occupations, languages, service types, capacity).
 3. Members: `invite_member(org, email, role)` → `organization_invitations` (hashed token, 7 days). The RPC returns the token once and the UI shows a copyable invitation link; the invitation email is added when the `notify` function exists. `accept_invitation(token)` requires the caller's email to match the invitation and rejects workers (proposed — see OPEN_QUESTIONS.md, D10). Roles are changed with `change_member_role` (proposed — see OPEN_QUESTIONS.md, D14).
-4. Platform staff are never self-service: `grant_platform_role(user, role)` requires an existing admin with aal2, is audited, and calls `account-ops` to sign the target out globally so a fresh session carries the new state. The `platform_staff` table and `private.has_platform_role()` are created now; the RPC is added with the admin console, when `account-ops` exists (proposed — see OPEN_QUESTIONS.md, D11). The first admin is created by a one-off, ticketed SQL statement in production (owner question).
+4. Platform staff are never self-service and never share an account: `grant_platform_role(user, role)` takes any of the three roles `admin`, `verification_reviewer`, `trust_safety` (decided — OPEN_QUESTIONS.md, D1), requires an existing admin with aal2, is audited, and calls `account-ops` to sign the target out globally so a fresh session carries the new state. The `platform_staff` table and `private.has_platform_role()` are created now; the RPC is added with the admin console, when `account-ops` exists (proposed — see OPEN_QUESTIONS.md, D11). The first admin is created by a one-off, ticketed SQL statement in production (owner question).
 
 ---
 
@@ -496,8 +499,8 @@ begin
                       where w.user_id = c.user_id and w.purpose = c.purpose
                         and w.action = 'withdrawn' and w.created_at > c.created_at)
     limit 1;
-    -- Phase 1: no platform-staff path (FR-F3). The verification phase adds
-    -- "or (private.has_platform_role('verification_reviewer') and private.is_aal2())" (D1).
+    -- Phase 1: no platform-staff path (FR-F3). The role exists from the first migration (D1); the verification
+    -- phase adds "or (private.has_platform_role('verification_reviewer') and private.is_aal2())".
     if v_org is null then
       raise exception 'CHARA_FORBIDDEN' using errcode = '42501';
     end if;
@@ -572,6 +575,16 @@ Phase 1 builds only job search (`search_jobs`), the job and application indexes,
 - `stats.network_stats_mv(destination_country, industry_code, occupation_id, source_country, recruitment_agencies, staffing_companies, available_workers)` hourly.
 - `stats.platform_counts_mv(countries, workers, employers, recruitment_companies, staffing_companies, active_jobs, workforce_requirements, connected_countries)` every 10 min — the homepage shows only these numbers.
 - `public.v_corridor_stats`, `v_network_stats`, `v_platform_counts` (security_invoker, select granted to anon) apply `case when n < k then null end` with `k` from `private.settings` (default 5) and round worker counts to the nearest 10; public filters are limited to the MV dimensions.
+- Corridor rules engine (later phase; decided in principle — OPEN_QUESTIONS.md, L4, R28). The platform is country-neutral and no corridor is hard-coded; for each source-country → destination-country pair an administrator maintains one rule row with:
+  - direct hiring allowed or not;
+  - recruitment partner required;
+  - licensed agency required;
+  - additional verification required;
+  - required documentation;
+  - applicable restrictions;
+  - applicable warnings;
+  - whether the direct Find Workers channel is available.
+- The rule row selects the workflow. The direct employer-to-worker channel (`search_workers`, Find Workers) is available only where the corridor rule allows it; where the source country requires an authorised agency, the employer is routed to a verified recruitment partner instead. The employer-to-staffing-partner flow is likewise selected by the corridor rule. A corridor rule that enables a regulated workflow is switched on only after the legal review for that corridor (OPEN_QUESTIONS.md, L3, L4). The table is designed with that phase.
 
 ---
 
@@ -581,15 +594,32 @@ Phase 1 builds only job search (`search_jobs`), the job and application indexes,
 
 Plans, limits and features are rows, not code.
 
-- `plans(code pk, org_type, name, price_minor, currency 'EUR', interval, trial_days, is_public, is_default_trial, contact_sales, sort)`. Phase-1 seed: the fallback plan `free_employer` (price 0, not sold), `employer_starter` 3900 (proposed — see OPEN_QUESTIONS.md, D15; the pricing source also says 4900) and `employer_professional` 7900. Later phase, seeded with those account types (proposed — see OPEN_QUESTIONS.md, D7): the fallback plans `free_recruitment_company` and `free_staffing_company`, `recruitment_partner` 4900, `recruitment_professional` 9900, `recruitment_enterprise` 19900 (contact sales), `staffing_partner` 5900, `staffing_professional` 12900, `staffing_enterprise` 24900 (contact sales).
-- `plan_limits(plan_code, limit_key, limit_value int null)` — keys: active_jobs, members; later phase: active_requirements, markets, messages_per_month, candidate_submissions_per_month, job_order_responses_per_month, partner_invitations_per_requirement. All NULL (unlimited) until decided, and not enforced until `entitlements_enforced` is true (§10.4).
-- `plan_features(plan_code, feature_key)` — keys: shortlisting, analytics_advanced; later phase: advanced_worker_search, advanced_partner_search, chara_match, corridors, available_workforce_search, job_order_access, multi_partner_invitation.
-- `subscriptions(id, organization_id, plan_code, status trialing | active | past_due | canceled | paused, trial_ends_at, current_period_start, current_period_end, cancel_at, provider, provider_customer_ref, provider_subscription_ref)`; partial unique index: one non-canceled subscription per organization; check: organization type is a company type. No row is inserted when an organization is created; the first (`trialing`) row arrives through the billing webhook after checkout (proposed — see OPEN_QUESTIONS.md, D4).
-- `customers(organization_id, provider, customer_ref, billing_country, vat_id, legal_address)`.
+- `plans(code pk, org_type, name, price_minor, currency 'EUR', interval, trial_days, is_public, is_default_trial, contact_sales, sort)`. Phase-1 seed: the fallback plan `free_employer` (price 0, not sold), `employer_starter` 3900 (the "Basic" tier; decided — OPEN_QUESTIONS.md, D15), `employer_professional` 7900 (pricing source; not confirmed by the reply — OPEN_QUESTIONS.md, C10) and `employer_enterprise` (seeded with `is_public = false`, not sold until its price is stated — OPEN_QUESTIONS.md, C10). The display name of the lowest tier is open (C13); the plan codes do not change. `trial_days` is 30 and administrator-editable. Later phase, seeded with those account types (proposed — see OPEN_QUESTIONS.md, D7): the fallback plans `free_recruitment_company` and `free_staffing_company`, `recruitment_partner` 4900, `recruitment_professional` 9900, `recruitment_enterprise` 19900 (contact sales), `staffing_partner` 5900, `staffing_professional` 12900, `staffing_enterprise` 24900 (contact sales).
+- `plan_limits(plan_code, limit_key, limit_value int null)` — keys: active_jobs, members; later phase: active_requirements, markets, messages_per_month, candidate_submissions_per_month, job_order_responses_per_month, partner_invitations_per_requirement. Seeded with the owner's initial numbers (decided — OPEN_QUESTIONS.md, C3); keys without a number (markets, job_order_responses_per_month) and all `free_employer` limits stay NULL until decided. Nothing is enforced until `entitlements_enforced` is true (§10.4); when that happens is open (OPEN_QUESTIONS.md, C11).
+
+  | `limit_key` | `employer_starter` | `employer_professional` | `employer_enterprise` | Used from |
+  |---|---|---|---|---|
+  | `active_jobs` | 3 | 15 | 50 | Phase 1 |
+  | `members` | 1 | 5 | 15 | Phase 1 |
+  | `active_requirements` | 3 | 15 | 50 | later phase |
+  | `messages_per_month` | 100 | 500 | 2000 | later phase |
+  | `candidate_submissions_per_month` | 25 | 100 | 500 | later phase |
+  | `partner_invitations_per_requirement` | 3 | 10 | 25 | later phase |
+
+  Limits and features are rows, so they change without a deployment. The administrator console page and the admin-only, audited RPCs (role `admin` + aal2) that edit plans, limits, features, `trial_days` and settings are not in the Phase-1 console list (§3); they are later phase (to confirm — OPEN_QUESTIONS.md, P9), and until then a change is made by migration. The Enterprise values are starting numbers, raised per organization under fair-use rules: a row in `billing.organization_limit_overrides(organization_id, limit_key, limit_value)` (later phase) takes precedence over the plan row for that organization.
+- `plan_features(plan_code, feature_key)` — keys: shortlisting, analytics_advanced; later phase: advanced_worker_search, advanced_partner_search, chara_match, corridors, available_workforce_search, job_order_access, multi_partner_invitation, analytics_enterprise, multi_country_requirements, priority_visibility. Feature rows per tier (decided — OPEN_QUESTIONS.md, C2, C3; two tier assignments and three undefined values open — C16):
+  - Every paid plan, from `employer_starter`: job posting, workforce requirement, `chara_match`, basic search, messaging, job order posting and access, access to relevant workforce opportunities, basic partner connection, standard profile visibility, and `shortlisting` (team default; the reply does not mention it). `chara_match` and the core workforce-requirement workflow are never reserved for a higher plan.
+  - `employer_professional` and `employer_enterprise` add: advanced search (`advanced_worker_search`, `advanced_partner_search`), `analytics_advanced`, `corridors`, `multi_partner_invitation`, `multi_country_requirements` (follows the limits table; conflict open — OPEN_QUESTIONS.md, C16; the Basic tier is "limited" and the meaning of limited is not defined yet). More partner invitations and messaging capacity are limits (table above); enhanced company visibility has no feature key yet (later phase).
+  - `employer_enterprise` adds: `analytics_enterprise`, `priority_visibility` ("included or available"; the exact rule is not defined yet), priority support, multi-country partner network access, higher or unlimited volumes under fair-use rules (per-organization overrides), enhanced and enterprise-level verification options and Verified Partner eligibility (no feature keys yet; later phase). On the other plans priority visibility is bought as a boost (follows the limits table; conflict open — OPEN_QUESTIONS.md, C16).
+  - `available_workforce_search` is not assigned to a tier by the reply; open (OPEN_QUESTIONS.md, C16).
+- `subscriptions(id, organization_id, plan_code, status trialing | active | past_due | canceled | paused, trial_ends_at, current_period_start, current_period_end, cancel_at, provider, provider_customer_ref, provider_subscription_ref)`; partial unique index: one non-canceled subscription per organization; check: organization type is a company type. No row is inserted when an organization is created; the first (`trialing`) row arrives through the billing webhook after checkout (decided — OPEN_QUESTIONS.md, D4).
+- Trial (decided — OPEN_QUESTIONS.md, D4, C6): the card is collected at checkout before the trial starts (card timing to be confirmed — OPEN_QUESTIONS.md, C15); the trial lasts `plans.trial_days` (30, administrator-editable) and converts automatically to the selected paid plan. One trial per legal entity: the billing customer carries a unique legal-entity identifier (company registration number, VAT number or another unique legal-entity identifier; C14), and `billing_checkout_start` grants no trial when that identifier has already had one. Which identifier is mandatory per country and how it is validated is open (C14). Before the trial starts the checkout confirmation page states the trial period, the price after the trial, the billing frequency, the automatic conversion and how to cancel.
+- `customers(organization_id, provider, customer_ref, billing_country, vat_id, registration_number, legal_address)`.
+- Currency and VAT (decided — OPEN_QUESTIONS.md, C7): prices are stored and displayed in EUR, exclusive of VAT; VAT is calculated by the payment provider from the customer's location and the applicable tax rules. EUR is the only billing currency in the first release; every price row has a `currency` column so further currencies can be added as rows. Tax treatment for customers outside the EU follows the payment provider and accounting setup agreed with the owner's advisers.
 - `orders(id, organization_id, kind, sku_or_plan, amount_minor, tax_minor, currency, status, provider_ref, invoice_ref, details jsonb)` — the tax amount and invoice reference come from the provider (Stripe Tax).
 - `provider_events(id, provider, provider_event_id, kind, payload jsonb, signature_valid, received_at, applied_at, error, unique(provider, provider_event_id))` — written only by `billing_ingest_event`.
-- (later phase) `boost_products(sku, target_type job | organization, org_type, days, price_minor, currency)` seeded from the pricing doc: job 2500/7d, 3900/14d, 5900/30d; recruitment 5900/10900/19900; staffing 4900/8900/13900. `boosts(id, organization_id, sku, target_type, target_id, starts_at, ends_at, provider_payment_ref unique)`; `public.v_active_boosts` is the only reader (BoostedRail).
-- (later phase) `verification_products(sku verification_basic | professional | enterprise, price_minor 4900 | 9900 | 19900, interval 'year', eligible_levels text[])`; `verification_fees(id, organization_id, sku, paid_at, expires_at, provider_payment_ref unique)` — a paid fee only allows `verification_submit` for a paid level; it never touches `verifications.status`.
+- (later phase) `boost_products(sku, target_type job | organization, org_type, days, price_minor, currency)` seeded from the pricing doc: job 2500/7d, 3900/14d, 5900/30d; recruitment 5900/10900/19900; staffing 4900/8900/13900. `boosts(id, organization_id, sku, target_type, target_id, starts_at, ends_at, provider_payment_ref unique)`; `public.v_active_boosts` is the only reader (BoostedRail). Decided (OPEN_QUESTIONS.md, R29): boosts are sold to hiring, recruitment and staffing companies for job postings, workforce requirements, company profiles and partner profiles, and can be bought on any plan, without a higher plan. Possible functions: top search placement, featured profile, job or requirement, priority visibility, regional or country visibility, homepage or category placement. The reply asks for the boost system in the production architecture from the start; it is designed here and built in the boosts phase (to confirm — OPEN_QUESTIONS.md, P9). Boost products are administrator-editable rows; administrators control price, duration, placement, country or region, category, availability and promotional discounts. The catalogue prices are open (C8), and the columns for the attributes not listed above are designed with that phase.
+- (later phase) `verification_products(sku verification_basic | professional | enterprise, price_minor 4900 | 9900 | 19900 (Enterprise is a starting price), interval 'year', eligible_levels text[])`; `verification_fees(id, organization_id, sku, paid_at, expires_at, provider_payment_ref unique)` — a paid fee only allows `verification_submit` for a paid level; it never touches `verifications.status`.
 - Every `billing` table has RLS enabled and forced and a policy `to billing_owner using (true) with check (true)`, because BYPASSRLS is not inherited through role membership (§10.3). `service_role` has no grants on the schema.
 - Workers have no rows anywhere in `billing`; checkout RPCs reject `account_kind = 'worker'`.
 - UI reads through `public.v_plans`, `public.v_my_subscription` and, later phase, `public.v_active_boosts` (security_invoker; SELECT granted on the underlying tables with RLS policies: plans/products public, subscriptions/boosts by org members; provider refs excluded from the views).
@@ -719,7 +749,7 @@ create trigger jobs_enforce_limits before insert or update of status on public.j
 -- Feature gates inside RPCs:  if not private.has_feature(v_org, 'chara_match') then raise exception 'CHARA_FEATURE_NOT_IN_PLAN' using detail = 'chara_match'; end if;
 ```
 
-`private.settings.entitlements_enforced` is `false` until the owner supplies the plan limits and the feature matrix; while it is false no limit or feature gate blocks anything. Switching it to `true` is a go-live checklist item. Monthly counters live in `private.usage_counters(organization_id, key, period, count)` maintained by the same triggers. Downgrade behaviour defaults to "keep data, block creation over limit" (see OPEN_QUESTIONS.md, C9).
+`private.settings.entitlements_enforced` starts as `false`; while it is false no limit or feature gate blocks anything. The owner supplied the plan limits and the tier features on 2026-10-02 and they are seeded (§10.1); when the setting is switched to `true` is open (OPEN_QUESTIONS.md, C11; recommended: with the billing work package, and C12 for the one-member limit of the Basic tier). Having it `true` is a go-live checklist item. Per-organization overrides (§10.1) are read by `private.org_limit` once that table exists. Monthly counters live in `private.usage_counters(organization_id, key, period, count)` maintained by the same triggers. Downgrade behaviour defaults to "keep data, block creation over limit" (see OPEN_QUESTIONS.md, C9).
 
 ### 10.5 The invariant, enforced structurally
 
@@ -733,10 +763,11 @@ Verification and boosts are later phase; Phase 1 builds the `billing_owner` isol
 
 ## 11. Verification, trust, reports and moderation
 
-Later phase, except `moderation_actions` and the Phase-1 admin RPCs `moderate_job`, `suspend_user` and `suspend_organization` (platform staff + aal2, statement of reasons mandatory, audited). The verification, badge, report and appeal design below is kept for the later phases.
+Later phase, except `moderation_actions` and the Phase-1 admin RPCs `moderate_job`, `suspend_user` and `suspend_organization` (`trust_safety` + aal2, statement of reasons mandatory, audited; `verification_reviewer` may not call them, and whether `admin` may is stated per RPC with the admin console work package — responsibilities per role: OPEN_QUESTIONS.md, R27). The verification, badge, report and appeal design below is kept for the later phases.
 
 - `badge_definitions(level identity | business | licence | workforce_capability | verified_partner | skill, label, description, default_validity_months, checks_catalog jsonb)`.
 - `verifications(id, subject_type organization | worker_skill, organization_id, worker_skill_id, level, status draft | submitted | in_review | info_requested | approved | rejected | suspended | expired, country_code (required for licence), source (skills), checks_completed jsonb, submitted_at, claimed_by, claimed_at, decided_by, second_approved_by, decided_at, verified_at, expires_at, decision_reason, info_request, verification_fee_id)`, `verification_evidence`, `verification_events` (append-only transitions), view `public.org_badges` (approved and unexpired only: level, country, verified_at, expires_at, checks_completed labels, source — licence badges always carry the country; nothing implies "authorised everywhere").
+- Fee tiers and badges (decided — OPEN_QUESTIONS.md, C4): Basic (EUR 49) makes a company eligible for identity and business; Professional (EUR 99) for identity, business, licence and workforce_capability; Enterprise (from EUR 199) for those four plus multi-country verification and eligibility for verified_partner. These are the `eligible_levels` of `billing.verification_products` (§10.1). Worker verification is free at launch; paid verification applies primarily to businesses and professional partners. What each badge means, what it does not guarantee, and the criteria and documents per badge are defined in the verification policy approved by legal counsel (OPEN_QUESTIONS.md, L5).
 - Workflow RPCs: user side `verification_start`, evidence upload (storage policy), `verification_submit` (requires a valid fee row when the level is paid; worker skill verification is free); reviewer side (`verification_reviewer` + aal2) `verification_claim` (48 h lock), `verification_request_info`, `verification_decide(id, approved, checks, reason, expires_at)`, `verification_suspend` (reviewer or `trust_safety`); daily `expire_verifications()` plus reminders at 30/7 days.
 - Separation of duties: requester ≠ reviewer ≠ second approver; reviewers cannot act on organizations they belong to; `verified_partner` needs a second distinct reviewer (configurable in `private.settings`); admins decide only if they also hold the reviewer role; every transition writes `verification_events` and `audit.log`; evidence is viewed only through `document-url` (logged).
 - Skill verification: per `worker_skills` row with `source` (employer, training_institution, trade_test_provider, recruitment_company, submitted_documentation, chara); employer-sourced attestations require a business-verified employer with an accepted connection to the worker and display "Verified by employer", distinct from CHARA verification.
@@ -754,13 +785,14 @@ Later phase, except `moderation_actions` and the Phase-1 admin RPCs `moderate_jo
 | Document access log | `audit.document_access_log` written by construction (no row, no URL); worker-visible view; 24-month retention. | pgTAP + Deno test |
 | DSAR export / erasure | `request_data_export()` → pgmq → `account-ops` builds JSON + files into `dsar-exports`, signed link (10 min) by email (the service RPC that reads the export data is not specified yet). `request_account_deletion()` hides the profile immediately, 30-day cooling-off, legal hold if a report is open; then `account-ops` calls the service RPC `erase_user` (pseudonymises audit, billing and application rows, deletes passport rows), purges the storage prefix through the Storage API and deletes the auth user (`auth.admin.deleteUser`). `dsar_requests` tracks the 30-day SLA. | E2E |
 | Retention | `retention_policies` rows + `private.apply_retention()` daily (exports 7 d, evidence 24 months after decision, access log 24 months, provider payloads 13 months, inactive worker data 24 months — confirm), each run audited. | pgTAP test |
+| Legal and privacy settings | Legal entity details, privacy contact and data-protection contact are rows in `private.settings`; retention periods are rows in `retention_policies`. None is hard-coded; the administrator console page that edits them is later phase (§10.1) and until then a change is made by migration. The values are open (OPEN_QUESTIONS.md, L1, L6). Legal documents are versioned `legal_documents` rows; the document set is listed in OPEN_QUESTIONS.md, L5. | review |
 | Data minimisation | No ID-number, date-of-birth, nationality, religion, gender or marital-status columns (pgTAP test over `information_schema.columns`); work authorization instead; no worker photos in MVP; `worker_search` column-list test (later phase). | CI `db` job |
 | Encryption and keys | TLS everywhere; provider encryption at rest; future C3 identifiers encrypted with pgcrypto using Vault keys inside definer functions; secret key only in Edge Function secrets; publishable key only in the web app; `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` per environment; rotation runbook (JWT signing key, API keys, SMTP, provider secrets). | CI guard |
 | Access control | Default-deny grants, RLS on every table (ENABLE + FORCE), platform roles in their own table, aal2 restrictive policies, SoD checks, `billing_owner` isolation, no direct table grants for `service_role`, CODEOWNERS on `supabase/**`. | pgTAP tests |
 | MFA | TOTP mandatory for platform staff and org owners/admins; enforced in RLS, RPCs and DAL. | pgTAP + E2E |
 | Logging and redaction | pino via `instrumentation.ts` with redaction of cookies, tokens, emails, document names; request id from proxy; Edge Functions log event ids never payloads; lint rule against logging user objects. | review |
 | Security headers | proxy.ts: nonce CSP (`default-src 'self'; script-src 'self' 'nonce-…' 'strict-dynamic'; style-src 'self' 'nonce-…'; img-src 'self' blob: data: https://<project>.supabase.co; connect-src 'self' https://<project>.supabase.co wss://<project>.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self'`), HSTS preload, nosniff, Referrer-Policy, Permissions-Policy. | E2E header check |
-| Backups / PITR | Pro plan (7 daily backups) + PITR add-on (needs Small compute) before launch; nightly Storage object replication to an EU bucket (DB backups exclude objects); quarterly restore drill. | runbook |
+| Backups / PITR | Frankfurt, Pro plan (7 daily backups) + PITR add-on (needs Small compute) before launch (decided — OPEN_QUESTIONS.md, O1, O2); nightly Storage object replication to an EU bucket (DB backups exclude objects; open — OPEN_QUESTIONS.md, O5); quarterly restore drill. | runbook |
 | Incident process | SECURITY.md contact; `docs/runbooks/incident.md` with the GDPR 72-hour checklist; `private.security_events` fed by triggers (failed admin actions, document-access bursts) with pg_net alert through `notify`; Supabase advisors reviewed weekly. | runbook |
 | Accessibility (WCAG 2.2 AA) | eslint-plugin-jsx-a11y via eslint-config-next, @axe-core/playwright on key pages, `lang` from root param, logical CSS properties for RTL. | CI |
 | EU AI Act / fairness | Deterministic SQL matching with stored reasons and tunable weights; any ML change needs a DPIA and ADR. | design |
@@ -828,7 +860,7 @@ The Supabase CLI is the devDependency `supabase@2.119.0` and is always invoked a
 Jobs are added as the code they test appears. All jobs use `actions/checkout@v7` and `actions/setup-node@v7` (Node from `.nvmrc`) and run `npm ci`; the Supabase CLI comes from the npm devDependency, not from a separate setup action.
 
 1. `web` (exists): lint, typecheck, build. Unit tests are added with the first tested code.
-2. `db` (added with the Supabase setup): `npx supabase start` → `npx supabase test db`. Added to the same job later: `npx supabase db lint --local --fail-on error` and the type-drift check (`npx supabase gen types typescript --local` compared with the committed type files).
+2. `db` (exists): `npm run db:start` → `npm run db:test` (`npx supabase start`, `npx supabase test db`). Added to the same job later: `npx supabase db lint --local --fail-on error` and the type-drift check (`npx supabase gen types typescript --local` compared with the committed type files).
 3. `functions` (added with the first Edge Function): Deno setup → `deno fmt --check`, `deno lint`, `deno test supabase/functions/_tests`.
 4. `e2e` (added with the first user flow): depends on web + db; Playwright against the built app and the local stack.
 5. `security` (exists): `npm audit --audit-level=high` and the secret-pattern check: `git grep` for `sb_secret_|service_role|SUPABASE_SECRET` must find nothing outside `supabase/`, `docs/` and `.github/`.
@@ -893,20 +925,20 @@ verify_jwt = true
 
 ### 15.2 Exact steps once the Supabase project exists
 
-1. Create the project in the chosen EU region (Frankfurt `eu-central-1` recommended unless the owner prefers Ireland) on the Pro plan; note the Postgres major version shown under Settings → Infrastructure and set `db.major_version` to it.
+1. Create the project in Frankfurt (`eu-central-1`) on the Pro plan, with daily backups and point-in-time recovery (decided — OPEN_QUESTIONS.md, O1, O2; PITR is step 11); note the Postgres major version shown under Settings → Infrastructure and set `db.major_version` to it.
 2. Settings → JWT keys: create and activate an asymmetric signing key (ES256). Settings → API keys: create the publishable key (for apps/web) and one secret key (for Edge Functions only). Record both in the key-rotation runbook.
-3. Authentication → URL configuration: site URL = production origin; redirect allow-list = exact `https://<app>/auth/callback` and `/auth/confirm` URLs. Authentication → Providers → Email: confirmations on, secure password change on, minimum length 12, breached-password protection on. MFA: TOTP on. SMTP: custom SMTP through Resend, EU region (sender domain, DKIM/SPF). Mirror every value in `config.toml` (`npx supabase config diff` previews and `npx supabase config push` applies the properties declared in `config.toml` to the linked project; settings it cannot write are set in the dashboard, and `docs/runbooks/deploy.md` is the checklist).
+3. Authentication → URL configuration: site URL = production origin; redirect allow-list = exact `https://<app>/auth/callback` and `/auth/confirm` URLs. Authentication → Providers → Email: confirmations on, secure password change on, minimum length 12, breached-password protection on. MFA: TOTP on. SMTP: custom SMTP through the selected email provider (sender domain, DKIM/SPF/DMARC); the provider is not yet selected and Resend, EU region, is the working recommendation (OPEN_QUESTIONS.md, O10). Mirror every value in `config.toml` (`npx supabase config diff` previews and `npx supabase config push` applies the properties declared in `config.toml` to the linked project; settings it cannot write are set in the dashboard, and `docs/runbooks/deploy.md` is the checklist).
 4. Settings → API: exposed schemas `public, graphql_public`; max rows 100.
 5. Integrations: enable Cron (pg_cron), Queues (pgmq), and the pg_net and supabase_vault extensions; add Vault secrets `edge_shared_secret`, `billing_webhook_secret`.
 6. Locally: `npx supabase login`, `npx supabase link --project-ref <ref>` (DB password prompted), `npx supabase db push --dry-run`, then `npx supabase db push` (migrations create roles, schemas, buckets, policies, cron jobs), then `npx supabase db push --include-seed` once for reference data only (never dev fixtures).
-7. `npx supabase secrets set --env-file <file>` with an uncommitted file that uses the variable names of `supabase/functions/.env.example` (BILLING_WEBHOOK_SECRET, EDGE_SHARED_SECRET, the Stripe secret key and webhook signing secret, the Resend API key, the AV key when chosen; names must not start with `SUPABASE_`). In Stripe: register the `billing-webhook` URL as the webhook endpoint and enable Stripe Tax and the Customer Portal.
+7. `npx supabase secrets set --env-file <file>` with an uncommitted file that uses the variable names of `supabase/functions/.env.example` (BILLING_WEBHOOK_SECRET, EDGE_SHARED_SECRET, the Stripe secret key and webhook signing secret, the email provider API key, the AV key when chosen; names must not start with `SUPABASE_`). In Stripe: register the `billing-webhook` URL as the webhook endpoint and enable Stripe Tax and the Customer Portal.
 8. `npx supabase functions deploy --use-api` (no Docker needed; `verify_jwt` per function from `config.toml`).
 9. Verify: `select * from cron.job`; sign up a test account and receive the confirmation email; `document-url` returns a 60-s URL and an access-log row; `billing-webhook` rejects a bad signature with 401 and applies a signed test event (Stripe test mode).
 10. GitHub: add `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD` to the `production` environment with required reviewers; enable `deploy-supabase.yml` (link → `db push` → `functions deploy --use-api` → `secrets set`). Optionally enable Branching for per-PR preview projects (no production data is copied; migrations, seeds and functions are applied).
 11. Enable the PITR add-on (requires Small compute) and schedule the Storage object replication job; record the first restore drill date.
 12. Web host (undecided): set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, `DEPLOYMENT_VERSION`; build per environment (public vars are inlined at build time); deploy the standalone output or Docker image; put a CDN/WAF in front.
 13. Bootstrap the first platform admin with a ticketed SQL insert into `public.platform_staff` (audited), then grant further roles only through `grant_platform_role`.
-14. Separate staging project (EU) with the same steps and synthetic seeds only.
+14. Separate staging project (same region) with the same steps and synthetic seeds only; not yet confirmed by the owner (OPEN_QUESTIONS.md, O9).
 
 ---
 
@@ -940,4 +972,4 @@ The records are in `docs/adr/`.
 - ADR-0003 — No secret keys in apps/web; privileged work only in Edge Functions.
 - ADR-0004 — Strict nonce CSP with fully dynamic rendering; Cache Components deferred. Revisit when (a) hosting is chosen and public pages need CDN-cached HTML, or (b) Next.js SRI/hash-based CSP leaves experimental; the DAL/session code already follows the Cache Components authentication guide so the flip is a config + CSP change.
 - ADR-0005 — Rule-based, explainable matching: every match stores its reasons (`reasons jsonb not null`); no machine learning in v1 (later phase).
-- Open decisions are tracked in `docs/OPEN_QUESTIONS.md`: design conflicts not yet decided (D1–D15, marked "proposed" in this document) and decisions that belong to the owner.
+- Open decisions are tracked in `docs/OPEN_QUESTIONS.md`: design conflicts (D1–D16; D1, D4 and D15 are decided by the owner, the others are marked "proposed" in this document) and decisions that belong to the owner. The owner's decisions reply (2026-10-02; client document, not in git) is recorded there as R20–R31, with the questions it raised as C10–C16, L7, O9, O10 and P9.
