@@ -14,12 +14,12 @@
      "Email address",
      "Password meeting policy",
      "Age attestation",
-     "Current Terms and Privacy versions"
+     "Current versions of the legal documents accepted by candidates (SOP FR-A8)"
     ],
     "steps": [
      "Open sign-up: Candidate selects 'I'm a worker' and enters email and password.",
      "Validate password: System checks minimum 12 characters and rejects passwords found in breach lists.",
-     "Capture attestations: Candidate ticks age (18+) and consent to Terms and Privacy; versions are recorded.",
+     "Capture attestations: Candidate ticks age (18+) and consent to the legal documents required for candidates (SOP FR-A8); versions are recorded.",
      "Create account: Auth record and profile row are created in 'pending confirmation' state.",
      "Send confirmation: Confirmation email is sent via the EU email service; link valid 24 hours.",
      "Confirm email: Candidate clicks the link; account becomes active; audit entry written.",
@@ -49,15 +49,16 @@
     "inputs": [
      "Work email, password",
      "Legal company name, country, industry",
+     "Legal-entity identifier (company registration number, VAT number or another unique legal-entity identifier)",
      "Website (optional)",
-     "Consent to Terms and Privacy"
+     "Consent to the legal documents required for employers (SOP FR-A8)"
     ],
     "steps": [
      "Open sign-up: User selects 'I'm an employer'.",
      "Create user: Steps of SOP FR-A1 apply (password policy, consent, confirmation).",
-     "Capture company details: Legal name, display name, country (ISO list), industry (ISIC list), website.",
-     "Create organisation atomically: System creates organisation, owner membership and a trial subscription placeholder in one transaction.",
-     "Verify uniqueness: Slug generated and checked; duplicate legal name warns but does not block.",
+     "Capture company details: Legal name, display name, country (ISO list), industry (ISIC list), website and the legal-entity identifier, recorded at the latest before checkout (to be confirmed by CHARA: which identifier is mandatory per country and how it is validated).",
+     "Create organisation atomically: System creates organisation and owner membership in one transaction; no subscription is created, and the organisation is on the restricted free plan until checkout (SOP FR-G2) (to be confirmed by CHARA: whether payment details are collected at registration or at checkout when the trial starts).",
+     "Verify uniqueness: Slug generated and checked; duplicate legal name warns but does not block; a legal-entity identifier that has already had a free trial is flagged, and that legal entity receives no second trial (SOP FR-G2).",
      "Audit: Creation recorded with actor and organisation id.",
      "Prompt security set-up: Owner is prompted to enrol two-step verification (SOP FR-A4).",
      "Land on dashboard: Owner sees empty dashboard with guided next steps."
@@ -65,7 +66,7 @@
     "outputs": [
      "Organisation record",
      "Owner membership",
-     "Trial subscription placeholder"
+     "Legal-entity identifier recorded for trial eligibility"
     ],
     "kpis": [
      "Employer sign-up completion rate",
@@ -73,7 +74,7 @@
      "Duplicate organisation rate"
     ],
     "risks": "Duplicate companies, impersonation of real employers, orphaned organisations",
-    "controls": "Atomic creation, one-owner rule, audit, later business verification (Phase 3)",
+    "controls": "Atomic creation, one-owner rule, legal-entity identifier check, audit, later business verification (Phase 3)",
     "freq": "Quarterly"
    },
    {
@@ -151,10 +152,11 @@
     "owner": "Organisation owner / administrator",
     "inputs": [
      "Invitee email and role",
+     "Team-member limit of the plan",
      "Owner approval for ownership transfer"
     ],
     "steps": [
-     "Invite: Owner/admin enters email and role; invitation with single-use token (7 days) is created and emailed.",
+     "Invite: Owner/admin enters email and role; when limit enforcement is on, the plan's team-member limit (initially 1 / 5 / 15 for Basic / Professional / Enterprise; Enterprise adjustable per organisation) is checked and an upgrade prompt is shown if it is reached; otherwise an invitation with single-use token (7 days) is created and emailed (to be confirmed by CHARA: whether the Basic limit of 1 counts the owner, so that Basic cannot invite members).",
      "Accept: Invitee signs in or registers as a company user and accepts; membership becomes active.",
      "Reject workers: System refuses acceptance by a candidate account.",
      "Change role: Owner/admin changes member role; system prevents removing the last owner.",
@@ -173,7 +175,7 @@
      "Orphaned organisations (target 0)"
     ],
     "risks": "Unauthorised access after departure, loss of owner, invitation link abuse",
-    "controls": "Immediate revocation, one-owner rule, single-use expiring tokens, audit",
+    "controls": "Immediate revocation, one-owner rule, single-use expiring tokens, team-member limit by plan, audit",
     "freq": "Quarterly"
    },
    {
@@ -209,19 +211,20 @@
     "title": "Platform Staff Role Management E2E SOP",
     "purpose": "To grant and revoke CHARA staff roles under four-eyes-style control with full audit",
     "scope": "CHARA staff",
-    "owner": "Platform administrator",
+    "owner": "Platform Administrator",
     "inputs": [
      "Staff member's user id",
-     "Role to grant",
+     "Role to grant (Platform Administrator, Verification Reviewer or Trust & Safety Administrator)",
      "Justification"
     ],
     "steps": [
-     "Request: An administrator opens the staff page and enters the user and role with a reason.",
-     "Verify: System requires the administrator's session at assurance level 2 and rejects self-grant.",
-     "Grant: Role row is written; audit entry records grantor, grantee, role and reason.",
+     "Request: A Platform Administrator opens the staff page and enters the named user and one of the three roles with a reason.",
+     "Verify: System requires the Platform Administrator's session at assurance level 2 and rejects self-grant.",
+     "Grant: Role row is written for the named person; the permissions of the three roles are technically separated; audit entry records grantor, grantee, role and reason.",
      "End sessions: The affected user's sessions are revoked so the new rights apply on next login.",
      "Revoke: Same path with revocation timestamp; sessions revoked.",
-     "Bootstrap: The first administrator is created by a ticketed database insert recorded in the deploy runbook.",
+     "Bootstrap: The first Platform Administrator is created by a ticketed database insert recorded in the deploy runbook.",
+     "Named individuals: CHARA supplies the named individuals for each role before production deployment; no shared administrator account is used; further staff are added by this procedure without redevelopment.",
      "Review: Quarterly access review lists all staff roles."
     ],
     "outputs": [
@@ -232,8 +235,8 @@
      "Staff with MFA (100 %)",
      "Quarterly review completed on time"
     ],
-    "risks": "Privilege escalation, dormant staff accounts",
-    "controls": "Admin+MFA only, no self-grant, audit, quarterly review",
+    "risks": "Privilege escalation, dormant staff accounts, shared accounts",
+    "controls": "Platform Administrator with MFA only, no self-grant, named accounts, technically separated role permissions, audit, quarterly review",
     "freq": "Quarterly"
    },
    {
@@ -247,8 +250,8 @@
      "User action"
     ],
     "steps": [
-     "Display: Sign-up form links to the current Terms and Privacy versions.",
-     "Record: On submit, one consent row per document with version and timestamp is written.",
+     "Display: Sign-up form links to the current versions of the Terms of Service and Privacy Policy, and of the Worker Terms (candidates) or the Employer Terms (employers); checkout links to the Subscription and Billing Terms (to be confirmed by CHARA: which legal documents need recorded acceptance at sign-up and at checkout).",
+     "Record: On submit, at sign-up and at checkout, one consent row per document with version and timestamp is written.",
      "Publish new version: Legal publication (SOP FR-F1) marks the new version current.",
      "Detect: On next login the session helper compares consented versions with current versions.",
      "Re-consent: User is shown the change summary and must accept before continuing.",
@@ -279,7 +282,7 @@
      "Present: Sign-up shows a mandatory 'I am 18 or older' checkbox.",
      "Record: Attestation is stored as a consent purpose with version and time; no date of birth is stored.",
      "Block: Sign-up cannot complete without attestation.",
-     "Handle reports: Trust & safety acts on reports of underage users under SOP FR-F1.",
+     "Handle reports: The Trust & Safety Administrator acts on reports of underage users under SOP FR-F1.",
      "Review: Legal confirms the attestation wording per launch country."
     ],
     "outputs": [
@@ -430,8 +433,8 @@
      "Log: Every grant decision (allowed or denied) for a document writes an access-log entry with organisation, time and outcome.",
      "Expose: A view returns only the candidate's own entries.",
      "Display: Passport page lists accesses by organisation and document.",
-     "Retain: Entries kept 24 months.",
-     "Investigate: Candidate can report suspicious access to trust & safety."
+     "Retain: Entries kept 24 months by default; the period is a configuration value.",
+     "Investigate: Candidate can report suspicious access to the Trust & Safety Administrator."
     ],
     "outputs": [
      "Access-log view"
@@ -448,7 +451,7 @@
     "title": "Account Deletion & Erasure E2E SOP",
     "purpose": "To honour deletion requests with a cooling-off period and lawful record keeping",
     "scope": "Candidate accounts",
-    "owner": "Candidate / Platform / Privacy officer",
+    "owner": "Candidate / Platform / Designated privacy contact",
     "inputs": [
      "Deletion request",
      "Legal hold status"
@@ -456,7 +459,7 @@
     "steps": [
      "Request: Candidate requests deletion from settings; confirmation email sent.",
      "Cooling-off: 30 days during which the candidate can cancel; account marked 'deletion requested'.",
-     "Check holds: Legal hold or open dispute pauses erasure; privacy officer informed.",
+     "Check holds: Legal hold or open dispute pauses erasure; the designated privacy contact (a configured setting) is informed (to be confirmed by CHARA: who performs this role at launch).",
      "Erase: Scheduler triggers erasure: profile and documents deleted, applications and audit entries pseudonymised, auth user removed.",
      "Confirm: Completion recorded in audit; confirmation email to the address on file.",
      "Report: Monthly count of requests and completion times."
@@ -623,16 +626,16 @@
     "title": "Vacancy Plan Limit Enforcement E2E SOP",
     "purpose": "To apply the number of open vacancies allowed by the organisation's plan",
     "scope": "Billing / vacancies",
-    "owner": "Platform / Finance",
+    "owner": "Platform / Platform Administrator",
     "inputs": [
      "Plan limits",
      "Enforcement setting"
     ],
     "steps": [
-     "Configure: Limits per plan stored as records; enforcement switch off until CHARA confirms values.",
-     "Check: On publish, a database trigger compares open count with the limit when enforcement is on.",
+     "Configure: Limits per plan are administrator-editable records, initially 3 / 15 / 50 open vacancies for Basic / Professional / Enterprise; Enterprise may have per-organisation values.",
+     "Check: On publish, a database trigger compares open count with the limit when the enforcement setting is on (to be confirmed by CHARA: the date on which limit enforcement is switched on).",
      "Block and prompt: If exceeded, publish is refused with an upgrade prompt.",
-     "Downgrade handling: Oldest excess vacancies are paused, never deleted.",
+     "Downgrade handling: Existing vacancies are kept and never deleted; creating or reopening a vacancy over the new limit is blocked (to be confirmed by CHARA: behaviour on downgrade when usage exceeds the new plan's limit).",
      "Go-live gate: Enforcement must be on in production (automated check)."
     ],
     "outputs": [
@@ -642,7 +645,7 @@
      "Upgrade conversions from limit prompts"
     ],
     "risks": "Revenue leakage, accidental blocking",
-    "controls": "Data-driven limits, go-live check, pause-not-delete",
+    "controls": "Data-driven limits, go-live check, keep-not-delete",
     "freq": "Quarterly"
    },
    {
@@ -650,16 +653,16 @@
     "title": "Vacancy Moderation E2E SOP",
     "purpose": "To remove unlawful or rule-breaking vacancies with a documented reason",
     "scope": "Platform administration",
-    "owner": "Trust & safety",
+    "owner": "Trust & Safety Administrator",
     "inputs": [
      "Report or review finding",
      "Platform rules"
     ],
     "steps": [
      "Receive: Report or routine review flags a vacancy.",
-     "Assess: Staff checks against platform rules and law.",
+     "Assess: The Trust & Safety Administrator checks against platform rules and law.",
      "Act: Hide with a mandatory statement of reasons; employer notified by email with appeal route.",
-     "Appeal: Employer responds; staff decides within 7 days; decision recorded.",
+     "Appeal: Employer responds; the Trust & Safety Administrator decides within 7 days; decision recorded.",
      "Restore: Unhide when resolved; audit entry.",
      "Report: Monthly moderation statistics."
     ],
@@ -694,13 +697,13 @@
      "Selected documents"
     ],
     "steps": [
-     "Start: Candidate clicks Apply on an Open vacancy (login required).",
+     "Start: Candidate clicks Apply on an Open vacancy (login required); a general notice states that cross-border hiring can be subject to legal requirements.",
      "Compose: Optional cover note; select which documents to share.",
      "Consent: Candidate confirms sharing with the named employer for this application.",
      "Create atomically: Consent, share, application, 'applied' event, audit and notification queue entry are written in one transaction.",
      "Snapshot: Profile snapshot stored with the application.",
      "Confirm: Candidate sees the application in the journey tracker; employer notified (SOP FR-D6).",
-     "Reject invalid: Closed vacancy, duplicate or missing profile fields are refused with guidance."
+     "Reject invalid: Closed vacancy, duplicate or missing profile fields are refused with guidance; in Phase 1 no monthly limit and no country-pair block applies to direct applications (to be confirmed by CHARA: whether the monthly candidate-submissions limit applies to direct applications; whether direct applications may go live for all country pairs before country-specific rules exist, subject to legal review)."
     ],
     "outputs": [
      "Application record",
@@ -901,7 +904,7 @@
      "List view: Applicants with stage, date, completeness and document count; sortable and filterable.",
      "Board view: Columns per stage; drag or menu to move (triggers SOP FR-D2).",
      "Counts: Stage counts update live.",
-     "Export: CSV export of the list without documents (plan-dependent)."
+     "Export: CSV export of the list without documents, on every paid plan (to be confirmed by CHARA: which plans include CSV export)."
     ],
     "outputs": [
      "Applicant views"
@@ -980,10 +983,10 @@
      "Plan features"
     ],
     "steps": [
-     "Check feature: Database verifies the organisation's plan includes shortlisting.",
+     "Check feature: Database verifies the organisation's plan includes shortlisting; every paid plan includes it (to be confirmed by CHARA: whether shortlisting is included in all plans).",
      "Flag: Member marks applicant as shortlisted; event appended.",
      "Filter: Shortlist filter available in list and board.",
-     "Upsell: If not included, UI shows upgrade prompt."
+     "Upsell: If not included (restricted free plan), UI shows upgrade prompt."
     ],
     "outputs": [
      "Shortlist flags"
@@ -1030,23 +1033,25 @@
    {
     "fr": "FR-F1",
     "title": "Platform Administration Console E2E SOP",
-    "purpose": "To administer users, organisations, vacancies, legal documents and staff with accountability",
+    "purpose": "To administer users, organisations, vacancies, legal documents, plans, settings and staff with accountability and separated roles",
     "scope": "CHARA administration",
-    "owner": "Platform administrator / Trust & safety",
+    "owner": "Platform Administrator / Trust & Safety Administrator",
     "inputs": [
-     "Staff role",
+     "Staff role (Platform Administrator, Verification Reviewer or Trust & Safety Administrator)",
      "MFA session",
      "Reason for each action"
     ],
     "steps": [
-     "Access: Staff signs in with MFA; console available only to staff roles.",
-     "Users: Search; suspend or reinstate with reason; view activity counts.",
-     "Organisations: View; suspend with reason; see members and vacancies.",
-     "Vacancies: Hide or unhide with statement of reasons (SOP FR-C7).",
-     "Statistics: Application counts only; no personal documents.",
-     "Legal: Publish a new document version with change summary (triggers re-consent).",
-     "Audit: Search the audit log by actor, action, entity and date.",
-     "Staff: Grant or revoke roles (SOP FR-A7)."
+     "Access: Staff signs in with MFA; console available only to staff roles, and each role sees only its own functions; the Verification Reviewer has no function in Phase 1.",
+     "Users: Search (Platform Administrator, Trust & Safety Administrator); suspend or reinstate with reason (Trust & Safety Administrator); view activity counts (to be confirmed by CHARA: whether a Platform Administrator may also suspend accounts).",
+     "Organisations: View, with members and vacancies (both roles); suspend with reason (Trust & Safety Administrator).",
+     "Vacancies: Hide or unhide with statement of reasons (Trust & Safety Administrator; SOP FR-C7).",
+     "Statistics: Application counts only; no personal documents (Platform Administrator).",
+     "Legal: Publish a new document version with change summary, which triggers re-consent (Platform Administrator).",
+     "Plans: Limits, features, trial days and per-organisation Enterprise limits are configuration records owned by the Platform Administrator; until the editing screens exist a change is made by a reviewed migration (to be confirmed by CHARA: whether the screens for editing plans and settings are delivered in Phase 1 or in a later phase).",
+     "Settings: Legal-entity details, privacy contact, data-protection contact and retention periods are configuration records owned by the Platform Administrator, changed the same way as plans (see Plans step).",
+     "Audit: Search the audit log by actor, action, entity and date (Platform Administrator).",
+     "Staff: Grant or revoke roles (Platform Administrator; SOP FR-A7)."
     ],
     "outputs": [
      "Administrative actions",
@@ -1056,8 +1061,8 @@
      "Actions with reason recorded (100 %)",
      "Time to resolve reports"
     ],
-    "risks": "Abuse of admin rights, missing reasons",
-    "controls": "MFA, mandatory reasons, audit, quarterly access review",
+    "risks": "Abuse of admin rights, missing reasons, one role acting outside its remit",
+    "controls": "MFA, technically separated role permissions, mandatory reasons, audit, quarterly access review",
     "freq": "Quarterly"
    },
    {
@@ -1072,9 +1077,9 @@
     "steps": [
      "Capture: Every administrative RPC writes an audit row with actor, target, reason, time and request id.",
      "Protect: Audit table permits inserts only; updates and deletes are blocked for all roles.",
-     "Retain: 6 years.",
+     "Retain: 6 years by default; the period is a configuration value.",
      "Export: Monthly export to an immutable archive outside the platform.",
-     "Review: Sampled quarterly by the privacy officer."
+     "Review: Sampled quarterly by the designated privacy contact."
     ],
     "outputs": [
      "Audit log"
@@ -1097,7 +1102,7 @@
     ],
     "steps": [
      "Design: No administrative function requests document links.",
-     "Enforce: Database policies deny staff roles any read on document metadata and storage objects.",
+     "Enforce: Database policies deny all three staff roles any read on document metadata and storage objects; reports are handled without document access (to be confirmed by CHARA: whether Trust & Safety must inspect reported documents at launch).",
      "Test: Automated test asserts the denial in every build.",
      "Exception process: Any future need requires a documented change, a legal basis and candidate-visible logging."
     ],
@@ -1123,16 +1128,16 @@
     "title": "Plan Configuration E2E SOP",
     "purpose": "To define employer plans, prices, limits and features as controlled configuration",
     "scope": "Billing",
-    "owner": "Finance / Product",
+    "owner": "Platform Administrator",
     "inputs": [
-     "Pricing decisions",
-     "Feature matrix"
+     "Pricing decisions (EUR, exclusive of VAT)",
+     "Limit table and feature matrix"
     ],
     "steps": [
-     "Define: Plan code, name, price, currency, trial days, visibility.",
-     "Set limits: Open vacancies, members, applications per month etc. per plan; empty means unlimited.",
-     "Set features: Shortlisting, analytics etc. per plan.",
-     "Load: Values stored as records via versioned seed; change requires review.",
+     "Define: Three plans (Basic, also called Starter; Professional; Enterprise) with plan code, name, price, currency (EUR, exclusive of VAT), trial days (default 30) and visibility; the base plan is EUR 39 per month (to be confirmed by CHARA: prices of the Professional and Enterprise plans; display name of the lowest plan).",
+     "Set limits: Initial values for Basic / Professional / Enterprise are 3 / 15 / 50 open vacancies and 1 / 5 / 15 team members; Enterprise values can be set per organisation; limits of later-phase functions are entered with those functions.",
+     "Set features: Shortlisting, analytics etc. per plan; a plan lists only features delivered in the current release (to be confirmed by CHARA: that Phase 1 plans list Phase 1 features only).",
+     "Load: Initial values loaded as records via versioned seed; later changes to limits, features and trial days are owned by the Platform Administrator and, until the editing screens exist, made by a reviewed migration (to be confirmed by CHARA: whether the screens for editing plans and settings are delivered in Phase 1 or in a later phase).",
      "Mirror in Stripe: Products and prices created/updated by script; identifiers stored.",
      "Publish: Pricing page reads the records (SOP FR-H2).",
      "Review: Quarterly pricing review."
@@ -1145,7 +1150,7 @@
      "Plans with all limits defined (100 % before launch)"
     ],
     "risks": "Code/config mismatch, unapproved price changes",
-    "controls": "Data-driven plans, reviewed seeds, Stripe sync script, go-live check",
+    "controls": "Data-driven plans, reviewed seeds, audited changes, Stripe sync script, go-live check",
     "freq": "Quarterly"
    },
    {
@@ -1157,13 +1162,15 @@
     "inputs": [
      "Plan choice",
      "Billing country and VAT ID",
+     "Legal-entity identifier",
      "MFA session"
     ],
     "steps": [
-     "Start: Owner/admin chooses a plan on the billing page.",
-     "Validate: Function checks role, MFA and that the account is not a worker.",
-     "Collect tax data: Billing country and VAT ID captured; Stripe Tax enabled.",
-     "Create session: Stripe Checkout session with 30-day trial and card required.",
+     "Start: Owner/admin chooses a plan on the billing page (to be confirmed by CHARA: whether payment details are collected at registration or at checkout when the trial starts).",
+     "Validate: Function checks role, MFA, that the account is not a worker, and trial eligibility: one free trial per legal entity, so a legal-entity identifier that has already had a trial starts checkout without one.",
+     "Collect tax data: Billing country and VAT ID captured; Stripe Tax enabled; prices in EUR, exclusive of VAT.",
+     "Disclose: Before the redirect to Checkout the user is shown the trial period, the price after the trial, the billing frequency, the automatic conversion and the cancellation procedure, and accepts the Subscription and Billing Terms (SOP FR-A8).",
+     "Create session: Stripe Checkout session with the configured trial (default 30 days) and card required; the trial converts automatically to the selected paid plan when it ends.",
      "Return: On success the webhook (SOP FR-G3) activates the trial; user returns to billing page.",
      "Manage: Customer Portal link for card updates, plan change, cancellation and invoices.",
      "Audit: Checkout start and portal visits logged."
@@ -1176,8 +1183,8 @@
      "Checkout conversion",
      "Trial-to-paid conversion"
     ],
-    "risks": "Card data exposure, wrong tax",
-    "controls": "Hosted checkout, Stripe Tax, role/MFA checks",
+    "risks": "Card data exposure, wrong tax, repeated free trials, unclear trial terms",
+    "controls": "Hosted checkout, Stripe Tax, role/MFA checks, one trial per legal entity, disclosure before the trial",
     "freq": "Quarterly"
    },
    {
@@ -1220,7 +1227,7 @@
      "Grace settings"
     ],
     "steps": [
-     "Trial: Starts at checkout; ends after 30 days; reminder 3 days before.",
+     "Trial: Starts at checkout; ends after the configured trial period (default 30 days) and converts automatically to the selected paid plan; reminder 3 days before.",
      "Active: Paid invoice sets active; full plan rights.",
      "Past due: Failed payment sets past due with 7-day grace; email and dashboard warning.",
      "Cancelled: After grace or on cancellation; organisation falls to the free plan: no open vacancies, read-only applicants.",
@@ -1276,7 +1283,7 @@
      "Rule: Database rejects checkout and subscriptions for worker accounts.",
      "UI: No pricing or payment elements in candidate areas.",
      "Test: Automated test attempts a worker checkout and expects refusal.",
-     "Policy: Platform Rules state that workers never pay; reports of fee requests go to trust & safety."
+     "Policy: Platform Rules state that workers never pay; reports of fee requests go to the Trust & Safety Administrator."
     ],
     "outputs": [
      "Enforced guarantee"
@@ -1305,7 +1312,8 @@
      "Approved texts and brand assets"
     ],
     "steps": [
-     "Prepare: Texts for Home, How CHARA Works, Trust & Safety, About, Contact approved by CHARA.",
+     "Prepare: Texts for Home, How CHARA Works, Trust & Safety, About, Contact approved by CHARA; legal pages follow SOP FR-H3.",
+     "Settings: Legal-entity details, privacy contact and data-protection contact shown on the Imprint, Privacy and Contact pages are read from configurable settings.",
      "Build: Pages rendered server-side with shared layout and accessibility checks.",
      "Review: Content and legal review before release.",
      "Publish: Deployed with the release; sitemap updated.",
@@ -1332,7 +1340,7 @@
     ],
     "steps": [
      "Read: Page reads public plan records at render time.",
-     "Display: Worker free; employer plans with trial note; VAT note.",
+     "Display: Worker free; the public employer plans (Basic and Professional; Enterprise once its price is confirmed) with prices in EUR labelled 'excl. VAT', the base plan at EUR 39 per month, and the trial terms (trial period, price after trial, automatic conversion) (to be confirmed by CHARA: prices of the Professional and Enterprise plans; display name of the lowest plan).",
      "Change: Price changes made in configuration (SOP FR-G1) appear automatically.",
      "Verify: Test compares page values with records."
     ],
@@ -1351,14 +1359,15 @@
     "title": "Legal Document Versioning & Publication E2E SOP",
     "purpose": "To publish legal documents with version control and consent linkage",
     "scope": "Legal",
-    "owner": "Legal adviser / Platform administrator",
+    "owner": "Legal counsel / Platform Administrator",
     "inputs": [
-     "Approved document text",
+     "Structured draft approved by legal counsel",
      "Change summary"
     ],
     "steps": [
-     "Draft: Legal supplies text and change summary.",
-     "Review: Administrator checks formatting and links.",
+     "Draft: The team prepares a structured draft and change summary; legal counsel reviews and approves it; an unapproved text is marked as a draft.",
+     "Scope: Phase 1 documents are Terms of Service, Privacy Policy, Cookie Policy, Platform Rules, Acceptable Use Policy, Subscription and Billing Terms, Employer Terms, Worker Terms, Complaints and Dispute Process, and Account Suspension and Termination Rules; the other documents follow with their features (to be confirmed by CHARA: which of the eighteen legal documents are needed at the Phase 1 launch).",
+     "Review: Platform Administrator checks formatting and links.",
      "Publish: New version created with number and date (SOP FR-F1); previous versions retained.",
      "Trigger: Re-consent required at next login (SOP FR-A8).",
      "Display: Legal pages show current version, date and change log.",
@@ -1371,7 +1380,7 @@
      "Users re-consented within 30 days (%)"
     ],
     "risks": "Unversioned changes",
-    "controls": "Versioned records, audit",
+    "controls": "Versioned records, approval by legal counsel, audit",
     "freq": "On change; annual"
    },
    {
@@ -1442,7 +1451,7 @@
      "Email provider account"
     ],
     "steps": [
-     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails.",
+     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails (to be confirmed by CHARA: the email provider, selected from the team's comparison of 2-3 EU providers).",
      "Templates: Confirmation, reset, invitation, MFA recovery reviewed for wording.",
      "Send: Authentication service sends on each event.",
      "Monitor: Bounce and complaint rates reviewed weekly.",
@@ -1475,7 +1484,7 @@
      "Render: Templates filled with minimal data.",
      "Send and record: Provider response stored; failures retried with back-off up to 3 times.",
      "Alert: Backlog above threshold or repeated failures alert operations.",
-     "Retain: Notification records 13 months."
+     "Retain: Notification records 13 months by default; the period is a configuration value."
     ],
     "outputs": [
      "Sent messages",
