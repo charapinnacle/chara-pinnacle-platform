@@ -1,0 +1,102 @@
+// Single source of truth for Phase 1 requirement IDs. Used by the SRS, the design
+// description (traceability) and the SOP document.
+
+const FR_GROUPS = [
+  { id: "A", title: "Accounts and access", owner: "Platform (all users)", items: [
+    ["FR-A1", "Candidate registration", "A candidate can register with email and password (minimum 12 characters, checked against known breached passwords) and must confirm the email address before first login.", "M"],
+    ["FR-A2", "Employer registration", "An employer can register and create the organisation in the same flow; the registering user becomes the organisation owner.", "M"],
+    ["FR-A3", "Login, logout and recovery", "Users can log in, log out and reset a forgotten password by email. Access tokens expire after 30 minutes; sessions are refreshed transparently for up to 7 days.", "M"],
+    ["FR-A4", "Two-step verification", "Organisation owners and administrators and all platform staff must enrol TOTP two-step verification before accessing billing, team, applicant or administration pages.", "M"],
+    ["FR-A5", "Team membership", "An owner or administrator can invite members by email (single-use link, 7-day expiry), change roles (owner, admin, member), remove members and transfer ownership. Exactly one owner exists at all times.", "M"],
+    ["FR-A6", "Account kind", "A user account is either a candidate or a company user, chosen once at onboarding and not changeable afterwards.", "M"],
+    ["FR-A7", "Platform staff roles", "Platform roles (administrator, trust & safety) can be granted or revoked only by an administrator with two-step verification; every grant and revocation is audited and the affected user's sessions are ended.", "M"],
+    ["FR-A8", "Consent capture", "Sign-up records consent to the current versions of the Terms of Service and Privacy Policy; publication of a new version requires re-consent at next login.", "M"],
+    ["FR-A9", "Age attestation", "Candidates confirm they are at least 18 years old at sign-up; no date of birth is stored.", "M"],
+  ]},
+  { id: "B", title: "Candidate profile (CHARA Passport v1)", owner: "Candidate", items: [
+    ["FR-B1", "Profile data", "A candidate maintains: first and last name, headline, current country, occupation (ISCO-08 list), skills, languages with CEFR level, years of experience, availability (now / from date / unavailable), preferred countries, and work-authorisation countries with expiry dates.", "M"],
+    ["FR-B2", "Document upload", "A candidate can upload a CV and certificates (PDF, JPG, PNG; 15 MB maximum each) to private storage, and list, rename and delete them.", "M"],
+    ["FR-B3", "Privacy by default", "A candidate profile and its documents are not visible to any employer except through an application the candidate submitted.", "M"],
+    ["FR-B4", "Completeness indicator", "The profile shows a completeness percentage and suggests the next item to add.", "S"],
+    ["FR-B5", "Document access log", "A candidate can view which organisation accessed which document and when.", "M"],
+    ["FR-B6", "Account closure", "A candidate can request account deletion; after a 30-day cooling-off period the personal data is erased and application records are pseudonymised.", "M"],
+  ]},
+  { id: "C", title: "Vacancies", owner: "Employer", items: [
+    ["FR-C1", "Create vacancy", "An employer creates a vacancy with title, description, occupation, industry, country, city, employment type, salary range and currency, accommodation, visa support and recruitment preference (local, international, both). Reference values come from controlled lists.", "M"],
+    ["FR-C2", "Vacancy lifecycle", "A vacancy moves through Draft → Open → Paused → Closed or Filled; only Open vacancies are visible to the public.", "M"],
+    ["FR-C3", "Public search", "Visitors and candidates search vacancies by keyword, country, city, occupation, industry, employment type, minimum salary, accommodation, visa support and recruitment preference, with paginated results ordered by relevance and recency.", "M"],
+    ["FR-C4", "Vacancy page", "The vacancy page shows the vacancy details, the employer's public profile and the actions Apply (login required) and Save.", "M"],
+    ["FR-C5", "Saved vacancies", "A candidate can save and unsave vacancies and view the saved list.", "S"],
+    ["FR-C6", "Plan limits", "The number of Open vacancies per organisation is limited by its plan when limit enforcement is switched on; reaching the limit shows an upgrade prompt.", "M"],
+    ["FR-C7", "Moderation", "A platform administrator can hide or unhide a vacancy with a written statement of reasons; the employer is notified.", "M"],
+  ]},
+  { id: "D", title: "Applications and journey tracker", owner: "Candidate / Employer", items: [
+    ["FR-D1", "Apply", "A candidate applies to an Open vacancy once, with an optional cover note and a selection of documents to share; applying records consent and creates a share scoped to that employer.", "M"],
+    ["FR-D2", "Status pipeline", "An application has the states Applied, Viewed, Shortlisted, Interview, Offer, Hired, Not selected and Withdrawn; every change is recorded as an event with actor, previous state, new state, note and time.", "M"],
+    ["FR-D3", "Journey tracker", "A candidate sees, per application, a timeline of events, the current stage and a plain-language description of the usual next step, and a filterable list of all applications.", "M"],
+    ["FR-D4", "Withdraw", "A candidate can withdraw an application at any time; withdrawal revokes the document share for that employer.", "M"],
+    ["FR-D5", "Visibility", "An employer sees only applications to its own vacancies; a candidate sees only their own applications.", "M"],
+    ["FR-D6", "Notifications", "The candidate is emailed on every state change except Viewed; the employer is emailed on each new application or, if preferred, in a daily summary.", "M"],
+    ["FR-D7", "Duplicate protection", "At most one non-withdrawn application exists per candidate and vacancy.", "M"],
+  ]},
+  { id: "E", title: "Employer applicant management (ATS core)", owner: "Employer", items: [
+    ["FR-E1", "Applicant list and pipeline", "An employer views applicants per vacancy as a list (stage, applied date, completeness, document count) and as a pipeline board by stage.", "M"],
+    ["FR-E2", "Applicant detail", "The applicant view shows the profile snapshot taken at application time, an indicator when the live profile has changed, the shared documents via access-logged time-limited links, internal notes visible only to the organisation, and the stage history.", "M"],
+    ["FR-E3", "Bulk actions", "An employer can change stage or decline several applicants at once, with a reason template.", "S"],
+    ["FR-E4", "Shortlist", "An employer can flag applicants as shortlisted; the feature is enabled by plan.", "S"],
+    ["FR-E5", "Dashboard", "The organisation dashboard shows open vacancies, new applications in the last 7 days, applicants by stage, and plan and trial status.", "M"],
+  ]},
+  { id: "F", title: "Platform administration", owner: "CHARA staff", items: [
+    ["FR-F1", "Administration console", "Platform staff with two-step verification can search and suspend or reinstate users, view and suspend organisations, hide or unhide vacancies, view application statistics (counts only), publish legal document versions, search the audit log and manage platform staff roles.", "M"],
+    ["FR-F2", "Audited actions", "Every administrative action writes an audit record with actor, target, reason and time.", "M"],
+    ["FR-F3", "No document access", "Platform staff have no function to download candidate documents in Phase 1.", "M"],
+  ]},
+  { id: "G", title: "Subscriptions and billing", owner: "Employer / Finance", items: [
+    ["FR-G1", "Plans as data", "Employer plans Starter and Professional, with prices, limits and features stored as configuration records, each with a 30-day free trial.", "M"],
+    ["FR-G2", "Checkout and portal", "Subscription purchase uses Stripe Checkout (card required at trial start) and the Stripe Customer Portal for card changes, cancellation and invoices; Stripe Tax calculates VAT; billing country and VAT ID are collected.", "M"],
+    ["FR-G3", "Webhook processing", "Stripe events are received, verified, stored once (idempotent) and applied to the subscription record.", "M"],
+    ["FR-G4", "Subscription states", "Subscriptions are Trialing, Active, Past due (7-day grace) or Cancelled; a lapsed organisation falls back to a restricted free plan with read-only access to past applicants.", "M"],
+    ["FR-G5", "Billing page", "An owner or administrator sees the current plan, usage against limits, next invoice date, and links to upgrade, downgrade or open the portal.", "M"],
+    ["FR-G6", "Workers never pay", "A candidate account cannot start a checkout or hold a subscription.", "M"],
+  ]},
+  { id: "H", title: "Public website and legal", owner: "Marketing / Legal", items: [
+    ["FR-H1", "Public pages", "Home, Find Jobs, Vacancy, Pricing, How CHARA Works, Trust & Safety, About, Contact, Terms, Privacy, Platform Rules, Imprint and Cookies.", "M"],
+    ["FR-H2", "Pricing from data", "The pricing page renders plan names, prices and features from the plan configuration records.", "M"],
+    ["FR-H3", "Versioned legal pages", "Legal pages render the current published version with version number, date and change summary.", "M"],
+    ["FR-H4", "Live statistics", "Home page statistics (vacancies, employers, candidates, countries) are computed from real data and hidden when a value is below 5.", "S"],
+    ["FR-H5", "Search engine readiness", "Pages have metadata, sitemap and robots files, and vacancies carry JobPosting structured data.", "S"],
+  ]},
+  { id: "I", title: "Notifications", owner: "Platform", items: [
+    ["FR-I1", "Account emails", "Confirmation, password reset, invitation and two-step recovery emails are sent through the configured email provider.", "M"],
+    ["FR-I2", "Transactional emails", "Application received, application state changed, vacancy hidden, trial ending (3 days before), payment failed and new legal version emails are queued and sent with delivery status recorded.", "M"],
+    ["FR-I3", "Preferences", "Users can switch application-update emails on or off and choose immediate or daily summary for employer notifications.", "S"],
+  ]},
+];
+
+const NFR = [
+  ["NFR-S1", "Security", "Authorisation", "All data access is governed by database row-level security; every exposed table has it enforced with at least one policy.", "Automated coverage test in CI; 100 % of tables", "ISO/IEC 25010 security – confidentiality; ISO/IEC 27001 A.5.15"],
+  ["NFR-S2", "Security", "Credential confinement", "The web tier holds only a publishable key; the privileged key exists only in isolated server functions.", "CI secret-pattern guard; manual review", "ISO/IEC 27001 A.5.17, A.8.2"],
+  ["NFR-S3", "Security", "Separation of duties", "The billing component cannot write trust/verification data; administrative and payment actions are audited.", "Privilege test; audit trigger test", "ISO/IEC 27001 A.5.3, A.8.15"],
+  ["NFR-S4", "Security", "Document confidentiality", "Candidate documents are in private storage; third-party access only via 60-second signed links with an access-log entry.", "Policy and function tests", "ISO/IEC 27001 A.8.3, A.8.10"],
+  ["NFR-S5", "Security", "Transport and headers", "HTTPS only; HSTS; strict nonce-based Content-Security-Policy; no-sniff; referrer policy; frame-ancestors restriction.", "Automated header check on every build", "OWASP ASVS 14.4; ISO/IEC 27001 A.8.24"],
+  ["NFR-S6", "Security", "Authentication strength", "Minimum 12-character passwords with breached-password check; TOTP MFA for privileged roles; rate limits on authentication and abuse-prone operations.", "Configuration review; rate-limit tests", "OWASP ASVS 2.1, 2.2; ISO/IEC 27001 A.5.17"],
+  ["NFR-S7", "Security", "Supply chain", "No secrets in the repository; dependency vulnerabilities of high or critical severity block the build; automated dependency updates.", "CI audit and secret scan green", "ISO/IEC 27001 A.8.28, A.8.8"],
+  ["NFR-P1", "Performance", "Response time", "95 % of vacancy-search and dashboard page renders complete within 500 ms server time at 10,000 vacancies and 50,000 candidates.", "Load test before launch", "ISO/IEC 25010 performance efficiency – time behaviour"],
+  ["NFR-P2", "Performance", "Capacity", "500 registered users on day 1 with headroom to 20,000 users without architectural change.", "Capacity review; stateless web tier", "ISO/IEC 25010 – capacity"],
+  ["NFR-A1", "Reliability", "Availability", "Target 99.9 % monthly availability for the web application and backend (excluding announced maintenance).", "Uptime monitoring", "ISO/IEC 25010 reliability – availability"],
+  ["NFR-A2", "Reliability", "Backup and recovery", "Daily backups with point-in-time recovery; nightly copy of uploaded documents to a second EU location; restore drill before launch; RPO ≤ 24 h for documents, ≤ 2 min for database; RTO ≤ 4 h.", "Restore drill record", "ISO/IEC 27001 A.8.13, A.8.14; ISO 22301"],
+  ["NFR-C1", "Compliance", "Privacy", "EU hosting; consent ledger; retention schedule; data minimisation (no identity numbers, no date of birth, no sensitive attributes); subject-access and erasure procedures.", "DPIA; records of processing; CI forbidden-column check", "GDPR Art. 5, 7, 25, 30, 32; ISO/IEC 27701"],
+  ["NFR-C2", "Compliance", "Legal publication", "Versioned legal documents with consent capture; statement of reasons for moderation; cookie statement (strictly necessary cookies only).", "Review of legal pages and consent records", "GDPR Art. 13; EU DSA Art. 17; ePrivacy"],
+  ["NFR-C3", "Compliance", "Auditability", "Append-only audit log for administrative, billing, document-access and legal-publication events, retained 6 years.", "Immutability test; retention policy", "ISO/IEC 27001 A.8.15; ISO 9001 7.5"],
+  ["NFR-U1", "Usability", "Accessibility", "WCAG 2.2 Level AA on all public and candidate pages.", "Automated checks in end-to-end tests; manual audit before launch", "EN 301 549; ISO/IEC 25010 usability – accessibility"],
+  ["NFR-U2", "Usability", "Responsiveness", "All flows usable on screens from 360 px width.", "Automated viewport tests", "ISO/IEC 25010 – operability"],
+  ["NFR-O1", "Maintainability", "Observability", "Structured logs with request identifiers and automatic redaction of credentials and personal data; error tracking; EU log retention.", "Log review", "ISO/IEC 27001 A.8.15, A.8.16"],
+  ["NFR-O2", "Maintainability", "Deployability", "Repeatable deployment from version control to staging and production; forward-only database migrations; production deployment requires an approver.", "Deployment workflow with environment protection", "ISO/IEC 27001 A.8.32; ISO/IEC/IEEE 12207 6.4.10"],
+  ["NFR-O3", "Maintainability", "Testability", "Database policy tests, function tests and end-to-end tests for the four core journeys run on every change.", "CI job results", "ISO/IEC/IEEE 29119"],
+  ["NFR-M1", "Portability", "Country neutrality", "All geography, language, currency, occupation and industry values use international code lists (ISO 3166, ISO 639, ISO 4217, ISCO-08, ISIC).", "Schema review", "ISO/IEC 25010 portability – adaptability"],
+  ["NFR-M2", "Portability", "Hosting independence", "The web application runs on any Node.js-capable host; no vendor-specific features are required.", "Build output review", "ISO/IEC 25010 portability"],
+];
+
+const ALL_FR = FR_GROUPS.flatMap((g) => g.items.map((i) => ({ group: g, id: i[0], title: i[1], text: i[2], priority: i[3] })));
+
+module.exports = { FR_GROUPS, NFR, ALL_FR };
