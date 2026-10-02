@@ -14,6 +14,13 @@
     "dev": "npm run dev -w @chara-pinnacle/web",
     "build": "npm run build -w @chara-pinnacle/web",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:start": "supabase start -x imgproxy,edge-runtime,realtime",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db"
+  },
+  "devDependencies": {
+    "supabase": "2.119.0"
   }
 }
