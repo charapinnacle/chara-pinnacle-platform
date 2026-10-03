@@ -17,7 +17,9 @@ language sql as $$
       'nationality',
       'religion',
       'gender',
-      'marital'
+      'marital',
+      '(^|_)birth(_|$)',
+      '(^|_)age(_|$)'
     ])
   order by 1
 $$;
@@ -40,12 +42,20 @@ create table public.forbidden_probe (
   marital_status text,
   display_name text,
   identifier text,
-  adobe_license text
+  adobe_license text,
+  age_group text,
+  birth text,
+  age integer,
+  message text,
+  page integer
 );
 
 select set_eq(
   $$select * from pg_temp.forbidden_columns()$$,
   $$values
+    ('public.forbidden_probe.age'),
+    ('public.forbidden_probe.age_group'),
+    ('public.forbidden_probe.birth'),
     ('public.forbidden_probe.birthdate'),
     ('public.forbidden_probe.date_of_birth'),
     ('public.forbidden_probe.dob'),
@@ -56,7 +66,7 @@ select set_eq(
     ('public.forbidden_probe.passport_number'),
     ('public.forbidden_probe.religion'),
     ('public.forbidden_probe.National ID')$$,
-  'detector: every forbidden column name, in any spelling, is reported and nothing else'
+  'detector: every forbidden column name, in any spelling, is reported and nothing else (message and page are not)'
 );
 
 alter table public.forbidden_probe rename column nationality to work_authorization_country;
@@ -64,6 +74,9 @@ alter table public.forbidden_probe rename column nationality to work_authorizati
 select set_eq(
   $$select * from pg_temp.forbidden_columns()$$,
   $$values
+    ('public.forbidden_probe.age'),
+    ('public.forbidden_probe.age_group'),
+    ('public.forbidden_probe.birth'),
     ('public.forbidden_probe.birthdate'),
     ('public.forbidden_probe.date_of_birth'),
     ('public.forbidden_probe.dob'),

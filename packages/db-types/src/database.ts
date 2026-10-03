@@ -5,7 +5,26 @@ export type Database = {
   
   "public": {
           Tables: {
-            "countries": {
+            "consents": {
+                  Row: {
+                    "action": Database["public"]['Enums']["consent_action"],"created_at": string,"id": number,"purpose": string,"user_id": string,"version": number
+                  }
+                  Insert: {
+                    "action": Database["public"]['Enums']["consent_action"],"created_at"?: string,"id"?: never,"purpose": string,"user_id": string,"version": number
+                  }
+                  Update: {
+                    "action"?: Database["public"]['Enums']["consent_action"],"created_at"?: string,"id"?: never,"purpose"?: string,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "consents_purpose_version_fkey"
+      columns: ["purpose","version"]
+isOneToOne: false
+      referencedRelation: "legal_documents"
+      referencedColumns: ["slug","version"]
+    }
+                  ]
+                },"countries": {
                   Row: {
                     "code": string,"name": string
                   }
@@ -57,16 +76,81 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"legal_documents": {
+                  Row: {
+                    "body": string,"change_summary": string,"published_at": string | null,"slug": string,"title": string,"version": number
+                  }
+                  Insert: {
+                    "body": string,"change_summary": string,"published_at"?: string | null,"slug": string,"title": string,"version": number
+                  }
+                  Update: {
+                    "body"?: string,"change_summary"?: string,"published_at"?: string | null,"slug"?: string,"title"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"platform_staff": {
+                  Row: {
+                    "granted_at": string,"granted_by": string | null,"id": number,"revoked_at": string | null,"role": Database["public"]['Enums']["platform_role"],"user_id": string
+                  }
+                  Insert: {
+                    "granted_at"?: string,"granted_by"?: string | null,"id"?: never,"revoked_at"?: string | null,"role": Database["public"]['Enums']["platform_role"],"user_id": string
+                  }
+                  Update: {
+                    "granted_at"?: string,"granted_by"?: string | null,"id"?: never,"revoked_at"?: string | null,"role"?: Database["public"]['Enums']["platform_role"],"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "platform_staff_granted_by_fkey"
+      columns: ["granted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "platform_staff_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"profiles": {
+                  Row: {
+                    "account_kind": Database["public"]['Enums']["account_kind"] | null,"created_at": string,"deleted_at": string | null,"display_name": string | null,"id": string,"intended_account_kind": Database["public"]['Enums']["account_kind"],"pending_consents": NonNullable<Json>,"preferred_lang": string,"status": Database["public"]['Enums']["profile_status"]
+                  }
+                  Insert: {
+                    "account_kind"?: Database["public"]['Enums']["account_kind"] | null,"created_at"?: string,"deleted_at"?: string | null,"display_name"?: string | null,"id": string,"intended_account_kind": Database["public"]['Enums']["account_kind"],"pending_consents"?: NonNullable<Json>,"preferred_lang"?: string,"status"?: Database["public"]['Enums']["profile_status"]
+                  }
+                  Update: {
+                    "account_kind"?: Database["public"]['Enums']["account_kind"] | null,"created_at"?: string,"deleted_at"?: string | null,"display_name"?: string | null,"id"?: string,"intended_account_kind"?: Database["public"]['Enums']["account_kind"],"pending_consents"?: NonNullable<Json>,"preferred_lang"?: string,"status"?: Database["public"]['Enums']["profile_status"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "profiles_preferred_lang_fkey"
+      columns: ["preferred_lang"]
+isOneToOne: false
+      referencedRelation: "languages"
+      referencedColumns: ["code"]
+    }
+                  ]
                 }
           }
           Views: {
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "accept_consents":
+{ Args: { "p_consents": Json }; Returns: undefined
+                           },
+"set_account_kind":
+{ Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
+                           },
+"withdraw_consent":
+{ Args: { "p_purpose": string }; Returns: undefined
+                           }
           }
           Enums: {
-            [_ in never]: never
+            "account_kind": "worker"|"company","consent_action": "granted"|"withdrawn","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -182,7 +266,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            
+            "account_kind": ["worker", "company"],"consent_action": ["granted", "withdrawn"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"]
           }
         }
 } as const
