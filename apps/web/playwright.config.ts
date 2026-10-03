@@ -35,6 +35,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? "github" : "list",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   use: { baseURL, trace: "retain-on-failure" },
   // Tests that publish legal versions cannot share a run with the others: they follow the main project.
   projects: [

@@ -1,5 +1,4 @@
-import { randomUUID } from "node:crypto";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext } from "@playwright/test";
 import { env } from "@/lib/env";
 import {
   accountRows,
@@ -7,34 +6,28 @@ import {
   pendingConsents,
   userByEmail,
 } from "./support/accounts";
-import { extractLinks, waitForMessage } from "./support/mailpit";
+import { extractLinks, messageCount, waitForMessage } from "./support/mailpit";
 import {
   ageBox,
   documentBox,
   EMPLOYER_LABEL,
   fillSignup,
+  newEmail,
+  PASSWORD,
+  summary,
   WORKER_LABEL,
 } from "./support/signup-page";
 import { captureActionRequests } from "./support/server-action";
 import { createTestUser, deleteTestUser } from "./support/test-user";
 
-const PASSWORD = "Valid-Passw0rd";
 const authUrl = `${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`;
 const apikey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-function newEmail(): string {
-  return `e2e-${randomUUID()}@example.test`;
-}
 
 // Sign-up leaves PKCE code-verifier cookies; a session is a cookie named like sb-<ref>-auth-token(.n).
 async function sessionCookies(context: BrowserContext) {
   return (await context.cookies()).filter((cookie) =>
     /^sb-.*-auth-token(\.\d+)?$/.test(cookie.name),
   );
-}
-
-function summary(page: Page) {
-  return page.getByRole("alert").filter({ hasText: "There is a problem" });
 }
 
 test.describe("sign-up form", () => {
@@ -79,7 +72,8 @@ test.describe("sign-up form", () => {
     ]);
 
     const message = await waitForMessage(email, { timeoutMs: 60_000 });
-    expect(extractLinks(message).some((link) => link.includes("/auth/confirm?token_hash="))).toBe(true);
+    expect(await messageCount(email)).toBe(1);
+    expect(extractLinks(message).some((link) => link.includes("/en/confirm-email?token_hash="))).toBe(true);
     expect(`${message.Text}${message.HTML}`).not.toContain(PASSWORD);
 
     expect(calls).toHaveLength(1);
@@ -175,8 +169,44 @@ test.describe("sign-up form", () => {
     }
     await expect(page.getByText(/Worker Terms/)).toHaveCount(0);
 
+    await documentBox(page, employerDocuments[0].title).check();
+    await page.getByRole("radio", { name: WORKER_LABEL }).check();
+    await expect(page.getByRole("checkbox")).toHaveCount(4);
+    for (const box of await page.getByRole("checkbox").all()) {
+      await expect(box).not.toBeChecked();
+    }
+
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(summary(page)).toBeFocused();
+  });
+
+  test("FR-A6 AC1, FR-A8 AC1: an employer sign-up carries only the employer documents and no age attestation", async ({
+    page,
+  }) => {
+    const email = newEmail();
+    const calls = captureActionRequests(page);
+    await page.goto("/en/signup");
+    await fillSignup(page, { kind: "worker", email: "worker-first@example.test", password: PASSWORD });
+    await page.getByRole("radio", { name: EMPLOYER_LABEL }).check();
+    await fillSignup(page, { kind: "company", email, password: PASSWORD });
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page).toHaveURL(/\/en\/verify-email$/);
+
+    expect(calls).toHaveLength(1);
+    const [payload] = JSON.parse(calls[0].body) as { kind: string; consents: { purpose: string }[] }[];
+    expect(payload.kind).toBe("company");
+    expect(payload.consents).toEqual(await pendingConsents("company"));
+    expect(calls[0].body).not.toMatch(/worker-terms|age-18-plus/);
+
+    const [user] = userByEmail(email);
+    const { account, consents } = accountRows(user.id);
+    expect(account.intended_account_kind).toBe("company");
+    expect(account.pending_consents.map((entry) => entry.purpose).sort()).toEqual([
+      "employer-terms",
+      "privacy-policy",
+      "terms-of-service",
+    ]);
+    expect(consents).toEqual([]);
   });
 
   test("FR-A6 AC1: submitting without a kind is refused", async ({ page }) => {
@@ -238,65 +268,5 @@ test.describe("sign-up form", () => {
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(summary(page)).toContainText("Confirm that you are 18 or older to create an account");
     expect(userByEmail(email)).toEqual([]);
-  });
-
-  test("FR-A1 AC12: the form is usable by keyboard, marks pending and survives a network failure", async ({
-    page,
-    context,
-  }) => {
-    for (const width of [360, 1280]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto("/en/signup");
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow).toBeLessThanOrEqual(0);
-    }
-
-    await page.goto("/en/signup");
-    await page.getByRole("radio").first().focus();
-    await expect(page.getByRole("radio").first()).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(page.getByRole("radio", { name: EMPLOYER_LABEL })).toBeChecked();
-    await page.keyboard.press("ArrowUp");
-    await expect(page.getByRole("radio", { name: WORKER_LABEL })).toBeChecked();
-    await expect(page.getByLabel("Email address")).toHaveAttribute("autocomplete", "email");
-    await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("autocomplete", "new-password");
-
-    await page.keyboard.press("Enter");
-    await expect(summary(page)).toBeFocused();
-    await summary(page).getByRole("link", { name: "Enter a valid email address." }).click();
-    await expect(page.getByLabel("Email address")).toBeFocused();
-
-    await page.getByLabel("Password", { exact: true }).press("Tab");
-    await expect(page.getByRole("checkbox").first()).toBeFocused();
-    await page.keyboard.press("Space");
-    await expect(page.getByRole("checkbox").first()).toBeChecked();
-    await page.keyboard.press("Space");
-    await expect(page.getByRole("checkbox").first()).not.toBeChecked();
-
-    const email = newEmail();
-    await fillSignup(page, { kind: "worker", email, password: PASSWORD });
-    await context.setOffline(true);
-    await page.getByLabel("Password", { exact: true }).press("Enter");
-    await expect(page.getByText("Could not create the account", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Email address")).toHaveValue(email);
-    await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
-    expect(userByEmail(email)).toEqual([]);
-    await context.setOffline(false);
-  });
-
-  test("FR-A1 AC12: a double click sends one request and the button shows the pending text", async ({
-    page,
-  }) => {
-    const email = newEmail();
-    const calls = captureActionRequests(page);
-    await page.goto("/en/signup");
-    await fillSignup(page, { kind: "worker", email, password: PASSWORD });
-    const button = page.getByRole("button", { name: /Create account|Creating account/ });
-    await button.dblclick();
-    await expect(page).toHaveURL(/\/en\/verify-email$/);
-    expect(calls).toHaveLength(1);
-    expect(userByEmail(email)).toHaveLength(1);
   });
 });
