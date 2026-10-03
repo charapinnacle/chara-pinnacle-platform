@@ -37,7 +37,12 @@ export async function createTestUser(): Promise<TestUser> {
   const password = `Pw-${randomUUID()}`;
   const response = await adminRequest("/users", {
     method: "POST",
-    body: JSON.stringify({ email, password, email_confirm: true }),
+    body: JSON.stringify({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { intended_account_kind: "worker" },
+    }),
   });
   const { id } = (await response.json()) as { id: string };
   return { id, email, password };
