@@ -503,8 +503,8 @@
 **AC1 · Candidates read only their own applications; others have no read path** (database test (pgTAP))
 
 - Given Candidates A (3 applications) and B (2 applications); an anonymous session; platform staff with roles admin, trust_safety and verification_reviewer at aal2; service_role
-- When a selects from job_applications, application_events and v_my_application_timeline, with and without a filter on B's application ids; the other parties select from job_applications, application_events and application_notes
-- Then a gets 3 applications and their events only, zero rows for any of B's ids; anonymous and service_role are denied by missing grants; the three staff roles get zero rows
+- When A selects from job_applications, application_events and v_my_application_timeline, with and without a filter on B's application ids; the other parties select from job_applications, application_events and application_notes
+- Then A gets 3 applications and their events only, zero rows for any of B's ids; anonymous and service_role are denied by missing grants; the three staff roles get zero rows
 
 **AC2 · No direct writes to applications and events** (database test (pgTAP))
 

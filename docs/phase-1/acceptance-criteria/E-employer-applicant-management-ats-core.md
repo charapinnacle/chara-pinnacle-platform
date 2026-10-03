@@ -161,7 +161,7 @@
 
 - Given Application A1 whose candidate changed the headline after applying; A2 whose candidate saved the profile without changing a value; A3 whose candidate changed the profile and then withdrew (share revoked); A4 whose candidate changed the profile after the application was Hired and its share expired
 - When M1 opens the detail of A1, A2, A3 and A4
-- Then a1 shows the indicator Profile changed since this application was submitted and still shows the snapshot values; the indicator does not show what changed; A2, A3 and A4 show no indicator, because the comparison is by content and the live profile is not read when the share is revoked or expired
+- Then A1 shows the indicator Profile changed since this application was submitted and still shows the snapshot values; the indicator does not show what changed; A2, A3 and A4 show no indicator, because the comparison is by content and the live profile is not read when the share is revoked or expired
 
 **AC3 · open_application sets Viewed once, only for a member of a writable organisation** (database test (pgTAP))
 
