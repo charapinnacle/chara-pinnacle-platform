@@ -142,8 +142,18 @@ isOneToOne: false
             "accept_consents":
 { Args: { "p_consents": Json }; Returns: undefined
                            },
+"pending_reconsents":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
+                           },
+"signup_documents":
+{ Args: { "p_kind": Database["public"]['Enums']["account_kind"] }; Returns: {
+              "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
+            }[]
                            },
 "withdraw_consent":
 { Args: { "p_purpose": string }; Returns: undefined
