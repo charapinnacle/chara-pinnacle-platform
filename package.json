@@ -18,7 +18,8 @@
     "db:start": "supabase start -x imgproxy,edge-runtime,realtime",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:test": "supabase test db"
+    "db:test": "supabase test db",
+    "db:lint": "supabase db lint --local --fail-on error"
   },
   "devDependencies": {
     "supabase": "2.119.0"

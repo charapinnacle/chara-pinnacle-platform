@@ -23,8 +23,8 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 
 | ID | Branch | Delivers | Needs |
 |---|---|---|---|
-| U01 | `feat/db-foundation` | infra: schemas, default-deny grants, settings, audit log (FR-F2 table), RLS meta-test, forbidden-attribute test | — |
-| U02 | `feat/db-reference-data` | infra: countries, languages, currencies, industries, seeds, `packages/db-types`, type-drift and `db lint` in CI | U01 |
+| U01 | `feat/db-foundation` | infra: schemas, default-deny grants, settings, audit log (FR-F2 table), RLS meta-test, forbidden-attribute test, `db lint` in CI | — |
+| U02 | `feat/db-reference-data` | infra: countries, languages, currencies, industries, seeds, `packages/db-types`, type-drift check in CI | U01 |
 | U03 | `feat/web-base` | infra: env validation, Supabase clients, `proxy.ts` (session, nonce CSP, locale), `.env.example`, Vitest | U01 |
 | U04 | `feat/web-ui-primitives` | infra: shadcn/ui, layout shell, tokens, accessibility basics | U03 |
 | U05 | `chore/e2e-harness` | infra: Playwright, Mailpit and TOTP helpers, CI `e2e` job | U04 |
@@ -36,7 +36,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U11 | `feat/two-step-verification` | FR-A4 | U08 |
 | U12 | `feat/team-membership` | FR-A5 | U10, U11 |
 | U13 | `feat/platform-staff-roles` | FR-A7, `account-ops` function, CI `functions` job | U06, U11 |
-| U14 | `feat/plans-as-data` | FR-G1: plans, limits, features, subscriptions, entitlement helpers | U09 |
+| U14 | `feat/plans-as-data` | FR-G1: schema `billing`, role `billing_owner` (`grant billing_owner to postgres`), plans, limits, features, subscriptions, entitlement helpers; NFR-S3 tests (`billing_owner` has no privilege on verification tables) | U09 |
 | U15 | `feat/candidate-profile` | FR-B1 | U08, U02 |
 | U16 | `feat/document-upload` | FR-B2 | U15 |
 | U17 | `feat/privacy-by-default` | FR-B3 | U16 |

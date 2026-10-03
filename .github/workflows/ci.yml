@@ -37,6 +37,7 @@ jobs:
       - run: npm ci
       - run: npm run db:start
       - run: npm run db:test
+      - run: npm run db:lint
 
   security:
     runs-on: ubuntu-latest
