@@ -36,7 +36,20 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? "github" : "list",
   use: { baseURL, trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Tests that publish legal versions cannot share a run with the others: they follow the main project.
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+      testIgnore: "**/consent-versions.spec.ts",
+    },
+    {
+      name: "versions",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/consent-versions.spec.ts",
+      dependencies: ["chromium"],
+    },
+  ],
   webServer: {
     command: "npm run build && npm run start",
     url: baseURL,
