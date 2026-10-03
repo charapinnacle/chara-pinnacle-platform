@@ -85,7 +85,7 @@ declare
   v_entry jsonb;
   v_purpose text;
   v_version integer;
-  v_recorded jsonb := '[]';
+  v_recorded jsonb := '[]'::jsonb;
 begin
   if v_uid is null then
     raise exception 'CHARA_FORBIDDEN';
@@ -97,7 +97,7 @@ begin
   if not found then
     raise exception 'CHARA_FORBIDDEN';
   end if;
-  v_other := case v_kind when 'worker' then 'company' else 'worker' end;
+  v_other := (case v_kind when 'worker' then 'company' else 'worker' end)::public.account_kind;
 
   if jsonb_typeof(p_consents) is distinct from 'array' or jsonb_array_length(p_consents) > 20 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_consents must be an array of at most 20 entries';

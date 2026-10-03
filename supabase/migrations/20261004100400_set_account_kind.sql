@@ -15,7 +15,7 @@ declare
   v_entry jsonb;
   v_purpose text;
   v_version integer;
-  v_accepted jsonb := '[]';
+  v_accepted jsonb := '[]'::jsonb;
 begin
   if v_uid is null then
     raise exception 'CHARA_FORBIDDEN';
