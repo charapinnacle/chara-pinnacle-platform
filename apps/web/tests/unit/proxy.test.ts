@@ -68,6 +68,26 @@ describe("proxy", () => {
     );
   });
 
+  it("passes the requested path and query on for the consent gate", async () => {
+    const response = await proxy(
+      new NextRequest(`${origin}/en/onboarding?step=1`),
+    );
+    expect(response.headers.get("x-middleware-request-x-pathname")).toBe(
+      "/en/onboarding?step=1",
+    );
+  });
+
+  it("does not trust a path header sent by the client", async () => {
+    const response = await proxy(
+      new NextRequest(`${origin}/en/onboarding`, {
+        headers: { "x-pathname": "//evil.example" },
+      }),
+    );
+    expect(response.headers.get("x-middleware-request-x-pathname")).toBe(
+      "/en/onboarding",
+    );
+  });
+
   it("does not trust a nonce or CSP sent by the client", async () => {
     const response = await proxy(
       new NextRequest(`${origin}/en`, {
