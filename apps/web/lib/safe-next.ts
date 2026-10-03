@@ -1,0 +1,17 @@
+const PLACEHOLDER_ORIGIN = "http://localhost";
+
+export function safeNextPath(
+  next: string | null | undefined,
+  fallback = "/",
+): string {
+  // Browsers drop tabs and newlines and read backslashes as slashes, so these
+  // turn "/\t/host" or "/\host" into a protocol-relative URL.
+  if (!next || !next.startsWith("/") || /[\\\p{Cc}]/u.test(next)) {
+    return fallback;
+  }
+  const url = new URL(next, PLACEHOLDER_ORIGIN);
+  if (url.origin !== PLACEHOLDER_ORIGIN || url.pathname.startsWith("//")) {
+    return fallback;
+  }
+  return url.pathname + url.search + url.hash;
+}
