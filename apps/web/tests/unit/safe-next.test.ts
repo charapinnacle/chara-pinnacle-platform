@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeNextPath } from "@/lib/safe-next";
+import { consentReturnPath, safeNextPath } from "@/lib/safe-next";
 
 describe("safeNextPath", () => {
   it.each([
@@ -30,5 +30,20 @@ describe("safeNextPath", () => {
   it("falls back for a missing value", () => {
     expect(safeNextPath(null)).toBe("/");
     expect(safeNextPath(undefined)).toBe("/");
+  });
+});
+
+describe("consentReturnPath", () => {
+  it("returns to the page the user asked for", () => {
+    expect(consentReturnPath("en", "/en/onboarding?x=1")).toBe("/en/onboarding?x=1");
+  });
+
+  it.each([
+    ["an external URL", "https://evil.example"],
+    ["a protocol-relative URL", "//evil.example"],
+    ["the consent page itself", "/en/consent?next=/en/consent"],
+    ["nothing", ""],
+  ])("lands on onboarding for %s", (_label, next) => {
+    expect(consentReturnPath("en", next)).toBe("/en/onboarding");
   });
 });
