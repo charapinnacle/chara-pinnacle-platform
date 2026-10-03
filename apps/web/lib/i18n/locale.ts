@@ -1,6 +1,6 @@
 const locales = ["en"] as const;
 type Locale = (typeof locales)[number];
-const defaultLocale: Locale = "en";
+export const defaultLocale: Locale = "en";
 
 const UNPREFIXED_SEGMENTS = ["auth", "api"];
 
