@@ -161,7 +161,7 @@ site_url = "http://localhost:3100"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:3100/auth/callback"]
+additional_redirect_urls = ["http://localhost:3100/auth/callback", "http://localhost:3100/auth/confirm"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 1800
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -197,7 +197,7 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+email_sent = 1000
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -228,11 +228,16 @@ enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
-# Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+# Number of seconds before an email link or OTP expires. One value serves confirmation and recovery links:
+# 24 hours for the sign-up confirmation (FR-A1); the 1-hour recovery lifetime of FR-A3 is settled in its unit.
+otp_expiry = 86400
+
+[auth.email.template.confirmation]
+subject = "Confirm your CHARA account"
+content_path = "./supabase/templates/confirmation.html"
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
@@ -270,9 +275,10 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
-# [auth.sessions]
-# Force log out after the specified duration.
-# timebox = "24h"
+[auth.sessions]
+# Force log out after the specified duration: a session opened before a legal document changed is gated
+# at its next sign-in, at the latest 7 days later (FR-A8).
+timebox = "168h"
 # Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
 
