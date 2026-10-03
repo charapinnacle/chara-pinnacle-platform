@@ -35,4 +35,4 @@ Costs:
 - The proxy runs on every matched request.
 - Any third-party script must receive the nonce; scripts that inject inline code without it are blocked.
 - Data served from materialized views is as stale as the refresh interval.
-- `proxy.ts` and the CSP are delivered with the web base work package; until then the policy is not in effect.
+- The CSP is built in `apps/web/lib/csp.ts` and applied by `apps/web/proxy.ts`; `apps/web/app/[lang]/layout.tsx` calls `connection()` so that no route is prerendered.
