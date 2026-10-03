@@ -151,3 +151,7 @@ next-env.d.ts
 # Client documents: local only while the repository is public
 docs/phase-1/client/
 docs/spec/
+
+# Playwright
+test-results/
+playwright-report/
