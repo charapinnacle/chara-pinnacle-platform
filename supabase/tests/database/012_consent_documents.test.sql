@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(38);
 
 create function pg_temp.new_user(p_id uuid, p_kind text, p_pending jsonb) returns void
 language sql as $$
@@ -271,6 +271,36 @@ select is(
   pg_temp.pending(:'u', '00000000-0000-0000-0000-0000000000a4'),
   'privacy-policy:1,terms-of-service:1,worker-terms:0',
   'a committed worker without consent rows is gated on all three documents even in an old session'
+);
+
+-- A profile that is not active is never sent to a form that accept_consents would refuse
+update public.profiles set status = 'suspended' where id = :'u';
+select is(
+  pg_temp.pending(:'u', '00000000-0000-0000-0000-0000000000a4'),
+  '',
+  'a suspended user with missing consents is not gated'
+);
+update public.profiles set status = 'deletion_pending' where id = :'u';
+select is(
+  pg_temp.pending(:'u'),
+  '',
+  'a user whose deletion is pending is not gated'
+);
+
+-- A change older than 7 days gates every session, however long the session has lasted (FR-A8)
+insert into auth.sessions (id, user_id, created_at) values ('00000000-0000-0000-0000-0000000000a6', :'w', now() - interval '20 days');
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+values ('terms-of-service', 2, 'Terms of Service', 'Version two.', 'Changes the governing law.', now() - interval '6 days');
+select is(
+  pg_temp.pending(:'w', '00000000-0000-0000-0000-0000000000a6'),
+  '',
+  'a session that started before a change of 6 days ago is not gated'
+);
+update public.legal_documents set published_at = now() - interval '8 days' where slug = 'terms-of-service' and version = 2;
+select is(
+  pg_temp.pending(:'w', '00000000-0000-0000-0000-0000000000a6'),
+  'terms-of-service:2',
+  'a session that started before a change of 8 days ago is gated all the same'
 );
 
 select * from finish();
