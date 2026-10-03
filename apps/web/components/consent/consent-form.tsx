@@ -10,6 +10,7 @@ import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-su
 import { Button } from "@/components/ui/button";
 import type { ConsentActionResult } from "@/lib/actions/consents";
 import { formatDate } from "@/lib/i18n/format";
+import { defaultLocale } from "@/lib/i18n/locale";
 import { isRedirectError } from "@/lib/redirect-error";
 import {
   acceptedSchema,
@@ -107,7 +108,7 @@ export function ConsentForm({
               <p className="text-sm">{document.changeSummary}</p>
               <p className="text-sm">
                 <a
-                  href={`/en/legal/${document.slug}`}
+                  href={`/${defaultLocale}/legal/${document.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-4"

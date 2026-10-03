@@ -11,6 +11,7 @@ import { toast } from "@/components/feedback/toast-store";
 import { Button } from "@/components/ui/button";
 import { signUp } from "@/lib/actions/auth";
 import { formatDate } from "@/lib/i18n/format";
+import { defaultLocale } from "@/lib/i18n/locale";
 import { isRedirectError } from "@/lib/redirect-error";
 import { AGE_ATTESTATION_SLUG, type LegalDocumentSummary } from "@/lib/validation/consents";
 import {
@@ -27,8 +28,8 @@ type SignUpFormProps = {
 };
 
 const kindOptions = [
-  { value: "worker", label: "I’m a worker" },
-  { value: "company", label: "I’m an employer" },
+  { value: "worker", label: "I'm a worker" },
+  { value: "company", label: "I'm an employer" },
 ] as const;
 
 const ids = {
@@ -171,7 +172,7 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
             <span>
               I accept the{" "}
               <a
-                href={`/en/legal/${document.slug}`}
+                href={`/${defaultLocale}/legal/${document.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-4"
