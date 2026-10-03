@@ -1,0 +1,13 @@
+{
+  "name": "@chara-pinnacle/db-types",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "types": "./src/database.ts",
+  "exports": {
+    ".": "./src/database.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
