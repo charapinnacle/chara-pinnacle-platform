@@ -98,11 +98,12 @@ chara-pinnacle-platform/
                                     Today: Next.js 16 skeleton plus the web base (next.config.ts security headers, proxy.ts, lib/env.ts, lib/csp.ts, lib/i18n/locale.ts, lib/safe-next.ts, lib/supabase/, app/api/health, Vitest in tests/unit).
                                     Everything listed below is the target.
     next.config.ts                  output:'standalone', deploymentId, headers() (HSTS etc.; CSP comes from proxy),
-                                    experimental.taint, experimental.serverActions.bodySizeLimit '2mb',
+                                    experimental.taint, experimental.globalNotFound, experimental.serverActions.bodySizeLimit '2mb',
                                     images.remotePatterns (project storage host), typedRoutes
     proxy.ts                        updateSession (getClaims) + nonce CSP + locale redirect + optimistic auth redirects
     instrumentation.ts              register(): zod env validation, pino logger with redaction
-    app/[lang]/layout.tsx           html lang from next/root-params; reads headers() (nonce) → whole app dynamic
+    app/[lang]/layout.tsx           html lang from next/root-params; calls connection() (every response needs its own nonce) → whole app dynamic
+    app/global-not-found.tsx        404 for unmatched URLs; awaits connection() so it is rendered per request with a nonce (experimental.globalNotFound)
     app/[lang]/(public)/            page, jobs, companies, how-it-works, pricing, trust-safety, about, legal/[slug];
                                     (later phase) find-workers, partners/recruitment, partners/staffing,
                                     corridors, network, job-orders
