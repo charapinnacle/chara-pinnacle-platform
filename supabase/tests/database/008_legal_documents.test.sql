@@ -73,15 +73,20 @@ insert into public.legal_documents (slug, version, title, body, change_summary, 
   ('terms-of-use', 2, 'Terms of Use', 'Version two', 'The second published version.', now() - interval '1 day');
 insert into public.legal_documents (slug, version, title, body, change_summary) values
   ('terms-of-use', 3, 'Terms of Use', 'Version three', 'An unpublished draft version.');
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+values ('terms-of-use', 4, 'Terms of Use', 'Version four', 'A version dated in the future.', now() + interval '1 day');
 
-select is(private.current_legal_version('terms-of-use'), 2, 'the current version is the highest published version');
+select is(
+  private.current_legal_version('terms-of-use'), 2,
+  'the current version is the highest published version; unpublished and future-dated rows do not count'
+);
 select is(private.current_legal_version('no-such-document'), null, 'a slug without a published row has no current version');
 
 set local role anon;
 select results_eq(
   $$select version from public.legal_documents where slug = 'terms-of-use' order by version$$,
   $$values (1), (2)$$,
-  'anon reads published versions only'
+  'anon reads published versions only, not an unpublished or a future-dated one'
 );
 select is(
   (select count(*) from public.legal_documents where slug = 'privacy-policy'),
