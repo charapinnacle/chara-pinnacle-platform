@@ -67,7 +67,7 @@ Two tiers, one trust boundary: Postgres Row Level Security decides who may read 
 | Supabase Auth | Sign-up/in, email confirmation, password policy, TOTP MFA with `aal` claim, session cookies via @supabase/ssr. Trigger creates `public.profiles`. | GoTrue; asymmetric ES256 signing key; `jwt_expiry = 1800`; custom SMTP through the transactional email provider (see Email). |
 | Supabase Storage | Private buckets only: passport documents, DSAR exports, organization media; (later phase) verification evidence, safety evidence. | RLS on `storage.objects`, owner-only policies; signed URLs (60 s download, 10 min upload). |
 | Supabase Realtime | Messaging (later phase) and notification badges. | Broadcast on private channels; `realtime.broadcast_changes` triggers; no `postgres_changes`. |
-| Edge Functions | Only work that needs a secret, outbound network or long processing. Reach the database only through public RPCs granted to `service_role` (§8). | Deno; `verify_jwt = true` except `billing-webhook` (provider signature) and `scan-document` (shared-secret header). Limits: 150 s free / 400 s paid wall-clock, 2 s CPU, 256 MB. |
+| Edge Functions | Only work that needs a secret, outbound network or long processing. Reach the database only through public RPCs granted to `service_role` (§8). | Deno; `verify_jwt = true` except `billing-webhook` (provider signature), `scan-document` (shared-secret header) and `notify` (shared-secret header from the scheduler; Resend webhook signature for delivery events, §4). Limits: 150 s free / 400 s paid wall-clock, 2 s CPU, 256 MB. |
 | Scheduler and queues | MV refresh, expiries, retention, billing retries, notifications. | pg_cron → SQL or `net.http_post` to Edge Functions (secret header from Vault); pgmq for retryable jobs. |
 | Payments | Subscriptions, checkout, customer portal, tax, webhooks. | Stripe (Checkout, Customer Portal, Tax, webhooks) behind the provider-neutral `BillingProvider` adapter (§10.2); the null/HMAC provider is used in dev, CI and e2e. |
 | Email | Auth emails and transactional emails. | Resend, EU region (decided 2026-10-03; OPEN_QUESTIONS.md, O10). Auth emails: Supabase custom SMTP through Resend. Transactional emails: the Resend API called from the `notify` Edge Function, React Email templates in `apps/web/emails`. Local development uses the mail catcher. |
@@ -114,8 +114,9 @@ chara-pinnacle-platform/
                                     (later phase) workforce profile, availability, requirements, verification
     app/[lang]/(app)/passport/      sections, documents, shares + access log, consents
     app/[lang]/(app)/applications/  candidate applications and journey tracker
-    app/[lang]/(admin)/admin/       job moderation, suspensions, legal documents, staff, audit search (aal2 and a per-page role:
-                                    moderation and suspensions trust_safety; legal documents and staff admin);
+    app/[lang]/(admin)/admin/       job moderation, suspensions and reinstatements, legal documents, staff, MFA reset, audit search
+                                    (aal2 and a per-page role: moderation, suspensions and reinstatements trust_safety;
+                                    legal documents, staff and MFA reset admin);
                                     (later phase) verification queue (role verification_reviewer), reports,
                                     plans, limits and settings editor (role admin)
     app/auth/callback/route.ts      PKCE exchangeCodeForSession → redirect (validated `next`)
@@ -171,7 +172,7 @@ Table catalogue. Enum values are lower-case snake_case Postgres enums. Tables ar
 | Area | Tables and key columns | Rules |
 |---|---|---|
 | Reference data | `public.countries`, `languages`, `currencies`, `occupations`, `industries` | Read-only for users. ISO 3166-1, ISO 639-1, ISO 4217, ISCO-08, ISIC Rev.4 codes and labels; versioned seeds in `supabase/seeds/ref`. `occupations.label` trigram index, `synonyms text[]`. |
-| Identity | `auth.users` (Supabase) + `public.profiles(id = auth.users.id, account_kind worker/company, display_name, preferred_lang, status, deleted_at)` | Created by trigger on sign-up. No email, no password hash in public. `account_kind` is set once at onboarding by the RPC `set_account_kind` and protected by an immutability trigger, both in the profiles migration (proposed — see OPEN_QUESTIONS.md, D9). |
+| Identity | `auth.users` (Supabase) + `public.profiles(id = auth.users.id, account_kind worker/company, intended_account_kind worker/company, pending_consents jsonb, display_name, preferred_lang, status active/suspended, deleted_at)` | Created by trigger on sign-up, which copies the intended kind and the consent versions and age attestation ticked on the sign-up form into `intended_account_kind` and `pending_consents`. No email, no password hash in public. After email confirmation `account_kind` is committed once from the intended kind by the RPC `set_account_kind`, which in the same transaction calls `accept_consents` and clears `pending_consents`; an immutability trigger protects `account_kind`; both are in the profiles migration (proposed — see OPEN_QUESTIONS.md, D9; flow in §6.3). |
 | Platform staff | `public.platform_staff(user_id, role, granted_by, granted_at, revoked_at)` | Separate table so a profile update can never escalate privilege. `role` values from the first migration: `admin`, `verification_reviewer`, `trust_safety`, with separate permissions and named users, no shared administrator account (decided — OPEN_QUESTIONS.md, D1). Phase 1 builds the administrator console only; the reviewer queue is later phase. |
 | Legal documents | `public.legal_documents(slug, version, title, body, change_summary, published_at)`, unique `(slug, version)` | Current version = highest published version per slug (proposed — see OPEN_QUESTIONS.md, D2). |
 | Consents | `public.consents(id, user_id, purpose, version, action granted/withdrawn, created_at)` | Append-only; withdrawal inserts a row with `action = 'withdrawn'`; there is no `withdrawn_at` column. Age attestation (FR-A9) is the purpose `age_18_plus` (proposed — see OPEN_QUESTIONS.md, D3). |
@@ -179,10 +180,10 @@ Table catalogue. Enum values are lower-case snake_case Postgres enums. Tables ar
 | Workforce profile (later phase) | `organization_geographies`, `organization_occupations`, `organization_industries`, `organization_languages`, `organization_service_types`, `workforce_availability` | `geography_scope` = sources_from / serves_market; based_in stays a column on `organizations` (three geographies). `workforce_availability.updated_at` always displayed. |
 | Worker passport | `public.worker_profiles(user_id pk, first_name, last_name, headline, current_country, occupation_id, years_experience, availability, available_from, searchable)`, `worker_skills`, `worker_languages`, `worker_preferred_countries`, `worker_work_authorizations`; (later phase) `worker_preferred_industries`, `worker_experience` | Owner-only. `searchable default false` and stays false in Phase 1. |
 | Documents | `public.worker_documents(id, worker_user_id, type, title, bucket_id, storage_path, file_name, mime, size_bytes, scan_status, expires_on, deleted_at)` | Metadata row must exist before upload; owner-only. The owner column is named `worker_user_id` in every worker-owned table (proposed — see OPEN_QUESTIONS.md, D13). |
-| Sharing | `public.passport_shares(id, worker_user_id, organization_id, application_id, scope jsonb, consent_id, expires_at, revoked_at)` | Per-organization sharing with a consent row. In Phase 1 a share is created by `apply_to_job` and revoked by `withdraw_application`. |
-| Jobs | `public.jobs(id, organization_id, posted_on_behalf_of_organization_id, title, description, occupation_id, industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency, accommodation, visa_support, recruitment_preference, status, moderation_state, search_vector, created_by, deleted_at)`, `saved_jobs(worker_user_id, job_id)` | `search_vector` generated tsvector; `created_by default auth.uid()`; status transitions guarded by trigger; public read of open, visible jobs only. Jobs can be posted by any company type; `posted_on_behalf_of_organization_id` is null in Phase 1. `saved_jobs` is owner-only. |
-| Applications (ATS) | `public.job_applications(id, job_id, worker_user_id, status, cover_note, passport_share_id, profile_snapshot jsonb, shortlisted, created_at)`, `application_events(application_id, from_status, to_status, actor_id, note, created_at)`, `application_notes(application_id, organization_id, author_id, body)` | `status`: applied, viewed, shortlisted, interview, offer, hired, rejected, withdrawn. Unique partial index on `(job_id, worker_user_id) where status <> 'withdrawn'`. Profile snapshot taken at apply. `application_events` is append-only and written by RPCs only. `application_notes` is visible to members of the job's organization only. Writes go through `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`. Read: `worker_user_id = auth.uid()` or member of the job's organization. |
-| Notifications | `public.notifications(user_id, kind, payload, channel, status, sent_at)`, `notification_preferences(user_id, application_updates, digest)` | Queued via pgmq and delivered by the `notify` Edge Function; preferences are checked by the enqueue trigger. |
+| Sharing | `public.passport_shares(id, worker_user_id, organization_id, application_id, scope jsonb, consent_id, expires_at, revoked_at)` | Per-organization sharing with a consent row. `scope` is a jsonb array of the ids of the documents the candidate selected for that application, never document types; `document_access_grant` checks the document id, so an unselected document or a later upload of the same type is refused (proposed — see OPEN_QUESTIONS.md, D18). In Phase 1 a share is created by `apply_to_job`, revoked at once by `withdraw_application`, and given `expires_at` by `set_application_status` when the application reaches Hired or Not selected (default 30 days, setting `share_expiry_days_after_final`; OPEN_QUESTIONS.md, P13). |
+| Jobs | `public.jobs(id, organization_id, posted_on_behalf_of_organization_id, title, description, occupation_id, industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency, salary_period hour/month/year, accommodation, visa_support, recruitment_preference, status draft/open/paused/closed/filled, moderation_state visible/hidden/org_suspended, search_vector, created_by, deleted_at)`, `saved_jobs(worker_user_id, job_id)` | `search_vector` generated tsvector; `created_by default auth.uid()`; status transitions guarded by trigger (vacancy transition table below); public read of open, visible jobs only; `moderation_state` is `hidden` when set by `moderate_job` and `org_suspended` when set by `suspend_organization` (§11). Salary: check `salary_min <= salary_max` when both are set; `salary_currency` and `salary_period` are required when either amount is set; no currency conversion in Phase 1 (search filter in §9.2). Jobs can be posted by any company type; `posted_on_behalf_of_organization_id` is null in Phase 1. `saved_jobs` is owner-only. |
+| Applications (ATS) | `public.job_applications(id, job_id, worker_user_id, status, cover_note, passport_share_id, profile_snapshot jsonb, created_at)`, `application_events(application_id, from_status, to_status, actor_id, note, created_at)`, `application_notes(application_id, organization_id, author_id, body)` | `status`: applied, viewed, shortlisted, interview, offer, hired, rejected, withdrawn; the UI label of `rejected` is "Not selected". Shortlisting is the `shortlisted` state, set through `set_application_status` and gated by `private.has_feature(org, 'shortlisting')`; there is no separate shortlisted flag (the SDD column `shortlisted` is not created). Unique partial index on `(job_id, worker_user_id) where status <> 'withdrawn'`. Profile snapshot taken at apply. `application_events` is append-only and written by RPCs only; its `note` holds the stage-change note or the decline reason and is visible to the candidate in the journey tracker, and the employer UI labels the field "Visible to the candidate". Internal remarks go only in `application_notes`, which is visible to members of the job's organization only and never shown to the candidate. Writes go through `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`. Read: `worker_user_id = auth.uid()` or member of the job's organization. |
+| Notifications | `public.notifications(user_id, kind, payload, channel, status, sent_at)`, `notification_preferences(user_id, digest, email_undeliverable_at)` | Queued via pgmq and delivered by the `notify` Edge Function through Resend; preferences are checked by the enqueue trigger, mandatory kinds ignore them. Kinds, triggers and recipients: email catalogue below. |
 | Hiring network (later phase) | `public.workforce_requirements` (+ `requirement_occupations`), `requirement_invitations`, `partner_responses`, `candidate_submissions`, `connections`, `conversations`, `conversation_participants`, `messages`, `saved_items`, `follows` | Spec §21–§23. |
 | Billing | `billing.plans`, `plan_limits`, `plan_features`, `subscriptions`, `customers`, `orders`, `provider_events`; (later phase) `boosts`, `boost_products`, `verification_products`, `verification_fees`, `organization_limit_overrides` | Unexposed schema, owner `billing_owner`; read through public views. Columns in §10.1. |
 | Verification (later phase) | `public.verifications` (+ `verification_evidence`, `verification_events`, `badge_definitions`, view `org_badges`) | Writes only via RPC; guard trigger. |
@@ -191,17 +192,53 @@ Table catalogue. Enum values are lower-case snake_case Postgres enums. Tables ar
 | Audit | `audit.log(id, actor_id, action, entity_type, entity_id, metadata jsonb, ip, created_at)`, `audit.document_access_log(id, share_id, document_id, worker_user_id, organization_id, accessed_by, purpose, accessed_at)` | Insert through `audit.record()` only; UPDATE and DELETE blocked. The document access log is written only by `document_access_grant` and is worker-visible through a view. Its columns are those of the design description plus `worker_user_id` and `purpose`, without `outcome` (proposed — see OPEN_QUESTIONS.md, D16). |
 | Settings | `private.settings(key, value jsonb)` | Always read as `value #>> '{}'` and then cast (proposed — see OPEN_QUESTIONS.md, D6). |
 
-Application state machine (enforced in `set_application_status` and `withdraw_application`):
+Application state machine (SDD §4.2; enforced in `set_application_status`, `bulk_set_application_status` and `withdraw_application`). "Not selected" in the UI and in FR-D2 is stored as `rejected`.
 
-| From | To | Allowed actor |
-|---|---|---|
-| applied | viewed, shortlisted, interview, rejected | Employer member (`viewed` is set automatically on first open) |
-| viewed | shortlisted, interview, rejected | Employer member |
-| shortlisted | interview, offer, rejected | Employer member |
-| interview | offer, rejected | Employer member |
-| offer | hired, rejected | Employer member |
-| any non-final | withdrawn | Candidate |
-| hired, rejected, withdrawn | — | Final states |
+| From | To | Allowed actor | Minimum role |
+|---|---|---|---|
+| applied | viewed | System, on the first open of the application by a member of the job's organization | `member` |
+| applied | shortlisted, interview, rejected | Employer: member of the job's organization | `member`; `shortlisted` also needs `has_feature(org, 'shortlisting')` |
+| viewed | shortlisted, interview, rejected | Employer | `member`; as above for `shortlisted` |
+| shortlisted | interview, offer, rejected | Employer | `member`; there is no move back to applied or viewed (OPEN_QUESTIONS.md, P17) |
+| interview | offer, rejected | Employer | `member` |
+| offer | hired, rejected | Employer | `member` |
+| any non-final | withdrawn | Candidate who owns the application | none (`worker_user_id = auth.uid()`) |
+| hired, rejected, withdrawn | — | Final states; terminal, no transition leaves them | — |
+
+- Owners and admins reach applicant pages only at aal2 (FR-A4); members are not required to enrol (D8, OPEN_QUESTIONS.md, P7).
+- Every transition appends an `application_events` row (actor, from, to, note, time) and queues the candidate's `status_changed` email, except a move to `viewed`.
+- `withdrawn` revokes the share at once (`revoked_at`, plus the `withdrawn` consent row); `hired` and `rejected` set `passport_shares.expires_at` to now plus `share_expiry_days_after_final` (default 30; OPEN_QUESTIONS.md, P13).
+- Bulk changes and declines apply the same guard per application. Before anything is applied the UI shows a confirmation step listing the selected applicants, the target state and the reason. There is no undo: a decline is final and its email is sent (OPEN_QUESTIONS.md, P14).
+- For an organization on `free_employer` (lapsed, or any organization on that plan once limits are enforced) `set_application_status`, `bulk_set_application_status` and note inserts are refused and `viewed` is not set; past applicants stay readable (§10.4; OPEN_QUESTIONS.md, C11). `withdraw_application` is never blocked.
+
+Vacancy state machine (FR-C2; enforced by the trigger `private.jobs_guard_transition`, BEFORE UPDATE OF `status` on `public.jobs`; every change is audited). The UPDATE policy already limits status changes to owners and admins.
+
+| From | To | Allowed actor | Check |
+|---|---|---|---|
+| draft | open | Owner or admin | `active_jobs` limit (§10.4) |
+| open | paused, closed, filled | Owner or admin | — |
+| open | paused | System, on lapse of the subscription (§10.4) | only with `chara.actor_fn = 'pause_jobs_on_lapse'` |
+| paused | open | Owner or admin | `active_jobs` limit |
+| paused | closed, filled | Owner or admin | — |
+| closed | open | Owner or admin | `active_jobs` limit |
+| filled | — | Final state | — |
+
+A Paused vacancy is hidden from search and from public pages (the public read policy requires `status = 'open'`) and closed to new applications (`apply_to_job` requires `status = 'open'` and `moderation_state = 'visible'`); its existing applications continue through the pipeline (OPEN_QUESTIONS.md, P16). Moderation is separate from status: hiding a vacancy changes `moderation_state`, not `status`.
+
+Notifications and transactional email (FR-D6, FR-I2). One `notifications` row per recipient and kind, queued through pgmq and sent by `notify` through the Resend API (EU region). English only in Phase 1; templates in `apps/web/emails`. Emails carry no documents and no notes; they link to the page concerned.
+
+| Kind | Trigger | Recipients | Mandatory or preference |
+|---|---|---|---|
+| `application_received` | `apply_to_job` | Members of the job's organization | Preference `notification_preferences.digest`: false (default) = one email per application; true = daily summary, sent once a day at 08:00 Central European local time (Europe/Berlin) when there are new applications (OPEN_QUESTIONS.md, P15) |
+| `status_changed` | Every application state change except to `viewed` (employer moves, bulk moves, declines, withdrawal) | Candidate | Mandatory transactional email; cannot be switched off |
+| `vacancy_hidden` | `moderate_job` hides a vacancy | Owner and admins of the organization | Mandatory |
+| `trial_ending` | Stripe `customer.subscription.trial_will_end` (3 days before the trial ends) | Owner | Mandatory |
+| `payment_failed` | Stripe `invoice.payment_failed` that sets `past_due_since` | Owner | Mandatory |
+| `legal_version` | `publish_legal_document` | All users affected by the new version (accepted documents per account kind) | Mandatory |
+| `account_suspended`, `account_reinstated` | `suspend_*` / `reinstate_*` (§11) | The user, or the owner and admins of the organization | Mandatory; carries the statement of reasons |
+| `member_invitation`, `deletion_requested`, `deletion_completed`, `mfa_reset` | `invite_member` (§6.3; once `notify` exists), `request_account_deletion` and the completed erasure (§12), `reset_mfa` (§6.1) | The invitee, the account holder, or the user whose factors were reset | Mandatory |
+
+Delivery: `notify` runs every minute, sends with the notification id as idempotency key and records the result through `notify_ack` (`queued`, `sent`, `failed` after retries). Resend delivery webhooks (`delivered`, `bounced`, `complained`), signature-verified by `notify`, are recorded on the notification row through `notify_ack`; a hard bounce or a complaint sets `notification_preferences.email_undeliverable_at`, and later emails to that address are not sent and are recorded as `suppressed`; a trigger on `auth.users` clears `email_undeliverable_at` when the email address changes. pg_cron runs in UTC, so the daily-summary job runs hourly and sends when the hour in Europe/Berlin is 08.
 
 Data rules (enforced in SQL):
 1. Country-neutral: ISO 3166-1 alpha-2 everywhere; never hard-code corridors.
@@ -248,7 +285,7 @@ Every table is then granted explicitly to `anon` / `authenticated` (column lists
 
 ### 5.2 Identity and tenancy model
 
-- `auth.users` → `public.profiles` (1:1, created by trigger `private.handle_new_user()`; `account_kind` null until onboarding, then `worker` or `company`, immutable afterwards; set by `set_account_kind` and guarded by a trigger — proposed, see OPEN_QUESTIONS.md, D9).
+- `auth.users` → `public.profiles` (1:1, created by trigger `private.handle_new_user()`; `intended_account_kind` from the sign-up form; `account_kind` null until committed from it after email confirmation, then `worker` or `company`, immutable afterwards; set by `set_account_kind` and guarded by a trigger — proposed, see OPEN_QUESTIONS.md, D9; §6.3).
 - `public.organizations` (`type` employer | recruitment_company | staffing_company, `slug citext unique`, `based_in_country`), `public.organization_members` (`role` owner | admin | member, `accepted_at`), `public.organization_invitations` (email citext, token_hash, role, expires_at). Phase 1 has employer organizations only: the enum keeps all three values and `create_organization` rejects the other two (proposed — see OPEN_QUESTIONS.md, D7).
 - `public.platform_staff` (`role` admin | verification_reviewer | trust_safety, all three in the `platform_role` enum from the first migration — decided, OPEN_QUESTIONS.md, D1). One row per named person and role; further staff are added as rows, without code changes. Phase 1 builds the administrator console only; the verification reviewer queue is later phase.
 - A user may belong to several organizations; the active organization is chosen by URL (`/org/[slug]`) and validated by the DAL against membership, never trusted from a cookie alone.
@@ -318,7 +355,7 @@ Hot index: `create index organization_members_user_org on public.organization_me
 - No cross-table joins inside policies except through `private.*` helpers.
 - `as restrictive` only for MFA (`aal2`) gates and moderation visibility. aal2 is required only for invitations, `platform_staff`, member-management RPCs and billing reads; never for reading one's own membership or organization, so a new owner still at aal1 can reach onboarding and MFA enrolment (proposed — see OPEN_QUESTIONS.md, D8).
 - Multi-table or privileged writes go through SECURITY DEFINER RPCs in `public` (owned by `postgres`, `set search_path = ''`, first lines re-check `auth.uid()`/role/aal, write `audit.record()`).
-  - Phase 1: `accept_consents`, `withdraw_consent`, `set_account_kind` (added with the profiles migration; proposed — see OPEN_QUESTIONS.md, D9), `create_organization`, `invite_member`, `accept_invitation`, `remove_member`, `transfer_ownership`, `change_member_role` (added with the organizations migration; proposed — see OPEN_QUESTIONS.md, D14), `grant_platform_role` (added with the admin console; proposed — see OPEN_QUESTIONS.md, D11), `create_worker_passport`, `document_access_grant`, `search_jobs`, `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`, `moderate_job`, `suspend_user`, `suspend_organization`, `publish_legal_document`, `billing_checkout_start`, `request_data_export`, `request_account_deletion`.
+  - Phase 1: `accept_consents`, `withdraw_consent`, `set_account_kind` (added with the profiles migration; proposed — see OPEN_QUESTIONS.md, D9), `create_organization`, `invite_member`, `accept_invitation`, `remove_member`, `transfer_ownership`, `change_member_role` (added with the organizations migration; proposed — see OPEN_QUESTIONS.md, D14), `grant_platform_role` (added with the admin console; proposed — see OPEN_QUESTIONS.md, D11), `create_worker_passport`, `document_access_grant`, `search_jobs`, `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`, `moderate_job`, `suspend_user`, `suspend_organization`, `reinstate_user`, `reinstate_organization` (§11), `reset_mfa` (§6.1; proposed — see OPEN_QUESTIONS.md, D17), `publish_legal_document`, `billing_checkout_start`, `request_data_export`, `request_account_deletion`.
   - Later phase: `share_document`, `withdraw_share` (sharing outside an application), `publish_requirement`, `invite_partners`, `respond_to_invitation`, `submit_candidate`, `approve_submission`, `chara_match`, `verification_start/submit/claim/request_info/decide/suspend`, `report_content`, `moderation_decide`.
 - Service RPCs called by Edge Functions have EXECUTE granted to `service_role` only; they are listed in §8.
 - RPC errors use stable codes (`CHARA_FORBIDDEN`, `CHARA_LIMIT_REACHED`, `CHARA_FEATURE_NOT_IN_PLAN`, `CHARA_DOCUMENT_NOT_SCANNED`, …) that the DAL maps to UI messages.
@@ -332,10 +369,10 @@ alter table public.jobs force row level security;
 grant select on public.jobs to anon, authenticated;
 grant insert (organization_id, posted_on_behalf_of_organization_id, title, description, occupation_id,
               industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency,
-              accommodation, visa_support, recruitment_preference)
+              salary_period, accommodation, visa_support, recruitment_preference)
   on public.jobs to authenticated;                      -- created_by uses `default auth.uid()`, status defaults to 'draft'
 grant update (title, description, occupation_id, industry_code, country_code, city, employment_type,
-              salary_min, salary_max, salary_currency, accommodation, visa_support,
+              salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support,
               recruitment_preference, status)
   on public.jobs to authenticated;                      -- organization_id / created_by are not updatable
 grant delete on public.jobs to authenticated;
@@ -398,6 +435,7 @@ This is exactly how PostgREST sets the role and claims, so the tests exercise th
 
 - Providers: email + password (minimum 12 characters, email confirmation required, `secure_password_change = true`), OAuth (Google/Microsoft) for company users later via the same callback. Magic link optional for workers later. Anonymous sign-ins disabled.
 - MFA: TOTP enrol/verify enabled. Mandatory for platform staff and organization owners/admins (enforced three ways: `as restrictive` aal2 policies on sensitive tables, aal2 checks inside RPCs, `requireAal2()` in the DAL which redirects to `/[lang]/mfa`). Optional for workers.
+- MFA recovery (proposed — see OPEN_QUESTIONS.md, D17): there are no recovery codes (Supabase TOTP issues none, and a custom code cannot raise a session to aal2). The MFA page lets a user enrol a second TOTP factor as a backup, for example on a second device. A lost device is reset by a Platform Administrator after an identity check: the console calls `reset_mfa(user_id, reason)` (role `admin` + aal2, never on oneself, reason mandatory, `audit.record`), which has `account-ops` delete the user's TOTP factors through the Auth admin API and sign the user out globally; the user enrols again on the next protected page, and the mandatory `mfa_reset` email is queued (§4).
 - JWT: asymmetric ES256 signing key enabled at project creation so `getClaims()` verifies locally against JWKS; `jwt_expiry = 1800`; refresh-token rotation and reuse detection on.
 - Rate limits: `[auth.rate_limit]` defaults, tuned after launch; Auth emails go through Supabase custom SMTP on the transactional email provider; transactional emails are sent by the `notify` Edge Function through that provider's API. The provider is Resend, EU region (decided; OPEN_QUESTIONS.md, O10).
 
@@ -415,8 +453,8 @@ This is exactly how PostgREST sets the role and claims, so the tests exercise th
 
 ### 6.3 Onboarding per user type
 
-1. Sign-up collects email + password, versioned consent to terms and privacy, and the age attestation (FR-A9, consent purpose `age_18_plus`; no date of birth is stored) (proposed — see OPEN_QUESTIONS.md, D3). The `accept_consents` RPC writes the `consents` rows after confirmation.
-2. `/[lang]/onboarding`: "Who are you?" sets `profiles.account_kind` once, through the RPC `set_account_kind`; a trigger makes the column immutable afterwards (proposed — see OPEN_QUESTIONS.md, D9).
+1. Sign-up asks "candidate or company" first, because the kind decides which consent and age-attestation checkboxes are shown (documents per kind: OPEN_QUESTIONS.md, L9). The form collects email + password, the intended kind, versioned consent to the documents shown for that kind, and the age attestation (FR-A9, consent purpose `age_18_plus`; no date of birth is stored) (proposed — see OPEN_QUESTIONS.md, D3). They travel as sign-up metadata; `private.handle_new_user()` copies them into `profiles.intended_account_kind` and `profiles.pending_consents`. No `consents` row is written before the email is confirmed.
+2. After email confirmation, `/[lang]/onboarding` shows the intended kind and commits it once through the RPC `set_account_kind`, which copies `intended_account_kind` into `account_kind`, calls `accept_consents` with the versions held in `pending_consents` (writing the `consents` rows in the same transaction) and clears `pending_consents`; a trigger makes `account_kind` immutable afterwards (proposed — see OPEN_QUESTIONS.md, D9). If a document version shown at sign-up has been superseded, the user accepts the current version first.
    - Worker → `create_worker_passport(first_name, last_name, current_country, preferred_lang)` → `worker_profiles` (`searchable = false`) → worker dashboard with passport completion checklist.
    - Employer → `create_organization(type, legal_name, display_name, based_in_country, website)` inserts organization + owner membership + audit row atomically → MFA enrolment (blocking for the owner). No subscription row is inserted at this point: the plan resolves to `free_employer`, and the `trialing` subscription row arrives through the billing webhook after checkout, where the card is collected before the trial starts (FR-G2) (decided — OPEN_QUESTIONS.md, D4; card timing to be confirmed — OPEN_QUESTIONS.md, C15; trial rules in §10.1). In Phase 1 `create_organization` rejects the recruitment and staffing types (proposed — see OPEN_QUESTIONS.md, D7).
    - Recruitment / Staffing (later phase) → same RPC, then the "Where do you serve?" wizard (three geographies, industries, occupations, languages, service types, capacity).
@@ -474,7 +512,7 @@ create policy passport_docs_owner_delete on storage.objects
 ### 7.3 Access flow (sharing, signed URLs, access log)
 
 1. Upload: Server Action validates type/size (zod), inserts `worker_documents` (`scan_status = 'pending'`), mints `createSignedUploadUrl(path)` with the user's server session (the INSERT policy applies), returns it; the browser PUTs the bytes directly to Storage. A database webhook on `storage.objects` INSERT (`supabase_functions.http_request` → `scan-document`, shared-secret header) checks magic bytes and, once a vendor exists, scans; until then `scan_status = 'skipped'` and documents are served download-only (`Content-Disposition: attachment`). `scan-document` writes the result through the service RPC `document_set_scan_status`, never by a direct table update.
-2. Share: in Phase 1 a share exists only for a specific application. `apply_to_job(job_id, note, document_ids)` inserts a `consents` row (`purpose = 'share_passport:<org>'`, version of the sharing notice, `action = 'granted'`) and a `passport_shares` row (`application_id` set, `scope` = the chosen document types); `withdraw_application` sets `revoked_at` and inserts the `withdrawn` consent row. The worker's passport page lists shares and the access log. Sharing outside an application (`share_document(organization_id, scope jsonb, expires_at)` / `withdraw_share`) is later phase.
+2. Share: in Phase 1 a share exists only for a specific application. `apply_to_job(job_id, note, document_ids)` inserts a `consents` row (`purpose = 'share_passport:<org>'`, version of the sharing notice, `action = 'granted'`) and a `passport_shares` row (`application_id` set, `scope` = jsonb array of the ids of the documents the candidate selected; each id must be the caller's own, non-deleted `worker_documents` row) (proposed — see OPEN_QUESTIONS.md, D18); `withdraw_application` sets `revoked_at` and inserts the `withdrawn` consent row. When the application reaches `hired` or `rejected`, `set_application_status` sets `expires_at` (default 30 days; OPEN_QUESTIONS.md, P13). The worker's passport page lists shares and the access log. Sharing outside an application (`share_document(organization_id, scope jsonb, expires_at)` / `withdraw_share`) is later phase.
 3. Access (organization member; reviewers in the verification phase): Server Action → DAL → `supabase.functions.invoke('document-url', { body: { documentId, purpose }, region })` with the user's JWT → the function builds a user-scoped client from the forwarded Authorization header and calls `rpc('document_access_grant')`:
 
 ```sql
@@ -493,7 +531,8 @@ begin
     where s.worker_user_id = d.worker_user_id
       and s.organization_id in (select private.member_org_ids())
       and s.revoked_at is null and (s.expires_at is null or s.expires_at > now())
-      and c.action = 'granted' and s.scope ? d.type::text
+      and c.action = 'granted'
+      and s.scope ? d.id::text   -- scope lists document ids, not types (proposed — see OPEN_QUESTIONS.md, D18)
       -- append-only consent ledger: a later 'withdrawn' row cancels the grant (proposed — see OPEN_QUESTIONS.md, D3)
       and not exists (select 1 from public.consents w
                       where w.user_id = c.user_id and w.purpose = c.purpose
@@ -514,6 +553,7 @@ revoke all on function public.document_access_grant(uuid, text) from public;
 grant execute on function public.document_access_grant(uuid, text) to authenticated;
 ```
 
+   Because the grant checks the document id, a pgTAP test (`supabase/tests/database/`) asserts that, for an active share, `document_access_grant` refuses with `CHARA_FORBIDDEN` both a document of a shared type that the candidate did not select and a document of the same type uploaded after the application, and writes no access-log row for either (proposed — see OPEN_QUESTIONS.md, D18).
 4. The function then uses the secret client only to `createSignedUrl(path, 60, { download: file_name })` and returns the URL. No access-log row, no URL. The worker reads `public.v_my_document_access_log` (security_invoker over `audit.document_access_log`, policy `worker_user_id = auth.uid()`).
 5. Retention: `retention_policies(entity, days)` rows drive `private.apply_retention()` (pg_cron daily); object deletion always goes through the Storage API from `account-ops` (SQL deletes on `storage.objects` would orphan S3 objects). Account erasure purges the whole `{user_id}/` prefix.
 6. Backups: Supabase database backups exclude Storage objects, so a nightly replication of the private buckets to a CHARA-controlled EU object store is a launch requirement (`account-ops` job or an external scheduled job; budget is an owner question).
@@ -538,10 +578,10 @@ Edge Functions and the database: an Edge Function never reads or writes a table 
 | `billing_apply_event` | `billing-webhook`, billing retry job | Applies a stored event to subscriptions, customers and orders. |
 | `audit_record_external` | any function | Appends an `audit.log` row for an action that happened outside the database. |
 | `document_set_scan_status` | `scan-document` | Sets `worker_documents.scan_status`. |
-| `notify_dequeue` / `notify_ack` | `notify` | Reads a batch from the pgmq notification queue; records delivery status and archives the message. |
+| `notify_dequeue` / `notify_ack` | `notify` | Reads a batch from the pgmq notification queue; records delivery status (send result and Resend delivery webhooks; a bounce or complaint marks the address undeliverable, §4) and archives the message. |
 | `erase_user` | `account-ops` | Pseudonymises audit, billing and application rows and deletes passport rows after the cooling-off period. |
 
-`service_role` has no direct table grants in any schema; a pgTAP test asserts this. Storage and Auth admin calls (signed URLs, prefix purge, user deletion, global sign-out) go through their own APIs with the secret key.
+`service_role` has no direct table grants in any schema; a pgTAP test asserts this. Storage and Auth admin calls (signed URLs, prefix purge, user deletion, global sign-out, sign-in ban and lifting it on suspension and reinstatement (§11), TOTP factor deletion for an MFA reset (§6.1)) go through their own APIs with the secret key; the RPCs `suspend_user`, `suspend_organization`, `reinstate_user` and `reset_mfa` queue an `account-ops` job through pgmq after their audit row is written.
 
 Privileged-operation confinement: the secret key is an Edge Function secret only; `billing_ingest_event` and `billing_apply_event` are owned by `billing_owner` with EXECUTE for `service_role` only; `audit.log` accepts rows only through `audit.record()` (wrapped by `audit_record_external` for Edge Functions); the CI `security` job fails if `sb_secret_|service_role|SUPABASE_SECRET` appears outside `supabase/`, `docs/` and `.github/`; ESLint `no-restricted-imports` forbids importing anything from `supabase/functions` or a secret-key client into `apps/web`.
 
@@ -563,7 +603,7 @@ Phase 1 builds only job search (`search_jobs`), the job and application indexes,
 
 ### 9.2 Search functions (SQL, called via RPC, all RLS-aware)
 
-`search_jobs(filters, cursor, limit)`, `search_workers(filters)` (only `searchable` profiles, through `worker_search`), `search_partners(kind, filters)` (based_in / sources_from / serves_market / industries / occupations / languages / service type / capacity / verification level per country / availability), `search_available_workforce(destination, occupation, workers_needed, within_days)` (flags rows older than 60 days), job-order marketplace query (visibility rules in RLS: marketplace rows readable by recruitment/staffing members; invited rows only by invited orgs; private rows only by the owner). Organic ordering: relevance, then verification presence, then freshness. None of these functions reference `billing.boosts`; a test proves that inserting a boost does not change organic order.
+`search_jobs(filters, cursor, limit)`, `search_workers(filters)` (only `searchable` profiles, through `worker_search`), `search_partners(kind, filters)` (based_in / sources_from / serves_market / industries / occupations / languages / service type / capacity / verification level per country / availability), `search_available_workforce(destination, occupation, workers_needed, within_days)` (flags rows older than 60 days), job-order marketplace query (visibility rules in RLS: marketplace rows readable by recruitment/staffing members; invited rows only by invited orgs; private rows only by the owner). Organic ordering: relevance, then verification presence, then freshness. Minimum-salary filter in `search_jobs` (FR-C3): the filter takes an amount, a currency and a pay period (hour, month, year) and matches jobs with the same `salary_currency` and `salary_period` and `salary_max >= amount`; jobs without a salary in that currency and period do not match while the filter is set; there is no currency or period conversion in Phase 1. None of these functions reference `billing.boosts`; a test proves that inserting a boost does not change organic order.
 
 ### 9.3 CHARA Match v1 (EU AI Act posture: deterministic, documented, logged)
 
@@ -595,7 +635,7 @@ Phase 1 builds only job search (`search_jobs`), the job and application indexes,
 Plans, limits and features are rows, not code.
 
 - `plans(code pk, org_type, name, price_minor, currency 'EUR', interval, trial_days, is_public, is_default_trial, contact_sales, sort)`. Phase-1 seed: the fallback plan `free_employer` (price 0, not sold), `employer_starter` 3900 (the "Basic" tier; decided — OPEN_QUESTIONS.md, D15), `employer_professional` 7900 (pricing source; not confirmed by the reply — OPEN_QUESTIONS.md, C10) and `employer_enterprise` (seeded with `is_public = false`, not sold until its price is stated — OPEN_QUESTIONS.md, C10). The display name of the lowest tier is open (C13); the plan codes do not change. `trial_days` is 30 and administrator-editable. Later phase, seeded with those account types (proposed — see OPEN_QUESTIONS.md, D7): the fallback plans `free_recruitment_company` and `free_staffing_company`, `recruitment_partner` 4900, `recruitment_professional` 9900, `recruitment_enterprise` 19900 (contact sales), `staffing_partner` 5900, `staffing_professional` 12900, `staffing_enterprise` 24900 (contact sales).
-- `plan_limits(plan_code, limit_key, limit_value int null)` — keys: active_jobs, members; later phase: active_requirements, markets, messages_per_month, candidate_submissions_per_month, job_order_responses_per_month, partner_invitations_per_requirement. Seeded with the owner's initial numbers (decided — OPEN_QUESTIONS.md, C3); keys without a number (markets, job_order_responses_per_month) and all `free_employer` limits stay NULL until decided. Nothing is enforced until `entitlements_enforced` is true (§10.4); when that happens is open (OPEN_QUESTIONS.md, C11).
+- `plan_limits(plan_code, limit_key, limit_value int null)` — keys: active_jobs, members; later phase: active_requirements, markets, messages_per_month, candidate_submissions_per_month, job_order_responses_per_month, partner_invitations_per_requirement. Seeded with the owner's initial numbers (decided — OPEN_QUESTIONS.md, C3); keys without a number (markets, job_order_responses_per_month) stay NULL until decided. `free_employer` is seeded with `active_jobs` 0 and `members` 0 (no open vacancies, no members besides the owner; if the members limit is decided to count the owner, `free_employer` is seeded with `members` 1 — OPEN_QUESTIONS.md, C12) and no feature rows; its past applicants are read-only. The contents of `free_employer` are to be confirmed by CHARA (OPEN_QUESTIONS.md, C11). Paid-plan limits are enforced only when `entitlements_enforced` is true (§10.4; when that happens is open — OPEN_QUESTIONS.md, C11); for a lapsed organization the `free_employer` rules apply whether or not it is on (§10.4).
 
   | `limit_key` | `employer_starter` | `employer_professional` | `employer_enterprise` | Used from |
   |---|---|---|---|---|
@@ -612,12 +652,14 @@ Plans, limits and features are rows, not code.
   - `employer_professional` and `employer_enterprise` add: advanced search (`advanced_worker_search`, `advanced_partner_search`), `analytics_advanced`, `corridors`, `multi_partner_invitation`, `multi_country_requirements` (follows the limits table; conflict open — OPEN_QUESTIONS.md, C16; the Basic tier is "limited" and the meaning of limited is not defined yet). More partner invitations and messaging capacity are limits (table above); enhanced company visibility has no feature key yet (later phase).
   - `employer_enterprise` adds: `analytics_enterprise`, `priority_visibility` ("included or available"; the exact rule is not defined yet), priority support, multi-country partner network access, higher or unlimited volumes under fair-use rules (per-organization overrides), enhanced and enterprise-level verification options and Verified Partner eligibility (no feature keys yet; later phase). On the other plans priority visibility is bought as a boost (follows the limits table; conflict open — OPEN_QUESTIONS.md, C16).
   - `available_workforce_search` is not assigned to a tier by the reply; open (OPEN_QUESTIONS.md, C16).
-- `subscriptions(id, organization_id, plan_code, status trialing | active | past_due | canceled | paused, trial_ends_at, current_period_start, current_period_end, cancel_at, provider, provider_customer_ref, provider_subscription_ref)`; partial unique index: one non-canceled subscription per organization; check: organization type is a company type. No row is inserted when an organization is created; the first (`trialing`) row arrives through the billing webhook after checkout (decided — OPEN_QUESTIONS.md, D4).
+- `subscriptions(id, organization_id, plan_code, status trialing | active | past_due | canceled | paused, trial_ends_at, current_period_start, current_period_end, cancel_at, past_due_since, last_provider_event_at, provider, provider_customer_ref, provider_subscription_ref)`; partial unique index: one non-canceled subscription per organization; check: organization type is a company type. No row is inserted when an organization is created; the first (`trialing`) row arrives through the billing webhook after checkout (decided — OPEN_QUESTIONS.md, D4). `past_due_since` is set from the first `invoice.payment_failed` of a dunning period and cleared by `invoice.paid`; `last_provider_event_at` is the creation time of the newest provider event applied, used to detect stale events (§10.3).
+- Grace period and dunning (FR-G4): the 7-day grace starts at `past_due_since`. Stripe's retry (dunning) settings retry the payment and cancel the subscription 7 days after the first failure; the local `canceled` state comes only from `customer.subscription.deleted`, never from a local timer. During the grace period the organization keeps its plan. A reconciliation check alerts operations when a subscription is still `past_due` more than one day after the grace period ends. Tested in Stripe test mode with a test clock (trial end, failed payment, retries, cancellation).
+- Lapse (FR-G4; defaults to be confirmed by CHARA — OPEN_QUESTIONS.md, C11): when a subscription is cancelled the organization falls back to `free_employer`. In the same transaction `billing_apply_event` calls `private.pause_jobs_on_lapse(org)` (owned by `postgres`, EXECUTE granted to `billing_owner` only), which moves every `open` vacancy to `paused` with `chara.actor_fn = 'pause_jobs_on_lapse'` and writes one audit row per vacancy. For the lapsed organization, application status changes, notes and bulk actions are refused and reopening a vacancy goes through the `active_jobs` limit (0), whether or not `entitlements_enforced` is on (§10.4). A new checkout restores the plan; paused vacancies are then reopened by the owner or an admin through the normal limit check.
 - Trial (decided — OPEN_QUESTIONS.md, D4, C6): the card is collected at checkout before the trial starts (card timing to be confirmed — OPEN_QUESTIONS.md, C15); the trial lasts `plans.trial_days` (30, administrator-editable) and converts automatically to the selected paid plan. One trial per legal entity: the billing customer carries a unique legal-entity identifier (company registration number, VAT number or another unique legal-entity identifier; C14), and `billing_checkout_start` grants no trial when that identifier has already had one. Which identifier is mandatory per country and how it is validated is open (C14). Before the trial starts the checkout confirmation page states the trial period, the price after the trial, the billing frequency, the automatic conversion and how to cancel.
 - `customers(organization_id, provider, customer_ref, billing_country, vat_id, registration_number, legal_address)`.
 - Currency and VAT (decided — OPEN_QUESTIONS.md, C7): prices are stored and displayed in EUR, exclusive of VAT; VAT is calculated by the payment provider from the customer's location and the applicable tax rules. EUR is the only billing currency in the first release; every price row has a `currency` column so further currencies can be added as rows. Tax treatment for customers outside the EU follows the payment provider and accounting setup agreed with the owner's advisers.
 - `orders(id, organization_id, kind, sku_or_plan, amount_minor, tax_minor, currency, status, provider_ref, invoice_ref, details jsonb)` — the tax amount and invoice reference come from the provider (Stripe Tax).
-- `provider_events(id, provider, provider_event_id, kind, payload jsonb, signature_valid, received_at, applied_at, error, unique(provider, provider_event_id))` — written only by `billing_ingest_event`.
+- `provider_events(id, provider, provider_event_id, kind, payload jsonb, signature_valid, provider_created_at, received_at, status received | applied | stale | error, applied_at, error, unique(provider, provider_event_id))` — inserted only by `billing_ingest_event`; `status`, `applied_at` and `error` are set by `billing_apply_event` (§10.3).
 - (later phase) `boost_products(sku, target_type job | organization, org_type, days, price_minor, currency)` seeded from the pricing doc: job 2500/7d, 3900/14d, 5900/30d; recruitment 5900/10900/19900; staffing 4900/8900/13900. `boosts(id, organization_id, sku, target_type, target_id, starts_at, ends_at, provider_payment_ref unique)`; `public.v_active_boosts` is the only reader (BoostedRail). Decided (OPEN_QUESTIONS.md, R29): boosts are sold to hiring, recruitment and staffing companies for job postings, workforce requirements, company profiles and partner profiles, and can be bought on any plan, without a higher plan. Possible functions: top search placement, featured profile, job or requirement, priority visibility, regional or country visibility, homepage or category placement. The reply asks for the boost system in the production architecture from the start; it is designed here and built in the boosts phase (to confirm — OPEN_QUESTIONS.md, P9). Boost products are administrator-editable rows; administrators control price, duration, placement, country or region, category, availability and promotional discounts. The catalogue prices are open (C8), and the columns for the attributes not listed above are designed with that phase.
 - (later phase) `verification_products(sku verification_basic | professional | enterprise, price_minor 4900 | 9900 | 19900 (Enterprise is a starting price), interval 'year', eligible_levels text[])`; `verification_fees(id, organization_id, sku, paid_at, expires_at, provider_payment_ref unique)` — a paid fee only allows `verification_submit` for a paid level; it never touches `verifications.status`.
 - Every `billing` table has RLS enabled and forced and a policy `to billing_owner using (true) with check (true)`, because BYPASSRLS is not inherited through role membership (§10.3). `service_role` has no grants on the schema.
@@ -627,14 +669,17 @@ Plans, limits and features are rows, not code.
 ### 10.2 Adapter interface (`supabase/functions/_shared/billing/provider.ts`)
 
 ```ts
-export type NormalizedEvent =
+// Every event also carries providerCreatedAt (ISO time the provider created it), used for the stale check (§10.3).
+export type NormalizedEvent = { providerCreatedAt: string } & (
+  | { kind: 'checkout.completed'; orgId: string; providerCustomerRef: string; providerSubscriptionRef?: string }
   | { kind: 'subscription.activated' | 'subscription.updated' | 'subscription.canceled' | 'subscription.past_due';
       orgId: string; planCode: string; status: 'trialing'|'active'|'past_due'|'canceled'|'paused';
-      providerSubscriptionRef: string; currentPeriodEnd?: string }
+      providerSubscriptionRef: string; currentPeriodEnd?: string; trialEndsAt?: string }
+  | { kind: 'subscription.trial_will_end'; orgId: string; providerSubscriptionRef: string; trialEndsAt: string }
   | { kind: 'payment.succeeded'; orgId: string; purpose: 'subscription'|'boost'|'verification_fee';
       sku?: string; targetId?: string; amountMinor: number; currency: string; providerPaymentRef: string }
   | { kind: 'payment.failed'; orgId: string; providerPaymentRef: string; reason?: string }
-  | { kind: 'refund.issued'; orgId: string; providerPaymentRef: string; amountMinor: number };
+  | { kind: 'refund.issued'; orgId: string; providerPaymentRef: string; amountMinor: number });
 
 export interface CheckoutInput {
   orgId: string; kind: 'subscription'|'boost'|'verification_fee'; planCode?: string; sku?: string;
@@ -650,7 +695,7 @@ export interface BillingProvider {
 }
 ```
 
-`providers/null.ts` verifies `x-chara-signature` = HMAC-SHA256(rawBody, `BILLING_WEBHOOK_SECRET`) and parses already-normalized JSON; it is the provider in dev, CI and E2E. `providers/stripe.ts` is the production provider: Stripe Checkout, Customer Portal, Stripe Tax and webhook signature verification. The `boost` and `verification_fee` kinds in the interface are later phase.
+`providers/null.ts` verifies `x-chara-signature` = HMAC-SHA256(rawBody, `BILLING_WEBHOOK_SECRET`) and parses already-normalized JSON; it is the provider in dev, CI and E2E. `providers/stripe.ts` is the production provider: Stripe Checkout, Customer Portal, Stripe Tax and webhook signature verification. The `boost` and `verification_fee` kinds in the interface are later phase. `billing_checkout_start` passes the organization id, which `providers/stripe.ts` sets as the Checkout session `client_reference_id` and in `subscription_data.metadata`; `normalize` takes `orgId` from that subscription metadata (from `client_reference_id` for `checkout.session.completed`), so subscription and invoice events resolve to the organization even when they arrive before `checkout.session.completed`.
 
 ### 10.3 Webhook ingestion and application
 
@@ -676,7 +721,7 @@ returns uuid
 language plpgsql security definer set search_path = '' as $$ /* insert into billing.provider_events … on conflict (provider, provider_event_id) do nothing; returns the event id */ $$;
 
 create or replace function public.billing_apply_event(p_event_id uuid) returns void
-language plpgsql security definer set search_path = '' as $$ /* maps NormalizedEvent kinds to subscriptions, customers, orders (later phase: boosts, verification_fees); rejects an unknown plan code; sets applied_at; audit.record('billing.event_applied') */ $$;
+language plpgsql security definer set search_path = '' as $$ /* maps NormalizedEvent kinds to subscriptions, customers, orders (later phase: boosts, verification_fees) per the table below; skips stale events; an unknown plan code or organization sets status 'error'; sets applied_at; audit.record('billing.event_applied') */ $$;
 
 -- for both functions:
 alter function public.billing_apply_event(uuid) owner to billing_owner;
@@ -684,25 +729,57 @@ revoke all on function public.billing_apply_event(uuid) from public, anon, authe
 grant execute on function public.billing_apply_event(uuid) to service_role;
 ```
 
+Stripe event → effect (FR-G3), applied by `billing_apply_event` to `billing.subscriptions` unless stated:
+
+| Stripe event | Normalized kind | Effect |
+|---|---|---|
+| `checkout.session.completed` | `checkout.completed` | Link the customer and the subscription to the organization (`billing.customers.customer_ref`, `subscriptions.provider_customer_ref` / `provider_subscription_ref`). |
+| `customer.subscription.created`, `customer.subscription.updated` | `subscription.activated`, `subscription.updated` | Upsert status, plan code, current period end and trial end. |
+| `customer.subscription.deleted` | `subscription.canceled` | Status `canceled`; the organization falls back to `free_employer` and the lapse rules run (§10.1). The only path to the local `canceled` state. |
+| `invoice.paid` | `payment.succeeded` (purpose `subscription`) | Clear `past_due_since`; set `active` only when the Stripe subscription status is `active` (the zero-amount invoice paid when a trial starts leaves `trialing` unchanged). |
+| `invoice.payment_failed` | `payment.failed` | Status `past_due`; set `past_due_since` if it is empty, and, only when it sets it, queue the `payment_failed` email (§4). |
+| `customer.subscription.trial_will_end` | `subscription.trial_will_end` | Queue the `trial_ending` email to the owner (Stripe sends it 3 days before the trial ends). |
+
+- Idempotency: each event is stored once, keyed by `(provider, provider_event_id)`; a duplicate delivery returns 200 and changes nothing.
+- Ordering: Stripe does not guarantee delivery order. An event whose `provider_created_at` is older than `subscriptions.last_provider_event_at` is not applied over newer state: it is marked `stale`, and the adapter re-fetches the current subscription from Stripe and applies that instead.
+- Unknown data: an event whose organization is not yet linked is retried by `billing.retry_failed_events()` before it is marked `error`; an event whose price maps to no known plan code, or whose organization still cannot be resolved, is stored with `status = 'error'` and the reason in `error`, is not applied, and raises an operations alert (`private.security_events` and the pg_net alert through `notify`, §12).
+- Dunning: the Stripe retry schedule is set to cancel the subscription 7 days after the first failed payment; the grace rule is in §10.1.
+
 ### 10.4 Entitlement-check pattern (limits and features are data)
 
 The SQL below shows the proposed resolutions of two open conflicts: the plan code falls back to `'free_' || organization type` when there is no usable subscription row, and an unknown plan code denies (proposed — see OPEN_QUESTIONS.md, D5); `private.settings.value` is jsonb and is always read as `value #>> '{}'` and then cast (proposed — see OPEN_QUESTIONS.md, D6).
 
 ```sql
--- Never returns null for an existing organization: no subscription row, a canceled one or an expired
--- past_due one all resolve to the seeded fallback plan 'free_<organization type>'.
+-- Never returns null for an existing organization: no subscription row or a canceled one resolves to the
+-- seeded fallback plan 'free_<organization type>'. past_due keeps the plan: the 7-day grace is enforced by
+-- Stripe dunning, and the local 'canceled' state comes only from customer.subscription.deleted (§10.1, §10.3).
 create or replace function private.org_plan_code(p_org uuid) returns text
 language sql stable security definer set search_path = '' as $$
   select coalesce(
-    (select case
-       when s.status in ('trialing','active') then s.plan_code
-       when s.status = 'past_due' and s.current_period_end > now() - make_interval(days =>
-            coalesce((select (value #>> '{}')::int from private.settings where key = 'past_due_grace_days'), 7)) then s.plan_code
-     end
+    (select case when s.status in ('trialing','active','past_due') then s.plan_code end
      from billing.subscriptions s where s.organization_id = p_org and s.status <> 'canceled'
      order by s.created_at desc limit 1),
     'free_' || (select o.type::text from public.organizations o where o.id = p_org))
 $$;
+
+-- free_* restrictions apply when limits are enforced, and always to a lapsed organization (it is on a free_*
+-- plan and has a subscription row, so every row it has is canceled) — OPEN_QUESTIONS.md, C11.
+create or replace function private.free_plan_restricted(p_org uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.org_plan_code(p_org) like 'free\_%'
+     and (coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+          or exists (select 1 from billing.subscriptions s where s.organization_id = p_org))
+$$;
+
+-- Read-only past applicants. Called first in set_application_status, bulk_set_application_status and by the
+-- application_notes insert trigger; never in withdraw_application.
+create or replace function private.assert_org_writable(p_org uuid) returns void
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if private.free_plan_restricted(p_org) then
+    raise exception 'CHARA_FEATURE_NOT_IN_PLAN' using detail = 'read_only_free_plan', errcode = 'P0001';
+  end if;
+end $$;
 
 create or replace function private.org_limit(p_org uuid, p_key text) returns integer   -- null = unlimited (known plan only)
 language sql stable security definer set search_path = '' as $$
@@ -721,8 +798,9 @@ create or replace function private.assert_within_limit(p_org uuid, p_key text, p
 language plpgsql stable security definer set search_path = '' as $$
 declare v_plan text := private.org_plan_code(p_org); v_limit integer;
 begin
-  if not coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false) then
-    return;                                                     -- limits are not enforced yet
+  if not coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+     and not private.free_plan_restricted(p_org) then
+    return;                                                     -- limits are not enforced yet, except for a lapsed organization
   end if;
   if not exists (select 1 from billing.plans p where p.code = v_plan) then
     raise exception 'CHARA_FORBIDDEN' using detail = 'unknown_plan', errcode = '42501';   -- unknown plan code denies
@@ -749,7 +827,7 @@ create trigger jobs_enforce_limits before insert or update of status on public.j
 -- Feature gates inside RPCs:  if not private.has_feature(v_org, 'chara_match') then raise exception 'CHARA_FEATURE_NOT_IN_PLAN' using detail = 'chara_match'; end if;
 ```
 
-`private.settings.entitlements_enforced` starts as `false`; while it is false no limit or feature gate blocks anything. The owner supplied the plan limits and the tier features on 2026-10-02 and they are seeded (§10.1); when the setting is switched to `true` is open (OPEN_QUESTIONS.md, C11; recommended: with the billing work package, and C12 for the one-member limit of the Basic tier). Having it `true` is a go-live checklist item. Per-organization overrides (§10.1) are read by `private.org_limit` once that table exists. Monthly counters live in `private.usage_counters(organization_id, key, period, count)` maintained by the same triggers. Downgrade behaviour defaults to "keep data, block creation over limit" (see OPEN_QUESTIONS.md, C9).
+`private.settings.entitlements_enforced` starts as `false`; while it is false no limit or feature gate blocks anything for an organization that has never had a subscription, so the week 1–3 demos work before checkout exists. The lapse rules do not depend on it (OPEN_QUESTIONS.md, C11): a lapsed organization (back on `free_employer` after a cancelled subscription) cannot open or reopen a vacancy (`active_jobs` 0) or invite members (`members` 0), and cannot change application states or add notes (`private.assert_org_writable`); its open vacancies were moved to Paused on lapse (§10.1). Once the setting is true, the same `free_employer` restrictions apply to every organization on that plan, including one that has not yet started a trial. The owner supplied the plan limits and the tier features on 2026-10-02 and they are seeded (§10.1); when the setting is switched to `true` is open (OPEN_QUESTIONS.md, C11; recommended: with the billing work package, and C12 for the one-member limit of the Basic tier). Having it `true` is a go-live checklist item. Per-organization overrides (§10.1) are read by `private.org_limit` once that table exists. Monthly counters live in `private.usage_counters(organization_id, key, period, count)` maintained by the same triggers. Downgrade behaviour defaults to "keep data, block creation over limit" (see OPEN_QUESTIONS.md, C9).
 
 ### 10.5 The invariant, enforced structurally
 
@@ -763,7 +841,20 @@ Verification and boosts are later phase; Phase 1 builds the `billing_owner` isol
 
 ## 11. Verification, trust, reports and moderation
 
-Later phase, except `moderation_actions` and the Phase-1 admin RPCs `moderate_job`, `suspend_user` and `suspend_organization` (`trust_safety` + aal2, statement of reasons mandatory, audited; `verification_reviewer` may not call them, and whether `admin` may is stated per RPC with the admin console work package — responsibilities per role: OPEN_QUESTIONS.md, R27). The verification, badge, report and appeal design below is kept for the later phases.
+Later phase, except `moderation_actions` and the Phase-1 admin RPCs `moderate_job`, `suspend_user`, `suspend_organization`, `reinstate_user` and `reinstate_organization` (`trust_safety` + aal2, statement of reasons mandatory, audited; `verification_reviewer` may not call them, and whether `admin` may is stated per RPC with the admin console work package — responsibilities per role: OPEN_QUESTIONS.md, R27). The verification, badge, report and appeal design below is kept for the later phases.
+
+Suspend and reinstate (Phase 1, FR-F1). Actor: the Trust & Safety Administrator (`trust_safety` + aal2); whether the Platform Administrator may also act is open (OPEN_QUESTIONS.md, P12). Every action takes a mandatory statement of reasons, writes a `moderation_actions` row and an `audit.record()` row with the reason, and queues a mandatory email (§4).
+
+| Effect | `suspend_user(user_id, reasons)` | `suspend_organization(org_id, reasons)` |
+|---|---|---|
+| Status | `profiles.status = 'suspended'` | `organizations.status = 'suspended'` |
+| Sessions | `account-ops` signs the user out globally | `account-ops` signs every member out globally; members can sign in again, but the DAL and the organization's RPCs refuse access to the suspended organization |
+| Login | `account-ops` sets a sign-in ban on the auth user through the Auth admin API; the DAL and RPCs also refuse a suspended profile | Members can still sign in (they may belong to other organizations or use their own account) |
+| Vacancies | Unchanged (a suspended user who owns an organization does not suspend it) | Every `visible` vacancy gets `moderation_state = 'org_suspended'`, so it leaves search, public pages and new applications |
+| Billing | None | Subscription left as is: no pause, cancellation or refund (to be confirmed by CHARA — OPEN_QUESTIONS.md, P12) |
+| Email | `account_suspended` to the user, with the statement of reasons | `account_suspended` to the owner and admins, with the statement of reasons |
+
+`reinstate_user(user_id, reasons)` and `reinstate_organization(org_id, reasons)` reverse each effect: status back to `active`, the sign-in ban lifted through `account-ops` (the user signs in again; sessions are not restored), vacancies with `moderation_state = 'org_suspended'` set back to `visible` (vacancies hidden by `moderate_job` stay hidden), and an `account_reinstated` email with the reasons. Each reinstatement is audited with its reason.
 
 - `badge_definitions(level identity | business | licence | workforce_capability | verified_partner | skill, label, description, default_validity_months, checks_catalog jsonb)`.
 - `verifications(id, subject_type organization | worker_skill, organization_id, worker_skill_id, level, status draft | submitted | in_review | info_requested | approved | rejected | suspended | expired, country_code (required for licence), source (skills), checks_completed jsonb, submitted_at, claimed_by, claimed_at, decided_by, second_approved_by, decided_at, verified_at, expires_at, decision_reason, info_request, verification_fee_id)`, `verification_evidence`, `verification_events` (append-only transitions), view `public.org_badges` (approved and unexpired only: level, country, verified_at, expires_at, checks_completed labels, source — licence badges always carry the country; nothing implies "authorised everywhere").
@@ -852,7 +943,9 @@ The Supabase CLI is the devDependency `supabase@2.119.0` and is always invoked a
 ### 14.4 Testing matrix
 
 - Database: pgTAP tests in `supabase/tests/database/*.test.sql`, run with `npx supabase test db` (policies allow/deny/cross-tenant, triggers, `billing_owner` privilege test, `service_role` has no direct table grants, audit immutability, k-anonymity, RLS enabled and forced on every table, forbidden-attribute test over `information_schema.columns`, EXPLAIN plan assertions; later phase: match reasons). `npx supabase db lint --local --fail-on error` joins the CI `db` job later.
-- Edge Functions: `deno test` in `supabase/functions/_tests` with the null provider and a fake fetch (bad signature → 401, duplicate event → 200 no-op, `document-url` 401/403/200 and access-log write).
+  Named tests from the SOP review: `document_access_grant` refuses an unselected document and a later upload of a shared type (D18); vacancy and application transition guards accept exactly the rows of the §4 tables; a lapsed organization's open vacancies become Paused and its application writes are refused with `entitlements_enforced` false (C11).
+- Edge Functions: `deno test` in `supabase/functions/_tests` with the null provider and a fake fetch (bad signature → 401, duplicate event → 200 no-op, stale event not applied, unknown plan or organization stored with status `error`, `document-url` 401/403/200 and access-log write).
+- Billing in Stripe test mode: a test clock drives trial end, a failed payment, the retries and the cancellation after 7 days, and asserts that the status stays `trialing` after the trial starts, `past_due_since`, the `canceled` state from `customer.subscription.deleted` and the fallback to `free_employer` (§10.1).
 - Web: Vitest + Testing Library for synchronous components, zod schemas, DTO mappers; proxy unit tests with `next/experimental/testing/server` (`unstable_doesProxyMatch`, `getRedirectUrl`); Playwright E2E against `next build && next start` + local stack (sign-up → confirmation link from the mail catcher API → onboarding worker and employer → dashboards; worker applies with a document → employer downloads it → access log visible; billing with the null provider); @axe-core/playwright on public pages; header check for CSP nonce and no `'unsafe-inline'` for scripts.
 
 ### 14.5 CI (`.github/workflows/ci.yml`)
@@ -919,6 +1012,8 @@ allowed_mime_types = ["application/pdf", "image/jpeg", "image/png"]
 verify_jwt = false
 [functions.scan-document]
 verify_jwt = false
+[functions.notify]
+verify_jwt = false            # scheduler shared-secret header; Resend webhook signature
 [functions.document-url]
 verify_jwt = true
 ```
@@ -931,7 +1026,7 @@ verify_jwt = true
 4. Settings → API: exposed schemas `public, graphql_public`; max rows 100.
 5. Integrations: enable Cron (pg_cron), Queues (pgmq), and the pg_net and supabase_vault extensions; add Vault secrets `edge_shared_secret`, `billing_webhook_secret`.
 6. Locally: `npx supabase login`, `npx supabase link --project-ref <ref>` (DB password prompted), `npx supabase db push --dry-run`, then `npx supabase db push` (migrations create roles, schemas, buckets, policies, cron jobs), then `npx supabase db push --include-seed` once for reference data only (never dev fixtures).
-7. `npx supabase secrets set --env-file <file>` with an uncommitted file that uses the variable names of `supabase/functions/.env.example` (BILLING_WEBHOOK_SECRET, EDGE_SHARED_SECRET, the Stripe secret key and webhook signing secret, the Resend API key, the AV key when chosen; names must not start with `SUPABASE_`). In Stripe: register the `billing-webhook` URL as the webhook endpoint and enable Stripe Tax and the Customer Portal.
+7. `npx supabase secrets set --env-file <file>` with an uncommitted file that uses the variable names of `supabase/functions/.env.example` (BILLING_WEBHOOK_SECRET, EDGE_SHARED_SECRET, the Stripe secret key and webhook signing secret, the Resend API key and webhook signing secret, the AV key when chosen; names must not start with `SUPABASE_`). In Stripe: register the `billing-webhook` URL as the webhook endpoint for the events in §10.3, enable Stripe Tax and the Customer Portal, and set the subscription retry schedule to cancel the subscription 7 days after the first failed payment (§10.1). In Resend: register the `notify` URL for the `delivered`, `bounced` and `complained` webhooks.
 8. `npx supabase functions deploy --use-api` (no Docker needed; `verify_jwt` per function from `config.toml`).
 9. Verify: `select * from cron.job`; sign up a test account and receive the confirmation email; `document-url` returns a 60-s URL and an access-log row; `billing-webhook` rejects a bad signature with 401 and applies a signed test event (Stripe test mode).
 10. GitHub: add `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD` to the `production` environment with required reviewers; enable `deploy-supabase.yml` (link → `db push` → `functions deploy --use-api` → `secrets set`). Optionally enable Branching for per-PR preview projects (no production data is copied; migrations, seeds and functions are applied).
@@ -972,4 +1067,4 @@ The records are in `docs/adr/`.
 - ADR-0003 — No secret keys in apps/web; privileged work only in Edge Functions.
 - ADR-0004 — Strict nonce CSP with fully dynamic rendering; Cache Components deferred. Revisit when (a) hosting is chosen and public pages need CDN-cached HTML, or (b) Next.js SRI/hash-based CSP leaves experimental; the DAL/session code already follows the Cache Components authentication guide so the flip is a config + CSP change.
 - ADR-0005 — Rule-based, explainable matching: every match stores its reasons (`reasons jsonb not null`); no machine learning in v1 (later phase).
-- Open decisions are tracked in `docs/OPEN_QUESTIONS.md`: design conflicts (D1–D16; D1, D4 and D15 are decided by the owner, the others are marked "proposed" in this document) and decisions that belong to the owner. The owner's decisions reply (2026-10-02; client document, not in git) is recorded there as R20–R31, with the questions it raised as C10–C17, L7–L9, O9, O10 and P9–P12; O10 (email provider) is now decided: Resend.
+- Open decisions are tracked in `docs/OPEN_QUESTIONS.md`: design conflicts (D1–D18; D1, D4 and D15 are decided by the owner, the others are marked "proposed" in this document) and decisions that belong to the owner. The owner's decisions reply (2026-10-02; client document, not in git) is recorded there as R20–R31, with the questions it raised as C10–C17, L7–L9, O9, O10 and P9–P12; O10 (email provider) is now decided: Resend. The SOP review of 2026-10-03 added D17 (MFA recovery), D18 (shares by document id) and P13–P17 (share expiry after a final state, decline undo, daily-summary time, applications to a Paused vacancy, moving back from Shortlisted), and extended C11 (contents of `free_employer`) and P12 (billing effect of a suspension).
