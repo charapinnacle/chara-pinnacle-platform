@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(38);
 
 select has_table('audit', 'log', 'audit.log exists');
 select columns_are(
@@ -14,6 +14,12 @@ select ok(
 select ok(
   (select tgtype & 35 = 34 from pg_trigger where tgrelid = 'audit.log'::regclass and tgname = 'log_no_truncate'),
   'a BEFORE statement trigger blocks TRUNCATE'
+);
+select is(
+  (select array_agg(tgenabled::text order by tgname) from pg_trigger
+    where tgrelid = 'audit.log'::regclass and tgname in ('log_append_only', 'log_no_truncate')),
+  array['A', 'A'],
+  'both append-only triggers are ENABLE ALWAYS so replica mode cannot bypass them'
 );
 select ok(
   (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'audit.log'::regclass),
@@ -121,6 +127,23 @@ select throws_ok(
   '42501', 'audit.log is append-only',
   'truncate is refused for the table owner'
 );
+set local session_replication_role = replica;
+select throws_ok(
+  format($$delete from audit.log where id = %s$$, :first_id),
+  '42501', 'audit.log is append-only',
+  'delete is refused in replica mode'
+);
+select throws_ok(
+  format($$update audit.log set action = 'tampered' where id = %s$$, :first_id),
+  '42501', 'audit.log is append-only',
+  'update is refused in replica mode'
+);
+select throws_ok(
+  $$truncate audit.log$$,
+  '42501', 'audit.log is append-only',
+  'truncate is refused in replica mode'
+);
+set local session_replication_role = origin;
 select is(
   (select action from audit.log where id = :first_id),
   'suspend_user',
@@ -149,9 +172,9 @@ select throws_ok($$select audit.record('forged', 'profile')$$, '42501', null, 's
 reset role;
 
 select is(
-  (select count(*) from audit.log),
+  (select count(*) from audit.log where id in (:first_id, :second_id, :third_id)),
   3::bigint,
-  'only the three records written through audit.record() exist'
+  'the three records written through audit.record() exist'
 );
 
 select * from finish();

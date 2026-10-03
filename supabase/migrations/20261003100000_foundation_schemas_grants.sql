@@ -12,11 +12,10 @@ revoke all on schema stats from public;
 -- each function still needs an explicit EXECUTE grant.
 grant usage on schema private to anon, authenticated;
 
--- pgcrypto ships preinstalled in the Supabase image, so only it needs IF NOT EXISTS.
+-- pgcrypto is preinstalled in the Supabase image; 003_default_deny.test.sql asserts it.
 create extension citext with schema extensions;
 create extension pg_trgm with schema extensions;
 create extension unaccent with schema extensions;
-create extension if not exists pgcrypto with schema extensions;
 create extension btree_gin with schema extensions;
 
 -- Extensions are created above, before the global function default is

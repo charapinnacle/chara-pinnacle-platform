@@ -35,6 +35,11 @@ create trigger log_no_truncate
   before truncate on audit.log
   for each statement execute function audit.refuse_change();
 
+-- ENABLE ALWAYS so session_replication_role = replica (pg_restore --disable-triggers,
+-- logical replication apply) does not bypass the append-only control.
+alter table audit.log enable always trigger log_append_only;
+alter table audit.log enable always trigger log_no_truncate;
+
 create function audit.record(
   p_action text,
   p_entity_type text,
@@ -49,6 +54,7 @@ declare
   v_ip inet;
   v_id bigint;
 begin
+  -- The leftmost x-forwarded-for entry is client-supplied: ip is context, not evidence.
   begin
     v_ip := nullif(btrim(split_part(
       nullif(current_setting('request.headers', true), '')::jsonb ->> 'x-forwarded-for', ',', 1

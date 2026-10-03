@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(10);
 
 create function pg_temp.tables_without_forced_rls() returns setof text
 language sql as $$
@@ -28,6 +28,19 @@ language sql as $$
     )
   order by 1
 $$;
+
+select is_empty(
+  $$
+    select c.oid::regclass
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname in ('public', 'private', 'audit', 'stats')
+      and c.relkind in ('r', 'p')
+      and (has_table_privilege('service_role', c.oid, 'select, insert, update, delete, truncate, references, trigger')
+        or has_any_column_privilege('service_role', c.oid, 'select, insert, update, references'))
+  $$,
+  'service_role has no direct table grants in public, private, audit and stats'
+);
 
 select is_empty(
   $$select * from pg_temp.tables_without_forced_rls()$$,
