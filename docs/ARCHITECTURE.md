@@ -95,7 +95,7 @@ chara-pinnacle-platform/
                                     first Edge Function / first user flow (§14.5)
   .github/workflows/deploy-supabase.yml   on push to main (environment "production", required reviewer)
   apps/web/                   [now] @chara-pinnacle/web, the only app; never holds a secret key (ADR-0003); dev server on port 3100.
-                                    Today: Next.js 16 skeleton plus the web base (next.config.ts security headers, proxy.ts, lib/env.ts, lib/csp.ts, lib/i18n/locale.ts, lib/safe-next.ts, lib/supabase/, app/api/health, Vitest in tests/unit).
+                                    Today: Next.js 16 skeleton plus the web base (next.config.ts security headers, proxy.ts, lib/env.ts, lib/csp.ts, lib/i18n/locale.ts, lib/safe-next.ts, lib/supabase/, app/api/health, Vitest in tests/unit) and the UI primitives (shadcn/ui on Radix with neutral placeholder tokens in app/globals.css, the public, auth and app layout shells, skip link, toasts, skeleton, empty state and React Hook Form field wrappers; their labels are English literals until the lib/i18n dictionaries exist).
                                     Everything listed below is the target.
     next.config.ts                  output:'standalone', deploymentId, headers() (HSTS etc.; CSP comes from proxy),
                                     experimental.taint, experimental.globalNotFound, experimental.serverActions.bodySizeLimit '2mb',
@@ -133,7 +133,7 @@ chara-pinnacle-platform/
                                     (later phase) trust.ts
     lib/actions/                    'use server' files: zod parse → DAL → redirect/return
     lib/i18n/                       en.json dictionaries, getDictionary(lang)
-    components/                     ui, forms; (later phase) VerifiedBadge (trust) and BoostedRail (billing) — never cross-imported
+    components/                     ui (shadcn primitives added with the shadcn CLI, never edited: wrap them), layout (shell, header, footer, skip link), feedback (toast, skeleton, empty state), forms (React Hook Form field wrappers); (later phase) VerifiedBadge (trust) and BoostedRail (billing) — never cross-imported
     emails/                         React Email templates for transactional emails (sent by the notify Edge Function)
     tests/unit, tests/e2e, playwright.config.ts, vitest.config.mts, .env.example (public vars only)
   packages/db-types/                src/database.ts (generated, public schema); created with the first tables

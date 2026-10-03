@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { Toaster } from "@/components/feedback/toaster";
+import { SkipLink } from "@/components/layout/skip-link";
 import "../globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +26,11 @@ export default async function RootLayout({
   const { lang } = await params;
   return (
     <html lang={lang}>
-      <body>{children}</body>
+      <body>
+        <SkipLink />
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
