@@ -1169,7 +1169,7 @@
      "Start: Owner/admin chooses a plan on the billing page (to be confirmed by CHARA: whether payment details are collected at registration or at checkout when the trial starts).",
      "Validate: Function checks role, MFA, that the account is not a worker, and trial eligibility: one free trial per legal entity, so a legal-entity identifier that has already had a trial starts checkout without one.",
      "Collect tax data: Billing country and VAT ID captured; Stripe Tax enabled; prices in EUR, exclusive of VAT.",
-     "Disclose: Before the redirect to Checkout the user is shown the trial period, the price after the trial, the billing frequency, the automatic conversion and the cancellation procedure, and accepts the Subscription and Billing Terms (SOP FR-A8).",
+     "Disclose: Before the redirect to Checkout the user is shown the trial period, the price after the trial, the billing frequency, the automatic conversion and the cancellation procedure, and accepts the Subscription and Billing Terms (SOP FR-A8; to be confirmed by CHARA: which legal documents need recorded acceptance at checkout).",
      "Create session: Stripe Checkout session with the configured trial (default 30 days) and card required; the trial converts automatically to the selected paid plan when it ends.",
      "Return: On success the webhook (SOP FR-G3) activates the trial; user returns to billing page.",
      "Manage: Customer Portal link for card updates, plan change, cancellation and invoices.",
@@ -1451,7 +1451,7 @@
      "Email provider account"
     ],
     "steps": [
-     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails (to be confirmed by CHARA: the email provider, selected from the team's comparison of 2-3 EU providers).",
+     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails (to be confirmed by CHARA: the email provider, selected from the team's comparison of 2-3 EU-compatible providers).",
      "Templates: Confirmation, reset, invitation, MFA recovery reviewed for wording.",
      "Send: Authentication service sends on each event.",
      "Monitor: Bounce and complaint rates reviewed weekly.",
