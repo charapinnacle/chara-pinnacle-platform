@@ -2,7 +2,7 @@
 
 - Status: Accepted. Reconciled with the Phase-1 handoff on 2026-10-02: the owner decisions (§2) and the one-page architecture (§5) of `docs/phase-1/HANDOFF.md` are incorporated, and this is the single current architecture document (see ADR-0002 to ADR-0005). The owner's decisions reply (2026-10-02; client document, not in git) is incorporated as well; its points are tracked in `docs/OPEN_QUESTIONS.md` (R20–R31).
 - Last verified against: Next.js 16.3.8 bundled docs, Supabase CLI 2.119.0 config/command specs, supabase/postgres role definitions, product spec (36 sections) and pricing document (both kept locally in `docs/spec`, not in git).
-- Markers: "(later phase)" = designed here, not built in Phase 1. "(proposed — see OPEN_QUESTIONS.md, D<n>)" = recommended resolution of a design conflict that is not yet decided. "(decided — OPEN_QUESTIONS.md, <ID>)" = settled by the owner.
+- Markers: "(later phase)" = designed here, not built in Phase 1. "(proposed — see OPEN_QUESTIONS.md, D<n>)" = recommended resolution of a design conflict that is not yet decided. Since 2026-10-03 these proposals are adopted for implementation unless OPEN_QUESTIONS.md says otherwise. "(decided — OPEN_QUESTIONS.md, <ID>)" = settled by the owner.
 
 CHARA is a global workforce network (Search → Match → Connect → Collaborate), not a job board. Four participants (Worker, Employer, Recruitment Company, Staffing Company) plus CHARA platform staff. Workers never pay. Paying ≠ verified ≠ boosted. Candidate documents are private unless the candidate shares them for a specific application.
 
