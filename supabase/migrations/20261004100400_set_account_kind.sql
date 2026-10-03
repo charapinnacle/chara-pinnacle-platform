@@ -1,8 +1,7 @@
 -- set_account_kind (OPEN_QUESTIONS.md D9; ARCHITECTURE.md section 6.3): commits the intended account kind once,
--- after email confirmation, and in the same transaction records the consents required for that kind.
--- The versions come from the sign-up entries in profiles.pending_consents; entries in p_consents (the current
--- versions the user accepted on the onboarding page) take precedence, which is how a superseded version is replaced.
--- A repeat call on a committed account returns the kind and writes nothing.
+-- after email confirmation, and in the same transaction records the consents required for that kind through
+-- accept_consents. Entries in p_consents (the current versions accepted on the onboarding page) take precedence
+-- over the sign-up entries in profiles.pending_consents, which is how a superseded version is replaced.
 
 create function public.set_account_kind(p_consents jsonb default '[]') returns public.account_kind
 language plpgsql
@@ -12,9 +11,9 @@ as $$
 declare
   v_uid uuid := (select auth.uid());
   v_profile public.profiles;
+  v_required text[];
   v_entry jsonb;
   v_purpose text;
-  v_version integer;
   v_accepted jsonb := '[]'::jsonb;
 begin
   if v_uid is null then
@@ -36,11 +35,17 @@ begin
     raise exception 'CHARA_FORBIDDEN' using detail = 'profile_not_active';
   end if;
 
-  if jsonb_typeof(p_consents) is distinct from 'array' or jsonb_array_length(p_consents) > 20 then
+  if jsonb_typeof(p_consents) is distinct from 'array'
+     or jsonb_array_length(p_consents) > private.max_consent_entries() then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_consents must be an array of at most 20 entries';
   end if;
 
-  foreach v_purpose in array private.required_consents(v_profile.intended_account_kind) loop
+  v_required := private.required_consents(v_profile.intended_account_kind);
+  if cardinality(v_required) = 0 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'no required consents are configured';
+  end if;
+
+  foreach v_purpose in array v_required loop
     select e.entry into v_entry
     from jsonb_array_elements(p_consents || v_profile.pending_consents) with ordinality e(entry, n)
     where e.entry ->> 'purpose' = v_purpose
@@ -48,22 +53,7 @@ begin
     if v_entry is null then
       raise exception 'CHARA_CONSENT_REQUIRED' using detail = v_purpose;
     end if;
-
-    if (v_entry ->> 'version') !~ '^[0-9]{1,9}$' then
-      raise exception 'CHARA_INVALID_INPUT' using detail = v_purpose;
-    end if;
-    v_version := (v_entry ->> 'version')::integer;
-    if not exists (
-      select 1 from public.legal_documents d
-      where d.slug = v_purpose and d.version = v_version and d.published_at is not null
-    ) then
-      raise exception 'CHARA_INVALID_INPUT' using detail = v_purpose;
-    end if;
-    if v_version <> private.current_legal_version(v_purpose) then
-      raise exception 'CHARA_CONSENT_REQUIRED' using detail = v_purpose;
-    end if;
-
-    v_accepted := v_accepted || jsonb_build_object('purpose', v_purpose, 'version', v_version);
+    v_accepted := v_accepted || v_entry;
   end loop;
 
   update public.profiles

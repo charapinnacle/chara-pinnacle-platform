@@ -1,6 +1,5 @@
 -- Consent ledger (ARCHITECTURE.md sections 4, 12; OPEN_QUESTIONS.md D3, L9). The purpose of a consent is the slug
--- of the legal document it accepts. consents is append-only: a withdrawal is a new row, and rows are written by
--- accept_consents and withdraw_consent only. user_id has no foreign key so the evidence outlives the account.
+-- of the legal document it accepts. user_id has no foreign key so the evidence outlives the account.
 
 create type public.consent_action as enum ('granted', 'withdrawn');
 
@@ -62,17 +61,14 @@ stable
 set search_path = ''
 as $$
   select coalesce(
-    (select array_agg(e) from jsonb_array_elements_text((s.value #>> '{}')::jsonb -> p_kind::text) e),
+    (select array_agg(e) from private.settings s, jsonb_array_elements_text(s.value -> p_kind::text) e
+     where s.key = 'required_consents'),
     '{}'
   )
-  from private.settings s
-  where s.key = 'required_consents'
 $$;
 
 revoke all on function private.required_consents(public.account_kind) from public, anon, authenticated, service_role;
 
--- Records acceptance of the current version of each document in p_consents ([{purpose, version}]) for the caller.
--- A document the caller already holds a granted row for at that version is skipped, so a repeat call is a no-op.
 create function public.accept_consents(p_consents jsonb) returns void
 language plpgsql
 security definer
@@ -80,8 +76,10 @@ set search_path = ''
 as $$
 declare
   v_uid uuid := (select auth.uid());
+  v_status public.profile_status;
   v_kind public.account_kind;
-  v_other public.account_kind;
+  v_own text[];
+  v_other text[];
   v_entry jsonb;
   v_purpose text;
   v_version integer;
@@ -92,14 +90,19 @@ begin
   end if;
 
   -- The row lock serialises concurrent calls of one user, so the idempotency check below cannot race.
-  select coalesce(p.account_kind, p.intended_account_kind) into v_kind
+  select p.status, coalesce(p.account_kind, p.intended_account_kind) into v_status, v_kind
   from public.profiles p where p.id = v_uid for update;
   if not found then
     raise exception 'CHARA_FORBIDDEN';
   end if;
-  v_other := (case v_kind when 'worker' then 'company' else 'worker' end)::public.account_kind;
+  if v_status <> 'active' then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'profile_not_active';
+  end if;
+  v_own := private.required_consents(v_kind);
+  v_other := private.required_consents((case v_kind when 'worker' then 'company' else 'worker' end)::public.account_kind);
 
-  if jsonb_typeof(p_consents) is distinct from 'array' or jsonb_array_length(p_consents) > 20 then
+  if jsonb_typeof(p_consents) is distinct from 'array'
+     or jsonb_array_length(p_consents) > private.max_consent_entries() then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_consents must be an array of at most 20 entries';
   end if;
 
@@ -112,11 +115,16 @@ begin
     v_purpose := v_entry ->> 'purpose';
     v_version := (v_entry ->> 'version')::integer;
 
-    if v_purpose = any (private.required_consents(v_other))
-       and v_purpose <> all (private.required_consents(v_kind)) then
+    if v_purpose = any (v_other) and v_purpose <> all (v_own) then
       raise exception 'CHARA_INVALID_INPUT' using detail = v_purpose;
     end if;
     if v_version is distinct from private.current_legal_version(v_purpose) then
+      if exists (
+        select 1 from public.legal_documents d
+        where d.slug = v_purpose and d.version = v_version and d.published_at <= now()
+      ) then
+        raise exception 'CHARA_CONSENT_REQUIRED' using detail = v_purpose;
+      end if;
       raise exception 'CHARA_INVALID_INPUT' using detail = v_purpose;
     end if;
 
@@ -145,7 +153,6 @@ $$;
 revoke all on function public.accept_consents(jsonb) from public, anon, authenticated, service_role;
 grant execute on function public.accept_consents(jsonb) to authenticated;
 
--- Withdraws the caller's latest granted consent for p_purpose by appending a 'withdrawn' row for that version.
 create function public.withdraw_consent(p_purpose text) returns void
 language plpgsql
 security definer

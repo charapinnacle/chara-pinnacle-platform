@@ -1,7 +1,13 @@
--- Profiles (ARCHITECTURE.md sections 4, 5.2, 6.3; OPEN_QUESTIONS.md D9): one row per auth user, created by trigger.
--- No email and no password hash live in public. The account kind is chosen at sign-up (intended_account_kind),
--- committed once after email confirmation by set_account_kind (next migrations) and immutable afterwards.
+-- Profiles (ARCHITECTURE.md sections 4, 5.2, 6.3; OPEN_QUESTIONS.md D9).
 -- Errors raised by triggers and RPCs carry a stable code as the message (CHARA_FORBIDDEN, CHARA_INVALID_INPUT, ...).
+
+create function private.max_consent_entries() returns integer
+language sql
+immutable
+set search_path = ''
+as $$ select 20 $$;
+
+revoke all on function private.max_consent_entries() from public, anon, authenticated, service_role;
 
 create type public.account_kind as enum ('worker', 'company');
 create type public.profile_status as enum ('active', 'suspended', 'deletion_pending');
@@ -11,7 +17,7 @@ create table public.profiles (
   account_kind public.account_kind,
   intended_account_kind public.account_kind not null,
   pending_consents jsonb not null default '[]'
-    check (jsonb_typeof(pending_consents) = 'array' and jsonb_array_length(pending_consents) <= 20),
+    check (jsonb_typeof(pending_consents) = 'array' and jsonb_array_length(pending_consents) <= private.max_consent_entries()),
   display_name text check (display_name is null or length(display_name) between 1 and 100),
   preferred_lang text not null default 'en' references public.languages (code),
   status public.profile_status not null default 'active',
@@ -27,7 +33,6 @@ comment on column public.profiles.pending_consents is
 alter table public.profiles enable row level security;
 alter table public.profiles force row level security;
 
--- Writes go through RPCs and triggers only; a user may read their own row.
 grant select on public.profiles to authenticated;
 
 create policy profiles_select_own on public.profiles
