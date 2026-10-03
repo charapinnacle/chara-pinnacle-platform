@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   // npm workspaces hoist node_modules to the repo root; trace from there or the standalone build misses them.
   outputFileTracingRoot: path.join(__dirname, "../.."),
   poweredByHeader: false,
+  experimental: { globalNotFound: true },
   deploymentId: process.env.DEPLOYMENT_VERSION,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
