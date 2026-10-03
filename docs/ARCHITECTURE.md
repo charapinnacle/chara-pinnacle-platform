@@ -798,7 +798,7 @@ Later phase, except `moderation_actions` and the Phase-1 admin RPCs `moderate_jo
 | EU AI Act / fairness | Deterministic SQL matching with stored reasons and tunable weights; any ML change needs a DPIA and ADR. | design |
 | DSA / consumer law | Statement of reasons mandatory; later phase: reports, appeals, transparency counts, paid placement labelled "Boosted". | pgTAP test |
 | ILO C181 | No worker billing path (structural); verification of worker skills free (later phase). | pgTAP test |
-| Supply chain | Dependabot, `npm audit --audit-level=high`, secret-pattern check in the CI `security` job, pinned Actions, Deno lockfile. | CI |
+| Supply chain | Dependabot, `npm audit --omit=dev --audit-level=high` (blocking; a full audit is reported without blocking), secret-pattern check in the CI `security` job, pinned Actions, Deno lockfile. | CI |
 
 ---
 
@@ -863,7 +863,7 @@ Jobs are added as the code they test appears. All jobs use `actions/checkout@v7`
 2. `db` (exists): `npm run db:start` → `npm run db:test` (`npx supabase start`, `npx supabase test db`). Added to the same job later: `npx supabase db lint --local --fail-on error` and the type-drift check (`npx supabase gen types typescript --local` compared with the committed type files).
 3. `functions` (added with the first Edge Function): Deno setup → `deno fmt --check`, `deno lint`, `deno test supabase/functions/_tests`.
 4. `e2e` (added with the first user flow): depends on web + db; Playwright against the built app and the local stack.
-5. `security` (exists): `npm audit --audit-level=high` and the secret-pattern check: `git grep` for `sb_secret_|service_role|SUPABASE_SECRET` must find nothing outside `supabase/`, `docs/` and `.github/`.
+5. `security` (exists): `npm audit --omit=dev --audit-level=high` (blocking), a full `npm audit` reported without blocking, and the secret-pattern check: `git grep` for `sb_secret_|service_role|SUPABASE_SECRET` must find nothing outside `supabase/`, `docs/` and `.github/`.
 
 The forbidden-attribute check is a pgTAP test over `information_schema.columns` in the `db` job, not a grep.
 
