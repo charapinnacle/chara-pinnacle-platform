@@ -24,7 +24,7 @@ create table public.industries (
 
 comment on table public.countries is 'ISO 3166-1 alpha-2 codes; XK (Kosovo) is user-assigned.';
 comment on table public.languages is 'ISO 639-1 codes.';
-comment on table public.currencies is 'ISO 4217 codes.';
+comment on table public.currencies is 'ISO 4217 active codes; withdrawn codes are excluded, XDR and XSU are kept.';
 comment on table public.industries is 'ISIC Rev.4 sections A to U.';
 
 alter table public.countries enable row level security;

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Writes supabase/seeds/ref/*.sql. Countries, languages and currencies are derived from
 // Intl (CLDR); ISIC Rev.4 sections are the 21 official letters and titles (United Nations).
-// Run `node scripts/gen-ref-seeds.mjs` after changing this file and commit the output.
+// Run `node scripts/gen-ref-seeds.mjs` after changing this file and commit the output. Names come from
+// the ICU/CLDR data bundled with Node, so run it on the Node version in .nvmrc; CI regenerates and fails on drift.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -10,6 +11,9 @@ const OUT_DIR = fileURLToPath(new URL('../supabase/seeds/ref/', import.meta.url)
 // Reserved, grouping and deprecated region codes that CLDR still names, plus legacy aliases of current countries.
 // XK (Kosovo) is user-assigned, not ISO 3166-1, and is kept because it is in everyday use.
 const NON_COUNTRY_REGIONS = 'AC CP DG EA EU EZ IC TA UN XA XB ZZ AN BU CS DD FX QO SU TP YD YU ZR CQ DY HV NH RH VD UK'.split(' ')
+// Withdrawn ISO 4217 codes that CLDR still lists: CUC, HRK (euro 2023), SLL (SLE), ZWL (ZWG), ANG (XCG).
+// XDR and XSU are IMF and ALBA settlement units, not national currencies; they are kept as valid ISO 4217 codes.
+const RETIRED_CURRENCIES = 'ANG CUC HRK SLL ZWL'.split(' ')
 // ISO 639-1 codes that CLDR names as aliases of another language (Indonesian, Hebrew, Yiddish, Javanese, Romanian, Serbian).
 const ALIAS_LANGUAGES = 'in iw ji jw mo sh'.split(' ')
 
@@ -59,7 +63,9 @@ const countries = namedCodes(twoLetterCodes(true), 'region').filter(
 const languages = namedCodes(twoLetterCodes(false), 'language').filter(
   ([code]) => !ALIAS_LANGUAGES.includes(code),
 )
-const currencies = namedCodes(Intl.supportedValuesOf('currency'), 'currency')
+const currencies = namedCodes(Intl.supportedValuesOf('currency'), 'currency').filter(
+  ([code]) => !RETIRED_CURRENCIES.includes(code),
+)
 
 if (countries.length < 249) throw new Error(`expected at least 249 countries, got ${countries.length}`)
 
@@ -72,9 +78,9 @@ function seedFile(table, header, rows) {
 
 mkdirSync(OUT_DIR, { recursive: true })
 const files = {
-  'countries.sql': seedFile('countries', 'ISO 3166-1 alpha-2 country codes; names from CLDR via Intl.DisplayNames.', countries),
-  'languages.sql': seedFile('languages', 'ISO 639-1 language codes; names from CLDR via Intl.DisplayNames.', languages),
-  'currencies.sql': seedFile('currencies', 'ISO 4217 currency codes; names from CLDR via Intl.DisplayNames.', currencies),
-  'industries.sql': seedFile('industries', 'ISIC Rev.4 sections (United Nations Statistics Division).', ISIC_SECTIONS),
+  'countries.sql': seedFile('countries', 'ISO 3166-1 alpha-2 country codes; names from CLDR via Intl.DisplayNames (Unicode License v3).', countries),
+  'languages.sql': seedFile('languages', 'ISO 639-1 language codes; names from CLDR via Intl.DisplayNames (Unicode License v3).', languages),
+  'currencies.sql': seedFile('currencies', 'ISO 4217 active currency codes; names from CLDR via Intl.DisplayNames (Unicode License v3).', currencies),
+  'industries.sql': seedFile('industries', 'ISIC Rev.4 sections (United Nations Statistics Division; UN data, free to reuse with attribution).', ISIC_SECTIONS),
 }
 for (const [file, sql] of Object.entries(files)) writeFileSync(OUT_DIR + file, sql)

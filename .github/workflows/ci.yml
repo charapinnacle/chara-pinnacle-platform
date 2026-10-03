@@ -42,6 +42,9 @@ jobs:
       - run: npm run db:types
       - name: Fail when generated types differ from the committed file
         run: git diff --exit-code -- packages/db-types/src/database.ts
+      - run: node scripts/gen-ref-seeds.mjs
+      - name: Fail when regenerated reference seeds differ from the committed files
+        run: git diff --exit-code -- supabase/seeds/ref
 
   e2e:
     needs: [web, db]
