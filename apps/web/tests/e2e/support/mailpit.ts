@@ -21,9 +21,15 @@ async function getJson<T>(path: string): Promise<T> {
 
 export async function waitForMessage(
   to: string,
-  { timeoutMs = 15_000, intervalMs = 250 } = {},
+  { subject, timeoutMs = 15_000, intervalMs = 250 } = {} as {
+    subject?: string;
+    timeoutMs?: number;
+    intervalMs?: number;
+  },
 ): Promise<MailpitMessage> {
-  const query = encodeURIComponent(`to:${to}`);
+  const query = encodeURIComponent(
+    subject ? `to:${to} subject:"${subject}"` : `to:${to}`,
+  );
   const deadline = Date.now() + timeoutMs;
   do {
     const { messages } = await getJson<SearchResult>(
@@ -41,5 +47,11 @@ export function extractLinks(message: MailpitMessage): string[] {
   const urls = `${message.HTML}\n${message.Text}`.match(
     /https?:\/\/[^\s"'<>]+/g,
   );
-  return [...new Set((urls ?? []).map((url) => url.replaceAll("&amp;", "&")))];
+  return [
+    ...new Set(
+      (urls ?? []).map((url) =>
+        url.replaceAll("&amp;", "&").replace(/[).,;]+$/, ""),
+      ),
+    ),
+  ];
 }

@@ -10,8 +10,9 @@ if (existsSync(envFile)) {
   process.loadEnvFile(envFile);
 }
 
-// The admin key never reaches apps/web; it is read from the local stack so that
-// `npm run e2e` needs no setup. An exported E2E_AUTH_ADMIN_KEY wins.
+// The admin key is read at test time only: it never enters the Next.js build or
+// any NEXT_PUBLIC variable. It comes from the local stack so that `npm run e2e`
+// needs no setup; a non-empty exported E2E_AUTH_ADMIN_KEY wins.
 function localAdminKey(): string {
   const status = execFileSync("npx", ["supabase", "status", "-o", "env"], {
     cwd: path.join(__dirname, "../.."),
@@ -27,7 +28,7 @@ function localAdminKey(): string {
   return match[1];
 }
 
-process.env.E2E_AUTH_ADMIN_KEY ??= localAdminKey();
+process.env.E2E_AUTH_ADMIN_KEY ||= localAdminKey();
 
 export default defineConfig({
   testDir: "tests/e2e",
