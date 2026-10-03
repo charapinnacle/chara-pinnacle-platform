@@ -13,21 +13,23 @@
     "inputs": [
      "Email address",
      "Password meeting policy",
+     "Intended account kind (candidate) chosen on the sign-up form",
      "Age attestation",
      "Current versions of the legal documents accepted by candidates (SOP FR-A8)"
     ],
     "steps": [
-     "Open sign-up: Candidate selects 'I'm a worker' and enters email and password.",
+     "Open sign-up: The sign-up form asks candidate or company; the candidate selects 'I'm a worker' and enters email and password; the choice is stored as the intended account kind (SOP FR-A6).",
      "Validate password: System checks minimum 12 characters and rejects passwords found in breach lists.",
-     "Capture attestations: Candidate ticks age (18+) and consent to the legal documents required for candidates (SOP FR-A8); versions are recorded.",
-     "Create account: Auth record and profile row are created in 'pending confirmation' state.",
+     "Capture attestations: For the intended kind candidate the form shows the mandatory age (18+) checkbox and the consents required for candidates (SOP FR-A8, FR-A9).",
+     "Create account: Auth record and profile row are created in 'pending confirmation' state; the account kind is not yet committed.",
      "Send confirmation: Confirmation email is sent via the EU email service; link valid 24 hours.",
-     "Confirm email: Candidate clicks the link; account becomes active; audit entry written.",
+     "Confirm email: Candidate clicks the link; account becomes active; on the onboarding page set_account_kind commits the intended kind once and calls accept_consents, which writes the consent and age-attestation records with versions; if a version shown at sign-up has been superseded, the current version is accepted first (SOP FR-A6, FR-A8); audit entry written.",
      "Redirect to onboarding: Candidate is guided to create the profile.",
      "Handle failures: Expired links can be re-requested; repeated attempts are rate-limited."
     ],
     "outputs": [
      "Active candidate account",
+     "Committed account kind worker (candidate)",
      "Consent records",
      "Audit entry"
     ],
@@ -47,23 +49,24 @@
     "scope": "Employer accounts",
     "owner": "Platform / Employer owner",
     "inputs": [
-     "Work email, password",
+     "Work email, password, intended account kind (company) chosen on the sign-up form",
      "Legal company name, country, industry",
      "Legal-entity identifier (company registration number, VAT number or another unique legal-entity identifier)",
      "Website (optional)",
      "Consent to the legal documents required for employers (SOP FR-A8)"
     ],
     "steps": [
-     "Open sign-up: User selects 'I'm an employer'.",
-     "Create user: Steps of SOP FR-A1 apply (password policy, consent, confirmation).",
+     "Open sign-up: The sign-up form asks candidate or company; the user selects 'I'm an employer'; the choice is stored as the intended account kind; the consents for employers are shown and no age checkbox (SOP FR-A6, FR-A8).",
+     "Create user: Steps of SOP FR-A1 apply (password policy, consent, confirmation); after confirmation set_account_kind commits the kind company once and accept_consents writes the consent records.",
      "Capture company details: Legal name, display name, country (ISO list), industry (ISIC list), website and the legal-entity identifier, recorded at the latest before checkout (to be confirmed by CHARA: which identifier is mandatory per country and how it is validated).",
-     "Create organisation atomically: System creates organisation and owner membership in one transaction; no subscription is created, and the organisation is on the restricted free plan until checkout (SOP FR-G2) (to be confirmed by CHARA: whether payment details are collected at registration or at checkout when the trial starts).",
+     "Create organisation atomically: System creates organisation and owner membership in one transaction; no subscription is created, and the organisation is on the restricted free plan free_employer until checkout (SOP FR-G2, FR-G4): by default no open vacancies and no extra team members once limit enforcement is on (SOP FR-C6) (to be confirmed by CHARA: contents of the free_employer plan) (to be confirmed by CHARA: whether payment details are collected at registration or at checkout when the trial starts).",
      "Verify uniqueness: Slug generated and checked; duplicate legal name warns but does not block; a legal-entity identifier that has already had a free trial is flagged, and that legal entity receives no second trial (SOP FR-G2).",
      "Audit: Creation recorded with actor and organisation id.",
      "Prompt security set-up: Owner is prompted to enrol two-step verification (SOP FR-A4).",
      "Land on dashboard: Owner sees empty dashboard with guided next steps."
     ],
     "outputs": [
+     "Committed account kind (company)",
      "Organisation record",
      "Owner membership",
      "Legal-entity identifier recorded for trial eligibility"
@@ -118,30 +121,30 @@
     "owner": "Platform / Account holder",
     "inputs": [
      "Authenticator app",
-     "Recovery codes"
+     "Second authenticator device (optional backup factor)"
     ],
     "steps": [
      "Prompt enrolment: On first access to a protected area the user is redirected to the MFA page.",
      "Generate secret: System shows a QR code and manual key.",
      "Verify: User enters the first code; enrolment is confirmed.",
-     "Issue recovery codes: Ten single-use codes shown once; user confirms storage.",
+     "Enrol backup: User may enrol a second TOTP factor on another device as a backup; no recovery codes are issued.",
      "Elevate session: Session is marked at assurance level 2 for its lifetime.",
      "Enforce: Database policies and page guards reject privileged actions without level 2.",
-     "Recover: Lost device uses a recovery code; support resets only after identity check and audit entry.",
+     "Recover: A lost device is replaced by the backup factor; without one, a Platform Administrator resets the user's factors through the audited account-ops function after an identity check, and the user enrols again.",
      "Review: Enrolment status visible in team and staff lists."
     ],
     "outputs": [
      "Enrolled factor",
-     "Recovery codes",
+     "Backup factor (optional)",
      "Elevated session"
     ],
     "kpis": [
      "Privileged users enrolled (target 100 %)",
      "MFA challenge failure rate",
-     "Recovery events per quarter"
+     "Administrator factor resets per quarter"
     ],
     "risks": "Account takeover of privileged users, lost devices",
-    "controls": "Mandatory enrolment, restrictive policies at database level, audited recovery",
+    "controls": "Mandatory enrolment, restrictive policies at database level, backup factor, audited administrator reset",
     "freq": "Quarterly"
    },
    {
@@ -156,7 +159,7 @@
      "Owner approval for ownership transfer"
     ],
     "steps": [
-     "Invite: Owner/admin enters email and role; when limit enforcement is on, the plan's team-member limit (initially 1 / 5 / 15 for Basic / Professional / Enterprise; Enterprise adjustable per organisation) is checked and an upgrade prompt is shown if it is reached; otherwise an invitation with single-use token (7 days) is created and emailed (to be confirmed by CHARA: whether the Basic limit of 1 counts the owner, so that Basic cannot invite members).",
+     "Invite: Owner/admin enters email and role; when limit enforcement is on, and always for a lapsed organisation (SOP FR-G4), the plan's team-member limit (initially 1 / 5 / 15 for Basic / Professional / Enterprise; Enterprise adjustable per organisation) is checked and an upgrade prompt is shown if it is reached; otherwise an invitation with single-use token (7 days) is created and emailed (to be confirmed by CHARA: whether the Basic limit of 1 counts the owner, so that Basic cannot invite members).",
      "Accept: Invitee signs in or registers as a company user and accepts; membership becomes active.",
      "Reject workers: System refuses acceptance by a candidate account.",
      "Change role: Owner/admin changes member role; system prevents removing the last owner.",
@@ -181,15 +184,15 @@
    {
     "fr": "FR-A6",
     "title": "Account Kind Assignment E2E SOP",
-    "purpose": "To fix each account as either candidate or company user at onboarding so that privacy and payment rules apply cleanly",
+    "purpose": "To fix each account as either candidate or company user at sign-up so that privacy and payment rules apply cleanly",
     "scope": "All accounts",
     "owner": "Platform",
     "inputs": [
-     "Onboarding choice"
+     "Intended account kind from the sign-up form"
     ],
     "steps": [
-     "Present choice: After confirmation the user chooses 'worker' or 'company'.",
-     "Record kind: The choice is written once; later changes are rejected by the database.",
+     "Ask at sign-up: The sign-up form asks candidate or company; the choice is stored as the intended kind and decides which consents and whether the age checkbox are shown (SOP FR-A8, FR-A9).",
+     "Commit kind: After email confirmation set_account_kind writes the intended kind once (stored values worker or company) and accept_consents writes the consent records; later changes are rejected by the database.",
      "Route onboarding: Workers go to profile creation; company users to organisation creation or invitation acceptance.",
      "Enforce rules: Workers cannot be organisation members or start checkout; company users cannot create a worker profile.",
      "Handle exceptions: A person needing both roles uses two accounts with different emails.",
@@ -250,8 +253,8 @@
      "User action"
     ],
     "steps": [
-     "Display: Sign-up form links to the current versions of the Terms of Service and Privacy Policy, and of the Worker Terms (candidates) or the Employer Terms (employers); checkout links to the Subscription and Billing Terms (to be confirmed by CHARA: which legal documents need recorded acceptance at sign-up and at checkout).",
-     "Record: On submit, at sign-up and at checkout, one consent row per document with version and timestamp is written.",
+     "Display: Sign-up form links to the current versions of the documents for the intended account kind: the Terms of Service and Privacy Policy, and the Worker Terms (candidates) or the Employer Terms (employers); checkout links to the Subscription and Billing Terms (to be confirmed by CHARA: which legal documents need recorded acceptance at sign-up and at checkout).",
+     "Record: The sign-up consents are written by accept_consents when the account kind is committed after email confirmation (SOP FR-A6); checkout acceptance is written at checkout; one row per document with version and timestamp.",
      "Publish new version: Legal publication (SOP FR-F1) marks the new version current.",
      "Detect: On next login the session helper compares consented versions with current versions.",
      "Re-consent: User is shown the change summary and must accept before continuing.",
@@ -279,8 +282,8 @@
      "Candidate attestation"
     ],
     "steps": [
-     "Present: Sign-up shows a mandatory 'I am 18 or older' checkbox.",
-     "Record: Attestation is stored as a consent purpose with version and time; no date of birth is stored.",
+     "Present: Sign-up shows a mandatory 'I am 18 or older' checkbox when the intended account kind is candidate; company sign-ups do not show it.",
+     "Record: accept_consents stores the attestation as a consent purpose with version and time when the account kind is committed after confirmation; no date of birth is stored.",
      "Block: Sign-up cannot complete without attestation.",
      "Handle reports: The Trust & Safety Administrator acts on reports of underage users under SOP FR-F1.",
      "Review: Legal confirms the attestation wording per launch country."
@@ -378,10 +381,10 @@
     "steps": [
      "Default: Profiles are created non-searchable; no employer-facing listing exists in Phase 1.",
      "Access path: Employers see a candidate only through an application the candidate submitted.",
-     "Scope: Access is limited to the profile snapshot and the documents selected at application time.",
-     "Enforce: Database policies grant access only to members of the organisation that owns the job, while the share is active.",
-     "Revoke: Withdrawal or deletion ends access immediately.",
-     "Test: Cross-tenant negative tests run in every build."
+     "Scope: Access is limited to the profile snapshot and the documents the candidate selected for that application; passport_shares.scope holds those document ids, not document types.",
+     "Enforce: Database policies and the document access grant allow access only to members of the organisation that owns the job, while the share is active, and only to a document whose id is in the share scope.",
+     "Revoke: Withdrawal or deletion ends access immediately; after Hired or Not selected access ends when the share expires (SOP FR-D2).",
+     "Test: Cross-tenant negative tests run in every build, including a test that an unselected or later-uploaded document of the same type is refused."
     ],
     "outputs": [
      "Enforced access rules"
@@ -406,7 +409,7 @@
     "steps": [
      "Compute: Weighted score across identity, occupation, skills, languages, experience, availability, work authorisation and CV.",
      "Display: Percentage and the next suggested item.",
-     "Nudge: Reminder email after 7 days below 60 % (respecting preferences).",
+     "Nudge: The next suggested item is shown on the profile and dashboard while completeness is below 60 %; no reminder email in Phase 1.",
      "Measure: Completion distribution reviewed monthly."
     ],
     "outputs": [
@@ -495,8 +498,8 @@
     "steps": [
      "Open form: Admin starts a new vacancy (draft).",
      "Enter details: Title, description, occupation (ISCO-08), industry (ISIC), country, city, employment type.",
-     "Enter terms: Salary range and currency, accommodation, visa support, recruitment preference (local/international/both).",
-     "Validate: Required fields and value lists checked; prohibited attributes are not available.",
+     "Enter terms: Salary minimum and maximum, currency (ISO 4217) and pay period (hour, month or year), accommodation, visa support, recruitment preference (local/international/both).",
+     "Validate: Required fields and value lists checked; salary minimum not above salary maximum; currency and pay period required when either salary amount is entered; prohibited attributes are not available.",
      "Save draft: Vacancy stored in Draft; audit entry.",
      "Preview: Admin reviews the public rendering before publishing (SOP FR-C2)."
     ],
@@ -516,18 +519,24 @@
     "title": "Vacancy Lifecycle Management E2E SOP",
     "purpose": "To control the states a vacancy passes through and what the public sees",
     "scope": "Employer vacancies",
-    "owner": "Employer administrator",
+    "owner": "Employer owner / administrator",
     "inputs": [
      "Draft vacancy",
      "Plan limits"
     ],
     "steps": [
-     "Publish: Admin sets Open; system checks plan limit (SOP FR-C6) and visibility rules.",
+     "Transition: Draft → Open — owner or admin; plan limit check (SOP FR-C6).",
+     "Transition: Open → Paused, Closed or Filled — owner or admin.",
+     "Transition: Paused → Open — owner or admin; plan limit check.",
+     "Transition: Paused → Closed or Filled — owner or admin.",
+     "Transition: Closed → Open — owner or admin; plan limit check.",
+     "Transition: Filled — final; no further change.",
+     "Transition: Open → Paused — system, when the organisation lapses to free_employer (SOP FR-G4); audited.",
      "Expose: Only Open and not-hidden vacancies are public and searchable.",
-     "Pause: Admin pauses; vacancy hidden from search but applications retained.",
-     "Close or fill: Admin closes or marks filled; open applications receive a final state update prompt.",
-     "Guard transitions: Database allows only valid transitions.",
-     "Audit: Every state change recorded."
+     "Paused: A Paused vacancy is hidden from search and closed to new applications; existing applications continue, except where the organisation's application writes are refused (SOP FR-G4) (to be confirmed by CHARA: whether a Paused vacancy accepts applications).",
+     "Close or fill: On Closed or Filled, open applications receive a final state update prompt.",
+     "Guard transitions: Database refuses any transition or actor not listed above.",
+     "Audit: Every state change recorded with actor."
     ],
     "outputs": [
      "Vacancy state"
@@ -551,8 +560,9 @@
      "Search filters"
     ],
     "steps": [
-     "Enter criteria: Keyword and filters (country, city, occupation, industry, employment type, minimum salary, accommodation, visa support, local/international).",
+     "Enter criteria: Keyword and filters (country, city, occupation, industry, employment type, minimum salary with currency and pay period, accommodation, visa support, local/international).",
      "Execute: Search function returns only public vacancies, ranked by relevance then date, paginated.",
+     "Salary filter: A vacancy matches when its currency and pay period equal those of the filter and its salary maximum is at least the entered value; no currency conversion in Phase 1.",
      "Display: Result cards with key facts; no personal data.",
      "Refine: Filters update results; URL reflects state for sharing.",
      "Measure: Query performance monitored against the 500 ms target.",
@@ -632,10 +642,11 @@
      "Enforcement setting"
     ],
     "steps": [
-     "Configure: Limits per plan are administrator-editable records, initially 3 / 15 / 50 open vacancies for Basic / Professional / Enterprise; Enterprise may have per-organisation values.",
-     "Check: On publish, a database trigger compares open count with the limit when the enforcement setting is on (to be confirmed by CHARA: the date on which limit enforcement is switched on).",
+     "Configure: Limits per plan are administrator-editable records, initially 3 / 15 / 50 open vacancies for Basic / Professional / Enterprise; Enterprise may have per-organisation values; free_employer limits are seeded as 0, not empty (empty means unlimited); members 0 means no members besides the owner, and if the members limit is decided to count the owner, free_employer is seeded with 1.",
+     "Check: On publish and on reopening (Paused or Closed → Open), a database trigger compares open count with the limit when the enforcement setting is on (to be confirmed by CHARA: the date on which limit enforcement is switched on).",
      "Block and prompt: If exceeded, publish is refused with an upgrade prompt.",
      "Downgrade handling: Existing vacancies are kept and never deleted; creating or reopening a vacancy over the new limit is blocked (to be confirmed by CHARA: behaviour on downgrade when usage exceeds the new plan's limit).",
+     "Free plan: For a lapsed organisation (back on free_employer after a cancelled subscription) the limit check applies whether or not the enforcement setting is on; for any other organisation on free_employer it applies once enforcement is on; the default is no open vacancies and no extra team members, and on lapse its open vacancies are moved to Paused (SOP FR-G4) (to be confirmed by CHARA: contents of the free_employer plan).",
      "Go-live gate: Enforcement must be on in production (automated check)."
     ],
     "outputs": [
@@ -698,12 +709,12 @@
     ],
     "steps": [
      "Start: Candidate clicks Apply on an Open vacancy (login required); a general notice states that cross-border hiring can be subject to legal requirements.",
-     "Compose: Optional cover note; select which documents to share.",
+     "Compose: Optional cover note; select the individual documents to share.",
      "Consent: Candidate confirms sharing with the named employer for this application.",
-     "Create atomically: Consent, share, application, 'applied' event, audit and notification queue entry are written in one transaction.",
+     "Create atomically: Consent, share (scope = the ids of the selected documents), application, 'applied' event, audit and notification queue entry are written in one transaction.",
      "Snapshot: Profile snapshot stored with the application.",
      "Confirm: Candidate sees the application in the journey tracker; employer notified (SOP FR-D6).",
-     "Reject invalid: Closed vacancy, duplicate or missing profile fields are refused with guidance; in Phase 1 no monthly limit and no country-pair block applies to direct applications (to be confirmed by CHARA: whether the monthly candidate-submissions limit applies to direct applications; whether direct applications may go live for all country pairs before country-specific rules exist, subject to legal review)."
+     "Reject invalid: A vacancy that is not Open (Draft, Paused, Closed or Filled) or is hidden, a duplicate, or missing profile fields are refused with guidance; in Phase 1 no monthly limit and no country-pair block applies to direct applications (to be confirmed by CHARA: whether the monthly candidate-submissions limit applies to direct applications; whether direct applications may go live for all country pairs before country-specific rules exist, subject to legal review)."
     ],
     "outputs": [
      "Application record",
@@ -714,7 +725,7 @@
      "Applications per vacancy"
     ],
     "risks": "Unintended sharing, duplicates",
-    "controls": "Explicit selection and consent, atomic transaction, duplicate rule",
+    "controls": "Explicit selection and consent, share scoped by document id, atomic transaction, duplicate rule",
     "freq": "Quarterly"
    },
    {
@@ -729,12 +740,21 @@
      "Note"
     ],
     "steps": [
-     "Define states: Applied, Viewed, Shortlisted, Interview, Offer, Hired, Not selected, Withdrawn.",
-     "Change: Employer selects a new state (and optional note) from the applicant view or board.",
-     "Guard: Database allows only permitted transitions and actors.",
+     "Define states: Applied, Viewed, Shortlisted, Interview, Offer, Hired, Not selected (stored as rejected), Withdrawn.",
+     "Change: Employer member selects a new state and optional note through set_application_status from the applicant view or board; the note is visible to the candidate and labelled so in the UI; internal remarks go in application notes only (SOP FR-E2).",
+     "Transition: Applied → Viewed — system only, on the first open by a member of the job's organisation; not selectable by users.",
+     "Transition: Applied → Shortlisted, Interview or Not selected — employer, minimum role member.",
+     "Transition: Viewed → Shortlisted, Interview or Not selected — employer, minimum role member.",
+     "Transition: Shortlisted → Interview, Offer or Not selected — employer, minimum role member; there is no way back to Applied or Viewed (to be confirmed by CHARA: moving an applicant back from Shortlisted).",
+     "Transition: Interview → Offer or Not selected — employer, minimum role member.",
+     "Transition: Offer → Hired or Not selected — employer, minimum role member.",
+     "Transition: Any non-final state → Withdrawn — candidate (SOP FR-D4).",
+     "Final states: Hired, Not selected and Withdrawn are terminal; no transition leaves them.",
+     "Shortlisting: A move to Shortlisted requires has_feature('shortlisting') for the organisation (SOP FR-E4).",
+     "Guard: Database refuses any transition or actor not listed above; employer status changes (set_application_status, bulk_set_application_status) are refused for a lapsed organisation (back on free_employer after a cancelled subscription), and for any organisation on free_employer once limit enforcement is on (SOP FR-G4) (to be confirmed by CHARA: contents of the free_employer plan); candidate withdrawal is never blocked.",
      "Record: An event row with actor, from, to, note and time is appended.",
      "Notify: Candidate email on each change except Viewed (SOP FR-D6).",
-     "Final states: Hired, Not selected, Withdrawn end the pipeline; shares expire after 30 days."
+     "Shares: Withdrawn revokes the share immediately (SOP FR-D4); after Hired or Not selected the share ends at expires_at, default 30 days (to be confirmed by CHARA: share expiry after Hired or Not selected)."
     ],
     "outputs": [
      "Updated application",
@@ -759,7 +779,7 @@
     ],
     "steps": [
      "List: 'My applications' shows all applications with current stage and filters.",
-     "Timeline: Each application shows events in order with dates and notes shared with the candidate.",
+     "Timeline: Each application shows events in order with dates and stage-change notes, including decline reasons; internal application notes are never shown.",
      "Next step: Plain-language text explains what usually happens next at each stage.",
      "Act: Withdraw button available on non-final states.",
      "Access: Only the candidate's own rows are readable (database rule)."
@@ -788,7 +808,7 @@
      "Request: Candidate selects Withdraw and confirms.",
      "Update: State set to Withdrawn; event appended.",
      "Revoke: The share for that employer is revoked; further document access is denied and logged.",
-     "Notify: Employer sees the withdrawal in the pipeline; optional email.",
+     "Notify: Employer sees the withdrawal in the pipeline (no employer email in Phase 1); the candidate receives the status_changed email (SOP FR-D6).",
      "Retain: Record kept per retention schedule for audit."
     ],
     "outputs": [
@@ -839,10 +859,13 @@
      "Notification preferences"
     ],
     "steps": [
-     "Queue: Each event enqueues a notification unless preferences disable it.",
-     "Batch: Employer notifications are sent immediately or as a daily summary per preference.",
-     "Render: Templates filled with non-sensitive data only (no documents, no notes).",
-     "Send: Email service delivers; status recorded; retries with back-off on failure.",
+     "Queue: Each application event enqueues the notifications listed below; the candidate status email is mandatory, employer emails follow each employer user's preference.",
+     "Event: Application submitted → template application_received → employer users of the organisation → preference: immediately or in the daily summary; no candidate email (the application appears in the journey tracker).",
+     "Event: State changed after submission (except Viewed), including withdrawal, → template status_changed → candidate → mandatory transactional email; cannot be switched off.",
+     "Event: Viewed → no email.",
+     "Batch: The daily summary is sent once a day at 08:00 Central European local time (Europe/Berlin; CET in winter, CEST in summer) (to be confirmed by CHARA: time of the daily summary).",
+     "Render: Templates filled with non-sensitive data only (no documents and no notes, including stage-change notes and decline reasons; the email links to the journey tracker); English only in Phase 1.",
+     "Send: Sent through Resend; delivery status recorded; retries with back-off on failure.",
      "Monitor: Failed deliveries alert operations after 3 retries.",
      "Review: Template wording reviewed with legal for tone and content."
     ],
@@ -855,7 +878,7 @@
      "Median time to send"
     ],
     "risks": "Spam, leakage in emails, missed updates",
-    "controls": "Preferences, minimal payloads, retries, monitoring",
+    "controls": "Mandatory status emails, employer preferences, minimal payloads, retries, monitoring",
     "freq": "Quarterly"
    },
    {
@@ -902,7 +925,7 @@
     "steps": [
      "Open vacancy: Member selects a vacancy from the dashboard.",
      "List view: Applicants with stage, date, completeness and document count; sortable and filterable.",
-     "Board view: Columns per stage; drag or menu to move (triggers SOP FR-D2).",
+     "Board view: Columns per stage, including Shortlisted; drag or menu to move, allowed only along the transitions of SOP FR-D2 through set_application_status.",
      "Counts: Stage counts update live.",
      "Export: CSV export of the list without documents, on every paid plan (to be confirmed by CHARA: which plans include CSV export)."
     ],
@@ -928,12 +951,12 @@
      "Notes"
     ],
     "steps": [
-     "Open: Member opens the applicant; first open sets state Viewed.",
+     "Open: Member opens the applicant; first open sets state Viewed (not for an organisation whose application writes are refused, SOP FR-G4).",
      "Review snapshot: Profile as submitted; indicator if the live profile changed since.",
      "Open documents: Each click requests a 60-second link through the access broker; access is logged for the candidate.",
-     "Add notes: Internal notes visible to the organisation only.",
-     "See history: Stage timeline with actors and notes.",
-     "Act: Change stage, shortlist, decline with reason."
+     "Add notes: Internal remarks go in application notes, visible to the organisation only and never shown to the candidate; refused for a lapsed organisation (back on free_employer after a cancelled subscription), and for any organisation on free_employer once limit enforcement is on (SOP FR-G4) (to be confirmed by CHARA: contents of the free_employer plan).",
+     "See history: Stage timeline with actors and stage-change notes.",
+     "Act: Change stage (Shortlisted only when the plan includes shortlisting), decline with reason; the stage-change note and the decline reason are visible to the candidate and labelled so."
     ],
     "outputs": [
      "Reviewed applicant",
@@ -951,16 +974,16 @@
     "title": "Bulk Applicant Actions E2E SOP",
     "purpose": "To process many applicants consistently",
     "scope": "Employer ATS",
-    "owner": "Employer administrator",
+    "owner": "Employer member",
     "inputs": [
      "Selected applications",
      "Target state and reason template"
     ],
     "steps": [
-     "Select: Admin selects applicants in list or board.",
-     "Choose action: Move to stage or decline with a reason template.",
-     "Confirm: Summary shown; confirm.",
-     "Apply: Each application processed under the same transition guard; events and notifications generated individually.",
+     "Select: Member selects applicants in list or board.",
+     "Choose action: Move to stage or decline (Not selected) with a reason template; the reason is visible to the candidate and labelled so.",
+     "Confirm: A confirmation step lists every selected applicant, the target state and the reason; nothing is applied until confirmed.",
+     "Apply: Each application processed by bulk_set_application_status, which applies the set_application_status transition guard to each item (SOP FR-D2); events and notifications generated individually; refused for a lapsed organisation (back on free_employer after a cancelled subscription), and for any organisation on free_employer once limit enforcement is on (SOP FR-G4) (to be confirmed by CHARA: contents of the free_employer plan); a decline is final and its email is sent, with no undo (to be confirmed by CHARA: whether an undo window for declines is wanted).",
      "Report: Result summary with any refused items."
     ],
     "outputs": [
@@ -970,26 +993,27 @@
      "Bulk actions per month"
     ],
     "risks": "Mass mistakes",
-    "controls": "Confirmation step, per-item guard, undo window for declines (24 h)",
+    "controls": "Confirmation step listing applicants and reason, per-item guard, no undo (declines are final)",
     "freq": "Annual"
    },
    {
     "fr": "FR-E4",
     "title": "Shortlisting E2E SOP",
-    "purpose": "To mark preferred applicants when the plan includes shortlisting",
+    "purpose": "To move preferred applicants to the Shortlisted state when the plan includes shortlisting",
     "scope": "Employer ATS",
     "owner": "Employer member",
     "inputs": [
      "Plan features"
     ],
     "steps": [
-     "Check feature: Database verifies the organisation's plan includes shortlisting; every paid plan includes it (to be confirmed by CHARA: whether shortlisting is included in all plans).",
-     "Flag: Member marks applicant as shortlisted; event appended.",
-     "Filter: Shortlist filter available in list and board.",
+     "Check feature: set_application_status checks has_feature('shortlisting') for the organisation; every paid plan includes it (to be confirmed by CHARA: whether shortlisting is included in all plans).",
+     "Shortlist: Member moves the applicant from Applied or Viewed to the Shortlisted state through set_application_status; event appended; there is no separate flag.",
+     "Leave shortlist: From Shortlisted the applicant moves only to Interview, Offer or Not selected (SOP FR-D2); a move back to Applied or Viewed is not possible (to be confirmed by CHARA: moving an applicant back from Shortlisted).",
+     "Filter: Shortlisted is available as a stage filter in the list and as a column on the board.",
      "Upsell: If not included (restricted free plan), UI shows upgrade prompt."
     ],
     "outputs": [
-     "Shortlist flags"
+     "Applications in the Shortlisted state"
     ],
     "kpis": [
      "Shortlist usage by plan"
@@ -1043,8 +1067,12 @@
     ],
     "steps": [
      "Access: Staff signs in with MFA; console available only to staff roles, and each role sees only its own functions; the Verification Reviewer has no function in Phase 1.",
-     "Users: Search (Platform Administrator, Trust & Safety Administrator); suspend or reinstate with reason (Trust & Safety Administrator); view activity counts (to be confirmed by CHARA: whether a Platform Administrator may also suspend accounts).",
-     "Organisations: View, with members and vacancies (both roles); suspend with reason (Trust & Safety Administrator).",
+     "Users: Search (Platform Administrator, Trust & Safety Administrator); suspend or reinstate with reason (Trust & Safety Administrator; Suspend user and Reinstate steps); view activity counts (to be confirmed by CHARA: whether a Platform Administrator may also suspend accounts).",
+     "Two-step verification reset: After an identity check, the Platform Administrator resets a user's factors with a mandatory reason; account-ops deletes the factors and signs the user out on all devices; never on one's own account; the user is emailed; audited (SOP FR-A4).",
+     "Organisations: View, with members and vacancies (both roles); suspend or reinstate with reason (Trust & Safety Administrator; Suspend organisation and Reinstate steps).",
+     "Suspend user: Trust & Safety Administrator sets the user status to suspended with a reason; account-ops signs the user out on all devices; login is refused; the user is emailed a statement of reasons; audited.",
+     "Suspend organisation: Trust & Safety Administrator sets the organisation status to suspended with a reason; account-ops signs all members out on all devices; access to the organisation is refused; its vacancies are hidden from the public; the subscription is left as is (to be confirmed by CHARA: effect of an organisation suspension on its subscription); the owner and administrators are emailed a statement of reasons; audited.",
+     "Reinstate: Trust & Safety Administrator reverses each effect with a reason: status set back to active, login or organisation access allowed again, vacancies hidden by the suspension visible again; the user, or the organisation's owner and administrators, are emailed; audited.",
      "Vacancies: Hide or unhide with statement of reasons (Trust & Safety Administrator; SOP FR-C7).",
      "Statistics: Application counts only; no personal documents (Platform Administrator).",
      "Legal: Publish a new document version with change summary, which triggers re-consent (Platform Administrator).",
@@ -1199,9 +1227,17 @@
     "steps": [
      "Receive: Webhook function receives the event.",
      "Verify: Signature checked; invalid signatures rejected and logged.",
-     "Ingest: Event stored by provider event id; duplicates acknowledged without re-processing.",
-     "Apply: Subscription state updated according to event type; audit row written.",
-     "Retry: Failed applications retried by scheduler every 5 minutes; alert after 1 hour.",
+     "Ingest: Event stored once by provider event id; duplicates acknowledged without re-processing.",
+     "Event: checkout.session.completed → link the Stripe customer and subscription to the organisation; billing_checkout_start puts the organisation id in the Checkout session client_reference_id and in subscription_data.metadata, so every subscription event resolves to the organisation without checkout.session.completed.",
+     "Event: customer.subscription.created or customer.subscription.updated → upsert status, plan, current period end and trial end.",
+     "Event: customer.subscription.deleted → Cancelled; the organisation falls back to free_employer (SOP FR-G4).",
+     "Event: invoice.paid → past_due_since cleared; the status is taken from the subscription (a trialing subscription stays Trialing after the zero-amount trial invoice; Past due becomes Active).",
+     "Event: invoice.payment_failed → Past due; past_due_since set if empty; only when it is set, the payment_failed email is queued, once per dunning period (SOP FR-I2).",
+     "Event: customer.subscription.trial_will_end → trial_ending email queued (SOP FR-I2).",
+     "Stale events: An event older than the stored state is marked stale; the subscription is re-fetched from Stripe and applied.",
+     "Unknown references: An event whose organisation is not yet linked is retried by the Retry step before it is marked error; an event with an unknown price, or whose organisation still cannot be resolved, is stored with an error status and raises an alert.",
+     "Audit: Every applied event writes an audit row.",
+     "Retry: Events that failed to apply for a transient reason, or whose organisation is not yet linked, are retried by the scheduler every 5 minutes; alert after 1 hour; events with an unknown price stay in error until fixed by an operator.",
      "Reconcile: Weekly comparison of Stripe subscriptions with records."
     ],
     "outputs": [
@@ -1224,15 +1260,18 @@
     "owner": "Platform / Finance",
     "inputs": [
      "Subscription events",
-     "Grace settings"
+     "Stripe retry settings (cancel 7 days after the first failed payment)"
     ],
     "steps": [
      "Trial: Starts at checkout; ends after the configured trial period (default 30 days) and converts automatically to the selected paid plan; reminder 3 days before.",
-     "Active: Paid invoice sets active; full plan rights.",
-     "Past due: Failed payment sets past due with 7-day grace; email and dashboard warning.",
-     "Cancelled: After grace or on cancellation; organisation falls to the free plan: no open vacancies, read-only applicants.",
-     "Reactivate: Checkout again restores the plan; paused vacancies can be reopened.",
-     "Record: Every transition audited."
+     "Active: invoice.paid on a non-trial invoice, or customer.subscription.updated with status active, sets Active and clears past_due_since; full plan rights.",
+     "Past due: The first invoice.payment_failed sets Past due and stores past_due_since; payment_failed email and dashboard warning; the 7-day grace counts from past_due_since.",
+     "Grace end: Stripe retry (dunning) settings cancel the subscription 7 days after the first failed payment; the system does not cancel on its own.",
+     "Cancelled: Set only by customer.subscription.deleted (after the grace period or on cancellation); the organisation falls back to free_employer.",
+     "Lapse: On fallback the system moves open vacancies to Paused (audited); past applicants stay readable; employer status changes, notes and bulk actions are refused (candidate withdrawal stays possible); free_employer allows no open vacancies and no extra team members (to be confirmed by CHARA: contents of the free_employer plan). These rules apply to a lapsed organisation whether or not limit enforcement is switched on, and to every organisation on free_employer once it is on.",
+     "Reactivate: Checkout again restores the plan; paused vacancies can be reopened through the plan limit check (SOP FR-C6).",
+     "Record: Every transition audited.",
+     "Test: Trial end, grace period and cancellation are tested with a Stripe test clock, including that the status stays Trialing after the trial starts."
     ],
     "outputs": [
      "Subscription state"
@@ -1242,7 +1281,7 @@
      "Recovery within grace (%)"
     ],
     "risks": "Service cut-off errors, revenue loss",
-    "controls": "Scheduled transitions, grace period, data retained",
+    "controls": "Stripe-driven transitions, past_due_since, grace period, free-plan write refusal, data retained, test-clock tests",
     "freq": "Quarterly"
    },
    {
@@ -1452,7 +1491,7 @@
     ],
     "steps": [
      "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails; the provider is Resend (EU region).",
-     "Templates: Confirmation, reset, invitation, MFA recovery reviewed for wording.",
+     "Templates: Confirmation, reset, invitation and two-step verification reset notice reviewed for wording.",
      "Send: Authentication service sends on each event.",
      "Monitor: Bounce and complaint rates reviewed weekly.",
      "Rotate: Provider credentials rotated per key-rotation runbook."
@@ -1479,10 +1518,19 @@
      "Templates"
     ],
     "steps": [
-     "Enqueue: Events add messages to the queue respecting preferences.",
+     "Email: application_received → trigger: new application → employer users of the organisation → preference: per application or daily summary.",
+     "Email: status_changed → trigger: application state change except Viewed → candidate → mandatory.",
+     "Email: vacancy_hidden → trigger: vacancy hidden by moderation (SOP FR-C7) → organisation owner and admins → mandatory.",
+     "Email: trial_ending → trigger: 3 days before the trial ends (SOP FR-G3) → organisation owner → mandatory.",
+     "Email: payment_failed → trigger: first failed payment of a dunning period (SOP FR-G3) → organisation owner → mandatory.",
+     "Email: legal_version → trigger: new legal document version published (SOP FR-H3) → all users affected → mandatory.",
+     "Email: account_suspended / account_reinstated → trigger: suspension or reinstatement of a user or organisation (SOP FR-F1) → the user, or the organisation's owner and administrators → mandatory; carries the statement of reasons.",
+     "Email: other system emails → team invitation (SOP FR-A5), deletion request and completion confirmations (SOP FR-B6) and two-step verification reset notice (SOP FR-A4) → the person concerned → mandatory; sent through the same queue.",
+     "Enqueue: Events add messages to the queue; preferences apply to application_received only.",
      "Consume: Scheduled function picks messages every minute.",
-     "Render: Templates filled with minimal data.",
-     "Send and record: Provider response stored; failures retried with back-off up to 3 times.",
+     "Render: Templates filled with minimal data; English only in Phase 1.",
+     "Send and record: Sent through Resend; provider response and delivery status stored; failures retried with back-off up to 3 times.",
+     "Bounces: Bounce and complaint events are recorded and the address is marked undeliverable.",
      "Alert: Backlog above threshold or repeated failures alert operations.",
      "Retain: Notification records 13 months by default; the period is a configuration value."
     ],
@@ -1495,7 +1543,7 @@
      "Queue latency"
     ],
     "risks": "Lost messages, duplicates",
-    "controls": "Queue with visibility timeout, idempotent send keys",
+    "controls": "Queue with visibility timeout, idempotent send keys, bounce and complaint suppression",
     "freq": "Quarterly"
    },
    {
@@ -1508,16 +1556,16 @@
      "Preference settings"
     ],
     "steps": [
-     "Default: Application updates on; employer digest off (immediate).",
-     "Change: User updates preferences in settings; stored per user.",
-     "Apply: Enqueue step checks preferences; mandatory security and legal emails are always sent.",
+     "Default: Employer new-application emails immediate; candidate status emails are mandatory and have no switch.",
+     "Change: Employer users choose immediate or daily summary in settings; stored per user.",
+     "Apply: Enqueue step checks preferences; mandatory emails (application status, billing, moderation, security and legal) are always sent.",
      "Audit: Preference changes logged."
     ],
     "outputs": [
      "Preference record"
     ],
     "kpis": [
-     "Opt-out rate"
+     "Share of employer users on the daily summary"
     ],
     "risks": "Ignoring preferences",
     "controls": "Check at enqueue, tests",

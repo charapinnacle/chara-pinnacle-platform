@@ -8,7 +8,7 @@ const FR_GROUPS = [
     ["FR-A3", "Login, logout and recovery", "Users can log in, log out and reset a forgotten password by email. Access tokens expire after 30 minutes; sessions are refreshed transparently for up to 7 days.", "M"],
     ["FR-A4", "Two-step verification", "Organisation owners and administrators and all platform staff must enrol TOTP two-step verification before accessing billing, team, applicant or administration pages.", "M"],
     ["FR-A5", "Team membership", "An owner or administrator can invite members by email (single-use link, 7-day expiry), change roles (owner, admin, member), remove members and transfer ownership. Exactly one owner exists at all times. The number of team members is limited by the plan (initially 1 / 5 / 15 for Basic / Professional / Enterprise; the Enterprise value is adjustable per organisation; administrator-editable) when limit enforcement is switched on; reaching the limit shows an upgrade prompt (to be confirmed by CHARA: whether the Basic limit of 1 counts the owner, so that Basic cannot invite members).", "M"],
-    ["FR-A6", "Account kind", "A user account is either a candidate or a company user, chosen once at onboarding and not changeable afterwards.", "M"],
+    ["FR-A6", "Account kind", "A user account is either a candidate or a company user, chosen once at sign-up, committed after email confirmation and not changeable afterwards.", "M"],
     ["FR-A7", "Platform staff roles", "The platform roles Platform Administrator, Verification Reviewer and Trust & Safety Administrator have technically separated permissions and are held by named accounts; there is no shared administrator account. Only a Platform Administrator with two-step verification can grant or revoke a role; every grant and revocation is audited and the affected user's sessions are ended. Further staff are added without redevelopment. The Verification Reviewer role has no screens in Phase 1.", "M"],
     ["FR-A8", "Consent capture", "Sign-up records consent to the current versions of the Terms of Service and Privacy Policy, and of the Worker Terms (candidates) or the Employer Terms (employers); checkout records acceptance of the Subscription and Billing Terms; publication of a new version requires re-consent at next login (to be confirmed by CHARA: which legal documents need recorded acceptance at sign-up and at checkout).", "M"],
     ["FR-A9", "Age attestation", "Candidates confirm they are at least 18 years old at sign-up; no date of birth is stored.", "M"],
@@ -22,9 +22,9 @@ const FR_GROUPS = [
     ["FR-B6", "Account closure", "A candidate can request account deletion; after a 30-day cooling-off period the personal data is erased and application records are pseudonymised.", "M"],
   ]},
   { id: "C", title: "Vacancies", owner: "Employer", items: [
-    ["FR-C1", "Create vacancy", "An employer creates a vacancy with title, description, occupation, industry, country, city, employment type, salary range and currency, accommodation, visa support and recruitment preference (local, international, both). Reference values come from controlled lists.", "M"],
+    ["FR-C1", "Create vacancy", "An employer creates a vacancy with title, description, occupation, industry, country, city, employment type, salary range (minimum not above maximum), currency and pay period (hour, month or year), accommodation, visa support and recruitment preference (local, international, both). Reference values come from controlled lists.", "M"],
     ["FR-C2", "Vacancy lifecycle", "A vacancy moves through Draft → Open → Paused → Closed or Filled; only Open vacancies are visible to the public.", "M"],
-    ["FR-C3", "Public search", "Visitors and candidates search vacancies by keyword, country, city, occupation, industry, employment type, minimum salary, accommodation, visa support and recruitment preference, with paginated results ordered by relevance and recency.", "M"],
+    ["FR-C3", "Public search", "Visitors and candidates search vacancies by keyword, country, city, occupation, industry, employment type, minimum salary (in a chosen currency and pay period, matched against the top of the salary range, without currency conversion), accommodation, visa support and recruitment preference, with paginated results ordered by relevance and recency.", "M"],
     ["FR-C4", "Vacancy page", "The vacancy page shows the vacancy details, the employer's public profile and the actions Apply (login required) and Save.", "M"],
     ["FR-C5", "Saved vacancies", "A candidate can save and unsave vacancies and view the saved list.", "S"],
     ["FR-C6", "Plan limits", "The number of Open vacancies per organisation is limited by its plan: initially 3 (Basic), 15 (Professional) and 50 (Enterprise, adjustable per organisation), stored as administrator-editable configuration. Enforcement is switched on by a configuration setting; when it is on, reaching the limit shows an upgrade prompt (to be confirmed by CHARA: the date on which limit enforcement is switched on).", "M"],
@@ -43,7 +43,7 @@ const FR_GROUPS = [
     ["FR-E1", "Applicant list and pipeline", "An employer views applicants per vacancy as a list (stage, applied date, completeness, document count) and as a pipeline board by stage.", "M"],
     ["FR-E2", "Applicant detail", "The applicant view shows the profile snapshot taken at application time, an indicator when the live profile has changed, the shared documents via access-logged time-limited links, internal notes visible only to the organisation, and the stage history.", "M"],
     ["FR-E3", "Bulk actions", "An employer can change stage or decline several applicants at once, with a reason template.", "S"],
-    ["FR-E4", "Shortlist", "An employer can flag applicants as shortlisted; shortlisting is a plan feature record and is included in every paid plan (to be confirmed by CHARA: whether shortlisting is included in all plans).", "S"],
+    ["FR-E4", "Shortlist", "An employer can move applicants to the Shortlisted state; shortlisting is a plan feature record and is included in every paid plan (to be confirmed by CHARA: whether shortlisting is included in all plans).", "S"],
     ["FR-E5", "Dashboard", "The organisation dashboard shows open vacancies, new applications in the last 7 days, applicants by stage, and plan and trial status.", "M"],
   ]},
   { id: "F", title: "Platform administration", owner: "CHARA staff", items: [
@@ -69,7 +69,7 @@ const FR_GROUPS = [
   { id: "I", title: "Notifications", owner: "Platform", items: [
     ["FR-I1", "Account emails", "Confirmation, password reset, invitation and two-step recovery emails are sent through the configured email provider.", "M"],
     ["FR-I2", "Transactional emails", "Application received, application state changed, vacancy hidden, trial ending (3 days before), payment failed and new legal version emails are queued and sent with delivery status recorded.", "M"],
-    ["FR-I3", "Preferences", "Users can switch application-update emails on or off and choose immediate or daily summary for employer notifications.", "S"],
+    ["FR-I3", "Preferences", "Employer users choose immediate or daily summary for new-application emails; application status emails to candidates are mandatory and cannot be switched off.", "S"],
   ]},
 ];
 
