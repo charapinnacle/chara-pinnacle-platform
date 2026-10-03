@@ -17,7 +17,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 const physicalUtility =
-  /(?<=["'`\s:])-?(?:(?:ml|mr|pl|pr|left|right)-|text-(?:left|right)\b|border-[lr]\b|border-[lr]-|rounded-(?:[lr]|tl|tr|bl|br)(?:-|\b)|float-(?:left|right)\b|scroll-[mp][lr]-)/g;
+  /(?<=["'`\s:])-?(?:(?:ml|mr|pl|pr|left|right)-|text-(?:left|right)\b|border-[lr]\b|border-[lr]-|rounded-(?:[lr]|tl|tr|bl|br)(?:-|\b)|float-(?:left|right)\b|scroll-[mp][lr]-|data-\[side=(?:left|right)\]|slide-(?:in|out)-(?:from|to)-(?:left|right)\b)/g;
 
 describe("RTL readiness: layout uses logical properties only", () => {
   it.each([...sourceFiles("app"), ...sourceFiles("components")])(
@@ -34,5 +34,9 @@ describe("RTL readiness: layout uses logical properties only", () => {
       "text-left",
     ]);
     expect('className="ms-4 text-start rounded-s-lg"'.match(physicalUtility)).toBeNull();
+    expect(
+      'className="data-[side=left]:end-0 slide-in-from-right"'.match(physicalUtility),
+    ).toEqual(["data-[side=left]", "slide-in-from-right"]);
+    expect('className="slide-in-from-bottom-4"'.match(physicalUtility)).toBeNull();
   });
 });

@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Inbox } from "lucide-react";
 import { describe, expect, it } from "vitest";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -75,6 +77,19 @@ describe("form field wrappers", () => {
     expect(html).toContain('aria-invalid="true"');
     expect(html).toContain(`aria-describedby="${id}-description ${id}-error"`);
     expect(html).toMatch(new RegExp(`role="alert"[^>]*id="${id}-error"|id="${id}-error"[^>]*role="alert"`));
+    expect(html).toContain("Enter a valid email");
+  });
+
+  it("surfaces the Zod issue from zodResolver as the field error", async () => {
+    const schema = z.object({ email: z.email("Enter a valid email"), note: z.string() });
+    const result = await zodResolver(schema)({ email: "nope", note: "" }, undefined, {
+      fields: {},
+      shouldUseNativeValidation: false,
+    });
+    const message = result.errors.email?.message;
+    expect(message).toBe("Enter a valid email");
+    const html = renderToStaticMarkup(<Harness error={String(message)} />);
+    expect(html).toContain('aria-invalid="true"');
     expect(html).toContain("Enter a valid email");
   });
 
