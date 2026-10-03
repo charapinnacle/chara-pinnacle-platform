@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(38);
 
 create function pg_temp.new_user(p_id uuid) returns void
 language sql as $$
@@ -118,7 +118,11 @@ select results_eq(
   $$values ('trust_safety'), ('verification_reviewer')$$,
   'staff reads only their own roles'
 );
-select throws_ok($$select granted_by from public.platform_staff$$, '42501', null, 'granted_by is not readable by authenticated');
+select is(
+  (select count(*) from (select * from public.platform_staff) t),
+  2::bigint,
+  'select * works for staff and returns only their own active rows'
+);
 select throws_ok(
   $$insert into public.platform_staff (user_id, role) values ('00000000-0000-0000-0000-00000000b002', 'admin')$$,
   '42501', null, 'staff cannot grant themselves a role'
@@ -142,7 +146,7 @@ reset role;
 select pg_temp.new_user('00000000-0000-0000-0000-00000000d004');
 select pg_temp.as_user('00000000-0000-0000-0000-00000000d004');
 set local role authenticated;
-select is_empty($$select user_id, role from public.platform_staff$$, 'an ordinary user sees no staff rows');
+select is_empty($$select * from public.platform_staff$$, 'select * as an ordinary user returns no staff rows');
 select ok(not private.has_platform_role('admin'), 'an ordinary user holds no role');
 reset role;
 
@@ -164,11 +168,31 @@ select results_eq(
   $$values ('trust_safety')$$,
   'a revoked role is no longer visible to its former holder'
 );
+select ok(not private.has_platform_role('verification_reviewer'), 'a revoked role no longer passes has_platform_role');
+select ok(private.has_platform_role('trust_safety'), 'a role that was not revoked still passes has_platform_role');
 reset role;
 select is(
   (select count(*) from public.platform_staff where user_id = '00000000-0000-0000-0000-00000000b002'),
   2::bigint,
   'the revoked row is kept as history'
+);
+select throws_ok(
+  $$update public.platform_staff set revoked_at = null
+    where user_id = '00000000-0000-0000-0000-00000000b002' and role = 'verification_reviewer'$$,
+  'P0001', 'CHARA_FORBIDDEN', 'a revocation cannot be undone by clearing revoked_at'
+);
+select throws_ok(
+  $$update public.platform_staff set role = 'admin' where user_id = '00000000-0000-0000-0000-00000000c003'$$,
+  'P0001', 'CHARA_FORBIDDEN', 'the role of a grant cannot be changed in place'
+);
+select throws_ok(
+  $$update public.platform_staff set user_id = '00000000-0000-0000-0000-00000000d004'
+    where user_id = '00000000-0000-0000-0000-00000000c003'$$,
+  'P0001', 'CHARA_FORBIDDEN', 'a grant cannot be moved to another user'
+);
+select throws_ok(
+  $$delete from public.platform_staff where user_id = '00000000-0000-0000-0000-00000000b002'$$,
+  'P0001', 'CHARA_FORBIDDEN', 'a staff row cannot be deleted while the profile exists'
 );
 insert into public.platform_staff (user_id, role) values ('00000000-0000-0000-0000-00000000b002', 'verification_reviewer');
 select is(
@@ -176,6 +200,17 @@ select is(
     where user_id = '00000000-0000-0000-0000-00000000b002' and role = 'verification_reviewer'),
   2::bigint,
   'a revoked role can be granted again as a new row'
+);
+select pg_temp.as_user('00000000-0000-0000-0000-00000000b002');
+set local role authenticated;
+select ok(private.has_platform_role('verification_reviewer'), 'a role granted again passes has_platform_role');
+reset role;
+
+delete from auth.users where id = '00000000-0000-0000-0000-00000000c003';
+select is(
+  (select count(*) from public.platform_staff where user_id = '00000000-0000-0000-0000-00000000c003'),
+  0::bigint,
+  'deleting the account removes its staff rows and the audit log keeps the record'
 );
 
 select * from finish();

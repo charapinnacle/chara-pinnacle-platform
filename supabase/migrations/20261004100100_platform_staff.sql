@@ -1,7 +1,8 @@
 -- Platform staff (ARCHITECTURE.md sections 4, 5.2, 5.4; OPEN_QUESTIONS.md D1, D11): a separate table so a profile
 -- update can never escalate privilege. All three roles exist from the start; Phase 1 builds the admin console only.
--- Rows are never deleted: a revocation sets revoked_at and a later grant is a new row. There are no write grants;
--- grant_platform_role and revoke_platform_role arrive with the admin console, the first admin by an audited SQL insert.
+-- A revocation sets revoked_at and a later grant is a new row; rows leave the table only when the profile is deleted,
+-- after which audit.log is the record. There are no write grants; grant_platform_role and revoke_platform_role
+-- arrive with the admin console, the first admin by an audited SQL insert.
 
 create type public.platform_role as enum ('admin', 'verification_reviewer', 'trust_safety');
 
@@ -22,9 +23,9 @@ create unique index platform_staff_active_role_idx
 alter table public.platform_staff enable row level security;
 alter table public.platform_staff force row level security;
 
--- A staff member reads their own active roles (the web tier looks roles up instead of trusting the token);
--- everyone else sees no rows. Listing all staff is a later RPC.
-grant select (user_id, role, granted_at) on public.platform_staff to authenticated;
+-- The policy limits a staff member to their own active roles, so a whole-table grant leaves `select *` working
+-- and everyone else sees no rows. Listing all staff is a later RPC.
+grant select on public.platform_staff to authenticated;
 
 create policy platform_staff_select_own on public.platform_staff
   for select to authenticated
@@ -78,3 +79,32 @@ create trigger platform_staff_audit
   for each row execute function private.platform_staff_audit();
 
 alter table public.platform_staff enable always trigger platform_staff_audit;
+
+create function private.platform_staff_guard() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    if exists (select 1 from public.profiles p where p.id = old.user_id) then
+      raise exception 'CHARA_FORBIDDEN' using detail = 'platform_staff rows are not deleted';
+    end if;
+    return old;
+  end if;
+  if new.user_id is distinct from old.user_id
+     or new.role is distinct from old.role
+     or new.granted_at is distinct from old.granted_at
+     or (old.revoked_at is not null and new.revoked_at is distinct from old.revoked_at) then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'a platform_staff grant is only ever revoked';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.platform_staff_guard() from public, anon, authenticated, service_role;
+
+create trigger platform_staff_guard
+  before update or delete on public.platform_staff
+  for each row execute function private.platform_staff_guard();
+
+alter table public.platform_staff enable always trigger platform_staff_guard;
