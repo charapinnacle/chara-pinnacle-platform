@@ -40,6 +40,22 @@ jobs:
       - run: npm run db:test
       - run: npm run db:lint
 
+  e2e:
+    needs: [web, db]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: cp apps/web/.env.example apps/web/.env.local
+      - run: npm run db:start
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run e2e
+
   security:
     runs-on: ubuntu-latest
     steps:

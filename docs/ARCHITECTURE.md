@@ -91,8 +91,8 @@ chara-pinnacle-platform/
   .nvmrc (24)                 [now] engines.node >=22
   .editorconfig · .gitignore · README.md · .github/CODEOWNERS      [now]
   SECURITY.md
-  .github/workflows/ci.yml    [now] jobs today: web · db · security; functions and e2e are added with the
-                                    first Edge Function / first user flow (§14.5)
+  .github/workflows/ci.yml    [now] jobs today: web · db · e2e · security; functions is added with the
+                                    first Edge Function (§14.5)
   .github/workflows/deploy-supabase.yml   on push to main (environment "production", required reviewer)
   apps/web/                   [now] @chara-pinnacle/web, the only app; never holds a secret key (ADR-0003); dev server on port 3100.
                                     Today: Next.js 16 skeleton plus the web base (next.config.ts security headers, proxy.ts, lib/env.ts, lib/csp.ts, lib/i18n/locale.ts, lib/safe-next.ts, lib/supabase/, app/api/health, Vitest in tests/unit) and the UI primitives (shadcn/ui on Radix with neutral placeholder tokens in app/globals.css, the public, auth and app layout shells, skip link, toasts, skeleton, empty state and React Hook Form field wrappers; their labels are English literals until the lib/i18n dictionaries exist).
@@ -937,6 +937,7 @@ npm run db:reset    # npx supabase db reset: all migrations, then seeds/ref
 npm run db:test     # npx supabase test db: pgTAP files in supabase/tests/database
 npm run db:stop     # npx supabase stop
 npm run dev         # web dev server on http://localhost:3100
+npm run e2e         # Playwright (Chromium) against npm run build + npm run start on :3100 and the running local stack
 ```
 
 The Supabase CLI is the devDependency `supabase@2.119.0` and is always invoked as `npx supabase`; it is not installed globally. Other commands: `npx supabase functions serve --env-file supabase/functions/.env`, `npx supabase gen types typescript --local`, `npx supabase test new <name> --template pgtap` for a new test file. `apps/web/.env.local` holds the local API URL (`http://127.0.0.1:54421`) and the publishable key printed by `npx supabase status`. Edge Functions need Deno; they are typechecked and tested in the CI `functions` job.
@@ -956,7 +957,7 @@ Jobs are added as the code they test appears. All jobs use `actions/checkout@v7`
 1. `web` (exists): lint, typecheck, unit tests (`npm test`), build.
 2. `db` (exists): `npm run db:start` → `npm run db:test` (`npx supabase start`, `npx supabase test db`). Also in the job: `npm run db:lint` (`npx supabase db lint --local --fail-on error`). Added later: the type-drift check (`npx supabase gen types typescript --local` compared with the committed type files).
 3. `functions` (added with the first Edge Function): Deno setup → `deno fmt --check`, `deno lint`, `deno test supabase/functions/_tests`.
-4. `e2e` (added with the first user flow): depends on web + db; Playwright against the built app and the local stack.
+4. `e2e` (exists): depends on web + db; starts the local stack, installs Chromium and runs `npm run e2e` (Playwright against the built app, `apps/web/.env.example` copied to `.env.local`). The helpers in `apps/web/tests/e2e/support` read the Auth admin key from `E2E_AUTH_ADMIN_KEY` (from `npx supabase status` when unset); the name avoids the strings the `security` job greps for.
 5. `security` (exists): `npm audit --omit=dev --audit-level=high` (blocking), a full `npm audit` reported without blocking, and the secret-pattern check: `git grep` for `sb_secret_|service_role|SUPABASE_SECRET` must find nothing outside `supabase/`, `docs/` and `.github/`.
 
 The forbidden-attribute check is a pgTAP test over `information_schema.columns` in the `db` job, not a grep.
