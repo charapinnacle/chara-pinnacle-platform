@@ -567,7 +567,7 @@
 
 - Given Organisation A has 3 applications and 2 Open vacancies; organisation B has 5 applications and 1 Open vacancy; a candidate with no application to A or B; PA is a platform administrator who is not a member
 - When the dashboard queries for applications (last 7 days and by status) run as a member of A for A, as a member of B for B, as a member of B with A's organisation id, as the candidate, as PA and as the anonymous role; the Open vacancy query runs as a member of A for A and a member of B for B
-- Then a's member gets 3 applications and 2 Open vacancies, B's member gets 5 and 1; B's member asking for A, the candidate and PA get 0 applications; the anonymous role is refused with permission denied
+- Then A's member gets 3 applications and 2 Open vacancies, B's member gets 5 and 1; B's member asking for A, the candidate and PA get 0 applications; the anonymous role is refused with permission denied
 
 **AC5 · Plan and trial status card and trial-ending alert** (browser test (Playwright))
 

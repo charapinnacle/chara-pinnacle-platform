@@ -294,7 +294,7 @@
 
 - Given the same user logged in in browser A and browser B
 - When they click 'Log out' in browser A (sign-out of this session only)
-- Then a's auth cookies are removed (Set-Cookie with Max-Age=0 for each), A's row in auth.sessions is deleted, a refresh request with A's old refresh token to Auth fails, and A is redirected to /en/login. Protected pages in A return a redirect and are served with Cache-Control no-store, so the back button shows no private content. Browser B stays signed in.
+- Then A's auth cookies are removed (Set-Cookie with Max-Age=0 for each), A's row in auth.sessions is deleted, a refresh request with A's old refresh token to Auth fails, and A is redirected to /en/login. Protected pages in A return a redirect and are served with Cache-Control no-store, so the back button shows no private content. Browser B stays signed in.
 
 **AC7 · Reset request answer is uniform, throttled, and the email goes only to real accounts** (browser test (Playwright))
 
