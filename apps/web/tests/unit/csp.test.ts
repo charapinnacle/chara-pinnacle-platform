@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCsp, generateNonce } from "@/lib/csp";
+import { buildCsp } from "@/lib/csp";
 
 const base = {
   nonce: "bm9uY2U=",
@@ -67,13 +67,5 @@ describe("buildCsp", () => {
         "upgrade-insecure-requests",
       ),
     ).toBeUndefined();
-  });
-});
-
-describe("generateNonce", () => {
-  it("returns a fresh base64 value on every call", () => {
-    const nonces = new Set(Array.from({ length: 50 }, generateNonce));
-    expect(nonces.size).toBe(50);
-    for (const nonce of nonces) expect(nonce).toMatch(/^[A-Za-z0-9+/]+=*$/);
   });
 });

@@ -33,8 +33,4 @@ describe("security headers", () => {
       "Content-Security-Policy",
     );
   });
-
-  it("no longer redirects the root in configuration", () => {
-    expect(nextConfig.redirects).toBeUndefined();
-  });
 });

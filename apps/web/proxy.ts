@@ -1,21 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildCsp, generateNonce } from "@/lib/csp";
+import { buildCsp } from "@/lib/csp";
 import { env } from "@/lib/env";
 import { localeRedirectPath } from "@/lib/i18n/locale";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
-  const redirectPath = localeRedirectPath(
-    request.nextUrl.pathname,
-    request.headers.get("accept-language"),
-  );
+  const redirectPath = localeRedirectPath(request.nextUrl.pathname);
   if (redirectPath) {
     const url = request.nextUrl.clone();
     url.pathname = redirectPath;
     return NextResponse.redirect(url);
   }
 
-  const nonce = generateNonce();
+  const nonce = btoa(crypto.randomUUID());
   const csp = buildCsp({
     nonce,
     supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,

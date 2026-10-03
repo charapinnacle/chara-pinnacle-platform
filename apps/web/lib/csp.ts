@@ -1,7 +1,3 @@
-export function generateNonce(): string {
-  return btoa(crypto.randomUUID());
-}
-
 type CspOptions = {
   nonce: string;
   supabaseUrl: string;

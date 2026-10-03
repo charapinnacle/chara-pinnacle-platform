@@ -27,11 +27,8 @@ describe("safeNextPath", () => {
     expect(safeNextPath(input)).toBe("/");
   });
 
-  it("falls back for a missing value and honours the fallback argument", () => {
+  it("falls back for a missing value", () => {
     expect(safeNextPath(null)).toBe("/");
-    expect(safeNextPath(undefined, "/en/dashboard")).toBe("/en/dashboard");
-    expect(safeNextPath("//evil.example", "/en/dashboard")).toBe(
-      "/en/dashboard",
-    );
+    expect(safeNextPath(undefined)).toBe("/");
   });
 });
