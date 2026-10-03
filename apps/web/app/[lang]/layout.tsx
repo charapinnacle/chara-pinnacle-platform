@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import "../globals.css";
 
 export const metadata: Metadata = {
@@ -18,6 +19,8 @@ export default async function RootLayout({
   children,
   params,
 }: LayoutProps<"/[lang]">) {
+  // Every response needs its own CSP nonce, so no page is prerendered (ADR-0004).
+  await connection();
   const { lang } = await params;
   return (
     <html lang={lang}>

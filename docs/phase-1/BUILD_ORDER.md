@@ -27,7 +27,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U02 | `feat/db-reference-data` | infra: countries, languages, currencies, industries, seeds, `packages/db-types`, type-drift check in CI | U01 |
 | U03 | `feat/web-base` | infra: env validation, Supabase clients, `proxy.ts` (session, nonce CSP, locale), `.env.example`, Vitest | U01 |
 | U04 | `feat/web-ui-primitives` | infra: shadcn/ui, layout shell, tokens, accessibility basics | U03 |
-| U05 | `chore/e2e-harness` | infra: Playwright, Mailpit and TOTP helpers, CI `e2e` job | U04 |
+| U05 | `chore/e2e-harness` | infra: Playwright, Mailpit and TOTP helpers, CI `e2e` job, built-server security header check (NFR-S5; U03 covers headers() and proxy() in unit tests only) | U04 |
 | U06 | `feat/db-profiles-consents` | infra: profiles, `platform_staff` (three roles), `legal_documents`, consents, `set_account_kind`, `accept_consents` | U01, U02 |
 | U07 | `feat/candidate-registration` | FR-A1, FR-A6, FR-A8, FR-A9 | U03–U06 |
 | U08 | `feat/login-logout-recovery` | FR-A3 | U07 |

@@ -1,0 +1,91 @@
+import { NextRequest } from "next/server";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+import { describe, expect, it } from "vitest";
+import { config, proxy } from "../../proxy";
+
+const origin = "http://localhost:3100";
+
+function matches(url: string) {
+  return unstable_doesMiddlewareMatch({ config, url });
+}
+
+describe("proxy matcher", () => {
+  it.each(["/en", "/en/jobs", "/jobs", "/auth/callback", "/en/apply.json"])(
+    "runs for %s",
+    (url) => {
+      expect(matches(url)).toBe(true);
+    },
+  );
+
+  it.each([
+    "/_next/static/chunk.js",
+    "/_next/image",
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/api/health",
+    "/logo.svg",
+  ])("skips %s", (url) => {
+    expect(matches(url)).toBe(false);
+  });
+});
+
+describe("proxy", () => {
+  it("redirects a path without a locale and keeps the query string", async () => {
+    const response = await proxy(new NextRequest(`${origin}/jobs?q=nurse`));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(`${origin}/en/jobs?q=nurse`);
+  });
+
+  it("redirects the root to the locale root", async () => {
+    const response = await proxy(new NextRequest(`${origin}/`));
+    expect(response.headers.get("location")).toBe(`${origin}/en`);
+  });
+
+  it("sets a nonce CSP on the response and passes the same one to the page", async () => {
+    const response = await proxy(new NextRequest(`${origin}/en`));
+    const csp = response.headers.get("content-security-policy") ?? "";
+    const nonce = /'nonce-([^']+)'/.exec(csp)?.[1];
+    expect(nonce).toBeTruthy();
+    expect(response.headers.get("x-middleware-request-x-nonce")).toBe(nonce);
+    expect(
+      response.headers.get("x-middleware-request-content-security-policy"),
+    ).toBe(csp);
+    expect(csp).toContain("'strict-dynamic'");
+    expect(csp).not.toContain("'unsafe-inline'");
+  });
+
+  it("uses a different nonce and request id on every request", async () => {
+    const [a, b] = await Promise.all([
+      proxy(new NextRequest(`${origin}/en`)),
+      proxy(new NextRequest(`${origin}/en`)),
+    ]);
+    expect(a.headers.get("x-middleware-request-x-nonce")).not.toBe(
+      b.headers.get("x-middleware-request-x-nonce"),
+    );
+    expect(a.headers.get("x-request-id")).not.toBe(
+      b.headers.get("x-request-id"),
+    );
+  });
+
+  it("does not trust a nonce or CSP sent by the client", async () => {
+    const response = await proxy(
+      new NextRequest(`${origin}/en`, {
+        headers: {
+          "x-nonce": "forged",
+          "content-security-policy": "default-src *",
+        },
+      }),
+    );
+    expect(response.headers.get("x-middleware-request-x-nonce")).not.toBe(
+      "forged",
+    );
+    expect(response.headers.get("content-security-policy")).not.toContain("*");
+  });
+
+  it("serves auth routes without a locale redirect and with the CSP", async () => {
+    const response = await proxy(new NextRequest(`${origin}/auth/callback`));
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("content-security-policy")).toContain("nonce-");
+  });
+});
