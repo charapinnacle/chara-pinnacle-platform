@@ -1448,10 +1448,10 @@
     "owner": "Platform / Operations",
     "inputs": [
      "Sending domain",
-     "Email provider account"
+     "Resend account (EU region)"
     ],
     "steps": [
-     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails (to be confirmed by CHARA: the email provider, selected from the team's comparison of 2-3 EU-compatible providers).",
+     "Set up: Domain authenticated (SPF, DKIM, DMARC); provider configured as SMTP for authentication emails; the provider is Resend (EU region).",
      "Templates: Confirmation, reset, invitation, MFA recovery reviewed for wording.",
      "Send: Authentication service sends on each event.",
      "Monitor: Bounce and complaint rates reviewed weekly.",

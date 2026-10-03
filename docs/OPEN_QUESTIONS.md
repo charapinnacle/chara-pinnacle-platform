@@ -101,7 +101,7 @@ Documents under L5: Terms of Service; Privacy Policy; Cookie Policy; Platform Ru
 | O7 | Stripe account (test mode first). | Null provider in development and CI until then. | Week 3 | open |
 | O8 | Two-person rule for verification decisions. | None given. | Verification phase | open |
 | O9 | Separate staging project. Not addressed by the reply. | A staging project in the same region before production. | Before first deployment | open |
-| O10 | Transactional email provider. The owner selects after the team supplies a comparison of 2–3 EU-compatible providers (pricing, EU data location, DPA, expected monthly cost, integration complexity). | Resend (EU region) is the team's working recommendation; local development keeps using the mail catcher. | Week 1 exit criterion (W1) | open; comparison owed by the team |
+| O10 | Transactional email provider. The owner's reply asked the team to compare 2–3 EU-compatible providers before selection. | Resend, EU region: Supabase custom SMTP for auth emails, the Resend API from the `notify` Edge Function for transactional emails. Local development keeps using the mail catcher. | Week 1 exit criterion (W1) | decided (2026-10-03) |
 
 ### Product
 
@@ -124,7 +124,7 @@ Documents under L5: Terms of Service; Privacy Policy; Cookie Policy; Platform Ru
 
 | ID | Item | Needed for | Until then | Blocks week 1 |
 |---|---|---|---|---|
-| W1 | Selected email provider (O10), an account with it, and a sending domain with DNS access (SPF, DKIM, DMARC). | Auth email over custom SMTP; exit criterion "provider sending verified". | Email is checked in the local mail catcher (port 54424). | Yes: the exit criterion cannot be met until a provider is selected |
+| W1 | Resend account (EU region) and a sending domain with DNS access (SPF, DKIM, DMARC). | Auth email over custom SMTP; exit criterion "Resend sending verified". | Email is checked in the local mail catcher (port 54424). | Yes: the exit criterion cannot be met until the account and domain exist |
 | W2 | Supabase project in Frankfurt (`eu-central-1`) on the Pro tier (O1, O2 decided); the project itself is still to be created. | First remote deployment. | Local stack and CI only. | No |
 | W3 | Branch protection on `main`. Only the repository owner account can enable it. | Enforcing the pull-request workflow (R17). | Followed by convention. | No |
 | W4 | Repository visibility: public or private. | Private would allow the client documents to be committed (R19). | `docs/phase-1/client/` and `docs/spec/` stay gitignored. | No |
@@ -145,7 +145,7 @@ Do not reopen these. Dated 2026-10-02 unless stated.
 | R2 | Frontend: Next.js 16 in `apps/web` (App Router, TypeScript, Tailwind 4), kept portable (`output: 'standalone'`, no vendor-specific features) because hosting is undecided (O3). |
 | R3 | Supabase project: created by the owner in the EU; develop locally until it exists; deploy with `npx supabase link`, `db push`, `functions deploy`. The region is Frankfurt (O1, R26). |
 | R4 | Payments: Stripe (Checkout, Customer Portal, Tax, webhooks) behind a provider-neutral adapter. |
-| R5 | Email: superseded by the owner's decisions reply. The provider is not decided (O10); Resend, EU region, is the team's working recommendation. The provider-neutral design stands: Supabase custom SMTP for auth emails; the provider API from the `notify` Edge Function for transactional emails. |
+| R5 | Email: Resend, EU region (decided 2026-10-03; O10). Supabase custom SMTP for auth emails; the Resend API from the `notify` Edge Function for transactional emails. |
 | R6 | Phase 1 account kinds: candidate (worker) and employer only. |
 | R7 | Schema tooling: Supabase CLI SQL migrations are the single source of truth; types generated with `npx supabase gen types` into `packages/db-types`. No ORM. |
 | R8 | Language: English only in Phase 1; routing is `app/[lang]` from day one; logical CSS for right-to-left readiness. |
