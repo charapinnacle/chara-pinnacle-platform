@@ -39,6 +39,9 @@ jobs:
       - run: npm run db:start
       - run: npm run db:test
       - run: npm run db:lint
+      - run: npm run db:types
+      - name: Fail when generated types differ from the committed file
+        run: git diff --exit-code -- packages/db-types/src/database.ts
 
   e2e:
     needs: [web, db]
