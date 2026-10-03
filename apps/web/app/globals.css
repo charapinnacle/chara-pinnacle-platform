@@ -75,10 +75,6 @@
   body {
     @apply bg-background text-foreground;
   }
-  :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
   @media (prefers-reduced-motion: reduce) {
     *,
     ::before,
@@ -88,4 +84,11 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* Unlayered on purpose: the shadcn primitives set outline-none in the utilities layer, which
+   would beat a base-layer rule and leave form controls with only a faint ring. */
+:where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

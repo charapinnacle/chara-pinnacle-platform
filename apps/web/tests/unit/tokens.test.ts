@@ -58,3 +58,24 @@ describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
     expect(contrast("foreground", "background")).toBeGreaterThan(18);
   });
 });
+
+describe("visible focus (NFR-U1)", () => {
+  it("draws the focus outline outside any cascade layer so primitives cannot remove it", () => {
+    const layerStart = css.indexOf("@layer base");
+    let depth = 0;
+    let layerEnd = layerStart;
+    for (let i = css.indexOf("{", layerStart); i < css.length; i++) {
+      if (css[i] === "{") depth++;
+      if (css[i] === "}" && --depth === 0) {
+        layerEnd = i + 1;
+        break;
+      }
+    }
+    const unlayered = css.slice(0, layerStart) + css.slice(layerEnd);
+    const rule = /([^{}]*:focus-visible)\s*\{([^}]*)\}/.exec(unlayered);
+    expect(rule?.[1]).toMatch(/input/);
+    expect(rule?.[1]).toMatch(/textarea/);
+    expect(rule?.[1]).toMatch(/button/);
+    expect(rule?.[2]).toMatch(/outline:\s*2px solid var\(--ring\)/);
+  });
+});
