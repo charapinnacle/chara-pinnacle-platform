@@ -10,13 +10,17 @@ import {
   resendSchema,
   signUpFormSchema,
   signUpInputSchema,
-  signUpSchema,
 } from "@/lib/validation/sign-up";
 
-const valid = { kind: "worker", email: "ana@example.test", password: "x".repeat(12) };
+const valid = {
+  kind: "worker",
+  email: "ana@example.test",
+  password: "x".repeat(12),
+  consents: [],
+};
 
 function messages(input: unknown): Record<string, string> {
-  const result = signUpSchema.safeParse(input);
+  const result = signUpInputSchema.safeParse(input);
   return result.success ? {} : fieldErrors(result.error);
 }
 
@@ -45,7 +49,7 @@ describe("sign-up schema (FR-A1)", () => {
   it("names the password field in each password refusal and never returns the value", () => {
     for (const length of [0, 11, 73]) {
       const password = "p".repeat(length);
-      const result = signUpSchema.safeParse({ ...valid, password });
+      const result = signUpInputSchema.safeParse({ ...valid, password });
       expect(result.success).toBe(false);
       const errors = fieldErrors(result.error!);
       expect(errors.password).toMatch(/^(Enter a password|Password )/);
@@ -59,7 +63,7 @@ describe("sign-up schema (FR-A1)", () => {
   });
 
   it("trims and lowercases the email", () => {
-    const result = signUpSchema.parse({ ...valid, email: "  Ana@Example.COM " });
+    const result = signUpInputSchema.parse({ ...valid, email: "  Ana@Example.COM " });
     expect(result.email).toBe("ana@example.com");
   });
 

@@ -1,6 +1,7 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
 import {
   accountRows,
+  confirmFromLink,
   createUnconfirmedUser,
   moveConfirmationSent,
   pendingConsents,
@@ -31,7 +32,7 @@ test.describe("email confirmation", () => {
     moveConfirmationSent(user.id, "1 hour");
     const versions = await pendingConsents("worker");
 
-    await page.goto(user.confirmPath);
+    await confirmFromLink(page, user.confirmPath);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(
       page.getByRole("heading", { name: "Your account type is Worker" }),
@@ -58,11 +59,12 @@ test.describe("email confirmation", () => {
   }) => {
     await page.setViewportSize({ width: 360, height: 800 });
     const user = await createUnconfirmedUser("company");
-    await page.goto(user.confirmPath);
+    await confirmFromLink(page, user.confirmPath);
     await expect(
       page.getByRole("heading", { name: "Your account type is Employer" }),
     ).toBeVisible();
     await expect(page.getByText("This cannot be changed later.")).toBeVisible();
+    await page.reload();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
@@ -82,7 +84,7 @@ test.describe("email confirmation", () => {
   }) => {
     const inTime = await createUnconfirmedUser();
     moveConfirmationSent(inTime.id, "23 hours 59 minutes");
-    await page.goto(inTime.confirmPath);
+    await confirmFromLink(page, inTime.confirmPath);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(page.getByRole("heading", { name: /Your account type is/ })).toBeVisible();
 
@@ -90,7 +92,7 @@ test.describe("email confirmation", () => {
     moveConfirmationSent(expired.id, "24 hours 1 minute");
     const expiredContext = await browser.newContext();
     const expiredPage = await expiredContext.newPage();
-    await expiredPage.goto(`http://localhost:3100${expired.confirmPath}`);
+    await confirmFromLink(expiredPage, expired.confirmPath);
     await expect(expiredPage.getByRole("heading", { name: INVALID_LINK })).toBeVisible();
     await expect(expiredPage.getByRole("button", { name: "Send a new link" })).toBeVisible();
     expect(await sessionCookies(expiredContext)).toEqual([]);
@@ -105,13 +107,41 @@ test.describe("email confirmation", () => {
     const before = accountRows(inTime.id);
     for (const context of [page.context(), await browser.newContext()]) {
       const reopened = await context.newPage();
-      await reopened.goto(`http://localhost:3100${inTime.confirmPath}`);
+      await confirmFromLink(reopened, inTime.confirmPath);
       await expect(reopened.getByRole("heading", { name: INVALID_LINK })).toBeVisible();
     }
     const after = accountRows(inTime.id);
     expect(after.consents).toEqual(before.consents);
     expect(after.audit).toEqual(before.audit);
     expect(after.account.email_confirmed_at).toBe(before.account.email_confirmed_at);
+  });
+
+  test("FR-A1 AC7: opening the link without a click, as a mail scanner does, leaves it usable", async ({
+    page,
+    request,
+  }) => {
+    const user = await createUnconfirmedUser();
+    for (let fetch = 0; fetch < 2; fetch += 1) {
+      const response = await request.get(user.confirmPath);
+      expect(response.status()).toBe(200);
+      expect(await response.text()).toContain("Confirm email address");
+      expect(response.headers()["set-cookie"]).toBeUndefined();
+    }
+    expect(accountRows(user.id).account.email_confirmed_at).toBeNull();
+
+    await confirmFromLink(page, user.confirmPath);
+    await expect(page).toHaveURL(/\/en\/onboarding$/);
+    await expect.poll(() => accountRows(user.id).account.account_kind).toBe("worker");
+    expect(accountRows(user.id).account.email_confirmed_at).not.toBeNull();
+  });
+
+  test("FR-A1 AC7: a link without a token, or with a malformed one, lands on the invalid-link page", async ({
+    page,
+  }) => {
+    await page.goto("/en/confirm-email");
+    await expect(page.getByRole("heading", { name: INVALID_LINK })).toBeVisible();
+    await confirmFromLink(page, "/en/confirm-email?token_hash=%3Cscript%3E");
+    await expect(page.getByRole("heading", { name: INVALID_LINK })).toBeVisible();
   });
 
   test("FR-A1 AC9: a next parameter never leaves the site", async ({ browser }) => {
@@ -121,8 +151,9 @@ test.describe("email confirmation", () => {
       const page = await context.newPage();
       const hosts = new Set<string>();
       page.on("request", (request) => hosts.add(new URL(request.url()).host));
-      await page.goto(
-        `http://localhost:3100${user.confirmPath}&next=${encodeURIComponent(next)}`,
+      await confirmFromLink(
+        page,
+        `${user.confirmPath}&next=${encodeURIComponent(next)}`,
       );
       await expect(page).toHaveURL("http://localhost:3100/en/onboarding");
       expect(hosts.has("evil.example")).toBe(false);
@@ -157,7 +188,7 @@ test.describe("email confirmation", () => {
       await expect(waitForMessage(confirmed.email, { timeoutMs: 1_500 })).rejects.toThrow("No message for");
       await expect(waitForMessage(unknown, { timeoutMs: 1_500 })).rejects.toThrow("No message for");
 
-      await page.goto(waiting.confirmPath);
+      await confirmFromLink(page, waiting.confirmPath);
       await expect(page.getByRole("heading", { name: INVALID_LINK })).toBeVisible();
 
       const sent = await messageCount(waiting.email);

@@ -29,7 +29,7 @@ const passwordSchema = z
     { error: "Password is too long: use at most 72 characters." },
   );
 
-export const signUpSchema = z.object({
+const signUpSchema = z.object({
   kind: accountKindSchema,
   email: emailSchema,
   password: passwordSchema,
@@ -38,6 +38,8 @@ export const signUpSchema = z.object({
 export const signUpInputSchema = signUpSchema.extend({
   consents: consentEntriesSchema,
 });
+
+export const confirmTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
 
 export const resendSchema = z.object({ email: emailSchema });
 

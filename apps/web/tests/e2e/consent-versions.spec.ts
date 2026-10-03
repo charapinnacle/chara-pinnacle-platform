@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   accountRows,
   callAs,
+  confirmFromLink,
   createUnconfirmedUser,
   pendingConsents,
   publishNewVersion,
@@ -11,7 +12,7 @@ import { createTestUser, deleteTestUser } from "./support/test-user";
 
 // These tests publish new versions of legal documents. Versions cannot be removed
 // (consents reference them), so they run after every other test in their own
-// project and a database reset returns the stack to version 0.
+// project; the global teardown resets the database to version 0.
 test.describe.configure({ mode: "serial" });
 
 test("FR-A8 AC5: a version superseded before confirmation is accepted first and the kind waits for it", async ({
@@ -24,7 +25,7 @@ test("FR-A8 AC5: a version superseded before confirmation is accepted first and 
   const newVersion = publishNewVersion("privacy-policy", "Adds the new retention periods.");
   expect(newVersion).toBe(signedUpWith.version + 1);
 
-  await page.goto(user.confirmPath);
+  await confirmFromLink(page, user.confirmPath);
   await expect(page).toHaveURL(/\/en\/onboarding$/);
   await expect(page.getByRole("heading", { name: /^Set up your Worker account/ })).toBeVisible();
   await expect(page.getByText(`Version ${newVersion}, published`)).toBeVisible();

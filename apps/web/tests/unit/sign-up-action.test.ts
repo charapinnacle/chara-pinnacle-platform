@@ -9,17 +9,18 @@ const redirectMock = vi.hoisted(() =>
 );
 const signUpMock = vi.fn();
 const resendMock = vi.fn();
+const verifyOtpMock = vi.fn();
 const documentsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
-    auth: { signUp: signUpMock, resend: resendMock },
+    auth: { signUp: signUpMock, resend: resendMock, verifyOtp: verifyOtpMock },
   }),
 }));
 
-const { resendConfirmation, signUp } = await import("@/lib/actions/auth");
+const { confirmEmail, resendConfirmation, signUp } = await import("@/lib/actions/auth");
 
 const documents: LegalDocumentSummary[] = ["terms-of-service", "worker-terms", "age-18-plus"].map(
   (slug) => ({
@@ -94,6 +95,21 @@ describe("signUp action", () => {
     expect(signUpMock).not.toHaveBeenCalled();
   });
 
+  it("asks for a reload when the submitted version has been superseded, and for a tick when the entry is missing", async () => {
+    const result = await signUp({
+      ...input,
+      consents: consents
+        .filter(({ purpose }) => purpose !== "worker-terms")
+        .map((entry) => (entry.purpose === "terms-of-service" ? { ...entry, version: 1 } : entry)),
+    });
+    expect(result?.errors).toEqual({
+      "accepted.terms-of-service":
+        "A legal document has changed. Reload the page to see the current version.",
+      "accepted.worker-terms": "Accept the Title of worker-terms to continue",
+    });
+    expect(signUpMock).not.toHaveBeenCalled();
+  });
+
   it("maps a breached password to its message on the password field", async () => {
     signUpMock.mockResolvedValue({
       data: {},
@@ -127,13 +143,17 @@ describe("signUp action", () => {
     });
   });
 
-  it("returns a generic message for any other failure without internals", async () => {
+  it("returns a generic message for any other failure without internals and logs only its code and status", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     signUpMock.mockResolvedValue({
       data: {},
       error: new AuthApiError("Database error saving new user", 500, "unexpected_failure"),
     });
     const result = await signUp(input);
     expect(result).toEqual({ message: "We could not complete this request. Try again." });
+    expect(logged).toHaveBeenCalledWith("Sign-up failed", { code: "unexpected_failure", status: 500 });
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("example.com");
+    logged.mockRestore();
   });
 });
 
@@ -169,4 +189,34 @@ describe("resendConfirmation action", () => {
       message: "Too many attempts. Try again in a few minutes.",
     });
   });
+});
+
+describe("confirmEmail action", () => {
+  function form(tokenHash: string | null): FormData {
+    const data = new FormData();
+    if (tokenHash !== null) data.set("token_hash", tokenHash);
+    return data;
+  }
+
+  it("verifies the token on submit and goes to onboarding", async () => {
+    verifyOtpMock.mockResolvedValue({ data: {}, error: null });
+    await expect(confirmEmail(form("abc_DEF-123"))).rejects.toThrow("REDIRECT:/en/onboarding");
+    expect(verifyOtpMock).toHaveBeenCalledWith({ type: "signup", token_hash: "abc_DEF-123" });
+  });
+
+  it("sends a used or expired token to the invalid-link page", async () => {
+    verifyOtpMock.mockResolvedValue({
+      data: {},
+      error: new AuthApiError("Email link is invalid or has expired", 403, "otp_expired"),
+    });
+    await expect(confirmEmail(form("abc"))).rejects.toThrow("REDIRECT:/en/verify-email?error=invalid_link");
+  });
+
+  it.each([[null], [""], ["a b"], ["<script>"], ["x".repeat(201)]])(
+    "never calls Auth for the token %j",
+    async (token) => {
+      await expect(confirmEmail(form(token))).rejects.toThrow("REDIRECT:/en/verify-email?error=invalid_link");
+      expect(verifyOtpMock).not.toHaveBeenCalled();
+    },
+  );
 });

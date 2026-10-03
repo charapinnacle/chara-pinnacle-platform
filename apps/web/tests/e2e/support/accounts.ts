@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Page } from "@playwright/test";
 import { env } from "@/lib/env";
 import { execute, literal, query } from "./db";
 import { adminRequest, type TestUser } from "./test-user";
@@ -65,8 +66,13 @@ export async function createUnconfirmedUser(
     id,
     email,
     password,
-    confirmPath: `/auth/confirm?token_hash=${hashed_token}&type=signup`,
+    confirmPath: `/en/confirm-email?token_hash=${hashed_token}`,
   };
+}
+
+export async function confirmFromLink(page: Page, path: string): Promise<void> {
+  await page.goto(new URL(path, "http://localhost:3100").href);
+  await page.getByRole("button", { name: "Confirm email address" }).click();
 }
 
 export function moveConfirmationSent(userId: string, interval: string): void {

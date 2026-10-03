@@ -19,6 +19,9 @@ export type LegalDocumentSummary = {
   changeSummary: string;
 };
 
+export const DOCUMENT_CHANGED =
+  "A legal document has changed. Reload the page to see the current version.";
+
 export function consentMessage(
   document: Pick<LegalDocumentSummary, "slug" | "title">,
 ): string {

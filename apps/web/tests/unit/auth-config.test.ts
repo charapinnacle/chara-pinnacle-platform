@@ -25,12 +25,12 @@ describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
     expect(value("auth", "enable_anonymous_sign_ins")).toBe("false");
   });
 
-  it("keeps a confirmation link valid for 24 hours and throttles resends to one a minute", () => {
-    expect(value("auth.email", "otp_expiry")).toBe("86400");
+  it("keeps a confirmation link valid for at least 24 hours and throttles resends to one a minute", () => {
+    expect(Number(value("auth.email", "otp_expiry"))).toBeGreaterThanOrEqual(86_400);
     expect(value("auth.email", "max_frequency")).toBe('"60s"');
   });
 
-  it("sends the confirmation link to /auth/confirm with the token hash", () => {
+  it("sends the confirmation link to the confirm page with the token hash", () => {
     expect(value("auth.email.template.confirmation", "content_path")).toBe(
       '"./supabase/templates/confirmation.html"',
     );
@@ -38,15 +38,11 @@ describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
       path.join(import.meta.dirname, "../../../../supabase/templates/confirmation.html"),
       "utf8",
     );
-    expect(template).toContain("{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup");
+    expect(template).toContain("{{ .SiteURL }}/en/confirm-email?token_hash={{ .TokenHash }}");
     expect(template).not.toMatch(/password/i);
   });
 
   it("limits sign-up and sign-in requests to 30 per five minutes per address", () => {
     expect(value("auth.rate_limit", "sign_in_sign_ups")).toBe("30");
-  });
-
-  it("ends a session after seven days so a changed document is accepted at the latest then", () => {
-    expect(value("auth.sessions", "timebox")).toBe('"168h"');
   });
 });

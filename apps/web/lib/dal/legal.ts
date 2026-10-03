@@ -11,13 +11,8 @@ import {
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 
-type DocumentRow = {
-  slug: string;
-  title: string;
-  version: number;
-  published_at: string;
-  change_summary: string;
-};
+type DocumentRow =
+  Database["public"]["Functions"]["signup_documents"]["Returns"][number];
 
 type DocumentsToAccept = {
   documents: LegalDocumentSummary[];
@@ -43,7 +38,7 @@ export async function getSignupDocuments(
   const { data, error } = await supabase.rpc("signup_documents", {
     p_kind: kind,
   });
-  if (error) throw new Error("The sign-up documents could not be loaded");
+  if (error) throw new Error("The sign-up documents could not be loaded", { cause: error });
   return data.map(toSummary);
 }
 
@@ -61,7 +56,7 @@ async function getAttestationWording(
     .eq("slug", attestation.slug)
     .eq("version", attestation.version)
     .single();
-  if (error) throw new Error("The age wording could not be loaded");
+  if (error) throw new Error("The age wording could not be loaded", { cause: error });
   return data.body;
 }
 
@@ -84,7 +79,7 @@ export async function getOnboardingDocuments(
     getSignupDocuments(kind),
     supabase.from("profiles").select("pending_consents").single(),
   ]);
-  if (error) throw new Error("The sign-up consents could not be loaded");
+  if (error) throw new Error("The sign-up consents could not be loaded", { cause: error });
   const entries = consentEntriesSchema.safeParse(profile.pending_consents);
   const stale = unacceptedDocuments(
     documents,
@@ -97,7 +92,7 @@ export const getPendingReconsents = cache(
   async (): Promise<LegalDocumentSummary[]> => {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("pending_reconsents");
-    if (error) throw new Error("The pending consents could not be loaded");
+    if (error) throw new Error("The pending consents could not be loaded", { cause: error });
     return data.map(toSummary);
   },
 );
@@ -112,7 +107,7 @@ export async function getLegalDocument(slug: string) {
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error("The legal document could not be loaded");
+  if (error) throw new Error("The legal document could not be loaded", { cause: error });
   if (!data?.published_at) return null;
   return {
     title: data.title,

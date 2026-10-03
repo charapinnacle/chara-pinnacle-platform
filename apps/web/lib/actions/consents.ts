@@ -9,17 +9,17 @@ import { createClient } from "@/lib/supabase/server";
 import {
   consentEntriesSchema,
   consentMessage,
+  DOCUMENT_CHANGED,
   unacceptedDocuments,
   type ConsentEntry,
 } from "@/lib/validation/consents";
 
 export type ConsentActionResult = { error: string } | undefined;
 
-const CHANGED = "A legal document has changed. Reload the page to see the current version.";
 const GENERIC_FAILURE = "We could not save this step. Try again.";
 
 function describe(code: string): string {
-  return code === "CHARA_CONSENT_REQUIRED" ? CHANGED : GENERIC_FAILURE;
+  return code === "CHARA_CONSENT_REQUIRED" ? DOCUMENT_CHANGED : GENERIC_FAILURE;
 }
 
 export async function commitAccountKind(

@@ -5,8 +5,13 @@ import { redirect } from "next/navigation";
 import { getSignupDocuments } from "@/lib/dal/legal";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/server";
-import { consentMessage, unacceptedDocuments } from "@/lib/validation/consents";
 import {
+  consentMessage,
+  DOCUMENT_CHANGED,
+  unacceptedDocuments,
+} from "@/lib/validation/consents";
+import {
+  confirmTokenSchema,
   fieldErrors,
   resendSchema,
   signUpInputSchema,
@@ -22,6 +27,9 @@ const BREACHED_PASSWORD =
   "This password has appeared in a data breach. Choose another one.";
 const GENERIC_FAILURE = "We could not complete this request. Try again.";
 
+function logAuthFailure(action: string, error: AuthError): void {
+  console.error(`${action} failed`, { code: error.code, status: error.status });
+}
 
 export async function signUp(
   input: SignUpInput,
@@ -37,7 +45,9 @@ export async function signUp(
       errors: Object.fromEntries(
         missing.map((document) => [
           `accepted.${document.slug}`,
-          consentMessage(document),
+          consents.some((entry) => entry.purpose === document.slug)
+            ? DOCUMENT_CHANGED
+            : consentMessage(document),
         ]),
       ),
     };
@@ -94,6 +104,7 @@ function refusal(error: AuthError): AuthActionResult {
   if (error.code === "email_address_invalid") {
     return { errors: { email: "Enter a valid email address." } };
   }
+  logAuthFailure("Sign-up", error);
   return { message: GENERIC_FAILURE };
 }
 
@@ -109,7 +120,23 @@ export async function resendConfirmation(input: {
     email: parsed.data.email,
   });
   if (error && isRateLimit(error)) return { message: RATE_LIMITED };
+  if (error && !isAddressThrottle(error)) logAuthFailure("Resend", error);
   // Every other outcome, including an unknown or confirmed address and the
   // per-address minimum interval, answers alike so the form reveals nothing.
   return { sent: true };
+}
+
+// The link only opens the confirm page: the single-use token is spent here, by a click, so that mail scanners
+// which fetch links in advance cannot use it up.
+export async function confirmEmail(formData: FormData): Promise<void> {
+  const parsed = confirmTokenSchema.safeParse(formData.get("token_hash"));
+  if (parsed.success) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      type: "signup",
+      token_hash: parsed.data,
+    });
+    if (!error) redirect(`/${defaultLocale}/onboarding`);
+  }
+  redirect(`/${defaultLocale}/verify-email?error=invalid_link`);
 }
