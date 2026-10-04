@@ -22,6 +22,7 @@ type ControlProps<T extends FieldValues, N extends FieldPath<T>> =
 type FormFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   control: Control<T>;
   name: N;
+  id?: string;
   label: string;
   description?: string;
   children: (props: ControlProps<T, N>) => React.ReactNode;
@@ -30,11 +31,13 @@ type FormFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
 export function FormField<T extends FieldValues, N extends FieldPath<T>>({
   control,
   name,
+  id: idProp,
   label,
   description,
   children,
 }: FormFieldProps<T, N>) {
-  const id = useId();
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
 

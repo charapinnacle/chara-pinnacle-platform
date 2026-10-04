@@ -15,7 +15,7 @@ function adminKey(): string {
   return key;
 }
 
-async function adminRequest(
+export async function adminRequest(
   path: string,
   init: RequestInit,
 ): Promise<Response> {
@@ -32,7 +32,10 @@ async function adminRequest(
   return response;
 }
 
-export async function createTestUser(): Promise<TestUser> {
+export async function createTestUser(
+  kind: "worker" | "company" = "worker",
+  pendingConsents: { purpose: string; version: number }[] = [],
+): Promise<TestUser> {
   const email = `e2e-${randomUUID()}@example.test`;
   const password = `Pw-${randomUUID()}`;
   const response = await adminRequest("/users", {
@@ -41,7 +44,10 @@ export async function createTestUser(): Promise<TestUser> {
       email,
       password,
       email_confirm: true,
-      user_metadata: { intended_account_kind: "worker" },
+      user_metadata: {
+        intended_account_kind: kind,
+        pending_consents: pendingConsents,
+      },
     }),
   });
   const { id } = (await response.json()) as { id: string };

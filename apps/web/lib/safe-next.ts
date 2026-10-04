@@ -12,3 +12,10 @@ export function safeNextPath(next: string | null | undefined): string {
   }
   return url.pathname + url.search + url.hash;
 }
+
+export function consentReturnPath(lang: string, next: string): string {
+  const target = safeNextPath(next);
+  return target === "/" || target.startsWith(`/${lang}/consent`)
+    ? `/${lang}/onboarding`
+    : target;
+}

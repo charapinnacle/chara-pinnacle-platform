@@ -55,3 +55,11 @@ export function extractLinks(message: MailpitMessage): string[] {
     ),
   ];
 }
+
+export async function messageCount(to: string): Promise<number> {
+  const query = encodeURIComponent(`to:${to}`);
+  const { messages } = await getJson<SearchResult>(
+    `/search?query=${query}&limit=50`,
+  );
+  return messages.length;
+}
