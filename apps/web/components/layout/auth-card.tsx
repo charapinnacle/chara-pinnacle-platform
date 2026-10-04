@@ -6,9 +6,10 @@ type AuthCardProps = {
   description?: string;
   icon?: LucideIcon;
   children?: React.ReactNode;
+  footer?: React.ReactNode;
 };
 
-export function AuthCard({ title, description, icon: Icon, children }: AuthCardProps) {
+export function AuthCard({ title, description, icon: Icon, children, footer }: AuthCardProps) {
   return (
     <div className="mx-auto grid w-full max-w-md gap-6 rounded-2xl border bg-card p-6 shadow-card sm:p-8">
       {title || Icon ? (
@@ -34,6 +35,7 @@ export function AuthCard({ title, description, icon: Icon, children }: AuthCardP
         </div>
       ) : null}
       {children}
+      {footer ? <div className="border-t pt-6 text-body text-muted-foreground">{footer}</div> : null}
     </div>
   );
 }
