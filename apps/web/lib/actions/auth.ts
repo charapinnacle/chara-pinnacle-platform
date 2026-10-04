@@ -13,7 +13,9 @@ import {
 import { getSignupDocuments } from "@/lib/dal/legal";
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { defaultLocale } from "@/lib/i18n/locale";
+import { rememberInvitation } from "@/lib/invitation-cookie";
 import { createClient } from "@/lib/supabase/server";
+import { invitationTokenSchema } from "@/lib/validation/team";
 import {
   consentMessage,
   DOCUMENT_CHANGED,
@@ -31,8 +33,11 @@ import {
 type AuthActionResult = { errors?: FieldErrors; message?: string };
 type ResendResult = AuthActionResult & { sent?: true };
 
+// invitation is the token of the link the person came from: it is kept for onboarding, which then offers the
+// invitation instead of asking for a company of their own. Only an employer registration can use it.
 export async function signUp(
   input: SignUpInput,
+  invitation?: string,
 ): Promise<AuthActionResult | undefined> {
   const parsed = signUpInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
@@ -74,6 +79,8 @@ export async function signUp(
   if (error && error.code !== "user_already_exists" && !isAddressThrottle(error)) {
     return refusal(error);
   }
+  const token = invitationTokenSchema.safeParse(invitation);
+  if (token.success && kind === "company") await rememberInvitation(token.data);
   redirect(`/${defaultLocale}/verify-email`);
 }
 

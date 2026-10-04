@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(63);
 
 \ir organizations_fixture.inc
 
@@ -88,7 +88,11 @@ select is(
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.change_member_role(%L, %L, 'member')$$, current_setting('t.a'), :'own2')),
-  'P0001|CHARA_INVALID_INPUT|not_a_member', 'a user of another organization cannot be given a role here'
+  'P0001|CHARA_FORBIDDEN|not_a_member', 'a user of another organization cannot be given a role here'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format($$select public.change_member_role(%L, '00000000-0000-0000-0000-0000000000ff', 'member')$$, current_setting('t.a'))),
+  'P0001|CHARA_INVALID_INPUT|user', 'an id that belongs to nobody cannot be given a role'
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.change_member_role(%L, %L, 'admin')$$, current_setting('t.a'), :'mem')),
@@ -162,11 +166,15 @@ select is(
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.remove_member(%L, %L)$$, current_setting('t.a'), :'own2')),
-  'P0001|CHARA_INVALID_INPUT|not_a_member', 'a user of another organization cannot be removed here'
+  'P0001|CHARA_FORBIDDEN|not_a_member', 'a user of another organization cannot be removed here'
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.remove_member(%L, %L)$$, current_setting('t.a'), :'wkr')),
-  'P0001|CHARA_INVALID_INPUT|not_a_member', 'an unknown member answers not_a_member'
+  'P0001|CHARA_FORBIDDEN|not_a_member', 'a platform user who is no member answers not_a_member'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format($$select public.remove_member(%L, '00000000-0000-0000-0000-0000000000ff')$$, current_setting('t.a'))),
+  'P0001|CHARA_INVALID_INPUT|user', 'an id that belongs to nobody answers CHARA_INVALID_INPUT'
 );
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format($$select public.remove_member(%L, %L)$$, current_setting('t.a'), :'adm2')),
@@ -229,7 +237,15 @@ select is(
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.transfer_ownership(%L, %L)$$, current_setting('t.a'), :'mem')),
-  'ok', 'the owner transfers ownership to an admin'
+  'ok', 'the owner designates a new owner'
+);
+select is(
+  (select string_agg(user_id || ':' || role, ',' order by user_id) from public.organization_members where organization_id = current_setting('t.a')::uuid),
+  format('%s:owner,%s:admin,%s:admin', :'own1', :'adm', :'mem'), 'no role changes until the designated member confirms'
+);
+select is(
+  pg_temp.call_as(:'mem', 'authenticated', format($$select public.accept_ownership_transfer(%L)$$, current_setting('t.a'))),
+  'ok', 'the designated member confirms'
 );
 select is(
   (select string_agg(user_id || ':' || role, ',' order by user_id) from public.organization_members where organization_id = current_setting('t.a')::uuid),

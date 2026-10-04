@@ -145,6 +145,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"organization_ownership_transfers": {
+                  Row: {
+                    "accepted_at": string | null,"cancelled_at": string | null,"created_at": string,"expires_at": string,"from_user_id": string,"id": string,"organization_id": string,"to_user_id": string
+                  }
+                  Insert: {
+                    "accepted_at"?: string | null,"cancelled_at"?: string | null,"created_at"?: string,"expires_at"?: string,"from_user_id": string,"id"?: string,"organization_id": string,"to_user_id": string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"cancelled_at"?: string | null,"created_at"?: string,"expires_at"?: string,"from_user_id"?: string,"id"?: string,"organization_id"?: string,"to_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_ownership_transfers_from_user_id_fkey"
+      columns: ["from_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_ownership_transfers_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_ownership_transfers_to_user_id_fkey"
+      columns: ["to_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"organizations": {
                   Row: {
                     "based_in_country": string,"created_at": string,"display_name": string,"id": string,"industry_code": string | null,"legal_entity_identifier": string | null,"legal_entity_identifier_kind": string | null,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website": string | null
@@ -226,6 +257,12 @@ isOneToOne: false
 "accept_invitation":
 { Args: { "p_token": string }; Returns: string
                            },
+"accept_ownership_transfer":
+{ Args: { "p_org": string }; Returns: undefined
+                           },
+"cancel_ownership_transfer":
+{ Args: { "p_org": string }; Returns: undefined
+                           },
 "change_member_role":
 { Args: { "p_org": string,"p_role": Database["public"]['Enums']["member_role"],"p_user": string }; Returns: undefined
                            },
@@ -235,12 +272,24 @@ isOneToOne: false
 "create_organization":
 { Args: { "p_based_in_country": string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
                            },
+"invitation_preview":
+{ Args: { "p_token": string }; Returns: {
+              "email": string,"expires_at": string,"organization_name": string,"role": Database["public"]['Enums']["member_role"]
+            }[]
+                           },
 "invite_member":
-{ Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["member_role"] }; Returns: string
+{ Args: { "p_email": string,"p_org": string,"p_role": string }; Returns: {
+              "expires_at": string,"token": string
+            }[]
+                           },
+"list_organization_invitations":
+{ Args: { "p_limit"?: number,"p_org": string }; Returns: {
+              "email": string,"expires_at": string,"id": string,"is_open": boolean,"role": Database["public"]['Enums']["member_role"]
+            }[]
                            },
 "list_organization_members":
 { Args: { "p_after_user"?: string,"p_limit"?: number,"p_org": string }; Returns: {
-              "accepted_at": string,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["member_role"],"user_id": string
+              "accepted_at": string,"display_name": string,"email": string,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["member_role"],"user_id": string
             }[]
                            },
 "list_platform_staff":
@@ -279,6 +328,11 @@ isOneToOne: false
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"] }; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
+"team_member_allowance":
+{ Args: { "p_org": string }; Returns: {
+              "member_limit": number,"used": number
             }[]
                            },
 "transfer_ownership":

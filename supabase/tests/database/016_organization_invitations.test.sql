@@ -56,7 +56,7 @@ select is(
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', $$select public.invite_member(current_setting('t.a')::uuid, 'x@example.test', 'superuser')$$),
-  '22P02|invalid input value for enum member_role: "superuser"|', 'an unknown role is refused by the enum type before the function runs'
+  'P0001|CHARA_INVALID_INPUT|role', 'an unknown role is refused with CHARA_INVALID_INPUT'
 );
 select is(
   (select count(*) from public.organization_invitations where organization_id = current_setting('t.a')::uuid)
@@ -67,12 +67,12 @@ select is(
 -- invite_member: success and re-invitation
 select is(
   pg_temp.call_as(:'own2', 'authenticated',
-    $$select set_config('t.tokb', public.invite_member(current_setting('t.b')::uuid, 'bea@example.test', 'member'), true)$$),
+    $$select set_config('t.tokb', (select token from public.invite_member(current_setting('t.b')::uuid, 'bea@example.test', 'member')), true)$$),
   'ok', 'the owner of another organization invites the same address there'
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated',
-    $$select set_config('t.tok1', public.invite_member(current_setting('t.a')::uuid, ' Bea@Example.TEST ', 'member'), true)$$),
+    $$select set_config('t.tok1', (select token from public.invite_member(current_setting('t.a')::uuid, ' Bea@Example.TEST ', 'member')), true)$$),
   'ok', 'an owner at aal2 invites by email'
 );
 select is(
@@ -103,7 +103,7 @@ select ok(
 );
 select is(
   pg_temp.call_as(:'adm', 'authenticated',
-    $$select set_config('t.tok2', public.invite_member(current_setting('t.a')::uuid, 'bea@example.test', 'admin'), true)$$),
+    $$select set_config('t.tok2', (select token from public.invite_member(current_setting('t.a')::uuid, 'bea@example.test', 'admin')), true)$$),
   'ok', 'an admin at aal2 re-invites the same address with another role'
 );
 select ok(current_setting('t.tok1') <> current_setting('t.tok2'), 'the second invitation has a new token');
@@ -139,7 +139,7 @@ select is(
   'P0001|CHARA_INVITATION_INVALID|', 'a missing token answers like a wrong one'
 );
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.tok3', public.invite_member(current_setting('t.a')::uuid, 'late@example.test', 'member'), true)$$), 'ok', 'setup call succeeds');
+  $$select set_config('t.tok3', (select token from public.invite_member(current_setting('t.a')::uuid, 'late@example.test', 'member')), true)$$), 'ok', 'setup call succeeds');
 update public.organization_invitations
 set created_at = now() - interval '8 days', expires_at = now() - interval '1 second'
 where email = 'late@example.test';
@@ -148,13 +148,13 @@ select is(
   'P0001|CHARA_INVITATION_INVALID|', 'an expired invitation cannot be accepted'
 );
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.tok4', public.invite_member(current_setting('t.a')::uuid, 'unc@example.test', 'member'), true)$$), 'ok', 'setup call succeeds');
+  $$select set_config('t.tok4', (select token from public.invite_member(current_setting('t.a')::uuid, 'unc@example.test', 'member')), true)$$), 'ok', 'setup call succeeds');
 select is(
   pg_temp.call_as(:'unc', 'authenticated', $$select public.accept_invitation(current_setting('t.tok4'))$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|email_unconfirmed', 'a user with an unconfirmed email cannot accept'
 );
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.tok5', public.invite_member(current_setting('t.a')::uuid, '00000000-0000-0000-0000-00000000e005@example.test', 'member'), true)$$), 'ok', 'setup call succeeds');
+  $$select set_config('t.tok5', (select token from public.invite_member(current_setting('t.a')::uuid, '00000000-0000-0000-0000-00000000e005@example.test', 'member')), true)$$), 'ok', 'setup call succeeds');
 select is(
   pg_temp.call_as(:'wkr', 'authenticated', $$select public.accept_invitation(current_setting('t.tok5'))$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|workers_cannot_join_organizations', 'a worker cannot accept, even an invitation to their own address'
@@ -173,7 +173,7 @@ select is(
   '42501|permission denied for function accept_invitation|', 'an anonymous caller is refused at EXECUTE'
 );
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.tok6', public.invite_member(current_setting('t.a')::uuid, 'oth@example.test', 'member'), true)$$), 'ok', 'setup call succeeds');
+  $$select set_config('t.tok6', (select token from public.invite_member(current_setting('t.a')::uuid, 'oth@example.test', 'member')), true)$$), 'ok', 'setup call succeeds');
 update public.organizations set status = 'suspended' where id = current_setting('t.a')::uuid;
 select is(
   pg_temp.call_as(:'oth', 'authenticated', $$select public.accept_invitation(current_setting('t.tok6'))$$, 'aal1'),
@@ -183,7 +183,7 @@ update public.organizations set status = 'active' where id = current_setting('t.
 insert into public.organization_members (organization_id, user_id, role, accepted_at)
 values (current_setting('t.a')::uuid, :'adm2', 'admin', now());
 select is(pg_temp.call_as(:'adm2', 'authenticated',
-  $$select set_config('t.tok7', public.invite_member(current_setting('t.a')::uuid, 'gone@example.test', 'admin'), true)$$), 'ok', 'setup call succeeds');
+  $$select set_config('t.tok7', (select token from public.invite_member(current_setting('t.a')::uuid, 'gone@example.test', 'admin')), true)$$), 'ok', 'setup call succeeds');
 update public.organization_members set role = 'member'
 where organization_id = current_setting('t.a')::uuid and user_id = :'adm2';
 select is(

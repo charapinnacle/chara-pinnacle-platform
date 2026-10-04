@@ -40,7 +40,7 @@ function pending(slug: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   headerValues.pathname = "/en/onboarding?x=1";
-  claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1" } } });
+  claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1", email: "worker@example.test" } } });
   profileMock.mockResolvedValue({
     data: { account_kind: "worker", intended_account_kind: "worker", status: "active" },
   });
@@ -74,6 +74,7 @@ describe("requireUser", () => {
   it("returns the user when nothing is pending", async () => {
     await expect(requireUser("en")).resolves.toEqual({
       id: "user-1",
+      email: "worker@example.test",
       aal: "aal1",
       accountKind: "worker",
       intendedAccountKind: "worker",
