@@ -33,7 +33,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U08 | `feat/login-logout-recovery` | FR-A3 | U07 |
 | U08b | `feat/auth-rate-limits` | infra: per-visitor throttling for sign-up, login and recovery in the web tier, raised Auth limits (closes D20) | U08 |
 | U08c | `chore/e2e-accessibility-checks` | infra: axe accessibility checks in the browser tests on every screen (D27, NFR-U1) | U08b |
-| U08d | `feat/google-sign-in` | FR-A1, FR-A3, FR-A6: Continue with Google for workers and employers (D28) | U08c |
+| U08d | `feat/google-sign-in` | FR-A1, FR-A3, FR-A6, FR-A8, FR-A9: Continue with Google for workers and employers (D28, D31 to D35) | U08c |
 | U09 | `feat/db-organizations` | infra: organizations, members, invitations, member RPCs | U06 |
 | U10 | `feat/employer-registration` | FR-A2 | U08, U09 |
 | U11 | `feat/two-step-verification` | FR-A4 | U08 |
