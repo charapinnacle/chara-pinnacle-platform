@@ -7,7 +7,7 @@ export function SiteHeader() {
       <PageContainer className="flex h-14 items-center">
         <Link
           href="/"
-          className="rounded-sm text-lg font-bold tracking-wider text-primary"
+          className="-mx-2 inline-flex h-10 items-center rounded-lg px-2 text-lg font-bold tracking-wider text-primary"
         >
           CHARA
         </Link>
