@@ -29,6 +29,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@chara-pinnacle/db-types": "0.1.0",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",

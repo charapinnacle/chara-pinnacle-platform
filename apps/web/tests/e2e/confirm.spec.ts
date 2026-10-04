@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import type { BrowserContext } from "@playwright/test";
 import {
   accountRows,
@@ -39,6 +40,7 @@ test.describe("email confirmation", () => {
       page.getByRole("heading", { name: "Your account type is Worker" }),
     ).toBeVisible();
     await expect(page.getByText("This cannot be changed later.")).toBeVisible();
+    await expectNoAxeViolations(page);
 
     await expect
       .poll(() => accountRows(user.id).account.account_kind)
@@ -70,6 +72,7 @@ test.describe("email confirmation", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+    await expectNoAxeViolations(page);
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
     expect(accountRows(user.id).consents.map((c) => c.purpose).sort()).toEqual([
@@ -96,6 +99,7 @@ test.describe("email confirmation", () => {
     await confirmFromLink(expiredPage, expired.confirmPath);
     await expect(expiredPage.getByRole("heading", { name: INVALID_LINK })).toBeVisible();
     await expect(expiredPage.getByRole("button", { name: "Send a new link" })).toBeVisible();
+    await expectNoAxeViolations(expiredPage);
     expect(await sessionCookies(expiredContext)).toEqual([]);
     const afterExpired = accountRows(expired.id);
     expect(afterExpired.account.email_confirmed_at).toBeNull();
@@ -122,6 +126,9 @@ test.describe("email confirmation", () => {
     request,
   }) => {
     const user = await createUnconfirmedUser();
+    await page.goto(user.confirmPath);
+    await expect(page.getByRole("button", { name: "Confirm email address" })).toBeVisible();
+    await expectNoAxeViolations(page);
     for (let fetch = 0; fetch < 2; fetch += 1) {
       const response = await request.get(user.confirmPath);
       expect(response.status()).toBe(200);

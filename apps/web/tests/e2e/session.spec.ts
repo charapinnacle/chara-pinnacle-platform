@@ -1,3 +1,4 @@
+import { expectNoAxeViolations } from "./support/axe";
 import { expect, test } from "./support/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import {
@@ -120,6 +121,7 @@ test.describe("logout", () => {
     await context.setOffline(true);
     await page.getByRole("button", { name: "Log out" }).click();
     await expect(page.getByText("Could not log out", { exact: true })).toBeVisible();
+    await expectNoAxeViolations(page);
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
     await context.setOffline(false);
     expect(sessionRows(user.id)).toHaveLength(1);

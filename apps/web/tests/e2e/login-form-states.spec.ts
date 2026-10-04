@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import { createCommittedUser, sessionRows } from "./support/login";
 import { alertText, fillLogin, logIn, overflow } from "./support/login-page";
 import { captureActionRequests } from "./support/server-action";
@@ -9,6 +10,10 @@ test.describe("login form", () => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/en/login");
       expect(await overflow(page)).toBeLessThanOrEqual(0);
+      await expectNoAxeViolations(page);
+      await page.getByRole("button", { name: "Log in" }).click();
+      await expect(alertText(page)).toBeFocused();
+      await expectNoAxeViolations(page);
     }
     await page.goto("/en/login");
     await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute("autocomplete", "username");
@@ -58,6 +63,7 @@ test.describe("login form", () => {
     const user = await createCommittedUser("worker");
     await page.goto("/en/onboarding");
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent("/en/onboarding")}`);
+    await page.waitForLoadState("networkidle");
     await fillLogin(page, user.email, user.password);
     await page.getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(/\/en\/onboarding$/);

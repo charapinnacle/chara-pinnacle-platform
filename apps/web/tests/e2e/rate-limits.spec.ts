@@ -1,5 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { createUnconfirmedUser, userByEmail } from "./support/accounts";
+import { expectNoAxeViolations } from "./support/axe";
 import {
   authCookies,
   createCommittedUser,
@@ -123,6 +124,7 @@ test.describe("per-visitor rate limits (D20)", () => {
     await page.getByRole("button", { name: "Send a new link" }).click();
     await expect(page.getByRole("alert").filter({ hasText: TOO_MANY })).toBeVisible();
     await expect(page.getByRole("status")).toHaveCount(0);
+    await expectNoAxeViolations(page);
     await context.close();
   });
 
