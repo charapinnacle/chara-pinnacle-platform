@@ -39,7 +39,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
         <Field
           orientation="horizontal"
           data-invalid={fieldState.invalid}
-          className="items-start"
+          className="relative items-start gap-3 rounded-lg p-3 transition-colors hover:bg-card data-[invalid=true]:bg-destructive-surface"
         >
           <input
             type="checkbox"
@@ -51,10 +51,13 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
             onBlur={field.onBlur}
             aria-invalid={fieldState.invalid}
             aria-describedby={fieldState.error ? errorId : undefined}
-            className="mt-0.5 size-4 shrink-0 accent-primary"
+            className="relative z-10 mt-px size-5 shrink-0 cursor-pointer accent-primary"
           />
           <FieldContent>
-            <FieldLabel htmlFor={id} className="font-normal leading-snug">
+            <FieldLabel
+              htmlFor={id}
+              className="cursor-pointer text-[0.9375rem] font-normal leading-snug before:absolute before:inset-0"
+            >
               {children}
             </FieldLabel>
             <FieldError id={errorId} errors={[fieldState.error]} />

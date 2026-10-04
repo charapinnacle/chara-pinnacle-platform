@@ -98,26 +98,26 @@ export function ConsentForm({
         onSelect={(key) => form.setFocus(key as FieldPath<FormInput>)}
       />
       {documents.map((document) => (
-        <section key={document.slug} className="grid gap-2 rounded-lg border p-4">
+        <section key={document.slug} className="grid gap-1 rounded-xl border bg-muted p-1.5">
           {document.slug === AGE_ATTESTATION_SLUG ? null : (
-            <>
-              <h2 className="text-lg font-medium">{document.title}</h2>
+            <div className="grid gap-1.5 px-3 pt-3 pb-1">
+              <h2 className="text-base font-semibold tracking-tight">{document.title}</h2>
               <p className="text-sm text-muted-foreground">
                 Version {document.version}, published {formatDate(document.publishedAt)}
               </p>
-              <p className="text-sm">{document.changeSummary}</p>
+              <p className="text-sm leading-relaxed">{document.changeSummary}</p>
               <p className="text-sm">
                 <a
                   href={`/${defaultLocale}/legal/${document.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline underline-offset-4"
+                  className="font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
                 >
                   Read the full text
                   <span className="sr-only"> of the {document.title} (opens in a new tab)</span>
                 </a>
               </p>
-            </>
+            </div>
           )}
           <CheckboxField
             control={control}

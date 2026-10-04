@@ -160,32 +160,36 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         type="password"
         autoComplete="new-password"
       />
-      {shown.map((document) => (
-        <CheckboxField
-          key={document.slug}
-          control={control}
-          name={`accepted.${document.slug}`}
-          id={ids.accepted(document.slug)}
-        >
-          {document.slug === AGE_ATTESTATION_SLUG ? (
-            (attestationWording ?? "I am 18 or older")
-          ) : (
-            <span>
-              I accept the{" "}
-              <a
-                href={`/${defaultLocale}/legal/${document.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-4"
-              >
-                {document.title}
-                <span className="sr-only"> (opens in a new tab)</span>
-              </a>{" "}
-              (version {document.version}, published {formatDate(document.publishedAt)})
-            </span>
-          )}
-        </CheckboxField>
-      ))}
+      {shown.length > 0 ? (
+        <div className="grid gap-0.5 rounded-xl border bg-muted p-1.5">
+          {shown.map((document) => (
+            <CheckboxField
+              key={document.slug}
+              control={control}
+              name={`accepted.${document.slug}`}
+              id={ids.accepted(document.slug)}
+            >
+              {document.slug === AGE_ATTESTATION_SLUG ? (
+                (attestationWording ?? "I am 18 or older")
+              ) : (
+                <span>
+                  I accept the{" "}
+                  <a
+                    href={`/${defaultLocale}/legal/${document.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative z-10 font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
+                  >
+                    {document.title}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>{" "}
+                  (version {document.version}, published {formatDate(document.publishedAt)})
+                </span>
+              )}
+            </CheckboxField>
+          ))}
+        </div>
+      ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}
       </FormButton>
