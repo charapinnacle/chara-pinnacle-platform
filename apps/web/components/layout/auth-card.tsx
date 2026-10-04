@@ -28,7 +28,7 @@ export function AuthCard({ title, description, icon: Icon, children, footer }: A
             </h1>
           ) : null}
           {description ? (
-            <p className={cn("text-body leading-relaxed text-pretty text-muted-foreground", Icon && "text-start")}>
+            <p className={cn("text-body leading-relaxed text-muted-foreground", Icon ? "text-balance" : "text-pretty")}>
               {description}
             </p>
           ) : null}
