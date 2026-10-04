@@ -42,7 +42,7 @@ export function CommitKind() {
   if (!failed) return <LoadingSkeleton rows={2} />;
   return (
     <div className="grid gap-4">
-      <p className="text-[0.9375rem] leading-relaxed">Your account could not be set up yet.</p>
+      <p className="text-body leading-relaxed">Your account could not be set up yet.</p>
       <FormButton onClick={commit}>Try again</FormButton>
     </div>
   );

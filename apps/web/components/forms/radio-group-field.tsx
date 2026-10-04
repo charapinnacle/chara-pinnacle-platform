@@ -94,7 +94,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                     </span>
                     <FieldLabel
                       htmlFor={optionId}
-                      className="text-[0.9375rem] font-medium text-foreground sm:col-span-2 sm:row-start-2"
+                      className="text-body font-medium text-foreground sm:col-span-2 sm:row-start-2"
                     >
                       {option.label}
                     </FieldLabel>
