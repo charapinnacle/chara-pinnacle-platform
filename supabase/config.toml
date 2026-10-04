@@ -253,6 +253,11 @@ enabled = true
 subject = "Your CHARA password was changed"
 content_path = "./supabase/templates/password_changed.html"
 
+[auth.email.notification.identity_linked]
+enabled = true
+subject = "A sign-in method was added to your CHARA account"
+content_path = "./supabase/templates/identity_linked.html"
+
 # Use a production-ready SMTP server
 # [auth.email.smtp]
 # enabled = true
@@ -357,6 +362,18 @@ url = ""
 # If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
+email_optional = false
+
+# Continue with Google (OPEN_QUESTIONS.md D34). Off here and in CI: the local stack has no Google client. A developer who
+# wants the real round trip sets enabled = true in an uncommitted copy and puts the client ID and secret in the untracked
+# supabase/.env; the hosted project is set in the dashboard (docs/ARCHITECTURE.md section 15.1). Never commit either value.
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
 email_optional = false
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.

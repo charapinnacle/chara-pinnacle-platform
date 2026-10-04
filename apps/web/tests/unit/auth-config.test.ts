@@ -95,3 +95,34 @@ describe("Auth configuration that FR-A3 relies on", () => {
     expect(notice).not.toMatch(/\{\{ \.(Password|Token|TokenHash|ConfirmationURL) \}\}/);
   });
 });
+
+describe("Auth configuration that Continue with Google relies on", () => {
+  it("keeps the provider off for the local stack and CI, with credentials only from the environment", () => {
+    expect(value("auth.external.google", "enabled")).toBe("false");
+    expect(value("auth.external.google", "client_id")).toBe('"env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"');
+    expect(value("auth.external.google", "secret")).toBe('"env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"');
+    expect(section("auth.external.google")).not.toMatch(/(client_id|secret)\s*=\s*"(?!env\()[^"]+"/);
+  });
+
+  it("links a Google identity only when it signs in, never from a signed-in session", () => {
+    expect(value("auth", "enable_manual_linking")).toBe("false");
+  });
+
+  it("returns from Google to the callback route of the site and to nothing else", () => {
+    expect(value("auth", "additional_redirect_urls")).toBe('["http://localhost:3100/auth/callback"]');
+  });
+
+  it("tells a person who is notified of a linked sign-in method where to reset the password", () => {
+    expect(value("auth.email.notification.identity_linked", "enabled")).toBe("true");
+    const notice = template("identity_linked.html");
+    expect(notice).toContain("{{ .Provider }}");
+    expect(notice).toContain("{{ .SiteURL }}/en/forgot-password");
+    expect(notice).not.toMatch(/\{\{ \.(Password|Token|TokenHash|ConfirmationURL) \}\}/);
+  });
+
+  it("words the recovery email so that it does not promise a password to a person who signs in with Google", () => {
+    const recovery = template("recovery.html");
+    expect(recovery).toContain("Continue with Google");
+    expect(recovery).not.toMatch(/password stays as it is/i);
+  });
+});
