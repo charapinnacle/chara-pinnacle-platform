@@ -1,5 +1,5 @@
 begin;
-select plan(70);
+select plan(82);
 
 \ir organizations_fixture.inc
 
@@ -88,9 +88,9 @@ select is(pg_temp.call_as(:'own2', 'authenticated', format($$select public.trans
 -- AC11: list_organization_members
 select is(
   pg_temp.val_as(:'own1', 'aal2', format($$
-    select string_agg(role || ':' || coalesce(mfa_enrolled::text, 'null'), ',')
+    select string_agg(role || ':' || coalesce(mfa_enrolled::text, 'null'), ',' order by role)
     from (select role::text as role, mfa_enrolled from public.list_organization_members(%L)) t$$, current_setting('t.a'))),
-  'owner:true,admin:false,member:null',
+  'admin:false,member:null,owner:true',
   'the owner at aal2 gets mfa_enrolled for the owner and admin rows and null for the member row, even though the member has a factor'
 );
 select is(
@@ -112,13 +112,44 @@ select is(pg_temp.call_as(:'own1', 'authenticated', $$select * from public.list_
 select is(pg_temp.call_as(null, 'anon', format($$select * from public.list_organization_members(%L)$$, current_setting('t.a'))),
   '42501|permission denied for function list_organization_members|', 'the anonymous caller is refused at EXECUTE');
 select is(
-  (select proargnames::text from pg_proc where oid = 'public.list_organization_members(uuid)'::regprocedure),
-  '{p_org,user_id,role,accepted_at,mfa_enrolled}', 'no factor id, secret or name is returned'
+  (select proargnames::text from pg_proc where oid = 'public.list_organization_members(uuid, integer, uuid)'::regprocedure),
+  '{p_org,p_limit,p_after_user,user_id,role,accepted_at,mfa_enrolled}', 'no factor id, secret or name is returned'
 );
 select is(
   pg_temp.val_as(:'own1', 'aal2', format($$select pg_typeof(mfa_enrolled)::text from public.list_organization_members(%L) limit 1$$, current_setting('t.a'))),
   'boolean', 'mfa_enrolled is a boolean'
 );
+
+-- Keyset pages: an organization with more than 100 accepted members loses no one
+insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data)
+select ('00000000-0000-0000-0000-0000000f' || lpad(n::text, 4, '0'))::uuid, 'bulk' || n || '@example.test', now(),
+  jsonb_build_object('intended_account_kind', 'company')
+from generate_series(1, 102) n;
+update public.profiles set account_kind = intended_account_kind where id::text like '00000000-0000-0000-0000-0000000f%';
+insert into public.organization_members (organization_id, user_id, role, accepted_at)
+select current_setting('t.a')::uuid, ('00000000-0000-0000-0000-0000000f' || lpad(n::text, 4, '0'))::uuid, 'member', now()
+from generate_series(1, 102) n;
+select is(pg_temp.val_as(:'own1', 'aal2', format($$select count(*) from public.list_organization_members(%L)$$, current_setting('t.a'))),
+  '50', 'a list without a limit returns a page of 50');
+select is(pg_temp.val_as(:'own1', 'aal2', format($$select count(*) from public.list_organization_members(%L, 100000)$$, current_setting('t.a'))),
+  '100', 'a limit above 100 is capped at 100');
+select is(pg_temp.val_as(:'own1', 'aal2', format($$select count(*) from public.list_organization_members(%L, 0)$$, current_setting('t.a'))),
+  '1', 'a limit of 0 is raised to 1');
+select is(
+  pg_temp.val_as(:'own1', 'aal2', format($$
+    select count(distinct user_id) from (
+      select user_id from public.list_organization_members(%1$L, 100)
+      union all
+      select user_id from public.list_organization_members(%1$L, 100,
+        (select user_id from public.list_organization_members(%1$L, 100) order by user_id desc limit 1))
+    ) t$$, current_setting('t.a'))),
+  '105', 'two pages by keyset return all 105 accepted members once each');
+select is(
+  pg_temp.val_as(:'own1', 'aal2', format($$
+    select count(*) from public.list_organization_members(%1$L, 100,
+      (select user_id from public.list_organization_members(%1$L, 100) order by user_id desc limit 1))$$, current_setting('t.a'))),
+  '5', 'the second page holds the remaining 5');
+select has_index('audit', 'log', 'log_action_created_at_idx', 'the reset KPI reads an index on action and created_at');
 
 -- AC11: list_platform_staff
 select is(
@@ -141,9 +172,17 @@ select is(pg_temp.call_as(:'own1', 'authenticated', $$select * from public.list_
 select is(pg_temp.call_as(null, 'anon', $$select * from public.list_platform_staff()$$),
   '42501|permission denied for function list_platform_staff|', 'the anonymous caller is refused at EXECUTE');
 select is(
-  (select proargnames::text from pg_proc where oid = 'public.list_platform_staff()'::regprocedure),
-  '{id,user_id,role,granted_at,mfa_enrolled}', 'the staff list returns no factor id, secret or name'
+  (select proargnames::text from pg_proc where oid = 'public.list_platform_staff(integer, bigint)'::regprocedure),
+  '{p_limit,p_after_id,id,user_id,role,granted_at,mfa_enrolled}', 'the staff list returns no factor id, secret or name'
 );
+select is(
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2)$$), '2', 'the staff list honours the limit');
+select is(
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2, (select max(id) from public.list_platform_staff(2)))$$),
+  '2', 'the second page of the staff list holds the other two active staff members');
+select is(
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(100, (select max(id) from public.list_platform_staff(100)))$$),
+  '0', 'a page after the last row is empty');
 
 -- my_platform_roles: what the page guard asks, at any aal
 select is(pg_temp.val_as(:'sta', 'aal1', $$select string_agg(r::text, ',') from public.my_platform_roles() r$$), 'admin',
@@ -186,6 +225,13 @@ select ok(
   not exists (select 1 from audit.log where metadata::text like '%JBSWY3DPEHPK3PXP%'),
   'no secret reaches the audit log'
 );
+select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, 'Identity checked by video call, ticket 4711')$$, :'tgt')),
+  'ok', 'a repeated reset of the same user while the job waits is accepted');
+select is((select count(*) from audit.log where action = 'mfa_reset'), 2::bigint, 'the repeat is audited too');
+select is(
+  (select format('%s|%s', (select count(*) from pgmq.q_account_ops where message ->> 'user_id' = :'tgt'),
+     (select count(*) from pgmq.q_notifications where message ->> 'user_id' = :'tgt'))),
+  '1|1', 'but queues no second job and no second mandatory email');
 
 -- AC9: refusals write nothing
 create temp table before_counts as

@@ -239,12 +239,12 @@ isOneToOne: false
 { Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["member_role"] }; Returns: string
                            },
 "list_organization_members":
-{ Args: { "p_org": string }; Returns: {
+{ Args: { "p_after_user"?: string,"p_limit"?: number,"p_org": string }; Returns: {
               "accepted_at": string,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["member_role"],"user_id": string
             }[]
                            },
 "list_platform_staff":
-{ Args: Record<PropertyKey, never>; Returns: {
+{ Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
               "granted_at": string,"id": number,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["platform_role"],"user_id": string
             }[]
                            },

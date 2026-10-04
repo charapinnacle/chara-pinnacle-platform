@@ -4,6 +4,15 @@
 
 create extension pgmq;
 
+-- The code check of the MFA page is throttled per visitor in the web tier like every other Auth action
+-- (rate_limit_attempt, 20261004120000_rate_limits.sql), because Auth counts the web server's one address.
+insert into private.settings (key, value) values
+  ('rate_limit_mfa_code_max', '10'),
+  ('rate_limit_mfa_code_seconds', '300');
+
+-- KPI "administrator resets per quarter" filters on the action.
+create index log_action_created_at_idx on audit.log (action, created_at);
+
 -- Written by reset_mfa. account_ops is read by the account-ops function (FR-A7), notifications by notify (FR-I2);
 -- neither exists yet, so the messages wait. No API role has a grant on the queue tables.
 select pgmq.create('account_ops');
@@ -31,8 +40,9 @@ revoke all on function public.my_platform_roles() from public, anon, authenticat
 grant execute on function public.my_platform_roles() to authenticated;
 
 -- mfa_enrolled is a boolean only: no factor id, secret or name leaves auth.mfa_factors. It is null for a plain member,
--- who is not required to enrol (FR-A4 roles). The result is bounded by the API row limit.
-create function public.list_organization_members(p_org uuid)
+-- who is not required to enrol (FR-A4 roles). Keyset pages in primary-key order (organization_id, user_id): pass the
+-- last user_id of a page as p_after_user for the next one; p_limit is capped at 100. Role order is the caller's to apply.
+create function public.list_organization_members(p_org uuid, p_limit integer default 50, p_after_user uuid default null)
 returns table (user_id uuid, role public.member_role, accepted_at timestamptz, mfa_enrolled boolean)
 language plpgsql
 stable
@@ -58,15 +68,17 @@ begin
     ) end
   from public.organization_members m
   where m.organization_id = p_org and m.accepted_at is not null
-  order by private.role_rank(m.role) desc, m.accepted_at, m.user_id
-  limit 100;
+    and (p_after_user is null or m.user_id > p_after_user)
+  order by m.user_id
+  limit least(greatest(coalesce(p_limit, 50), 1), 100);
 end;
 $$;
 
-revoke all on function public.list_organization_members(uuid) from public, anon, authenticated, service_role;
-grant execute on function public.list_organization_members(uuid) to authenticated;
+revoke all on function public.list_organization_members(uuid, integer, uuid) from public, anon, authenticated, service_role;
+grant execute on function public.list_organization_members(uuid, integer, uuid) to authenticated;
 
-create function public.list_platform_staff()
+-- Keyset pages in id order: pass the last id of a page as p_after_id; p_limit is capped at 100.
+create function public.list_platform_staff(p_limit integer default 50, p_after_id bigint default null)
 returns table (id bigint, user_id uuid, role public.platform_role, granted_at timestamptz, mfa_enrolled boolean)
 language plpgsql
 stable
@@ -92,18 +104,19 @@ begin
       where f.user_id = s.user_id and f.factor_type = 'totp' and f.status = 'verified'
     )
   from public.platform_staff s
-  where s.revoked_at is null
-  order by s.granted_at, s.id
-  limit 100;
+  where s.revoked_at is null and (p_after_id is null or s.id > p_after_id)
+  order by s.id
+  limit least(greatest(coalesce(p_limit, 50), 1), 100);
 end;
 $$;
 
-revoke all on function public.list_platform_staff() from public, anon, authenticated, service_role;
-grant execute on function public.list_platform_staff() to authenticated;
+revoke all on function public.list_platform_staff(integer, bigint) from public, anon, authenticated, service_role;
+grant execute on function public.list_platform_staff(integer, bigint) to authenticated;
 
 -- A lost device without a backup factor (D17). The factors are deleted and the user signed out by the account-ops
--- function, which reads the job; nothing is deleted here. The job is idempotent, so a second call for the same user
--- only queues a second harmless job.
+-- function, which reads the job; nothing is deleted here. Every call is audited, but while a job for the same user
+-- still waits in the queue (an administrator's double click or retry) no second job and no second mandatory email is
+-- queued; the lock makes two concurrent calls queue one.
 create function public.reset_mfa(p_user_id uuid, p_reason text) returns void
 language plpgsql
 security definer
@@ -130,8 +143,11 @@ begin
   end if;
 
   perform audit.record('mfa_reset', 'user', p_user_id::text, jsonb_build_object('reason', v_reason));
-  perform pgmq.send('account_ops', jsonb_build_object('action', 'reset_mfa', 'user_id', p_user_id));
-  perform pgmq.send('notifications', jsonb_build_object('kind', 'mfa_reset', 'user_id', p_user_id, 'mandatory', true));
+  perform pg_advisory_xact_lock(hashtextextended('reset_mfa:' || p_user_id::text, 0));
+  if not exists (select 1 from pgmq.q_account_ops q where q.message ->> 'action' = 'reset_mfa' and q.message ->> 'user_id' = p_user_id::text) then
+    perform pgmq.send('account_ops', jsonb_build_object('action', 'reset_mfa', 'user_id', p_user_id));
+    perform pgmq.send('notifications', jsonb_build_object('kind', 'mfa_reset', 'user_id', p_user_id, 'mandatory', true));
+  end if;
 end;
 $$;
 
