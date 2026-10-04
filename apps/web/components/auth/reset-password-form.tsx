@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { Button } from "@/components/ui/button";
 import { resetPassword } from "@/lib/actions/recovery";
 import { resetPasswordFormSchema, type ResetPasswordFormInput } from "@/lib/validation/login";
 
@@ -80,9 +80,9 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
           autoComplete="one-time-code"
         />
       ) : null}
-      <Button type="submit" size="lg" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : "Change password"}
-      </Button>
+      </FormButton>
     </form>
   );
 }
