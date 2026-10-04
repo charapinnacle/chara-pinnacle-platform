@@ -107,7 +107,7 @@ chara-pinnacle-platform/
     app/[lang]/(public)/            page, jobs, companies, how-it-works, pricing, trust-safety, about, legal/[slug];
                                     (later phase) find-workers, partners/recruitment, partners/staffing,
                                     corridors, network, job-orders
-    app/[lang]/(auth)/              login, signup, verify-email, forgot-password, mfa
+    app/[lang]/(auth)/              login, signup, verify-email, confirm-email, forgot-password, reset-password, mfa
     app/[lang]/(app)/onboarding/    account kind → worker passport | employer organization → MFA;
                                     (later phase) recruitment/staffing organization wizard, geographies
     app/[lang]/(app)/dashboard/{worker,employer}/        (later phase) dashboard/{recruitment,staffing}/
@@ -437,7 +437,8 @@ This is exactly how PostgREST sets the role and claims, so the tests exercise th
 - Providers: email + password (minimum 12 characters, email confirmation required, `secure_password_change = true`), OAuth (Google/Microsoft) for company users later via the same callback. Magic link optional for workers later. Anonymous sign-ins disabled.
 - MFA: TOTP enrol/verify enabled. Mandatory for platform staff and organization owners/admins (enforced three ways: `as restrictive` aal2 policies on sensitive tables, aal2 checks inside RPCs, `requireAal2()` in the DAL which redirects to `/[lang]/mfa`). Optional for workers.
 - MFA recovery (proposed — see OPEN_QUESTIONS.md, D17): there are no recovery codes (Supabase TOTP issues none, and a custom code cannot raise a session to aal2). The MFA page lets a user enrol a second TOTP factor as a backup, for example on a second device. A lost device is reset by a Platform Administrator after an identity check: the console calls `reset_mfa(user_id, reason)` (role `admin` + aal2, never on oneself, reason mandatory, `audit.record`), which has `account-ops` delete the user's TOTP factors through the Auth admin API and sign the user out globally; the user enrols again on the next protected page, and the mandatory `mfa_reset` email is queued (§4).
-- JWT: asymmetric ES256 signing key enabled at project creation so `getClaims()` verifies locally against JWKS; `jwt_expiry = 1800`; refresh-token rotation and reuse detection on.
+- JWT: asymmetric ES256 signing key enabled at project creation so `getClaims()` verifies locally against JWKS; `jwt_expiry = 1800`; refresh-token rotation and reuse detection on; `[auth.sessions] timebox = "168h"` ends a session 7 days after login, and the cookie adapters cap the cookies at `Max-Age=604800` (§6.2).
+- Recovery (FR-A3): the link is emailed by Auth from `supabase/templates/recovery.html` and opens `/[lang]/reset-password?token_hash=…`; Auth has one link lifetime (`otp_expiry`, 24 hours for the sign-up link), so `public.recovery_link_is_fresh(token_hash)` holds the recovery link to the setting `recovery_link_minutes` (60) by reading `auth.one_time_tokens` (OPEN_QUESTIONS.md, D22). A newer request replaces the older token (Auth keeps one recovery token per user). `[auth.email.notification.password_changed]` sends the notice after every password change; a trigger on `auth.users` writes the audit row `password_changed` (actor and entity the user, empty metadata). The Auth hook `private.hook_password_verification_attempt` counts failed password checks per account in `private.login_failures` and writes one `login_failures_threshold` audit row per window (settings `login_failure_threshold` 5 and `login_failure_window_minutes` 15; no lockout is built); `stats.login_failures_daily` holds the daily count for the success-rate KPI.
 - Rate limits: `[auth.rate_limit]` defaults, tuned after launch; Auth emails go through Supabase custom SMTP on the transactional email provider; transactional emails are sent by the `notify` Edge Function through that provider's API. The provider is Resend, EU region (decided; OPEN_QUESTIONS.md, O10).
 
 ### 6.2 Next.js 16 wiring (verified against bundled docs)
@@ -450,6 +451,7 @@ This is exactly how PostgREST sets the role and claims, so the tests exercise th
 - `proxy.ts` also forwards the requested path and query as the request header `x-pathname`; `requireUser(lang)` uses it to send a user with a pending re-consent to `/[lang]/consent?next=…` (the gate lives in the DAL because layouts do not re-render on client navigation; `requireUser(lang, { consentGate: false })` is for the consent page and its action). `/[lang]/legal/[slug]` is a minimal reader of the current published version until the legal pages work package (FR-H3).
 - DAL (`lib/dal/session.ts`, `import 'server-only'`): `getCurrentUser = cache(async () => { claims via getClaims(); profile lookup; return narrow DTO { id, accountKind, platformRoles, aal, displayName } })`, `requireUser()`, `requireOrgRole(slug, minRole)`, `requirePlatformRole(role)`, `requireAal2()`. Raw rows never reach Client Components; `experimental.taint` is on and `taintUniqueValue` is applied to tokens. Session reads sit behind `<Suspense>` boundaries and layouts never await the session at top level (keeps the Cache Components migration a config change).
 - Server Actions: `useActionState` forms, zod validation, `redirect()` after success. Built-in Origin/Host CSRF check; `experimental.serverActions.allowedOrigins` only if a reverse proxy rewrites Host; `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` set per environment; `deploymentId = process.env.DEPLOYMENT_VERSION` for skew protection.
+- Login (`signIn`), logout (`signOut`), reset request (`requestPasswordReset`) and reset (`resetPassword`) are Server Actions in `lib/actions/login.ts` and `lib/actions/recovery.ts`. A wrong password for a known and an unknown address, and every reset request, get one answer each; `signOut` revokes this session only (`scope: 'local'`) and the reset ends all others (`scope: 'others'`). `next` is honoured only through `safeNextPath`; the landing page is `/[lang]/dashboard/worker` or `/employer` by account kind (placeholders until their units). The reset page opens a link without spending it; the click on the form validates the password first, then spends the link, then changes the password, so a mistyped password never uses the link up. The session the spent link opened carries the retries for 15 minutes (`hasRecoverySession`: an `otp` entry in `amr`), which the page also honours because every submission re-renders it. When Auth answers `insufficient_aal` (a verified factor exists) the form asks for the 6-digit code and verifies it before the password is saved (OPEN_QUESTIONS.md, D25). `lib/supabase/cookie-options.ts` replaces the 400-day lifetime that @supabase/ssr stamps on its cookies with 7 days in the server and proxy adapters. `requireUser` sends a visitor to `/[lang]/login?next=<path>` and a suspended profile to `/[lang]/suspended`. `signIn` also signs a just-created session out when the profile is suspended without a ban. The log-out button sits in the header of the `(app)` layout.
 - Route Handlers exist only for `auth/callback`, `api/health`. The confirmation link opens the page `/[lang]/confirm-email`, whose button submits the Server Action `confirmEmail`; the Route Handler of earlier drafts is gone because a GET that spends the single-use token is spent by mail scanners and link previewers. No provider webhook ever hits Next.js.
 - Browser client (`createBrowserClient`, publishable key, reads the non-httpOnly auth cookies exactly as @supabase/ssr documents) is used only for Realtime subscriptions. Everything else goes through the server. The strict nonce CSP (ADR-0004) is what makes keeping cookies readable by the browser acceptable.
 
@@ -999,9 +1001,19 @@ enable_signup = true
 enable_confirmations = true
 secure_password_change = true
 max_frequency = "60s"      # minimum interval between emails to one address
-otp_expiry = 86400         # 24-hour confirmation link; one value shared with recovery links (FR-A3 needs 1 hour: OPEN_QUESTIONS.md, D22)
+otp_expiry = 86400         # 24-hour confirmation link; one value shared with recovery links (recovery_link_is_fresh holds those to 1 hour: OPEN_QUESTIONS.md, D22)
 [auth.email.template.confirmation]
 content_path = "./supabase/templates/confirmation.html"
+[auth.email.template.recovery]
+content_path = "./supabase/templates/recovery.html"
+[auth.email.notification.password_changed]
+enabled = true
+content_path = "./supabase/templates/password_changed.html"
+[auth.sessions]
+timebox = "168h"           # sessions end 7 days after login (FR-A3)
+[auth.hook.password_verification_attempt]
+enabled = true
+uri = "pg-functions://postgres/private/hook_password_verification_attempt"
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true
@@ -1025,7 +1037,7 @@ verify_jwt = false            # scheduler shared-secret header; Resend webhook s
 verify_jwt = true
 ```
 
-The local `config.toml` raises `[auth.rate_limit] email_sent` so that development and the end-to-end tests can send many confirmation emails. The local Auth container maps `sign_in_sign_ups` to its OTP limit only and does not throttle password sign-ups or sign-ins, so the 30-per-5-minutes limit of FR-A1 is a check on the hosted project; the web tier tells a visitor about any Auth rate-limit answer. Auth counts requests per IP address and the web tier calls it from its own address, so every visitor shares one bucket and one actor can exhaust it. This is a release blocker, to be settled with the owner before U08 is merged and checked on the hosted project (OPEN_QUESTIONS.md, D20).
+The local `config.toml` raises `[auth.rate_limit] email_sent` so that development and the end-to-end tests can send many confirmation emails. The local Auth container maps `sign_in_sign_ups` to its OTP limit only and does not throttle password sign-ups or sign-ins, so the 30-per-5-minutes limit of FR-A1 is a check on the hosted project; the web tier tells a visitor about any Auth rate-limit answer. Auth counts requests per IP address and the web tier calls it from its own address, so every visitor shares one bucket and one actor can exhaust it. This is a release blocker, still open after U08 and to be checked on the hosted project (OPEN_QUESTIONS.md, D20). Against the local stack the sign-in limit of FR-A3 AC5 is likewise not enforced, so that criterion is covered by unit tests of the message mapping and a hosted release check.
 
 ### 15.2 Exact steps once the Supabase project exists
 
