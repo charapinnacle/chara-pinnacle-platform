@@ -35,3 +35,10 @@ export const env = parseEnv({
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 });
+
+// Server-side only and read per request, never NEXT_PUBLIC: the browser tests start a second server on the same build
+// with the flag on, and turning the provider on in a hosted environment needs no rebuild. Only the exact value "true"
+// turns it on; any other value leaves the button off rather than breaking the password pages.
+export function googleSignInEnabled(): boolean {
+  return process.env.GOOGLE_SIGN_IN_ENABLED === "true";
+}

@@ -1,6 +1,7 @@
 import type { AuthError, AuthWeakPasswordError } from "@supabase/supabase-js";
 
 export const RATE_LIMITED = "Too many attempts. Try again in a few minutes.";
+export const SUSPENDED = "This account is suspended. See the email we sent you for the reasons.";
 export const GENERIC_FAILURE = "We could not complete this request. Try again.";
 
 export function logAuthFailure(action: string, error: AuthError): void {

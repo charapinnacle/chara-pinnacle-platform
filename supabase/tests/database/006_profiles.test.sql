@@ -1,5 +1,5 @@
 begin;
-select plan(43);
+select plan(41);
 
 create function pg_temp.new_user(p_id uuid, p_meta jsonb, p_confirmed boolean default true) returns void
 language sql as $$
@@ -71,17 +71,15 @@ select throws_ok(
   $$select pg_temp.new_user('00000000-0000-0000-0000-00000000c003', '{"intended_account_kind":"Worker"}')$$,
   'P0001', 'CHARA_INVALID_INPUT', 'sign-up with a kind in another spelling is refused'
 );
-select throws_ok(
-  $$select pg_temp.new_user('00000000-0000-0000-0000-00000000c003', '{"intended_account_kind":null}')$$,
-  'P0001', 'CHARA_INVALID_INPUT', 'sign-up with a null kind is refused'
-);
-select throws_ok(
-  $$select pg_temp.new_user('00000000-0000-0000-0000-00000000c003', '{"other":"x"}')$$,
-  'P0001', 'CHARA_INVALID_INPUT', 'sign-up without the kind key is refused'
-);
-select throws_ok(
-  $$select pg_temp.new_user('00000000-0000-0000-0000-00000000c003', null)$$,
-  'P0001', 'CHARA_INVALID_INPUT', 'sign-up without any metadata is refused'
+select pg_temp.new_user('00000000-0000-0000-0000-00000000d101', '{"intended_account_kind":null}');
+select pg_temp.new_user('00000000-0000-0000-0000-00000000d102', '{"other":"x","pending_consents":[{"purpose":"terms-of-service","version":0}]}');
+select pg_temp.new_user('00000000-0000-0000-0000-00000000d103', null);
+select is(
+  (select count(*) from public.profiles
+    where id in ('00000000-0000-0000-0000-00000000d101', '00000000-0000-0000-0000-00000000d102', '00000000-0000-0000-0000-00000000d103')
+      and intended_account_kind is null and account_kind is null and pending_consents = '[]'),
+  3::bigint,
+  'a sign-up that names no kind (null, missing key, no metadata) gets a profile with no kind and no pending consents'
 );
 select throws_ok(
   $$select pg_temp.new_user('00000000-0000-0000-0000-00000000c003', '{"intended_account_kind":"worker","pending_consents":{"a":1}}')$$,

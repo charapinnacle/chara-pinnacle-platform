@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { parseEnv } from "@/lib/env";
+import { googleSignInEnabled, parseEnv } from "@/lib/env";
 import { parseServerEnv } from "@/lib/env.server";
 
 vi.mock("server-only", () => ({}));
@@ -74,5 +74,21 @@ describe("parseServerEnv", () => {
 
   it.each(["0", "-1", "1.5", "11", "many", ""])("rejects %j as a number of trusted proxies", (hops) => {
     expect(() => parseServerEnv({ ...server, TRUSTED_PROXY_HOPS: hops })).toThrowError("TRUSTED_PROXY_HOPS");
+  });
+});
+
+describe("googleSignInEnabled", () => {
+  it.each([
+    [undefined, false],
+    ["", false],
+    ["false", false],
+    ["true", true],
+    ["TRUE", false],
+    ["1", false],
+    ["yes", false],
+  ])("reads %j as %j", (value, expected) => {
+    vi.stubEnv("GOOGLE_SIGN_IN_ENABLED", value);
+    expect(googleSignInEnabled()).toBe(expected);
+    vi.unstubAllEnvs();
   });
 });

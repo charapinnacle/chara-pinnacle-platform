@@ -12,7 +12,7 @@ type AccountKind = Database["public"]["Enums"]["account_kind"];
 type CurrentUser = {
   id: string;
   accountKind: AccountKind | null;
-  intendedAccountKind: AccountKind;
+  intendedAccountKind: AccountKind | null;
   suspended: boolean;
 };
 

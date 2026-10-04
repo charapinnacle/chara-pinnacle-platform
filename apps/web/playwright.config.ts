@@ -4,6 +4,7 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = "http://localhost:3100";
+const googleBaseURL = "http://localhost:3101";
 
 const envFile = path.join(__dirname, ".env.local");
 if (existsSync(envFile)) {
@@ -51,10 +52,20 @@ export default defineConfig({
       dependencies: ["chromium"],
     },
   ],
-  webServer: {
-    command: "npm run build && npm run start",
-    url: baseURL,
-    timeout: 300_000,
-    reuseExistingServer: false,
-  },
+  // The second server runs the same build with Continue with Google switched on; the flag is read per request.
+  webServer: [
+    {
+      command: "npm run build && npm run start",
+      url: baseURL,
+      timeout: 300_000,
+      reuseExistingServer: false,
+    },
+    {
+      command: "npx next start --port 3101",
+      url: googleBaseURL,
+      timeout: 60_000,
+      reuseExistingServer: false,
+      env: { GOOGLE_SIGN_IN_ENABLED: "true" },
+    },
+  ],
 });

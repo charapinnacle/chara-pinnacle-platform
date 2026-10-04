@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, UserRound } from "lucide-react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
+import { kindOptions, KIND_IS_FINAL, type Kind } from "@/components/forms/account-kind-options";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ConsentPanel } from "@/components/forms/consent-panel";
@@ -20,17 +20,10 @@ import {
   type SignUpFormOutput,
 } from "@/lib/validation/sign-up";
 
-type Kind = "worker" | "company";
-
 type SignUpFormProps = {
   documents: Record<Kind, LegalDocumentSummary[]>;
   attestationWording: string | null;
 };
-
-const kindOptions = [
-  { value: "worker", label: "I'm a worker", icon: UserRound },
-  { value: "company", label: "I'm an employer", icon: Building2 },
-] as const;
 
 const ids = {
   kind: "signup-kind",
@@ -115,7 +108,7 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         name="kind"
         id={ids.kind}
         legend="I want to register as"
-        description="This choice cannot be changed later. To use CHARA as both worker and employer, register a second account with a different email address."
+        description={KIND_IS_FINAL}
         options={kindOptions}
         onValueChange={(value) => {
           setValue("accepted", acceptedDefaults(documents[value as Kind]));

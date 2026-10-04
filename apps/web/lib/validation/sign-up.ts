@@ -7,7 +7,7 @@ import {
 
 const MAX_PASSWORD_BYTES = 72;
 
-const accountKindSchema = z.enum(["worker", "company"], {
+export const accountKindSchema = z.enum(["worker", "company"], {
   error: "Choose worker or employer",
 });
 
