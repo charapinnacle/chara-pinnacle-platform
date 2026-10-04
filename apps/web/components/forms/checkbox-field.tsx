@@ -53,7 +53,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
               onBlur={field.onBlur}
               aria-invalid={fieldState.invalid}
               aria-describedby={fieldState.error ? errorId : undefined}
-              className="peer col-start-1 row-start-1 size-5 cursor-pointer appearance-none rounded-md border-2 border-input bg-card transition-colors checked:border-primary checked:bg-primary aria-invalid:border-destructive"
+              className="peer col-start-1 row-start-1 size-5 cursor-pointer appearance-none rounded-sm border-2 border-input bg-card transition-colors checked:border-primary checked:bg-primary aria-invalid:border-destructive"
             />
             <Check
               aria-hidden
