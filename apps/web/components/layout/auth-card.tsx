@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 type AuthCardProps = {
   title?: string;
-  description?: React.ReactNode;
+  description?: string;
   icon?: LucideIcon;
   children?: React.ReactNode;
 };
@@ -11,7 +11,7 @@ type AuthCardProps = {
 export function AuthCard({ title, description, icon: Icon, children }: AuthCardProps) {
   return (
     <div className="mx-auto grid w-full max-w-md gap-6 rounded-2xl border bg-card p-6 shadow-card sm:p-8">
-      {title ? (
+      {title || Icon ? (
         <div className={cn("grid gap-2", Icon && "justify-items-center text-center")}>
           {Icon ? (
             <span
@@ -21,11 +21,13 @@ export function AuthCard({ title, description, icon: Icon, children }: AuthCardP
               <Icon className="size-7" />
             </span>
           ) : null}
-          <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem] sm:leading-9">
-            {title}
-          </h1>
+          {title ? (
+            <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem] sm:leading-9">
+              {title}
+            </h1>
+          ) : null}
           {description ? (
-            <p className="text-[0.9375rem] leading-relaxed text-pretty text-muted-foreground">
+            <p className={cn("text-body leading-relaxed text-pretty text-muted-foreground", Icon && "text-start")}>
               {description}
             </p>
           ) : null}
