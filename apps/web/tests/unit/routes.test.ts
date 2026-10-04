@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
+import { dashboardSegments, homePath, isDashboardSegment, mfaPath } from "@/lib/routes";
 
 describe("homePath", () => {
   it("sends each account kind to its own dashboard", () => {
@@ -22,5 +22,15 @@ describe("dashboard segments", () => {
     expect(isDashboardSegment("employer")).toBe(true);
     expect(isDashboardSegment("company")).toBe(false);
     expect(isDashboardSegment("constructor")).toBe(false);
+  });
+});
+
+describe("mfaPath", () => {
+  it("is the MFA page, with the page to return to when there is one", () => {
+    expect(mfaPath("en")).toBe("/en/mfa");
+    expect(mfaPath("en", "/")).toBe("/en/mfa");
+    expect(mfaPath("en", "/en/org/acme-bau/billing?tab=a&b=c")).toBe(
+      `/en/mfa?next=${encodeURIComponent("/en/org/acme-bau/billing?tab=a&b=c")}`,
+    );
   });
 });

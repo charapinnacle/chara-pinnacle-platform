@@ -37,9 +37,9 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U09 | `feat/db-organizations` | infra: organizations, members, invitations, member RPCs | U06 |
 | U10 | `feat/employer-registration` | FR-A2 | U08, U09 |
 | U11 | `feat/two-step-verification` | FR-A4 | U08 |
-| U12 | `feat/team-membership` | FR-A5 | U10, U11 |
-| U13 | `feat/platform-staff-roles` | FR-A7, `account-ops` function, CI `functions` job | U06, U11 |
-| U14 | `feat/plans-as-data` | FR-G1: schema `billing`, role `billing_owner` (`grant billing_owner to postgres`), plans, limits, features, subscriptions, entitlement helpers; NFR-S3 tests (`billing_owner` has no privilege on verification tables); replaces `private.legal_entity_trial_used` and `private.legal_entity_locked` (U10 placeholders, OPEN_QUESTIONS.md D36) with lookups of the new tables (U45 adds `billing.customers` to them) and adds the index on `organizations.legal_entity_identifier` | U09 |
+| U12 | `feat/team-membership` | FR-A5; the page guard `requireOrgRole` (FR-A4 AC3), the two-step ownership transfer with its aal2 gate (FR-A4 AC5), the status column in the team list (FR-A4 AC12) | U10, U11 |
+| U13 | `feat/platform-staff-roles` | FR-A7, `account-ops` function (reads the queue `account_ops` that `reset_mfa` fills and deletes the factors, FR-A4 AC10), CI `functions` job | U06, U11 |
+| U14 | `feat/plans-as-data` | FR-G1: schema `billing`, role `billing_owner` (`grant billing_owner to postgres`), plans, limits, features, subscriptions, entitlement helpers; NFR-S3 tests (`billing_owner` has no privilege on verification tables); a restrictive aal2 policy on the billing views (FR-A4 AC5); replaces `private.legal_entity_trial_used` and `private.legal_entity_locked` (U10 placeholders, OPEN_QUESTIONS.md D36) with lookups of the new tables (U45 adds `billing.customers` to them) and adds the index on `organizations.legal_entity_identifier` | U09 |
 | U15 | `feat/candidate-profile` | FR-B1 | U08, U02 |
 | U16 | `feat/document-upload` | FR-B2 | U15 |
 | U17 | `feat/privacy-by-default` | FR-B3 | U16 |
@@ -66,7 +66,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U38 | `feat/application-notifications` | FR-D6 | U37, U28 |
 | U39 | `feat/email-preferences` | FR-I3 | U37 |
 | U40 | `feat/account-emails` | FR-I1 | U37 |
-| U41 | `feat/admin-console` | FR-F1 | U13 |
+| U41 | `feat/admin-console` | FR-F1; replaces the heading-only `/admin` page of FR-A4 and shows the MFA status of `list_platform_staff` (FR-A4 AC4, AC12) | U13 |
 | U42 | `feat/audited-actions` | FR-F2 | U41 |
 | U43 | `feat/no-staff-document-access` | FR-F3 | U19, U41 |
 | U44 | `feat/vacancy-moderation` | FR-C7 | U41, U37 |

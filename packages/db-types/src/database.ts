@@ -238,6 +238,19 @@ isOneToOne: false
 "invite_member":
 { Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["member_role"] }; Returns: string
                            },
+"list_organization_members":
+{ Args: { "p_after_user"?: string,"p_limit"?: number,"p_org": string }; Returns: {
+              "accepted_at": string,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["member_role"],"user_id": string
+            }[]
+                           },
+"list_platform_staff":
+{ Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
+              "granted_at": string,"id": number,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["platform_role"],"user_id": string
+            }[]
+                           },
+"my_platform_roles":
+{ Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]
+                           },
 "pending_reconsents":
 { Args: Record<PropertyKey, never>; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
@@ -253,6 +266,9 @@ isOneToOne: false
                            },
 "remove_member":
 { Args: { "p_org": string,"p_user": string }; Returns: undefined
+                           },
+"reset_mfa":
+{ Args: { "p_reason": string,"p_user_id": string }; Returns: undefined
                            },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]

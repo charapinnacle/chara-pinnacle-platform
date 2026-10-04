@@ -1,5 +1,5 @@
 begin;
-select plan(54);
+select plan(55);
 
 \set a 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 \set b 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
@@ -35,6 +35,7 @@ select results_eq(
     ('rate_limit_buckets', '16384'),
     ('rate_limit_forgot_password_max', '10'), ('rate_limit_forgot_password_seconds', '300'),
     ('rate_limit_login_max', '30'), ('rate_limit_login_seconds', '300'),
+    ('rate_limit_mfa_code_max', '10'), ('rate_limit_mfa_code_seconds', '300'),
     ('rate_limit_resend_max', '10'), ('rate_limit_resend_seconds', '300'),
     ('rate_limit_reset_password_max', '10'), ('rate_limit_reset_password_seconds', '300'),
     ('rate_limit_signup_max', '30'), ('rate_limit_signup_seconds', '300')$$,
@@ -101,6 +102,11 @@ select results_eq(
   'another visitor still has its whole budget and is told to wait 0 seconds'
 );
 select is(pg_temp.hits('login', :'b'), 1, 'the other visitor''s count moved by its own attempt only');
+select is(
+  pg_temp.allowed_of('mfa_code', :'b', 12),
+  10::bigint,
+  'the authenticator code check allows 10 attempts of one visitor in a window and refuses the rest'
+);
 select results_eq(
   $$select allowed from public.rate_limit_attempt('signup', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
   $$values (true)$$,
@@ -177,7 +183,7 @@ select throws_ok(
   'P0001', 'CHARA_INVALID_INPUT', 'a missing action is refused'
 );
 select is(
-  (select count(*) from private.rate_limit_hits where action not in ('login', 'signup', 'resend', 'forgot_password', 'reset_password')),
+  (select count(*) from private.rate_limit_hits where action not in ('login', 'signup', 'resend', 'forgot_password', 'reset_password', 'mfa_code')),
   0::bigint,
   'no refused call created a counter'
 );

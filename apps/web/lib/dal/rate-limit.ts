@@ -9,7 +9,8 @@ type ThrottledAction =
   | "resend"
   | "login"
   | "forgot_password"
-  | "reset_password";
+  | "reset_password"
+  | "mfa_code";
 
 // Counts one attempt of this visitor and says whether it is over the limit (limits are settings in the database).
 // Called before every Auth call, because Auth's own limits count the web server's one address (OPEN_QUESTIONS.md, D20).

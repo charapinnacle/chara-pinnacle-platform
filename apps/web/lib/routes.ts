@@ -19,6 +19,6 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
   return segment ? `/${lang}/dashboard/${segment}` : `/${lang}/onboarding`;
 }
 
-export function mfaPath(lang: string): string {
-  return `/${lang}/mfa`;
+export function mfaPath(lang: string, next?: string): string {
+  return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }

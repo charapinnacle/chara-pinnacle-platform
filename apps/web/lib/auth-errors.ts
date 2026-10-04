@@ -23,6 +23,10 @@ export function isRateLimit(error: AuthError): boolean {
   );
 }
 
+export function isWrongCode(error: AuthError): boolean {
+  return error.code === "mfa_verification_failed" || error.code === "mfa_challenge_expired";
+}
+
 export function weakPasswordMessage(error: AuthWeakPasswordError): string {
   return error.reasons.includes("pwned")
     ? "This password has appeared in a data breach. Choose another one."

@@ -17,6 +17,7 @@ const freshMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/dal/recovery", () => ({
@@ -233,6 +234,18 @@ describe("resetPassword", () => {
     });
     expect(await resetPassword({ ...input, code: "000000" })).toEqual({
       errors: { code: "The code is incorrect or has expired." },
+    });
+    expect(updateUserMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call a rate limit of Auth a wrong code and saves nothing", async () => {
+    listFactorsMock.mockResolvedValue({ data: { totp: [{ id: "phone" }] } });
+    challengeAndVerifyMock.mockResolvedValue({
+      data: null,
+      error: new AuthApiError("slow down", 429, "over_request_rate_limit"),
+    });
+    expect(await resetPassword({ ...input, code: "123456" })).toEqual({
+      message: "Too many attempts. Try again in a few minutes.",
     });
     expect(updateUserMock).not.toHaveBeenCalled();
   });

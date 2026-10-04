@@ -6,10 +6,12 @@ import {
   GENERIC_FAILURE,
   isAddressThrottle,
   isRateLimit,
+  isWrongCode,
   logAuthFailure,
   RATE_LIMITED,
   weakPasswordMessage,
 } from "@/lib/auth-errors";
+import { verifyAnyTotp } from "@/lib/dal/mfa";
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
 import { getCurrentUser } from "@/lib/dal/session";
@@ -47,16 +49,6 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
   return { sent: true };
 }
 
-// Auth refuses a password change at aal1 once a verified factor exists, so the code of any of them lifts the session.
-async function verifyTotp(supabase: Supabase, code: string): Promise<boolean> {
-  const { data } = await supabase.auth.mfa.listFactors();
-  for (const factor of data?.totp ?? []) {
-    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
-    if (!error) return true;
-  }
-  return false;
-}
-
 async function endOtherSessions(supabase: Supabase): Promise<boolean> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const { error } = await supabase.auth.signOut({ scope: "others" });
@@ -72,6 +64,13 @@ function updateRefusal(error: AuthError): ResetResult {
   if (error.code === "insufficient_aal") return { needsCode: true };
   if (isRateLimit(error)) return { message: RATE_LIMITED };
   logAuthFailure("Password reset", error);
+  return { message: GENERIC_FAILURE };
+}
+
+function codeRefusal(error: AuthError): ResetResult {
+  if (isWrongCode(error)) return { errors: { code: WRONG_CODE } };
+  if (isRateLimit(error)) return { message: RATE_LIMITED };
+  logAuthFailure("Authenticator code check", error);
   return { message: GENERIC_FAILURE };
 }
 
@@ -92,7 +91,10 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ResetRes
     redirect(`/${defaultLocale}/reset-password`);
   }
 
-  if (code && !(await verifyTotp(supabase, code))) return { errors: { code: WRONG_CODE } };
+  if (code) {
+    const codeError = await verifyAnyTotp(supabase, code);
+    if (codeError) return codeRefusal(codeError);
+  }
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return updateRefusal(error);
