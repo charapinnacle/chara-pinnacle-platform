@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import { createUnconfirmedUser, userByEmail } from "./support/accounts";
 import { captureActionRequests } from "./support/server-action";
 import {
@@ -36,6 +37,7 @@ test.describe("sign-up form states", () => {
 
     await page.keyboard.press("Enter");
     await expect(summary(page)).toBeFocused();
+    await expectNoAxeViolations(page);
     await summary(page).getByRole("link", { name: "Enter a valid email address." }).click();
     await expect(page.getByLabel("Email address")).toBeFocused();
 
@@ -51,6 +53,7 @@ test.describe("sign-up form states", () => {
     await context.setOffline(true);
     await page.getByLabel("Password", { exact: true }).press("Enter");
     await expect(page.getByText("Could not create the account", { exact: true })).toBeVisible();
+    await expectNoAxeViolations(page);
     await expect(page.getByLabel("Email address")).toHaveValue(email);
     await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
     expect(userByEmail(email)).toEqual([]);
@@ -91,6 +94,7 @@ test.describe("sign-up form states", () => {
       await route.continue();
     });
     await page.goto("/en/verify-email?error=invalid_link");
+    await expectNoAxeViolations(page);
     await page.getByLabel("Email address").fill(waiting.email);
     await page.getByRole("button", { name: "Send a new link" }).click();
     const pending = page.getByRole("button", { name: "Sending..." });

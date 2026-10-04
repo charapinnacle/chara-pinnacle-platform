@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import type { Browser, Page } from "@playwright/test";
 import { createUnconfirmedUser } from "./support/accounts";
 import {
@@ -59,10 +60,12 @@ test.describe("password recovery", () => {
     const answers = [];
     for (const email of [confirmed.email, unconfirmed.email, unknown, confirmed.email]) {
       await page.goto("/en/forgot-password");
+      if (answers.length === 0) await expectNoAxeViolations(page);
       await page.getByLabel("Email", { exact: true }).fill(email);
       const response = page.waitForResponse((r) => r.request().method() === "POST");
       await page.getByRole("button", { name: "Send reset link" }).click();
       await expect(page.getByRole("status")).toHaveText(RESET_SENT);
+      if (answers.length === 0) await expectNoAxeViolations(page);
       answers.push({ status: (await response).status(), text: await page.getByRole("status").innerText() });
     }
     expect(new Set(answers.map((answer) => JSON.stringify(answer))).size).toBe(1);
@@ -88,6 +91,7 @@ test.describe("password recovery", () => {
     ageRecoveryLink(young.id, "59 minutes");
     await page.goto(path);
     await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+    await expectNoAxeViolations(page);
     await page.reload();
     await expect(newPasswordField(page)).toBeVisible();
 
@@ -96,6 +100,7 @@ test.describe("password recovery", () => {
     ageRecoveryLink(old.id, "61 minutes");
     await page.goto(oldPath);
     await expect(page.getByRole("heading", { name: LINK_EXPIRED })).toBeVisible();
+    await expectNoAxeViolations(page);
     await expect(newPasswordField(page)).toHaveCount(0);
     await page.getByRole("link", { name: "Request a new reset link" }).click();
     await expect(page).toHaveURL(/\/en\/forgot-password$/);
@@ -172,6 +177,7 @@ test.describe("password recovery", () => {
     await submit(page);
     await expect(summary(page)).toBeFocused();
     await expect(summary(page)).toContainText("Password must be at least 12 characters.");
+    await expectNoAxeViolations(page);
     expect(await passwordLoginStatus(user, user.password)).toBe(200);
     expect(await passwordLoginStatus(user, SHORT_PASSWORD)).toBe(400);
     expect(auditRows(user.id, "password_changed")).toEqual([]);
@@ -218,6 +224,7 @@ test.describe("password recovery", () => {
     await submit(page);
     const code = page.getByLabel("Authenticator code");
     await expect(code).toBeFocused();
+    await expectNoAxeViolations(page);
     expect(await passwordLoginStatus(user, NEW_PASSWORD)).toBe(400);
 
     await code.fill("000000");

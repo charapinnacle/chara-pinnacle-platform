@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectNoAxeViolations } from "./support/axe";
 
 function parseCsp(header: string): Record<string, string> {
   return Object.fromEntries(
@@ -25,6 +26,7 @@ test("home page renders at /en", async ({ page }) => {
       name: "The Global Workforce Network",
     }),
   ).toBeVisible();
+  await expectNoAxeViolations(page);
   expect(problems).toEqual([]);
 });
 

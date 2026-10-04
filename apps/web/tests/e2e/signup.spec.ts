@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import type { BrowserContext } from "@playwright/test";
 import { env } from "@/lib/env";
 import {
@@ -44,6 +45,7 @@ test.describe("sign-up form", () => {
 
     await expect(page).toHaveURL(/\/en\/verify-email$/);
     await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+    await expectNoAxeViolations(page);
     await expect(page.getByText("Could not create the account")).toHaveCount(0);
     expect(await sessionCookies(context)).toEqual([]);
 
@@ -134,6 +136,7 @@ test.describe("sign-up form", () => {
     const workerDocuments = await currentDocuments("worker");
     const employerDocuments = await currentDocuments("company");
     await page.goto("/en/signup");
+    await expectNoAxeViolations(page);
 
     const group = page.getByRole("radiogroup", { name: "I want to register as" });
     await expect(group.getByRole("radio")).toHaveCount(2);
@@ -147,6 +150,7 @@ test.describe("sign-up form", () => {
 
     await page.getByRole("radio", { name: WORKER_LABEL }).check();
     await expect(page.getByRole("checkbox")).toHaveCount(4);
+    await expectNoAxeViolations(page);
     for (const { slug, title, version } of workerDocuments) {
       if (slug === "age-18-plus") {
         await expect(ageBox(page)).not.toBeChecked();
@@ -163,6 +167,7 @@ test.describe("sign-up form", () => {
 
     await page.getByRole("radio", { name: EMPLOYER_LABEL }).check();
     await expect(page.getByRole("checkbox")).toHaveCount(3);
+    await expectNoAxeViolations(page);
     await expect(ageBox(page)).toHaveCount(0);
     await expect(page.getByLabel(/birth|age number/i)).toHaveCount(0);
     for (const { title } of employerDocuments) {
@@ -179,6 +184,16 @@ test.describe("sign-up form", () => {
 
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(summary(page)).toBeFocused();
+    await expectNoAxeViolations(page);
+  });
+
+  test("NFR-U1: every legal document opens in a reader without accessibility violations", async ({ page }) => {
+    const documents = [...(await currentDocuments("worker")), ...(await currentDocuments("company"))];
+    for (const { slug, title } of documents) {
+      await page.goto(`/en/legal/${slug}`);
+      await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+      await expectNoAxeViolations(page);
+    }
   });
 
   test("FR-A6 AC1, FR-A8 AC1: an employer sign-up carries only the employer documents and no age attestation", async ({

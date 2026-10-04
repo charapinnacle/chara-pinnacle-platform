@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import { createUnconfirmedUser } from "./support/accounts";
 import { query } from "./support/db";
 import {
@@ -35,6 +36,7 @@ test.describe("login", () => {
 
       await expect(page).toHaveURL(new RegExp(`${landing}$`));
       await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+      await expectNoAxeViolations(page);
 
       const setCookies = await authSetCookies(await response);
       expect(setCookies.length).toBeGreaterThan(0);
@@ -75,6 +77,7 @@ test.describe("login", () => {
     const page = await context.newPage();
     await logIn(page, banned);
     await expect(alertText(page)).toContainText(SUSPENDED);
+    await expectNoAxeViolations(page);
     await expect(page).toHaveURL(/\/en\/login$/);
     expect(authCookies(await context.cookies())).toEqual([]);
     expect(sessionRows(banned.id)).toEqual([]);
@@ -96,6 +99,7 @@ test.describe("login", () => {
       protectedPage.getByRole("heading", { name: "Your account is suspended" }),
     ).toBeVisible();
     await expect(protectedPage.getByRole("heading", { name: "Dashboard" })).toHaveCount(0);
+    await expectNoAxeViolations(protectedPage);
     await second.close();
   });
 
@@ -132,6 +136,7 @@ test.describe("login", () => {
       await page.getByRole("button", { name: "Log in" }).click();
       const status = (await response).status();
       await expect(alertText(page)).toBeVisible();
+      await expectNoAxeViolations(page);
       outcomes.push({
         status,
         calls: calls.length,

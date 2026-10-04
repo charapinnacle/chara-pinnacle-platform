@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import { createCommittedUser, sessionRows } from "./support/login";
 import { alertText, fillLogin, logIn, overflow } from "./support/login-page";
 import { captureActionRequests } from "./support/server-action";
@@ -11,6 +12,7 @@ test.describe("login form", () => {
       expect(await overflow(page)).toBeLessThanOrEqual(0);
     }
     await page.goto("/en/login");
+    await expectNoAxeViolations(page);
     await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute("autocomplete", "username");
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
       "autocomplete",
@@ -22,6 +24,7 @@ test.describe("login form", () => {
     await expect(alertText(page)).toBeFocused();
     await expect(alertText(page)).toContainText("Enter a valid email address.");
     await expect(alertText(page)).toContainText("Enter your password.");
+    await expectNoAxeViolations(page);
     await alertText(page).getByRole("link", { name: "Enter a valid email address." }).click();
     await expect(page.getByLabel("Email", { exact: true })).toBeFocused();
   });

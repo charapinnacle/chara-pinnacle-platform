@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { expectNoAxeViolations } from "./support/axe";
 import {
   accountRows,
   callAs,
@@ -82,12 +83,14 @@ test("FR-A8 AC9: a changed document gates the next sign-in, not the open session
     );
     await expect(next.getByRole("checkbox")).toHaveCount(1);
     await expect(next.getByText(/Terms of Service/)).toHaveCount(0);
+    await expectNoAxeViolations(next);
 
     const legal = await next.request.get("/en/legal/employer-terms", { maxRedirects: 0 });
     expect(legal.status()).toBe(200);
 
     await next.getByRole("button", { name: "Accept and continue" }).click();
     await expect(next.getByRole("alert").filter({ hasText: "There is a problem" })).toBeVisible();
+    await expectNoAxeViolations(next);
     expect(accountRows(user.id).consents.at(-1)?.version).toBeLessThan(version);
 
     const another = await (await browser.newContext()).newPage();
