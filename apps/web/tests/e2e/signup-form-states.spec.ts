@@ -23,6 +23,10 @@ test.describe("sign-up form states", () => {
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow).toBeLessThanOrEqual(0);
+      await expectNoAxeViolations(page);
+      await page.getByRole("button", { name: "Create account" }).click();
+      await expect(summary(page)).toBeFocused();
+      await expectNoAxeViolations(page);
     }
 
     await page.goto("/en/signup");
@@ -37,7 +41,6 @@ test.describe("sign-up form states", () => {
 
     await page.keyboard.press("Enter");
     await expect(summary(page)).toBeFocused();
-    await expectNoAxeViolations(page);
     await summary(page).getByRole("link", { name: "Enter a valid email address." }).click();
     await expect(page.getByLabel("Email address")).toBeFocused();
 
@@ -101,5 +104,6 @@ test.describe("sign-up form states", () => {
     await expect(pending).toBeVisible();
     await expect(pending).toBeDisabled();
     await expect(page.getByRole("status")).toBeVisible();
+    await expectNoAxeViolations(page);
   });
 });

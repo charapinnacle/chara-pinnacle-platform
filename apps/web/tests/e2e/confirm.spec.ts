@@ -72,6 +72,7 @@ test.describe("email confirmation", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+    await expectNoAxeViolations(page);
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
     expect(accountRows(user.id).consents.map((c) => c.purpose).sort()).toEqual([

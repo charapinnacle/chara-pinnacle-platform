@@ -57,15 +57,20 @@ test.describe("password recovery", () => {
     const unconfirmed = await createUnconfirmedUser("worker");
     const unknown = newEmail();
 
+    await page.goto("/en/forgot-password");
+    await expectNoAxeViolations(page);
+    await page.getByLabel("Email", { exact: true }).fill(confirmed.email);
+    await page.getByRole("button", { name: "Send reset link" }).click();
+    await expect(page.getByRole("status")).toHaveText(RESET_SENT);
+    await expectNoAxeViolations(page);
+
     const answers = [];
     for (const email of [confirmed.email, unconfirmed.email, unknown, confirmed.email]) {
       await page.goto("/en/forgot-password");
-      if (answers.length === 0) await expectNoAxeViolations(page);
       await page.getByLabel("Email", { exact: true }).fill(email);
       const response = page.waitForResponse((r) => r.request().method() === "POST");
       await page.getByRole("button", { name: "Send reset link" }).click();
       await expect(page.getByRole("status")).toHaveText(RESET_SENT);
-      if (answers.length === 0) await expectNoAxeViolations(page);
       answers.push({ status: (await response).status(), text: await page.getByRole("status").innerText() });
     }
     expect(new Set(answers.map((answer) => JSON.stringify(answer))).size).toBe(1);
@@ -268,6 +273,7 @@ test.describe("password recovery", () => {
     const page = await context.newPage();
     for (const path of ["/en/forgot-password", await generateRecoveryPath(user.email)]) {
       await page.goto(path);
+      await expectNoAxeViolations(page);
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );

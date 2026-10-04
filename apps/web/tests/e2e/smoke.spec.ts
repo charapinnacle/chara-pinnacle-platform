@@ -30,6 +30,13 @@ test("home page renders at /en", async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test("an unknown address shows the not-found page with no accessibility violations", async ({ page }) => {
+  const response = await page.goto("/en/does-not-exist");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expectNoAxeViolations(page);
+});
+
 test("built server sends security headers and a nonce CSP (NFR-S5)", async ({
   request,
 }) => {

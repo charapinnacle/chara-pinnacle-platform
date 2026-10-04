@@ -10,9 +10,12 @@ test.describe("login form", () => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/en/login");
       expect(await overflow(page)).toBeLessThanOrEqual(0);
+      await expectNoAxeViolations(page);
+      await page.getByRole("button", { name: "Log in" }).click();
+      await expect(alertText(page)).toBeFocused();
+      await expectNoAxeViolations(page);
     }
     await page.goto("/en/login");
-    await expectNoAxeViolations(page);
     await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute("autocomplete", "username");
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
       "autocomplete",
@@ -24,7 +27,6 @@ test.describe("login form", () => {
     await expect(alertText(page)).toBeFocused();
     await expect(alertText(page)).toContainText("Enter a valid email address.");
     await expect(alertText(page)).toContainText("Enter your password.");
-    await expectNoAxeViolations(page);
     await alertText(page).getByRole("link", { name: "Enter a valid email address." }).click();
     await expect(page.getByLabel("Email", { exact: true })).toBeFocused();
   });
@@ -61,6 +63,7 @@ test.describe("login form", () => {
     const user = await createCommittedUser("worker");
     await page.goto("/en/onboarding");
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent("/en/onboarding")}`);
+    await page.waitForLoadState("networkidle");
     await fillLogin(page, user.email, user.password);
     await page.getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(/\/en\/onboarding$/);
