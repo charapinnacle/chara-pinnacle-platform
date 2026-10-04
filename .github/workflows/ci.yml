@@ -47,6 +47,21 @@ jobs:
       - name: Fail when regenerated reference seeds differ from the committed files
         run: git diff --exit-code -- supabase/seeds/ref
 
+  functions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno fmt --check
+      - run: deno lint
+      - run: deno check "*/index.ts"
+      - run: deno test --frozen
+
   e2e:
     needs: [web, db]
     runs-on: ubuntu-latest
