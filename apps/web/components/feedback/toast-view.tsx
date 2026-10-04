@@ -6,7 +6,7 @@ import { cva } from "class-variance-authority";
 import type { ToastItem } from "@/components/feedback/toast-store";
 
 const toastVariants = cva(
-  "pointer-events-auto relative flex w-full items-start gap-3 rounded-lg border bg-background p-4 pe-10 text-foreground shadow-lg data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-4",
+  "pointer-events-auto relative flex w-full items-start gap-3 rounded-xl border bg-card p-4 pe-10 text-foreground shadow-card data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-4",
   {
     variants: {
       variant: {

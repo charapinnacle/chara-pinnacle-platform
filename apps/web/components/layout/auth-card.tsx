@@ -25,7 +25,7 @@ export function AuthCard({ title, description, icon: Icon, children }: AuthCardP
             {title}
           </h1>
           {description ? (
-            <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+            <p className="text-[0.9375rem] leading-relaxed text-pretty text-muted-foreground">
               {description}
             </p>
           ) : null}
