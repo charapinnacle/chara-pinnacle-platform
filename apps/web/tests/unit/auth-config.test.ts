@@ -126,3 +126,12 @@ describe("Auth configuration that Continue with Google relies on", () => {
     expect(recovery).not.toMatch(/password stays as it is/i);
   });
 });
+
+describe("Auth configuration that FR-A4 relies on", () => {
+  it("offers TOTP only, enrolled and verified, and allows a primary and one backup factor", () => {
+    expect(value("auth.mfa.totp", "enroll_enabled")).toBe("true");
+    expect(value("auth.mfa.totp", "verify_enabled")).toBe("true");
+    expect(value("auth.mfa.phone", "enroll_enabled")).toBe("false");
+    expect(value("auth.mfa", "max_enrolled_factors")).toBe("2");
+  });
+});
