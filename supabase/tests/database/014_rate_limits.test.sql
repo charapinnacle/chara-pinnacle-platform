@@ -1,5 +1,5 @@
 begin;
-select plan(50);
+select plan(54);
 
 \set a 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 \set b 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
@@ -180,6 +180,28 @@ select is(
   (select count(*) from private.rate_limit_hits where action not in ('login', 'signup', 'resend', 'forgot_password', 'reset_password')),
   0::bigint,
   'no refused call created a counter'
+);
+
+-- A damaged bucket setting is a clear refusal, not a division by zero or a null insert
+update private.settings set value = '0' where key = 'rate_limit_buckets';
+select throws_ok(
+  $$select * from public.rate_limit_attempt('login', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'a bucket count of zero is refused'
+);
+update private.settings set value = 'null'::jsonb where key = 'rate_limit_buckets';
+select throws_ok(
+  $$select * from public.rate_limit_attempt('login', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'a null bucket count is refused'
+);
+delete from private.settings where key = 'rate_limit_buckets';
+select throws_ok(
+  $$select * from public.rate_limit_attempt('login', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'a missing bucket count is refused'
+);
+insert into private.settings (key, value) values ('rate_limit_buckets', '16384');
+select is(
+  (select relpersistence from pg_class where oid = 'private.rate_limit_hits'::regclass), 'u'::"char",
+  'the counters are unlogged: a crash gives visitors a fresh window'
 );
 
 -- The bound: whatever keys a caller sends, a bucket is a row

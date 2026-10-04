@@ -20,8 +20,9 @@ insert into private.settings (key, value) values
 -- One row per action and bucket, never more: a visitor is a bucket number (the first 32 bits of the keyed hash of the
 -- address, modulo rate_limit_buckets), not an address and not the hash. The table can therefore not grow beyond
 -- actions x buckets rows whatever a caller sends, and holds nothing that identifies a visitor. A window starts with the
--- first attempt and ends expires_at later; a later attempt starts a new window in the same row.
-create table private.rate_limit_hits (
+-- first attempt and ends expires_at later; a later attempt starts a new window in the same row. Unlogged: every
+-- attempt writes here, and a crash only gives visitors a fresh window, so the counters need no WAL, backup or replica.
+create unlogged table private.rate_limit_hits (
   action text not null,
   bucket integer not null check (bucket >= 0),
   hits integer not null check (hits > 0),
@@ -41,7 +42,8 @@ revoke all on table private.rate_limit_hits from public, anon, authenticated, se
 -- Counts one attempt and says whether it may go on. p_key is the keyed hash (hex SHA-256) of the visitor address made
 -- by the web tier with a secret the browser never sees. A direct caller of this function can only add attempts to
 -- buckets: it cannot read a count, cannot name a visitor (it cannot compute a victim's hash) and cannot add rows beyond
--- the bound above. It can fill buckets at random, which costs it limit x buckets calls per window to lock everybody out.
+-- the bound above. It can still fill buckets at random: (limit + 1) x buckets calls per window refuse every visitor, so
+-- a WAF rate limit on this function is a release check (docs/ARCHITECTURE.md section 15.1).
 create function public.rate_limit_attempt(p_action text, p_key text)
 returns table (allowed boolean, retry_after_seconds integer)
 language plpgsql
@@ -57,6 +59,9 @@ declare
 begin
   if v_max is null or v_seconds is null then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_action';
+  end if;
+  if v_buckets is null or v_buckets < 1 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'rate_limit_buckets';
   end if;
   if p_key is null or p_key !~ '^[0-9a-f]{64}$' then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_key';
