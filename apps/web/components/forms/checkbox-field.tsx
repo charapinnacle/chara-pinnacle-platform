@@ -64,7 +64,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
           <FieldContent>
             <FieldLabel
               htmlFor={id}
-              className="cursor-pointer text-[0.9375rem] font-normal leading-snug text-foreground before:absolute before:inset-0"
+              className="cursor-pointer text-[0.9375rem] font-normal leading-snug text-pretty text-foreground before:absolute before:inset-0"
             >
               {children}
             </FieldLabel>

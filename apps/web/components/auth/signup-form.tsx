@@ -181,8 +181,10 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
                     className="relative z-10"
                   >
                     {document.title}
-                  </LegalLink>{" "}
-                  (version {document.version}, published {formatDate(document.publishedAt)})
+                  </LegalLink>
+                  <span className="block text-sm text-muted-foreground">
+                    (version {document.version}, published {formatDate(document.publishedAt)})
+                  </span>
                 </span>
               )}
             </CheckboxField>
