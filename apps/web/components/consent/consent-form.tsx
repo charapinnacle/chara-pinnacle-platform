@@ -6,6 +6,7 @@ import { useForm, type FieldPath } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { ConsentPanel } from "@/components/forms/consent-panel";
 import { FormButton } from "@/components/forms/form-button";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import type { ConsentActionResult } from "@/lib/actions/consents";
@@ -98,9 +99,9 @@ export function ConsentForm({
         onSelect={(key) => form.setFocus(key as FieldPath<FormInput>)}
       />
       {documents.map((document) => (
-        <section key={document.slug} className="grid gap-1 rounded-xl border bg-muted p-1.5">
+        <ConsentPanel as="section" key={document.slug}>
           {document.slug === AGE_ATTESTATION_SLUG ? null : (
-            <div className="grid gap-1.5 px-3 pt-3 pb-1">
+            <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
               <h2 className="text-base font-semibold tracking-tight">{document.title}</h2>
               <p className="text-sm text-muted-foreground">
                 Version {document.version}, published {formatDate(document.publishedAt)}
@@ -128,7 +129,7 @@ export function ConsentForm({
               ? (attestationWording ?? "I am 18 or older")
               : `I accept the ${document.title}`}
           </CheckboxField>
-        </section>
+        </ConsentPanel>
       ))}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : submitLabel}

@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { ConsentPanel } from "@/components/forms/consent-panel";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
@@ -161,7 +162,7 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         autoComplete="new-password"
       />
       {shown.length > 0 ? (
-        <div className="grid gap-0.5 rounded-xl border bg-muted p-1.5">
+        <ConsentPanel>
           {shown.map((document) => (
             <CheckboxField
               key={document.slug}
@@ -188,7 +189,7 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
               )}
             </CheckboxField>
           ))}
-        </div>
+        </ConsentPanel>
       ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}

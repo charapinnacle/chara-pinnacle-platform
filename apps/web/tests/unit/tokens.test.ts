@@ -65,8 +65,11 @@ describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
     ["ring", "background"],
     ["ring", "card"],
     ["ring", "muted"],
+    ["ring", "accent"],
+    ["ring", "destructive-surface"],
     ["input", "background"],
     ["input", "card"],
+    ["input", "muted"],
   ])("component boundary %s against %s is at least 3:1", (foreground, background) => {
     expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3);
   });
