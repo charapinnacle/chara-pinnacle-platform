@@ -8,15 +8,13 @@ const redirectMock = vi.hoisted(() =>
 );
 const signInMock = vi.fn();
 const signOutMock = vi.fn();
-const profileMock = vi.fn();
+const userMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signInWithPassword: signInMock, signOut: signOutMock },
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: profileMock }) }),
-    }),
   }),
 }));
 
@@ -28,7 +26,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   signInMock.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
   signOutMock.mockResolvedValue({ error: null });
-  profileMock.mockResolvedValue({ data: { account_kind: "worker", status: "active" } });
+  userMock.mockResolvedValue({ id: "user-1", accountKind: "worker", suspended: false });
 });
 
 describe("signIn", () => {
@@ -41,9 +39,9 @@ describe("signIn", () => {
   });
 
   it("lands an employer on the employer dashboard and an uncommitted account on onboarding", async () => {
-    profileMock.mockResolvedValue({ data: { account_kind: "company", status: "active" } });
+    userMock.mockResolvedValue({ id: "user-1", accountKind: "company", suspended: false });
     await expect(signIn(input)).rejects.toThrow("REDIRECT:/en/dashboard/employer");
-    profileMock.mockResolvedValue({ data: { account_kind: null, status: "active" } });
+    userMock.mockResolvedValue({ id: "user-1", accountKind: null, suspended: false });
     await expect(signIn(input)).rejects.toThrow("REDIRECT:/en/onboarding");
   });
 
@@ -69,8 +67,19 @@ describe("signIn", () => {
     expect(signInMock).not.toHaveBeenCalled();
   });
 
-  it("does not length-check the password on login", async () => {
+  it("does not length-check a short password on login", async () => {
     await expect(signIn({ ...input, password: "x" })).rejects.toThrow("REDIRECT:");
+  });
+
+  it("refuses a password longer than any account can have, without calling Auth", async () => {
+    const result = await signIn({ ...input, password: "x".repeat(73) });
+    expect(result).toEqual({ errors: { password: "Email or password is incorrect." } });
+    expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the home page for a next value over 2048 characters", async () => {
+    await expect(signIn({ ...input, next: `/${"a".repeat(2048)}` })).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    expect(signInMock).toHaveBeenCalledOnce();
   });
 
   it("answers a wrong password for a known and for an unknown address with the same message", async () => {
@@ -118,7 +127,7 @@ describe("signIn", () => {
   });
 
   it("ends the session at once when the profile is suspended without a ban", async () => {
-    profileMock.mockResolvedValue({ data: { account_kind: "worker", status: "suspended" } });
+    userMock.mockResolvedValue({ id: "user-1", accountKind: "worker", suspended: true });
     expect(await signIn(input)).toEqual({
       message: "This account is suspended. See the email we sent you for the reasons.",
     });

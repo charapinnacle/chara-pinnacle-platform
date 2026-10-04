@@ -11,6 +11,7 @@ import {
   weakPasswordMessage,
 } from "@/lib/auth-errors";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
+import { getCurrentUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -28,6 +29,8 @@ type ResetResult = { errors?: FieldErrors; message?: string; needsCode?: true };
 
 const SAME_PASSWORD = "Choose a password different from your current one.";
 const WRONG_CODE = "The code is incorrect or has expired.";
+const OTHER_SESSIONS_KEPT =
+  "Your password was changed, but we could not sign out your other devices. Request a new reset link and change it again to end them.";
 
 export async function requestPasswordReset(input: ForgotPasswordInput): Promise<RequestResult> {
   const parsed = forgotPasswordSchema.safeParse(input);
@@ -48,6 +51,15 @@ async function verifyTotp(supabase: Supabase, code: string): Promise<boolean> {
   for (const factor of data?.totp ?? []) {
     const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
     if (!error) return true;
+  }
+  return false;
+}
+
+async function endOtherSessions(supabase: Supabase): Promise<boolean> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { error } = await supabase.auth.signOut({ scope: "others" });
+    if (!error) return true;
+    logAuthFailure("Sign-out of other sessions", error);
   }
   return false;
 }
@@ -79,16 +91,11 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ResetRes
 
   if (code && !(await verifyTotp(supabase, code))) return { errors: { code: WRONG_CODE } };
 
-  const { data, error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({ password });
   if (error) return updateRefusal(error);
 
-  const { error: revokeError } = await supabase.auth.signOut({ scope: "others" });
-  if (revokeError) logAuthFailure("Sign-out of other sessions", revokeError);
+  if (!(await endOtherSessions(supabase))) return { message: OTHER_SESSIONS_KEPT };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("account_kind")
-    .eq("id", data.user.id)
-    .maybeSingle();
-  redirect(homePath(defaultLocale, profile?.account_kind ?? null));
+  const user = await getCurrentUser();
+  redirect(homePath(defaultLocale, user?.accountKind ?? null));
 }

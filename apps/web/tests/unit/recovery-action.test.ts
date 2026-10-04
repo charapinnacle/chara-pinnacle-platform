@@ -12,7 +12,7 @@ const updateUserMock = vi.fn();
 const signOutMock = vi.fn();
 const listFactorsMock = vi.fn();
 const challengeAndVerifyMock = vi.fn();
-const profileMock = vi.fn();
+const userMock = vi.hoisted(() => vi.fn());
 const freshMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => vi.fn());
 
@@ -21,6 +21,7 @@ vi.mock("@/lib/dal/recovery", () => ({
   isRecoveryLinkFresh: freshMock,
   hasRecoverySession: sessionMock,
 }));
+vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: {
@@ -30,9 +31,6 @@ vi.mock("@/lib/supabase/server", () => ({
       signOut: signOutMock,
       mfa: { listFactors: listFactorsMock, challengeAndVerify: challengeAndVerifyMock },
     },
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: profileMock }) }),
-    }),
   }),
 }));
 
@@ -50,7 +48,7 @@ beforeEach(() => {
   sessionMock.mockResolvedValue(false);
   listFactorsMock.mockResolvedValue({ data: { totp: [] } });
   challengeAndVerifyMock.mockResolvedValue({ data: {}, error: null });
-  profileMock.mockResolvedValue({ data: { account_kind: "worker" } });
+  userMock.mockResolvedValue({ id: "user-1", accountKind: "worker", suspended: false });
 });
 
 describe("requestPasswordReset", () => {
@@ -214,14 +212,25 @@ describe("resetPassword", () => {
     expect(verifyOtpMock).not.toHaveBeenCalled();
   });
 
-  it("goes on when the other sessions cannot be ended, logging only the code and status", async () => {
+  it("tells the user when the other sessions cannot be ended, after one retry, logging only the code and status", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     signOutMock.mockResolvedValue({ error: new AuthApiError("down", 500, "unexpected_failure") });
-    await expect(resetPassword(input)).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    const result = await resetPassword(input);
+    expect(result?.message).toMatch(/password was changed, but we could not sign out your other devices/);
+    expect(redirectMock).not.toHaveBeenCalled();
+    expect(signOutMock).toHaveBeenCalledTimes(2);
     expect(logged).toHaveBeenCalledWith("Sign-out of other sessions failed", {
       code: "unexpected_failure",
       status: 500,
     });
+    logged.mockRestore();
+  });
+
+  it("goes on when the retry of ending the other sessions succeeds", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    signOutMock.mockResolvedValueOnce({ error: new AuthApiError("down", 500, "unexpected_failure") });
+    await expect(resetPassword(input)).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    expect(signOutMock).toHaveBeenCalledTimes(2);
     logged.mockRestore();
   });
 

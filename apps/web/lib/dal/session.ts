@@ -16,7 +16,7 @@ type CurrentUser = {
   suspended: boolean;
 };
 
-const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   if (!data) return null;
