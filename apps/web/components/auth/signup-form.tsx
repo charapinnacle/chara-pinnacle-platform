@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Building2, UserRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
@@ -28,8 +29,8 @@ type SignUpFormProps = {
 };
 
 const kindOptions = [
-  { value: "worker", label: "I'm a worker" },
-  { value: "company", label: "I'm an employer" },
+  { value: "worker", label: "I'm a worker", icon: UserRound },
+  { value: "company", label: "I'm an employer", icon: Building2 },
 ] as const;
 
 const ids = {
