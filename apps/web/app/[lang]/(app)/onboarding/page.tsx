@@ -32,7 +32,10 @@ export default async function OnboardingPage({
     ]);
     if (organization) redirect(homePath(lang, "company"));
     const invitation = await pendingInvitationToken();
-    if (invitation && (await getInvitationPreview(invitation))) redirect(`/${lang}/invitations/${invitation}`);
+    const preview = invitation ? await getInvitationPreview(invitation) : null;
+    if (invitation && preview?.email.toLowerCase() === user.email?.toLowerCase()) {
+      redirect(`/${lang}/invitations/${invitation}`);
+    }
     return (
       <AuthCard
         title="Your account type is Employer"
