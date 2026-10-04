@@ -84,5 +84,5 @@ export async function startEnrolment(
     if (error.code === "insufficient_aal") return { refused: "aal2_required" };
     throw new Error("Two-step verification could not be started", { cause: error });
   }
-  return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+  return { factorId: data.id, qrCode: data.totp.qr_code.trim(), secret: data.totp.secret };
 }

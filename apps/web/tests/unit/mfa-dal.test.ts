@@ -101,6 +101,15 @@ describe("startEnrolment", () => {
     expect(unenrollMock.mock.invocationCallOrder[0]).toBeLessThan(enrollMock.mock.invocationCallOrder[0]);
   });
 
+  it("trims the QR code, because Auth ends the SVG with a newline that next/image rejects", async () => {
+    enrollMock.mockResolvedValue({
+      data: { id: "new-factor", type: "totp", totp: { qr_code: "data:image/svg+xml;utf-8,<svg/>\n", secret: "JBSWY3DPEHPK3PXP" } },
+      error: null,
+    });
+    const result = await startEnrolment("en", "Authenticator", "aal1");
+    expect(result).toMatchObject({ qrCode: "data:image/svg+xml;utf-8,<svg/>" });
+  });
+
   it("never touches a verified factor", async () => {
     listFactorsMock.mockResolvedValue(
       factors(factor("keep", "Authenticator", "verified"), factor("old", "Backup", "unverified")),
