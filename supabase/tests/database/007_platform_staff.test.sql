@@ -9,7 +9,7 @@ $$;
 
 create function pg_temp.as_user(p_id uuid) returns void
 language sql as $$
-  select set_config('request.jwt.claims', json_build_object('sub', p_id, 'role', 'authenticated')::text, true)
+  select set_config('request.jwt.claims', json_build_object('sub', p_id, 'role', 'authenticated', 'aal', 'aal2')::text, true)
 $$;
 
 select pg_temp.new_user('00000000-0000-0000-0000-00000000a001');
