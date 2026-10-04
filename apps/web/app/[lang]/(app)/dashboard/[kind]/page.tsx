@@ -5,7 +5,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
-import { getMyOrganization } from "@/lib/dal/organizations";
+import { getMyOrganizations } from "@/lib/dal/organizations";
 import { requireUser } from "@/lib/dal/session";
 import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
 
@@ -20,10 +20,11 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
   }
   if (kind !== "employer") return <AuthCard title="Dashboard" />;
 
-  const [organization, twoStepDone] = await Promise.all([
-    getMyOrganization(user.id),
+  const [organizations, twoStepDone] = await Promise.all([
+    getMyOrganizations(user.id),
     hasVerifiedTotpFactor(lang),
   ]);
+  const [organization, ...others] = organizations;
   if (!organization) {
     return (
       <AuthCard title="Dashboard">
@@ -38,8 +39,18 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
   return (
     <AuthCard title="Dashboard" description={organization.displayName}>
       <EmptyState title="Nothing here yet" description="Follow these steps to get started.">
-        <GuidedSteps lang={lang} twoStepDone={twoStepDone} />
+        <GuidedSteps lang={lang} organizationSlug={organization.slug} twoStepDone={twoStepDone} />
       </EmptyState>
+      {others.length > 0 ? (
+        <nav aria-label="Your organizations" className="grid gap-1">
+          <p className="text-sm text-muted-foreground">You also belong to</p>
+          {others.map((other) => (
+            <TextLink key={other.id} href={`/${lang}/org/${other.slug}`}>
+              {other.displayName}
+            </TextLink>
+          ))}
+        </nav>
+      ) : null}
     </AuthCard>
   );
 }

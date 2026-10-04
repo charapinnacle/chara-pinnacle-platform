@@ -2,11 +2,11 @@ import { Circle, CircleCheck } from "lucide-react";
 import { TextLink } from "@/components/forms/text-link";
 import { mfaPath } from "@/lib/routes";
 
-type GuidedStepsProps = { lang: string; twoStepDone: boolean };
+type GuidedStepsProps = { lang: string; organizationSlug: string; twoStepDone: boolean };
 
-const upcoming = ["Start the free trial", "Post the first vacancy", "Invite a team member"];
+const upcoming = ["Start the free trial", "Post the first vacancy"];
 
-export function GuidedSteps({ lang, twoStepDone }: GuidedStepsProps) {
+export function GuidedSteps({ lang, organizationSlug, twoStepDone }: GuidedStepsProps) {
   return (
     <ol className="grid gap-3 text-start text-body">
       <li className="flex items-center gap-3">
@@ -29,6 +29,10 @@ export function GuidedSteps({ lang, twoStepDone }: GuidedStepsProps) {
           <span>{step}</span>
         </li>
       ))}
+      <li className="flex items-center gap-3">
+        <Circle aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+        <TextLink href={`/${lang}/org/${organizationSlug}/members`}>Invite a team member</TextLink>
+      </li>
     </ol>
   );
 }

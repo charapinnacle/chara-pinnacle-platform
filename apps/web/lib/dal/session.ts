@@ -9,6 +9,9 @@ import { mfaPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
+type MemberRole = Database["public"]["Enums"]["member_role"];
+
+const roleRank = { member: 1, admin: 2, owner: 3 } as const satisfies Record<MemberRole, number>;
 
 type CurrentUser = {
   id: string;
@@ -82,4 +85,31 @@ export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
   if (data.length === 0) redirect(`/${lang}/forbidden`);
   await requireAal2(lang, user);
   return user;
+}
+
+export type OrganizationAccess = { id: string; slug: string; displayName: string; role: MemberRole };
+
+// The role is looked up in the database on every request, never read from the token, so a removed or demoted member
+// is refused on the very next request. A user who is no member, or whose role is below minRole, gets the forbidden
+// page, and so does an unknown slug. Owners and admins must be at aal2 on every organization page (FR-A4); a plain
+// member is not asked for two-step verification.
+export async function requireOrgRole(
+  lang: string,
+  slug: string,
+  minRole: MemberRole,
+): Promise<{ user: CurrentUser; organization: OrganizationAccess }> {
+  const user = await requireUser(lang);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("organization_members")
+    .select("role, organizations!inner(id, slug, display_name)")
+    .eq("user_id", user.id)
+    .eq("organizations.slug", slug)
+    .not("accepted_at", "is", null)
+    .maybeSingle();
+  if (error) throw new Error("The organization role could not be loaded", { cause: error });
+  if (!data || roleRank[data.role] < roleRank[minRole]) redirect(`/${lang}/forbidden`);
+  if (data.role !== "member") await requireAal2(lang, user);
+  const { id, display_name } = data.organizations;
+  return { user, organization: { id, slug, displayName: display_name, role: data.role } };
 }
