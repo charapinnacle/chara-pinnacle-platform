@@ -26,7 +26,7 @@ export function ErrorSummary({ ref, items, onSelect, action }: ErrorSummaryProps
     >
       <div className="grid gap-1.5">
         <p className="font-semibold text-destructive">There is a problem</p>
-        <ul className="grid list-disc gap-1 ps-5 marker:text-destructive">
+        <ul className="grid list-disc ps-5 marker:text-destructive">
           {items.map((item) => (
             <li key={item.key}>
               {item.targetId ? (
