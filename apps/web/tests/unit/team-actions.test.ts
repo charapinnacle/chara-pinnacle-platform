@@ -10,21 +10,18 @@ const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const requireUserMock = vi.hoisted(() => vi.fn());
 const allowanceMock = vi.hoisted(() => vi.fn());
 const forgetMock = vi.hoisted(() => vi.fn());
+const slugMock = vi.hoisted(() => vi.fn());
 const rpcMock = vi.fn();
-const singleMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock, requireUser: requireUserMock }));
 vi.mock("@/lib/dal/team", () => ({ getAllowance: allowanceMock }));
+vi.mock("@/lib/dal/organizations", () => ({ getOrganizationSlug: slugMock }));
 vi.mock("@/lib/invitation-cookie", () => ({ forgetInvitation: forgetMock }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => {
-    const chain: Record<string, unknown> = { single: singleMock };
-    for (const method of ["select", "eq", "is"]) chain[method] = () => chain;
-    return { rpc: rpcMock, from: () => chain };
-  },
+  createClient: async () => ({ rpc: rpcMock }),
 }));
 
 const {
@@ -49,14 +46,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme", role: "owner" } });
   rpcMock.mockResolvedValue({ data: null, error: null });
-  singleMock.mockResolvedValue({ data: { expires_at: "2026-10-12T10:00:00Z" }, error: null });
 });
 
 describe("inviteMember", () => {
   const input = { slug: "acme", email: " Bea@Example.com ", role: "member" as const };
 
   it("checks the role first, sends the normalised address and returns the link path once with its expiry", async () => {
-    rpcMock.mockResolvedValue({ data: token, error: null });
+    rpcMock.mockResolvedValue({ data: [{ token, expires_at: "2026-10-12T10:00:00Z" }], error: null });
     await expect(inviteMember(input)).resolves.toEqual({
       invitation: { path: `/en/invitations/${token}`, expiresAt: "2026-10-12T10:00:00Z" },
     });
@@ -157,13 +153,19 @@ describe("member management", () => {
 describe("acceptInvitation", () => {
   beforeEach(() => {
     rpcMock.mockResolvedValue({ data: orgId, error: null });
-    singleMock.mockResolvedValue({ data: { slug: "acme" }, error: null });
+    slugMock.mockResolvedValue("acme");
   });
 
   it("accepts, forgets the remembered link and lands on the organization", async () => {
     await expect(acceptInvitation(token)).rejects.toThrow("REDIRECT:/en/org/acme");
     expect(requireUserMock).toHaveBeenCalledWith("en");
     expect(rpcMock).toHaveBeenCalledWith("accept_invitation", { p_token: token });
+    expect(forgetMock).toHaveBeenCalled();
+  });
+
+  it("lands on the dashboard when the organization cannot be read after the membership exists", async () => {
+    slugMock.mockRejectedValue(new Error("down"));
+    await expect(acceptInvitation(token)).rejects.toThrow("REDIRECT:/en/dashboard/employer");
     expect(forgetMock).toHaveBeenCalled();
   });
 

@@ -7,14 +7,15 @@ import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
 import { mfaPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
+import type { MemberRole } from "@/lib/validation/team";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
-type MemberRole = Database["public"]["Enums"]["member_role"];
 
-const roleRank = { member: 1, admin: 2, owner: 3 } as const satisfies Record<MemberRole, number>;
+export const roleRank = { member: 1, admin: 2, owner: 3 } as const satisfies Record<MemberRole, number>;
 
 type CurrentUser = {
   id: string;
+  email: string | null;
   aal: "aal1" | "aal2";
   accountKind: AccountKind | null;
   intendedAccountKind: AccountKind | null;
@@ -34,6 +35,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!profile) return null;
   return {
     id: sub,
+    email: data.claims.email ?? null,
     aal: data.claims.aal === "aal2" ? "aal2" : "aal1",
     accountKind: profile.account_kind,
     intendedAccountKind: profile.intended_account_kind,
@@ -87,7 +89,7 @@ export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
   return user;
 }
 
-export type OrganizationAccess = { id: string; slug: string; displayName: string; role: MemberRole };
+type OrganizationAccess = { id: string; slug: string; displayName: string; role: MemberRole };
 
 // The role is looked up in the database on every request, never read from the token, so a removed or demoted member
 // is refused on the very next request. A user who is no member, or whose role is below minRole, gets the forbidden

@@ -6,12 +6,12 @@ import { toast } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { formatDate } from "@/lib/i18n/format";
-import { roleLabels } from "@/lib/validation/team";
+import { roleLabels, type MemberRole } from "@/lib/validation/team";
 
 type InvitationLinkProps = {
   path: string;
   email: string;
-  role: keyof typeof roleLabels;
+  role: MemberRole;
   expiresAt: string;
   onDone: () => void;
 };
@@ -43,6 +43,7 @@ export function InvitationLink({ path, email, role, expiresAt, onDone }: Invitat
       </dl>
       <input
         readOnly
+        autoFocus
         aria-label="Invitation link"
         value={link}
         onFocus={(event) => event.currentTarget.select()}

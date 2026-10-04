@@ -1,12 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { invitableRoleSchema, roleSchema } from "@/lib/validation/team";
 
 const MEMBERS_PAGE_SIZE = 50;
 const INVITATIONS_LIMIT = 50;
-
-const roleSchema = z.enum(["owner", "admin", "member"]);
-const invitationRoleSchema = z.enum(["admin", "member"]);
 
 // The database types declare every returned column as not null; the nullable ones are stated here, where the rows enter.
 const memberRowSchema = z.object({
@@ -15,6 +13,13 @@ const memberRowSchema = z.object({
   email: z.string().nullable(),
   role: roleSchema,
   mfa_enrolled: z.boolean().nullable(),
+});
+const invitationRowSchema = z.object({
+  id: z.uuid(),
+  email: z.string(),
+  role: invitableRoleSchema,
+  expires_at: z.string(),
+  is_open: z.boolean(),
 });
 const allowanceSchema = z.object({ member_limit: z.number().int().nullable(), used: z.number().int() });
 const previewSchema = z.object({
@@ -36,9 +41,10 @@ type MemberPage = { members: TeamMember[]; nextCursor: string | null };
 type PendingInvitation = {
   id: string;
   email: string;
-  role: z.infer<typeof invitationRoleSchema>;
+  role: z.infer<typeof invitableRoleSchema>;
   expiresAt: string;
   expired: boolean;
+  open: boolean;
 };
 type PendingTransfer = { fromUserId: string; toUserId: string; expiresAt: string };
 type InvitationPreview = { organizationName: string; role: z.infer<typeof roleSchema>; email: string; expiresAt: string };
@@ -67,24 +73,23 @@ export async function getMembers(organizationId: string, after: string | null): 
 }
 
 // Invitations that have not been accepted, newest first. An address has one live invitation (a new one replaces it),
-// so the list is bounded by the addresses invited, and the query by the limit.
+// so the list is bounded by the addresses invited, and the query by the limit. An invitation that is not open is
+// expired or was sent by someone who has since been removed or demoted.
 export async function getInvitations(organizationId: string): Promise<PendingInvitation[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("organization_invitations")
-    .select("id, email, role, expires_at")
-    .eq("organization_id", organizationId)
-    .is("accepted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(INVITATIONS_LIMIT);
+  const { data, error } = await supabase.rpc("list_organization_invitations", {
+    p_org: organizationId,
+    p_limit: INVITATIONS_LIMIT,
+  });
   if (error) throw new Error("The invitations could not be loaded", { cause: error });
   const now = Date.now();
-  return data.map((row) => ({
+  return z.array(invitationRowSchema).parse(data).map((row) => ({
     id: row.id,
     email: row.email,
-    role: invitationRoleSchema.parse(row.role),
+    role: row.role,
     expiresAt: row.expires_at,
     expired: new Date(row.expires_at).getTime() <= now,
+    open: row.is_open,
   }));
 }
 

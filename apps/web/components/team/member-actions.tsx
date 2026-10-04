@@ -5,8 +5,9 @@ import { FormButton } from "@/components/forms/form-button";
 import { ModalDialog } from "@/components/team/modal-dialog";
 import { useTeamCall } from "@/components/team/use-team-call";
 import { changeMemberRole, removeMember } from "@/lib/actions/team";
+import type { InvitableRole } from "@/lib/validation/team";
 
-type MemberActionsProps = { slug: string; userId: string; name: string; role: "admin" | "member" };
+type MemberActionsProps = { slug: string; userId: string; name: string; role: InvitableRole };
 
 export function MemberActions({ slug, userId, name, role }: MemberActionsProps) {
   const [confirming, setConfirming] = useState(false);

@@ -8,9 +8,9 @@ import { InvitationLink } from "@/components/team/invitation-link";
 import { ModalDialog } from "@/components/team/modal-dialog";
 import { inviteMember, type InviteResult } from "@/lib/actions/team";
 import { isRedirectError } from "@/lib/redirect-error";
-import { memberLimitMessage } from "@/lib/validation/team";
+import { memberLimitMessage, type InvitableRole } from "@/lib/validation/team";
 
-type ResendInvitationProps = { slug: string; email: string; role: "admin" | "member" };
+type ResendInvitationProps = { slug: string; email: string; role: InvitableRole };
 
 // A new invitation replaces the expired one, so the person gets a new link.
 export function ResendInvitation({ slug, email, role }: ResendInvitationProps) {

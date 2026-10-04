@@ -9,13 +9,11 @@ import { MemberActions } from "@/components/team/member-actions";
 import { ResendInvitation } from "@/components/team/resend-invitation";
 import { TransferOwnership, TransferResponse } from "@/components/team/ownership-transfer";
 import { getAllowance, getInvitations, getMembers, getPendingTransfer, type TeamMember } from "@/lib/dal/team";
-import { requireOrgRole } from "@/lib/dal/session";
+import { requireOrgRole, roleRank } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { roleLabels } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Team — CHARA", robots: { index: false } };
-
-const roleOrder = { owner: 0, admin: 1, member: 2 } as const;
 
 function displayName(member: TeamMember): string {
   return member.name ?? member.email ?? "Team member";
@@ -38,7 +36,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
     manager ? getAllowance(organization.id) : null,
     getPendingTransfer(organization.id),
   ]);
-  const members = page.members.toSorted((a, b) => roleOrder[a.role] - roleOrder[b.role]);
+  const members = page.members.toSorted((a, b) => roleRank[b.role] - roleRank[a.role]);
   const nameOf = (userId: string) => {
     const member = page.members.find((entry) => entry.userId === userId);
     return member ? displayName(member) : "a team member";
@@ -92,27 +90,25 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
           Members
         </h2>
         <ul className="grid gap-3">
-          {members.map((member) => {
-            return (
-              <li key={member.userId} className="grid gap-3 rounded-xl border bg-card p-4">
-                <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-                  <div className="min-w-0">
-                    <p className="font-medium break-words">{displayName(member)}</p>
-                    {member.name && member.email ? (
-                      <p className="text-sm break-all text-muted-foreground">{member.email}</p>
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{roleLabels[member.role]}</span>
-                    {manager ? <> · Two-step verification: {mfaStatus(member)}</> : null}
-                  </p>
+          {members.map((member) => (
+            <li key={member.userId} className="grid gap-3 rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{displayName(member)}</p>
+                  {member.name && member.email ? (
+                    <p className="text-sm break-all text-muted-foreground">{member.email}</p>
+                  ) : null}
                 </div>
-                {manager && member.role !== "owner" && member.userId !== user.id ? (
-                  <MemberActions slug={slug} userId={member.userId} name={displayName(member)} role={member.role} />
-                ) : null}
-              </li>
-            );
-          })}
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{roleLabels[member.role]}</span>
+                  {manager ? <> · Two-step verification: {mfaStatus(member)}</> : null}
+                </p>
+              </div>
+              {manager && member.role !== "owner" && member.userId !== user.id ? (
+                <MemberActions slug={slug} userId={member.userId} name={displayName(member)} role={member.role} />
+              ) : null}
+            </li>
+          ))}
         </ul>
         {page.nextCursor ? (
           <TextLink standalone href={`/${lang}/org/${slug}/members?after=${page.nextCursor}`}>
@@ -138,10 +134,14 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
                   <p className="font-medium break-all">{invitation.email}</p>
                   <p className="text-sm text-muted-foreground">
                     {roleLabels[invitation.role]} ·{" "}
-                    {invitation.expired ? "Expired" : `Pending, expires on ${formatDate(invitation.expiresAt)}`}
+                    {invitation.expired
+                      ? "Expired"
+                      : invitation.open
+                        ? `Pending, expires on ${formatDate(invitation.expiresAt)}`
+                        : "No longer valid, the person who sent it left or changed role"}
                   </p>
                 </div>
-                {invitation.expired ? (
+                {!invitation.open ? (
                   <ResendInvitation slug={slug} email={invitation.email} role={invitation.role} />
                 ) : null}
               </li>

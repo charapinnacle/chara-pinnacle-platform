@@ -1,8 +1,9 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import type { MemberRole } from "@/lib/validation/team";
 
-type Organization = { id: string; slug: string; displayName: string; role: "owner" | "admin" | "member" };
+type Organization = { id: string; slug: string; displayName: string; role: MemberRole };
 
 const MAX_LISTED_ORGANIZATIONS = 20;
 
@@ -23,6 +24,13 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
       : [],
   );
 });
+
+export async function getOrganizationSlug(organizationId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("organizations").select("slug").eq("id", organizationId).maybeSingle();
+  if (error) throw new Error("The organization could not be loaded", { cause: error });
+  return data?.slug ?? null;
+}
 
 export async function getMyOrganization(userId: string): Promise<Organization | null> {
   return (await getMyOrganizations(userId))[0] ?? null;

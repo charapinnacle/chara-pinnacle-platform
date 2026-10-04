@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpcMock = vi.fn();
-const limitMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => {
-    const chain: Record<string, unknown> = { limit: limitMock };
-    for (const method of ["select", "eq", "is", "order"]) chain[method] = () => chain;
-    return { rpc: rpcMock, from: () => chain };
-  },
+  createClient: async () => ({ rpc: rpcMock }),
 }));
 
 const { getAllowance, getInvitationPreview, getInvitations, getMembers } = await import("@/lib/dal/team");
@@ -60,19 +55,22 @@ describe("getMembers", () => {
 });
 
 describe("getInvitations", () => {
-  it("is bounded and marks an invitation past its expiry as expired", async () => {
-    limitMock.mockResolvedValue({
+  it("is bounded, marks an invitation past its expiry as expired and carries whether it can still be accepted", async () => {
+    const id = (index: number) => `00000000-0000-4000-8000-00000000000${index}`;
+    rpcMock.mockResolvedValue({
       data: [
-        { id: "a", email: "a@example.test", role: "member", expires_at: "2000-01-01T00:00:00Z" },
-        { id: "b", email: "b@example.test", role: "admin", expires_at: "2999-01-01T00:00:00Z" },
+        { id: id(1), email: "a@example.test", role: "member", expires_at: "2000-01-01T00:00:00Z", is_open: false },
+        { id: id(2), email: "b@example.test", role: "admin", expires_at: "2999-01-01T00:00:00Z", is_open: true },
+        { id: id(3), email: "c@example.test", role: "member", expires_at: "2999-01-01T00:00:00Z", is_open: false },
       ],
       error: null,
     });
     const invitations = await getInvitations("org-1");
-    expect(limitMock).toHaveBeenCalledWith(50);
-    expect(invitations.map((invitation) => [invitation.email, invitation.expired])).toEqual([
-      ["a@example.test", true],
-      ["b@example.test", false],
+    expect(rpcMock).toHaveBeenCalledWith("list_organization_invitations", { p_org: "org-1", p_limit: 50 });
+    expect(invitations.map((invitation) => [invitation.email, invitation.expired, invitation.open])).toEqual([
+      ["a@example.test", true, false],
+      ["b@example.test", false, true],
+      ["c@example.test", false, false],
     ]);
   });
 });

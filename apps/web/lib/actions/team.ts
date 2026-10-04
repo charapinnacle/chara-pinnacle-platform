@@ -1,14 +1,14 @@
 "use server";
 
-import type { Database } from "@chara-pinnacle/db-types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getOrganizationSlug } from "@/lib/dal/organizations";
 import { getAllowance } from "@/lib/dal/team";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { forgetInvitation } from "@/lib/invitation-cookie";
-import { mfaPath } from "@/lib/routes";
+import { homePath, mfaPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import {
@@ -23,10 +23,10 @@ import {
   TEAM_RATE_LIMITED,
   WORKER_CANNOT_JOIN,
   type InviteFormInput,
+  type MemberRole,
 } from "@/lib/validation/team";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-type MemberRole = Database["public"]["Enums"]["member_role"];
 
 export type TeamResult = { message?: string; errors?: FieldErrors };
 export type InviteResult = TeamResult & {
@@ -93,22 +93,14 @@ export async function inviteMember(input: InviteFormInput & { slug: string }): P
   const { organization } = await requireOrgRole(defaultLocale, slug, "admin");
 
   const supabase = await createClient();
-  const { data: token, error } = await supabase.rpc("invite_member", {
+  const { data, error } = await supabase.rpc("invite_member", {
     p_org: organization.id,
     p_email: email,
     p_role: role,
   });
   if (error) return inviteRefusal(error, slug, organization.id);
-
-  const { data: invitation, error: readError } = await supabase
-    .from("organization_invitations")
-    .select("expires_at")
-    .eq("organization_id", organization.id)
-    .eq("email", email)
-    .is("accepted_at", null)
-    .single();
-  if (readError) throw new Error("The invitation could not be read back", { cause: readError });
-  return { invitation: { path: `/${defaultLocale}/invitations/${token}`, expiresAt: invitation.expires_at } };
+  const [{ token, expires_at }] = data;
+  return { invitation: { path: `/${defaultLocale}/invitations/${token}`, expiresAt: expires_at } };
 }
 
 export async function changeMemberRole(input: { slug: string; userId: string; role: string }): Promise<TeamResult> {
@@ -178,12 +170,7 @@ export async function acceptInvitation(token: string): Promise<{ message: string
   const { data: organizationId, error } = await supabase.rpc("accept_invitation", { p_token: parsed.data });
   if (error) return { message: invitationRefusal(error) };
 
-  const { data: organization, error: readError } = await supabase
-    .from("organizations")
-    .select("slug")
-    .eq("id", organizationId)
-    .single();
-  if (readError) throw new Error("The organization could not be loaded", { cause: readError });
   await forgetInvitation();
-  redirect(`/${defaultLocale}/org/${organization.slug}`);
+  const slug = await getOrganizationSlug(organizationId).catch(() => null);
+  redirect(slug ? `/${defaultLocale}/org/${slug}` : homePath(defaultLocale, "company"));
 }
