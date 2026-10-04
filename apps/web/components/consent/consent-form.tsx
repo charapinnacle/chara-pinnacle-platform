@@ -107,15 +107,14 @@ export function ConsentForm({
                 Version {document.version}, published {formatDate(document.publishedAt)}
               </p>
               <p className="text-sm leading-relaxed">{document.changeSummary}</p>
-              <p className="text-sm">
-                <LegalLink
-                  slug={document.slug}
-                  newTabLabel={`of the ${document.title} (opens in a new tab)`}
-                  standalone
-                >
-                  Read the full text
-                </LegalLink>
-              </p>
+              <LegalLink
+                slug={document.slug}
+                newTabLabel={`of the ${document.title} (opens in a new tab)`}
+                standalone
+                className="-mt-1.5 -mb-2.5"
+              >
+                Read the full text
+              </LegalLink>
             </div>
           )}
           <CheckboxField
