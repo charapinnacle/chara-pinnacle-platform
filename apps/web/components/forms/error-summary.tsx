@@ -11,9 +11,10 @@ type ErrorSummaryProps = {
   ref?: React.Ref<HTMLDivElement>;
   items: readonly ErrorSummaryItem[];
   onSelect: (key: string) => void;
+  action?: React.ReactNode;
 };
 
-export function ErrorSummary({ ref, items, onSelect }: ErrorSummaryProps) {
+export function ErrorSummary({ ref, items, onSelect, action }: ErrorSummaryProps) {
   if (items.length === 0) return null;
   return (
     <Notice
@@ -46,6 +47,7 @@ export function ErrorSummary({ ref, items, onSelect }: ErrorSummaryProps) {
             </li>
           ))}
         </ul>
+        {action}
       </div>
     </Notice>
   );

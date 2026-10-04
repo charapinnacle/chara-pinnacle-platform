@@ -53,12 +53,14 @@ export function LoginForm({ next }: { next?: string }) {
         ref={summaryRef}
         items={items}
         onSelect={(key) => form.setFocus(key as FieldPath<LoginFormInput>)}
+        action={
+          errors.root?.server?.type === "unconfirmed" ? (
+            <TextLink standalone="flush" href={`/${defaultLocale}/verify-email`}>
+              Request a new confirmation link
+            </TextLink>
+          ) : null
+        }
       />
-      {errors.root?.server?.type === "unconfirmed" ? (
-        <TextLink standalone="flush" href={`/${defaultLocale}/verify-email`}>
-          Request a new confirmation link
-        </TextLink>
-      ) : null}
       <InputField
         control={control}
         name="email"
