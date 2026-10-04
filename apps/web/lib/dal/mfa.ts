@@ -7,11 +7,11 @@ import { MAX_TOTP_FACTORS } from "@/lib/validation/mfa";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
-export type VerifiedFactor = { id: string; name: string; createdAt: string };
+type VerifiedFactor = { id: string; name: string; createdAt: string };
 type TotpFactors = { verified: VerifiedFactor[]; unverifiedIds: string[] };
 
 export type Enrolment = { factorId: string; qrCode: string; secret: string };
-export type EnrolmentRefusal = "name_taken" | "too_many";
+type EnrolmentRefusal = "name_taken" | "too_many";
 
 async function loadFactors(supabase: Supabase, lang: string): Promise<TotpFactors> {
   const { data, error } = await supabase.auth.mfa.listFactors();

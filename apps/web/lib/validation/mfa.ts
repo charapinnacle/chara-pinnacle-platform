@@ -22,7 +22,7 @@ export const factorNameSchema = z
   .max(32, { error: "The name must be 32 characters or fewer." });
 
 export const challengeSchema = z.object({ code: totpCodeSchema });
-export const verifyEnrolmentSchema = challengeSchema.extend({ factorId: z.uuid() });
+const verifyEnrolmentSchema = challengeSchema.extend({ factorId: z.uuid() });
 export const backupFactorSchema = z.object({ name: factorNameSchema });
 
 const nextSchema = z.string().max(2048).optional().catch(undefined);
