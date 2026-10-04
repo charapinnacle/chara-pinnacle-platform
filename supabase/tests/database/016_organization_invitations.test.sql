@@ -4,9 +4,9 @@ select plan(56);
 \ir organizations_fixture.inc
 
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.a', public.create_organization('employer', 'Acme Bau GmbH', 'Acme Bau', 'DE')::text, true)$$, 'aal1'), 'ok', 'setup call succeeds');
+  $$select set_config('t.a', (public.create_organization('employer', 'Acme Bau GmbH', 'Acme Bau', 'DE', 'F'))->>'organization_id', true)$$, 'aal1'), 'ok', 'setup call succeeds');
 select is(pg_temp.call_as(:'own2', 'authenticated',
-  $$select set_config('t.b', public.create_organization('employer', 'Beta Works Ltd', 'Beta Works', 'GB')::text, true)$$, 'aal1'), 'ok', 'setup call succeeds');
+  $$select set_config('t.b', (public.create_organization('employer', 'Beta Works Ltd', 'Beta Works', 'GB', 'F'))->>'organization_id', true)$$, 'aal1'), 'ok', 'setup call succeeds');
 insert into public.organization_members (organization_id, user_id, role, accepted_at)
 values (current_setting('t.a')::uuid, :'adm', 'admin', now()), (current_setting('t.a')::uuid, :'mem', 'member', now());
 

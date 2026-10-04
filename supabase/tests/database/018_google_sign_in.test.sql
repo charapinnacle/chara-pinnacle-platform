@@ -123,7 +123,7 @@ select is(
 
 -- A user without a kind cannot do what a worker or a company user does
 select is(
-  pg_temp.call_as(:'w', 'authenticated', $$select public.create_organization('employer', 'Acme GmbH', 'Acme', 'DE', null)$$),
+  pg_temp.call_as(:'w', 'authenticated', $$select public.create_organization('employer', 'Acme GmbH', 'Acme', 'DE', 'F', null)$$),
   'P0001|CHARA_FORBIDDEN|company_account_required',
   'a user without a kind cannot create an organization'
 );

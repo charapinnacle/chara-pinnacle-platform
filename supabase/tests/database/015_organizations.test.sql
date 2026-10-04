@@ -30,7 +30,7 @@ select enum_has_labels('public', 'organization_type', array['employer', 'recruit
 select enum_has_labels('public', 'member_role', array['owner', 'admin', 'member'], 'the member roles exist');
 select enum_has_labels('public', 'organization_status', array['active', 'suspended'], 'the organization statuses exist');
 select columns_are('public', 'organizations',
-  array['id', 'type', 'slug', 'legal_name', 'display_name', 'based_in_country', 'website', 'status', 'created_at'],
+  array['id', 'type', 'slug', 'legal_name', 'display_name', 'based_in_country', 'website', 'status', 'created_at', 'industry_code', 'legal_entity_identifier', 'legal_entity_identifier_kind'],
   'organizations has the organization columns');
 select columns_are('public', 'organization_members',
   array['organization_id', 'user_id', 'role', 'invited_by', 'accepted_at'],
@@ -89,7 +89,7 @@ select ok(
 select ok(
   (select bool_and(prosecdef and proconfig = array['search_path=""'])
    from pg_proc where oid in (
-     'public.create_organization(public.organization_type, text, text, text, text)'::regprocedure,
+     'public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure,
      'public.invite_member(uuid, text, public.member_role)'::regprocedure,
      'public.accept_invitation(text)'::regprocedure,
      'public.change_member_role(uuid, uuid, public.member_role)'::regprocedure,
@@ -99,7 +99,7 @@ select ok(
     select 1 from pg_proc p
     cross join unnest(array['anon', 'service_role']) r (rolname)
     where p.oid in (
-      'public.create_organization(public.organization_type, text, text, text, text)'::regprocedure,
+      'public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure,
       'public.invite_member(uuid, text, public.member_role)'::regprocedure,
       'public.accept_invitation(text)'::regprocedure,
       'public.change_member_role(uuid, uuid, public.member_role)'::regprocedure,
@@ -132,7 +132,7 @@ select is_empty(
 -- create_organization
 select is(
   pg_temp.call_as(:'own1', 'authenticated',
-    $$select set_config('t.a', public.create_organization('employer', 'Acme Bau GmbH', 'Acme Bau', 'DE', 'https://acme-bau.example')::text, true)$$,
+    $$select set_config('t.a', (public.create_organization('employer', 'Acme Bau GmbH', 'Acme Bau', 'DE', 'F', 'https://acme-bau.example'))->>'organization_id', true)$$,
     'aal1'),
   'ok', 'an employer user at aal1 can create an organization (no aal2 needed for the first step)'
 );
@@ -154,27 +154,27 @@ select is(
 select is(
   (select format('%s|%s|%s|%s', actor_id, entity_type, entity_id = current_setting('t.a'), metadata)
    from audit.log where action = 'organization_created' and entity_id = current_setting('t.a')),
-  format('%s|organization|t|{"slug": "acme-bau", "type": "employer"}', :'own1'),
+  format('%s|organization|t|{"slug": "acme-bau", "type": "employer", "duplicate_legal_name": false, "legal_entity_trial_used": false}', :'own1'),
   'one organization_created audit row names the actor, the organization, the slug and the type'
 );
 select is(
   pg_temp.call_as(:'own2', 'authenticated',
-    $$select set_config('t.b', public.create_organization('employer', 'Beta Works Ltd', 'Beta Works', 'GB')::text, true)$$,
+    $$select set_config('t.b', (public.create_organization('employer', 'Beta Works Ltd', 'Beta Works', 'GB', 'F'))->>'organization_id', true)$$,
     'aal1'),
   'ok', 'a second employer creates a second organization without a website'
 );
 
 update private.settings set value = '20' where key = 'organizations_per_user_max';
 select is(
-  pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Acme Bau GmbH', 'Acme Bau', 'de')$$, 'aal1'),
+  pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Acme Bau GmbH', 'Acme Bau', 'de', 'F')$$, 'aal1'),
   'ok', 'a taken slug is not an error'
 );
-select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Acme Bau AG', 'Acme Bau!', 'DE')$$), 'ok', 'setup call succeeds');
-select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Mueller und Soehne', 'Müller & Söhne', 'DE')$$), 'ok', 'setup call succeeds');
-select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Hash Co', '###', 'DE')$$), 'ok', 'setup call succeeds');
-select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Gamma Trading Co', '  ', 'DE')$$), 'ok', 'setup call succeeds');
-select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Long Name Co', repeat('a', 200), 'DE')$$), 'ok', 'setup call succeeds');
-select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Long Name Co Two', repeat('a', 200), 'DE')$$), 'ok', 'setup call succeeds');
+select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Acme Bau AG', 'Acme Bau!', 'DE', 'F')$$), 'ok', 'setup call succeeds');
+select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Mueller und Soehne', 'Müller & Söhne', 'DE', 'F')$$), 'ok', 'setup call succeeds');
+select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Hash Co', '###', 'DE', 'F')$$), 'ok', 'setup call succeeds');
+select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Gamma Trading Co', '  ', 'DE', 'F')$$), 'ok', 'setup call succeeds');
+select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Long Name Co', repeat('a', 200), 'DE', 'F')$$), 'ok', 'setup call succeeds');
+select is(pg_temp.call_as(:'slg', 'authenticated', $$select public.create_organization('employer', 'Long Name Co Two', repeat('a', 200), 'DE', 'F')$$), 'ok', 'setup call succeeds');
 select is(
   (select array_agg(slug::text order by slug) filter (where display_name = 'Müller & Söhne' or display_name = 'Gamma Trading Co')
    from public.organizations where id in (select organization_id from public.organization_members where user_id = :'slg')),
@@ -207,11 +207,11 @@ select is(
 );
 
 select is(
-  pg_temp.call_as(:'late', 'authenticated', $$select set_config('t.d1', public.create_organization('employer', 'Delta Co', 'Delta', 'DE')::text, true)$$, 'aal1'),
+  pg_temp.call_as(:'late', 'authenticated', $$select set_config('t.d1', (public.create_organization('employer', 'Delta Co', 'Delta', 'DE', 'F'))->>'organization_id', true)$$, 'aal1'),
   'ok', 'a user creates an organization'
 );
 select is(
-  pg_temp.call_as(:'late', 'authenticated', $$select set_config('t.d2', public.create_organization('employer', ' DELTA co ', 'Delta Again', 'DE')::text, true)$$, 'aal1'),
+  pg_temp.call_as(:'late', 'authenticated', $$select set_config('t.d2', (public.create_organization('employer', ' DELTA co ', 'Delta Again', 'DE', 'F'))->>'organization_id', true)$$, 'aal1'),
   'ok', 'the same request repeated at once (a double click or a retry) is accepted'
 );
 select is(
@@ -222,14 +222,14 @@ select is(
 );
 update public.organizations set created_at = now() - interval '2 minutes' where id = current_setting('t.d1')::uuid;
 select is(
-  pg_temp.call_as(:'late', 'authenticated', $$select set_config('t.d3', public.create_organization('employer', 'Delta Co', 'Delta', 'DE')::text, true)$$, 'aal1'),
+  pg_temp.call_as(:'late', 'authenticated', $$select set_config('t.d3', (public.create_organization('employer', 'Delta Co', 'Delta', 'DE', 'F'))->>'organization_id', true)$$, 'aal1'),
   'ok', 'the same name a minute later is a new organization'
 );
 select isnt(current_setting('t.d3'), current_setting('t.d1'), 'a name used before the last minute creates a second organization');
 
 update private.settings set value = '2' where key = 'organizations_per_user_max';
 select is(
-  pg_temp.call_as(:'late', 'authenticated', $$select public.create_organization('employer', 'Epsilon Co', 'Epsilon', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'late', 'authenticated', $$select public.create_organization('employer', 'Epsilon Co', 'Epsilon', 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_LIMIT_REACHED|organizations', 'a user who owns organizations_per_user_max organizations cannot create another'
 );
 select is(
@@ -238,57 +238,57 @@ select is(
   '2|0', 'the refused creation left no organization behind'
 );
 select is(
-  pg_temp.call_as(:'late', 'authenticated', $$select public.create_organization('employer', 'Delta Co', 'Delta', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'late', 'authenticated', $$select public.create_organization('employer', 'Delta Co', 'Delta', 'DE', 'F')$$, 'aal1'),
   'ok', 'the repeat of a recent creation is answered even at the limit'
 );
 update private.settings set value = '3' where key = 'organizations_per_user_max';
 
 select is(
-  pg_temp.call_as(:'wkr', 'authenticated', $$select public.create_organization('employer', 'Worker Co', 'Worker Co', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'wkr', 'authenticated', $$select public.create_organization('employer', 'Worker Co', 'Worker Co', 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|company_account_required', 'a worker account cannot create an organization'
 );
 select is(
-  pg_temp.call_as(:'nul', 'authenticated', $$select public.create_organization('employer', 'Null Co', 'Null Co', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'nul', 'authenticated', $$select public.create_organization('employer', 'Null Co', 'Null Co', 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|company_account_required', 'a user whose account kind is not committed cannot create an organization'
 );
 select is(
-  pg_temp.call_as(:'sus', 'authenticated', $$select public.create_organization('employer', 'Sus Co', 'Sus Co', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'sus', 'authenticated', $$select public.create_organization('employer', 'Sus Co', 'Sus Co', 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|profile_not_active', 'a suspended user cannot create an organization'
 );
 select is(
-  pg_temp.call_as(null, 'anon', $$select public.create_organization('employer', 'Anon Co', 'Anon Co', 'DE')$$),
+  pg_temp.call_as(null, 'anon', $$select public.create_organization('employer', 'Anon Co', 'Anon Co', 'DE', 'F')$$),
   '42501|permission denied for function create_organization|', 'an anonymous caller is refused at EXECUTE'
 );
 select is(
-  pg_temp.call_as(null, 'authenticated', $$select public.create_organization('employer', 'Anon Co', 'Anon Co', 'DE')$$),
+  pg_temp.call_as(null, 'authenticated', $$select public.create_organization('employer', 'Anon Co', 'Anon Co', 'DE', 'F')$$),
   'P0001|CHARA_FORBIDDEN|', 'a caller without a user id is refused'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('recruitment_company', 'Rec Co', 'Rec Co', 'DE')$$, 'aal1'),
-  'P0001|CHARA_INVALID_INPUT|organization_type_not_available', 'a recruitment company is refused in Phase 1 (D7)'
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('recruitment_company', 'Rec Co', 'Rec Co', 'DE', 'F')$$, 'aal1'),
+  'P0001|CHARA_FORBIDDEN|organization_type_not_available', 'a recruitment company is refused in Phase 1 (D7)'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('staffing_company', 'Staff Co', 'Staff Co', 'DE')$$, 'aal1'),
-  'P0001|CHARA_INVALID_INPUT|organization_type_not_available', 'a staffing company is refused in Phase 1 (D7)'
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('staffing_company', 'Staff Co', 'Staff Co', 'DE', 'F')$$, 'aal1'),
+  'P0001|CHARA_FORBIDDEN|organization_type_not_available', 'a staffing company is refused in Phase 1 (D7)'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'Bad Country', 'Bad Country', 'ZZ')$$, 'aal1'),
-  'P0001|CHARA_INVALID_INPUT|organizations_based_in_country_fkey', 'an unknown country is refused'
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'Bad Country', 'Bad Country', 'ZZ', 'F')$$, 'aal1'),
+  '23503|insert or update on table "organizations" violates foreign key constraint "organizations_based_in_country_fkey"|Key (based_in_country)=(ZZ) is not present in table "countries".', 'an unknown country is refused with a foreign-key violation'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'Bad Site', 'Bad Site', 'DE', 'javascript:alert(1)')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'Bad Site', 'Bad Site', 'DE', 'F', 'javascript:alert(1)')$$, 'aal1'),
   'P0001|CHARA_INVALID_INPUT|organizations_website_check', 'a website that is not http or https is refused'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'A', 'Short Name', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'A', 'Short Name', 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_INVALID_INPUT|organizations_legal_name_check', 'a legal name of one character is refused'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'Long Display', repeat('d', 201), 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', 'Long Display', repeat('d', 201), 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_INVALID_INPUT|organizations_display_name_check', 'a display name of 201 characters is refused'
 );
 select is(
-  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', null, 'No Legal', 'DE')$$, 'aal1'),
+  pg_temp.call_as(:'own2', 'authenticated', $$select public.create_organization('employer', null, 'No Legal', 'DE', 'F')$$, 'aal1'),
   'P0001|CHARA_INVALID_INPUT|legal_name', 'a missing legal name is refused'
 );
 select is(
