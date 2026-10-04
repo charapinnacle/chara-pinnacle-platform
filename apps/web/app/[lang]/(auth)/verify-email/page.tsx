@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Mail } from "lucide-react";
 import { ResendForm } from "@/components/auth/resend-form";
-import { AuthCard } from "@/components/layout/auth-card";
+import { AuthCard, cardDividerClassName } from "@/components/layout/auth-card";
 
 export const metadata: Metadata = { title: "Check your email — CHARA" };
 
@@ -20,7 +20,7 @@ export default async function VerifyEmailPage({
           : "If the address can be used for a new account, we have sent a confirmation link. The link is valid for 24 hours and works once. Confirm your email address before you log in."
       }
     >
-      <div className="border-t pt-6">
+      <div className={cardDividerClassName}>
         <ResendForm />
       </div>
     </AuthCard>

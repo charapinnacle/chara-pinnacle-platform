@@ -9,6 +9,8 @@ type AuthCardProps = {
   footer?: React.ReactNode;
 };
 
+export const cardDividerClassName = "border-t pt-6";
+
 export function AuthCard({ title, description, icon: Icon, children, footer }: AuthCardProps) {
   return (
     <div className="mx-auto grid w-full max-w-md gap-6 rounded-2xl border bg-card p-6 shadow-card sm:p-8">
@@ -35,7 +37,7 @@ export function AuthCard({ title, description, icon: Icon, children, footer }: A
         </div>
       ) : null}
       {children}
-      {footer ? <div className="border-t pt-6 text-body text-muted-foreground">{footer}</div> : null}
+      {footer ? <div className={cn(cardDividerClassName, "text-body text-muted-foreground")}>{footer}</div> : null}
     </div>
   );
 }
