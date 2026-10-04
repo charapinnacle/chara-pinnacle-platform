@@ -9,9 +9,9 @@ import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ConsentPanel } from "@/components/forms/consent-panel";
 import { FormButton } from "@/components/forms/form-button";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { LegalLink } from "@/components/forms/text-link";
 import type { ConsentActionResult } from "@/lib/actions/consents";
 import { formatDate } from "@/lib/i18n/format";
-import { defaultLocale } from "@/lib/i18n/locale";
 import { isRedirectError } from "@/lib/redirect-error";
 import {
   acceptedSchema,
@@ -108,15 +108,12 @@ export function ConsentForm({
               </p>
               <p className="text-sm leading-relaxed">{document.changeSummary}</p>
               <p className="text-sm">
-                <a
-                  href={`/${defaultLocale}/legal/${document.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
+                <LegalLink
+                  slug={document.slug}
+                  newTabLabel={`of the ${document.title} (opens in a new tab)`}
                 >
                   Read the full text
-                  <span className="sr-only"> of the {document.title} (opens in a new tab)</span>
-                </a>
+                </LegalLink>
               </p>
             </div>
           )}

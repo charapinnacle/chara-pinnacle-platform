@@ -1,4 +1,5 @@
 import { CircleAlert } from "lucide-react";
+import { TextLink } from "@/components/forms/text-link";
 
 export type ErrorSummaryItem = {
   key: string;
@@ -28,16 +29,16 @@ export function ErrorSummary({ ref, items, onSelect }: ErrorSummaryProps) {
           {items.map((item) => (
             <li key={item.key}>
               {item.targetId ? (
-                <a
+                <TextLink
+                  tone="destructive"
                   href={`#${item.targetId}`}
-                  className="font-medium text-destructive underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
                   onClick={(event) => {
                     event.preventDefault();
                     onSelect(item.key);
                   }}
                 >
                   {item.message}
-                </a>
+                </TextLink>
               ) : (
                 item.message
               )}

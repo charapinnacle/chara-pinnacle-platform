@@ -10,10 +10,10 @@ import { ConsentPanel } from "@/components/forms/consent-panel";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
+import { LegalLink } from "@/components/forms/text-link";
 import { toast } from "@/components/feedback/toast-store";
 import { signUp } from "@/lib/actions/auth";
 import { formatDate } from "@/lib/i18n/format";
-import { defaultLocale } from "@/lib/i18n/locale";
 import { isRedirectError } from "@/lib/redirect-error";
 import { AGE_ATTESTATION_SLUG, type LegalDocumentSummary } from "@/lib/validation/consents";
 import {
@@ -175,15 +175,13 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
               ) : (
                 <span>
                   I accept the{" "}
-                  <a
-                    href={`/${defaultLocale}/legal/${document.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="relative z-10 font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
+                  <LegalLink
+                    slug={document.slug}
+                    newTabLabel="(opens in a new tab)"
+                    className="relative z-10"
                   >
                     {document.title}
-                    <span className="sr-only"> (opens in a new tab)</span>
-                  </a>{" "}
+                  </LegalLink>{" "}
                   (version {document.version}, published {formatDate(document.publishedAt)})
                 </span>
               )}
