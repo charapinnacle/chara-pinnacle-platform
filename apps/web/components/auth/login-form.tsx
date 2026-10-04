@@ -1,17 +1,18 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useForm, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
+import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { Button } from "@/components/ui/button";
 import { signIn } from "@/lib/actions/login";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { loginSchema, type LoginFormInput } from "@/lib/validation/login";
 
 const ids = { email: "login-email", password: "login-password" };
+const formLinkClassName = "-mt-3 justify-self-start text-body";
 
 export function LoginForm({ next }: { next?: string }) {
   const form = useForm<LoginFormInput>({
@@ -55,11 +56,9 @@ export function LoginForm({ next }: { next?: string }) {
         onSelect={(key) => form.setFocus(key as FieldPath<LoginFormInput>)}
       />
       {errors.root?.server?.type === "unconfirmed" ? (
-        <p className="text-sm">
-          <Link href={`/${defaultLocale}/verify-email`} className="underline underline-offset-4">
-            Request a new confirmation link
-          </Link>
-        </p>
+        <TextLink standalone href={`/${defaultLocale}/verify-email`} className={formLinkClassName}>
+          Request a new confirmation link
+        </TextLink>
       ) : null}
       <InputField
         control={control}
@@ -77,14 +76,12 @@ export function LoginForm({ next }: { next?: string }) {
         type="password"
         autoComplete="current-password"
       />
-      <Button type="submit" size="lg" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Logging in..." : "Log in"}
-      </Button>
-      <p className="text-sm">
-        <Link href={`/${defaultLocale}/forgot-password`} className="underline underline-offset-4">
-          Forgot your password?
-        </Link>
-      </p>
+      </FormButton>
+      <TextLink standalone href={`/${defaultLocale}/forgot-password`} className={formLinkClassName}>
+        Forgot your password?
+      </TextLink>
     </form>
   );
 }
