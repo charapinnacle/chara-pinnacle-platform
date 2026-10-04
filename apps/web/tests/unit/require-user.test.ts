@@ -42,15 +42,33 @@ beforeEach(() => {
   headerValues.pathname = "/en/onboarding?x=1";
   claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1" } } });
   profileMock.mockResolvedValue({
-    data: { account_kind: "worker", intended_account_kind: "worker" },
+    data: { account_kind: "worker", intended_account_kind: "worker", status: "active" },
   });
   rpcMock.mockResolvedValue({ data: [], error: null });
 });
 
 describe("requireUser", () => {
-  it("sends a visitor without a session to log in", async () => {
+  it("sends a visitor without a session to log in and remembers the page asked for", async () => {
     claimsMock.mockResolvedValue({ data: null });
-    await expect(requireUser("en")).rejects.toThrow("REDIRECT:/en/login");
+    await expect(requireUser("en")).rejects.toThrow(
+      `REDIRECT:/en/login?next=${encodeURIComponent("/en/onboarding?x=1")}`,
+    );
+  });
+
+  it("does not carry an off-site or missing path into the login redirect", async () => {
+    claimsMock.mockResolvedValue({ data: null });
+    for (const pathname of ["//evil.example", "https://evil.example", null]) {
+      headerValues.pathname = pathname;
+      await expect(requireUser("en")).rejects.toThrow("REDIRECT:/en/login");
+    }
+  });
+
+  it("refuses a suspended account with the suspended page and reads nothing else", async () => {
+    profileMock.mockResolvedValue({
+      data: { account_kind: "worker", intended_account_kind: "worker", status: "suspended" },
+    });
+    await expect(requireUser("en")).rejects.toThrow("REDIRECT:/en/suspended");
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("returns the user when nothing is pending", async () => {
@@ -58,6 +76,7 @@ describe("requireUser", () => {
       id: "user-1",
       accountKind: "worker",
       intendedAccountKind: "worker",
+      suspended: false,
     });
   });
 
@@ -86,7 +105,7 @@ describe("requireUser", () => {
 
   it("does not ask for consents before the account kind is committed", async () => {
     profileMock.mockResolvedValue({
-      data: { account_kind: null, intended_account_kind: "company" },
+      data: { account_kind: null, intended_account_kind: "company", status: "active" },
     });
     await expect(requireUser("en")).resolves.toMatchObject({
       accountKind: null,

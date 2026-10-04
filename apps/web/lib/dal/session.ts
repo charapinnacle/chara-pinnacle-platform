@@ -13,6 +13,7 @@ type CurrentUser = {
   id: string;
   accountKind: AccountKind | null;
   intendedAccountKind: AccountKind;
+  suspended: boolean;
 };
 
 const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -22,7 +23,7 @@ const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const { sub } = data.claims;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("account_kind, intended_account_kind")
+    .select("account_kind, intended_account_kind, status")
     .eq("id", sub)
     .maybeSingle();
   if (!profile) return null;
@@ -30,8 +31,13 @@ const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     id: sub,
     accountKind: profile.account_kind,
     intendedAccountKind: profile.intended_account_kind,
+    suspended: profile.status === "suspended",
   };
 });
+
+async function requestedPath(): Promise<string> {
+  return safeNextPath((await headers()).get("x-pathname"));
+}
 
 // The consent gate runs here, in the DAL, because layouts do not re-render on client navigation.
 export async function requireUser(
@@ -39,12 +45,19 @@ export async function requireUser(
   { consentGate = true }: { consentGate?: boolean } = {},
 ): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect(`/${lang}/login`);
+  if (!user) {
+    const path = await requestedPath();
+    redirect(
+      path === "/"
+        ? `/${lang}/login`
+        : `/${lang}/login?next=${encodeURIComponent(path)}`,
+    );
+  }
+  if (user.suspended) redirect(`/${lang}/suspended`);
   if (consentGate && user.accountKind) {
     const pending = await getPendingReconsents();
     if (pending.length > 0) {
-      const path = safeNextPath((await headers()).get("x-pathname"));
-      redirect(`/${lang}/consent?next=${encodeURIComponent(path)}`);
+      redirect(`/${lang}/consent?next=${encodeURIComponent(await requestedPath())}`);
     }
   }
   return user;

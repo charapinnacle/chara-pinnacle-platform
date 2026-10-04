@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
+import { sessionCookieOptions } from "@/lib/supabase/cookie-options";
 
 export async function updateSession(
   request: NextRequest,
@@ -22,7 +23,7 @@ export async function updateSession(
             request: { headers: requestHeaders },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
+            response.cookies.set(name, value, sessionCookieOptions(options)),
           );
           Object.entries(headers).forEach(([key, value]) =>
             response.headers.set(key, value),
