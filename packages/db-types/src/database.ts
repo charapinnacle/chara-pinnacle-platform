@@ -260,6 +260,17 @@ isOneToOne: false
 "accept_ownership_transfer":
 { Args: { "p_org": string }; Returns: undefined
                            },
+"account_ops_ack":
+{ Args: { "p_msg_id": number,"p_result"?: Json }; Returns: boolean
+                           },
+"account_ops_dequeue":
+{ Args: { "p_limit"?: number }; Returns: {
+              "message": Json,"msg_id": number
+            }[]
+                           },
+"account_ops_end_sessions":
+{ Args: { "p_user_id": string }; Returns: number
+                           },
 "cancel_ownership_transfer":
 { Args: { "p_org": string }; Returns: undefined
                            },
@@ -271,6 +282,9 @@ isOneToOne: false
                            },
 "create_organization":
 { Args: { "p_based_in_country": string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
+                           },
+"grant_platform_role":
+{ Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
 "invitation_preview":
 { Args: { "p_token": string }; Returns: {
@@ -318,6 +332,9 @@ isOneToOne: false
                            },
 "reset_mfa":
 { Args: { "p_reason": string,"p_user_id": string }; Returns: undefined
+                           },
+"revoke_platform_role":
+{ Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]

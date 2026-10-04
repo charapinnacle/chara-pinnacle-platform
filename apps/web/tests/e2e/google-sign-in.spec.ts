@@ -7,7 +7,6 @@ import {
   createGoogleUser,
   GOOGLE_ON_URL,
   issueAuthCode,
-  rpcWithToken,
   startGoogleFlow,
 } from "./support/google";
 import { alertText, fillLogin, overflow } from "./support/login-page";
@@ -17,6 +16,7 @@ import {
   LOGIN_FAILED,
   RESET_SENT,
   RESET_SUBJECT,
+  rpcWithToken,
   sessionClaims,
   suspendProfile,
 } from "./support/login";

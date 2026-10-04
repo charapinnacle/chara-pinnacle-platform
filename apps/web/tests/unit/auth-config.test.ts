@@ -135,3 +135,15 @@ describe("Auth configuration that FR-A4 relies on", () => {
     expect(value("auth.mfa", "max_enrolled_factors")).toBe("2");
   });
 });
+
+describe("API configuration that the account-ops job relies on", () => {
+  it("does not expose the pg_net schema, whose queue holds the scheduler's secret header while a request is pending", () => {
+    const schemas = value("api", "schemas") ?? "";
+    expect(schemas).toContain('"public"');
+    expect(schemas).not.toContain('"net"');
+  });
+
+  it("has the platform check the JWT of account-ops", () => {
+    expect(value("functions.account-ops", "verify_jwt")).toBe("true");
+  });
+});

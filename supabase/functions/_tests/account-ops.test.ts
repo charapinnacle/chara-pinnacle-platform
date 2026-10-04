@@ -1,0 +1,327 @@
+import assert from "node:assert/strict";
+import { createClient } from "@supabase/supabase-js";
+import { handleAccountOps } from "../account-ops/handler.ts";
+
+const SECRET = "scheduler-secret";
+const USER = "00000000-0000-0000-0000-00000000a001";
+const OTHER = "00000000-0000-0000-0000-00000000a002";
+const FACTOR_A = "00000000-0000-0000-0000-00000000f001";
+const FACTOR_B = "00000000-0000-0000-0000-00000000f002";
+
+interface Call {
+  method: string;
+  path: string;
+  body: unknown;
+}
+
+type Route = (call: Call) => Response | Promise<Response> | undefined;
+
+function reply(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+}
+
+// A real supabase-js client over a fake network: the paths, methods and bodies are what the platform would receive.
+function harness(routes: Record<string, Route | Response>) {
+  const calls: Call[] = [];
+  const fakeFetch: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const method = (init?.method ?? "GET").toUpperCase();
+    const text = typeof init?.body === "string" ? init.body : "";
+    const call: Call = { method, path: url.pathname, body: text ? JSON.parse(text) : null };
+    calls.push(call);
+    const route = routes[`${method} ${url.pathname.replace(/[0-9a-f-]{36}/g, "{id}")}`];
+    const response = typeof route === "function" ? await route(call) : route?.clone();
+    return await Promise.resolve(response ?? reply(404, { code: 404, error_code: "not_found", msg: "no route" }));
+  };
+  const client = createClient("http://stack.test", "service-key", {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: fakeFetch },
+  });
+  return { calls, client };
+}
+
+function request(headers: Record<string, string> = {}, method = "POST"): Request {
+  return new Request("http://stack.test/functions/v1/account-ops", {
+    method,
+    headers: { authorization: "Bearer project-jwt", "x-edge-secret": SECRET, ...headers },
+  });
+}
+
+type Row = { msg_id: number; message: Record<string, unknown> };
+
+// The queue hands out each row once: later reads are empty, as the visibility timeout makes them for the database.
+function queue(rows: Row[], limit = rows.length): Route {
+  let rest = rows;
+  return () => {
+    const batch = rest.slice(0, limit);
+    rest = rest.slice(limit);
+    return reply(200, batch);
+  };
+}
+
+function jobs(...rows: Row[]): Route {
+  return queue(rows);
+}
+
+const factorRow = (id: string) => ({ id, status: "verified", factor_type: "totp", friendly_name: "Authenticator" });
+const rpcCalls = (calls: Call[]) => calls.filter((c) => c.path.startsWith("/rest/v1/rpc/"));
+const acks = (calls: Call[]) => calls.filter((c) => c.path.endsWith("account_ops_ack")).map((c) => c.body);
+
+Deno.test("only POST is served", async () => {
+  const { calls, client } = harness({});
+  const response = await handleAccountOps(request({}, "GET"), { client, sharedSecret: SECRET });
+  assert.equal(response.status, 405);
+  assert.equal(calls.length, 0);
+});
+
+Deno.test("a request without the secret or with a wrong secret is refused before the database is reached", async () => {
+  const refused: Record<string, string>[] = [
+    { "x-edge-secret": "" },
+    { "x-edge-secret": "scheduler-secreT" },
+    { "x-edge-secret": `${SECRET}x` },
+    { "x-edge-secret": SECRET.slice(0, -1) },
+  ];
+  for (const headers of refused) {
+    const { calls, client } = harness({});
+    const response = await handleAccountOps(request(headers), { client, sharedSecret: SECRET });
+    assert.equal(response.status, 401, JSON.stringify(headers));
+    assert.deepEqual(await response.json(), { error: "unauthorized" });
+    assert.equal(calls.length, 0, JSON.stringify(headers));
+  }
+});
+
+Deno.test("a function without a configured secret refuses every request", async () => {
+  const { calls, client } = harness({});
+  const response = await handleAccountOps(request({ "x-edge-secret": "" }), { client, sharedSecret: "" });
+  assert.equal(response.status, 401);
+  assert.equal(calls.length, 0);
+});
+
+Deno.test("an empty queue is a successful run that does nothing", async () => {
+  const { calls, client } = harness({ "POST /rest/v1/rpc/account_ops_dequeue": jobs() });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { processed: 0, failed: 0 });
+  assert.deepEqual(calls.map((c) => c.path), ["/rest/v1/rpc/account_ops_dequeue"]);
+  assert.deepEqual(calls[0].body, { p_limit: 100 });
+});
+
+Deno.test("a sign_out job ends the sessions of the user, touches no factor and is acknowledged with the result", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 7,
+      message: { action: "sign_out", user_id: USER, reason: "platform_role_granted" },
+    }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 2),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(rpcCalls(calls).map((c) => [c.path.split("/").pop(), c.body]), [
+    ["account_ops_dequeue", { p_limit: 100 }],
+    ["account_ops_end_sessions", { p_user_id: USER }],
+    ["account_ops_ack", { p_msg_id: 7, p_result: { sessions_ended: 2 } }],
+    ["account_ops_dequeue", { p_limit: 100 }],
+  ]);
+  assert.equal(calls.filter((c) => c.path.startsWith("/auth/")).length, 0);
+});
+
+Deno.test("a reset_mfa job ends the sessions, then deletes every factor of the user, then acknowledges", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 9, message: { action: "reset_mfa", user_id: USER } }),
+    "GET /auth/v1/admin/users/{id}/factors": reply(200, [factorRow(FACTOR_A), factorRow(FACTOR_B)]),
+    "DELETE /auth/v1/admin/users/{id}/factors/{id}": reply(200, {}),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 2),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.map((c) => `${c.method} ${c.path.split("/").slice(3).join("/")}`), [
+    "POST rpc/account_ops_dequeue",
+    "POST rpc/account_ops_end_sessions",
+    `GET admin/users/${USER}/factors`,
+    `DELETE admin/users/${USER}/factors/${FACTOR_A}`,
+    `DELETE admin/users/${USER}/factors/${FACTOR_B}`,
+    "POST rpc/account_ops_ack",
+    "POST rpc/account_ops_dequeue",
+  ]);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 9, p_result: { factors_deleted: 2, sessions_ended: 2 } }]);
+});
+
+Deno.test("a second run of a reset finds nothing to delete and still succeeds", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 10, message: { action: "reset_mfa", user_id: USER } }),
+    "GET /auth/v1/admin/users/{id}/factors": reply(200, []),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 0),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
+  assert.deepEqual(acks(calls)[0], { p_msg_id: 10, p_result: { factors_deleted: 0, sessions_ended: 0 } });
+});
+
+Deno.test("a factor removed in the meantime (404) is skipped and the reset completes", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 11, message: { action: "reset_mfa", user_id: USER } }),
+    "GET /auth/v1/admin/users/{id}/factors": reply(200, [factorRow(FACTOR_A), factorRow(FACTOR_B)]),
+    "DELETE /auth/v1/admin/users/{id}/factors/{id}": (call) =>
+      call.path.endsWith(FACTOR_A)
+        ? reply(404, { code: 404, error_code: "mfa_factor_not_found", msg: "gone" })
+        : reply(200, {}),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(acks(calls)[0], { p_msg_id: 11, p_result: { factors_deleted: 1, sessions_ended: 1 } });
+});
+
+Deno.test("a failing Auth call leaves its job unacknowledged, does not stop the others and leaks nothing", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 20, message: { action: "reset_mfa", user_id: USER } },
+      { msg_id: 21, message: { action: "sign_out", user_id: OTHER } },
+    ),
+    "GET /auth/v1/admin/users/{id}/factors": reply(500, {
+      code: 500,
+      error_code: "unexpected_failure",
+      msg: `db password for ${USER}`,
+    }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  const text = await response.text();
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse(text), { processed: 1, failed: 1 });
+  assert.ok(!text.includes(USER) && !text.includes("password"));
+  assert.deepEqual(acks(calls).map((body) => (body as { p_msg_id: number }).p_msg_id), [21]);
+  assert.equal(calls.filter((c) => c.path.endsWith("end_sessions")).length, 2);
+});
+
+Deno.test("a failing deletion of a factor leaves the job queued, with the sessions already ended so no factor can be enrolled meanwhile", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 30, message: { action: "reset_mfa", user_id: USER } }),
+    "GET /auth/v1/admin/users/{id}/factors": reply(200, [factorRow(FACTOR_A)]),
+    "DELETE /auth/v1/admin/users/{id}/factors/{id}": reply(500, {
+      code: 500,
+      error_code: "unexpected_failure",
+      msg: "boom",
+    }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.equal(calls.filter((c) => c.path.endsWith("end_sessions")).length, 1);
+  assert.ok(
+    calls.findIndex((c) => c.path.endsWith("end_sessions")) < calls.findIndex((c) => c.method === "DELETE"),
+    "the sessions end before the first factor is deleted",
+  );
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("a failing acknowledgement counts as a failure so the idempotent job runs again", async () => {
+  const { client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 40, message: { action: "sign_out", user_id: USER } }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/account_ops_ack": reply(500, { code: "XX000", message: "down", details: null, hint: null }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+});
+
+Deno.test("malformed and unknown jobs are never executed or acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 50, message: { action: "erase_user", user_id: USER } },
+      { msg_id: 51, message: { action: "sign_out", user_id: "not-a-uuid" } },
+      { msg_id: 52, message: { action: "sign_out" } },
+      { msg_id: 53, message: { action: "sign_out", user_id: `${USER}/../x` } },
+    ),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 4 });
+  assert.deepEqual(calls.map((c) => c.path), Array(2).fill("/rest/v1/rpc/account_ops_dequeue"));
+});
+
+Deno.test("an unreachable queue gives a generic 502", async () => {
+  const { client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": reply(500, {
+      code: "XX000",
+      message: "secret internals",
+      details: null,
+      hint: null,
+    }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: "unavailable" });
+});
+
+Deno.test("a long queue is drained in one call: batches of 100, at most 5 jobs at a time, every job acknowledged", async () => {
+  const rows: Row[] = Array.from({ length: 230 }, (_, i) => ({
+    msg_id: i + 1,
+    message: { action: "sign_out", user_id: i % 2 ? USER : OTHER },
+  }));
+  let running = 0;
+  let peak = 0;
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": queue(rows, 100),
+    "POST /rest/v1/rpc/account_ops_end_sessions": async () => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      running--;
+      return reply(200, 1);
+    },
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 230, failed: 0 });
+  assert.deepEqual(
+    acks(calls).map((body) => (body as { p_msg_id: number }).p_msg_id).sort((a, b) => a - b),
+    rows.map((row) => row.msg_id),
+  );
+  assert.equal(calls.filter((c) => c.path.endsWith("account_ops_dequeue")).length, 4);
+  assert.ok(peak > 1 && peak <= 5, `${peak} jobs ran at the same time`);
+});
+
+Deno.test("a queue that fails after some work keeps the result of that work", async () => {
+  let reads = 0;
+  const { client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": () =>
+      ++reads === 1
+        ? reply(200, [{ msg_id: 1, message: { action: "sign_out", user_id: USER } }])
+        : reply(500, { code: "XX000", message: "down", details: null, hint: null }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+});
+
+Deno.test("a failure is logged with a status and a code only, never a message or a user id", async () => {
+  const logged: unknown[][] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => void logged.push(args);
+  try {
+    const { client } = harness({
+      "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 60, message: { action: "reset_mfa", user_id: USER } }),
+      "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+      "GET /auth/v1/admin/users/{id}/factors": reply(429, {
+        code: 429,
+        error_code: "over_request_rate_limit",
+        msg: `mail ${USER}@example.test`,
+      }),
+    });
+    await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(logged, [[
+    "account-ops job failed",
+    { msgId: 60, action: "reset_mfa", status: 429, code: "over_request_rate_limit" },
+  ]]);
+});

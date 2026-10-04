@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
-import { env } from "@/lib/env";
 import { execute, literal } from "./db";
 import { adminRequest, type TestUser } from "./test-user";
 
@@ -62,21 +61,4 @@ export function issueAuthCode(userId: string, authorizeUrl: URL): string {
        'provider-access-token', 'provider-refresh-token', now(), now(), now())`,
   );
   return code;
-}
-
-export async function rpcWithToken(
-  accessToken: string,
-  rpc: string,
-  args: Record<string, unknown>,
-): Promise<{ status: number; body: unknown }> {
-  const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/${rpc}`, {
-    method: "POST",
-    headers: {
-      apikey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      authorization: `Bearer ${accessToken}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(args),
-  });
-  return { status: response.status, body: await response.json() };
 }

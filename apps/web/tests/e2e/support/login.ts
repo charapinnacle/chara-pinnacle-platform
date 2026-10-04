@@ -128,7 +128,7 @@ export async function emailedResetPath(email: string): Promise<string> {
   return `${pathname}${search}`;
 }
 
-function authFetch(path: string, body: Record<string, unknown>, bearer?: string): Promise<Response> {
+export function authFetch(path: string, body: Record<string, unknown>, bearer?: string): Promise<Response> {
   return fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1${path}`, {
     method: "POST",
     headers: {
@@ -138,6 +138,25 @@ function authFetch(path: string, body: Record<string, unknown>, bearer?: string)
     },
     body: JSON.stringify(body),
   });
+}
+
+// The body is parsed when there is one: a void RPC answers 204 with none.
+export async function rpcWithToken(
+  accessToken: string,
+  rpc: string,
+  args: Record<string, unknown>,
+): Promise<{ status: number; body: unknown }> {
+  const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/${rpc}`, {
+    method: "POST",
+    headers: {
+      apikey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(args),
+  });
+  const text = await response.text();
+  return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 
 export async function passwordLoginStatus(user: TestUser, password: string): Promise<number> {
