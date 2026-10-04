@@ -11,7 +11,7 @@ const accountKindSchema = z.enum(["worker", "company"], {
   error: "Choose worker or employer",
 });
 
-const emailSchema = z
+export const emailSchema = z
   .string({ error: "Enter your email address." })
   .trim()
   .toLowerCase()
@@ -21,7 +21,7 @@ const emailSchema = z
       .max(254, { error: "Email address must be 254 characters or fewer." }),
   );
 
-const passwordSchema = z
+export const passwordSchema = z
   .string({ error: "Enter a password." })
   .min(12, { error: "Password must be at least 12 characters." })
   .refine(
