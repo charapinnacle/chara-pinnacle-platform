@@ -16,7 +16,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 
-type RadioOption = { value: string; label: string; icon?: LucideIcon };
+type RadioOption = { value: string; label: string; icon: LucideIcon };
 
 type RadioGroupFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   control: Control<T>;
@@ -70,7 +70,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                 return (
                   <div
                     key={option.value}
-                    className="group/option relative grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-4 rounded-xl border bg-card p-4 transition-colors hover:border-muted-foreground has-checked:border-primary has-checked:bg-accent has-checked:ring-1 has-checked:ring-primary group-data-[invalid=true]/set:border-destructive sm:grid-cols-[1fr_auto] sm:items-start"
+                    className="group/option relative grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-4 rounded-xl border border-input bg-card p-4 transition-[border-color,box-shadow] hover:border-muted-foreground has-checked:border-primary has-checked:bg-accent has-checked:ring-1 has-checked:ring-primary has-checked:ring-inset has-focus-visible:shadow-focus group-data-[invalid=true]/set:border-destructive sm:grid-cols-[1fr_auto] sm:items-start"
                   >
                     <input
                       type="radio"
@@ -86,14 +86,12 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                       onBlur={field.onBlur}
                       className="absolute inset-0 size-full cursor-pointer appearance-none rounded-xl"
                     />
-                    {Icon ? (
-                      <span
-                        aria-hidden
-                        className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-has-checked/option:bg-card group-has-checked/option:text-primary sm:col-start-1 sm:row-start-1"
-                      >
-                        <Icon className="size-5" />
-                      </span>
-                    ) : null}
+                    <span
+                      aria-hidden
+                      className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-has-checked/option:bg-card group-has-checked/option:text-primary sm:col-start-1 sm:row-start-1"
+                    >
+                      <Icon className="size-5" />
+                    </span>
                     <FieldLabel
                       htmlFor={optionId}
                       className="text-[0.9375rem] font-medium text-foreground sm:col-span-2 sm:row-start-2"
