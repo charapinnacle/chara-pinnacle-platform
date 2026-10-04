@@ -111,7 +111,7 @@ export function ConsentForm({
                 <LegalLink
                   slug={document.slug}
                   newTabLabel={`of the ${document.title} (opens in a new tab)`}
-                  className="inline-flex min-h-11 items-center"
+                  standalone
                 >
                   Read the full text
                 </LegalLink>

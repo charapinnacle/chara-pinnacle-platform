@@ -11,6 +11,9 @@ const textLinkVariants = cva(
         primary: "text-primary decoration-primary/40 hover:decoration-primary",
         destructive: "text-destructive decoration-destructive/40 hover:decoration-destructive",
       },
+      standalone: {
+        true: "inline-flex min-h-11 items-center",
+      },
     },
     defaultVariants: { tone: "primary" },
   },
@@ -18,22 +21,23 @@ const textLinkVariants = cva(
 
 type TextLinkProps = React.ComponentProps<typeof Link> & VariantProps<typeof textLinkVariants>;
 
-export function TextLink({ tone, className, ...props }: TextLinkProps) {
-  return <Link className={cn(textLinkVariants({ tone }), className)} {...props} />;
+export function TextLink({ tone, standalone, className, ...props }: TextLinkProps) {
+  return <Link className={cn(textLinkVariants({ tone, standalone }), className)} {...props} />;
 }
 
-type LegalLinkProps = Pick<TextLinkProps, "className" | "children"> & {
+type LegalLinkProps = Pick<TextLinkProps, "standalone" | "className" | "children"> & {
   slug: string;
   newTabLabel: string;
 };
 
-export function LegalLink({ slug, newTabLabel, className, children }: LegalLinkProps) {
+export function LegalLink({ slug, newTabLabel, standalone, className, children }: LegalLinkProps) {
   return (
     <TextLink
       href={`/${defaultLocale}/legal/${slug}`}
       target="_blank"
       rel="noopener noreferrer"
       prefetch={false}
+      standalone={standalone}
       className={className}
     >
       {children}
