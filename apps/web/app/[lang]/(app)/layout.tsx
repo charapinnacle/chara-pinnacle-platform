@@ -4,7 +4,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 export default function AppLayout({ children }: LayoutProps<"/[lang]">) {
   return (
     <SiteShell>
-      <PageContainer className="py-10 sm:py-16">{children}</PageContainer>
+      <PageContainer layout="centered">{children}</PageContainer>
     </SiteShell>
   );
 }
