@@ -33,7 +33,7 @@ export function ErrorSummary({ ref, items, onSelect }: ErrorSummaryProps) {
               {item.targetId ? (
                 <TextLink
                   tone="destructive"
-                  className="inline-block py-1"
+                  className="block py-1"
                   href={`#${item.targetId}`}
                   onClick={(event) => {
                     event.preventDefault();
