@@ -3,9 +3,12 @@ import { PageContainer } from "@/components/layout/page-container";
 
 export function SiteHeader() {
   return (
-    <header className="border-b">
+    <header className="border-b bg-card">
       <PageContainer className="flex h-14 items-center">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+        <Link
+          href="/"
+          className="rounded-sm text-lg font-bold tracking-wider text-primary"
+        >
           CHARA
         </Link>
       </PageContainer>
