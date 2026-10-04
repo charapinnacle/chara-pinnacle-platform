@@ -17,6 +17,7 @@ const freshMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/dal/recovery", () => ({

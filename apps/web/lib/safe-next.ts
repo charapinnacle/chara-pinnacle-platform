@@ -19,3 +19,8 @@ export function consentReturnPath(lang: string, next: string): string {
     ? `/${lang}/onboarding`
     : target;
 }
+
+export function mfaReturnPath(lang: string, next: string | null | undefined, fallback: string): string {
+  const target = safeNextPath(next);
+  return target === "/" || target.startsWith(`/${lang}/mfa`) ? fallback : target;
+}

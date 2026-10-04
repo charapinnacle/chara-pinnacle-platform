@@ -5,12 +5,14 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
+import { mfaPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 
 type CurrentUser = {
   id: string;
+  aal: "aal1" | "aal2";
   accountKind: AccountKind | null;
   intendedAccountKind: AccountKind | null;
   suspended: boolean;
@@ -29,6 +31,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!profile) return null;
   return {
     id: sub,
+    aal: data.claims.aal === "aal2" ? "aal2" : "aal1",
     accountKind: profile.account_kind,
     intendedAccountKind: profile.intended_account_kind,
     suspended: profile.status === "suspended",
@@ -60,5 +63,23 @@ export async function requireUser(
       redirect(`/${lang}/consent?next=${encodeURIComponent(await requestedPath())}`);
     }
   }
+  return user;
+}
+
+// Sends a session that has not passed two-step verification to the MFA page, which enrols a user without a verified
+// factor and asks for a code otherwise, and then returns to the page asked for.
+export async function requireAal2(lang: string, user: CurrentUser): Promise<void> {
+  if (user.aal !== "aal2") redirect(mfaPath(lang, await requestedPath()));
+}
+
+// The platform roles are looked up, never read from the token. A user who holds no active role gets the forbidden page
+// without an MFA prompt; staff must be at aal2 for every administration page (FR-A4).
+export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
+  const user = await requireUser(lang);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_platform_roles");
+  if (error) throw new Error("The platform roles could not be loaded", { cause: error });
+  if (data.length === 0) redirect(`/${lang}/forbidden`);
+  await requireAal2(lang, user);
   return user;
 }
