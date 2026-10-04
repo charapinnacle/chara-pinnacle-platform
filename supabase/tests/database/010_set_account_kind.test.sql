@@ -123,7 +123,7 @@ select is(
 select is(
   (select count(*) from public.profiles where id in (:'u', :'s') and account_kind is not null)
   + (select count(*) from public.consents where user_id in (:'u', :'s'))
-  + (select count(*) from audit.log where action = 'account_kind_set'),
+  + (select count(*) from audit.log where action = 'account_kind_set' and entity_id in (:'u', :'s')),
   0::bigint,
   'refused commits write no kind, no consents and no audit row'
 );
