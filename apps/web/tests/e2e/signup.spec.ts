@@ -1,4 +1,5 @@
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test } from "./support/test";
+import type { BrowserContext } from "@playwright/test";
 import { env } from "@/lib/env";
 import {
   accountRows,

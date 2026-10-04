@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/test";
 import { createUnconfirmedUser, userByEmail } from "./support/accounts";
 import { captureActionRequests } from "./support/server-action";
 import {

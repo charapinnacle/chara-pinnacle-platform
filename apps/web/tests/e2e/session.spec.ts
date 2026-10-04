@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test } from "./support/test";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 import {
   ageSessions,
   authCookies,

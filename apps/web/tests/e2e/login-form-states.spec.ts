@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/test";
 import { createCommittedUser, sessionRows } from "./support/login";
 import { alertText, fillLogin, logIn, overflow } from "./support/login-page";
 import { captureActionRequests } from "./support/server-action";
