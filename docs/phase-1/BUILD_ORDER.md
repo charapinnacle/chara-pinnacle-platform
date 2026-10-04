@@ -39,7 +39,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U11 | `feat/two-step-verification` | FR-A4 | U08 |
 | U12 | `feat/team-membership` | FR-A5 | U10, U11 |
 | U13 | `feat/platform-staff-roles` | FR-A7, `account-ops` function, CI `functions` job | U06, U11 |
-| U14 | `feat/plans-as-data` | FR-G1: schema `billing`, role `billing_owner` (`grant billing_owner to postgres`), plans, limits, features, subscriptions, entitlement helpers; NFR-S3 tests (`billing_owner` has no privilege on verification tables) | U09 |
+| U14 | `feat/plans-as-data` | FR-G1: schema `billing`, role `billing_owner` (`grant billing_owner to postgres`), plans, limits, features, subscriptions, entitlement helpers; NFR-S3 tests (`billing_owner` has no privilege on verification tables); replaces `private.legal_entity_trial_used` and `private.legal_entity_locked` (U10 placeholders, OPEN_QUESTIONS.md D36) with lookups of the new tables (U45 adds `billing.customers` to them) and adds the index on `organizations.legal_entity_identifier` | U09 |
 | U15 | `feat/candidate-profile` | FR-B1 | U08, U02 |
 | U16 | `feat/document-upload` | FR-B2 | U15 |
 | U17 | `feat/privacy-by-default` | FR-B3 | U16 |
@@ -70,7 +70,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U42 | `feat/audited-actions` | FR-F2 | U41 |
 | U43 | `feat/no-staff-document-access` | FR-F3 | U19, U41 |
 | U44 | `feat/vacancy-moderation` | FR-C7 | U41, U37 |
-| U45 | `feat/checkout-and-portal` | FR-G2: `billing-checkout`, Stripe and null providers | U14, U37 |
+| U45 | `feat/checkout-and-portal` | FR-G2: `billing-checkout`, Stripe and null providers; the owner control for `set_legal_entity_identifier` and the re-evaluation at checkout of audit rows whose `legal_entity_trial_used` is null (OPEN_QUESTIONS.md D36) | U14, U37 |
 | U46 | `feat/webhook-processing` | FR-G3 | U45 |
 | U47 | `feat/subscription-states` | FR-G4 | U46 |
 | U48 | `feat/billing-page` | FR-G5 | U47 |
