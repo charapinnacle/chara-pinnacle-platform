@@ -12,6 +12,8 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test_key",
       NEXT_PUBLIC_SITE_URL: "http://localhost:3100",
+      VISITOR_HASH_SECRET: "test-visitor-hash-secret-0123456789abcdef",
+      TRUSTED_PROXY_HOPS: "1",
     },
   },
 });

@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test } from "./support/test";
+import type { Browser, Page } from "@playwright/test";
 import { createUnconfirmedUser } from "./support/accounts";
 import {
   ageRecoveryLink,

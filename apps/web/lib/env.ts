@@ -10,8 +10,11 @@ const schema = z.object({
   NEXT_PUBLIC_SITE_URL: httpUrl.transform((value) => new URL(value).origin),
 });
 
-export function parseEnv(source: Record<string, string | undefined>) {
-  const result = schema.safeParse(source);
+export function parseSource<T extends z.ZodType>(
+  validator: T,
+  source: Record<string, string | undefined>,
+): z.output<T> {
+  const result = validator.safeParse(source);
   if (!result.success) {
     const fields = [
       ...new Set(result.error.issues.map((issue) => issue.path.join("."))),
@@ -19,6 +22,10 @@ export function parseEnv(source: Record<string, string | undefined>) {
     throw new Error(`Invalid environment variables: ${fields.join(", ")}`);
   }
   return result.data;
+}
+
+export function parseEnv(source: Record<string, string | undefined>) {
+  return parseSource(schema, source);
 }
 
 // Next.js inlines NEXT_PUBLIC_ values only for literal property access.

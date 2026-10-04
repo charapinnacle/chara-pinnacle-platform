@@ -147,6 +147,11 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
+"rate_limit_attempt":
+{ Args: { "p_action": string,"p_key": string }; Returns: {
+              "allowed": boolean,"retry_after_seconds": number
+            }[]
+                           },
 "recovery_link_is_fresh":
 { Args: { "p_token_hash": string }; Returns: boolean
                            },

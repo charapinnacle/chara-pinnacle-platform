@@ -15,8 +15,10 @@ const challengeAndVerifyMock = vi.fn();
 const userMock = vi.hoisted(() => vi.fn());
 const freshMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => vi.fn());
+const throttledMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/dal/recovery", () => ({
   isRecoveryLinkFresh: freshMock,
   hasRecoverySession: sessionMock,
@@ -41,6 +43,7 @@ const input = { tokenHash: "abc_DEF-123", password: "a long enough password" };
 beforeEach(() => {
   vi.clearAllMocks();
   resetMock.mockResolvedValue({ data: {}, error: null });
+  throttledMock.mockResolvedValue(false);
   freshMock.mockResolvedValue(true);
   verifyOtpMock.mockResolvedValue({ data: {}, error: null });
   updateUserMock.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
@@ -90,6 +93,19 @@ describe("requestPasswordReset", () => {
     const result = await requestPasswordReset({ email: "nope" });
     expect(result.errors?.email).toBe("Enter a valid email address.");
     expect(resetMock).not.toHaveBeenCalled();
+    expect(throttledMock).not.toHaveBeenCalled();
+  });
+
+  it("counts the attempt as a reset request before Auth is called", async () => {
+    await requestPasswordReset({ email: "a@example.test" });
+    expect(throttledMock).toHaveBeenCalledWith("forgot_password");
+    expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(resetMock.mock.invocationCallOrder[0]);
+  });
+
+  it("refuses an attempt over the visitor's limit with the rate-limit message and sends nothing", async () => {
+    throttledMock.mockResolvedValue(true);
+    expect(await requestPasswordReset({ email: "a@example.test" })).toEqual({ message: "Too many attempts. Try again in a few minutes." });
+    expect(resetMock).not.toHaveBeenCalled();
   });
 });
 
@@ -105,6 +121,21 @@ describe("resetPassword", () => {
     expect(updateUserMock.mock.invocationCallOrder[0]).toBeLessThan(
       signOutMock.mock.invocationCallOrder[0],
     );
+  });
+
+  it("counts the attempt as a reset before the link is checked or spent", async () => {
+    await expect(resetPassword(input)).rejects.toThrow("REDIRECT:");
+    expect(throttledMock).toHaveBeenCalledWith("reset_password");
+    expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(freshMock.mock.invocationCallOrder[0]);
+    expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(verifyOtpMock.mock.invocationCallOrder[0]);
+  });
+
+  it("refuses an attempt over the visitor's limit with the rate-limit message and leaves the link unspent", async () => {
+    throttledMock.mockResolvedValue(true);
+    expect(await resetPassword(input)).toEqual({ message: "Too many attempts. Try again in a few minutes." });
+    expect(freshMock).not.toHaveBeenCalled();
+    expect(verifyOtpMock).not.toHaveBeenCalled();
+    expect(updateUserMock).not.toHaveBeenCalled();
   });
 
   it("refuses an 11-character password without using the link up", async () => {

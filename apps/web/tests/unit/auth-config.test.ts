@@ -49,8 +49,11 @@ describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
     expect(template).not.toMatch(/password/i);
   });
 
-  it("limits sign-up and sign-in requests to 30 per five minutes per address", () => {
-    expect(value("auth.rate_limit", "sign_in_sign_ups")).toBe("30");
+  it("raises the Auth limits that every visitor shares far above the per-visitor limit of 30 per five minutes", () => {
+    expect(Number(value("auth.rate_limit", "sign_in_sign_ups"))).toBeGreaterThanOrEqual(3000);
+    expect(Number(value("auth.rate_limit", "token_refresh"))).toBeGreaterThanOrEqual(5000);
+    expect(Number(value("auth.rate_limit", "email_sent"))).toBeGreaterThanOrEqual(3000);
+    expect(Number(value("auth.rate_limit", "token_verifications"))).toBeGreaterThanOrEqual(3000);
   });
 });
 
