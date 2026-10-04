@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { AuthCard } from "@/components/layout/auth-card";
 import { requireUser } from "@/lib/dal/session";
 import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
 
@@ -12,5 +13,5 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
   if (user.accountKind !== dashboardSegments[kind]) {
     redirect(homePath(lang, user.accountKind));
   }
-  return <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>;
+  return <AuthCard title="Dashboard" />;
 }
