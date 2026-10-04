@@ -53,8 +53,7 @@
   --shadow-focus: 0 0 0 4px color-mix(in oklch, var(--ring) 22%, transparent);
 }
 
-/* Interim palette until the CHARA brand colours and logo exist (OPEN_QUESTIONS W6): a deep indigo
-   accent on cool neutrals. Re-theme by changing these values only.
+/* Placeholder until the CHARA brand colours and logo exist (OPEN_QUESTIONS W6).
    Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. */
 :root {
   --background: oklch(0.98 0.004 265);
