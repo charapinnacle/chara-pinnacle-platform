@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
+import { Notice } from "@/components/forms/notice";
 import { resendConfirmation } from "@/lib/actions/auth";
 import { resendSchema } from "@/lib/validation/sign-up";
 
@@ -36,21 +37,15 @@ export function ResendForm() {
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
       {formState.isSubmitSuccessful ? (
-        <p
-          role="status"
-          className="rounded-lg border border-primary/20 bg-accent p-3 text-sm leading-relaxed text-accent-foreground"
-        >
+        <Notice tone="info" role="status">
           If an account with this email is waiting for confirmation, a new link
           has been sent.
-        </p>
+        </Notice>
       ) : null}
       {formState.errors.root?.server ? (
-        <p
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive-surface p-3 text-sm leading-relaxed text-destructive"
-        >
+        <Notice tone="error" role="alert">
           {formState.errors.root.server.message}
-        </p>
+        </Notice>
       ) : null}
       <InputField
         control={control}
