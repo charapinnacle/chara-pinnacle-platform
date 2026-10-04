@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { ShieldAlert } from "lucide-react";
 import { redirect } from "next/navigation";
+import { AuthCard } from "@/components/layout/auth-card";
 import { getCurrentUser } from "@/lib/dal/session";
 import { homePath } from "@/lib/routes";
 
@@ -11,9 +13,10 @@ export default async function SuspendedPage({ params }: PageProps<"/[lang]/suspe
   if (!user) redirect(`/${lang}/login`);
   if (!user.suspended) redirect(homePath(lang, user.accountKind));
   return (
-    <div className="grid max-w-xl gap-3">
-      <h1 className="text-2xl font-semibold tracking-tight">Your account is suspended</h1>
-      <p>See the email we sent you for the reasons and how to respond.</p>
-    </div>
+    <AuthCard
+      icon={ShieldAlert}
+      title="Your account is suspended"
+      description="See the email we sent you for the reasons and how to respond."
+    />
   );
 }
