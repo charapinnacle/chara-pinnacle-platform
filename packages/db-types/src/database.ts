@@ -147,13 +147,13 @@ isOneToOne: false
                   ]
                 },"organizations": {
                   Row: {
-                    "based_in_country": string,"created_at": string,"display_name": string,"id": string,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website": string | null
+                    "based_in_country": string,"created_at": string,"display_name": string,"id": string,"industry_code": string | null,"legal_entity_identifier": string | null,"legal_entity_identifier_kind": string | null,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website": string | null
                   }
                   Insert: {
-                    "based_in_country": string,"created_at"?: string,"display_name": string,"id"?: string,"legal_name": string,"slug": string,"status"?: Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website"?: string | null
+                    "based_in_country": string,"created_at"?: string,"display_name": string,"id"?: string,"industry_code"?: string | null,"legal_entity_identifier"?: string | null,"legal_entity_identifier_kind"?: string | null,"legal_name": string,"slug": string,"status"?: Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website"?: string | null
                   }
                   Update: {
-                    "based_in_country"?: string,"created_at"?: string,"display_name"?: string,"id"?: string,"legal_name"?: string,"slug"?: string,"status"?: Database["public"]['Enums']["organization_status"],"type"?: Database["public"]['Enums']["organization_type"],"website"?: string | null
+                    "based_in_country"?: string,"created_at"?: string,"display_name"?: string,"id"?: string,"industry_code"?: string | null,"legal_entity_identifier"?: string | null,"legal_entity_identifier_kind"?: string | null,"legal_name"?: string,"slug"?: string,"status"?: Database["public"]['Enums']["organization_status"],"type"?: Database["public"]['Enums']["organization_type"],"website"?: string | null
                   }
                   Relationships: [
                     {
@@ -161,6 +161,12 @@ isOneToOne: false
       columns: ["based_in_country"]
 isOneToOne: false
       referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "organizations_industry_code_fkey"
+      columns: ["industry_code"]
+isOneToOne: false
+      referencedRelation: "industries"
       referencedColumns: ["code"]
     }
                   ]
@@ -227,7 +233,7 @@ isOneToOne: false
 { Args: { "p_consents"?: Json,"p_kind": Database["public"]['Enums']["account_kind"] }; Returns: Database["public"]['Enums']["account_kind"]
                            },
 "create_organization":
-{ Args: { "p_based_in_country": string,"p_display_name": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: string
+{ Args: { "p_based_in_country": string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
                            },
 "invite_member":
 { Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["member_role"] }; Returns: string
@@ -250,6 +256,9 @@ isOneToOne: false
                            },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
+                           },
+"set_legal_entity_identifier":
+{ Args: { "p_identifier": string,"p_kind": string,"p_org": string }; Returns: undefined
                            },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"] }; Returns: {

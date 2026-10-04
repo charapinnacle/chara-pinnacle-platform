@@ -136,22 +136,27 @@ async function userToken(user: TestUser): Promise<string> {
   return access_token;
 }
 
+export async function dataApiAs(
+  user: TestUser,
+  path: string,
+  { method = "GET", body }: { method?: string; body?: unknown } = {},
+): Promise<Response> {
+  return fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${path}`, {
+    method,
+    headers: {
+      apikey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      authorization: `Bearer ${await userToken(user)}`,
+      "content-type": "application/json",
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
 export async function callAs(
   user: TestUser,
   rpc: string,
   args: Record<string, unknown> = {},
 ): Promise<void> {
-  const response = await fetch(
-    `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/${rpc}`,
-    {
-      method: "POST",
-      headers: {
-        apikey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-        authorization: `Bearer ${await userToken(user)}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(args),
-    },
-  );
-  if (!response.ok) throw new Error(`${rpc} answered ${response.status}`);
+  const response = await dataApiAs(user, `rpc/${rpc}`, { method: "POST", body: args });
+  if (!response.ok) throw new Error(`${rpc} answered ${response.status}: ${await response.text()}`);
 }

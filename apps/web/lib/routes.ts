@@ -18,3 +18,7 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
   const segment = Object.entries(dashboardSegments).find(([, kind]) => kind === accountKind)?.[0];
   return segment ? `/${lang}/dashboard/${segment}` : `/${lang}/onboarding`;
 }
+
+export function mfaPath(lang: string): string {
+  return `/${lang}/mfa`;
+}
