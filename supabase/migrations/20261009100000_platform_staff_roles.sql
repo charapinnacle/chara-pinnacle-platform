@@ -6,7 +6,7 @@
 
 create extension pg_net;
 
-insert into private.settings (key, value) values ('account_ops_max_attempts', '5');
+insert into private.settings (key, value) values ('account_ops_max_attempts', '8');
 
 create function private.assert_platform_admin() returns uuid
 language plpgsql
@@ -186,9 +186,11 @@ create constraint trigger platform_staff_keep_admin
 
 alter table public.platform_staff enable always trigger platform_staff_keep_admin;
 
--- Service RPCs of the account-ops function. A message is invisible for 120 seconds once read, so a crashed run is
--- retried by a later one and two overlapping runs never share a message; after account_ops_max_attempts reads a message
--- is archived and audited instead of retried for ever.
+-- Service RPCs of the account-ops function. A message is invisible for 60 seconds once read, so a crashed run is
+-- retried by the next minute job and two overlapping runs never share a message; the n-th retry waits 60 x n seconds,
+-- so the 8 attempts bridge an outage of about half an hour. After account_ops_max_attempts reads a message is removed
+-- and audited (account_ops_abandoned: the action did not happen) instead of retried for ever; the audit row is the
+-- only record kept, so no queue archive grows or keeps a user id.
 create function public.account_ops_dequeue(p_limit integer default 25) returns table (msg_id bigint, message jsonb)
 language plpgsql
 security definer
@@ -198,14 +200,17 @@ declare
   v_max integer := (select (value #>> '{}')::integer from private.settings where key = 'account_ops_max_attempts');
   v_job pgmq.message_record;
 begin
-  for v_job in select * from pgmq.read('account_ops', 120, least(greatest(coalesce(p_limit, 25), 1), 100)) loop
+  for v_job in select * from pgmq.read('account_ops', 60, least(greatest(coalesce(p_limit, 25), 1), 100)) loop
     if v_job.read_ct > v_max then
-      perform pgmq.archive('account_ops', v_job.msg_id);
+      perform pgmq.delete('account_ops', v_job.msg_id);
       perform audit.record(
         'account_ops_abandoned', 'user', v_job.message ->> 'user_id',
         jsonb_build_object('action', v_job.message ->> 'action', 'msg_id', v_job.msg_id)
       );
     else
+      if v_job.read_ct > 1 then
+        perform pgmq.set_vt('account_ops', v_job.msg_id, 60 * v_job.read_ct);
+      end if;
       msg_id := v_job.msg_id;
       message := v_job.message;
       return next;
@@ -233,7 +238,7 @@ $$;
 revoke all on function public.account_ops_end_sessions(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.account_ops_end_sessions(uuid) to service_role;
 
--- Archives a finished job and audits what was done. A job that is no longer queued (a second ack) returns false and
+-- Removes a finished job and audits what was done. A job that is no longer queued (a second ack) returns false and
 -- writes nothing.
 create function public.account_ops_ack(p_msg_id bigint, p_result jsonb default '{}') returns boolean
 language plpgsql
@@ -247,7 +252,7 @@ begin
     raise exception 'CHARA_INVALID_INPUT' using detail = 'result';
   end if;
   select q.message into v_message from pgmq.q_account_ops q where q.msg_id = p_msg_id;
-  if v_message is null or not pgmq.archive('account_ops', p_msg_id) then
+  if v_message is null or not pgmq.delete('account_ops', p_msg_id) then
     return false;
   end if;
   perform audit.record(
@@ -261,7 +266,9 @@ $$;
 revoke all on function public.account_ops_ack(bigint, jsonb) from public, anon, authenticated, service_role;
 grant execute on function public.account_ops_ack(bigint, jsonb) to service_role;
 
--- Calls account-ops once a minute while a job is visible. The three Vault secrets are set by the deploy runbook:
+-- Calls account-ops once a minute while a job is visible. Nothing is called, and nothing is logged, while none of the
+-- three Vault secrets exists (a local stack, CI); a partial set is a misconfiguration and warns. They are set by the
+-- deploy runbook:
 -- project_url, anon_key (a public key, only for the platform's JWT check) and edge_shared_secret (the same value as the
 -- function's EDGE_SHARED_SECRET, which the function checks itself).
 create function private.run_account_ops() returns bigint
@@ -284,6 +291,9 @@ begin
   into v_url, v_anon, v_secret
   from vault.decrypted_secrets s
   where s.name in ('project_url', 'anon_key', 'edge_shared_secret');
+  if v_url is null and v_anon is null and v_secret is null then
+    return null;
+  end if;
   if v_url is null or v_anon is null or v_secret is null then
     raise warning 'account-ops is not called: the Vault secrets project_url, anon_key and edge_shared_secret are not all set';
     return null;

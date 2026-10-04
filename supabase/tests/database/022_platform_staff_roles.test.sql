@@ -1,5 +1,5 @@
 begin;
-select plan(122);
+select plan(128);
 
 \ir organizations_fixture.inc
 
@@ -326,7 +326,7 @@ select is(
   (select count(*) from (select * from public.account_ops_dequeue(25)) d), 0::bigint, 'and returns nothing while the messages are invisible'
 );
 
--- ack archives once, audits what was done and ignores a repeat
+-- ack removes the job once, audits what was done and ignores a repeat
 select set_config('t.msg', (select msg_id::text from pgmq.q_account_ops where message ->> 'reason' = 'test'), true);
 select is(pg_temp.call_as(null, 'service_role', $$select public.account_ops_ack(current_setting('t.msg')::bigint, '{"sessions_ended": 2}')$$), 'ok', 'service_role acks a job');
 select is(
@@ -335,7 +335,7 @@ select is(
   format('1|sign_out|2|%s|', :'u3'), 'one audit row records the action and the result without an actor'
 );
 select is((select count(*) from pgmq.q_account_ops where msg_id = current_setting('t.msg')::bigint), 0::bigint, 'the job left the queue');
-select is((select count(*) from pgmq.a_account_ops where msg_id = current_setting('t.msg')::bigint), 1::bigint, 'and sits in the archive');
+select is((select count(*) from pgmq.a_account_ops where msg_id = current_setting('t.msg')::bigint), 0::bigint, 'and is not archived, the audit row is the record');
 select is((select public.account_ops_ack(current_setting('t.msg')::bigint, '{"sessions_ended": 2}')), false, 'a second ack returns false');
 select is((select count(*) from audit.log where action = 'account_ops_done' and entity_id = :'u3'), 1::bigint, 'and writes no second audit row');
 select is(pg_temp.call_as(null, 'service_role', $$select public.account_ops_ack(1, '[1]')$$),
@@ -343,8 +343,9 @@ select is(pg_temp.call_as(null, 'service_role', $$select public.account_ops_ack(
 select is(pg_temp.call_as(:'u2', 'authenticated', $$select public.account_ops_ack(1, '{}')$$),
   '42501|permission denied for function account_ops_ack|', 'a staff administrator cannot ack a job');
 
--- a message read more often than the setting allows is archived and audited, not returned
-update pgmq.q_account_ops set read_ct = 6, vt = now() - interval '1 second' where message ->> 'reason' = 'test-attempts';
+-- a message read more often than the setting allows is removed and audited, not returned
+select is((select value #>> '{}' from private.settings where key = 'account_ops_max_attempts'), '8', 'a job gets 8 attempts');
+update pgmq.q_account_ops set read_ct = 9, vt = now() - interval '1 second' where message ->> 'reason' = 'test-attempts';
 select is(
   (select count(*) from public.account_ops_dequeue(25) d where d.message ->> 'reason' = 'test-attempts'), 0::bigint,
   'a message past the attempt limit is not handed out'
@@ -356,6 +357,24 @@ select is(
 select is(
   (select count(*) from pgmq.q_account_ops where message ->> 'reason' = 'test-attempts'), 0::bigint,
   'and no longer waits in the queue'
+);
+select is(
+  (select count(*) from pgmq.a_account_ops where message ->> 'reason' = 'test-attempts'), 0::bigint,
+  'and is not archived'
+);
+
+select pgmq.send('account_ops', jsonb_build_object('action', 'sign_out', 'user_id', :'nobody', 'reason', 'test-backoff'));
+-- each retry waits longer: 60 seconds after the first read, 60 x n after the n-th
+update pgmq.q_account_ops set read_ct = 2, vt = now() - interval '1 second' where message ->> 'reason' = 'test-backoff';
+select is(
+  (select count(*) from public.account_ops_dequeue(25) d where d.message ->> 'reason' = 'test-backoff'), 1::bigint,
+  'a message that is read again is handed out'
+);
+select is(
+  (select count(*) from pgmq.q_account_ops
+   where message ->> 'reason' = 'test-backoff' and read_ct = 3
+     and vt > now() + interval '170 seconds' and vt <= now() + interval '181 seconds'),
+  1::bigint, 'and waits 180 seconds after its third read'
 );
 
 -- sessions
@@ -379,6 +398,10 @@ select is((select private.run_account_ops()), null::bigint, 'no request is made 
 set local client_min_messages = notice;
 select is((select count(*) from net.http_request_queue), 0::bigint, 'and none is queued');
 select vault.create_secret('https://project.example.test/', 'project_url');
+set local client_min_messages = error;
+select is((select private.run_account_ops()), null::bigint, 'no request is made with only some of the secrets');
+set local client_min_messages = notice;
+select is((select count(*) from net.http_request_queue), 0::bigint, 'and none is queued');
 select vault.create_secret('anon-key-value', 'anon_key');
 select vault.create_secret('shared-secret-value', 'edge_shared_secret');
 select is((select private.run_account_ops() is not null), true, 'with the secrets one request is made');
