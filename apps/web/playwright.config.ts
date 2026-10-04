@@ -43,7 +43,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: "**/consent-versions.spec.ts",
+      testIgnore: ["**/consent-versions.spec.ts", "**/account-ops.spec.ts"],
     },
     {
       name: "versions",
@@ -51,9 +51,22 @@ export default defineConfig({
       testMatch: "**/consent-versions.spec.ts",
       dependencies: ["chromium"],
     },
+    // account-ops takes every job in the queue, so these tests must not overlap the ones that count queued jobs.
+    {
+      name: "account-ops",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/account-ops.spec.ts",
+      dependencies: ["chromium", "versions"],
+    },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
   webServer: [
+    {
+      command: "../../supabase/functions/serve-local.sh",
+      port: 54430,
+      timeout: 60_000,
+      reuseExistingServer: false,
+    },
     {
       command: "npm run build && npm run start",
       url: baseURL,
