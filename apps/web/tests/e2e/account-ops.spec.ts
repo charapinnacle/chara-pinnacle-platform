@@ -1,11 +1,11 @@
 import type { Page } from "@playwright/test";
 import { runAccountOps } from "./support/account-ops";
 import { execute, literal, query } from "./support/db";
-import { enrollTotp, expireAccessToken, sessionRows } from "./support/login";
+import { enrollTotp, expireAccessToken, rpcWithToken, sessionRows } from "./support/login";
 import { logIn } from "./support/login-page";
 import { addTwoDevices, enterCode, factorRows, newOwner, staffUser } from "./support/mfa";
 import { organizationRows, signInAsEmployer } from "./support/organizations";
-import { aal2Token, callRpc } from "./support/staff";
+import { aal2Token } from "./support/staff";
 import { addMember, membersPath, newTeam, newVisitor, queuedSignOuts, setName, signInAtAal1, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
@@ -61,7 +61,7 @@ test.describe("account-ops: sessions after a role change, a removal and a two-st
     await signInAtAal2(page, staff.user, staff.secret, "/en/admin");
     await expect(page.getByRole("heading", { name: "Administration" })).toBeVisible();
 
-    const grant = await callRpc(await adminToken(admin), "grant_platform_role", {
+    const grant = await rpcWithToken(await adminToken(admin), "grant_platform_role", {
       p_user_id: staff.user.id,
       p_role: "verification_reviewer",
       p_reason: REASON,
@@ -95,7 +95,7 @@ test.describe("account-ops: sessions after a role change, a removal and a two-st
     await signInAtAal2(page, staff.user, staff.secret, "/en/admin");
     await expect(page.getByRole("heading", { name: "Administration" })).toBeVisible();
 
-    const revoke = await callRpc(await adminToken(admin), "revoke_platform_role", {
+    const revoke = await rpcWithToken(await adminToken(admin), "revoke_platform_role", {
       p_user_id: staff.user.id,
       p_role: "trust_safety",
       p_reason: REASON,
@@ -127,7 +127,7 @@ test.describe("account-ops: sessions after a role change, a removal and a two-st
     await expect(second.page).toHaveURL(/\/en\/dashboard\/employer$/);
     expect(factorRows(owner.id)).toHaveLength(2);
 
-    const reset = await callRpc(await adminToken(admin), "reset_mfa", {
+    const reset = await rpcWithToken(await adminToken(admin), "reset_mfa", {
       p_user_id: owner.id,
       p_reason: "Identity checked by video call, ticket 4711",
     });

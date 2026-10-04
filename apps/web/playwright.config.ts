@@ -31,6 +31,11 @@ function localAdminKey(): string {
 
 process.env.E2E_AUTH_ADMIN_KEY ||= localAdminKey();
 
+// The account-ops process of supabase/functions/serve-local.sh and the tests that call it read these two values from
+// the environment: they are defined here once (webServer processes and workers inherit them).
+process.env.ACCOUNT_OPS_PORT ||= "54430";
+process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
+
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: true,
@@ -63,9 +68,9 @@ export default defineConfig({
   webServer: [
     {
       command: "../../supabase/functions/serve-local.sh",
-      port: 54430,
+      port: Number(process.env.ACCOUNT_OPS_PORT),
       timeout: 60_000,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
     },
     {
       command: "npm run build && npm run start",
