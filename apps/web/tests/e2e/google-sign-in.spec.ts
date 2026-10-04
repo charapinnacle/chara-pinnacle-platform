@@ -11,7 +11,15 @@ import {
   startGoogleFlow,
 } from "./support/google";
 import { alertText, fillLogin, overflow } from "./support/login-page";
-import { authCookies, decodeSession, LOGIN_FAILED, RESET_SENT, RESET_SUBJECT, suspendProfile } from "./support/login";
+import {
+  authCookies,
+  decodeSession,
+  LOGIN_FAILED,
+  RESET_SENT,
+  RESET_SUBJECT,
+  sessionClaims,
+  suspendProfile,
+} from "./support/login";
 import { waitForMessage } from "./support/mailpit";
 import { ageBox, documentBox, EMPLOYER_LABEL, WORKER_LABEL } from "./support/signup-page";
 import type { Page } from "@playwright/test";
@@ -133,6 +141,22 @@ test.describe("Continue with Google switched on", () => {
 
     await signInThroughGoogle(page, user.id);
     await expect(page).toHaveURL(/localhost:3100\/en\/onboarding$/);
+
+    const sessionCookies = authCookies(await page.context().cookies());
+    expect(sessionCookies.length).toBeGreaterThan(0);
+    for (const cookie of sessionCookies) {
+      expect(cookie.sameSite).toBe("Lax");
+      expect(cookie.path).toBe("/");
+      expect(cookie.httpOnly).toBe(false);
+      expect(cookie.secure).toBe(false);
+      const lifetime = cookie.expires - Date.now() / 1000;
+      expect(lifetime).toBeGreaterThan(604800 - 120);
+      expect(lifetime).toBeLessThanOrEqual(604800);
+    }
+    const claims = await sessionClaims(page.context());
+    expect(claims.sub).toBe(user.id);
+    expect(claims.exp - claims.iat).toBe(1800);
+
     await expect(page.getByRole("heading", { name: "Choose your account type" })).toBeVisible();
     await expect(page.getByText("This choice cannot be changed later.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create my account" })).toHaveCount(0);
