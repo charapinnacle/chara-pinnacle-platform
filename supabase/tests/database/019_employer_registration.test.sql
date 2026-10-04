@@ -1,5 +1,5 @@
 begin;
-select plan(67);
+select plan(71);
 
 \ir organizations_fixture.inc
 
@@ -35,10 +35,8 @@ select ok(
   'the helpers are not callable through the API'
 );
 select ok(
-  exists (select 1 from pg_indexes where tablename = 'organizations' and indexdef like '%private.legal_name_key(legal_name)%')
-  and exists (select 1 from pg_indexes where tablename = 'organizations' and indexdef like '%(legal_entity_identifier)%')
-  and exists (select 1 from pg_indexes where tablename = 'organizations' and indexdef like '%(industry_code)%'),
-  'the legal name key, the identifier and the industry are indexed'
+  exists (select 1 from pg_indexes where tablename = 'organizations' and indexdef like '%private.legal_name_key(legal_name)%'),
+  'the legal name key that the duplicate check reads is indexed'
 );
 select is(
   (select count(*) from information_schema.table_constraints
@@ -67,10 +65,10 @@ select is(
 );
 select is(
   (select format('%s|%s|%s|%s|%s', actor_id, entity_type, entity_id = current_setting('t.x')::jsonb ->> 'organization_id',
-     metadata ->> 'duplicate_legal_name', metadata ->> 'legal_entity_trial_used')
+     metadata ->> 'duplicate_legal_name', jsonb_typeof(metadata -> 'legal_entity_trial_used'))
    from audit.log where action = 'organization_created' and entity_id = current_setting('t.x')::jsonb ->> 'organization_id'),
-  format('%s|organization|t|false|false', :'own1'),
-  'one organization_created audit row names the actor, the organization and both flags'
+  format('%s|organization|t|false|null', :'own1'),
+  'one organization_created audit row names the actor, the organization, the duplicate flag and a trial flag that is not evaluated yet'
 );
 select is(
   (select count(*) from audit.log where action = 'organization_created' and entity_id = current_setting('t.x')::jsonb ->> 'organization_id'),
@@ -237,10 +235,36 @@ select is(
   'P0001|CHARA_FORBIDDEN|organization_type_not_available', 'a staffing company is refused in Phase 1'
 );
 
--- No subscription is created and no billing table is involved yet
+-- No subscription is inserted by registration
+select ok(
+  pg_get_functiondef('public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure)
+    !~* 'insert\s+into\s+billing\.',
+  'create_organization inserts nothing into the billing schema'
+);
+
+-- A retried request returns the organization already created and still carries the duplicate warning
 select is(
-  (select count(*) from information_schema.tables where table_schema = 'billing' and table_name = 'subscriptions'),
-  0::bigint, 'the billing schema holds no subscription table that registration could fill (it arrives with FR-G1)'
+  pg_temp.call_as(:'own2', 'authenticated',
+    $$select set_config('t.dup2', public.create_organization('employer', 'acme  BAU gmbh', 'Acme Two', 'DE', 'F')::text, true)$$, 'aal1'),
+  'ok', 'the second company repeats its request within the minute'
+);
+select is(
+  (current_setting('t.dup2')::jsonb ->> 'organization_id') || '|' || (current_setting('t.dup2')::jsonb ->> 'duplicate_legal_name'),
+  (current_setting('t.dup')::jsonb ->> 'organization_id') || '|true', 'the retry returns the same organization with the duplicate warning'
+);
+select is(
+  (select count(*) from public.organizations where private.legal_name_key(legal_name) = 'acme bau gmbh'),
+  2::bigint, 'the retry created no third organization'
+);
+
+-- Refusals write nothing
+select is(
+  (select count(*) from public.organizations where legal_name in ('Wk Co', 'Su Co', 'Rc Co', 'Sc Co'))
+  || '|' || (select count(*) from public.organization_members m join public.organizations o on o.id = m.organization_id
+             where o.legal_name in ('Wk Co', 'Su Co', 'Rc Co', 'Sc Co'))
+  || '|' || (select count(*) from audit.log where action = 'organization_created' and actor_id in (:'wkr', :'sus'))
+  || '|' || (select count(*) from audit.log where action = 'organization_created' and metadata ->> 'slug' in ('wk-co', 'su-co', 'rc-co', 'sc-co')),
+  '0|0|0|0', 'the worker, suspended and refused-type calls wrote no organization, membership or audit row'
 );
 
 -- Cross-tenant reads and direct writes

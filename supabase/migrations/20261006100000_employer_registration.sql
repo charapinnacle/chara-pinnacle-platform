@@ -25,18 +25,17 @@ as $$ select lower(regexp_replace(btrim(p_name), '\s+', ' ', 'g')) $$;
 revoke all on function private.legal_name_key(text) from public, anon, authenticated, service_role;
 
 create index organizations_legal_name_key on public.organizations (private.legal_name_key(legal_name));
-create index organizations_legal_entity_identifier
-  on public.organizations (legal_entity_identifier) where legal_entity_identifier is not null;
-create index organizations_industry_code on public.organizations (industry_code) where industry_code is not null;
 
--- The billing schema does not exist yet (plans and subscriptions come with FR-G1, checkout with FR-G2), so no trial
--- has been granted and no billing record can exist: both answers are false until the billing migration replaces
--- these two functions with lookups of billing.subscriptions (trial_ends_at) and billing.customers.
+-- The billing schema does not exist yet (plans and subscriptions come with FR-G1, checkout with FR-G2). Until the
+-- billing migrations replace these two functions with lookups of billing.subscriptions (trial_ends_at) and
+-- billing.customers, no billing record can exist, so nothing is locked, and whether a trial was used is not
+-- evaluated: null, never false, so that an audit row written before then is not read as "checked, no trial".
+-- The billing migration also adds the index on legal_entity_identifier that the trial lookup needs.
 create function private.legal_entity_trial_used(p_identifier text) returns boolean
 language sql
 stable
 set search_path = ''
-as $$ select false $$;
+as $$ select null::boolean $$;
 
 create function private.legal_entity_locked(p_org uuid) returns boolean
 language sql
@@ -134,7 +133,13 @@ begin
     and private.legal_name_key(o.legal_name) = private.legal_name_key(v_legal)
     and o.created_at > now() - interval '1 minute';
   if found then
-    return jsonb_build_object('organization_id', v_existing.id, 'slug', v_existing.slug, 'duplicate_legal_name', false);
+    return jsonb_build_object(
+      'organization_id', v_existing.id, 'slug', v_existing.slug,
+      'duplicate_legal_name', exists (
+        select 1 from public.organizations o
+        where private.legal_name_key(o.legal_name) = private.legal_name_key(v_legal) and o.id <> v_existing.id
+      )
+    );
   end if;
   if (select count(*) from public.organization_members m where m.user_id = v_uid and m.role = 'owner')
      >= (select (value #>> '{}')::integer from private.settings where key = 'organizations_per_user_max') then
