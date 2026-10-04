@@ -144,6 +144,15 @@ export async function passwordLoginStatus(user: TestUser, password: string): Pro
   return (await authFetch("/token?grant_type=password", { email: user.email, password })).status;
 }
 
+export async function verifyRecoveryStatus(tokenHash: string): Promise<number> {
+  return (await authFetch("/verify", { type: "recovery", token_hash: tokenHash })).status;
+}
+
+// What the minute job does: removes recovery tokens past their lifetime so Auth no longer accepts them.
+export function expireRecoveryTokens(): void {
+  execute("select private.expire_recovery_tokens()");
+}
+
 export async function refreshStatus(refreshToken: string): Promise<number> {
   return (await authFetch("/token?grant_type=refresh_token", { refresh_token: refreshToken })).status;
 }

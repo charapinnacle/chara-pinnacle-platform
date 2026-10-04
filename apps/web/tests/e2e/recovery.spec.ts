@@ -9,6 +9,7 @@ import {
   emailedResetPath,
   enrollTotp,
   expireAccessToken,
+  expireRecoveryTokens,
   generateRecoveryPath,
   LINK_EXPIRED,
   passwordLoginStatus,
@@ -16,6 +17,7 @@ import {
   RESET_SENT,
   sessionClaims,
   sessionRows,
+  verifyRecoveryStatus,
 } from "./support/login";
 import { messageCount, waitForMessage } from "./support/mailpit";
 import { signInBrowser } from "./support/session";
@@ -69,8 +71,12 @@ test.describe("password recovery", () => {
     expect(body).toMatch(/\/en\/reset-password\?token_hash=[A-Za-z0-9_-]+/);
     expect(body).not.toContain(confirmed.password);
     await new Promise((resolve) => setTimeout(resolve, 1_500));
+    // The repeat request above came at once, inside Auth's 60-second interval, so it sent nothing more.
     expect(await messageCount(confirmed.email)).toBe(1);
     expect(await messageCount(unknown)).toBe(0);
+    // Departure D24: Auth does email an unconfirmed address (AC7 expects none); this pins that behaviour.
+    await waitForMessage(unconfirmed.email, { subject: "Reset your CHARA password" });
+    expect(await messageCount(unconfirmed.email)).toBe(1);
   });
 
   test("FR-A3 AC8: a link opens the form for under an hour, then says it expired; opening it spends nothing", async ({
@@ -92,6 +98,22 @@ test.describe("password recovery", () => {
     await expect(newPasswordField(page)).toHaveCount(0);
     await page.getByRole("link", { name: "Request a new reset link" }).click();
     await expect(page).toHaveURL(/\/en\/forgot-password$/);
+  });
+
+  test("FR-A3 AC8: Auth itself refuses a link older than an hour, so it cannot be posted to Auth directly", async () => {
+    const user = await createCommittedUser("worker");
+    const hash = new URL(await generateRecoveryPath(user.email), "http://web.test").searchParams.get("token_hash");
+    if (!hash) throw new Error("The recovery link has no token");
+    ageRecoveryLink(user.id, "61 minutes");
+    expireRecoveryTokens();
+    expect(await verifyRecoveryStatus(hash)).toBeGreaterThanOrEqual(400);
+    expect(sessionRows(user.id)).toEqual([]);
+
+    const young = await createCommittedUser("worker");
+    const youngHash = new URL(await generateRecoveryPath(young.email), "http://web.test").searchParams.get("token_hash");
+    ageRecoveryLink(young.id, "59 minutes");
+    expireRecoveryTokens();
+    expect(await verifyRecoveryStatus(youngHash ?? "")).toBe(200);
   });
 
   test("FR-A3 AC8: a used link and a superseded link say they expired", async ({ browser, page }) => {
