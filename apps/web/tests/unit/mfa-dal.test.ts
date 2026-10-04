@@ -60,6 +60,12 @@ describe("listVerifiedFactors and hasVerifiedTotpFactor", () => {
     ]);
   });
 
+  it("lists the oldest factor first, whatever order Auth answers in, so the first device is the default choice", async () => {
+    const newer = { ...factor("f2", "Backup", "verified"), created_at: "2026-10-05T10:00:00Z" };
+    listFactorsMock.mockResolvedValue(factors(newer, factor("f1", "Authenticator", "verified")));
+    await expect(listVerifiedFactors("en")).resolves.toMatchObject([{ id: "f1" }, { id: "f2" }]);
+  });
+
   it("is true when a verified factor exists and false when only an unfinished enrolment does", async () => {
     listFactorsMock.mockResolvedValueOnce(factors(factor("f1", "Authenticator", "verified")));
     await expect(hasVerifiedTotpFactor("en")).resolves.toBe(true);

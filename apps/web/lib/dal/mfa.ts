@@ -25,6 +25,7 @@ async function loadFactors(supabase: Supabase, lang: string): Promise<TotpFactor
   return {
     verified: totp
       .filter((factor) => factor.status === "verified")
+      .toSorted((a, b) => a.created_at.localeCompare(b.created_at))
       .map((factor) => ({ id: factor.id, name: factor.friendly_name ?? "", createdAt: factor.created_at })),
     unverifiedIds: totp.filter((factor) => factor.status === "unverified").map((factor) => factor.id),
   };
