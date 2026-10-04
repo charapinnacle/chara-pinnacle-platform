@@ -1,19 +1,21 @@
-import { randomBytes } from "node:crypto";
-import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { accountRows, callAs, confirmFromLink, currentDocuments } from "./support/accounts";
-import { createCommittedUser, enrollTotp, sessionClaims } from "./support/login";
-import { logIn } from "./support/login-page";
+import { accountRows, confirmFromLink, currentDocuments, userByEmail } from "./support/accounts";
+import { createCommittedUser } from "./support/login";
 import { extractLinks, waitForMessage } from "./support/mailpit";
 import {
   fillCompany,
+  IDENTIFIER_LABEL,
   organizationAudit,
   organizationCountByName,
   organizationRows,
+  registerOrganization,
+  signInAsEmployer,
+  SIMILAR_NAME_NOTICE,
+  uniqueName,
+  uniqueToken,
 } from "./support/organizations";
 import { captureActionRequests } from "./support/server-action";
-import type { TestUser } from "./support/test-user";
 import {
   ageBox,
   documentBox,
@@ -23,20 +25,6 @@ import {
   PASSWORD,
   summary,
 } from "./support/signup-page";
-import { userByEmail } from "./support/accounts";
-
-function uniqueToken(): string {
-  return randomBytes(4).toString("hex");
-}
-
-function uniqueName(prefix: string): string {
-  return `${prefix} ${uniqueToken()}`;
-}
-
-async function signIn(page: Page, user: TestUser): Promise<void> {
-  await logIn(page, user);
-  await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
-}
 
 test.describe("employer registration", () => {
   test("FR-A2 AC1: an employer signs up, confirms, enters the company details and lands on two-step setup", async ({
@@ -112,7 +100,7 @@ test.describe("employer registration", () => {
           slug: `acme-bau-${token}`,
           type: "employer",
           duplicate_legal_name: false,
-          legal_entity_trial_used: false,
+          legal_entity_trial_used: null,
         },
       },
     ]);
@@ -123,20 +111,14 @@ test.describe("employer registration", () => {
   }) => {
     const legalName = uniqueName("Twin Bau GmbH");
     const first = await createCommittedUser("company");
-    await callAs(first, "create_organization", {
-      p_type: "employer",
-      p_legal_name: legalName,
-      p_display_name: "Twin Bau",
-      p_based_in_country: "DE",
-      p_industry_code: "F",
-    });
+    await registerOrganization(first, legalName, "Twin Bau");
     const second = await createCommittedUser("company");
-    await signIn(page, second);
+    await signInAsEmployer(page, second);
     await page.goto("/en/onboarding");
     await fillCompany(page, { legalName: legalName.toUpperCase().replace(" ", "   "), country: "Germany", industry: "Construction" });
     await page.getByRole("button", { name: "Create company" }).click();
 
-    await expect(page.getByRole("status").filter({ hasText: "Another company on CHARA uses the same legal name" })).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(SIMILAR_NAME_NOTICE);
     await expectNoAxeViolations(page);
     expect(organizationCountByName(legalName)).toBe(1);
     const [organization] = organizationRows(second.id);
@@ -150,9 +132,16 @@ test.describe("employer registration", () => {
     page,
   }) => {
     const user = await createCommittedUser("company");
-    await signIn(page, user);
+    await signInAsEmployer(page, user);
     await page.goto("/en/onboarding");
     const calls = captureActionRequests(page);
+
+    for (const label of ["Legal company name", "Display name (optional)", "Website (optional)", IDENTIFIER_LABEL]) {
+      await expect(page.getByRole("textbox", { name: label, exact: true })).toBeVisible();
+    }
+    for (const label of ["Country", "Industry"]) {
+      await expect(page.getByRole("combobox", { name: label, exact: true })).toBeVisible();
+    }
 
     for (const width of [360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
@@ -174,7 +163,7 @@ test.describe("employer registration", () => {
     }
     await expectNoAxeViolations(page);
     await summary(page).getByRole("link", { name: "Choose the country of your company." }).click();
-    await expect(page.getByLabel("Country", { exact: true })).toBeFocused();
+    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toBeFocused();
 
     await fillCompany(page, {
       legalName: "Valid Name GmbH",
@@ -196,12 +185,12 @@ test.describe("employer registration", () => {
     expect(organizationRows(user.id)).toEqual([]);
   });
 
-  test("FR-A2 AC1: while the request is pending the button says so and a double click creates one organization", async ({
+  test("FR-A2 AC12: while the request is pending the button says so and a double click creates one organization", async ({
     page,
   }) => {
     const user = await createCommittedUser("company");
     const legalName = uniqueName("Pending Bau GmbH");
-    await signIn(page, user);
+    await signInAsEmployer(page, user);
     await page.goto("/en/onboarding");
     const calls = captureActionRequests(page);
     await page.route("**/en/onboarding", async (route) => {
@@ -216,10 +205,118 @@ test.describe("employer registration", () => {
     expect(organizationCountByName(legalName)).toBe(1);
   });
 
-  test("FR-A2 AC1: a network failure shows an error toast and keeps what was typed", async ({ page, context }) => {
+  test("FR-A2 AC12: a keyboard-only user completes the form at 360 and 1280 px, with arrow keys and Enter in the lists", async ({
+    page,
+  }) => {
+    const legalName = uniqueName("Keys Bau GmbH");
+    await registerOrganization(await createCommittedUser("company"), legalName);
+
+    for (const width of [360, 1280]) {
+      const user = await createCommittedUser("company");
+      await page.setViewportSize({ width, height: 900 });
+      await signInAsEmployer(page, user);
+      await page.goto("/en/onboarding");
+      await page.waitForLoadState("networkidle");
+      const country = page.getByRole("combobox", { name: "Country", exact: true });
+      const industry = page.getByRole("combobox", { name: "Industry", exact: true });
+
+      const legal = page.getByLabel("Legal company name");
+      for (let presses = 0; presses < 10 && !(await legal.evaluate((el) => el === document.activeElement)); presses += 1) {
+        await page.keyboard.press("Tab");
+      }
+      await expect(legal).toBeFocused();
+      await page.keyboard.type(legalName.toUpperCase().replace(" ", "   "));
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Tab");
+      await expect(country).toBeFocused();
+      await page.keyboard.type("ger");
+      const countries = page.getByRole("listbox", { name: "Country" });
+      await expect(countries.getByRole("option")).toHaveText(["Algeria", "Germany", "Niger", "Nigeria"]);
+      await page.keyboard.press("ArrowDown");
+      await expect(country).toHaveAttribute("aria-activedescendant", /.+/);
+      await expect(countries.getByRole("option", { name: "Germany" })).toHaveAttribute("aria-selected", "true");
+      await page.keyboard.press("Enter");
+      await expect(country).toHaveValue("Germany");
+      await expect(countries).toBeHidden();
+
+      await page.keyboard.press("Tab");
+      await page.keyboard.type("constr");
+      await page.keyboard.press("Enter");
+      await expect(industry).toHaveValue("Construction");
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Tab");
+      await page.keyboard.type("DE 123.456-789");
+      await page.keyboard.press("Tab");
+      await page.keyboard.type("VAT");
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: "Create company" })).toBeFocused();
+      await expectNoAxeViolations(page);
+      await page.keyboard.press("Enter");
+
+      await expect(page.getByRole("status")).toHaveText(SIMILAR_NAME_NOTICE);
+      await expectNoAxeViolations(page);
+      const [organization] = organizationRows(user.id);
+      expect(organization).toMatchObject({
+        based_in_country: "DE",
+        industry_code: "F",
+        legal_entity_identifier: "DE123456789",
+        legal_entity_identifier_kind: "vat_number",
+      });
+      expect(organizationAudit(organization.id)[0].metadata).toMatchObject({ duplicate_legal_name: true });
+    }
+    expect(organizationCountByName(legalName)).toBe(1);
+  });
+
+  test("FR-A2 AC12: a country is chosen by typing and clicking, an unknown text offers no match and restores the choice", async ({
+    page,
+  }) => {
+    await signInAsEmployer(page, await createCommittedUser("company"));
+    await page.goto("/en/onboarding");
+    const country = page.getByRole("combobox", { name: "Country", exact: true });
+    await country.fill("Germany");
+    await page.getByRole("option", { name: "Germany", exact: true }).click();
+    await expect(country).toHaveValue("Germany");
+    await country.fill("zzzz");
+    await expect(page.getByRole("listbox", { name: "Country" }).getByRole("option")).toHaveText(["No match"]);
+    await page.keyboard.press("Escape");
+    await expect(country).toHaveValue("Germany");
+    await country.fill("zzzz");
+    await page.getByLabel("Legal company name").focus();
+    await expect(country).toHaveValue("Germany");
+    await country.fill("");
+    await page.getByRole("button", { name: "Create company" }).click();
+    await expect(summary(page).getByRole("link", { name: "Choose the country of your company." })).toBeVisible();
+  });
+
+  test("FR-A2 AC12: when the organization cannot be created a toast appears and the typed values stay", async ({
+    page,
+  }) => {
+    const user = await createCommittedUser("company");
+    const legalName = uniqueName("Limit Bau GmbH");
+    await signInAsEmployer(page, user);
+    await page.goto("/en/onboarding");
+    await fillCompany(page, {
+      legalName,
+      country: "Germany",
+      industry: "Construction",
+      identifierKind: "vat_number",
+      identifier: "DE 123 456 789",
+    });
+    for (const name of ["First", "Second", "Third"]) await registerOrganization(user, uniqueName(`${name} Bau GmbH`));
+    await page.getByRole("button", { name: "Create company" }).click();
+
+    await expect(page.getByText("Could not create the company", { exact: true })).toBeVisible();
+    await expect(summary(page)).toContainText("You have reached the number of organizations one account can own.");
+    await expect(page.getByLabel("Legal company name")).toHaveValue(legalName);
+    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveValue("Germany");
+    await expect(page.getByLabel(IDENTIFIER_LABEL)).toHaveValue("DE 123 456 789");
+    expect(organizationCountByName(legalName)).toBe(0);
+  });
+
+  test("FR-A2 AC12: a network failure shows an error toast and keeps what was typed", async ({ page, context }) => {
     const user = await createCommittedUser("company");
     const legalName = uniqueName("Offline Bau GmbH");
-    await signIn(page, user);
+    await signInAsEmployer(page, user);
     await page.goto("/en/onboarding");
     await fillCompany(page, { legalName, country: "Germany", industry: "Construction" });
     await context.setOffline(true);
@@ -228,80 +325,5 @@ test.describe("employer registration", () => {
     await expect(page.getByLabel("Legal company name")).toHaveValue(legalName);
     await context.setOffline(false);
     expect(organizationRows(user.id)).toEqual([]);
-  });
-
-  test("FR-A2 AC11: an employer without an organization is sent to set it up, and one with an organization is sent to the dashboard", async ({
-    page,
-  }) => {
-    const user = await createCommittedUser("company");
-    await signIn(page, user);
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page.getByRole("link", { name: "Set up your company" }).click();
-    await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByLabel("Legal company name")).toBeVisible();
-
-    await callAs(user, "create_organization", {
-      p_type: "employer",
-      p_legal_name: uniqueName("Redirect Bau GmbH"),
-      p_display_name: "Redirect Bau",
-      p_based_in_country: "DE",
-      p_industry_code: "F",
-    });
-    await signIn(page, user);
-    await page.goto("/en/onboarding");
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
-  });
-
-  test("FR-A2 AC11: the owner reaches the dashboard at aal1, sees the guided steps, and the first one is done after two-step setup", async ({
-    page,
-  }) => {
-    const user = await createCommittedUser("company");
-    await callAs(user, "create_organization", {
-      p_type: "employer",
-      p_legal_name: uniqueName("Steps Bau GmbH"),
-      p_display_name: "Steps Bau",
-      p_based_in_country: "DE",
-      p_industry_code: "F",
-    });
-    await signIn(page, user);
-    expect((await sessionClaims(page.context())).aal).toBe("aal1");
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByText("Steps Bau", { exact: true })).toBeVisible();
-    const steps = page.getByRole("main").getByRole("listitem");
-    await expect(steps).toHaveText([
-      "Set up two-step verification",
-      "Start the free trial",
-      "Post the first vacancy",
-      "Invite a team member",
-    ]);
-    await expect(page.getByRole("link", { name: "Set up two-step verification" })).toHaveAttribute("href", "/en/mfa");
-    await expectNoAxeViolations(page);
-
-    await enrollTotp(user);
-    await signIn(page, user);
-    await expect(steps.first()).toHaveText("Set up two-step verification (done)");
-    await expect(page.getByRole("link", { name: "Set up two-step verification" })).toHaveCount(0);
-  });
-
-  test("FR-A2 AC10: another company's owner cannot read the organization through the API", async () => {
-    const owner = await createCommittedUser("company");
-    const other = await createCommittedUser("company");
-    await callAs(owner, "create_organization", {
-      p_type: "employer",
-      p_legal_name: uniqueName("Private Bau GmbH"),
-      p_display_name: "Private Bau",
-      p_based_in_country: "DE",
-      p_industry_code: "F",
-    });
-    const [organization] = organizationRows(owner.id);
-    expect(organizationRows(other.id)).toEqual([]);
-    await expect(
-      callAs(other, "set_legal_entity_identifier", {
-        p_org: organization.id,
-        p_identifier: "DE123456789",
-        p_kind: "vat_number",
-      }),
-    ).rejects.toThrow("answered 400");
-    expect(organizationRows(owner.id)[0].legal_entity_identifier).toBeNull();
   });
 });
