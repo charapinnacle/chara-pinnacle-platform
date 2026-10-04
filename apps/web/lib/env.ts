@@ -35,3 +35,20 @@ export const env = parseEnv({
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 });
+
+const googleSignInSchema = z.object({
+  GOOGLE_SIGN_IN_ENABLED: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
+  ),
+});
+
+// Server-side only and read per request, never NEXT_PUBLIC: the browser tests start a second server on the same build
+// with the flag on, and turning the provider on in a hosted environment needs no rebuild. Off unless set to "true".
+export function googleSignInEnabled(
+  source: Record<string, string | undefined> = process.env,
+): boolean {
+  return parseSource(googleSignInSchema, {
+    GOOGLE_SIGN_IN_ENABLED: source.GOOGLE_SIGN_IN_ENABLED,
+  }).GOOGLE_SIGN_IN_ENABLED;
+}

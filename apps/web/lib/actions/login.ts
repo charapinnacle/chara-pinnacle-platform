@@ -7,6 +7,7 @@ import {
   isRateLimit,
   logAuthFailure,
   RATE_LIMITED,
+  SUSPENDED,
 } from "@/lib/auth-errors";
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { getCurrentUser } from "@/lib/dal/session";
@@ -23,7 +24,6 @@ import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 
 type LoginResult = { errors?: FieldErrors; message?: string; unconfirmed?: true };
 
-const SUSPENDED = "This account is suspended. See the email we sent you for the reasons.";
 const UNCONFIRMED = "Confirm your email address before you log in.";
 
 function refusal(error: AuthError): LoginResult {

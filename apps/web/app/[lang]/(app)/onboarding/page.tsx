@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { ChooseKindForm } from "@/components/consent/choose-kind-form";
 import { CommitKind } from "@/components/consent/commit-kind";
 import { ConsentForm } from "@/components/consent/consent-form";
 import { AuthCard } from "@/components/layout/auth-card";
 import { commitAccountKind } from "@/lib/actions/consents";
-import { getOnboardingDocuments } from "@/lib/dal/legal";
+import { getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
 import { requireUser } from "@/lib/dal/session";
 
 export const metadata: Metadata = { title: "Welcome — CHARA" };
@@ -22,6 +23,18 @@ export default async function OnboardingPage({
         title={`Your account type is ${kindLabel[user.accountKind]}`}
         description="This cannot be changed later."
       />
+    );
+  }
+
+  if (!user.intendedAccountKind) {
+    const form = await getSignUpForm();
+    return (
+      <AuthCard
+        title="Choose your account type"
+        description="Tell us how you will use CHARA and accept the documents for it to finish creating your account."
+      >
+        <ChooseKindForm documents={form.documents} attestationWording={form.attestationWording} />
+      </AuthCard>
     );
   }
 
