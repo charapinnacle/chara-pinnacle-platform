@@ -1,4 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
+import Link from "next/link";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { cn } from "@/lib/utils";
 
@@ -15,17 +16,15 @@ const textLinkVariants = cva(
   },
 );
 
-type TextLinkProps = React.ComponentProps<"a"> & VariantProps<typeof textLinkVariants>;
+type TextLinkProps = React.ComponentProps<typeof Link> & VariantProps<typeof textLinkVariants>;
 
 export function TextLink({ tone, className, ...props }: TextLinkProps) {
-  return <a className={cn(textLinkVariants({ tone }), className)} {...props} />;
+  return <Link className={cn(textLinkVariants({ tone }), className)} {...props} />;
 }
 
-type LegalLinkProps = {
+type LegalLinkProps = Pick<TextLinkProps, "className" | "children"> & {
   slug: string;
   newTabLabel: string;
-  className?: string;
-  children: React.ReactNode;
 };
 
 export function LegalLink({ slug, newTabLabel, className, children }: LegalLinkProps) {
@@ -34,6 +33,7 @@ export function LegalLink({ slug, newTabLabel, className, children }: LegalLinkP
       href={`/${defaultLocale}/legal/${slug}`}
       target="_blank"
       rel="noopener noreferrer"
+      prefetch={false}
       className={className}
     >
       {children}
