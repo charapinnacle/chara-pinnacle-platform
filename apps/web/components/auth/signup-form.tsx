@@ -1,18 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { InputField } from "@/components/forms/form-field";
+import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
-import { toast } from "@/components/feedback/toast-store";
 import { Button } from "@/components/ui/button";
 import { signUp } from "@/lib/actions/auth";
 import { formatDate } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { isRedirectError } from "@/lib/redirect-error";
 import { AGE_ATTESTATION_SLUG, type LegalDocumentSummary } from "@/lib/validation/consents";
 import {
   signUpFormSchema,
@@ -54,15 +52,13 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
     defaultValues: { email: "", password: "", accepted: {} },
     shouldFocusError: false,
   });
-  const { control, formState, handleSubmit, setError, resetField, setValue } = form;
+  const { control, formState, handleSubmit, setValue } = form;
   const kind = useWatch({ control, name: "kind" });
   const shown = kind ? documents[kind] : [];
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const inFlight = useRef(false);
-
-  useEffect(() => {
-    if (formState.submitCount > 0 && summaryRef.current) summaryRef.current.focus();
-  }, [formState.submitCount]);
+  const { summaryRef, submit } = useServerFormSubmit(form, {
+    failureTitle: "Could not create the account",
+    clearOnFailure: "password",
+  });
 
   const errors = formState.errors;
   const items: ErrorSummaryItem[] = [
@@ -88,35 +84,17 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
     errors.root?.server && { key: "root", message: String(errors.root.server.message) },
   ].filter((item): item is ErrorSummaryItem => Boolean(item));
 
-  async function onSubmit(values: SignUpFormOutput) {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    try {
-      const result = await signUp({
+  function onSubmit(values: SignUpFormOutput) {
+    return submit(() =>
+      signUp({
         kind: values.kind,
         email: values.email,
         password: values.password,
         consents: shown
           .filter((document) => values.accepted[document.slug])
           .map((document) => ({ purpose: document.slug, version: document.version })),
-      });
-      if (!result) return;
-      resetField("password");
-      for (const [path, message] of Object.entries(result.errors ?? {})) {
-        setError(path as FieldPath<SignUpFormInput>, { message });
-      }
-      if (result.message) setError("root.server", { message: result.message });
-    } catch (error) {
-      if (isRedirectError(error)) return;
-      resetField("password");
-      toast({
-        variant: "error",
-        title: "Could not create the account",
-        description: "Check your connection and try again.",
-      });
-    } finally {
-      inFlight.current = false;
-    }
+      }),
+    );
   }
 
   return (

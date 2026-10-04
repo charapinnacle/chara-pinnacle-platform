@@ -147,6 +147,9 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
+"recovery_link_is_fresh":
+{ Args: { "p_token_hash": string }; Returns: boolean
+                           },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
                            },

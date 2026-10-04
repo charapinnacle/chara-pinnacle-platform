@@ -18,6 +18,13 @@ function value(sectionName: string, key: string): string | undefined {
   return new RegExp(`^${key}\\s*=\\s*(.+)$`, "m").exec(section(sectionName))?.[1].trim();
 }
 
+function template(name: string): string {
+  return readFileSync(
+    path.join(import.meta.dirname, `../../../../supabase/templates/${name}`),
+    "utf8",
+  );
+}
+
 describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
   it("requires 12-character passwords and a confirmed email", () => {
     expect(value("auth", "minimum_password_length")).toBe("12");
@@ -44,5 +51,44 @@ describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
 
   it("limits sign-up and sign-in requests to 30 per five minutes per address", () => {
     expect(value("auth.rate_limit", "sign_in_sign_ups")).toBe("30");
+  });
+});
+
+describe("Auth configuration that FR-A3 relies on", () => {
+  it("issues 30-minute access tokens, rotates refresh tokens and ends a session after 7 days", () => {
+    expect(value("auth", "jwt_expiry")).toBe("1800");
+    expect(value("auth", "enable_refresh_token_rotation")).toBe("true");
+    expect(value("auth.sessions", "timebox")).toBe('"168h"');
+  });
+
+  it("requires a recent login to change a password", () => {
+    expect(value("auth.email", "secure_password_change")).toBe("true");
+  });
+
+  it("feeds failed password checks to the database hook", () => {
+    expect(value("auth.hook.password_verification_attempt", "enabled")).toBe("true");
+    expect(value("auth.hook.password_verification_attempt", "uri")).toBe(
+      '"pg-functions://postgres/private/hook_password_verification_attempt"',
+    );
+  });
+
+  it("sends the recovery link to the reset page with the token hash and no password", () => {
+    expect(value("auth.email.template.recovery", "content_path")).toBe(
+      '"./supabase/templates/recovery.html"',
+    );
+    const recovery = template("recovery.html");
+    expect(recovery).toContain("{{ .SiteURL }}/en/reset-password?token_hash={{ .TokenHash }}");
+    expect(recovery).toContain("1 hour");
+    expect(recovery).not.toMatch(/\{\{ \.(Password|Token) \}\}/);
+  });
+
+  it("sends a password-changed notice that carries no link to act on and no password", () => {
+    expect(value("auth.email.notification.password_changed", "enabled")).toBe("true");
+    expect(value("auth.email.notification.password_changed", "content_path")).toBe(
+      '"./supabase/templates/password_changed.html"',
+    );
+    const notice = template("password_changed.html");
+    expect(notice).not.toContain("token_hash");
+    expect(notice).not.toMatch(/\{\{ \.(Password|Token|TokenHash|ConfirmationURL) \}\}/);
   });
 });
