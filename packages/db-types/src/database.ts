@@ -89,6 +89,81 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"organization_invitations": {
+                  Row: {
+                    "accepted_at": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"token_hash": string
+                  }
+                  Insert: {
+                    "accepted_at"?: string | null,"created_at"?: string,"email": string,"expires_at"?: string,"id"?: string,"invited_by"?: string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"token_hash": string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"created_at"?: string,"email"?: string,"expires_at"?: string,"id"?: string,"invited_by"?: string | null,"organization_id"?: string,"role"?: Database["public"]['Enums']["member_role"],"token_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_invitations_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_invitations_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"organization_members": {
+                  Row: {
+                    "accepted_at": string | null,"invited_by": string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"user_id": string
+                  }
+                  Insert: {
+                    "accepted_at"?: string | null,"invited_by"?: string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"user_id": string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"invited_by"?: string | null,"organization_id"?: string,"role"?: Database["public"]['Enums']["member_role"],"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_members_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_members_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_members_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"organizations": {
+                  Row: {
+                    "based_in_country": string,"created_at": string,"display_name": string,"id": string,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website": string | null
+                  }
+                  Insert: {
+                    "based_in_country": string,"created_at"?: string,"display_name": string,"id"?: string,"legal_name": string,"slug": string,"status"?: Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website"?: string | null
+                  }
+                  Update: {
+                    "based_in_country"?: string,"created_at"?: string,"display_name"?: string,"id"?: string,"legal_name"?: string,"slug"?: string,"status"?: Database["public"]['Enums']["organization_status"],"type"?: Database["public"]['Enums']["organization_type"],"website"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organizations_based_in_country_fkey"
+      columns: ["based_in_country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    }
+                  ]
                 },"platform_staff": {
                   Row: {
                     "granted_at": string,"granted_by": string | null,"id": number,"revoked_at": string | null,"role": Database["public"]['Enums']["platform_role"],"user_id": string
@@ -142,6 +217,18 @@ isOneToOne: false
             "accept_consents":
 { Args: { "p_consents": Json }; Returns: undefined
                            },
+"accept_invitation":
+{ Args: { "p_token": string }; Returns: string
+                           },
+"change_member_role":
+{ Args: { "p_org": string,"p_role": Database["public"]['Enums']["member_role"],"p_user": string }; Returns: undefined
+                           },
+"create_organization":
+{ Args: { "p_based_in_country": string,"p_display_name": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: string
+                           },
+"invite_member":
+{ Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["member_role"] }; Returns: string
+                           },
 "pending_reconsents":
 { Args: Record<PropertyKey, never>; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
@@ -155,6 +242,9 @@ isOneToOne: false
 "recovery_link_is_fresh":
 { Args: { "p_token_hash": string }; Returns: boolean
                            },
+"remove_member":
+{ Args: { "p_org": string,"p_user": string }; Returns: undefined
+                           },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
                            },
@@ -163,12 +253,15 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
+"transfer_ownership":
+{ Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
+                           },
 "withdraw_consent":
 { Args: { "p_purpose": string }; Returns: undefined
                            }
           }
           Enums: {
-            "account_kind": "worker"|"company","consent_action": "granted"|"withdrawn","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending"
+            "account_kind": "worker"|"company","consent_action": "granted"|"withdrawn","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -284,7 +377,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "account_kind": ["worker", "company"],"consent_action": ["granted", "withdrawn"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"]
+            "account_kind": ["worker", "company"],"consent_action": ["granted", "withdrawn"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"]
           }
         }
 } as const
