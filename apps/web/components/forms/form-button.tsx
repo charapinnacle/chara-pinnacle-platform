@@ -1,24 +1,49 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type FormButtonProps = Omit<React.ComponentProps<typeof Button>, "size"> & {
-  busy?: boolean;
-};
+const formButtonVariants = cva(
+  "font-semibold shadow-xs transition-[background-color,box-shadow] hover:shadow-sm focus-visible:ring-0",
+  {
+    variants: {
+      variant: {
+        primary: "w-full hover:bg-primary-hover active:bg-primary-active",
+        secondary:
+          "border-input bg-card text-secondary-foreground hover:bg-secondary active:bg-muted",
+      },
+      busy: {
+        true: "disabled:pointer-events-auto disabled:cursor-progress disabled:opacity-100",
+        false: "disabled:opacity-60",
+      },
+    },
+    compoundVariants: [
+      { variant: "primary", busy: true, className: "disabled:bg-primary-active" },
+      { variant: "secondary", busy: true, className: "disabled:bg-secondary" },
+    ],
+    defaultVariants: { variant: "primary", busy: false },
+  },
+);
 
-export function FormButton({ busy = false, disabled, className, children, ...props }: FormButtonProps) {
+type FormButtonProps = Omit<React.ComponentProps<typeof Button>, "size"> &
+  Pick<VariantProps<typeof formButtonVariants>, "variant"> & {
+    busy?: boolean;
+  };
+
+export function FormButton({
+  variant,
+  busy = false,
+  disabled,
+  className,
+  children,
+  ...props
+}: FormButtonProps) {
   return (
     <Button
       size="lg"
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={cn(
-        "w-full font-semibold shadow-xs transition-[background-color,box-shadow] hover:bg-primary-hover hover:shadow-sm focus-visible:ring-0 active:bg-primary-active",
-        busy
-          ? "disabled:pointer-events-auto disabled:cursor-progress disabled:bg-primary-active disabled:opacity-100"
-          : "disabled:opacity-60",
-        className,
-      )}
+      className={cn(formButtonVariants({ variant, busy }), className)}
       {...props}
     >
       {busy ? <LoaderCircle aria-hidden className="size-4" /> : null}

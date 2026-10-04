@@ -44,6 +44,8 @@ describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
     ["primary-foreground", "primary-hover"],
     ["primary-foreground", "primary-active"],
     ["secondary-foreground", "secondary"],
+    ["secondary-foreground", "card"],
+    ["secondary-foreground", "muted"],
     ["accent-foreground", "accent"],
     ["muted-foreground", "background"],
     ["muted-foreground", "card"],
