@@ -78,18 +78,17 @@ describe("parseServerEnv", () => {
 });
 
 describe("googleSignInEnabled", () => {
-  it("is off unless the flag is exactly true", () => {
-    expect(googleSignInEnabled({})).toBe(false);
-    expect(googleSignInEnabled({ GOOGLE_SIGN_IN_ENABLED: "" })).toBe(false);
-    expect(googleSignInEnabled({ GOOGLE_SIGN_IN_ENABLED: "false" })).toBe(false);
-    expect(googleSignInEnabled({ GOOGLE_SIGN_IN_ENABLED: "true" })).toBe(true);
-  });
-
-  it("rejects any other value instead of guessing", () => {
-    for (const value of ["1", "yes", "TRUE", "on"]) {
-      expect(() => googleSignInEnabled({ GOOGLE_SIGN_IN_ENABLED: value })).toThrowError(
-        "Invalid environment variables: GOOGLE_SIGN_IN_ENABLED",
-      );
-    }
+  it.each([
+    [undefined, false],
+    ["", false],
+    ["false", false],
+    ["true", true],
+    ["TRUE", false],
+    ["1", false],
+    ["yes", false],
+  ])("reads %j as %j", (value, expected) => {
+    vi.stubEnv("GOOGLE_SIGN_IN_ENABLED", value);
+    expect(googleSignInEnabled()).toBe(expected);
+    vi.unstubAllEnvs();
   });
 });

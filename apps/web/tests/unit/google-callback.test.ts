@@ -133,4 +133,15 @@ describe("auth callback", () => {
     expect(signOutMock).toHaveBeenCalledWith({ scope: "local" });
     expect(location(response)).toBe("http://localhost:3100/en/login?error=suspended");
   });
+
+  it("logs each refusal as its code alone, never the text or the user", async () => {
+    const logged = vi.spyOn(console, "error");
+    await callback("?error=access_denied&error_description=jane%40example.test+denied");
+    currentUserMock.mockResolvedValue({ accountKind: "worker", suspended: true, email: "jane@example.test" });
+    await callback(`?code=${CODE}`);
+    expect(logged.mock.calls).toEqual([
+      ["Google sign-in refused", { code: "cancelled" }],
+      ["Google sign-in refused", { code: "suspended" }],
+    ]);
+  });
 });

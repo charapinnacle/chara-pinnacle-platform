@@ -17,7 +17,9 @@ function to(path: string) {
   return NextResponse.redirect(new URL(path, env.NEXT_PUBLIC_SITE_URL));
 }
 
+// One fixed-shape line per refusal, the code only: failed and cancelled sign-ins are counted from these.
 function refused(error: GoogleErrorCode) {
+  console.error("Google sign-in refused", { code: error });
   return to(`/${defaultLocale}/login?error=${error}`);
 }
 
