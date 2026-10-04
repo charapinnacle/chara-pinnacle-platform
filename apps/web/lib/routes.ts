@@ -2,9 +2,19 @@ import type { Database } from "@chara-pinnacle/db-types";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 
+export const dashboardSegments = { worker: "worker", employer: "company" } as const satisfies Record<
+  string,
+  AccountKind
+>;
+
+export type DashboardSegment = keyof typeof dashboardSegments;
+
+export function isDashboardSegment(value: string): value is DashboardSegment {
+  return Object.hasOwn(dashboardSegments, value);
+}
+
 // A user whose account kind is not committed yet still has the onboarding step to finish.
 export function homePath(lang: string, accountKind: AccountKind | null): string {
-  if (accountKind === "worker") return `/${lang}/dashboard/worker`;
-  if (accountKind === "company") return `/${lang}/dashboard/employer`;
-  return `/${lang}/onboarding`;
+  const segment = Object.entries(dashboardSegments).find(([, kind]) => kind === accountKind)?.[0];
+  return segment ? `/${lang}/dashboard/${segment}` : `/${lang}/onboarding`;
 }
