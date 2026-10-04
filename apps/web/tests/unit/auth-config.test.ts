@@ -53,6 +53,7 @@ describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
     expect(Number(value("auth.rate_limit", "sign_in_sign_ups"))).toBeGreaterThanOrEqual(3000);
     expect(Number(value("auth.rate_limit", "token_refresh"))).toBeGreaterThanOrEqual(5000);
     expect(Number(value("auth.rate_limit", "email_sent"))).toBeGreaterThanOrEqual(3000);
+    expect(Number(value("auth.rate_limit", "token_verifications"))).toBeGreaterThanOrEqual(3000);
   });
 });
 
