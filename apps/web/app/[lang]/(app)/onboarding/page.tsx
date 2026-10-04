@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ChooseKindForm } from "@/components/consent/choose-kind-form";
 import { CommitKind } from "@/components/consent/commit-kind";
 import { ConsentForm } from "@/components/consent/consent-form";
 import { AuthCard } from "@/components/layout/auth-card";
+import { OrganizationForm } from "@/components/organization/organization-form";
 import { commitAccountKind } from "@/lib/actions/consents";
 import { getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
+import { getMyOrganization } from "@/lib/dal/organizations";
+import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { requireUser } from "@/lib/dal/session";
+import { homePath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Welcome — CHARA" };
 
@@ -16,6 +21,19 @@ export default async function OnboardingPage({
 }: PageProps<"/[lang]/onboarding">) {
   const { lang } = await params;
   const user = await requireUser(lang);
+
+  if (user.accountKind === "company") {
+    if (await getMyOrganization(user.id)) redirect(homePath(lang, "company"));
+    const [countries, industries] = await Promise.all([getCountries(), getIndustries()]);
+    return (
+      <AuthCard
+        title="Your account type is Employer"
+        description="This cannot be changed later. Tell us about your company to finish setting up."
+      >
+        <OrganizationForm countries={countries} industries={industries} />
+      </AuthCard>
+    );
+  }
 
   if (user.accountKind) {
     return (
