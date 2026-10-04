@@ -1,5 +1,5 @@
 begin;
-select plan(42);
+select plan(51);
 
 \set u '00000000-0000-0000-0000-00000000d001'
 \set v '00000000-0000-0000-0000-00000000d002'
@@ -20,7 +20,8 @@ language sql as $$
   select count(*) from audit.log where entity_id = p_user::text and action = p_action
 $$;
 
-select coalesce((select failures from stats.login_failures_daily where day = (now() at time zone 'utc')::date), 0) as failures_before \gset
+select coalesce((select sum(failures) from stats.login_attempts_daily where day = (now() at time zone 'utc')::date), 0) as failures_before \gset
+select coalesce((select sum(successes) from stats.login_attempts_daily where day = (now() at time zone 'utc')::date), 0) as successes_before \gset
 
 -- Settings
 select results_eq(
@@ -58,8 +59,8 @@ select ok(
   not has_table_privilege('anon', 'private.login_failures', 'select, insert, update, delete')
   and not has_table_privilege('authenticated', 'private.login_failures', 'select, insert, update, delete')
   and not has_table_privilege('service_role', 'private.login_failures', 'select, insert, update, delete')
-  and not has_table_privilege('authenticated', 'stats.login_failures_daily', 'select, insert, update, delete')
-  and not has_table_privilege('service_role', 'stats.login_failures_daily', 'select, insert, update, delete'),
+  and not has_table_privilege('authenticated', 'stats.login_attempts_daily', 'select, insert, update, delete')
+  and not has_table_privilege('service_role', 'stats.login_attempts_daily', 'select, insert, update, delete'),
   'the failure counters have no API grants'
 );
 
@@ -140,9 +141,24 @@ update private.settings set value = '5' where key = 'login_failure_threshold';
 
 -- KPI counter: every failed check above is counted for its UTC day (16 calls so far)
 select is(
-  (select failures from stats.login_failures_daily where day = (now() at time zone 'utc')::date) - :failures_before,
-  16,
+  (select sum(failures) from stats.login_attempts_daily where day = (now() at time zone 'utc')::date) - :failures_before,
+  16::bigint,
   'failed checks are counted per day'
+);
+select is(
+  (select sum(successes) from stats.login_attempts_daily where day = (now() at time zone 'utc')::date) - :successes_before,
+  2::bigint,
+  'correct checks are counted per day'
+);
+select is(
+  (select count(*) from stats.login_attempts_daily
+   where shard = (hashtext(:'u'::text) & 15) and day = (now() at time zone 'utc')::date and failures >= 1),
+  1::bigint,
+  'an account always counts on the same shard'
+);
+select ok(
+  (select count(*) from stats.login_attempts_daily where day = (now() at time zone 'utc')::date) between 1 and 16,
+  'a day has at most 16 rows'
 );
 
 -- record_as leaves the caller's identity as it was
@@ -204,6 +220,40 @@ select is(
   (select proconfig from pg_proc where oid = 'public.recovery_link_is_fresh(text)'::regprocedure),
   array['search_path=""'],
   'the link check sets search_path to empty'
+);
+
+-- The 1-hour lifetime is enforced by removing recovery tokens that old, which Auth would otherwise still accept
+delete from auth.one_time_tokens where token_type = 'recovery_token';
+insert into auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at)
+values
+  (gen_random_uuid(), :'u', 'recovery_token', 'keep-hash', 'login-u@example.test', (now() at time zone 'utc') - interval '59 minutes'),
+  (gen_random_uuid(), :'v', 'recovery_token', 'drop-hash', 'login-v@example.test', (now() at time zone 'utc') - interval '61 minutes');
+insert into auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at)
+values (gen_random_uuid(), :'v', 'confirmation_token', 'old-confirm-hash', 'login-v@example.test', (now() at time zone 'utc') - interval '5 hours');
+
+select is(private.expire_recovery_tokens(), 1::bigint, 'one recovery token older than an hour is removed');
+select is(
+  (select array_agg(token_hash order by token_hash) from auth.one_time_tokens where user_id in (:'u', :'v')),
+  array['confirm-hash', 'keep-hash', 'old-confirm-hash'],
+  'a younger recovery token and the sign-up confirmation tokens stay'
+);
+select is(private.expire_recovery_tokens(), 0::bigint, 'a second run removes nothing');
+select is(
+  (select count(*) from cron.job where jobname = 'expire-recovery-tokens' and schedule = '* * * * *'
+     and command = 'select private.expire_recovery_tokens()'),
+  1::bigint,
+  'the removal runs every minute'
+);
+select ok(
+  not has_function_privilege('anon', 'private.expire_recovery_tokens()', 'execute')
+  and not has_function_privilege('authenticated', 'private.expire_recovery_tokens()', 'execute')
+  and not has_function_privilege('service_role', 'private.expire_recovery_tokens()', 'execute'),
+  'no API role can run the removal'
+);
+select is(
+  (select proconfig from pg_proc where oid = 'private.expire_recovery_tokens()'::regprocedure),
+  array['search_path=""'],
+  'the removal sets search_path to empty'
 );
 
 select * from finish();

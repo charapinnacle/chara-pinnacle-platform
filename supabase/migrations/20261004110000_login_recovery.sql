@@ -49,19 +49,23 @@ alter table private.login_failures enable row level security;
 alter table private.login_failures force row level security;
 revoke all on table private.login_failures from public, anon, authenticated, service_role;
 
--- Failed password checks per day, the numerator of the login success rate (the denominator is Auth's own
--- audit_log_entries rows with action 'login').
-create table stats.login_failures_daily (
-  day date primary key,
-  failures integer not null check (failures > 0)
+-- Password checks per day, the source of the login success rate. The counts are spread over 16 rows per day, chosen by
+-- the account, so concurrent checks (credential stuffing) do not queue on one row lock inside the Auth request;
+-- the KPI sums them.
+create table stats.login_attempts_daily (
+  day date not null,
+  shard smallint not null check (shard between 0 and 15),
+  successes integer not null default 0 check (successes >= 0),
+  failures integer not null default 0 check (failures >= 0),
+  primary key (day, shard)
 );
 
-comment on table stats.login_failures_daily is
-  'Failed password checks per UTC day (FR-A3 KPI: login success rate).';
+comment on table stats.login_attempts_daily is
+  'Correct and failed password checks per UTC day and shard (FR-A3 KPI: login success rate = sum(successes) / sum(successes + failures)). Existing, usable accounts only: Auth does not call the hook for an unknown address, a banned or an unconfirmed account, and a correct password for an unconfirmed account is still counted as correct.';
 
-alter table stats.login_failures_daily enable row level security;
-alter table stats.login_failures_daily force row level security;
-revoke all on table stats.login_failures_daily from public, anon, authenticated, service_role;
+alter table stats.login_attempts_daily enable row level security;
+alter table stats.login_attempts_daily force row level security;
+revoke all on table stats.login_attempts_daily from public, anon, authenticated, service_role;
 
 create function private.hook_password_verification_attempt(event jsonb) returns jsonb
 language plpgsql
@@ -76,6 +80,9 @@ declare
   v_audited boolean;
 begin
   if (event ->> 'valid')::boolean then
+    insert into stats.login_attempts_daily as d (day, shard, successes)
+    values ((now() at time zone 'utc')::date, (hashtext(v_user::text) & 15)::smallint, 1)
+    on conflict (day, shard) do update set successes = d.successes + 1;
     return jsonb_build_object('decision', 'continue');
   end if;
 
@@ -89,9 +96,9 @@ begin
     audited = f.audited and f.window_started_at > now() - make_interval(mins => v_window)
   returning f.failures, f.audited into v_failures, v_audited;
 
-  insert into stats.login_failures_daily as d (day, failures)
-  values ((now() at time zone 'utc')::date, 1)
-  on conflict (day) do update set failures = d.failures + 1;
+  insert into stats.login_attempts_daily as d (day, shard, failures)
+  values ((now() at time zone 'utc')::date, (hashtext(v_user::text) & 15)::smallint, 1)
+  on conflict (day, shard) do update set failures = d.failures + 1;
 
   if v_failures >= v_threshold and not v_audited then
     perform private.record_as(
@@ -150,3 +157,28 @@ $$;
 
 revoke all on function public.recovery_link_is_fresh(text) from public, anon, authenticated, service_role;
 grant execute on function public.recovery_link_is_fresh(text) to anon, authenticated;
+
+-- Auth keeps a recovery token for otp_expiry (24 hours, the sign-up link lifetime) and accepts it at its verify endpoint
+-- whatever the web tier thinks, so the 1-hour lifetime of FR-A3 is enforced where Auth reads the token: a minute job
+-- removes recovery tokens older than recovery_link_minutes. recovery_link_is_fresh stays as the exact, immediate check.
+create function private.expire_recovery_tokens() returns bigint
+language sql
+security definer
+set search_path = ''
+as $$
+  with expired as (
+    delete from auth.one_time_tokens t
+    where t.token_type = 'recovery_token'
+      and (t.created_at at time zone 'utc') <= now() - make_interval(
+        mins => (select (value #>> '{}')::integer from private.settings where key = 'recovery_link_minutes')
+      )
+    returning 1
+  )
+  select count(*) from expired
+$$;
+
+revoke all on function private.expire_recovery_tokens() from public, anon, authenticated, service_role;
+
+create extension pg_cron with schema pg_catalog;
+
+select cron.schedule('expire-recovery-tokens', '* * * * *', 'select private.expire_recovery_tokens()');
