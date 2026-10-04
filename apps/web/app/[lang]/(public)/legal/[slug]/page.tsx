@@ -10,12 +10,18 @@ export default async function LegalPage({
   const document = await getLegalDocument(slug);
   if (!document) notFound();
   return (
-    <PageContainer className="grid max-w-3xl gap-4 py-10">
-      <h1 className="text-3xl font-semibold tracking-tight">{document.title}</h1>
-      <p className="text-sm text-muted-foreground">
-        Version {document.version}, published {formatDate(document.publishedAt)}
-      </p>
-      <div className="whitespace-pre-line">{document.body}</div>
+    <PageContainer className="py-10 sm:py-16">
+      <article className="mx-auto grid max-w-[65ch] gap-8">
+        <div className="grid gap-2 border-b pb-6">
+          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
+            {document.title}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Version {document.version}, published {formatDate(document.publishedAt)}
+          </p>
+        </div>
+        <div className="text-base leading-7 whitespace-pre-line">{document.body}</div>
+      </article>
     </PageContainer>
   );
 }
