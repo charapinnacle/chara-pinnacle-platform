@@ -2,6 +2,14 @@
 
 import { isAuthWeakPasswordError, type AuthError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import {
+  GENERIC_FAILURE,
+  isAddressThrottle,
+  isRateLimit,
+  logAuthFailure,
+  RATE_LIMITED,
+  weakPasswordMessage,
+} from "@/lib/auth-errors";
 import { getSignupDocuments } from "@/lib/dal/legal";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/server";
@@ -21,15 +29,6 @@ import {
 
 type AuthActionResult = { errors?: FieldErrors; message?: string };
 type ResendResult = AuthActionResult & { sent?: true };
-
-const RATE_LIMITED = "Too many attempts. Try again in a few minutes.";
-const BREACHED_PASSWORD =
-  "This password has appeared in a data breach. Choose another one.";
-const GENERIC_FAILURE = "We could not complete this request. Try again.";
-
-function logAuthFailure(action: string, error: AuthError): void {
-  console.error(`${action} failed`, { code: error.code, status: error.status });
-}
 
 export async function signUp(
   input: SignUpInput,
@@ -75,30 +74,9 @@ export async function signUp(
   redirect(`/${defaultLocale}/verify-email`);
 }
 
-// Auth answers the per-address minimum interval and the hourly email cap with one error code.
-function isAddressThrottle(error: AuthError): boolean {
-  return (
-    error.code === "over_email_send_rate_limit" &&
-    error.message.includes("you can only request this after")
-  );
-}
-
-function isRateLimit(error: AuthError): boolean {
-  return (
-    error.code === "over_request_rate_limit" ||
-    (error.code === "over_email_send_rate_limit" && !isAddressThrottle(error))
-  );
-}
-
 function refusal(error: AuthError): AuthActionResult {
   if (isAuthWeakPasswordError(error)) {
-    return {
-      errors: {
-        password: error.reasons.includes("pwned")
-          ? BREACHED_PASSWORD
-          : "Choose a stronger password.",
-      },
-    };
+    return { errors: { password: weakPasswordMessage(error) } };
   }
   if (isRateLimit(error)) return { message: RATE_LIMITED };
   if (error.code === "email_address_invalid") {

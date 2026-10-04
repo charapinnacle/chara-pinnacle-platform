@@ -259,6 +259,6 @@ test.describe("onboarding commit", () => {
 
   test("an anonymous visitor to onboarding is sent to log in", async ({ page }) => {
     await page.goto("/en/onboarding");
-    await expect(page).toHaveURL(/\/en\/login$/);
+    await expect(page).toHaveURL(/\/en\/login\?next=%2Fen%2Fonboarding$/);
   });
 });

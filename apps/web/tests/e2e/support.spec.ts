@@ -53,7 +53,7 @@ test("an auth email reaches Mailpit and its link is extracted", async ({
   const message = await waitForMessage(user.email);
   const links = extractLinks(message);
 
-  expect(links.some((link) => link.includes("/auth/v1/verify?token="))).toBe(
+  expect(links.some((link) => link.includes("/en/reset-password?token_hash="))).toBe(
     true,
   );
   expect(links.every((link) => !link.includes("&amp;"))).toBe(true);
