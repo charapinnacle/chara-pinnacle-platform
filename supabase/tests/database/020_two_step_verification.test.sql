@@ -78,7 +78,7 @@ select is(pg_temp.call_as(:'own2', 'authenticated', format($$select public.remov
 
 -- accept_invitation works at aal1: the invited person has not enrolled yet
 select is(pg_temp.call_as(:'own2', 'authenticated',
-  format($$select set_config('t.tok', public.invite_member(%L, 'bea@example.test', 'member'), true)$$, current_setting('t.b'))),
+  format($$select set_config('t.tok', (select token from public.invite_member(%L, 'bea@example.test', 'member')), true)$$, current_setting('t.b'))),
   'ok', 'the invitation of a person who has not enrolled yet is made at aal2');
 select is(pg_temp.call_as(:'inv', 'authenticated', $$select public.accept_invitation(current_setting('t.tok'))$$, 'aal1'),
   'ok', 'accept_invitation works at aal1');
@@ -116,7 +116,7 @@ select is(pg_temp.call_as(null, 'anon', format($$select * from public.list_organ
   '42501|permission denied for function list_organization_members|', 'the anonymous caller is refused at EXECUTE');
 select is(
   (select proargnames::text from pg_proc where oid = 'public.list_organization_members(uuid, integer, uuid)'::regprocedure),
-  '{p_org,p_limit,p_after_user,user_id,display_name,email,role,accepted_at,mfa_enrolled}', 'no factor id, secret or name is returned'
+  '{p_org,p_limit,p_after_user,user_id,display_name,email,role,accepted_at,mfa_enrolled}', 'no factor id or secret is returned; the name and address are the only added columns'
 );
 select is(
   pg_temp.val_as(:'own1', 'aal2', format($$select pg_typeof(mfa_enrolled)::text from public.list_organization_members(%L) limit 1$$, current_setting('t.a'))),

@@ -278,7 +278,14 @@ isOneToOne: false
             }[]
                            },
 "invite_member":
-{ Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["member_role"] }; Returns: string
+{ Args: { "p_email": string,"p_org": string,"p_role": string }; Returns: {
+              "expires_at": string,"token": string
+            }[]
+                           },
+"list_organization_invitations":
+{ Args: { "p_limit"?: number,"p_org": string }; Returns: {
+              "email": string,"expires_at": string,"id": string,"is_open": boolean,"role": Database["public"]['Enums']["member_role"]
+            }[]
                            },
 "list_organization_members":
 { Args: { "p_after_user"?: string,"p_limit"?: number,"p_org": string }; Returns: {

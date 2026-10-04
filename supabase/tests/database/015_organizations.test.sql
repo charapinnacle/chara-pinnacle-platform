@@ -90,7 +90,7 @@ select ok(
   (select bool_and(prosecdef and proconfig = array['search_path=""'])
    from pg_proc where oid in (
      'public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure,
-     'public.invite_member(uuid, text, public.member_role)'::regprocedure,
+     'public.invite_member(uuid, text, text)'::regprocedure,
      'public.accept_invitation(text)'::regprocedure,
      'public.change_member_role(uuid, uuid, public.member_role)'::regprocedure,
      'public.remove_member(uuid, uuid)'::regprocedure,
@@ -100,7 +100,7 @@ select ok(
     cross join unnest(array['anon', 'service_role']) r (rolname)
     where p.oid in (
       'public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure,
-      'public.invite_member(uuid, text, public.member_role)'::regprocedure,
+      'public.invite_member(uuid, text, text)'::regprocedure,
       'public.accept_invitation(text)'::regprocedure,
       'public.change_member_role(uuid, uuid, public.member_role)'::regprocedure,
       'public.remove_member(uuid, uuid)'::regprocedure,

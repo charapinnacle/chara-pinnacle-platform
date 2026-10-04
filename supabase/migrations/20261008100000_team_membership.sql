@@ -38,18 +38,6 @@ $$;
 revoke all on function private.org_limit(uuid, text) from public, anon, authenticated, service_role;
 revoke all on function private.assert_within_limit(uuid, text, integer) from public, anon, authenticated, service_role;
 
--- Accepted members including the owner plus the invitations that can still be accepted: what the member limit counts.
-create function private.team_size(p_org uuid) returns integer
-language sql
-stable
-set search_path = ''
-as $$
-  select (select count(*) from public.organization_members m where m.organization_id = p_org and m.accepted_at is not null)::integer
-       + (select count(*) from public.organization_invitations i
-          where i.organization_id = p_org and i.accepted_at is null and i.expires_at > now())::integer
-$$;
-
-revoke all on function private.team_size(uuid) from public, anon, authenticated, service_role;
 
 -- The invitations per hour are counted in the audit log, which keeps a row for an invitation that a re-invitation has
 -- replaced; the partial index keeps the count to the rows of one organization within the hour.
@@ -75,12 +63,31 @@ $$;
 
 revoke all on function private.invitation_is_open(public.organization_invitations) from public, anon, authenticated, service_role;
 
+-- Accepted members including the owner plus the invitations that can still be accepted: what the member limit counts.
+-- An invitation that its inviter's removal has ended no longer holds a seat.
+create function private.team_size(p_org uuid) returns integer
+language sql
+stable
+set search_path = ''
+as $$
+  select (select count(*) from public.organization_members m where m.organization_id = p_org and m.accepted_at is not null)::integer
+       + (select count(*) from public.organization_invitations i
+          where i.organization_id = p_org and private.invitation_is_open(i))::integer
+$$;
+
+revoke all on function private.team_size(uuid) from public, anon, authenticated, service_role;
+
 -- Replaces the version of the organizations migration: at most invitations_per_hour_max invitations per organization
 -- and hour (CHARA_RATE_LIMITED, counting re-invitations), and the member limit (CHARA_LIMIT_REACHED, detail 'members').
 -- The earlier invitation of the address is removed before the count, so a re-invitation counts once, and the removal is
 -- undone when the limit refuses the call. The organization row is locked by assert_org_manager until commit, so
--- concurrent invitations of one organization cannot pass the limit together.
-create or replace function public.invite_member(p_org uuid, p_email text, p_role public.member_role) returns text
+-- concurrent invitations of one organization cannot pass the limit together. The role is taken as text so that any
+-- role but 'admin' and 'member' answers CHARA_INVALID_INPUT (FR-A5 AC2) instead of the enum's own error, and the
+-- expiry is returned with the token, which is shown once.
+drop function public.invite_member(uuid, text, public.member_role);
+
+create function public.invite_member(p_org uuid, p_email text, p_role text)
+returns table (token text, expires_at timestamptz)
 language plpgsql
 security definer
 set search_path = ''
@@ -90,10 +97,11 @@ declare
   v_email text := lower(btrim(p_email));
   v_token text;
   v_id uuid;
+  v_expires timestamptz;
 begin
   perform private.assert_org_manager(p_org, 'admin');
 
-  if p_role is null or p_role = 'owner' then
+  if p_role is null or p_role not in ('admin', 'member') then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'role';
   end if;
   if v_email is null or length(v_email) > 254 or v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
@@ -120,17 +128,20 @@ begin
   perform private.assert_within_limit(p_org, 'members', private.team_size(p_org));
 
   v_token := rtrim(translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/', '-_'), '=');
-  insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by)
-  values (p_org, v_email, p_role, encode(sha256(convert_to(v_token, 'UTF8')), 'hex'), v_uid)
-  returning id into v_id;
+  insert into public.organization_invitations as i (organization_id, email, role, token_hash, invited_by)
+  values (p_org, v_email, p_role::public.member_role, encode(sha256(convert_to(v_token, 'UTF8')), 'hex'), v_uid)
+  returning i.id, i.expires_at into v_id, v_expires;
 
   perform audit.record(
     'member_invited', 'organization_invitation', v_id::text,
     jsonb_build_object('organization_id', p_org, 'role', p_role)
   );
-  return v_token;
+  return query select v_token, v_expires;
 end;
 $$;
+
+revoke all on function public.invite_member(uuid, text, text) from public, anon, authenticated, service_role;
+grant execute on function public.invite_member(uuid, text, text) to authenticated;
 
 -- Same behaviour as before, with the open-invitation test shared with invitation_preview.
 create or replace function public.accept_invitation(p_token text) returns uuid
@@ -209,6 +220,58 @@ $$;
 revoke all on function public.invitation_preview(text) from public, anon, authenticated, service_role;
 grant execute on function public.invitation_preview(text) to anon, authenticated;
 
+-- What a role change or removal of a person outside the organization answers (FR-A5 AC6): CHARA_FORBIDDEN for a user
+-- of the platform, CHARA_INVALID_INPUT for an id that belongs to nobody.
+create function private.refuse_non_member(p_user uuid) returns void
+language plpgsql
+stable
+set search_path = ''
+as $$
+begin
+  if exists (select 1 from public.profiles p where p.id = p_user) then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'not_a_member';
+  end if;
+  raise exception 'CHARA_INVALID_INPUT' using detail = 'user';
+end;
+$$;
+
+revoke all on function private.refuse_non_member(uuid) from public, anon, authenticated, service_role;
+
+-- Same behaviour as before, with refuse_non_member for a person outside the organization.
+create or replace function public.change_member_role(p_org uuid, p_user uuid, p_role public.member_role) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_current public.member_role;
+begin
+  perform private.assert_org_manager(p_org, 'admin');
+
+  if p_role is null or p_role = 'owner' then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'role';
+  end if;
+  select m.role into v_current
+  from public.organization_members m
+  where m.organization_id = p_org and m.user_id = p_user and m.accepted_at is not null;
+  if not found then
+    perform private.refuse_non_member(p_user);
+  end if;
+  if v_current = 'owner' then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'use_transfer_ownership';
+  end if;
+  if v_current = p_role then
+    return;
+  end if;
+
+  update public.organization_members set role = p_role where organization_id = p_org and user_id = p_user;
+  perform audit.record(
+    'member_role_changed', 'organization', p_org::text,
+    jsonb_build_object('user_id', p_user, 'from', v_current, 'to', p_role)
+  );
+end;
+$$;
+
 -- The sign-out of the removed member is queued, not done here (ARCHITECTURE.md section 8); the membership is gone at
 -- once, so the member's next request is refused whether or not the job has run. A transfer waiting for the removed
 -- member is cancelled, so that inviting the person again cannot revive it.
@@ -226,7 +289,7 @@ begin
   from public.organization_members m
   where m.organization_id = p_org and m.user_id = p_user and m.accepted_at is not null;
   if not found then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'not_a_member';
+    perform private.refuse_non_member(p_user);
   end if;
   if v_current = 'owner' then
     raise exception 'CHARA_FORBIDDEN' using detail = 'cannot_remove_owner';
@@ -487,3 +550,36 @@ $$;
 
 revoke all on function public.team_member_allowance(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.team_member_allowance(uuid) to authenticated;
+
+-- The invitations of the team page, newest first, with whether each can still be accepted: an invitation past its
+-- expiry or whose inviter was removed or demoted cannot (private.invitation_is_open), and the page offers to send it
+-- again. Owners and admins at aal2 only, as for every team action.
+create index organization_invitations_org_created
+  on public.organization_invitations (organization_id, created_at desc) where accepted_at is null;
+
+create function public.list_organization_invitations(p_org uuid, p_limit integer default 50)
+returns table (id uuid, email text, role public.member_role, expires_at timestamptz, is_open boolean)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or not private.is_org_member(p_org, 'admin') then
+    raise exception 'CHARA_FORBIDDEN';
+  end if;
+  if not private.is_aal2() then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
+  end if;
+
+  return query
+  select i.id, i.email::text, i.role, i.expires_at, private.invitation_is_open(i)
+  from public.organization_invitations i
+  where i.organization_id = p_org and i.accepted_at is null
+  order by i.created_at desc
+  limit least(greatest(coalesce(p_limit, 50), 1), 100);
+end;
+$$;
+
+revoke all on function public.list_organization_invitations(uuid, integer) from public, anon, authenticated, service_role;
+grant execute on function public.list_organization_invitations(uuid, integer) to authenticated;

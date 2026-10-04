@@ -1,5 +1,5 @@
 begin;
-select plan(94);
+select plan(102);
 
 \ir organizations_fixture.inc
 
@@ -134,11 +134,54 @@ select is(
   pg_temp.val_as(:'own1', 'aal2', format($$select coalesce(member_limit::text, 'none') from public.team_member_allowance(%L)$$, current_setting('t.a'))),
   'none', 'no limit applies while limits are not enforced'
 );
+
+-- invite_member returns the expiry with the token, so the link and its expiry come from one call
+select is(pg_temp.call_as(:'own1', 'authenticated',
+  $$select set_config('t.exp', (select r.expires_at::text from public.invite_member(current_setting('t.a')::uuid, 'expiry@example.test', 'member') r), true)$$),
+  'ok', 'setup call succeeds');
+select is(
+  (select i.expires_at = i.created_at + interval '7 days' and i.expires_at::text = current_setting('t.exp')
+   from public.organization_invitations i where i.organization_id = current_setting('t.a')::uuid and i.email = 'expiry@example.test'),
+  true, 'invite_member returns the expiry of the invitation it created'
+);
+
+-- An invitation whose inviter was removed cannot be accepted, holds no seat and is listed as not open
+insert into public.organization_members (organization_id, user_id, role, accepted_at)
+values (current_setting('t.a')::uuid, :'inv', 'admin', now());
+insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by)
+values (current_setting('t.a')::uuid, 'dead@example.test', 'member', repeat('d', 64), :'inv');
+create temp table size_before as select private.team_size(current_setting('t.a')::uuid) as n;
+delete from public.organization_members where organization_id = current_setting('t.a')::uuid and user_id = :'inv';
+select is(
+  private.team_size(current_setting('t.a')::uuid), (select n - 2 from size_before),
+  'removing the inviter frees the seat of the member and of the invitation that member sent'
+);
+select is(
+  pg_temp.val_as(:'own1', 'aal2', format($$select string_agg(email || ':' || is_open, ',' order by email) from public.list_organization_invitations(%L)$$, current_setting('t.a'))),
+  'dead@example.test:false,expiry@example.test:true,p1@example.test:true,p2@example.test:false,p3@example.test:true',
+  'the list marks expired invitations and those of a removed inviter as not open'
+);
+select is(
+  pg_temp.call_as(:'mem', 'authenticated', format($$select * from public.list_organization_invitations(%L)$$, current_setting('t.a'))),
+  'P0001|CHARA_FORBIDDEN|', 'a plain member cannot list the invitations'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format($$select * from public.list_organization_invitations(%L)$$, current_setting('t.a')), 'aal1'),
+  'P0001|CHARA_FORBIDDEN|aal2_required', 'the invitation list needs aal2'
+);
+select is(
+  pg_temp.call_as(:'own2', 'authenticated', format($$select * from public.list_organization_invitations(%L)$$, current_setting('t.a'))),
+  'P0001|CHARA_FORBIDDEN|', 'the owner of another organization cannot list the invitations'
+);
+select is(
+  pg_temp.call_as(null, 'anon', format($$select * from public.list_organization_invitations(%L)$$, current_setting('t.a'))),
+  '42501|permission denied for function list_organization_invitations|', 'an anonymous caller is refused at EXECUTE'
+);
 delete from public.organization_invitations where organization_id = current_setting('t.a')::uuid;
 
 -- invitation_preview: what the invitee sees before signing in
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.tok', public.invite_member(current_setting('t.a')::uuid, 'Bea@Example.com', 'member'), true)$$), 'ok', 'setup call succeeds');
+  $$select set_config('t.tok', (select token from public.invite_member(current_setting('t.a')::uuid, 'Bea@Example.com', 'member')), true)$$), 'ok', 'setup call succeeds');
 set local role anon;
 select is(
   (select format('%s|%s|%s|%s', organization_name, role, email, expires_at > now() + interval '6 days')
@@ -156,7 +199,7 @@ set local role anon;
 select is((select count(*) from public.invitation_preview(current_setting('t.tok'))), 0::bigint, 'an expired invitation shows nothing');
 reset role;
 select is(pg_temp.call_as(:'own1', 'authenticated',
-  $$select set_config('t.tok', public.invite_member(current_setting('t.a')::uuid, 'Bea@Example.com', 'member'), true)$$), 'ok', 'a new invitation replaces the expired one');
+  $$select set_config('t.tok', (select token from public.invite_member(current_setting('t.a')::uuid, 'Bea@Example.com', 'member')), true)$$), 'ok', 'a new invitation replaces the expired one');
 update public.organizations set status = 'suspended' where id = current_setting('t.a')::uuid;
 set local role anon;
 select is((select count(*) from public.invitation_preview(current_setting('t.tok'))), 0::bigint, 'an invitation of a suspended organization shows nothing');
@@ -180,7 +223,7 @@ select is(
 );
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format($$select public.remove_member(%L, %L)$$, current_setting('t.a'), :'own2')),
-  'P0001|CHARA_INVALID_INPUT|not_a_member', 'a removal of a user outside the organization is refused'
+  'P0001|CHARA_FORBIDDEN|not_a_member', 'a removal of a user outside the organization is refused'
 );
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format($$select public.remove_member(%L, %L)$$, current_setting('t.a'), :'own1')),
