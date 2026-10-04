@@ -6,6 +6,7 @@ import {
   GENERIC_FAILURE,
   isAddressThrottle,
   isRateLimit,
+  isWrongCode,
   logAuthFailure,
   RATE_LIMITED,
   weakPasswordMessage,
@@ -66,6 +67,13 @@ function updateRefusal(error: AuthError): ResetResult {
   return { message: GENERIC_FAILURE };
 }
 
+function codeRefusal(error: AuthError): ResetResult {
+  if (isWrongCode(error)) return { errors: { code: WRONG_CODE } };
+  if (isRateLimit(error)) return { message: RATE_LIMITED };
+  logAuthFailure("Authenticator code check", error);
+  return { message: GENERIC_FAILURE };
+}
+
 // The link is spent here, by a click on the form, never when the page opens (mail scanners open links).
 // The form is validated first so a mistyped password does not use the link up; once the link is spent,
 // the session it opened carries the retries (a refused password, a missing authenticator code).
@@ -83,7 +91,10 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ResetRes
     redirect(`/${defaultLocale}/reset-password`);
   }
 
-  if (code && !(await verifyAnyTotp(supabase, code))) return { errors: { code: WRONG_CODE } };
+  if (code) {
+    const codeError = await verifyAnyTotp(supabase, code);
+    if (codeError) return codeRefusal(codeError);
+  }
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return updateRefusal(error);

@@ -8,29 +8,34 @@ import { InputField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { EnrolmentForm } from "@/components/mfa/enrolment-form";
-import { startBackupEnrolment } from "@/lib/actions/mfa";
+import { startFactorEnrolment } from "@/lib/actions/mfa";
 import type { Enrolment } from "@/lib/dal/mfa";
 import {
   BACKUP_FACTOR_NAME,
-  backupFactorSchema,
-  type BackupFactorFormInput,
+  enrolmentStartSchema,
+  FIRST_FACTOR_NAME,
+  type EnrolmentStartInput,
 } from "@/lib/validation/mfa";
 
-export function BackupFactorForm() {
+type EnrolmentStartFormProps = { first?: boolean; next?: string };
+
+// Auth creates the factor and its secret when the form is submitted, never when the page renders, so a reload or a
+// crawler cannot replace the secret of a QR code the user has already scanned.
+export function EnrolmentStartForm({ first = false, next }: EnrolmentStartFormProps) {
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
-  const form = useForm<BackupFactorFormInput>({
-    resolver: zodResolver(backupFactorSchema),
-    defaultValues: { name: BACKUP_FACTOR_NAME },
+  const form = useForm<EnrolmentStartInput>({
+    resolver: zodResolver(enrolmentStartSchema),
+    defaultValues: { name: first ? FIRST_FACTOR_NAME : BACKUP_FACTOR_NAME },
   });
   const { control, formState, handleSubmit } = form;
-  const { submit } = useServerFormSubmit(form, { failureTitle: "Could not add the device" });
+  const { submit } = useServerFormSubmit(form, { failureTitle: "Could not start the setup" });
   const serverMessage = formState.errors.root?.server?.message;
 
-  if (enrolment) return <EnrolmentForm enrolment={enrolment} />;
+  if (enrolment) return <EnrolmentForm enrolment={enrolment} next={next} />;
 
-  function start(values: BackupFactorFormInput) {
+  function start(values: EnrolmentStartInput) {
     return submit(
-      () => startBackupEnrolment(values),
+      () => startFactorEnrolment(values),
       (result) => {
         if (result.enrolment) setEnrolment(result.enrolment);
       },
@@ -44,16 +49,18 @@ export function BackupFactorForm() {
           {serverMessage}
         </Notice>
       ) : null}
-      <InputField
-        control={control}
-        name="name"
-        id="mfa-backup-name"
-        label="Device name"
-        description="Up to 32 characters, for example the name of your second phone."
-        autoComplete="off"
-      />
-      <FormButton type="submit" variant="secondary" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Starting..." : "Add a backup device"}
+      {first ? null : (
+        <InputField
+          control={control}
+          name="name"
+          id="mfa-backup-name"
+          label="Device name"
+          description="Up to 32 characters, for example the name of your second phone."
+          autoComplete="off"
+        />
+      )}
+      <FormButton type="submit" variant={first ? "primary" : "secondary"} busy={formState.isSubmitting}>
+        {formState.isSubmitting ? "Starting..." : first ? "Show the QR code" : "Add a backup device"}
       </FormButton>
     </form>
   );

@@ -238,6 +238,18 @@ describe("resetPassword", () => {
     expect(updateUserMock).not.toHaveBeenCalled();
   });
 
+  it("does not call a rate limit of Auth a wrong code and saves nothing", async () => {
+    listFactorsMock.mockResolvedValue({ data: { totp: [{ id: "phone" }] } });
+    challengeAndVerifyMock.mockResolvedValue({
+      data: null,
+      error: new AuthApiError("slow down", 429, "over_request_rate_limit"),
+    });
+    expect(await resetPassword({ ...input, code: "123456" })).toEqual({
+      message: "Too many attempts. Try again in a few minutes.",
+    });
+    expect(updateUserMock).not.toHaveBeenCalled();
+  });
+
   it.each(["12345", "1234567", "12345a", " 123456"])("refuses the malformed code %j without calling Auth", async (code) => {
     const result = await resetPassword({ ...input, code });
     expect(result?.errors?.code).toBe("Enter the 6-digit code from your authenticator app.");

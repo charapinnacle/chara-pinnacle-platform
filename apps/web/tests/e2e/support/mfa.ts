@@ -1,13 +1,57 @@
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { execute, literal, query } from "./db";
 import { expect } from "./test";
 import { createCommittedUser } from "./login";
+import { registerOrganization, uniqueName } from "./organizations";
+import type { ActionCall } from "./server-action";
 import { adminRequest, type TestUser } from "./test-user";
 import { totpCode } from "./totp";
 
 export const WRONG_CODE = "That code is incorrect or has expired. Try again.";
 export const CODE_FORMAT = "Enter the 6-digit code from your authenticator app.";
 export const LIMIT = "You can register at most two authenticator devices.";
+export const AAL2_FIRST = "Enter a code from your authenticator app first, then change your devices.";
+export const THROTTLED = "Too many attempts. Try again in a few minutes.";
+
+export async function newOwner() {
+  const user = await createCommittedUser("company");
+  await registerOrganization(user, uniqueName("Mfa Bau GmbH"));
+  return user;
+}
+
+// The first factor is created by a click, not by the render of the page.
+export async function beginSetup(page: Page): Promise<string> {
+  await page.getByRole("button", { name: "Show the QR code" }).click();
+  return setupKey(page);
+}
+
+export async function addTwoDevices(page: Page): Promise<{ primary: string; backup: string }> {
+  await page.goto("/en/mfa");
+  const primary = await beginSetup(page);
+  await enterCode(page, primary);
+  await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+  await page.goto("/en/mfa");
+  await page.getByLabel("Device name").fill("Backup phone");
+  await page.getByRole("button", { name: "Add a backup device" }).click();
+  const backup = await setupKey(page);
+  await enterCode(page, backup);
+  await expect(page.getByText(LIMIT)).toBeVisible();
+  return { primary, backup };
+}
+
+// Posts a Server Action again, as a crafted request would, from the session of another context.
+export async function replayAction(
+  context: BrowserContext,
+  call: ActionCall,
+  change: (args: Record<string, unknown>) => Record<string, unknown>,
+): Promise<string> {
+  const [args] = JSON.parse(call.body) as [Record<string, unknown>];
+  const response = await context.request.post("/en/mfa", {
+    headers: { "next-action": call.id, "content-type": call.contentType },
+    data: JSON.stringify([change(args)]),
+  });
+  return response.text();
+}
 
 export function codeField(page: Page) {
   return page.getByLabel("Authentication code");
@@ -35,7 +79,8 @@ export function factorRows(userId: string) {
   );
 }
 
-// The data of the KPI "MFA challenge failure rate": Auth keeps one challenge per attempt and sets verified_at on success.
+// The data of the KPI "MFA challenge failure rate": Auth keeps one challenge per submitted code, because the page checks
+// the device the user chose, and sets verified_at on success.
 export function challengeCounts(userId: string) {
   const [counts] = query<{ attempts: number; verified: number }>(
     `select count(*)::int as attempts, count(c.verified_at)::int as verified

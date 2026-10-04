@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { fieldErrors } from "@/lib/validation/sign-up";
 import {
-  backupFactorSchema,
-  challengeInputSchema,
+  enrolmentStartSchema,
   challengeSchema,
-  verifyEnrolmentInputSchema,
+  codeInputSchema,
 } from "@/lib/validation/mfa";
 
 const CODE_MESSAGE = "Enter the 6-digit code from your authenticator app.";
@@ -35,8 +34,8 @@ describe("the authentication code", () => {
 
 describe("the device name", () => {
   it("is trimmed and holds 1 to 32 characters", () => {
-    expect(backupFactorSchema.parse({ name: "  Backup phone " }).name).toBe("Backup phone");
-    expect(backupFactorSchema.parse({ name: "x".repeat(32) }).name).toHaveLength(32);
+    expect(enrolmentStartSchema.parse({ name: "  Backup phone " }).name).toBe("Backup phone");
+    expect(enrolmentStartSchema.parse({ name: "x".repeat(32) }).name).toHaveLength(32);
   });
 
   it.each([
@@ -44,19 +43,19 @@ describe("the device name", () => {
     ["   ", "Enter a name for this device."],
     ["x".repeat(33), "The name must be 32 characters or fewer."],
   ])("refuses %j", (name, message) => {
-    const result = backupFactorSchema.safeParse({ name });
+    const result = enrolmentStartSchema.safeParse({ name });
     expect(result.success ? undefined : fieldErrors(result.error).name).toBe(message);
   });
 });
 
 describe("the action inputs", () => {
   it("keeps next as typed for the server to validate and drops one that is not a string", () => {
-    expect(challengeInputSchema.parse({ code: "123456", next: "/en/admin" }).next).toBe("/en/admin");
-    expect(challengeInputSchema.parse({ code: "123456", next: 42 }).next).toBeUndefined();
+    expect(codeInputSchema.parse({ code: "123456", factorId, next: "/en/admin" }).next).toBe("/en/admin");
+    expect(codeInputSchema.parse({ code: "123456", factorId, next: 42 }).next).toBeUndefined();
   });
 
   it("needs a factor id that is a UUID", () => {
-    expect(verifyEnrolmentInputSchema.safeParse({ code: "123456", factorId }).success).toBe(true);
-    expect(verifyEnrolmentInputSchema.safeParse({ code: "123456", factorId: "../x" }).success).toBe(false);
+    expect(codeInputSchema.safeParse({ code: "123456", factorId }).success).toBe(true);
+    expect(codeInputSchema.safeParse({ code: "123456", factorId: "../x" }).success).toBe(false);
   });
 });

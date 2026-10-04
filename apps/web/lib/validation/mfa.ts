@@ -3,6 +3,7 @@ import { z } from "zod";
 export const MAX_TOTP_FACTORS = 2;
 export const WRONG_CODE = "That code is incorrect or has expired. Try again.";
 export const TOO_MANY_FACTORS = "You can register at most two authenticator devices.";
+export const AAL2_REQUIRED = "Enter a code from your authenticator app first, then change your devices.";
 export const NAME_TAKEN = "You already use this name for another device.";
 export const FIRST_FACTOR_NAME = "Authenticator";
 export const BACKUP_FACTOR_NAME = "Backup";
@@ -22,14 +23,12 @@ export const factorNameSchema = z
   .max(32, { error: "The name must be 32 characters or fewer." });
 
 export const challengeSchema = z.object({ code: totpCodeSchema });
-const verifyEnrolmentSchema = challengeSchema.extend({ factorId: z.uuid() });
-export const backupFactorSchema = z.object({ name: factorNameSchema });
+export const codeFormSchema = challengeSchema.extend({ factorId: z.uuid() });
+export const enrolmentStartSchema = z.object({ name: factorNameSchema });
 
 const nextSchema = z.string().max(2048).optional().catch(undefined);
-export const challengeInputSchema = challengeSchema.extend({ next: nextSchema });
-export const verifyEnrolmentInputSchema = verifyEnrolmentSchema.extend({ next: nextSchema });
+export const codeInputSchema = codeFormSchema.extend({ next: nextSchema });
 
-export type CodeFormInput = z.input<typeof challengeSchema>;
-export type ChallengeInput = z.input<typeof challengeInputSchema>;
-export type VerifyEnrolmentInput = z.input<typeof verifyEnrolmentInputSchema>;
-export type BackupFactorFormInput = z.input<typeof backupFactorSchema>;
+export type CodeFormInput = z.input<typeof codeFormSchema>;
+export type CodeInput = z.input<typeof codeInputSchema>;
+export type EnrolmentStartInput = z.input<typeof enrolmentStartSchema>;

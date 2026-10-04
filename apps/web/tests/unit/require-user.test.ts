@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { requireAal2, requirePlatformStaff, requireUser } = await import("@/lib/dal/session");
+const { requirePlatformStaff, requireUser } = await import("@/lib/dal/session");
 
 function pending(slug: string) {
   return {
@@ -36,14 +36,6 @@ function pending(slug: string) {
     change_summary: "Changed.",
   };
 }
-
-const baseUser = {
-  id: "user-1",
-  aal: "aal1" as const,
-  accountKind: "worker" as const,
-  intendedAccountKind: "worker" as const,
-  suspended: false,
-};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -136,24 +128,6 @@ describe("the session level", () => {
     claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1", aal: "aal3" } } });
     await expect(requireUser("en")).resolves.toMatchObject({ aal: "aal1" });
   });
-
-  it("requireAal2 lets an aal2 session through", async () => {
-    await expect(requireAal2("en", { ...baseUser, aal: "aal2" })).resolves.toBeUndefined();
-    expect(redirectMock).not.toHaveBeenCalled();
-  });
-
-  it("requireAal2 sends an aal1 session to the MFA page with the requested page as next", async () => {
-    headerValues.pathname = "/en/org/acme-bau/members?page=2";
-    await expect(requireAal2("en", baseUser)).rejects.toThrow(
-      `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/org/acme-bau/members?page=2")}`,
-    );
-  });
-
-  it("requireAal2 does not carry an off-site path into next", async () => {
-    headerValues.pathname = "//evil.example";
-    await expect(requireAal2("en", baseUser)).rejects.toThrow("REDIRECT:/en/mfa");
-    expect(redirectMock).not.toHaveBeenCalledWith(expect.stringContaining("evil"));
-  });
 });
 
 describe("requirePlatformStaff", () => {
@@ -169,6 +143,15 @@ describe("requirePlatformStaff", () => {
     await expect(requirePlatformStaff("en")).rejects.toThrow(
       `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/admin")}`,
     );
+  });
+
+  it("does not carry an off-site path into next", async () => {
+    headerValues.pathname = "//evil.example";
+    rpcMock.mockImplementation(async (name: string) =>
+      name === "my_platform_roles" ? { data: ["admin"], error: null } : { data: [], error: null },
+    );
+    await expect(requirePlatformStaff("en")).rejects.toThrow("REDIRECT:/en/mfa");
+    expect(redirectMock).not.toHaveBeenCalledWith(expect.stringContaining("evil"));
   });
 
   it("lets active staff at aal2 through", async () => {

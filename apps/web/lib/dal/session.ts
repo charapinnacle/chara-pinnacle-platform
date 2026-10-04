@@ -68,7 +68,7 @@ export async function requireUser(
 
 // Sends a session that has not passed two-step verification to the MFA page, which enrols a user without a verified
 // factor and asks for a code otherwise, and then returns to the page asked for.
-export async function requireAal2(lang: string, user: CurrentUser): Promise<void> {
+async function requireAal2(lang: string, user: CurrentUser): Promise<void> {
   if (user.aal !== "aal2") redirect(mfaPath(lang, await requestedPath()));
 }
 

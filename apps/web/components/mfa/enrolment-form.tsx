@@ -33,7 +33,8 @@ export function EnrolmentForm({ enrolment, next }: EnrolmentFormProps) {
         submitLabel="Verify and continue"
         busyLabel="Verifying..."
         failureTitle="Could not verify the code"
-        onSubmit={(code) => verifyEnrolment({ factorId: enrolment.factorId, code, next })}
+        devices={[{ id: enrolment.factorId, name: "" }]}
+        onSubmit={(values) => verifyEnrolment({ ...values, next })}
         onResult={(result) => {
           if (!result.added) return;
           toast({ title: "Backup device added" });

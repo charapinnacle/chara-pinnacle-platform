@@ -3,15 +3,14 @@ import { ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
-import { BackupFactorForm } from "@/components/mfa/backup-factor-form";
 import { ChallengeForm } from "@/components/mfa/challenge-form";
-import { EnrolmentForm } from "@/components/mfa/enrolment-form";
-import { listVerifiedFactors, startEnrolment } from "@/lib/dal/mfa";
+import { EnrolmentStartForm } from "@/components/mfa/enrolment-start-form";
+import { listVerifiedFactors } from "@/lib/dal/mfa";
 import { requireUser } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { homePath } from "@/lib/routes";
 import { mfaReturnPath } from "@/lib/safe-next";
-import { FIRST_FACTOR_NAME, MAX_TOTP_FACTORS, TOO_MANY_FACTORS } from "@/lib/validation/mfa";
+import { MAX_TOTP_FACTORS, TOO_MANY_FACTORS } from "@/lib/validation/mfa";
 
 export const metadata: Metadata = { title: "Two-step verification — CHARA", robots: { index: false } };
 
@@ -24,15 +23,13 @@ export default async function MfaPage({ params, searchParams }: PageProps<"/[lan
   const factors = await listVerifiedFactors(lang);
 
   if (factors.length === 0) {
-    const started = await startEnrolment(lang, FIRST_FACTOR_NAME);
-    if ("refused" in started) throw new Error("Two-step verification could not be started");
     return (
       <AuthCard
         icon={ShieldCheck}
         title="Set up two-step verification"
-        description="Scan the QR code with an authenticator app such as Google Authenticator, 1Password or Authy, then enter the code it shows."
+        description="You scan a QR code with an authenticator app such as Google Authenticator, 1Password or Authy, then enter the code it shows."
       >
-        <EnrolmentForm enrolment={started} next={nextPath} />
+        <EnrolmentStartForm first next={nextPath} />
       </AuthCard>
     );
   }
@@ -45,7 +42,7 @@ export default async function MfaPage({ params, searchParams }: PageProps<"/[lan
         description="Enter a code from your authenticator app to continue."
         footer="Lost your device? Use your backup device if you added one. Otherwise contact CHARA support: a platform administrator resets your two-step verification after checking your identity, and you then set it up again."
       >
-        <ChallengeForm next={nextPath} hasBackup={factors.length > 1} />
+        <ChallengeForm devices={factors} next={nextPath} />
       </AuthCard>
     );
   }
@@ -75,7 +72,7 @@ export default async function MfaPage({ params, searchParams }: PageProps<"/[lan
           <p className="text-body text-muted-foreground">
             A second authenticator on another device lets you log in if you lose the first one.
           </p>
-          <BackupFactorForm key={factors.length} />
+          <EnrolmentStartForm key={factors.length} />
         </section>
       ) : (
         <p className="text-body text-muted-foreground">{TOO_MANY_FACTORS}</p>
