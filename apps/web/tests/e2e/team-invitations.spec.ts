@@ -18,7 +18,7 @@ import {
   teamAudit,
 } from "./support/team";
 import { logIn } from "./support/login-page";
-import { literal, query } from "./support/db";
+import { execute, literal, query } from "./support/db";
 import { expect, test } from "./support/test";
 import { formatDate } from "@/lib/i18n/format";
 
@@ -186,9 +186,11 @@ test.describe("team membership: invitations", () => {
 
     await page.getByRole("button", { name: "Invite member" }).focus();
     await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog", { name: "Invite a team member" })).toBeVisible();
     await page.getByLabel("Email address").fill(email);
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog", { name: "Invitation link" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Invitation link" })).toBeFocused();
     expect(invitationRows(team).map((row) => row.email)).toEqual([email]);
   });
 
@@ -234,6 +236,45 @@ test.describe("team membership: invitations", () => {
     await visitor.page.goto(`/en/invitations/${oldToken}`);
     await expect(visitor.page.getByText("This invitation is no longer valid.")).toBeVisible();
     await visitor.context.close();
+  });
+
+  test("FR-A5 AC11: an invitation whose sender was removed shows as no longer valid with Resend and cannot be opened", async ({
+    page,
+    browser,
+  }) => {
+    const team = await newTeam();
+    const sender = await addMember(team, "admin");
+    const email = newEmail();
+    const token = seedInvitation(team, email);
+    execute(`update public.organization_invitations set invited_by = ${literal(sender.user.id)} where organization_id = ${literal(team.id)}`);
+    execute(
+      `delete from public.organization_members where organization_id = ${literal(team.id)} and user_id = ${literal(sender.user.id)}`,
+    );
+    await signInAtAal2(page, team.owner, team.ownerSecret, membersPath(team.slug));
+    const row = page.getByRole("main").getByRole("listitem").filter({ hasText: email });
+    await expect(row).toContainText("No longer valid");
+    await expect(row.getByRole("button", { name: /Resend/ })).toBeVisible();
+
+    const visitor = await newVisitor(browser);
+    await visitor.page.goto(`/en/invitations/${token}`);
+    await expect(visitor.page.getByText("This invitation is no longer valid.")).toBeVisible();
+    await visitor.context.close();
+  });
+
+  test("FR-A5 AC10: a remembered invitation for another address does not hold a new employer away from the company form", async ({
+    page,
+  }) => {
+    const team = await newTeam();
+    const newcomer = await createCommittedUser("company");
+    const foreign = seedInvitation(team, newEmail());
+    await page.context().addCookies([{ name: "chara_invitation", value: foreign, url: "http://localhost:3100" }]);
+    await logIn(page, newcomer, "/en/onboarding");
+    await expect(page.getByLabel("Legal company name")).toBeVisible();
+
+    const own = seedInvitation(team, newcomer.email);
+    await page.context().addCookies([{ name: "chara_invitation", value: own, url: "http://localhost:3100" }]);
+    await page.goto("/en/onboarding");
+    await expect(page).toHaveURL(`/en/invitations/${own}`);
   });
 
   test("FR-A5 AC11: a plain member sees names and roles but no email address and no controls", async ({ page }) => {

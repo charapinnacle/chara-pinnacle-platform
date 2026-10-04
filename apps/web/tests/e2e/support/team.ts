@@ -123,10 +123,16 @@ export async function signInAtAal1(page: Page, user: TestUser, path: string): Pr
   await expect(page).toHaveURL(path);
 }
 
+let saved: { definition: string; enforced: string } | null = null;
+
 // The limit the billing migration will read from the plans (FR-G1): until it exists, the browser tests give the
 // organizations whose display name starts with "Basic" a limit of 1 and every other one a limit of 5, and switch the
-// limits on. restoreLimits puts the placeholder of the team migration back.
+// limits on. restoreLimits puts back whatever function and setting enforceLimits found.
 export function enforceLimits(): void {
+  [saved] = query<{ definition: string; enforced: string }>(
+    `select pg_get_functiondef('private.org_limit(uuid,text)'::regprocedure) as definition,
+       (select value #>> '{}' from private.settings where key = 'entitlements_enforced') as enforced`,
+  );
   execute(`
     create or replace function private.org_limit(p_org uuid, p_key text) returns integer
     language sql stable set search_path = '' as $f$
@@ -138,8 +144,8 @@ export function enforceLimits(): void {
 }
 
 export function restoreLimits(): void {
-  execute(`
-    create or replace function private.org_limit(p_org uuid, p_key text) returns integer
-    language sql stable set search_path = '' as $f$ select case p_key when 'members' then 1 end $f$;
-    update private.settings set value = 'false' where key = 'entitlements_enforced'`);
+  if (!saved) return;
+  execute(`${saved.definition};
+    update private.settings set value = ${literal(saved.enforced)} where key = 'entitlements_enforced'`);
+  saved = null;
 }
