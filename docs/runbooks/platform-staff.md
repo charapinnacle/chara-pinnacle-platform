@@ -41,7 +41,7 @@ CHARA names at least two administrators before go-live (OPEN_QUESTIONS.md, O6). 
 
 ## 3. Set up account-ops (once per environment)
 
-`account-ops` reads the queue `account_ops` (jobs from `grant_platform_role`, `revoke_platform_role`, `reset_mfa`, `remove_member`) and ends sessions and deletes two-step factors. A job runs within a minute of being queued: the job `account-ops-run` (every minute) calls the function when a job is visible.
+`account-ops` reads the queue `account_ops` (jobs from `grant_platform_role`, `revoke_platform_role`, `reset_mfa`, `remove_member`) and ends sessions and deletes two-step factors. A job runs within a minute of being queued: the job `account-ops-run` (every minute) calls the function when a job is visible. One call reads batches of up to 100 jobs and runs 5 at a time until the queue is empty or its time budget of 100 s is spent (the platform's wall clock is 150 s); what is left runs in the next minute's call, so the ceiling is what one call finishes in 100 s (measure it on the hosted project: with about 100 ms per job it is in the thousands). A job that fails is read again after 60 s, then after 60 s times the number of reads, and is given up after 8 reads, about half an hour of failures. The two-minute promise therefore holds when the first run succeeds or the first retry does; it is not guaranteed through a longer outage.
 
 1. Function secret (never in the repository): `EDGE_SHARED_SECRET`, a random value of at least 32 characters, set with `npx supabase secrets set --env-file <uncommitted file>`. `SUPABASE_URL` and the service key are provided by the platform.
 2. The same value, the project URL and the project's public (anon) key in Vault, as `postgres`:
@@ -52,17 +52,18 @@ CHARA names at least two administrators before go-live (OPEN_QUESTIONS.md, O6). 
    select vault.create_secret('<EDGE_SHARED_SECRET value>', 'edge_shared_secret');
    ```
 
-3. Deploy with `npx supabase functions deploy account-ops --use-api` (`verify_jwt = true` from `config.toml`: the platform checks the JWT, the function checks the shared secret itself).
-4. Verify: queue a harmless job by granting and revoking a role for a test account, then within two minutes `select * from pgmq.q_account_ops` is empty, `audit.log` has `account_ops_done` rows, and `cron.job_run_details` for `account-ops-run` shows `succeeded`. If the Vault secrets are missing the minute job writes a warning to the database log and calls nothing.
+3. Deploy with `npx supabase functions deploy account-ops --use-api` (`verify_jwt = true` from `config.toml`). The platform's JWT check is not an identity check, because the scheduler sends the project's public anon key; the shared secret in `x-edge-secret`, which the function compares itself, is the authentication (D39). If a project disables the legacy JWT keys (or moves to `sb_publishable_` keys that are not JWTs), the gateway rejects the scheduler's call: set `verify_jwt = false` for `account-ops` in `config.toml`, redeploy, and keep the shared secret as the only gate.
+4. Verify: queue a harmless job by granting and revoking a role for a test account, then within two minutes `select * from pgmq.q_account_ops` is empty, `audit.log` has `account_ops_done` rows, and `cron.job_run_details` for `account-ops-run` shows `succeeded`. Then call the function by hand with `curl -X POST https://<project-ref>.supabase.co/functions/v1/account-ops -H "Authorization: Bearer <anon key>"`: without `x-edge-secret` it answers 401 `unauthorized` from the function; with a wrong bearer token the gateway answers 401 before the function runs, and the legacy anon key is still accepted by the gateway (check this again after the project's signing keys change). While none of the three Vault secrets exists the minute job does nothing and logs nothing; with only some of them it writes a warning to the database log and calls nothing.
+5. Rotate the shared secret (when a holder of database access leaves, and yearly): the call's headers sit in `net.http_request_queue`, which every database role can read while a request is pending, so treat the secret as rotatable. Set a new `EDGE_SHARED_SECRET` with `npx supabase secrets set`, then `select vault.update_secret((select id from vault.secrets where name = 'edge_shared_secret'), '<new value>');` in the same minute; a call in between answers 401 and runs again in the next minute.
 
-Monitoring (weekly with the Supabase advisors): jobs that wait longer than five minutes, and jobs the database gave up on after five attempts.
+Monitoring (daily; an administrator who ran a `reset_mfa`, `grant` or `revoke` also confirms the job's `account_ops_done` row, because the `mfa_reset` audit row records the request, not the result): jobs that wait longer than five minutes, and jobs the database gave up on after eight attempts. An `account_ops_abandoned` row means the action did not happen (the factor is still enrolled, the sessions are still open).
 
 ```sql
 select msg_id, read_ct, enqueued_at, message from pgmq.q_account_ops where enqueued_at < now() - interval '5 minutes';
 select created_at, entity_id, metadata from audit.log where action = 'account_ops_abandoned' order by id desc limit 50;
 ```
 
-An abandoned job is run again by queueing the same message: `select pgmq.send('account_ops', '<message json>'::jsonb);` (every job is idempotent).
+An abandoned job is run again by queueing a message with the action and user id from the audit row: `select pgmq.send('account_ops', jsonb_build_object('action', '<action>', 'user_id', '<entity_id>', 'reason', 'requeue, ticket <TICKET>'));` (every job is idempotent). The queue keeps no archive of finished jobs, so `audit.log` (`account_ops_done`, `account_ops_abandoned`) is the whole record.
 
 ## 4. Quarterly access review
 
