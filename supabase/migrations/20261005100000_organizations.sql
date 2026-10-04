@@ -13,7 +13,6 @@ set search_path = ''
 as $$ select case r when 'owner' then 3 when 'admin' then 2 else 1 end $$;
 
 revoke all on function private.role_rank(public.member_role) from public, anon, authenticated, service_role;
-grant execute on function private.role_rank(public.member_role) to authenticated;
 
 -- Only the claims sub and aal are ever read from the token (ARCHITECTURE.md section 5.3).
 create function private.is_aal2() returns boolean
@@ -56,6 +55,8 @@ comment on table public.organization_members is
 
 create index organization_members_user_org
   on public.organization_members (user_id, organization_id) include (role, accepted_at);
+create index organization_members_invited_by
+  on public.organization_members (invited_by) where invited_by is not null;
 create unique index organization_members_one_owner
   on public.organization_members (organization_id) where role = 'owner';
 
@@ -76,6 +77,8 @@ comment on table public.organization_invitations is
   'Single-use invitations. Only the SHA-256 hash of the token is stored; the token is returned once by invite_member.';
 
 create index organization_invitations_org on public.organization_invitations (organization_id);
+create index organization_invitations_invited_by
+  on public.organization_invitations (invited_by) where invited_by is not null;
 create unique index organization_invitations_pending_email
   on public.organization_invitations (organization_id, email) where accepted_at is null;
 
@@ -86,11 +89,15 @@ alter table public.organization_members force row level security;
 alter table public.organization_invitations enable row level security;
 alter table public.organization_invitations force row level security;
 
+-- rows 5: the planner assumes 1000 rows for a set-returning function, which turns every tenant-table policy of the form
+-- organization_id in (select private.member_org_ids()) into a hash join or scan. A user belongs to a handful of
+-- organizations.
 create function private.member_org_ids(p_min_role public.member_role default 'member')
 returns setof uuid
 language sql
 stable
 security definer
+rows 5
 set search_path = ''
 as $$
   select m.organization_id
@@ -144,19 +151,6 @@ create policy organization_invitations_select_admin on public.organization_invit
 
 create policy organization_invitations_requires_mfa on public.organization_invitations
   as restrictive for all to authenticated
-  using ((select private.is_aal2()));
-
--- The table has no write grants, so these gates are a second lock behind the aal2 check inside each RPC.
-create policy organization_members_insert_requires_mfa on public.organization_members
-  as restrictive for insert to authenticated
-  with check ((select private.is_aal2()));
-
-create policy organization_members_update_requires_mfa on public.organization_members
-  as restrictive for update to authenticated
-  using ((select private.is_aal2()));
-
-create policy organization_members_delete_requires_mfa on public.organization_members
-  as restrictive for delete to authenticated
   using ((select private.is_aal2()));
 
 create function private.organization_members_guard() returns trigger
@@ -217,8 +211,10 @@ alter table public.organizations enable always trigger organizations_one_owner;
 alter table public.organization_members enable always trigger organization_members_one_owner;
 
 -- Opening step of every member-management RPC: the caller must hold p_min_role, be at aal2, and the organization
--- must be active. The organization row stays locked until commit, so concurrent management calls of one organization
--- run one after another. A caller without the role is refused before any lock is taken.
+-- must be active. The membership table has no write grants, so this check is the aal2 gate of member management. The
+-- organization row stays locked until commit, so concurrent management calls of one organization run one after another;
+-- no key update, because for update would also block the foreign key checks of unrelated child inserts. A caller
+-- without the role is refused before any lock is taken.
 create function private.assert_org_manager(p_org uuid, p_min_role public.member_role) returns public.member_role
 language plpgsql
 set search_path = ''
@@ -242,7 +238,7 @@ begin
     raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
   end if;
 
-  select o.status into v_status from public.organizations o where o.id = p_org for update;
+  select o.status into v_status from public.organizations o where o.id = p_org for no key update;
   select m.role into v_role
   from public.organization_members m
   where m.organization_id = p_org and m.user_id = v_uid and m.accepted_at is not null;
@@ -258,9 +254,14 @@ $$;
 
 revoke all on function private.assert_org_manager(uuid, public.member_role) from public, anon, authenticated, service_role;
 
+insert into private.settings (key, value) values ('organizations_per_user_max', '3');
+
 -- Creates the organization and its owner membership in one transaction. Aal2 is not required: a new owner is still
--- at aal1 and must reach MFA enrolment (D8). Phase 1 creates employer organizations only (D7). The slug comes from
--- the display name; a taken slug gets -2, -3, ... within 60 characters. Field rules live in the table constraints.
+-- at aal1 and must reach MFA enrolment (D8). Phase 1 creates employer organizations only (D7). Field rules live in the
+-- table constraints. Calls of one user run one after another (lock on the profile row). A repeated call with the same
+-- legal name within a minute, as a double click or a retried request makes, returns the organization already created;
+-- beyond that a user owns at most organizations_per_user_max organizations. The slug comes from the display name; a
+-- taken slug gets a short random suffix, and after four tries the first 8 characters of the id, so the loop is bounded.
 create function public.create_organization(
   p_type public.organization_type,
   p_legal_name text,
@@ -281,6 +282,7 @@ declare
   v_base text;
   v_slug text;
   v_n integer := 1;
+  v_existing uuid;
   v_constraint text;
   v_column text;
 begin
@@ -288,7 +290,7 @@ begin
     raise exception 'CHARA_FORBIDDEN';
   end if;
 
-  select * into v_profile from public.profiles p where p.id = v_uid;
+  select * into v_profile from public.profiles p where p.id = v_uid for no key update;
   if not found or v_profile.account_kind is distinct from 'company' then
     raise exception 'CHARA_FORBIDDEN' using detail = 'company_account_required';
   end if;
@@ -299,6 +301,19 @@ begin
     raise exception 'CHARA_INVALID_INPUT' using detail = 'organization_type_not_available';
   end if;
 
+  select o.id into v_existing
+  from public.organization_members m
+  join public.organizations o on o.id = m.organization_id
+  where m.user_id = v_uid and m.role = 'owner' and lower(o.legal_name) = lower(v_legal)
+    and o.created_at > now() - interval '1 minute';
+  if found then
+    return v_existing;
+  end if;
+  if (select count(*) from public.organization_members m where m.user_id = v_uid and m.role = 'owner')
+     >= (select (value #>> '{}')::integer from private.settings where key = 'organizations_per_user_max') then
+    raise exception 'CHARA_LIMIT_REACHED' using detail = 'organizations';
+  end if;
+
   v_base := btrim(left(btrim(regexp_replace(lower(extensions.unaccent(v_display)), '[^a-z0-9]+', '-', 'g'), '-'), 60), '-');
   if v_base = '' then
     v_base := 'org-' || left(v_id::text, 8);
@@ -306,13 +321,17 @@ begin
 
   loop
     v_slug := case when v_n = 1 then v_base
-      else btrim(left(v_base, 60 - length(v_n::text) - 1), '-') || '-' || v_n end;
+      else btrim(left(v_base, 51), '-') || '-' || case when v_n < 5 then substr(md5(random()::text), 1, 6) else left(v_id::text, 8) end
+    end;
     begin
       insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country, website)
       values (v_id, p_type, v_slug, v_legal, v_display, upper(btrim(p_based_in_country)), nullif(btrim(p_website), ''));
       exit;
     exception
       when unique_violation then
+        if v_n >= 5 then
+          raise exception 'CHARA_CONFLICT' using detail = 'slug';
+        end if;
         v_n := v_n + 1;
       when check_violation or foreign_key_violation or not_null_violation then
         get stacked diagnostics v_constraint = constraint_name, v_column = column_name;
@@ -385,7 +404,9 @@ $$;
 revoke all on function public.invite_member(uuid, text, public.member_role) from public, anon, authenticated, service_role;
 grant execute on function public.invite_member(uuid, text, public.member_role) to authenticated;
 
--- An unknown token, an expired or used invitation and an invitation for another address all answer alike.
+-- An unknown token, an expired or used invitation, an invitation for another address, an invitation of a suspended
+-- organization and an invitation whose inviter is no longer an admin or owner there all answer alike. There is no
+-- revoke action (FR-A5): removing or demoting the inviter, or inviting the address again, ends the old link.
 create function public.accept_invitation(p_token text) returns uuid
 language plpgsql
 security definer
@@ -422,8 +443,22 @@ begin
   where i.token_hash = encode(sha256(convert_to(coalesce(p_token, ''), 'UTF8')), 'hex')
   for update;
   if not found or v_invitation.accepted_at is not null or v_invitation.expires_at <= now()
-     or v_invitation.email <> v_email::extensions.citext then
+     or v_invitation.email <> v_email::extensions.citext
+     or not exists (
+       select 1 from public.organizations o where o.id = v_invitation.organization_id and o.status = 'active'
+     )
+     or not exists (
+       select 1 from public.organization_members m
+       where m.organization_id = v_invitation.organization_id and m.user_id = v_invitation.invited_by
+         and m.accepted_at is not null and private.role_rank(m.role) >= private.role_rank('admin')
+     ) then
     raise exception 'CHARA_INVITATION_INVALID';
+  end if;
+  if exists (
+    select 1 from public.organization_members m
+    where m.organization_id = v_invitation.organization_id and m.user_id = v_uid
+  ) then
+    raise exception 'CHARA_CONFLICT' using detail = 'already_a_member';
   end if;
 
   insert into public.organization_members (organization_id, user_id, role, invited_by, accepted_at)
