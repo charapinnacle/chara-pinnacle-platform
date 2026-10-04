@@ -8,8 +8,10 @@ import { OrganizationForm } from "@/components/organization/organization-form";
 import { commitAccountKind } from "@/lib/actions/consents";
 import { getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
 import { getMyOrganization } from "@/lib/dal/organizations";
+import { getInvitationPreview } from "@/lib/dal/team";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { requireUser } from "@/lib/dal/session";
+import { pendingInvitationToken } from "@/lib/invitation-cookie";
 import { homePath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Welcome — CHARA" };
@@ -29,6 +31,8 @@ export default async function OnboardingPage({
       getIndustries(),
     ]);
     if (organization) redirect(homePath(lang, "company"));
+    const invitation = await pendingInvitationToken();
+    if (invitation && (await getInvitationPreview(invitation))) redirect(`/${lang}/invitations/${invitation}`);
     return (
       <AuthCard
         title="Your account type is Employer"

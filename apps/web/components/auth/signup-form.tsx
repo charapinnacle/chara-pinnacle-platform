@@ -23,6 +23,7 @@ import {
 type SignUpFormProps = {
   documents: Record<Kind, LegalDocumentSummary[]>;
   attestationWording: string | null;
+  invitation?: { token: string; email: string; organizationName: string };
 };
 
 const ids = {
@@ -36,7 +37,7 @@ function acceptedDefaults(documents: readonly LegalDocumentSummary[]) {
   return Object.fromEntries(documents.map((document) => [document.slug, false]));
 }
 
-export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
+export function SignupForm({ documents, attestationWording, invitation }: SignUpFormProps) {
   const form = useForm<SignUpFormInput, undefined, SignUpFormOutput>({
     resolver: (values, context, options) =>
       zodResolver(signUpFormSchema(values.kind ? documents[values.kind] : []))(
@@ -44,7 +45,9 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         context,
         options,
       ),
-    defaultValues: { email: "", password: "", accepted: {} },
+    defaultValues: invitation
+      ? { kind: "company", email: invitation.email, password: "", accepted: acceptedDefaults(documents.company) }
+      : { email: "", password: "", accepted: {} },
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit, setValue } = form;
@@ -81,14 +84,17 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
 
   function onSubmit(values: SignUpFormOutput) {
     return submit(() =>
-      signUp({
-        kind: values.kind,
-        email: values.email,
-        password: values.password,
-        consents: shown
-          .filter((document) => values.accepted[document.slug])
-          .map((document) => ({ purpose: document.slug, version: document.version })),
-      }),
+      signUp(
+        {
+          kind: values.kind,
+          email: values.email,
+          password: values.password,
+          consents: shown
+            .filter((document) => values.accepted[document.slug])
+            .map((document) => ({ purpose: document.slug, version: document.version })),
+        },
+        invitation?.token,
+      ),
     );
   }
 
@@ -103,18 +109,25 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         items={items}
         onSelect={(key) => form.setFocus(key as FieldPath<SignUpFormInput>)}
       />
-      <RadioGroupField
-        control={control}
-        name="kind"
-        id={ids.kind}
-        legend="I want to register as"
-        description={KIND_IS_FINAL}
-        options={kindOptions}
-        onValueChange={(value) => {
-          setValue("accepted", acceptedDefaults(documents[value as Kind]));
-          form.clearErrors("accepted");
-        }}
-      />
+      {invitation ? (
+        <p className="text-body leading-relaxed">
+          You are creating an employer account to join {invitation.organizationName}. Use the address the invitation was
+          sent to.
+        </p>
+      ) : (
+        <RadioGroupField
+          control={control}
+          name="kind"
+          id={ids.kind}
+          legend="I want to register as"
+          description={KIND_IS_FINAL}
+          options={kindOptions}
+          onValueChange={(value) => {
+            setValue("accepted", acceptedDefaults(documents[value as Kind]));
+            form.clearErrors("accepted");
+          }}
+        />
+      )}
       <InputField
         control={control}
         name="email"
@@ -122,6 +135,7 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         label="Email address"
         type="email"
         autoComplete="email"
+        readOnly={invitation !== undefined}
       />
       <InputField
         control={control}

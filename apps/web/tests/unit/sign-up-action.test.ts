@@ -12,10 +12,12 @@ const resendMock = vi.fn();
 const verifyOtpMock = vi.fn();
 const documentsMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
+const rememberMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
+vi.mock("@/lib/invitation-cookie", () => ({ rememberInvitation: rememberMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signUp: signUpMock, resend: resendMock, verifyOtp: verifyOtpMock },
@@ -46,6 +48,26 @@ beforeEach(() => {
   documentsMock.mockResolvedValue(documents);
   throttledMock.mockResolvedValue(false);
   signUpMock.mockResolvedValue({ data: {}, error: null });
+});
+
+describe("signUp action with an invitation", () => {
+  const token = "A".repeat(43);
+  const employer = { ...input, kind: "company" as const };
+
+  it("keeps the invitation link for onboarding when an employer registers from it", async () => {
+    await expect(signUp(employer, token)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(rememberMock).toHaveBeenCalledWith(token);
+  });
+
+  it("keeps nothing for a worker, for a token of the wrong shape or when Auth refuses", async () => {
+    await expect(signUp(input, token)).rejects.toThrow("REDIRECT");
+    await expect(signUp(employer, "short")).rejects.toThrow("REDIRECT");
+    await expect(signUp(employer)).rejects.toThrow("REDIRECT");
+    signUpMock.mockResolvedValue({ data: null, error: new AuthApiError("Boom", 500, "unexpected_failure") });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(signUp(employer, token)).resolves.toMatchObject({ message: expect.any(String) });
+    expect(rememberMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("signUp action", () => {
