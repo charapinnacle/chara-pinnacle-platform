@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(61);
 
 \ir organizations_fixture.inc
 
@@ -229,7 +229,15 @@ select is(
 );
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.transfer_ownership(%L, %L)$$, current_setting('t.a'), :'mem')),
-  'ok', 'the owner transfers ownership to an admin'
+  'ok', 'the owner designates a new owner'
+);
+select is(
+  (select string_agg(user_id || ':' || role, ',' order by user_id) from public.organization_members where organization_id = current_setting('t.a')::uuid),
+  format('%s:owner,%s:admin,%s:admin', :'own1', :'adm', :'mem'), 'no role changes until the designated member confirms'
+);
+select is(
+  pg_temp.call_as(:'mem', 'authenticated', format($$select public.accept_ownership_transfer(%L)$$, current_setting('t.a'))),
+  'ok', 'the designated member confirms'
 );
 select is(
   (select string_agg(user_id || ':' || role, ',' order by user_id) from public.organization_members where organization_id = current_setting('t.a')::uuid),

@@ -99,8 +99,11 @@ select is(
 );
 select is(pg_temp.call_as(:'own1', 'authenticated', format($$select * from public.list_organization_members(%L)$$, current_setting('t.a')), 'aal1'),
   'P0001|CHARA_FORBIDDEN|aal2_required', 'the owner at aal1 gets aal2_required');
-select is(pg_temp.call_as(:'mem', 'authenticated', format($$select * from public.list_organization_members(%L)$$, current_setting('t.a'))),
-  'P0001|CHARA_FORBIDDEN|', 'a plain member gets no status data');
+select is(
+  pg_temp.val_as(:'mem', 'aal1', format($$
+    select string_agg(coalesce(mfa_enrolled::text, 'null') || '/' || coalesce(email, 'null'), ',')
+    from public.list_organization_members(%L)$$, current_setting('t.a'))),
+  'null/null,null/null,null/null', 'a plain member gets no status data and no email address, even at aal1');
 select is(pg_temp.call_as(:'own2', 'authenticated', format($$select * from public.list_organization_members(%L)$$, current_setting('t.a'))),
   'P0001|CHARA_FORBIDDEN|', 'the owner of another organization gets no status data');
 select is(pg_temp.call_as(:'tss', 'authenticated', format($$select * from public.list_organization_members(%L)$$, current_setting('t.a'))),
@@ -113,7 +116,7 @@ select is(pg_temp.call_as(null, 'anon', format($$select * from public.list_organ
   '42501|permission denied for function list_organization_members|', 'the anonymous caller is refused at EXECUTE');
 select is(
   (select proargnames::text from pg_proc where oid = 'public.list_organization_members(uuid, integer, uuid)'::regprocedure),
-  '{p_org,p_limit,p_after_user,user_id,role,accepted_at,mfa_enrolled}', 'no factor id, secret or name is returned'
+  '{p_org,p_limit,p_after_user,user_id,display_name,email,role,accepted_at,mfa_enrolled}', 'no factor id, secret or name is returned'
 );
 select is(
   pg_temp.val_as(:'own1', 'aal2', format($$select pg_typeof(mfa_enrolled)::text from public.list_organization_members(%L) limit 1$$, current_setting('t.a'))),
@@ -196,7 +199,7 @@ select is(pg_temp.call_as(null, 'anon', $$select * from public.my_platform_roles
 
 -- AC8: reset_mfa
 select is(
-  (select count(*) from audit.log where action = 'mfa_reset') + (select count(*) from pgmq.q_account_ops) + (select count(*) from pgmq.q_notifications),
+  (select count(*) from audit.log where action = 'mfa_reset') + (select count(*) from pgmq.q_account_ops where message ->> 'action' = 'reset_mfa') + (select count(*) from pgmq.q_notifications),
   0::bigint, 'nothing is queued or audited before the first reset'
 );
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, '  Identity checked by video call, ticket 4711  ')$$, :'tgt')),
