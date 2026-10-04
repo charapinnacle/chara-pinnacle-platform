@@ -6,11 +6,12 @@ import { useForm, type FieldPath } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { ConsentPanel } from "@/components/forms/consent-panel";
+import { FormButton } from "@/components/forms/form-button";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
-import { Button } from "@/components/ui/button";
+import { LegalLink } from "@/components/forms/text-link";
 import type { ConsentActionResult } from "@/lib/actions/consents";
 import { formatDate } from "@/lib/i18n/format";
-import { defaultLocale } from "@/lib/i18n/locale";
 import { isRedirectError } from "@/lib/redirect-error";
 import {
   acceptedSchema,
@@ -98,26 +99,23 @@ export function ConsentForm({
         onSelect={(key) => form.setFocus(key as FieldPath<FormInput>)}
       />
       {documents.map((document) => (
-        <section key={document.slug} className="grid gap-2 rounded-lg border p-4">
+        <ConsentPanel as="section" key={document.slug}>
           {document.slug === AGE_ATTESTATION_SLUG ? null : (
-            <>
-              <h2 className="text-lg font-medium">{document.title}</h2>
+            <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
+              <h2 className="text-base font-semibold tracking-tight">{document.title}</h2>
               <p className="text-sm text-muted-foreground">
                 Version {document.version}, published {formatDate(document.publishedAt)}
               </p>
-              <p className="text-sm">{document.changeSummary}</p>
-              <p className="text-sm">
-                <a
-                  href={`/${defaultLocale}/legal/${document.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  Read the full text
-                  <span className="sr-only"> of the {document.title} (opens in a new tab)</span>
-                </a>
-              </p>
-            </>
+              <p className="text-sm leading-relaxed">{document.changeSummary}</p>
+              <LegalLink
+                slug={document.slug}
+                newTabLabel={`of the ${document.title} (opens in a new tab)`}
+                standalone
+                className="-mt-1.5 -mb-2.5"
+              >
+                Read the full text
+              </LegalLink>
+            </div>
           )}
           <CheckboxField
             control={control}
@@ -128,11 +126,11 @@ export function ConsentForm({
               ? (attestationWording ?? "I am 18 or older")
               : `I accept the ${document.title}`}
           </CheckboxField>
-        </section>
+        </ConsentPanel>
       ))}
-      <Button type="submit" size="lg" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : submitLabel}
-      </Button>
+      </FormButton>
     </form>
   );
 }

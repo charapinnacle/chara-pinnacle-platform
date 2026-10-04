@@ -1,5 +1,10 @@
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
+import { AuthCard } from "@/components/layout/auth-card";
 
 export default function Loading() {
-  return <LoadingSkeleton rows={3} />;
+  return (
+    <AuthCard>
+      <LoadingSkeleton rows={3} />
+    </AuthCard>
+  );
 }

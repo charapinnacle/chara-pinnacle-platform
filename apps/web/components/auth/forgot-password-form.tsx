@@ -3,8 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
+import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
-import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/forms/notice";
 import { requestPasswordReset } from "@/lib/actions/recovery";
 import { forgotPasswordSchema, type ForgotPasswordInput } from "@/lib/validation/login";
 
@@ -33,16 +34,16 @@ export function ForgotPasswordForm() {
 
   const failed = Boolean(formState.errors.root?.server || formState.errors.email);
   return (
-    <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
+    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
       {formState.isSubmitSuccessful && !failed ? (
-        <p role="status" className="text-sm">
+        <Notice tone="info" role="status">
           If an account exists for this email, we have sent a reset link.
-        </p>
+        </Notice>
       ) : null}
       {formState.errors.root?.server ? (
-        <p role="alert" className="text-sm text-destructive">
+        <Notice tone="error" role="alert">
           {formState.errors.root.server.message}
-        </p>
+        </Notice>
       ) : null}
       <InputField
         control={control}
@@ -51,9 +52,9 @@ export function ForgotPasswordForm() {
         type="email"
         autoComplete="username"
       />
-      <Button type="submit" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Sending..." : "Send reset link"}
-      </Button>
+      </FormButton>
     </form>
   );
 }

@@ -36,20 +36,43 @@ function contrast(foreground: string, background: string) {
 describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
   it.each([
     ["foreground", "background"],
+    ["foreground", "card"],
+    ["foreground", "muted"],
+    ["foreground", "accent"],
+    ["foreground", "destructive-surface"],
     ["primary-foreground", "primary"],
+    ["primary-foreground", "primary-hover"],
+    ["primary-foreground", "primary-active"],
     ["secondary-foreground", "secondary"],
+    ["secondary-foreground", "card"],
+    ["secondary-foreground", "muted"],
     ["accent-foreground", "accent"],
     ["muted-foreground", "background"],
+    ["muted-foreground", "card"],
     ["muted-foreground", "muted"],
+    ["muted-foreground", "destructive-surface"],
+    ["primary", "background"],
+    ["primary", "card"],
+    ["primary", "muted"],
+    ["primary", "accent"],
+    ["primary", "destructive-surface"],
     ["destructive", "background"],
+    ["destructive", "card"],
     ["destructive", "muted"],
+    ["destructive", "destructive-surface"],
   ])("text %s on %s is at least 4.5:1", (foreground, background) => {
     expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5);
   });
 
   it.each([
     ["ring", "background"],
+    ["ring", "card"],
+    ["ring", "muted"],
+    ["ring", "accent"],
+    ["ring", "destructive-surface"],
     ["input", "background"],
+    ["input", "card"],
+    ["input", "muted"],
   ])("component boundary %s against %s is at least 3:1", (foreground, background) => {
     expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3);
   });

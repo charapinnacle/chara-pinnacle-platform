@@ -1,5 +1,6 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import { useId } from "react";
 import {
   Controller,
@@ -8,7 +9,6 @@ import {
   type FieldValues,
 } from "react-hook-form";
 import {
-  Field,
   FieldDescription,
   FieldError,
   FieldLabel,
@@ -16,7 +16,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 
-type RadioOption = { value: string; label: string };
+type RadioOption = { value: string; label: string; icon: LucideIcon };
 
 type RadioGroupFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   control: Control<T>;
@@ -57,36 +57,55 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
             aria-describedby={describedBy}
             aria-invalid={fieldState.invalid}
             data-invalid={fieldState.invalid}
-            className="data-[invalid=true]:text-destructive"
+            className="group/set gap-3 data-[invalid=true]:text-destructive"
           >
             <FieldLegend variant="label">{legend}</FieldLegend>
             {description ? (
               <FieldDescription id={descriptionId}>{description}</FieldDescription>
             ) : null}
-            {options.map((option, index) => {
-              const optionId = index === 0 ? id : `${id}-${option.value}`;
-              return (
-                <Field key={option.value} orientation="horizontal">
-                  <input
-                    type="radio"
-                    id={optionId}
-                    ref={index === 0 ? field.ref : undefined}
-                    name={field.name}
-                    value={option.value}
-                    checked={field.value === option.value}
-                    onChange={() => {
-                      field.onChange(option.value);
-                      onValueChange?.(option.value);
-                    }}
-                    onBlur={field.onBlur}
-                    className="size-4 shrink-0 accent-primary"
-                  />
-                  <FieldLabel htmlFor={optionId} className="font-normal">
-                    {option.label}
-                  </FieldLabel>
-                </Field>
-              );
-            })}
+            <div className="mt-1 grid gap-3 sm:grid-cols-2">
+              {options.map((option, index) => {
+                const optionId = index === 0 ? id : `${id}-${option.value}`;
+                const Icon = option.icon;
+                return (
+                  <div
+                    key={option.value}
+                    className="group/option relative grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-4 rounded-xl border border-input bg-card p-4 transition-[border-color,box-shadow] hover:border-muted-foreground has-checked:border-primary has-checked:bg-accent has-checked:ring-1 has-checked:ring-primary has-checked:ring-inset has-focus-visible:shadow-focus group-data-[invalid=true]/set:border-destructive sm:grid-cols-[1fr_auto] sm:items-start"
+                  >
+                    <input
+                      type="radio"
+                      id={optionId}
+                      ref={index === 0 ? field.ref : undefined}
+                      name={field.name}
+                      value={option.value}
+                      checked={field.value === option.value}
+                      onChange={() => {
+                        field.onChange(option.value);
+                        onValueChange?.(option.value);
+                      }}
+                      onBlur={field.onBlur}
+                      className="absolute inset-0 size-full cursor-pointer appearance-none rounded-xl"
+                    />
+                    <span
+                      aria-hidden
+                      className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-has-checked/option:bg-card group-has-checked/option:text-primary sm:col-start-1 sm:row-start-1"
+                    >
+                      <Icon className="size-5" />
+                    </span>
+                    <FieldLabel
+                      htmlFor={optionId}
+                      className="text-body font-medium text-foreground sm:col-span-2 sm:row-start-2"
+                    >
+                      {option.label}
+                    </FieldLabel>
+                    <span
+                      aria-hidden
+                      className="size-5 rounded-full border-2 border-input bg-card transition-[border-width,border-color] group-has-checked/option:border-[6px] group-has-checked/option:border-primary sm:col-start-2 sm:row-start-1"
+                    />
+                  </div>
+                );
+              })}
+            </div>
             <FieldError id={errorId} errors={[fieldState.error]} />
           </FieldSet>
         );

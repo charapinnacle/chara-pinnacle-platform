@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "@/components/feedback/toast-store";
-import { Button } from "@/components/ui/button";
+import { FormButton } from "@/components/forms/form-button";
 import { signOut } from "@/lib/actions/login";
 import { isRedirectError } from "@/lib/redirect-error";
 
@@ -26,8 +26,8 @@ export function LogoutButton() {
   }
 
   return (
-    <Button type="button" onClick={logOut} disabled={pending}>
+    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className="min-w-38 px-4 text-sm">
       {pending ? "Logging out..." : "Log out"}
-    </Button>
+    </FormButton>
   );
 }

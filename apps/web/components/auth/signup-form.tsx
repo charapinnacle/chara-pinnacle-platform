@@ -1,16 +1,18 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Building2, UserRound } from "lucide-react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { ConsentPanel } from "@/components/forms/consent-panel";
+import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
-import { Button } from "@/components/ui/button";
+import { LegalLink } from "@/components/forms/text-link";
 import { signUp } from "@/lib/actions/auth";
 import { formatDate } from "@/lib/i18n/format";
-import { defaultLocale } from "@/lib/i18n/locale";
 import { AGE_ATTESTATION_SLUG, type LegalDocumentSummary } from "@/lib/validation/consents";
 import {
   signUpFormSchema,
@@ -26,8 +28,8 @@ type SignUpFormProps = {
 };
 
 const kindOptions = [
-  { value: "worker", label: "I'm a worker" },
-  { value: "company", label: "I'm an employer" },
+  { value: "worker", label: "I'm a worker", icon: UserRound },
+  { value: "company", label: "I'm an employer", icon: Building2 },
 ] as const;
 
 const ids = {
@@ -137,35 +139,39 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
         type="password"
         autoComplete="new-password"
       />
-      {shown.map((document) => (
-        <CheckboxField
-          key={document.slug}
-          control={control}
-          name={`accepted.${document.slug}`}
-          id={ids.accepted(document.slug)}
-        >
-          {document.slug === AGE_ATTESTATION_SLUG ? (
-            (attestationWording ?? "I am 18 or older")
-          ) : (
-            <span>
-              I accept the{" "}
-              <a
-                href={`/${defaultLocale}/legal/${document.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-4"
-              >
-                {document.title}
-                <span className="sr-only"> (opens in a new tab)</span>
-              </a>{" "}
-              (version {document.version}, published {formatDate(document.publishedAt)})
-            </span>
-          )}
-        </CheckboxField>
-      ))}
-      <Button type="submit" size="lg" disabled={formState.isSubmitting}>
+      {shown.length > 0 ? (
+        <ConsentPanel>
+          {shown.map((document) => (
+            <CheckboxField
+              key={document.slug}
+              control={control}
+              name={`accepted.${document.slug}`}
+              id={ids.accepted(document.slug)}
+            >
+              {document.slug === AGE_ATTESTATION_SLUG ? (
+                (attestationWording ?? "I am 18 or older")
+              ) : (
+                <span>
+                  I accept the{" "}
+                  <LegalLink
+                    slug={document.slug}
+                    newTabLabel="(opens in a new tab)"
+                    className="relative z-10"
+                  >
+                    {document.title}
+                  </LegalLink>
+                  <span className="block text-sm text-muted-foreground">
+                    (version {document.version}, published {formatDate(document.publishedAt)})
+                  </span>
+                </span>
+              )}
+            </CheckboxField>
+          ))}
+        </ConsentPanel>
+      ) : null}
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}
-      </Button>
+      </FormButton>
     </form>
   );
 }

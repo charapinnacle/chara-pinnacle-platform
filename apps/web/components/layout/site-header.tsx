@@ -3,9 +3,12 @@ import { PageContainer } from "@/components/layout/page-container";
 
 export function SiteHeader({ actions }: { actions?: React.ReactNode }) {
   return (
-    <header className="border-b">
-      <PageContainer className="flex h-14 items-center justify-between gap-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+    <header className="border-b bg-card">
+      <PageContainer className="flex h-16 items-center justify-between gap-4">
+        <Link
+          href="/"
+          className="-mx-2 inline-flex h-11 items-center rounded-lg px-2 text-lg font-bold tracking-wider text-primary"
+        >
           CHARA
         </Link>
         {actions}

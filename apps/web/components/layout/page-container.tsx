@@ -1,25 +1,17 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const pageContainerVariants = cva("mx-auto w-full px-4 sm:px-6", {
+const pageContainerVariants = cva("mx-auto w-full max-w-6xl px-4 sm:px-6", {
   variants: {
-    size: {
-      narrow: "max-w-md",
-      default: "max-w-6xl",
+    layout: {
+      page: "py-10 sm:py-16",
+      centered: "flex flex-1 flex-col justify-center py-10 sm:py-16",
     },
   },
-  defaultVariants: { size: "default" },
 });
 
-export function PageContainer({
-  size,
-  className,
-  ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof pageContainerVariants>) {
-  return (
-    <div
-      className={cn(pageContainerVariants({ size }), className)}
-      {...props}
-    />
-  );
+type PageContainerProps = React.ComponentProps<"div"> & VariantProps<typeof pageContainerVariants>;
+
+export function PageContainer({ layout, className, ...props }: PageContainerProps) {
+  return <div className={cn(pageContainerVariants({ layout }), className)} {...props} />;
 }

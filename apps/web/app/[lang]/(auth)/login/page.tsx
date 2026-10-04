@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
+import { TextLink } from "@/components/forms/text-link";
+import { AuthCard } from "@/components/layout/auth-card";
 
 export const metadata: Metadata = { title: "Log in — CHARA" };
 
@@ -10,15 +11,18 @@ export default async function LoginPage({
 }: PageProps<"/[lang]/login">) {
   const [{ lang }, { next }] = await Promise.all([params, searchParams]);
   return (
-    <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Log in</h1>
+    <AuthCard
+      title="Log in"
+      footer={
+        <p className="flex flex-wrap items-center gap-x-1.5">
+          New to CHARA?
+          <TextLink standalone="flush" href={`/${lang}/signup`}>
+            Create an account
+          </TextLink>
+        </p>
+      }
+    >
       <LoginForm next={typeof next === "string" ? next : undefined} />
-      <p className="text-sm text-muted-foreground">
-        New to CHARA?{" "}
-        <Link href={`/${lang}/signup`} className="underline underline-offset-4">
-          Create an account
-        </Link>
-      </p>
-    </div>
+    </AuthCard>
   );
 }

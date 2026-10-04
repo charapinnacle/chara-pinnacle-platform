@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { TextLink } from "@/components/forms/text-link";
+import { AuthCard } from "@/components/layout/auth-card";
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SkipLink } from "@/components/layout/skip-link";
@@ -14,10 +16,12 @@ export default async function GlobalNotFound() {
       <body>
         <SkipLink />
         <SiteShell>
-          <PageContainer className="py-16">
-            <h1 className="text-4xl font-semibold tracking-tight">
-              Page not found
-            </h1>
+          <PageContainer layout="centered">
+            <AuthCard title="Page not found">
+              <TextLink standalone="flush" href="/">
+                Back to the home page
+              </TextLink>
+            </AuthCard>
           </PageContainer>
         </SiteShell>
       </body>

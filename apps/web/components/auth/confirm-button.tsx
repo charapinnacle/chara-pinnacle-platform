@@ -1,13 +1,13 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { Button } from "@/components/ui/button";
+import { FormButton } from "@/components/forms/form-button";
 
 export function ConfirmButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="lg" disabled={pending}>
+    <FormButton type="submit" busy={pending}>
       {pending ? "Confirming..." : "Confirm email address"}
-    </Button>
+    </FormButton>
   );
 }

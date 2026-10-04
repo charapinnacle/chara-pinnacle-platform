@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link2Off } from "lucide-react";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { TextLink } from "@/components/forms/text-link";
+import { AuthCard } from "@/components/layout/auth-card";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
 
 export const metadata: Metadata = {
@@ -19,22 +21,16 @@ export default async function ResetPasswordPage({
     ((await isRecoveryLinkFresh(tokenHash)) || (await hasRecoverySession()));
   if (!open) {
     return (
-      <div className="grid gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          This link has expired or was already used
-        </h1>
-        <p className="text-sm">
-          <Link href={`/${lang}/forgot-password`} className="underline underline-offset-4">
-            Request a new reset link
-          </Link>
-        </p>
-      </div>
+      <AuthCard icon={Link2Off} title="This link has expired or was already used">
+        <TextLink standalone="center" href={`/${lang}/forgot-password`}>
+          Request a new reset link
+        </TextLink>
+      </AuthCard>
     );
   }
   return (
-    <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
+    <AuthCard title="Choose a new password">
       <ResetPasswordForm tokenHash={tokenHash} />
-    </div>
+    </AuthCard>
   );
 }

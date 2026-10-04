@@ -1,3 +1,6 @@
+import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
+
 export type ErrorSummaryItem = {
   key: string;
   message: string;
@@ -8,38 +11,44 @@ type ErrorSummaryProps = {
   ref?: React.Ref<HTMLDivElement>;
   items: readonly ErrorSummaryItem[];
   onSelect: (key: string) => void;
+  action?: React.ReactNode;
 };
 
-export function ErrorSummary({ ref, items, onSelect }: ErrorSummaryProps) {
+export function ErrorSummary({ ref, items, onSelect, action }: ErrorSummaryProps) {
   if (items.length === 0) return null;
   return (
-    <div
+    <Notice
       ref={ref}
+      tone="error"
       role="alert"
       tabIndex={-1}
-      className="rounded-lg border border-destructive p-4 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <p className="font-medium text-destructive">There is a problem</p>
-      <ul className="mt-2 list-disc ps-5">
-        {items.map((item) => (
-          <li key={item.key}>
-            {item.targetId ? (
-              <a
-                href={`#${item.targetId}`}
-                className="underline underline-offset-4"
-                onClick={(event) => {
-                  event.preventDefault();
-                  onSelect(item.key);
-                }}
-              >
-                {item.message}
-              </a>
-            ) : (
-              item.message
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+      <div className="grid gap-1.5">
+        <p className="font-semibold text-destructive">There is a problem</p>
+        <ul className="grid list-disc ps-5 marker:text-destructive">
+          {items.map((item) => (
+            <li key={item.key}>
+              {item.targetId ? (
+                <TextLink
+                  tone="destructive"
+                  className="block py-2.5"
+                  href={`#${item.targetId}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onSelect(item.key);
+                  }}
+                >
+                  {item.message}
+                </TextLink>
+              ) : (
+                item.message
+              )}
+            </li>
+          ))}
+        </ul>
+        {action}
+      </div>
+    </Notice>
   );
 }
