@@ -5,10 +5,10 @@ import { useEffect, useRef } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { toast } from "@/components/feedback/toast-store";
-import { Button } from "@/components/ui/button";
 import { signUp } from "@/lib/actions/auth";
 import { formatDate } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -185,9 +185,9 @@ export function SignupForm({ documents, attestationWording }: SignUpFormProps) {
           )}
         </CheckboxField>
       ))}
-      <Button type="submit" size="lg" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}
-      </Button>
+      </FormButton>
     </form>
   );
 }

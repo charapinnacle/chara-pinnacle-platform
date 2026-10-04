@@ -3,8 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
+import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
-import { Button } from "@/components/ui/button";
 import { resendConfirmation } from "@/lib/actions/auth";
 import { resendSchema } from "@/lib/validation/sign-up";
 
@@ -36,13 +36,19 @@ export function ResendForm() {
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
       {formState.isSubmitSuccessful ? (
-        <p role="status" className="text-sm">
+        <p
+          role="status"
+          className="rounded-lg border border-primary/20 bg-accent p-3 text-sm leading-relaxed text-accent-foreground"
+        >
           If an account with this email is waiting for confirmation, a new link
           has been sent.
         </p>
       ) : null}
       {formState.errors.root?.server ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive-surface p-3 text-sm leading-relaxed text-destructive"
+        >
           {formState.errors.root.server.message}
         </p>
       ) : null}
@@ -53,9 +59,9 @@ export function ResendForm() {
         type="email"
         autoComplete="email"
       />
-      <Button type="submit" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Sending..." : "Send a new link"}
-      </Button>
+      </FormButton>
     </form>
   );
 }

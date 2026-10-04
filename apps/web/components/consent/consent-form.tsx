@@ -6,8 +6,8 @@ import { useForm, type FieldPath } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { FormButton } from "@/components/forms/form-button";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
-import { Button } from "@/components/ui/button";
 import type { ConsentActionResult } from "@/lib/actions/consents";
 import { formatDate } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -130,9 +130,9 @@ export function ConsentForm({
           </CheckboxField>
         </section>
       ))}
-      <Button type="submit" size="lg" disabled={formState.isSubmitting}>
+      <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : submitLabel}
-      </Button>
+      </FormButton>
     </form>
   );
 }

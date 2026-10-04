@@ -11,6 +11,10 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+const controlClassName =
+  "bg-card px-3.5 text-base hover:border-muted-foreground focus-visible:ring-0 aria-invalid:hover:border-destructive md:text-base";
 
 type ControlProps<T extends FieldValues, N extends FieldPath<T>> =
   ControllerRenderProps<T, N> & {
@@ -89,6 +93,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
           type={type}
           autoComplete={autoComplete}
           inputMode={inputMode}
+          className={cn("h-11", controlClassName)}
           {...controlProps}
         />
       )}
@@ -101,7 +106,7 @@ export function TextareaField<T extends FieldValues, N extends FieldPath<T>>(
 ) {
   return (
     <FormField {...props}>
-      {(controlProps) => <Textarea {...controlProps} />}
+      {(controlProps) => <Textarea className={controlClassName} {...controlProps} />}
     </FormField>
   );
 }
