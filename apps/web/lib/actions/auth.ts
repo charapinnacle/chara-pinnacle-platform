@@ -11,6 +11,7 @@ import {
   weakPasswordMessage,
 } from "@/lib/auth-errors";
 import { getSignupDocuments } from "@/lib/dal/legal";
+import { isThrottled } from "@/lib/dal/rate-limit";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -52,6 +53,8 @@ export async function signUp(
     };
   }
 
+  if (await isThrottled("signup")) return { message: RATE_LIMITED };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email,
@@ -91,6 +94,7 @@ export async function resendConfirmation(input: {
 }): Promise<ResendResult> {
   const parsed = resendSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  if (await isThrottled("resend")) return { message: RATE_LIMITED };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resend({

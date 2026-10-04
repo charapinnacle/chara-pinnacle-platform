@@ -8,6 +8,7 @@ import {
   logAuthFailure,
   RATE_LIMITED,
 } from "@/lib/auth-errors";
+import { isThrottled } from "@/lib/dal/rate-limit";
 import { getCurrentUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { homePath } from "@/lib/routes";
@@ -39,6 +40,7 @@ export async function signIn(input: LoginInput): Promise<LoginResult | undefined
   const parsed = loginInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { email, password, next } = parsed.data;
+  if (await isThrottled("login")) return { message: RATE_LIMITED };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });

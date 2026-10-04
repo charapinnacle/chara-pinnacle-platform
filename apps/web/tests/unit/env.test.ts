@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseEnv } from "@/lib/env";
+import { parseServerEnv } from "@/lib/env.server";
+
+vi.mock("server-only", () => ({}));
 
 const valid = {
   NEXT_PUBLIC_SUPABASE_URL: "https://abc.supabase.co",
@@ -44,5 +47,32 @@ describe("parseEnv", () => {
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "leaky-value",
       }),
     ).not.toThrowError(/leaky-value/);
+  });
+});
+
+describe("parseServerEnv", () => {
+  const server = {
+    VISITOR_HASH_SECRET: "a-secret-of-at-least-32-characters-0123",
+    TRUSTED_PROXY_HOPS: "1",
+  };
+
+  it("accepts a secret and a hop count and reads the hops as a number", () => {
+    expect(parseServerEnv(server)).toEqual({ ...server, TRUSTED_PROXY_HOPS: 1 });
+  });
+
+  it("names a missing secret and a missing hop count", () => {
+    expect(() => parseServerEnv({})).toThrowError(
+      "Invalid environment variables: VISITOR_HASH_SECRET, TRUSTED_PROXY_HOPS",
+    );
+  });
+
+  it("rejects a short secret without echoing it", () => {
+    const attempt = () => parseServerEnv({ ...server, VISITOR_HASH_SECRET: "too-short" });
+    expect(attempt).toThrowError("VISITOR_HASH_SECRET");
+    expect(attempt).not.toThrowError(/too-short/);
+  });
+
+  it.each(["0", "-1", "1.5", "11", "many", ""])("rejects %j as a number of trusted proxies", (hops) => {
+    expect(() => parseServerEnv({ ...server, TRUSTED_PROXY_HOPS: hops })).toThrowError("TRUSTED_PROXY_HOPS");
   });
 });

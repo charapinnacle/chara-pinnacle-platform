@@ -9,8 +9,10 @@ const redirectMock = vi.hoisted(() =>
 const signInMock = vi.fn();
 const signOutMock = vi.fn();
 const userMock = vi.hoisted(() => vi.fn());
+const throttledMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -26,6 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   signInMock.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
   signOutMock.mockResolvedValue({ error: null });
+  throttledMock.mockResolvedValue(false);
   userMock.mockResolvedValue({ id: "user-1", accountKind: "worker", suspended: false });
 });
 
@@ -102,6 +105,25 @@ describe("signIn", () => {
     const result = await signIn(input);
     expect(result).toEqual({ message: "Too many attempts. Try again in a few minutes." });
     expect(JSON.stringify(result)).not.toMatch(/account|email or password/i);
+  });
+
+  it("counts the attempt as a login before Auth is called", async () => {
+    await expect(signIn(input)).rejects.toThrow("REDIRECT:");
+    expect(throttledMock).toHaveBeenCalledWith("login");
+    expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(signInMock.mock.invocationCallOrder[0]);
+  });
+
+  it("refuses an attempt over the visitor's limit with the rate-limit message, even with correct credentials", async () => {
+    throttledMock.mockResolvedValue(true);
+    const result = await signIn(input);
+    expect(result).toEqual({ message: "Too many attempts. Try again in a few minutes." });
+    expect(JSON.stringify(result)).not.toMatch(/account|email or password/i);
+    expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  it("does not count an invalid form", async () => {
+    await signIn({ email: "nope", password: "" });
+    expect(throttledMock).not.toHaveBeenCalled();
   });
 
   it("asks an unconfirmed user to confirm the address", async () => {

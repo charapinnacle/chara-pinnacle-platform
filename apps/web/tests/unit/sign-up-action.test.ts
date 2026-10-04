@@ -11,9 +11,11 @@ const signUpMock = vi.fn();
 const resendMock = vi.fn();
 const verifyOtpMock = vi.fn();
 const documentsMock = vi.hoisted(() => vi.fn());
+const throttledMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
+vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signUp: signUpMock, resend: resendMock, verifyOtp: verifyOtpMock },
@@ -42,6 +44,7 @@ const input = {
 beforeEach(() => {
   vi.clearAllMocks();
   documentsMock.mockResolvedValue(documents);
+  throttledMock.mockResolvedValue(false);
   signUpMock.mockResolvedValue({ data: {}, error: null });
 });
 
@@ -143,6 +146,24 @@ describe("signUp action", () => {
     });
   });
 
+  it("counts the attempt as a sign-up before Auth is called", async () => {
+    await expect(signUp(input)).rejects.toThrow("REDIRECT:");
+    expect(throttledMock).toHaveBeenCalledWith("signup");
+    expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(signUpMock.mock.invocationCallOrder[0]);
+  });
+
+  it("refuses an attempt over the visitor's limit with the rate-limit message and never calls Auth", async () => {
+    throttledMock.mockResolvedValue(true);
+    expect(await signUp(input)).toEqual({ message: "Too many attempts. Try again in a few minutes." });
+    expect(signUpMock).not.toHaveBeenCalled();
+  });
+
+  it("does not count a form that is refused before any Auth call", async () => {
+    await signUp({ ...input, email: "nope" });
+    await signUp({ ...input, consents: [] });
+    expect(throttledMock).not.toHaveBeenCalled();
+  });
+
   it("returns a generic message for any other failure without internals and logs only its code and status", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     signUpMock.mockResolvedValue({
@@ -177,6 +198,20 @@ describe("resendConfirmation action", () => {
   it("refuses an invalid address without calling Auth", async () => {
     const result = await resendConfirmation({ email: "nope" });
     expect(result.errors?.email).toBe("Enter a valid email address.");
+    expect(resendMock).not.toHaveBeenCalled();
+    expect(throttledMock).not.toHaveBeenCalled();
+  });
+
+  it("counts the attempt as a resend before Auth is called", async () => {
+    resendMock.mockResolvedValue({ data: {}, error: null });
+    await resendConfirmation({ email: "a@example.test" });
+    expect(throttledMock).toHaveBeenCalledWith("resend");
+    expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(resendMock.mock.invocationCallOrder[0]);
+  });
+
+  it("refuses an attempt over the visitor's limit with the rate-limit message and sends nothing", async () => {
+    throttledMock.mockResolvedValue(true);
+    expect(await resendConfirmation({ email: "a@example.test" })).toEqual({ message: "Too many attempts. Try again in a few minutes." });
     expect(resendMock).not.toHaveBeenCalled();
   });
 

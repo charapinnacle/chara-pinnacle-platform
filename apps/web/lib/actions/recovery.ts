@@ -10,6 +10,7 @@ import {
   RATE_LIMITED,
   weakPasswordMessage,
 } from "@/lib/auth-errors";
+import { isThrottled } from "@/lib/dal/rate-limit";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
 import { getCurrentUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -35,6 +36,7 @@ const OTHER_SESSIONS_KEPT =
 export async function requestPasswordReset(input: ForgotPasswordInput): Promise<RequestResult> {
   const parsed = forgotPasswordSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  if (await isThrottled("forgot_password")) return { message: RATE_LIMITED };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email);
@@ -80,6 +82,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ResetRes
   const parsed = resetPasswordInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { tokenHash, password, code } = parsed.data;
+  if (await isThrottled("reset_password")) return { message: RATE_LIMITED };
 
   const supabase = await createClient();
   if (await isRecoveryLinkFresh(tokenHash)) {
