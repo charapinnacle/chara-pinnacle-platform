@@ -14,9 +14,12 @@ export default async function LoginPage({
     <AuthCard
       title="Log in"
       footer={
-        <>
-          New to CHARA? <TextLink href={`/${lang}/signup`}>Create an account</TextLink>
-        </>
+        <p className="flex flex-wrap items-center gap-x-1.5">
+          New to CHARA?
+          <TextLink standalone="flush" href={`/${lang}/signup`}>
+            Create an account
+          </TextLink>
+        </p>
       }
     >
       <LoginForm next={typeof next === "string" ? next : undefined} />

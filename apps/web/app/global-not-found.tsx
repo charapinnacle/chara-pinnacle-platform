@@ -18,7 +18,7 @@ export default async function GlobalNotFound() {
         <SiteShell>
           <PageContainer layout="centered">
             <AuthCard title="Page not found">
-              <TextLink href="/" className="justify-self-start">
+              <TextLink standalone="flush" href="/">
                 Back to the home page
               </TextLink>
             </AuthCard>

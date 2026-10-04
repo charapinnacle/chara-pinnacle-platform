@@ -22,7 +22,7 @@ export default async function ResetPasswordPage({
   if (!open) {
     return (
       <AuthCard icon={Link2Off} title="This link has expired or was already used">
-        <TextLink standalone href={`/${lang}/forgot-password`} className="justify-self-center text-body">
+        <TextLink standalone="center" href={`/${lang}/forgot-password`}>
           Request a new reset link
         </TextLink>
       </AuthCard>

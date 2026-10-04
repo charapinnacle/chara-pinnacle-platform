@@ -14,7 +14,7 @@ export default async function ForgotPasswordPage({
       title="Reset your password"
       description="Enter your email address and we will send you a link to choose a new password. The link is valid for 1 hour and works once."
       footer={
-        <TextLink standalone href={`/${lang}/login`} className="-my-3">
+        <TextLink standalone="flush" href={`/${lang}/login`}>
           Back to log in
         </TextLink>
       }

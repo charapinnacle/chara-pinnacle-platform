@@ -3,6 +3,8 @@ import Link from "next/link";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { cn } from "@/lib/utils";
 
+const standaloneBase = "inline-flex min-h-11 items-center justify-self-start text-body";
+
 const textLinkVariants = cva(
   "-mx-0.5 rounded-sm px-0.5 font-medium underline underline-offset-4",
   {
@@ -12,7 +14,9 @@ const textLinkVariants = cva(
         destructive: "text-destructive decoration-destructive/40 hover:decoration-destructive",
       },
       standalone: {
-        true: "inline-flex min-h-11 items-center",
+        true: standaloneBase,
+        flush: `${standaloneBase} -my-3`,
+        center: `${standaloneBase} justify-self-center`,
       },
     },
     defaultVariants: { tone: "primary" },

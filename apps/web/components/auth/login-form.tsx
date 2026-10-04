@@ -12,7 +12,6 @@ import { defaultLocale } from "@/lib/i18n/locale";
 import { loginSchema, type LoginFormInput } from "@/lib/validation/login";
 
 const ids = { email: "login-email", password: "login-password" };
-const formLinkClassName = "-mt-3 justify-self-start text-body";
 
 export function LoginForm({ next }: { next?: string }) {
   const form = useForm<LoginFormInput>({
@@ -56,7 +55,7 @@ export function LoginForm({ next }: { next?: string }) {
         onSelect={(key) => form.setFocus(key as FieldPath<LoginFormInput>)}
       />
       {errors.root?.server?.type === "unconfirmed" ? (
-        <TextLink standalone href={`/${defaultLocale}/verify-email`} className={formLinkClassName}>
+        <TextLink standalone="flush" href={`/${defaultLocale}/verify-email`}>
           Request a new confirmation link
         </TextLink>
       ) : null}
@@ -79,7 +78,7 @@ export function LoginForm({ next }: { next?: string }) {
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Logging in..." : "Log in"}
       </FormButton>
-      <TextLink standalone href={`/${defaultLocale}/forgot-password`} className={formLinkClassName}>
+      <TextLink standalone="flush" href={`/${defaultLocale}/forgot-password`}>
         Forgot your password?
       </TextLink>
     </form>
