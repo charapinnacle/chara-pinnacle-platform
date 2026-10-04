@@ -1,10 +1,10 @@
 import "server-only";
 import { headers } from "next/headers";
-import { serverEnv } from "@/lib/env";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { clientAddress, visitorKey } from "@/lib/visitor-address";
 
-export type ThrottledAction =
+type ThrottledAction =
   | "signup"
   | "resend"
   | "login"
@@ -16,6 +16,9 @@ export type ThrottledAction =
 export async function isThrottled(action: ThrottledAction): Promise<boolean> {
   const { VISITOR_HASH_SECRET, TRUSTED_PROXY_HOPS } = serverEnv();
   const address = clientAddress((await headers()).get("x-forwarded-for"), TRUSTED_PROXY_HOPS);
+  if (address === null) {
+    console.error("Visitor address missing from X-Forwarded-For", { hops: TRUSTED_PROXY_HOPS });
+  }
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("rate_limit_attempt", {
     p_action: action,

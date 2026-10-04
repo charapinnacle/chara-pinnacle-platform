@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { parseEnv, parseServerEnv } from "@/lib/env";
+import { describe, expect, it, vi } from "vitest";
+import { parseEnv } from "@/lib/env";
+import { parseServerEnv } from "@/lib/env.server";
+
+vi.mock("server-only", () => ({}));
 
 const valid = {
   NEXT_PUBLIC_SUPABASE_URL: "https://abc.supabase.co",

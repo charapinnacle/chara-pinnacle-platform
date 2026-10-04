@@ -10,14 +10,7 @@ const schema = z.object({
   NEXT_PUBLIC_SITE_URL: httpUrl.transform((value) => new URL(value).origin),
 });
 
-// Read only on the server and never inlined into the browser bundle: the secret keys the visitor hash, the hop
-// count says how many reverse proxies in front of the app append to X-Forwarded-For (lib/visitor-address.ts).
-const serverSchema = z.object({
-  VISITOR_HASH_SECRET: z.string().min(32, "must be at least 32 characters"),
-  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(10),
-});
-
-function parse<T extends z.ZodType>(
+export function parseSource<T extends z.ZodType>(
   validator: T,
   source: Record<string, string | undefined>,
 ): z.output<T> {
@@ -32,11 +25,7 @@ function parse<T extends z.ZodType>(
 }
 
 export function parseEnv(source: Record<string, string | undefined>) {
-  return parse(schema, source);
-}
-
-export function parseServerEnv(source: Record<string, string | undefined>) {
-  return parse(serverSchema, source);
+  return parseSource(schema, source);
 }
 
 // Next.js inlines NEXT_PUBLIC_ values only for literal property access.
@@ -46,13 +35,3 @@ export const env = parseEnv({
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 });
-
-let serverValues: ReturnType<typeof parseServerEnv> | undefined;
-
-export function serverEnv() {
-  serverValues ??= parseServerEnv({
-    VISITOR_HASH_SECRET: process.env.VISITOR_HASH_SECRET,
-    TRUSTED_PROXY_HOPS: process.env.TRUSTED_PROXY_HOPS,
-  });
-  return serverValues;
-}

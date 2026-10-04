@@ -51,9 +51,12 @@ describe("isThrottled", () => {
     expect(await isThrottled("signup")).toBe(true);
   });
 
-  it("counts a request without an address under the shared key", async () => {
+  it("counts a request without an address under the shared key and logs that, without any address", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
     request(null);
     await isThrottled("resend");
+    expect(errorLog).toHaveBeenCalledExactlyOnceWith("Visitor address missing from X-Forwarded-For", { hops: 1 });
+    errorLog.mockRestore();
     expect(rpcMock).toHaveBeenCalledWith("rate_limit_attempt", {
       p_action: "resend",
       p_key: visitorKey(secret, null),
