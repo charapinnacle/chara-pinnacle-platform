@@ -64,7 +64,9 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
               "aria-describedby": describedBy,
             })}
             {description ? (
-              <FieldDescription id={descriptionId}>{description}</FieldDescription>
+              <FieldDescription id={descriptionId} className={fieldState.error ? "sr-only" : undefined}>
+                {description}
+              </FieldDescription>
             ) : null}
             <FieldError id={errorId} errors={[fieldState.error]} />
           </Field>
