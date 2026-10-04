@@ -75,9 +75,10 @@ describe("organization input schema", () => {
     expect(Object.keys(errorsFor({ country }))).toEqual(["country"]);
   });
 
-  it("requires an industry that is one letter", () => {
-    expect(parse({ industry: "f" }).success).toBe(true);
-    for (const industry of ["", "FF", "1"]) {
+  it("requires an industry code and leaves its existence to the database", () => {
+    const result = parse({ industry: " f " });
+    expect(result.success && result.data.industry).toBe("F");
+    for (const industry of ["", "   "]) {
       expect(Object.keys(errorsFor({ industry }))).toEqual(["industry"]);
     }
   });
@@ -88,6 +89,8 @@ describe("organization input schema", () => {
     ["javascript:alert(1)", false],
     ["ftp://x.example", false],
     ["https://", false],
+    ["https:example.com", false],
+    ["http:///x", false],
     ["https://exa mple.example", false],
     [`https://a.example/${"p".repeat(2048 - "https://a.example/".length)}`, true],
     [`https://a.example/${"p".repeat(2049 - "https://a.example/".length)}`, false],

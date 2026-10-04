@@ -17,7 +17,7 @@ import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 export type CreateOrganizationResult = {
   errors?: FieldErrors;
   message?: string;
-  created?: { duplicateLegalName: true };
+  duplicateLegalName?: true;
 };
 
 const LIMIT_REACHED = "You have reached the number of organizations one account can own.";
@@ -68,6 +68,6 @@ export async function createOrganization(
   if (error) return refusal(error);
 
   const created = createdOrganizationSchema.parse(data);
-  if (created.duplicate_legal_name) return { created: { duplicateLegalName: true } };
+  if (created.duplicate_legal_name) return { duplicateLegalName: true };
   redirect(mfaPath(defaultLocale));
 }

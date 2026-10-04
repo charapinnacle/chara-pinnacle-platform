@@ -23,14 +23,18 @@ export default async function OnboardingPage({
   const user = await requireUser(lang);
 
   if (user.accountKind === "company") {
-    if (await getMyOrganization(user.id)) redirect(homePath(lang, "company"));
-    const [countries, industries] = await Promise.all([getCountries(), getIndustries()]);
+    const [organization, countries, industries] = await Promise.all([
+      getMyOrganization(user.id),
+      getCountries(),
+      getIndustries(),
+    ]);
+    if (organization) redirect(homePath(lang, "company"));
     return (
       <AuthCard
         title="Your account type is Employer"
         description="This cannot be changed later. Tell us about your company to finish setting up."
       >
-        <OrganizationForm countries={countries} industries={industries} />
+        <OrganizationForm lang={lang} countries={countries} industries={industries} />
       </AuthCard>
     );
   }

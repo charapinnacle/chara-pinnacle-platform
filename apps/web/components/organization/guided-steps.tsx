@@ -1,13 +1,12 @@
 import { Circle, CircleCheck } from "lucide-react";
 import { TextLink } from "@/components/forms/text-link";
-import { defaultLocale } from "@/lib/i18n/locale";
 import { mfaPath } from "@/lib/routes";
 
-type GuidedStepsProps = { twoStepDone: boolean };
+type GuidedStepsProps = { lang: string; twoStepDone: boolean };
 
 const upcoming = ["Start the free trial", "Post the first vacancy", "Invite a team member"];
 
-export function GuidedSteps({ twoStepDone }: GuidedStepsProps) {
+export function GuidedSteps({ lang, twoStepDone }: GuidedStepsProps) {
   return (
     <ol className="grid gap-3 text-start text-body">
       <li className="flex items-center gap-3">
@@ -21,7 +20,7 @@ export function GuidedSteps({ twoStepDone }: GuidedStepsProps) {
             Set up two-step verification<span className="sr-only"> (done)</span>
           </span>
         ) : (
-          <TextLink href={mfaPath(defaultLocale)}>Set up two-step verification</TextLink>
+          <TextLink href={mfaPath(lang)}>Set up two-step verification</TextLink>
         )}
       </li>
       {upcoming.map((step) => (

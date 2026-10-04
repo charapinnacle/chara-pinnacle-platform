@@ -59,7 +59,7 @@ describe("createOrganization", () => {
 
   it("returns the duplicate notice instead of redirecting when the legal name is in use", async () => {
     rpcMock.mockResolvedValue({ data: { ...created, duplicate_legal_name: true }, error: null });
-    await expect(createOrganization(input)).resolves.toEqual({ created: { duplicateLegalName: true } });
+    await expect(createOrganization(input)).resolves.toEqual({ duplicateLegalName: true });
     expect(redirectMock).not.toHaveBeenCalled();
   });
 

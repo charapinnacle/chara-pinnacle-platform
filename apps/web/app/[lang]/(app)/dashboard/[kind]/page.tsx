@@ -20,7 +20,10 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
   }
   if (kind !== "employer") return <AuthCard title="Dashboard" />;
 
-  const organization = await getMyOrganization(user.id);
+  const [organization, twoStepDone] = await Promise.all([
+    getMyOrganization(user.id),
+    hasVerifiedTotpFactor(lang),
+  ]);
   if (!organization) {
     return (
       <AuthCard title="Dashboard">
@@ -35,7 +38,7 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
   return (
     <AuthCard title="Dashboard" description={organization.displayName}>
       <EmptyState title="Nothing here yet" description="Follow these steps to get started.">
-        <GuidedSteps twoStepDone={await hasVerifiedTotpFactor()} />
+        <GuidedSteps lang={lang} twoStepDone={twoStepDone} />
       </EmptyState>
     </AuthCard>
   );

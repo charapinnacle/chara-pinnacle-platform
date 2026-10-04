@@ -1,24 +1,23 @@
 import { z } from "zod";
 
-const identifierKindValues = ["registration_number", "vat_number", "other"];
-
 export const identifierKindOptions = [
   { value: "registration_number", label: "Company registration number" },
   { value: "vat_number", label: "VAT number" },
   { value: "other", label: "Other legal-entity identifier" },
 ] as const;
 
+const identifierKindValues: readonly string[] = identifierKindOptions.map((option) => option.value);
+
 const MAX_WEBSITE_LENGTH = 2048;
 
-export function normalizeIdentifier(value: string): string {
+function normalizeIdentifier(value: string): string {
   return value.replace(/[\s.\-/]/g, "").toUpperCase();
 }
 
 function isWebAddress(value: string): boolean {
-  if (value.length > MAX_WEBSITE_LENGTH || /\s/.test(value)) return false;
+  if (value.length > MAX_WEBSITE_LENGTH || !/^https?:\/\/[^/?#\s]/i.test(value) || /\s/.test(value)) return false;
   try {
-    const url = new URL(value);
-    return (url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "";
+    return new URL(value).hostname !== "";
   } catch {
     return false;
   }
@@ -45,7 +44,7 @@ export const organizationFormSchema = z
       .string({ error: "Choose the industry of your company." })
       .trim()
       .toUpperCase()
-      .regex(/^[A-Z]$/, { error: "Choose the industry of your company." }),
+      .min(1, { error: "Choose the industry of your company." }),
     website: z
       .string()
       .trim()

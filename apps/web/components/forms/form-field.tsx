@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-const controlClassName =
+export const controlClassName =
   "bg-card px-3.5 text-base text-foreground hover:border-muted-foreground focus-visible:ring-0 aria-invalid:ring-0 aria-invalid:hover:border-destructive md:text-base";
 
 type ControlProps<T extends FieldValues, N extends FieldPath<T>> =

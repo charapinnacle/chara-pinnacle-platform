@@ -3,6 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
+import { toast } from "@/components/feedback/toast-store";
+import { ComboboxField } from "@/components/forms/combobox-field";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
@@ -12,7 +14,6 @@ import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { createOrganization } from "@/lib/actions/organizations";
 import type { ReferenceItem } from "@/lib/dal/reference";
-import { defaultLocale } from "@/lib/i18n/locale";
 import { mfaPath } from "@/lib/routes";
 import {
   identifierKindOptions,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/validation/organization";
 
 type OrganizationFormProps = {
+  lang: string;
   countries: ReferenceItem[];
   industries: ReferenceItem[];
 };
@@ -31,15 +33,15 @@ const ids = {
   country: "org-country",
   industry: "org-industry",
   website: "org-website",
-  identifierKind: "org-identifier-kind",
   identifier: "org-identifier",
+  identifierKind: "org-identifier-kind",
 } as const satisfies Record<keyof OrganizationFormInput, string>;
 
 function toOptions(items: readonly ReferenceItem[]) {
   return items.map((item) => ({ value: item.code, label: item.name }));
 }
 
-export function OrganizationForm({ countries, industries }: OrganizationFormProps) {
+export function OrganizationForm({ lang, countries, industries }: OrganizationFormProps) {
   const form = useForm<OrganizationFormInput>({
     resolver: zodResolver(organizationFormSchema),
     defaultValues: {
@@ -48,8 +50,8 @@ export function OrganizationForm({ countries, industries }: OrganizationFormProp
       country: "",
       industry: "",
       website: "",
-      identifierKind: "",
       identifier: "",
+      identifierKind: "",
     },
     shouldFocusError: false,
   });
@@ -72,18 +74,23 @@ export function OrganizationForm({ countries, industries }: OrganizationFormProp
   function onSubmit() {
     return submit(
       () => createOrganization(form.getValues()),
-      (result) => setDuplicateLegalName(Boolean(result.created?.duplicateLegalName)),
+      (result) => {
+        setDuplicateLegalName(Boolean(result.duplicateLegalName));
+        if (result.message) {
+          toast({ variant: "error", title: "Could not create the company", description: result.message });
+        }
+      },
     );
   }
 
   if (duplicateLegalName) {
     return (
       <div className="grid gap-4">
+        <p className="text-body">Your company was created.</p>
         <Notice tone="info" role="status">
-          Your company was created. Another company on CHARA uses the same legal name, and we have noted
-          the overlap.
+          An organisation with a similar name already exists on CHARA.
         </Notice>
-        <TextLink standalone href={mfaPath(defaultLocale)}>
+        <TextLink standalone href={mfaPath(lang)}>
           Continue
         </TextLink>
       </div>
@@ -111,7 +118,7 @@ export function OrganizationForm({ countries, industries }: OrganizationFormProp
         label="Display name (optional)"
         description="The name candidates see. Defaults to the legal name."
       />
-      <SelectField
+      <ComboboxField
         control={control}
         name="country"
         id={ids.country}
@@ -119,7 +126,7 @@ export function OrganizationForm({ countries, industries }: OrganizationFormProp
         placeholder="Choose a country"
         options={toOptions(countries)}
       />
-      <SelectField
+      <ComboboxField
         control={control}
         name="industry"
         id={ids.industry}
@@ -135,20 +142,20 @@ export function OrganizationForm({ countries, industries }: OrganizationFormProp
         type="url"
         autoComplete="url"
       />
-      <SelectField
-        control={control}
-        name="identifierKind"
-        id={ids.identifierKind}
-        label="Type of legal-entity identifier (optional)"
-        placeholder="Choose a type"
-        options={identifierKindOptions}
-      />
       <InputField
         control={control}
         name="identifier"
         id={ids.identifier}
-        label="Legal-entity identifier (optional)"
-        description="Needed before you start a free trial, which is granted once per legal entity. You can add it later."
+        label="Company registration number or VAT number (optional until you start your trial)"
+        description="A free trial is granted once per legal entity."
+      />
+      <SelectField
+        control={control}
+        name="identifierKind"
+        id={ids.identifierKind}
+        label="Type of identifier"
+        placeholder="Choose a type"
+        options={identifierKindOptions}
       />
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating company..." : "Create company"}
