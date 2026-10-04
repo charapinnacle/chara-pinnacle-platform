@@ -1,7 +1,13 @@
 begin;
-select plan(52);
+select plan(60);
 
 -- An account that signed up with no kind, as a Google sign-up does (Auth gives it provider google in app_metadata).
+create function pg_temp.add_google_identity(p_id uuid, p_verified boolean default true) returns void
+language sql as $$
+  insert into auth.identities (provider_id, user_id, identity_data, provider)
+  values (gen_random_uuid()::text, p_id, jsonb_build_object('sub', gen_random_uuid(), 'email_verified', p_verified), 'google')
+$$;
+
 create function pg_temp.new_oauth_user(p_id uuid, p_confirmed boolean default true) returns void
 language sql as $$
   insert into auth.users (id, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -9,7 +15,8 @@ language sql as $$
     p_id, p_id || '@example.test', case when p_confirmed then now() end,
     '{"provider":"google","providers":["google"]}',
     '{"iss":"https://accounts.google.com","email_verified":true,"full_name":"Ana Example"}'
-  )
+  );
+  select pg_temp.add_google_identity(p_id)
 $$;
 
 create function pg_temp.new_user(p_id uuid, p_kind text, p_pending jsonb) returns void
@@ -63,6 +70,9 @@ language sql as $$ select count(*) from audit.log where action = p_action and en
 \set n '00000000-0000-0000-0000-00000000f006'
 \set x '00000000-0000-0000-0000-00000000a007'
 \set y '00000000-0000-0000-0000-00000000a008'
+\set k '00000000-0000-0000-0000-00000000a009'
+\set p '00000000-0000-0000-0000-00000000a00a'
+\set q '00000000-0000-0000-0000-00000000a00b'
 
 \set worker_docs '[{"purpose":"terms-of-service","version":0},{"purpose":"privacy-policy","version":0},{"purpose":"worker-terms","version":0},{"purpose":"age-18-plus","version":0}]'
 \set company_docs '[{"purpose":"terms-of-service","version":0},{"purpose":"privacy-policy","version":0},{"purpose":"employer-terms","version":0}]'
@@ -315,6 +325,60 @@ select is(
   pg_temp.call_as(:'n', 'authenticated', $$update public.profiles set intended_account_kind = 'company' where id = auth.uid()$$),
   '42501|permission denied for table profiles|',
   'authenticated has no grant to set the intended kind of an account without one'
+);
+
+-- set_account_kind alone cannot commit a kind for a user who has none intended
+select pg_temp.new_oauth_user(:'k');
+select is(
+  pg_temp.call_as(:'k', 'authenticated', $$select public.set_account_kind('[]')$$),
+  'P0001|CHARA_INVALID_INPUT|no required consents are configured',
+  'set_account_kind refuses a user with no intended kind'
+);
+select is(
+  (select p.account_kind is null and p.intended_account_kind is null
+     from public.profiles p where p.id = :'k')
+  and not exists (select 1 from public.consents where user_id = :'k')
+  and pg_temp.audit_count(:'k', 'consents_accepted') = 0,
+  true,
+  'the refused set_account_kind left no kind, no consents row and no audit row'
+);
+
+-- Whoever pre-registered the address with a password named the kind, not the owner: a verified Google identity
+-- lets the owner choose it afresh, and the pending consents of the pre-registration are dropped
+select pg_temp.new_user(:'p', 'company', '[{"purpose":"terms-of-service","version":0},{"purpose":"privacy-policy","version":0},{"purpose":"employer-terms","version":0}]');
+select pg_temp.new_user(:'q', 'company', '[]');
+select pg_temp.add_google_identity(:'q', false);
+select is(
+  pg_temp.call_as(:'q', 'authenticated', format($$select public.choose_account_kind('worker', %L)$$, :'worker_docs')),
+  'P0001|CHARA_FORBIDDEN|intended_account_kind cannot be changed',
+  'a Google identity the provider did not verify does not release the pre-registered kind'
+);
+select pg_temp.add_google_identity(:'p');
+select is(
+  pg_temp.call_as(:'p', 'authenticated', $$select public.choose_account_kind('company', '[]')$$),
+  'P0001|CHARA_CONSENT_REQUIRED|terms-of-service',
+  'the pending consents of the pre-registration do not count for a Google-authenticated owner'
+);
+select is(
+  (select p.intended_account_kind::text || ':' || jsonb_array_length(p.pending_consents) from public.profiles p where p.id = :'p'),
+  'company:3',
+  'the refused choice left the pre-registered profile as it was'
+);
+select is(
+  pg_temp.call_as(:'p', 'authenticated', format($$select public.choose_account_kind('worker', %L)$$, :'worker_docs')),
+  'ok',
+  'the Google-authenticated owner chooses worker over the pre-registered company'
+);
+select is(
+  (select p.account_kind::text || ':' || p.intended_account_kind::text || ':' || p.pending_consents::text
+     from public.profiles p where p.id = :'p'),
+  'worker:worker:[]',
+  'the profile holds the owner choice and no pending consents'
+);
+select is(
+  pg_temp.docs(:'p'),
+  'terms-of-service:0:granted,privacy-policy:0:granted,worker-terms:0:granted,age-18-plus:0:granted',
+  'only the documents of the chosen kind were accepted'
 );
 
 select pg_temp.new_oauth_user(:'y');

@@ -9,21 +9,27 @@
 alter table public.profiles alter column intended_account_kind drop not null;
 
 -- The column was NOT NULL, which made "a committed kind is the intended kind" implicit; it is now stated.
+-- Added not valid and validated apart: the validation scan holds a lighter lock than adding a validated check.
 alter table public.profiles
   add constraint profiles_kind_matches_intended
-  check (account_kind is null or (intended_account_kind is not null and account_kind = intended_account_kind));
+  check (account_kind is null or (intended_account_kind is not null and account_kind = intended_account_kind))
+  not valid;
+alter table public.profiles validate constraint profiles_kind_matches_intended;
 
 comment on column public.profiles.intended_account_kind is
   'Kind named at sign-up. Null only for an OAuth sign-up until choose_account_kind sets it, once; then never changes.';
 
 -- The kind may be set once from null (OAuth) and committed from the intended kind; every other change stays refused.
+-- The one exception is choose_account_kind replacing the intended kind of an uncommitted profile whose owner has just
+-- authenticated with Google (D32); it announces that with a setting that lives only in its own transaction.
 create or replace function private.profiles_guard_account_kind() returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
   if new.intended_account_kind is distinct from old.intended_account_kind
-     and old.intended_account_kind is not null then
+     and old.intended_account_kind is not null
+     and not (old.account_kind is null and coalesce(current_setting('chara.replace_intended_kind', true), '') = 'on') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'intended_account_kind cannot be changed';
   end if;
   if new.account_kind is distinct from old.account_kind
@@ -59,10 +65,12 @@ begin
 end;
 $$;
 
--- Chooses the account kind of a user who has none yet and commits it with the consents. A user who named the kind at
--- sign-up may repeat that kind and nothing else; a committed kind is returned unchanged for the same kind (a double
--- submit) and refused for another. The whole call is one transaction: a missing consent or an unconfirmed email
--- leaves the profile without an intended kind.
+-- Chooses the account kind of a user who has none yet and commits it with the consents. A committed kind is returned
+-- unchanged for the same kind (a double submit) and refused for another. A user who named the kind at sign-up may
+-- repeat that kind and nothing else, unless a verified Google identity is linked to the account: whoever pre-registered
+-- the address with a password named that kind, not the owner, so the owner's choice replaces it and the pending
+-- consents are dropped (D32). The whole call is one transaction: a missing consent or an unconfirmed email leaves
+-- the profile as it was.
 create function public.choose_account_kind(p_kind public.account_kind, p_consents jsonb default '[]')
 returns public.account_kind
 language plpgsql
@@ -72,6 +80,7 @@ as $$
 declare
   v_uid uuid := (select auth.uid());
   v_profile public.profiles;
+  v_google boolean;
 begin
   if v_uid is null then
     raise exception 'CHARA_FORBIDDEN';
@@ -91,12 +100,22 @@ begin
     end if;
     return v_profile.account_kind;
   end if;
-  if v_profile.intended_account_kind is not null and v_profile.intended_account_kind <> p_kind then
+
+  select exists (
+    select 1 from auth.identities i
+    where i.user_id = v_uid and i.provider = 'google' and i.identity_data ->> 'email_verified' = 'true'
+  ) into v_google;
+  if v_profile.intended_account_kind is not null and v_profile.intended_account_kind <> p_kind and not v_google then
     raise exception 'CHARA_FORBIDDEN' using detail = 'intended_account_kind cannot be changed';
   end if;
 
-  if v_profile.intended_account_kind is null then
+  if v_profile.intended_account_kind is distinct from p_kind then
+    perform set_config('chara.replace_intended_kind', 'on', true);
     update public.profiles set intended_account_kind = p_kind where id = v_uid;
+    perform set_config('chara.replace_intended_kind', 'off', true);
+  end if;
+  if v_google then
+    update public.profiles set pending_consents = '[]' where id = v_uid;
   end if;
   return public.set_account_kind(p_consents);
 end;
