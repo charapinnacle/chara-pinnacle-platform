@@ -2,15 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { InputField } from "@/components/forms/form-field";
+import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Button } from "@/components/ui/button";
 import { signIn } from "@/lib/actions/login";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { isRedirectError } from "@/lib/redirect-error";
 import { loginSchema, type LoginFormInput } from "@/lib/validation/login";
 
 const ids = { email: "login-email", password: "login-password" };
@@ -21,13 +19,11 @@ export function LoginForm({ next }: { next?: string }) {
     defaultValues: { email: "", password: "" },
     shouldFocusError: false,
   });
-  const { control, formState, handleSubmit, setError, resetField } = form;
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const inFlight = useRef(false);
-
-  useEffect(() => {
-    if (formState.submitCount > 0 && summaryRef.current) summaryRef.current.focus();
-  }, [formState.submitCount]);
+  const { control, formState, handleSubmit, setError } = form;
+  const { summaryRef, submit } = useServerFormSubmit(form, {
+    failureTitle: "Could not log in",
+    clearOnFailure: "password",
+  });
 
   const errors = formState.errors;
   const items: ErrorSummaryItem[] = [
@@ -40,33 +36,15 @@ export function LoginForm({ next }: { next?: string }) {
     errors.root?.server && { key: "root", message: String(errors.root.server.message) },
   ].filter((item): item is ErrorSummaryItem => Boolean(item));
 
-  async function onSubmit(values: LoginFormInput) {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    try {
-      const result = await signIn({ ...values, next });
-      if (!result) return;
-      resetField("password");
-      for (const [path, message] of Object.entries(result.errors ?? {})) {
-        setError(path as FieldPath<LoginFormInput>, { message });
-      }
-      if (result.message) {
-        setError("root.server", {
-          type: result.unconfirmed ? "unconfirmed" : "server",
-          message: result.message,
-        });
-      }
-    } catch (error) {
-      if (isRedirectError(error)) return;
-      resetField("password");
-      toast({
-        variant: "error",
-        title: "Could not log in",
-        description: "Check your connection and try again.",
-      });
-    } finally {
-      inFlight.current = false;
-    }
+  function onSubmit(values: LoginFormInput) {
+    return submit(
+      () => signIn({ ...values, next }),
+      (result) => {
+        if (result.unconfirmed && result.message) {
+          setError("root.server", { type: "unconfirmed", message: result.message });
+        }
+      },
+    );
   }
 
   return (

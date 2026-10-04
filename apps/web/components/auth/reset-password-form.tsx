@@ -1,14 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { InputField } from "@/components/forms/form-field";
+import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Button } from "@/components/ui/button";
 import { resetPassword } from "@/lib/actions/recovery";
-import { isRedirectError } from "@/lib/redirect-error";
 import { resetPasswordFormSchema, type ResetPasswordFormInput } from "@/lib/validation/login";
 
 const ids = { password: "reset-password", code: "reset-code" };
@@ -19,14 +18,11 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
     defaultValues: { password: "", code: "" },
     shouldFocusError: false,
   });
-  const { control, formState, handleSubmit, setError } = form;
+  const { control, formState, handleSubmit } = form;
   const [needsCode, setNeedsCode] = useState(false);
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const inFlight = useRef(false);
-
-  useEffect(() => {
-    if (formState.submitCount > 0 && summaryRef.current) summaryRef.current.focus();
-  }, [formState.submitCount]);
+  const { summaryRef, submit } = useServerFormSubmit(form, {
+    failureTitle: "Could not change the password",
+  });
 
   useEffect(() => {
     if (needsCode) form.setFocus("code");
@@ -43,31 +39,18 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
     errors.root?.server && { key: "root", message: String(errors.root.server.message) },
   ].filter((item): item is ErrorSummaryItem => Boolean(item));
 
-  async function onSubmit(values: ResetPasswordFormInput) {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    try {
-      const result = await resetPassword({
-        tokenHash,
-        password: values.password,
-        code: needsCode ? values.code : undefined,
-      });
-      if (!result) return;
-      if (result.needsCode) setNeedsCode(true);
-      for (const [path, message] of Object.entries(result.errors ?? {})) {
-        setError(path as FieldPath<ResetPasswordFormInput>, { message });
-      }
-      if (result.message) setError("root.server", { message: result.message });
-    } catch (error) {
-      if (isRedirectError(error)) return;
-      toast({
-        variant: "error",
-        title: "Could not change the password",
-        description: "Check your connection and try again.",
-      });
-    } finally {
-      inFlight.current = false;
-    }
+  function onSubmit(values: ResetPasswordFormInput) {
+    return submit(
+      () =>
+        resetPassword({
+          tokenHash,
+          password: values.password,
+          code: needsCode ? values.code : undefined,
+        }),
+      (result) => {
+        if (result.needsCode) setNeedsCode(true);
+      },
+    );
   }
 
   return (
