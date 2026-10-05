@@ -467,7 +467,7 @@ isOneToOne: false
 { Args: { "p_document_id": string }; Returns: undefined
                            },
 "document_set_scan_status":
-{ Args: { "p_document_id": string,"p_status": string }; Returns: string
+{ Args: { "p_document_id": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
                            },
 "grant_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined

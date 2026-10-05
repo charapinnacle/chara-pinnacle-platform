@@ -1,10 +1,16 @@
 begin;
-select plan(26);
+select plan(31);
 
 \ir passport_fixture.inc
 
 \set d1 '00000000-0000-0000-0000-0000000d0001'
 \set stranger '00000000-0000-0000-0000-0000000d00aa'
+\set d2 '00000000-0000-0000-0000-0000000d0002'
+\set d3 '00000000-0000-0000-0000-0000000d0003'
+\set d4 '00000000-0000-0000-0000-0000000d0004'
+\set d5 '00000000-0000-0000-0000-0000000d0005'
+\set d6 '00000000-0000-0000-0000-0000000d0006'
+\set d7 '00000000-0000-0000-0000-0000000d0007'
 
 select is(pg_temp.call_as(:'wa', 'authenticated', $$select public.create_worker_passport('Amina', 'Okafor', 'NG', 'en')$$, 'aal1'), 'ok', 'setup: candidate A has a passport');
 select is(pg_temp.call_as(:'wb', 'authenticated', $$select public.create_worker_passport('Bruno', 'Silva', 'PT', 'en')$$, 'aal1'), 'ok', 'setup: candidate B has a passport');
@@ -43,6 +49,10 @@ select is(
 select is(
   pg_temp.state_as(:'wa', format($$insert into storage.objects (bucket_id, name) values ('passport-documents', %L)$$, :'wa' || '/' || :'d1' || '/cv.pdf'), 'aal1'),
   'ok', 'AC3: A uploads under the id of the own row'
+);
+select is(
+  pg_temp.state_as(:'wa', format($$insert into storage.objects (bucket_id, name) values ('passport-documents', %L)$$, :'wa' || '/' || :'d1' || '/other.pdf'), 'aal1'),
+  '42501', 'AC3: another file name under the id of the own row is refused (one object per row)'
 );
 select is(
   pg_temp.state_as(:'wa', format($$insert into storage.objects (bucket_id, name) values ('passport-documents', %L)$$, :'wa' || '/' || gen_random_uuid() || '/cv.pdf'), 'aal1'),
@@ -120,5 +130,31 @@ select is(
   pg_temp.affected_as(:'wb', 'authenticated', format($$select 1 from storage.objects where bucket_id = 'passport-documents' and name like %L$$, :'wa' || '/%')),
   0::bigint, 'another candidate sees none of them'
 );
+-- The rescan sweep: only a pending, undeleted row of the last day with an object, older than two minutes, is announced again
+insert into public.worker_documents (id, worker_user_id, type, title, storage_path, file_name, mime, size_bytes, scan_status, deleted_at, created_at)
+select id, :'wa', 'cv', 'Doc', :'wa' || '/' || id || '/cv.pdf', 'cv.pdf', 'application/pdf', 1000, scan_status, deleted_at, created_at
+from (values
+  (:'d2'::uuid, 'pending', null::timestamptz, now() - interval '10 minutes'),
+  (:'d3'::uuid, 'pending', null, now()),
+  (:'d4'::uuid, 'pending', null, now() - interval '10 minutes'),
+  (:'d5'::uuid, 'skipped', null, now() - interval '10 minutes'),
+  (:'d6'::uuid, 'pending', null, now() - interval '2 days'),
+  (:'d7'::uuid, 'pending', now(), now() - interval '10 minutes')
+) as t (id, scan_status, deleted_at, created_at);
+insert into storage.objects (bucket_id, name)
+select 'passport-documents', :'wa' || '/' || id || '/cv.pdf' from unnest(array[:'d2', :'d3', :'d5', :'d6', :'d7']::uuid[]) as id;
+delete from net.http_request_queue;
+select is(private.rescan_pending_documents(), 1, 'the sweep announces one row: pending, old enough, young enough, undeleted, with an object');
+select is(
+  (select format('%s|%s', count(*), min(convert_from(body, 'utf8')::jsonb -> 'record' ->> 'name')) from net.http_request_queue),
+  '1|' || :'wa' || '/' || :'d2' || '/cv.pdf', 'and it is the same webhook body for that object'
+);
+delete from vault.secrets where name = 'edge_shared_secret';
+delete from net.http_request_queue;
+set local client_min_messages = error;
+select is(private.rescan_pending_documents(), 0, 'the sweep sends nothing while a Vault secret is missing');
+set local client_min_messages = notice;
+select is((select count(*) from net.http_request_queue), 0::bigint, 'and queues nothing');
+
 select * from finish();
 rollback;

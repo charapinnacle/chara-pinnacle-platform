@@ -21,6 +21,7 @@ interface ObjectRecord {
   documentId: string;
   path: string;
   mimetype: string | null;
+  size: number | null;
 }
 
 const SIGNATURES: readonly { type: string; bytes: readonly number[] }[] = [
@@ -54,13 +55,12 @@ function parseRecord(payload: unknown): ObjectRecord | "other" | null {
   if (!parts) {
     return "other";
   }
-  const declared = typeof metadata === "object" && metadata !== null
-    ? (metadata as Record<string, unknown>).mimetype
-    : null;
+  const stored = typeof metadata === "object" && metadata !== null ? (metadata as Record<string, unknown>) : {};
   return {
     documentId: parts[1].toLowerCase(),
     path: name as string,
-    mimetype: typeof declared === "string" ? declared.split(";")[0].trim().toLowerCase() : null,
+    mimetype: typeof stored.mimetype === "string" ? stored.mimetype.split(";")[0].trim().toLowerCase() : null,
+    size: typeof stored.size === "number" ? stored.size : null,
   };
 }
 
@@ -102,8 +102,9 @@ function failure(error: unknown): void {
   console.error("scan-document failed", { status: bounded(status ?? cause?.status), code: bounded(code ?? errorCode) });
 }
 
-// Idempotent: the database leaves a row that is no longer pending as it is, so a repeated webhook is harmless. A failure
-// leaves the row pending (the candidate sees "Upload not finished" and can delete it) and answers 502.
+// Idempotent: the database leaves a row that is no longer pending as it is, so a repeated webhook is harmless, and it
+// compares the object name, stored type and size with the row. A failure leaves the row pending and answers 502; the
+// database announces a pending object again every minute (private.rescan_pending_documents).
 export async function handleScanDocument(req: Request, deps: ScanDeps): Promise<Response> {
   if (req.method !== "POST") {
     return json(405, { error: "method_not_allowed" });
@@ -130,7 +131,10 @@ export async function handleScanDocument(req: Request, deps: ScanDeps): Promise<
     const verdict = detected !== null && detected === record.mimetype ? VERIFIED_STATUS : "rejected";
     const { data, error } = await deps.client.rpc("document_set_scan_status", {
       p_document_id: record.documentId,
+      p_path: record.path,
       p_status: verdict,
+      p_mime: record.mimetype,
+      p_size: record.size,
     });
     if (error?.code === NOT_FOUND) {
       return json(200, { status: "unknown_document" });

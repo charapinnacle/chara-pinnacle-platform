@@ -1,5 +1,5 @@
 begin;
-select plan(86);
+select plan(99);
 
 \ir passport_fixture.inc
 
@@ -9,6 +9,9 @@ select plan(86);
 \set d4 '00000000-0000-0000-0000-0000000d0004'
 \set d5 '00000000-0000-0000-0000-0000000d0005'
 \set d6 '00000000-0000-0000-0000-0000000d0006'
+\set d7 '00000000-0000-0000-0000-0000000d0007'
+\set d8 '00000000-0000-0000-0000-0000000d0008'
+\set d9 '00000000-0000-0000-0000-0000000d0009'
 \set unknown '00000000-0000-0000-0000-0000000d00ff'
 
 select is(
@@ -172,38 +175,64 @@ select is(pg_temp.new_doc(:'wa', :'d3'), 'ok', 'setup: document d3');
 select is(pg_temp.new_doc(:'wa', :'d4'), 'ok', 'setup: document d4');
 select is(pg_temp.new_doc(:'wa', :'d5'), 'ok', 'setup: document d5');
 select is(
-  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, 'skipped')$$, :'d3'), 'aal1'),
+  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, %L, 'skipped', 'application/pdf', 1000)$$, :'d3', :'wa' || '/' || :'d3' || '/cv.pdf'), 'aal1'),
   'ok', 'AC4: service_role may call document_set_scan_status'
 );
 select is((select scan_status from public.worker_documents where id = :'d3'), 'skipped', 'AC4: a pending row moves to skipped');
-select is(public.document_set_scan_status(:'d4', 'rejected'), 'rejected', 'AC4: a pending row moves to rejected');
+select is(public.document_set_scan_status(:'d4', :'wa' || '/' || :'d4' || '/cv.pdf', 'rejected', 'application/pdf', 1000), 'rejected', 'AC4: a pending row moves to rejected');
 select is((select scan_status from public.worker_documents where id = :'d4'), 'rejected', 'AC4: and is stored as rejected');
 select is(
-  public.document_set_scan_status(:'d3', 'rejected'), 'skipped',
+  public.document_set_scan_status(:'d3', :'wa' || '/' || :'d3' || '/cv.pdf', 'rejected', 'application/pdf', 1000), 'skipped',
   'AC4: a repeat leaves the skipped row as it is and returns its status'
 );
 select is((select scan_status from public.worker_documents where id = :'d3'), 'skipped', 'AC4: a webhook retry changes nothing');
 select is(
-  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, 'bogus')$$, :'d5'), 'aal1'),
+  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, %L, 'bogus', 'application/pdf', 1000)$$, :'d5', :'wa' || '/' || :'d5' || '/cv.pdf'), 'aal1'),
   'P0001|CHARA_INVALID_INPUT|status', 'AC4: the status bogus is refused'
 );
 select is(
-  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, 'pending')$$, :'d5'), 'aal1'),
+  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, %L, 'pending', 'application/pdf', 1000)$$, :'d5', :'wa' || '/' || :'d5' || '/cv.pdf'), 'aal1'),
   'P0001|CHARA_INVALID_INPUT|status', 'AC4: a call cannot set a row back to pending'
 );
 select is(
-  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, 'skipped')$$, :'unknown'), 'aal1'),
+  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, %L, 'skipped', 'application/pdf', 1000)$$, :'unknown', :'wa' || '/' || :'unknown' || '/cv.pdf'), 'aal1'),
   'P0002|CHARA_NOT_FOUND|', 'AC4: an unknown id raises CHARA_NOT_FOUND'
 );
 select is(
-  pg_temp.state_as(:'wa', format($$select public.document_set_scan_status(%L, 'clean')$$, :'d5')),
+  pg_temp.state_as(:'wa', format($$select public.document_set_scan_status(%L, %L, 'clean', 'application/pdf', 1000)$$, :'d5', :'wa' || '/' || :'d5' || '/cv.pdf')),
   '42501', 'AC4: A may not call document_set_scan_status'
 );
 select is(
-  pg_temp.call_as(null, 'anon', format($$select public.document_set_scan_status(%L, 'clean')$$, :'d5'), 'aal1') like '42501|%',
+  pg_temp.call_as(null, 'anon', format($$select public.document_set_scan_status(%L, %L, 'clean', 'application/pdf', 1000)$$, :'d5', :'wa' || '/' || :'d5' || '/cv.pdf'), 'aal1') like '42501|%',
   true, 'AC4: anon may not call document_set_scan_status'
 );
 select is((select scan_status from public.worker_documents where id = :'d5'), 'pending', 'AC4: the refused calls changed nothing');
+
+-- AC4: the verdict is for the object of the row, and a clearing verdict needs the stored type and size to match the row
+select is(pg_temp.new_doc(:'wa', :'d7'), 'ok', 'setup: document d7');
+select is(pg_temp.new_doc(:'wa', :'d8'), 'ok', 'setup: document d8');
+select is(pg_temp.new_doc(:'wa', :'d9'), 'ok', 'setup: document d9');
+select is(
+  pg_temp.call_as(null, 'service_role', format($$select public.document_set_scan_status(%L, %L, 'skipped', 'application/pdf', 1000)$$, :'d7', :'wa' || '/' || :'d7' || '/other.pdf'), 'aal1'),
+  'P0002|CHARA_NOT_FOUND|', 'AC4: a verdict for another object name is refused'
+);
+select is((select scan_status from public.worker_documents where id = :'d7'), 'pending', 'AC4: and the row stays pending');
+select is(
+  public.document_set_scan_status(:'d7', :'wa' || '/' || :'d7' || '/cv.pdf', 'skipped', 'image/png', 1000), 'rejected',
+  'AC4: a stored type that differs from the declared one is rejected'
+);
+select is(
+  public.document_set_scan_status(:'d8', :'wa' || '/' || :'d8' || '/cv.pdf', 'skipped', 'application/pdf', 999), 'rejected',
+  'AC4: a stored size that differs from the declared one is rejected'
+);
+select is(
+  public.document_set_scan_status(:'d9', :'wa' || '/' || :'d9' || '/cv.pdf', 'skipped', 'application/pdf', null), 'rejected',
+  'AC4: an unknown stored size is rejected'
+);
+select is(
+  (select count(*) from public.worker_documents where id in (:'d7', :'d8', :'d9') and scan_status = 'rejected'), 3::bigint,
+  'AC4: the three rows are stored as rejected'
+);
 
 -- AC9 (without shares, which a later unit adds): the deletion and its queued object removal
 select is(
@@ -249,7 +278,7 @@ select is(
   'AC9: none of the refused calls queued a job'
 );
 select is(
-  public.document_set_scan_status(:'d5', 'skipped'), 'pending', 'a scan result for a deleted row leaves it as it is'
+  public.document_set_scan_status(:'d5', :'wa' || '/' || :'d5' || '/cv.pdf', 'skipped', 'application/pdf', 1000), 'pending', 'a scan result for a deleted row leaves it as it is'
 );
 
 -- AC11: audit rows, without the title or the file name
@@ -309,6 +338,18 @@ select is(
 );
 select has_index('public', 'worker_documents', 'worker_documents_owner_created_idx', 'the list has its index');
 select has_index('public', 'worker_documents', 'worker_documents_owner_expiry_idx', 'the reminders have their index');
+select has_index('public', 'worker_documents', 'worker_documents_storage_path_key', 'the object name lookup has its unique index');
+select has_index('public', 'worker_documents', 'worker_documents_pending_idx', 'the rescan sweep has its index');
+select is(
+  (select count(*) from cron.job where jobname = 'scan-document-rescan' and schedule = '* * * * *'
+     and command = 'select private.rescan_pending_documents()'), 1::bigint,
+  'the rescan sweep is scheduled every minute'
+);
+select ok(
+  not has_function_privilege('authenticated', 'private.rescan_pending_documents()', 'execute')
+  and not has_function_privilege('service_role', 'private.rescan_pending_documents()', 'execute'),
+  'no API role can run the sweep'
+);
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.proname in ('delete_worker_document', 'document_set_scan_status')

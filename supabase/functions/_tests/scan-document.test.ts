@@ -7,6 +7,7 @@ const USER = "00000000-0000-0000-0000-00000000a001";
 const DOCUMENT = "00000000-0000-0000-0000-00000000d001";
 const NAME = `${USER}/${DOCUMENT}/My_CV__final_.pdf`;
 
+const SIZE = 1258291;
 const PDF = [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a];
 const JPEG = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46];
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00];
@@ -20,7 +21,7 @@ const pdfRecord = (name = NAME, mimetype: string | null = "application/pdf") => 
   id: "00000000-0000-0000-0000-00000000e001",
   bucket_id: "passport-documents",
   name,
-  metadata: mimetype === null ? {} : { mimetype },
+  metadata: mimetype === null ? { size: SIZE } : { mimetype, size: SIZE },
 });
 
 function request(body: unknown, headers: Record<string, string> = {}, method = "POST"): Request {
@@ -35,6 +36,18 @@ const SIGN = "POST /storage/v1/object/sign/passport-documents/{id}/{id}/My_CV__f
 const READ = "GET /storage/v1/object/sign/passport-documents/{id}/{id}/My_CV__final_.pdf";
 const SET_STATUS = "POST /rest/v1/rpc/document_set_scan_status";
 const signed = reply(200, { signedURL: `/object/sign/passport-documents/${NAME}?token=t` });
+const verdictBody = (
+  status: string,
+  mime: string | null = "application/pdf",
+  size: number | null = SIZE,
+  path = NAME,
+) => ({
+  p_document_id: DOCUMENT,
+  p_path: path,
+  p_status: status,
+  p_mime: mime,
+  p_size: size,
+});
 const statusCalls = (calls: { path: string; body: unknown }[]) =>
   calls.filter((c) => c.path.endsWith("document_set_scan_status")).map((c) => c.body);
 
@@ -86,7 +99,7 @@ Deno.test("a file whose first bytes match its declared type is recorded as skipp
     const response = await run();
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: "skipped" });
-    assert.deepEqual(statusCalls(calls), [{ p_document_id: DOCUMENT, p_status: "skipped" }]);
+    assert.deepEqual(statusCalls(calls), [verdictBody("skipped", mimetype)]);
   }
 });
 
@@ -138,19 +151,28 @@ Deno.test("text declared as a PDF, an empty object, a type that differs from the
     );
     const response = await run();
     assert.equal(response.status, 200, label);
-    assert.deepEqual(statusCalls(calls), [{ p_document_id: DOCUMENT, p_status: "rejected" }], label);
+    assert.deepEqual(statusCalls(calls), [verdictBody("rejected", mimetype)], label);
   }
 });
 
 Deno.test("the declared type may carry parameters and any letter case", async () => {
+  const name = `${USER.toUpperCase()}/${DOCUMENT.toUpperCase()}/My_CV__final_.pdf`;
   const { calls, run } = scan(
     { [READ]: new Response(Uint8Array.from(PDF), { status: 206 }), [SET_STATUS]: reply(200, "skipped") },
-    webhook(
-      pdfRecord(`${USER.toUpperCase()}/${DOCUMENT.toUpperCase()}/My_CV__final_.pdf`, "Application/PDF; charset=binary"),
-    ),
+    webhook(pdfRecord(name, "Application/PDF; charset=binary")),
   );
   await run();
-  assert.deepEqual(statusCalls(calls), [{ p_document_id: DOCUMENT, p_status: "skipped" }]);
+  assert.deepEqual(statusCalls(calls), [verdictBody("skipped", "application/pdf", SIZE, name)]);
+});
+
+Deno.test("the object name, stored type and stored size go to the database, which compares them with the row", async () => {
+  const record = { ...pdfRecord(), metadata: { mimetype: "application/pdf" } };
+  const { calls, run } = scan(
+    { [READ]: new Response(Uint8Array.from(PDF), { status: 206 }), [SET_STATUS]: reply(200, "rejected") },
+    webhook(record),
+  );
+  assert.deepEqual(await (await run()).json(), { status: "rejected" });
+  assert.deepEqual(statusCalls(calls), [verdictBody("skipped", "application/pdf", null)]);
 });
 
 Deno.test("a repeated webhook gets the status the row already has", async () => {
