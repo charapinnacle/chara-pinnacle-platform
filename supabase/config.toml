@@ -118,6 +118,11 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
+[storage.buckets.passport-documents]
+public = false
+file_size_limit = "15MiB"
+allowed_mime_types = ["application/pdf", "image/jpeg", "image/png"]
+
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
 # public = false
@@ -415,6 +420,9 @@ allow_dynamic_registration = false
 
 [functions.account-ops]
 verify_jwt = true
+
+[functions.scan-document]
+verify_jwt = false
 
 [edge_runtime]
 enabled = true

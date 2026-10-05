@@ -258,6 +258,25 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"worker_documents": {
+                  Row: {
+                    "bucket_id": string,"created_at": string,"deleted_at": string | null,"expires_on": string | null,"file_name": string,"id": string,"mime": string,"scan_status": string,"size_bytes": number,"storage_path": string,"title": string,"type": Database["public"]['Enums']["worker_document_type"],"worker_user_id": string
+                  }
+                  Insert: {
+                    "bucket_id"?: string,"created_at"?: string,"deleted_at"?: string | null,"expires_on"?: string | null,"file_name": string,"id"?: string,"mime": string,"scan_status"?: string,"size_bytes": number,"storage_path": string,"title": string,"type": Database["public"]['Enums']["worker_document_type"],"worker_user_id": string
+                  }
+                  Update: {
+                    "bucket_id"?: string,"created_at"?: string,"deleted_at"?: string | null,"expires_on"?: string | null,"file_name"?: string,"id"?: string,"mime"?: string,"scan_status"?: string,"size_bytes"?: number,"storage_path"?: string,"title"?: string,"type"?: Database["public"]['Enums']["worker_document_type"],"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_documents_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"worker_languages": {
                   Row: {
                     "cefr_level": Database["public"]['Enums']["cefr_level"],"language_code": string,"worker_user_id": string
@@ -444,6 +463,12 @@ isOneToOne: false
 "create_worker_passport":
 { Args: { "p_current_country": string,"p_first_name": string,"p_last_name": string,"p_preferred_lang"?: string }; Returns: undefined
                            },
+"delete_worker_document":
+{ Args: { "p_document_id": string }; Returns: undefined
+                           },
+"document_set_scan_status":
+{ Args: { "p_document_id": string,"p_status": string }; Returns: string
+                           },
 "grant_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
@@ -526,7 +551,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "account_kind": "worker"|"company","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","worker_availability": "now"|"from_date"|"unavailable"
+            "account_kind": "worker"|"company","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -642,7 +667,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "account_kind": ["worker", "company"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"worker_availability": ["now", "from_date", "unavailable"]
+            "account_kind": ["worker", "company"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"]
           }
         }
 } as const
