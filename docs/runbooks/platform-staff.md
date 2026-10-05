@@ -69,6 +69,23 @@ An abandoned job is run again by queueing a message with the action and user id 
 
 `scan-document` (`verify_jwt = false`, authenticated by the same `x-edge-secret`) checks the first bytes of every object that lands in the bucket `passport-documents`. It is called by a trigger on `storage.objects` through pg_net and uses the Vault secrets `project_url` and `edge_shared_secret` of section 3; deploy it with `npx supabase functions deploy scan-document --no-verify-jwt --use-api`. pg_net does not retry, so the job `scan-document-rescan` (every minute) announces the objects of rows that are still `pending` two minutes after their upload again, for one day, at most 100 per run; the function is idempotent. Monitoring (daily): `select id, created_at from public.worker_documents where scan_status = 'pending' and deleted_at is null and created_at < now() - interval '1 day'` lists uploads that never finished or whose scan kept failing; the candidate sees "Upload not finished" and can delete the row.
 
+### document-url (candidate documents)
+
+`document-url` (`verify_jwt = true`) is the only way a third party gets a link to a candidate document: it runs `document_access_grant` with the caller's own token and signs a 60-second, download-only link for the path the grant returns. It has no shared secret and no Vault entry; the platform provides `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. Deploy it with `npx supabase functions deploy document-url --use-api`. Verify on each environment: a request without `Authorization` answers 401; a member of an organisation with a share, for a document in its scope, answers 200 with a `url` and one new `audit.document_access_log` row; the same member for a document outside the scope answers 403 with no `url` and no new row.
+
+Quarterly privacy review (KPI "privacy incidents", target 0; FR-B3): the following lists every opening that fell outside its share at the time; it must return no row. Any row is a privacy incident to report to the Platform Administrator, and so is any complaint received through the complaints and dispute process.
+
+```sql
+select l.id, l.accessed_at, l.document_id, l.share_id
+from audit.document_access_log l
+join public.passport_shares s on s.id = l.share_id
+where not s.scope ? l.document_id::text
+   or l.accessed_at >= s.revoked_at
+   or l.accessed_at >= s.expires_at
+   or s.organization_id is distinct from l.organization_id
+   or s.worker_user_id is distinct from l.worker_user_id;
+```
+
 ## 4. Quarterly access review
 
 Run by the Platform Administrator with the release owner. The list covers every active and revoked role, who granted it, the two-step status and the last sign-in; `dormant` flags an active role whose holder has not signed in for 90 days (or never, since the grant). Each dormant account is revoked or confirmed in the sign-off.
