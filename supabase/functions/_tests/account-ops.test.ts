@@ -1,44 +1,12 @@
 import assert from "node:assert/strict";
-import { createClient } from "@supabase/supabase-js";
 import { handleAccountOps } from "../account-ops/handler.ts";
+import { type Call, harness, reply, type Route } from "./harness.ts";
 
 const SECRET = "scheduler-secret";
 const USER = "00000000-0000-0000-0000-00000000a001";
 const OTHER = "00000000-0000-0000-0000-00000000a002";
 const FACTOR_A = "00000000-0000-0000-0000-00000000f001";
 const FACTOR_B = "00000000-0000-0000-0000-00000000f002";
-
-interface Call {
-  method: string;
-  path: string;
-  body: unknown;
-}
-
-type Route = (call: Call) => Response | Promise<Response> | undefined;
-
-function reply(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-}
-
-// A real supabase-js client over a fake network: the paths, methods and bodies are what the platform would receive.
-function harness(routes: Record<string, Route | Response>) {
-  const calls: Call[] = [];
-  const fakeFetch: typeof fetch = async (input, init) => {
-    const url = new URL(input instanceof Request ? input.url : String(input));
-    const method = (init?.method ?? "GET").toUpperCase();
-    const text = typeof init?.body === "string" ? init.body : "";
-    const call: Call = { method, path: url.pathname, body: text ? JSON.parse(text) : null };
-    calls.push(call);
-    const route = routes[`${method} ${url.pathname.replace(/[0-9a-f-]{36}/g, "{id}")}`];
-    const response = typeof route === "function" ? await route(call) : route?.clone();
-    return await Promise.resolve(response ?? reply(404, { code: 404, error_code: "not_found", msg: "no route" }));
-  };
-  const client = createClient("http://stack.test", "service-key", {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: fakeFetch },
-  });
-  return { calls, client };
-}
 
 function request(headers: Record<string, string> = {}, method = "POST"): Request {
   return new Request("http://stack.test/functions/v1/account-ops", {
@@ -324,4 +292,60 @@ Deno.test("a failure is logged with a status and a code only, never a message or
     "account-ops job failed",
     { msgId: 60, action: "reset_mfa", status: 429, code: "over_request_rate_limit" },
   ]]);
+});
+
+const OBJECT = `${USER}/00000000-0000-0000-0000-00000000d001/My_CV__final_.pdf`;
+const removal = (path: string) => ({ action: "delete_object", user_id: USER, bucket_id: "passport-documents", path });
+
+Deno.test("a delete_object job removes the object through the Storage API, ends no session and is acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 70, message: removal(OBJECT) }),
+    "DELETE /storage/v1/object/passport-documents": reply(200, [{ name: OBJECT }]),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.method === "DELETE").map((c) => c.body), [{ prefixes: [OBJECT] }]);
+  assert.equal(calls.filter((c) => c.path.endsWith("end_sessions") || c.path.startsWith("/auth/")).length, 0);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 70, p_result: { objects_removed: 1 } }]);
+});
+
+Deno.test("an object that is already gone is a success with nothing removed", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 71, message: removal(OBJECT) }),
+    "DELETE /storage/v1/object/passport-documents": reply(200, []),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(acks(calls), [{ p_msg_id: 71, p_result: { objects_removed: 0 } }]);
+});
+
+Deno.test("a failing removal leaves the job queued to be retried", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 72, message: removal(OBJECT) }),
+    "DELETE /storage/v1/object/passport-documents": reply(500, {
+      statusCode: "500",
+      error: "Internal",
+      message: "boom",
+    }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("a delete_object job outside the folder of its user, or with a bad bucket or path, is never executed", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 80, message: removal(`${OTHER}/00000000-0000-0000-0000-00000000d001/cv.pdf`) },
+      { msg_id: 81, message: { ...removal(OBJECT), bucket_id: "passport-documents/../x" } },
+      { msg_id: 82, message: { ...removal(OBJECT), path: undefined } },
+      { msg_id: 83, message: removal(`${USER}/a b/cv.pdf`) },
+      { msg_id: 84, message: { action: "delete_object", user_id: USER, bucket_id: "passport-documents" } },
+    ),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 5 });
+  assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
 });
