@@ -89,6 +89,19 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"occupations": {
+                  Row: {
+                    "code": string,"label": string,"synonyms": (string)[]
+                  }
+                  Insert: {
+                    "code": string,"label": string,"synonyms"?: (string)[]
+                  }
+                  Update: {
+                    "code"?: string,"label"?: string,"synonyms"?: (string)[]
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"organization_invitations": {
                   Row: {
                     "accepted_at": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"token_hash": string
@@ -245,6 +258,131 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"worker_languages": {
+                  Row: {
+                    "cefr_level": Database["public"]['Enums']["cefr_level"],"language_code": string,"worker_user_id": string
+                  }
+                  Insert: {
+                    "cefr_level": Database["public"]['Enums']["cefr_level"],"language_code": string,"worker_user_id": string
+                  }
+                  Update: {
+                    "cefr_level"?: Database["public"]['Enums']["cefr_level"],"language_code"?: string,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_languages_language_code_fkey"
+      columns: ["language_code"]
+isOneToOne: false
+      referencedRelation: "languages"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_languages_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"worker_preferred_countries": {
+                  Row: {
+                    "country_code": string,"worker_user_id": string
+                  }
+                  Insert: {
+                    "country_code": string,"worker_user_id": string
+                  }
+                  Update: {
+                    "country_code"?: string,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_preferred_countries_country_code_fkey"
+      columns: ["country_code"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_preferred_countries_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"worker_profiles": {
+                  Row: {
+                    "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"created_at": string,"current_country": string,"first_name": string,"headline": string | null,"last_name": string,"occupation_id": string | null,"searchable": boolean,"user_id": string,"years_experience": number | null
+                  }
+                  Insert: {
+                    "availability"?: Database["public"]['Enums']["worker_availability"] | null,"available_from"?: string | null,"created_at"?: string,"current_country": string,"first_name": string,"headline"?: string | null,"last_name": string,"occupation_id"?: string | null,"searchable"?: boolean,"user_id": string,"years_experience"?: number | null
+                  }
+                  Update: {
+                    "availability"?: Database["public"]['Enums']["worker_availability"] | null,"available_from"?: string | null,"created_at"?: string,"current_country"?: string,"first_name"?: string,"headline"?: string | null,"last_name"?: string,"occupation_id"?: string | null,"searchable"?: boolean,"user_id"?: string,"years_experience"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_profiles_current_country_fkey"
+      columns: ["current_country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_profiles_occupation_id_fkey"
+      columns: ["occupation_id"]
+isOneToOne: false
+      referencedRelation: "occupations"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_profiles_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"worker_skills": {
+                  Row: {
+                    "id": string,"skill": string,"worker_user_id": string
+                  }
+                  Insert: {
+                    "id"?: string,"skill": string,"worker_user_id": string
+                  }
+                  Update: {
+                    "id"?: string,"skill"?: string,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_skills_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"worker_work_authorizations": {
+                  Row: {
+                    "country_code": string,"expires_on": string | null,"worker_user_id": string
+                  }
+                  Insert: {
+                    "country_code": string,"expires_on"?: string | null,"worker_user_id": string
+                  }
+                  Update: {
+                    "country_code"?: string,"expires_on"?: string | null,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_work_authorizations_country_code_fkey"
+      columns: ["country_code"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_work_authorizations_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -302,6 +440,9 @@ isOneToOne: false
                            },
 "create_organization":
 { Args: { "p_based_in_country": string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
+                           },
+"create_worker_passport":
+{ Args: { "p_current_country": string,"p_first_name": string,"p_last_name": string,"p_preferred_lang"?: string }; Returns: undefined
                            },
 "grant_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
@@ -380,7 +521,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "account_kind": "worker"|"company","consent_action": "granted"|"withdrawn","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending"
+            "account_kind": "worker"|"company","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","worker_availability": "now"|"from_date"|"unavailable"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -496,7 +637,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "account_kind": ["worker", "company"],"consent_action": ["granted", "withdrawn"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"]
+            "account_kind": ["worker", "company"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"worker_availability": ["now", "from_date", "unavailable"]
           }
         }
 } as const
