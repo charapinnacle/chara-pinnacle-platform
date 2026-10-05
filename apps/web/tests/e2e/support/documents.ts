@@ -120,7 +120,7 @@ export async function runScanDocument(path: string): Promise<{ status: string }>
 export async function openDocuments(page: Page, user: TestUser): Promise<void> {
   await signIn(page, user);
   await page.goto("/en/passport");
-  await expect(page.getByRole("heading", { name: "Documents", level: 2 })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Documents", level: 2, exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 export function row(page: Page, title: string) {
