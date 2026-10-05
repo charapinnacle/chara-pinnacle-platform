@@ -1,7 +1,9 @@
 import type { Page } from "@playwright/test";
 import { runAccountOps } from "./support/account-ops";
+import { callAs } from "./support/accounts";
+import { objectNames, removalJobs, seedDocument } from "./support/documents";
 import { execute, literal, query } from "./support/db";
-import { enrollTotp, expireAccessToken, rpcWithToken, sessionRows } from "./support/login";
+import { createCommittedUser, enrollTotp, expireAccessToken, rpcWithToken, sessionRows } from "./support/login";
 import { logIn } from "./support/login-page";
 import { addTwoDevices, enterCode, factorRows, newOwner, staffUser } from "./support/mfa";
 import { organizationRows, signInAsEmployer } from "./support/organizations";
@@ -182,5 +184,33 @@ test.describe("account-ops: sessions after a role change, a removal and a two-st
     expect(sessionRows(member.user.id)).toEqual([]);
     await signedOutAtNextRefresh(visitor.page, "/en/dashboard/employer");
     await visitor.context.close();
+  });
+});
+
+test.describe("account-ops: removal of deleted documents", () => {
+  test("FR-B2 AC9: the queued removal takes the object out of Storage, keeps the other files and is safe to repeat", async () => {
+    const user = await createCommittedUser("worker");
+    const removed = await seedDocument(user.id, { title: "To remove" });
+    const kept = await seedDocument(user.id, { title: "To keep" });
+    expect(objectNames(user.id)).toHaveLength(2);
+
+    await callAs(user, "delete_worker_document", { p_document_id: removed.id });
+    expect(removalJobs(removed.storage_path)).toBe(1);
+    expect(objectNames(user.id)).toHaveLength(2);
+
+    await runAccountOps();
+    expect(removalJobs(removed.storage_path)).toBe(0);
+    expect(objectNames(user.id)).toEqual([kept.storage_path]);
+    expect(doneRows(user.id).map((row) => row.metadata)).toEqual([
+      expect.objectContaining({ action: "delete_object", objects_removed: 1 }),
+    ]);
+
+    execute(
+      `select pgmq.send('account_ops', jsonb_build_object('action', 'delete_object', 'user_id', ${literal(user.id)},
+         'bucket_id', 'passport-documents', 'path', ${literal(removed.storage_path)}))`,
+    );
+    await runAccountOps();
+    expect(doneRows(user.id).map((row) => row.metadata.objects_removed)).toEqual([1, 0]);
+    expect(objectNames(user.id)).toEqual([kept.storage_path]);
   });
 });
