@@ -5,7 +5,6 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
-import { getSkillNames } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { homePath } from "@/lib/routes";
@@ -19,13 +18,10 @@ import {
   experienceSchema,
   idSchema,
   languageSchema,
-  MAX_LANGUAGES,
-  MAX_PREFERRED_COUNTRIES,
   occupationSchema,
   preferredCountrySchema,
+  SKILL_DUPLICATE_MESSAGE,
   skillFormSchema,
-  SKILL_LIMIT_MESSAGE,
-  validateSkill,
   type AuthorizationInput,
   type BasicsInput,
   type CreatePassportInput,
@@ -40,15 +36,21 @@ export type PassportResult = { errors?: FieldErrors; message?: string };
 
 const ALREADY_ADDED = "This is already in your passport.";
 const CHECK_VALUES = "Check the values and try again.";
+const DATE_REFUSED = "Choose today or a later date that is not too far ahead.";
 const limitMessages: Record<string, string> = {
-  worker_skills: SKILL_LIMIT_MESSAGE,
-  worker_languages: `You can add up to ${MAX_LANGUAGES} languages`,
-  worker_preferred_countries: `You can add up to ${MAX_PREFERRED_COUNTRIES} preferred countries`,
+  worker_skills: "You have reached the limit for skills in your passport.",
+  worker_languages: "You have reached the limit for languages in your passport.",
+  worker_preferred_countries: "You have reached the limit for preferred countries in your passport.",
 };
+const refusedDates: Record<string, string> = { available_from: "availableFrom", expires_on: "expiresOn" };
 
+// The limits and the date windows are the database's to enforce; a refusal is shown without repeating the number.
 function refusal(error: PostgrestError): PassportResult {
   if (error.message === "CHARA_LIMIT_REACHED" && error.details && limitMessages[error.details]) {
     return { message: limitMessages[error.details] };
+  }
+  if (error.message === "CHARA_INVALID_INPUT" && error.details && refusedDates[error.details]) {
+    return { errors: { [refusedDates[error.details]]: DATE_REFUSED } };
   }
   if (error.code === "23505") return { message: ALREADY_ADDED };
   if (error.code === "23514" || error.code === "23503" || error.message === "CHARA_INVALID_INPUT") {
@@ -122,11 +124,10 @@ export async function addSkill(input: SkillInput): Promise<PassportResult> {
   const { id } = await requireUser(defaultLocale);
   const parsed = skillFormSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const checked = validateSkill(await getSkillNames(id), parsed.data.skill);
-  if (checked.status === "refused") return { errors: { skill: checked.message } };
-  if (checked.status === "duplicate") return {};
   const supabase = await createClient();
-  return settle((await supabase.from("worker_skills").insert({ worker_user_id: id, skill: checked.skill })).error);
+  const { error } = await supabase.from("worker_skills").insert({ worker_user_id: id, skill: parsed.data.skill });
+  if (error?.code === "23505") return { errors: { skill: SKILL_DUPLICATE_MESSAGE } };
+  return settle(error);
 }
 
 export async function removeSkill(skillId: string): Promise<PassportResult> {

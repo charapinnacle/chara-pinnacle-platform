@@ -25,9 +25,16 @@ function from(table: string) {
 }
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from }) }));
+let rpcOutcome: { data: unknown; error: unknown } = { data: null, error: null };
+let rpcName = "";
+const rpc = (name: string) => {
+  rpcName = name;
+  return { single: () => Promise.resolve(rpcOutcome) };
+};
 
-const { getPassport, getSkillNames, hasPassport } = await import("@/lib/dal/passport");
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from, rpc }) }));
+
+const { getPassport, getPassportLimits } = await import("@/lib/dal/passport");
 
 const userId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const row = {
@@ -90,17 +97,22 @@ describe("getPassport", () => {
   });
 });
 
-describe("hasPassport and getSkillNames", () => {
-  it("tells whether a profile row exists", async () => {
-    outcome = { data: { user_id: userId }, error: null };
-    await expect(hasPassport(userId)).resolves.toBe(true);
-    outcome = { data: null, error: null };
-    await expect(hasPassport(userId)).resolves.toBe(false);
+describe("getPassportLimits", () => {
+  it("maps the three settings the forms need and throws without the details when the read fails", async () => {
+    rpcOutcome = {
+      data: { skills_max: 40, availability_window_months: 12, work_authorization_expiry_max_years: 30 },
+      error: null,
+    };
+    await expect(getPassportLimits()).resolves.toEqual({
+      skillsMax: 40,
+      availabilityWindowMonths: 12,
+      authorizationExpiryYears: 30,
+    });
+    expect(rpcName).toBe("passport_limits");
   });
 
-  it("lists the skill names of the candidate", async () => {
-    outcome = { data: [{ skill: "Welding" }, { skill: "Plumbing" }], error: null };
-    await expect(getSkillNames(userId)).resolves.toEqual(["Welding", "Plumbing"]);
-    expect(requests.at(-1)?.filters).toEqual([["worker_user_id", userId]]);
+  it("fails with a message that names no detail", async () => {
+    rpcOutcome = { data: null, error: { message: "secret detail" } };
+    await expect(getPassportLimits()).rejects.toThrow("The passport limits could not be loaded");
   });
 });

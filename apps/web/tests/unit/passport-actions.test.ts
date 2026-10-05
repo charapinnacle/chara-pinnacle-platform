@@ -8,7 +8,6 @@ const redirectMock = vi.hoisted(() =>
 );
 const revalidateMock = vi.hoisted(() => vi.fn());
 const requireUserMock = vi.hoisted(() => vi.fn());
-const skillNamesMock = vi.hoisted(() => vi.fn());
 const rpcMock = vi.fn();
 
 type Call = { table: string; operation: string; values?: unknown; filters: Record<string, unknown> };
@@ -35,7 +34,6 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
-vi.mock("@/lib/dal/passport", () => ({ getSkillNames: skillNamesMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock, from }) }));
 
 const actions = await import("@/lib/actions/passport");
@@ -57,7 +55,6 @@ beforeEach(() => {
   calls.length = 0;
   outcome = { data: [{ user_id: userId }], error: null };
   requireUserMock.mockResolvedValue({ id: userId });
-  skillNamesMock.mockResolvedValue([]);
   rpcMock.mockResolvedValue({ data: null, error: null });
 });
 
@@ -137,12 +134,20 @@ describe("profile sections", () => {
     ]);
   });
 
-  it("refuses a start date in the past or without a date", async () => {
-    const past = await actions.saveExperience({ yearsExperience: "", availability: "from_date", availableFrom: inDays(-1) });
+  it("refuses a start date that is not a date or is missing, before the database is reached", async () => {
+    const bad = await actions.saveExperience({ yearsExperience: "", availability: "from_date", availableFrom: "2026-02-30" });
     const none = await actions.saveExperience({ yearsExperience: "", availability: "from_date", availableFrom: "" });
-    expect(past.errors).toHaveProperty("availableFrom");
+    expect(bad.errors).toHaveProperty("availableFrom");
     expect(none.errors).toHaveProperty("availableFrom");
     expect(calls).toHaveLength(0);
+  });
+
+  it("shows the database's refusal of a start date beside the field, without a number", async () => {
+    outcome = failure("CHARA_INVALID_INPUT", "P0001", "available_from");
+    await expect(
+      actions.saveExperience({ yearsExperience: "", availability: "from_date", availableFrom: inDays(-1) }),
+    ).resolves.toEqual({ errors: { availableFrom: "Choose today or a later date that is not too far ahead." } });
+    expect(revalidateMock).not.toHaveBeenCalled();
   });
 });
 
@@ -154,17 +159,20 @@ describe("skills", () => {
     ]);
   });
 
-  it("ignores a skill that is already there in another letter case, without a write", async () => {
-    skillNamesMock.mockResolvedValue(["Welding"]);
-    await expect(actions.addSkill({ skill: "welding" })).resolves.toEqual({});
-    expect(calls).toHaveLength(0);
+  it("writes without reading the list first and leaves the duplicate and the limit to the database", async () => {
+    await actions.addSkill({ skill: "welding" });
+    expect(calls.map((call) => call.operation)).toEqual(["insert"]);
   });
 
-  it("refuses the 31st skill with the limit message and an invalid tag with its own", async () => {
-    skillNamesMock.mockResolvedValue(Array.from({ length: 30 }, (_, index) => `Skill ${index}`));
-    await expect(actions.addSkill({ skill: "One more" })).resolves.toEqual({
-      errors: { skill: "You can add up to 30 skills" },
+  it("shows a case-variant duplicate that the unique index refused beside the field, not as a success", async () => {
+    outcome = failure("duplicate key value violates unique constraint", "23505");
+    await expect(actions.addSkill({ skill: "welding" })).resolves.toEqual({
+      errors: { skill: "You have already added this skill." },
     });
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an invalid tag before the database is reached", async () => {
     const long = await actions.addSkill({ skill: "x".repeat(51) });
     expect(long.errors?.skill).toBe("A skill can have up to 50 characters.");
     expect(calls).toHaveLength(0);
@@ -213,18 +221,25 @@ describe("languages, countries and work authorisations", () => {
     ]);
   });
 
-  it("refuses an expiry date in the past before the database is reached", async () => {
-    const result = await actions.addAuthorization({ country: "DE", expiresOn: inDays(-1) });
+  it("refuses an expiry date that is not a date before the database is reached", async () => {
+    const result = await actions.addAuthorization({ country: "DE", expiresOn: "2027-13-01" });
     expect(result.errors).toHaveProperty("expiresOn");
     expect(calls).toHaveLength(0);
+  });
+
+  it("shows the database's refusal of an expiry date beside the field", async () => {
+    outcome = failure("CHARA_INVALID_INPUT", "P0001", "expires_on");
+    await expect(actions.addAuthorization({ country: "DE", expiresOn: inDays(-1) })).resolves.toEqual({
+      errors: { expiresOn: "Choose today or a later date that is not too far ahead." },
+    });
   });
 });
 
 describe("refusals of the database", () => {
   it.each([
-    ["worker_skills", "You can add up to 30 skills"],
-    ["worker_languages", "You can add up to 15 languages"],
-    ["worker_preferred_countries", "You can add up to 20 preferred countries"],
+    ["worker_skills", "You have reached the limit for skills in your passport."],
+    ["worker_languages", "You have reached the limit for languages in your passport."],
+    ["worker_preferred_countries", "You have reached the limit for preferred countries in your passport."],
   ])("names the limit of %s", async (table, message) => {
     outcome = failure("CHARA_LIMIT_REACHED", "P0001", table);
     await expect(actions.addPreferredCountry({ country: "DE" })).resolves.toEqual({ message });

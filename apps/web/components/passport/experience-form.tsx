@@ -6,16 +6,11 @@ import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { usePassportForm } from "@/components/passport/use-passport-form";
 import { saveExperience } from "@/lib/actions/passport";
-import {
-  availabilityOptions,
-  experienceFormSchema,
-  todayUtc,
-  type ExperienceInput,
-} from "@/lib/validation/passport";
+import { availabilityOptions, experienceFormSchema, type ExperienceInput } from "@/lib/validation/passport";
 
-export function ExperienceForm({ initial }: { initial: ExperienceInput }) {
-  const today = todayUtc();
-  const { form, onSubmit } = usePassportForm(experienceFormSchema(today), initial, saveExperience, {
+export function ExperienceForm({ initial, windowMonths }: { initial: ExperienceInput; windowMonths: number }) {
+  const schema = experienceFormSchema({ months: windowMonths, saved: initial.availableFrom });
+  const { form, onSubmit } = usePassportForm(schema, initial, saveExperience, {
     failureTitle: "Could not save your experience",
     saved: "Your experience and availability were saved",
   });

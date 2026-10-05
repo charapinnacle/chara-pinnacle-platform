@@ -6,6 +6,7 @@ import { InputField } from "@/components/forms/form-field";
 import { usePassportForm } from "@/components/passport/use-passport-form";
 import { createPassport } from "@/lib/actions/passport";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { toOptions } from "@/lib/reference-options";
 import { createPassportSchema, type CreatePassportInput } from "@/lib/validation/passport";
 
 export function CreatePassportForm({ countries }: { countries: ReferenceItem[] }) {
@@ -26,7 +27,7 @@ export function CreatePassportForm({ countries }: { countries: ReferenceItem[] }
         name="country"
         label="Current country"
         placeholder="Choose a country"
-        options={countries.map(({ code, name }) => ({ value: code, label: name }))}
+        options={toOptions(countries)}
       />
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating your passport..." : "Create my passport"}

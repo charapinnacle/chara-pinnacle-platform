@@ -3,19 +3,14 @@ import { z } from "zod";
 
 type Enums = Database["public"]["Enums"];
 
-// The limits and windows below mirror the database (constraints and the settings worker_*_max,
-// availability_window_months and work_authorization_expiry_max_years); the database is the authority.
+// The lengths mirror the table constraints. The owner-set values (the skills limit and the date windows) are settings
+// the forms read through getPassportLimits; the triggers stay the authority.
 const MAX_NAME_LENGTH = 80;
 const MAX_HEADLINE_LENGTH = 120;
 const MAX_YEARS_EXPERIENCE = 60;
-const MAX_SKILLS = 30;
 const MAX_SKILL_LENGTH = 50;
-export const MAX_LANGUAGES = 15;
-export const MAX_PREFERRED_COUNTRIES = 20;
-const AVAILABILITY_WINDOW_MONTHS = 24;
-const AUTHORIZATION_EXPIRY_MAX_YEARS = 50;
 
-export const SKILL_LIMIT_MESSAGE = `You can add up to ${MAX_SKILLS} skills`;
+export const SKILL_DUPLICATE_MESSAGE = "You have already added this skill.";
 
 const cefrLevels = ["A1", "A2", "B1", "B2", "C1", "C2"] as const satisfies readonly Enums["cefr_level"][];
 const availabilityValues = ["now", "from_date", "unavailable"] as const satisfies readonly Enums["worker_availability"][];
@@ -104,18 +99,22 @@ const skillTextSchema = z
   .max(MAX_SKILL_LENGTH, { error: `A skill can have up to ${MAX_SKILL_LENGTH} characters.` })
   .refine((value) => !CONTROL_CHARACTER.test(value), { error: "A skill cannot contain control characters." });
 
+export function skillLimitMessage(max: number): string {
+  return `You can add up to ${max} skills`;
+}
+
 type SkillResult =
   | { status: "added"; skill: string }
   | { status: "duplicate" }
   | { status: "refused"; message: string };
 
-// A skill already in the list under any letter case is ignored, not refused; the list holds at most MAX_SKILLS tags.
-export function validateSkill(existing: readonly string[], input: string): SkillResult {
+// A skill already in the list under any letter case is ignored, not refused; the list holds at most max tags.
+export function validateSkill(existing: readonly string[], input: string, max: number): SkillResult {
   const parsed = skillTextSchema.safeParse(input);
   if (!parsed.success) return { status: "refused", message: parsed.error.issues[0].message };
   const key = parsed.data.toLowerCase();
   if (existing.some((skill) => skill.toLowerCase() === key)) return { status: "duplicate" };
-  if (existing.length >= MAX_SKILLS) return { status: "refused", message: SKILL_LIMIT_MESSAGE };
+  if (existing.length >= max) return { status: "refused", message: skillLimitMessage(max) };
   return { status: "added", skill: parsed.data };
 }
 
@@ -167,11 +166,17 @@ function dateWithin(value: string, today: string, months: number): boolean {
   return date !== null && first !== null && date >= first && date <= addMonthsUtc(first, months);
 }
 
+const INVALID_DATE_MESSAGE = "Choose a valid date.";
+
 const availabilityChoice = z.enum(["", ...availabilityValues], { error: "Choose your availability." });
 
-// Availability and the date it starts: from_date needs a date from today to 24 months ahead (UTC), the other values
-// carry none. The empty availability keeps the field unset.
-export function experienceFormSchema(today: string = todayUtc()) {
+type DateWindow = { today?: string; months: number };
+
+// Availability and the date it starts: from_date needs a date, the other values carry none. The empty availability keeps
+// the field unset. With a window the form also checks the date from today to months ahead (UTC), except a date that is
+// already saved: the database skips the window for it too. The server action passes no window and leaves the range to
+// the database.
+export function experienceFormSchema(window?: DateWindow & { saved: string }) {
   return z
     .object({
       yearsExperience: yearsText,
@@ -180,19 +185,23 @@ export function experienceFormSchema(today: string = todayUtc()) {
     })
     .check((context) => {
       const { availability, availableFrom } = context.value;
-      if (availability === "from_date" && !dateWithin(availableFrom, today, AVAILABILITY_WINDOW_MONTHS)) {
-        context.issues.push({
-          code: "custom",
-          input: availableFrom,
-          path: ["availableFrom"],
-          message: `Choose a date from today to ${AVAILABILITY_WINDOW_MONTHS} months ahead.`,
-        });
+      if (availability !== "from_date") return;
+      const message =
+        parseDate(availableFrom) === null
+          ? INVALID_DATE_MESSAGE
+          : window &&
+              availableFrom !== window.saved &&
+              !dateWithin(availableFrom, window.today ?? todayUtc(), window.months)
+            ? `Choose a date from today to ${window.months} months ahead.`
+            : null;
+      if (message) {
+        context.issues.push({ code: "custom", input: availableFrom, path: ["availableFrom"], message });
       }
     });
 }
 
-export function experienceSchema(today: string = todayUtc()) {
-  return experienceFormSchema(today).transform((value) => ({
+export function experienceSchema() {
+  return experienceFormSchema().transform((value) => ({
     yearsExperience: value.yearsExperience === "" ? null : Number(value.yearsExperience),
     availability: value.availability === "" ? null : value.availability,
     availableFrom: value.availability === "from_date" ? value.availableFrom : null,
@@ -200,8 +209,9 @@ export function experienceSchema(today: string = todayUtc()) {
 }
 export type ExperienceInput = z.input<ReturnType<typeof experienceFormSchema>>;
 
-// An authorisation may have no expiry date; one that is given is not in the past and not more than 50 years ahead.
-export function authorizationFormSchema(today: string = todayUtc()) {
+// An authorisation may have no expiry date. One that is given is a date; with a window the form also checks that it is
+// not in the past and not more than years ahead, and the server leaves that to the database.
+export function authorizationFormSchema(window?: { today?: string; years: number }) {
   return z
     .object({
       country: countryCodeSchema,
@@ -209,19 +219,19 @@ export function authorizationFormSchema(today: string = todayUtc()) {
     })
     .check((context) => {
       const { expiresOn } = context.value;
-      if (expiresOn !== "" && !dateWithin(expiresOn, today, AUTHORIZATION_EXPIRY_MAX_YEARS * 12)) {
-        context.issues.push({
-          code: "custom",
-          input: expiresOn,
-          path: ["expiresOn"],
-          message: "Choose today or a later date, up to 50 years ahead.",
-        });
-      }
+      if (expiresOn === "") return;
+      const message =
+        parseDate(expiresOn) === null
+          ? INVALID_DATE_MESSAGE
+          : window && !dateWithin(expiresOn, window.today ?? todayUtc(), window.years * 12)
+            ? `Choose today or a later date, up to ${window.years} years ahead.`
+            : null;
+      if (message) context.issues.push({ code: "custom", input: expiresOn, path: ["expiresOn"], message });
     });
 }
 
-export function authorizationSchema(today: string = todayUtc()) {
-  return authorizationFormSchema(today).transform((value) => ({
+export function authorizationSchema() {
+  return authorizationFormSchema().transform((value) => ({
     country: value.country,
     expiresOn: value.expiresOn === "" ? null : value.expiresOn,
   }));

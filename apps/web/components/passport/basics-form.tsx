@@ -6,6 +6,7 @@ import { InputField } from "@/components/forms/form-field";
 import { usePassportForm } from "@/components/passport/use-passport-form";
 import { saveBasics } from "@/lib/actions/passport";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { toOptions } from "@/lib/reference-options";
 import { basicsFormSchema, type BasicsInput } from "@/lib/validation/passport";
 
 type BasicsFormProps = { initial: BasicsInput; countries: ReferenceItem[] };
@@ -32,7 +33,7 @@ export function BasicsForm({ initial, countries }: BasicsFormProps) {
         name="country"
         label="Current country"
         placeholder="Choose a country"
-        options={countries.map(({ code, name }) => ({ value: code, label: name }))}
+        options={toOptions(countries)}
       />
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : "Save details"}

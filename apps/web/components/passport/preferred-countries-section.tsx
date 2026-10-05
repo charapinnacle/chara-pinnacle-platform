@@ -3,9 +3,10 @@
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { usePassportForm } from "@/components/passport/use-passport-form";
-import { RemoveButton } from "@/components/passport/remove-button";
+import { ListRow } from "@/components/passport/list-row";
 import { addPreferredCountry, removePreferredCountry } from "@/lib/actions/passport";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { toOptions } from "@/lib/reference-options";
 import { preferredCountrySchema } from "@/lib/validation/passport";
 
 type PreferredCountriesSectionProps = { selected: string[]; countries: ReferenceItem[] };
@@ -25,10 +26,9 @@ export function PreferredCountriesSection({ selected, countries }: PreferredCoun
       ) : (
         <ul className="grid gap-2">
           {selected.map((code) => (
-            <li key={code} className="flex items-center justify-between gap-3 rounded-lg border px-3.5 py-1.5">
-              <span className="min-w-0 break-words">{nameOf(code)}</span>
-              <RemoveButton name={nameOf(code)} removed="Country removed" remove={() => removePreferredCountry(code)} />
-            </li>
+            <ListRow key={code} name={nameOf(code)} removed="Country removed" remove={() => removePreferredCountry(code)}>
+              {nameOf(code)}
+            </ListRow>
           ))}
         </ul>
       )}
@@ -39,9 +39,7 @@ export function PreferredCountriesSection({ selected, countries }: PreferredCoun
           label="Preferred countries"
           description="Add the countries where you would like to work, one at a time."
           placeholder="Choose a country"
-          options={countries
-            .filter(({ code }) => !selected.includes(code))
-            .map(({ code, name }) => ({ value: code, label: name }))}
+          options={toOptions(countries.filter(({ code }) => !selected.includes(code)))}
         />
         <FormButton type="submit" variant="secondary" busy={form.formState.isSubmitting}>
           Add country

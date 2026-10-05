@@ -58,16 +58,17 @@ export const getPassport = cache(async (userId: string): Promise<Passport | null
   };
 });
 
-export async function hasPassport(userId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("worker_profiles").select("user_id").eq("user_id", userId).maybeSingle();
-  if (error) throw new Error("The passport could not be loaded", { cause: error });
-  return data !== null;
-}
+export type PassportLimits = { skillsMax: number; availabilityWindowMonths: number; authorizationExpiryYears: number };
 
-export async function getSkillNames(userId: string): Promise<string[]> {
+// The owner-set skills limit and date windows (settings in the database), so the forms quote and check the same values
+// the triggers enforce.
+export const getPassportLimits = cache(async (): Promise<PassportLimits> => {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("worker_skills").select("skill").eq("worker_user_id", userId).limit(100);
-  if (error) throw new Error("The skills could not be loaded", { cause: error });
-  return data.map(({ skill }) => skill);
-}
+  const { data, error } = await supabase.rpc("passport_limits").single();
+  if (error) throw new Error("The passport limits could not be loaded", { cause: error });
+  return {
+    skillsMax: data.skills_max,
+    availabilityWindowMonths: data.availability_window_months,
+    authorizationExpiryYears: data.work_authorization_expiry_max_years,
+  };
+});

@@ -4,9 +4,10 @@ import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { SelectField } from "@/components/forms/select-field";
 import { usePassportForm } from "@/components/passport/use-passport-form";
-import { RemoveButton } from "@/components/passport/remove-button";
+import { ListRow } from "@/components/passport/list-row";
 import { addLanguage, removeLanguage } from "@/lib/actions/passport";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { toOptions } from "@/lib/reference-options";
 import { cefrOptions, languageFormSchema } from "@/lib/validation/passport";
 
 type LanguagesSectionProps = {
@@ -30,12 +31,9 @@ export function LanguagesSection({ languages, options }: LanguagesSectionProps) 
       ) : (
         <ul className="grid gap-2">
           {languages.map(({ code, level }) => (
-            <li key={code} className="flex items-center justify-between gap-3 rounded-lg border px-3.5 py-1.5">
-              <span className="min-w-0 break-words">
-                {nameOf(code)} <span className="text-muted-foreground">({level})</span>
-              </span>
-              <RemoveButton name={nameOf(code)} removed="Language removed" remove={() => removeLanguage(code)} />
-            </li>
+            <ListRow key={code} name={nameOf(code)} removed="Language removed" remove={() => removeLanguage(code)}>
+              {nameOf(code)} <span className="text-muted-foreground">({level})</span>
+            </ListRow>
           ))}
         </ul>
       )}
@@ -45,7 +43,7 @@ export function LanguagesSection({ languages, options }: LanguagesSectionProps) 
           name="language"
           label="Language"
           placeholder="Choose a language"
-          options={options.filter(({ code }) => !added.has(code)).map(({ code, name }) => ({ value: code, label: name }))}
+          options={toOptions(options.filter(({ code }) => !added.has(code)))}
         />
         <SelectField control={form.control} name="level" label="CEFR level" placeholder="Choose a level" options={cefrOptions} />
         <FormButton type="submit" variant="secondary" busy={form.formState.isSubmitting}>

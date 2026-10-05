@@ -9,7 +9,7 @@ import { CreatePassportForm } from "@/components/passport/create-passport-form";
 import { commitAccountKind } from "@/lib/actions/consents";
 import { getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
 import { getMyOrganization } from "@/lib/dal/organizations";
-import { hasPassport } from "@/lib/dal/passport";
+import { getPassport } from "@/lib/dal/passport";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { requireUser } from "@/lib/dal/session";
@@ -49,13 +49,14 @@ export default async function OnboardingPage({
   }
 
   if (user.accountKind === "worker") {
-    if (await hasPassport(user.id)) redirect(homePath(lang, "worker"));
+    const [passport, countries] = await Promise.all([getPassport(user.id), getCountries()]);
+    if (passport) redirect(homePath(lang, "worker"));
     return (
       <AuthCard
         title="Your account type is Worker"
         description="This cannot be changed later. Create your passport to finish setting up: only you can see it."
       >
-        <CreatePassportForm countries={await getCountries()} />
+        <CreatePassportForm countries={countries} />
       </AuthCard>
     );
   }

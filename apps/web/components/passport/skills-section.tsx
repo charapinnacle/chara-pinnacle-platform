@@ -3,22 +3,22 @@
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { usePassportForm } from "@/components/passport/use-passport-form";
-import { RemoveButton } from "@/components/passport/remove-button";
+import { ListRow } from "@/components/passport/list-row";
 import { addSkill, removeSkill } from "@/lib/actions/passport";
 import { skillSuggestions } from "@/lib/passport/skill-suggestions";
-import { skillFormSchema, validateSkill } from "@/lib/validation/passport";
+import { SKILL_DUPLICATE_MESSAGE, skillFormSchema, validateSkill } from "@/lib/validation/passport";
 
 type Skill = { id: string; name: string };
 
-export function SkillsSection({ skills }: { skills: Skill[] }) {
+export function SkillsSection({ skills, max }: { skills: Skill[]; max: number }) {
   const names = skills.map(({ name }) => name);
   const { form, onSubmit } = usePassportForm(
     skillFormSchema,
     { skill: "" },
     async (values) => {
-      const checked = validateSkill(names, values.skill);
+      const checked = validateSkill(names, values.skill, max);
       if (checked.status === "refused") return { errors: { skill: checked.message } };
-      if (checked.status === "duplicate") return { errors: { skill: "You have already added this skill." } };
+      if (checked.status === "duplicate") return { errors: { skill: SKILL_DUPLICATE_MESSAGE } };
       return addSkill(values);
     },
     { failureTitle: "Could not add the skill", saved: "Skill added", resetOnSuccess: true },
@@ -35,10 +35,9 @@ export function SkillsSection({ skills }: { skills: Skill[] }) {
       ) : (
         <ul className="grid gap-2">
           {skills.map((skill) => (
-            <li key={skill.id} className="flex items-center justify-between gap-3 rounded-lg border px-3.5 py-1.5">
-              <span className="min-w-0 break-words">{skill.name}</span>
-              <RemoveButton name={skill.name} removed="Skill removed" remove={() => removeSkill(skill.id)} />
-            </li>
+            <ListRow key={skill.id} name={skill.name} removed="Skill removed" remove={() => removeSkill(skill.id)}>
+              {skill.name}
+            </ListRow>
           ))}
         </ul>
       )}

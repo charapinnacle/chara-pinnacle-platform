@@ -5,7 +5,7 @@ import { validateSkill } from "@/lib/validation/passport";
 describe("skill suggestions", () => {
   it("are valid tags", () => {
     for (const suggestion of skillSuggestions) {
-      expect(validateSkill([], suggestion), suggestion).toEqual({ status: "added", skill: suggestion });
+      expect(validateSkill([], suggestion, 30), suggestion).toEqual({ status: "added", skill: suggestion });
     }
   });
 
