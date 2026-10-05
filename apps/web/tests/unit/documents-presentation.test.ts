@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentStatus, expiryLabel, formatFileSize, isAwaitingScan, reminderCutoff } from "@/lib/documents/presentation";
+import { documentStatus, expiryLabel, formatFileSize, isAwaitingScan, reminderCutoff, shareWarning } from "@/lib/documents/presentation";
 
 describe("expiryLabel", () => {
   const today = "2026-10-03";
@@ -79,5 +79,20 @@ describe("isAwaitingScan", () => {
     ["rejected", "2026-10-03T11:59:00Z", false],
   ])("a %s row created %s is being checked: %s", (status, createdAt, expected) => {
     expect(isAwaitingScan(status, createdAt, now)).toBe(expected);
+  });
+});
+
+describe("shareWarning", () => {
+  it("says nothing for a document that no active share holds", () => {
+    expect(shareWarning(0)).toBeNull();
+  });
+
+  it("names the number of applications and that all documents shared in them lose access", () => {
+    expect(shareWarning(1)).toBe(
+      "This document is shared with 1 application. Deleting it ends the employers' access to all documents shared in it.",
+    );
+    expect(shareWarning(2)).toBe(
+      "This document is shared with 2 applications. Deleting it ends the employers' access to all documents shared in them.",
+    );
   });
 });

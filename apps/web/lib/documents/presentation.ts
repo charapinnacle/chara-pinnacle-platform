@@ -48,3 +48,10 @@ export function documentStatus(scanStatus: string, checking: boolean): { label: 
   if (scanStatus === "rejected") return { label: REJECTED_LABEL, usable: false };
   return { label: checking ? "Checking the file" : "Upload not finished", usable: false };
 }
+
+// The delete dialog says what a deletion does to the applications that hold the document in their share.
+export function shareWarning(applications: number): string | null {
+  if (applications === 0) return null;
+  const [noun, pronoun] = applications === 1 ? ["application", "it"] : ["applications", "them"];
+  return `This document is shared with ${applications} ${noun}. Deleting it ends the employers' access to all documents shared in ${pronoun}.`;
+}
