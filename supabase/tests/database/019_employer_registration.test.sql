@@ -1,5 +1,5 @@
 begin;
-select plan(71);
+select plan(73);
 
 \ir organizations_fixture.inc
 
@@ -67,8 +67,8 @@ select is(
   (select format('%s|%s|%s|%s|%s', actor_id, entity_type, entity_id = current_setting('t.x')::jsonb ->> 'organization_id',
      metadata ->> 'duplicate_legal_name', jsonb_typeof(metadata -> 'legal_entity_trial_used'))
    from audit.log where action = 'organization_created' and entity_id = current_setting('t.x')::jsonb ->> 'organization_id'),
-  format('%s|organization|t|false|null', :'own1'),
-  'one organization_created audit row names the actor, the organization, the duplicate flag and a trial flag that is not evaluated yet'
+  format('%s|organization|t|false|boolean', :'own1'),
+  'one organization_created audit row names the actor, the organization, the duplicate flag and a trial flag'
 );
 select is(
   (select count(*) from audit.log where action = 'organization_created' and entity_id = current_setting('t.x')::jsonb ->> 'organization_id'),
@@ -294,7 +294,7 @@ select is(
   '42501|permission denied for table organizations|', 'an organization cannot be inserted directly'
 );
 
--- set_legal_entity_identifier: the owner at aal2 only, and only until billing exists
+-- set_legal_entity_identifier: the owner at aal2 only, and only until a subscription exists
 insert into public.organization_members (organization_id, user_id, role, accepted_at)
 values ((current_setting('t.x')::jsonb ->> 'organization_id')::uuid, :'adm', 'admin', now()),
        ((current_setting('t.x')::jsonb ->> 'organization_id')::uuid, :'mem', 'member', now());
@@ -347,9 +347,20 @@ select is(
   format('%s|vat_number|f', :'own1'), 'one audit row names the actor and the kind, and never the value'
 );
 
--- Trial flag: replaced the way the billing migration will replace it
-create or replace function private.legal_entity_trial_used(p_identifier text) returns boolean
-language sql stable as $$ select coalesce(p_identifier = 'DE123456789', false) $$;
+-- Trial flag: another organization of the legal entity has a subscription that had a trial (a canceled one counts)
+select is(
+  pg_temp.call_as(:'late', 'authenticated',
+    $$select set_config('t.e1', (public.create_organization('employer', 'Earlier Trial', 'Earlier Trial', 'DE', 'F', null, 'DE123456789', 'vat_number'))->>'organization_id', true)$$, 'aal1'),
+  'ok', 'setup: a legal entity whose organization had a trial'
+);
+select is(
+  pg_temp.call_as(:'gone', 'authenticated',
+    $$select set_config('t.e2', (public.create_organization('employer', 'No Trial', 'No Trial', 'FR', 'F', null, 'FR999999999', 'vat_number'))->>'organization_id', true)$$, 'aal1'),
+  'ok', 'setup: a legal entity whose organization had no trial'
+);
+insert into billing.subscriptions (organization_id, plan_code, status, trial_ends_at, provider)
+values (current_setting('t.e1')::uuid, 'employer_starter', 'canceled', now() - interval '60 days', 'null'),
+       (current_setting('t.e2')::uuid, 'employer_starter', 'active', null, 'null');
 select is(
   pg_temp.call_as(:'third', 'authenticated',
     $$select set_config('t.b1', public.create_organization('employer', 'Trial Co One', 'Trial Co One', 'DE', 'F', null, 'de 123 456 789', 'vat_number')::text, true)$$, 'aal1'),
@@ -377,9 +388,9 @@ select is(
   array['duplicate_legal_name', 'organization_id', 'slug'], 'the result of the flagged call holds no trial information'
 );
 
--- Locked after billing exists
-create or replace function private.legal_entity_locked(p_org uuid) returns boolean
-language sql stable as $$ select true $$;
+-- Locked once the organization has a subscription row
+insert into billing.subscriptions (organization_id, plan_code, status, provider)
+values ((current_setting('t.x')::jsonb ->> 'organization_id')::uuid, 'employer_starter', 'trialing', 'null');
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.set_legal_entity_identifier(%L, 'FR 999 999 999', 'vat_number')$$, current_setting('t.x')::jsonb ->> 'organization_id')),
   'P0001|CHARA_FORBIDDEN|legal_entity_identifier_locked', 'the owner cannot change the identifier once the lock applies'

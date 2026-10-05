@@ -248,7 +248,27 @@ isOneToOne: false
                 }
           }
           Views: {
-            [_ in never]: never
+            "v_my_subscription": {
+                  Row: {
+                    "cancel_at": string | null,"current_period_end": string | null,"organization_id": string | null,"past_due_since": string | null,"plan_code": string | null,"plan_name": string | null,"status": string | null,"trial_ends_at": string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"v_plans": {
+                  Row: {
+                    "code": string | null,"contact_sales": boolean | null,"currency": string | null,"features": Json | null,"interval": string | null,"is_default_trial": boolean | null,"is_public": boolean | null,"limits": Json | null,"name": string | null,"org_type": Database["public"]['Enums']["organization_type"] | null,"price_minor": number | null,"sort": number | null,"trial_days": number | null
+                  }
+                  Insert: {
+                           "code"?: string | null,"contact_sales"?: boolean | null,"currency"?: string | null,"features"?: never,"interval"?: string | null,"is_default_trial"?: boolean | null,"is_public"?: boolean | null,"limits"?: never,"name"?: string | null,"org_type"?: Database["public"]['Enums']["organization_type"] | null,"price_minor"?: number | null,"sort"?: number | null,"trial_days"?: number | null
+                         }
+                        Update: {
+                           "code"?: string | null,"contact_sales"?: boolean | null,"currency"?: string | null,"features"?: never,"interval"?: string | null,"is_default_trial"?: boolean | null,"is_public"?: boolean | null,"limits"?: never,"name"?: string | null,"org_type"?: Database["public"]['Enums']["organization_type"] | null,"price_minor"?: number | null,"sort"?: number | null,"trial_days"?: number | null
+                         }
+                        Relationships: [
+                    
+                  ]
+                }
           }
           Functions: {
             "accept_consents":

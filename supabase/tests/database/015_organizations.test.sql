@@ -154,7 +154,7 @@ select is(
 select is(
   (select format('%s|%s|%s|%s', actor_id, entity_type, entity_id = current_setting('t.a'), metadata)
    from audit.log where action = 'organization_created' and entity_id = current_setting('t.a')),
-  format('%s|organization|t|{"slug": "acme-bau", "type": "employer", "duplicate_legal_name": false, "legal_entity_trial_used": null}', :'own1'),
+  format('%s|organization|t|{"slug": "acme-bau", "type": "employer", "duplicate_legal_name": false, "legal_entity_trial_used": false}', :'own1'),
   'one organization_created audit row names the actor, the organization, the slug and the type'
 );
 select is(
