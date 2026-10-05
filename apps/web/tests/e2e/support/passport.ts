@@ -1,4 +1,13 @@
+import type { Page } from "@playwright/test";
 import { execute, literal, query } from "./db";
+import { logIn } from "./login-page";
+import { expect } from "./test";
+import type { TestUser } from "./test-user";
+
+export async function signIn(page: Page, user: TestUser): Promise<void> {
+  await logIn(page, user);
+  await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+}
 
 export function daysFromToday(days: number): string {
   const today = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
@@ -57,4 +66,31 @@ export function passportAudit(userId: string) {
     `select actor_id, entity_type, entity_id, metadata from audit.log
      where entity_id = ${literal(userId)} and action = 'passport.created'`,
   );
+}
+
+// Tabs through every control of the page and expects the focus to follow the order in which the controls appear on the
+// screen: from top to bottom, which at phone width is also the order of the markup.
+export async function expectTabOrderFollowsPage(page: Page): Promise<void> {
+  const controls = await page.evaluate(() => {
+    const found = [...document.querySelectorAll<HTMLElement>("main a[href], main input, main select, main button")].filter(
+      (element) => !element.matches(":disabled, [type=hidden]") && element.getClientRects().length > 0,
+    );
+    found.forEach((element, index) => element.setAttribute("data-tab-check", String(index)));
+    return found.map((element) => ({
+      top: element.getBoundingClientRect().top + window.scrollY,
+      name:
+        (element as HTMLInputElement).labels?.[0]?.textContent?.trim() ?? element.textContent?.trim() ?? element.tagName,
+    }));
+  });
+  expect(controls.length).toBeGreaterThan(20);
+  expect(controls.map(({ top }) => top)).toEqual([...controls.map(({ top }) => top)].sort((a, b) => a - b));
+
+  await page.locator('[data-tab-check="0"]').focus();
+  for (const [index, { name }] of controls.entries()) {
+    const focused = page.locator(":focus");
+    await expect(focused, `${index}: ${name}`).toHaveAttribute("data-tab-check", String(index));
+    // A date field holds several tab stops (day, month, year, picker).
+    const stops = (await focused.getAttribute("type")) === "date" ? 4 : 1;
+    for (let stop = 0; stop < stops; stop += 1) await page.keyboard.press("Tab");
+  }
 }
