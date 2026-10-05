@@ -65,6 +65,10 @@ select created_at, entity_id, metadata from audit.log where action = 'account_op
 
 An abandoned job is run again by queueing a message with the action and user id from the audit row: `select pgmq.send('account_ops', jsonb_build_object('action', '<action>', 'user_id', '<entity_id>', 'reason', 'requeue, ticket <TICKET>'));` (every job is idempotent). The queue keeps no archive of finished jobs, so `audit.log` (`account_ops_done`, `account_ops_abandoned`) is the whole record.
 
+### scan-document (candidate documents)
+
+`scan-document` (`verify_jwt = false`, authenticated by the same `x-edge-secret`) checks the first bytes of every object that lands in the bucket `passport-documents`. It is called by a trigger on `storage.objects` through pg_net and uses the Vault secrets `project_url` and `edge_shared_secret` of section 3; deploy it with `npx supabase functions deploy scan-document --no-verify-jwt --use-api`. pg_net does not retry, so the job `scan-document-rescan` (every minute) announces the objects of rows that are still `pending` two minutes after their upload again, for one day, at most 100 per run; the function is idempotent. Monitoring (daily): `select id, created_at from public.worker_documents where scan_status = 'pending' and deleted_at is null and created_at < now() - interval '1 day'` lists uploads that never finished or whose scan kept failing; the candidate sees "Upload not finished" and can delete the row.
+
 ## 4. Quarterly access review
 
 Run by the Platform Administrator with the release owner. The list covers every active and revoked role, who granted it, the two-step status and the last sign-in; `dormant` flags an active role whose holder has not signed in for 90 days (or never, since the grant). Each dormant account is revoked or confirmed in the sign-off.
