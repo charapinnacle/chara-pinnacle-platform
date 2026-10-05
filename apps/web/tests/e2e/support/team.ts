@@ -123,29 +123,26 @@ export async function signInAtAal1(page: Page, user: TestUser, path: string): Pr
   await expect(page).toHaveURL(path);
 }
 
-let saved: { definition: string; enforced: string } | null = null;
+let enforcedBefore: string | null = null;
 
-// The limit the billing migration will read from the plans (FR-G1): until it exists, the browser tests give the
-// organizations whose display name starts with "Basic" a limit of 1 and every other one a limit of 5, and switch the
-// limits on. restoreLimits puts back whatever function and setting enforceLimits found.
+// Switches the limits on, as they are once billing is live. restoreLimits puts back the value enforceLimits found.
 export function enforceLimits(): void {
-  [saved] = query<{ definition: string; enforced: string }>(
-    `select pg_get_functiondef('private.org_limit(uuid,text)'::regprocedure) as definition,
-       (select value #>> '{}' from private.settings where key = 'entitlements_enforced') as enforced`,
+  [{ value: enforcedBefore }] = query<{ value: string }>(
+    `select value #>> '{}' as value from private.settings where key = 'entitlements_enforced'`,
   );
-  execute(`
-    create or replace function private.org_limit(p_org uuid, p_key text) returns integer
-    language sql stable set search_path = '' as $f$
-      select case p_key when 'members' then
-        case when (select o.display_name from public.organizations o where o.id = p_org) like 'Basic%' then 1 else 5 end
-      end
-    $f$;
-    update private.settings set value = 'true' where key = 'entitlements_enforced'`);
+  execute(`update private.settings set value = 'true' where key = 'entitlements_enforced'`);
 }
 
 export function restoreLimits(): void {
-  if (!saved) return;
-  execute(`${saved.definition};
-    update private.settings set value = ${literal(saved.enforced)} where key = 'entitlements_enforced'`);
-  saved = null;
+  if (enforcedBefore === null) return;
+  execute(`update private.settings set value = ${literal(enforcedBefore)}::jsonb where key = 'entitlements_enforced'`);
+  enforcedBefore = null;
+}
+
+// As the billing webhook leaves a paying organization: a live subscription to the plan, whose limits then apply.
+export function subscribe(team: Team, planCode: "employer_starter" | "employer_professional"): void {
+  execute(
+    `insert into billing.subscriptions (organization_id, plan_code, status, provider)
+     values (${literal(team.id)}, ${literal(planCode)}, 'active', 'null')`,
+  );
 }

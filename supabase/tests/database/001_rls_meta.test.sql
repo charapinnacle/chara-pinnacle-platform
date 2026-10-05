@@ -6,7 +6,7 @@ language sql as $$
   select format('%I.%I', n.nspname, c.relname)
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname in ('public', 'private', 'audit', 'stats')
+  where n.nspname in ('public', 'private', 'audit', 'stats', 'billing')
     and c.relkind in ('r', 'p')
     and not (c.relrowsecurity and c.relforcerowsecurity)
   order by 1
@@ -17,7 +17,7 @@ language sql as $$
   select format('%I.%I', n.nspname, c.relname)
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname in ('public', 'private', 'audit', 'stats')
+  where n.nspname in ('public', 'private', 'audit', 'stats', 'billing')
     and c.relkind in ('r', 'p')
     and not exists (select 1 from pg_policy p where p.polrelid = c.oid)
     and exists (
@@ -34,22 +34,22 @@ select is_empty(
     select c.oid::regclass
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname in ('public', 'private', 'audit', 'stats')
+    where n.nspname in ('public', 'private', 'audit', 'stats', 'billing')
       and c.relkind in ('r', 'p')
       and (has_table_privilege('service_role', c.oid, 'select, insert, update, delete, truncate, references, trigger')
         or has_any_column_privilege('service_role', c.oid, 'select, insert, update, references'))
   $$,
-  'service_role has no direct table grants in public, private, audit and stats'
+  'service_role has no direct table grants in public, private, audit, stats and billing'
 );
 
 select is_empty(
   $$select * from pg_temp.tables_without_forced_rls()$$,
-  'every table in public, private, audit and stats has RLS enabled and forced'
+  'every table in public, private, audit, stats and billing has RLS enabled and forced'
 );
 
 select is_empty(
   $$select * from pg_temp.tables_exposed_without_policy()$$,
-  'every table in public, private, audit and stats has a policy or no grants to anon, authenticated and service_role'
+  'every table in public, private, audit, stats and billing has a policy or no grants to anon, authenticated and service_role'
 );
 
 create table public.meta_probe (a int);
