@@ -198,10 +198,19 @@ export async function enrollTotp(user: TestUser): Promise<string> {
   return factor.totp.secret;
 }
 
-// A confirmed user whose account kind is committed, as a user is after onboarding.
-export async function createCommittedUser(kind: "worker" | "company"): Promise<TestUser> {
+// A confirmed user whose account kind is committed, as a user is after onboarding; a worker has created the passport,
+// unless the test is about onboarding itself.
+export async function createCommittedUser(kind: "worker" | "company", { passport = true } = {}): Promise<TestUser> {
   const user = await createTestUser(kind, await pendingConsents(kind));
   await callAs(user, "set_account_kind");
+  if (kind === "worker" && passport) {
+    await callAs(user, "create_worker_passport", {
+      p_first_name: "Test",
+      p_last_name: "Candidate",
+      p_current_country: "DE",
+      p_preferred_lang: "en",
+    });
+  }
   // callAs signed in to get a token; tests count sessions, so leave the user with none.
   execute(`delete from auth.sessions where user_id = ${literal(user.id)}`);
   return user;
