@@ -40,6 +40,9 @@ process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: true,
+  // The CI runner is slower than a development machine and runs the tests in parallel: the 5 s default is too tight
+  // for flows that cross several requests (upload, invitations, skeleton states).
+  expect: { timeout: 10_000 },
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? "github" : "list",
   globalTeardown: "./tests/e2e/global-teardown.ts",
