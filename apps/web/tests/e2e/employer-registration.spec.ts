@@ -100,7 +100,7 @@ test.describe("employer registration", () => {
           slug: `acme-bau-${token}`,
           type: "employer",
           duplicate_legal_name: false,
-          legal_entity_trial_used: null,
+          legal_entity_trial_used: false,
         },
       },
     ]);

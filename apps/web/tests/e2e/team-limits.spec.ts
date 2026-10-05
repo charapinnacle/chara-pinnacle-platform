@@ -11,6 +11,7 @@ import {
   restoreLimits,
   seedInvitation,
   signInAtAal2,
+  subscribe,
   teamAudit,
 } from "./support/team";
 import { expect, test } from "./support/test";
@@ -29,6 +30,7 @@ test.describe("team membership: member limit", () => {
     page,
   }) => {
     const team = await newTeam(uniqueName("Basic Bau"));
+    subscribe(team, "employer_starter");
     await signInAtAal2(page, team.owner, team.ownerSecret, membersPath(team.slug));
     await page.getByRole("button", { name: "Invite member" }).click();
     const dialog = page.getByRole("dialog", { name: "Invite a team member" });
@@ -42,6 +44,7 @@ test.describe("team membership: member limit", () => {
 
   test("FR-A5 AC11: below the limit nothing is said about it, and a pending invitation counts toward it", async ({ page }) => {
     const team = await newTeam(uniqueName("Pro Bau"));
+    subscribe(team, "employer_professional");
     await addMember(team, "member");
     seedInvitation(team, newEmail());
     seedInvitation(team, newEmail());
@@ -64,6 +67,7 @@ test.describe("team membership: member limit", () => {
     browser,
   }) => {
     const team = await newTeam(uniqueName("Race Bau"));
+    subscribe(team, "employer_professional");
     const admin = await addMember(team, "admin");
     await addMember(team, "member");
     await addMember(team, "member");
