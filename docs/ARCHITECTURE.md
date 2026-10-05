@@ -796,13 +796,16 @@ end $$;
 
 create or replace function private.org_limit(p_org uuid, p_key text) returns integer   -- null = unlimited (known plan only)
 language sql stable security definer set search_path = '' as $$
-  select l.limit_value from billing.plan_limits l
-  where l.plan_code = private.org_plan_code(p_org) and l.limit_key = p_key
+  select case when exists (select 1 from billing.plans p where p.code = private.org_plan_code(p_org))
+              then (select l.limit_value from billing.plan_limits l
+                    where l.plan_code = private.org_plan_code(p_org) and l.limit_key = p_key)
+              else 0 end                                         -- an unknown plan code has a limit of 0
 $$;
 
 create or replace function private.has_feature(p_org uuid, p_key text) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select not coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+  select not (coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+              or coalesce(private.free_plan_restricted(p_org), false))   -- a lapsed organization has no feature either
       or exists (select 1 from billing.plan_features f          -- an unknown plan code has no feature rows: denied
                  where f.plan_code = private.org_plan_code(p_org) and f.feature_key = p_key)
 $$;

@@ -70,7 +70,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U42 | `feat/audited-actions` | FR-F2 | U41 |
 | U43 | `feat/no-staff-document-access` | FR-F3 | U19, U41 |
 | U44 | `feat/vacancy-moderation` | FR-C7 | U41, U37 |
-| U45 | `feat/checkout-and-portal` | FR-G2: `billing-checkout`, Stripe and null providers; the owner control for `set_legal_entity_identifier` and the re-evaluation at checkout of audit rows whose `legal_entity_trial_used` is null (OPEN_QUESTIONS.md D36) | U14, U37 |
+| U45 | `feat/checkout-and-portal` | FR-G2: `billing-checkout`, Stripe and null providers; the owner control for `set_legal_entity_identifier` and the re-evaluation at checkout of audit rows whose `legal_entity_trial_used` is null (OPEN_QUESTIONS.md D36); FR-G1 AC10 and AC11 (the deferred part of U14, OPEN_QUESTIONS.md D40): the Stripe mirror script, `billing.plan_provider_refs` and the go-live check, tested with Vitest against a stubbed Stripe snapshot | U14, U37 |
 | U46 | `feat/webhook-processing` | FR-G3 | U45 |
 | U47 | `feat/subscription-states` | FR-G4 | U46 |
 | U48 | `feat/billing-page` | FR-G5 | U47 |
