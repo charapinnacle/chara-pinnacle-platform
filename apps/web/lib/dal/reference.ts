@@ -7,31 +7,27 @@ export type ReferenceItem = { code: string; name: string };
 export type OccupationItem = { code: string; label: string; synonyms: string[] };
 
 const PAGE_SIZE = 100;
-const MAX_PAGES = 10;
 
-type Page<Row> = { data: Row[]; error: null } | { data: null; error: PostgrestError };
+type Page<Row> = { data: Row[]; count: number | null; error: null } | { data: null; count: null; error: PostgrestError };
 
-// The Data API returns at most 100 rows, so a list is read in pages by code.
-async function readAll<Row extends { code: string }>(
-  what: string,
-  readPage: (after: string | null) => PromiseLike<Page<Row>>,
-): Promise<Row[]> {
-  const rows: Row[] = [];
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    const { data, error } = await readPage(rows.at(-1)?.code ?? null);
-    if (error) throw new Error(`The ${what} could not be loaded`, { cause: error });
-    rows.push(...data);
-    if (data.length < PAGE_SIZE) break;
-  }
-  return rows;
+// The Data API returns at most 100 rows. The first page also reports the total, so the other pages are read together.
+async function readAll<Row>(what: string, readPage: (from: number) => PromiseLike<Page<Row>>): Promise<Row[]> {
+  const first = await readPage(0);
+  if (first.error) throw new Error(`The ${what} could not be loaded`, { cause: first.error });
+  const pages = Math.ceil((first.count ?? 0) / PAGE_SIZE);
+  const starts = Array.from({ length: Math.max(pages - 1, 0) }, (_, index) => (index + 1) * PAGE_SIZE);
+  const rest = await Promise.all(starts.map(readPage));
+  return [first, ...rest].flatMap((page) => {
+    if (page.error) throw new Error(`The ${what} could not be loaded`, { cause: page.error });
+    return page.data;
+  });
 }
 
 async function readNamed(table: "countries" | "industries" | "languages"): Promise<ReferenceItem[]> {
   const supabase = await createClient();
-  const items = await readAll(table, (after) => {
-    const request = supabase.from(table).select("code, name").order("code").limit(PAGE_SIZE);
-    return after ? request.gt("code", after) : request;
-  });
+  const items = await readAll(table, (from) =>
+    supabase.from(table).select("code, name", { count: "exact" }).order("code").range(from, from + PAGE_SIZE - 1),
+  );
   return items.sort((a, b) => a.name.localeCompare(b.name, "en"));
 }
 
@@ -41,8 +37,7 @@ export const getLanguages = cache(() => readNamed("languages"));
 
 export const getOccupations = cache(async (): Promise<OccupationItem[]> => {
   const supabase = await createClient();
-  return readAll("occupations", (after) => {
-    const request = supabase.from("occupations").select("code, label, synonyms").order("code").limit(PAGE_SIZE);
-    return after ? request.gt("code", after) : request;
-  });
+  return readAll("occupations", (from) =>
+    supabase.from("occupations").select("code, label, synonyms", { count: "exact" }).order("code").range(from, from + PAGE_SIZE - 1),
+  );
 });
