@@ -1,5 +1,5 @@
 begin;
-select plan(132);
+select plan(146);
 
 \ir organizations_fixture.inc
 
@@ -297,6 +297,8 @@ select pg_temp.subscribe(paused, 'employer_professional', 'paused') from t_plan_
 select is(private.org_plan_code((select trialing from t_plan_org)), 'employer_professional', 'a trialing subscription gives its plan');
 select is(private.org_plan_code((select past_due from t_plan_org)), 'employer_starter', 'a past_due subscription keeps its plan during the grace period');
 select is(private.org_plan_code((select paused from t_plan_org)), 'free_employer', 'a paused subscription gives the free plan');
+select is(private.free_plan_restricted((select paused from t_plan_org)), true,
+  'a paused subscription is not live, so the organization is restricted like a lapsed one until FR-G4 defines pausing');
 select is(private.org_plan_code((select recruitment from t_plan_org)), 'free_recruitment_company',
   'the fallback plan follows the organization type');
 
@@ -324,6 +326,17 @@ select lives_ok(format($$select private.assert_within_limit(%L, 'active_jobs', 1
 select is(private.free_plan_restricted(:'n'), false, 'an organization that never subscribed is not restricted while limits are not enforced');
 select is(private.free_plan_restricted(:'l'), true, 'a lapsed organization is restricted whatever the setting');
 select is(private.free_plan_restricted(:'o'), false, 'an organization on a paid plan is not restricted');
+select is(private.has_feature(:'l', 'shortlisting'), false, 'a lapsed organization has no feature although limits are not enforced');
+select is(private.org_limit((select recruitment from t_plan_org), 'active_jobs'), 0, 'an unknown plan code has a limit of 0, not unlimited');
+select is(private.org_limit(gen_random_uuid(), 'members'), 0, 'an organization that does not exist has a limit of 0');
+select is(
+  pg_temp.read_as(:'oth', 'authenticated', 'aal2', format($$select coalesce(member_limit::text, 'none') || '/' || used from public.team_member_allowance(%L)$$, :'l')),
+  '0/2', 'the invitation dialog of a lapsed organization shows the limit although limits are not enforced'
+);
+select is(
+  pg_temp.read_as(:'own1', 'authenticated', 'aal2', format($$select coalesce(member_limit::text, 'none') from public.team_member_allowance(%L)$$, :'o')),
+  'none', 'the dialog of an organization on a paid plan shows no limit while limits are not enforced'
+);
 select throws_ok(
   format($$select private.assert_within_limit(%L, 'active_jobs', 0)$$, :'l'), 'P0001', 'CHARA_LIMIT_REACHED',
   'a lapsed organization cannot open a vacancy although limits are not enforced'
@@ -443,23 +456,28 @@ select is(
 );
 
 -- Changing a value is a data change (AC3) and is audited (AC9)
-create temp table t_sub_before as select md5(s::text) as hash from billing.subscriptions s where s.organization_id = :'o';
-select is(private.org_limit(:'o', 'active_jobs'), 3, 'before the change Basic allows 3 vacancies');
+select pg_temp.new_org(:'own1') as tr \gset
+select pg_temp.subscribe(:'tr', 'employer_starter', 'trialing', now() + interval '20 days');
+create temp table t_sub_before as
+select s.organization_id, md5(s::text) as hash from billing.subscriptions s where s.organization_id in (:'o', :'tr');
+select is(private.org_limit(:'o', 'active_jobs') || '/' || private.org_limit(:'tr', 'active_jobs'), '3/3', 'before the change Basic allows 3 vacancies, active or trialing');
 update billing.plan_limits set limit_value = 4 where plan_code = 'employer_starter' and limit_key = 'active_jobs';
 update billing.plans set trial_days = 14, name = 'Standard' where code = 'employer_starter';
-select is(private.org_limit(:'o', 'active_jobs'), 4, 'a new limit applies right after the update, with no function redefined');
+select is(private.org_limit(:'o', 'active_jobs') || '/' || private.org_limit(:'tr', 'active_jobs'), '4/4',
+  'a new limit applies right after the update, with no function redefined, to an active and a trialing subscription');
 select is(
   pg_temp.read_as(null, 'anon', 'aal1', $$select format('%s|%s', trial_days, name) from public.v_plans where code = 'employer_starter'$$),
   '14|Standard', 'v_plans shows the new trial days and name'
 );
 select is(
-  (select md5(s::text) = hash from billing.subscriptions s, t_sub_before where s.organization_id = :'o'), true,
-  'the subscription row is unchanged'
+  (select bool_and(md5(s::text) = b.hash) from billing.subscriptions s join t_sub_before b using (organization_id)), true,
+  'the subscription rows are unchanged'
 );
 update billing.plans set name = 'Standard' where code = 'employer_starter';
 update billing.plans set price_minor = 4200 where code = 'employer_starter';
 delete from billing.plan_features where plan_code = 'employer_enterprise' and feature_key = 'analytics_advanced';
 insert into billing.plan_limits values ('employer_starter', 'probe_limit', 7);
+update billing.organization_limit_overrides set limit_value = 65 where organization_id = :'e' and limit_key = 'active_jobs';
 select results_eq(
   $$select entity_type, entity_id, actor_id::text, metadata ->> 'table', metadata ->> 'operation', metadata -> 'before', metadata -> 'after'
     from audit.log where id > (select id from t_audit_baseline) and action = 'billing.plan_changed'
@@ -488,9 +506,23 @@ select is(
 );
 select is(
   (select count(*) from audit.log where id > (select id from t_audit_baseline) and action = 'billing.plan_changed'
-     and metadata ->> 'table' = 'organization_limit_overrides' and entity_type = 'plan' and entity_id is null
-     and (metadata -> case metadata ->> 'operation' when 'delete' then 'before' else 'after' end) ->> 'organization_id' = :'e'),
-  3::bigint, 'overrides are audited too: two inserts and one delete'
+     and metadata ->> 'table' = 'organization_limit_overrides' and entity_type = 'organization' and entity_id = :'e'
+     and metadata ->> 'organization_id' = :'e' and metadata ->> 'limit_key' = 'active_jobs' and metadata -> 'plan_code' is null),
+  4::bigint, 'overrides are audited under their organization and limit key: two inserts, one update and one delete'
+);
+select results_eq(
+  $$select entity_type, entity_id, metadata ->> 'limit_key', metadata -> 'before', metadata -> 'after'
+    from audit.log where id > (select id from t_audit_baseline) and action = 'billing.plan_changed'
+      and metadata ->> 'table' = 'organization_limit_overrides' and metadata ->> 'operation' = 'update'$$,
+  format($$values ('organization', %L, 'active_jobs', '{"limit_value": 60}'::jsonb, '{"limit_value": 65}'::jsonb)$$, :'e'),
+  'an override update names the organization and the limit key next to the changed value'
+);
+select results_eq(
+  $$select entity_type, entity_id, metadata ->> 'plan_code', metadata ->> 'limit_key', metadata -> 'before', metadata -> 'after'
+    from audit.log where id > (select id from t_audit_baseline) and action = 'billing.plan_changed'
+      and metadata ->> 'table' = 'plan_limits' and metadata ->> 'operation' = 'update'$$,
+  $$values ('plan', 'employer_starter', 'employer_starter', 'active_jobs', '{"limit_value": 3}'::jsonb, '{"limit_value": 4}'::jsonb)$$,
+  'a limit update names the plan and the limit key next to the changed value'
 );
 
 -- billing_owner and service_role (NFR-S3)
@@ -560,6 +592,33 @@ select is(
      and (not p.prosecdef or not exists (select 1 from unnest(p.proconfig) c where c = 'search_path=""'))),
   0::bigint, 'the billing functions are security definer with an empty search_path'
 );
+
+-- AC8: a plan of another organization type needs no change to the schema, the helpers or the employer plans
+select lives_ok(
+  $$insert into billing.plans (code, org_type, name, price_minor, currency, interval, trial_days, is_public, sort)
+      values ('recruitment_partner', 'recruitment_company', 'Partner', 4900, 'EUR', 'month', 30, false, 10);
+    insert into billing.plan_limits values ('recruitment_partner', 'active_jobs', 10), ('recruitment_partner', 'members', 3)$$,
+  'a plan of the recruitment_company type with its limits is added by plain inserts'
+);
+select is(
+  (select count(*) from billing.plans where org_type = 'employer' and code !~ '^probe_'), 4::bigint,
+  'the employer plans are still the four seeded ones'
+);
+select is(
+  pg_temp.read_as(null, 'anon', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'employer'$$),
+  'employer_starter,employer_professional', 'a visitor asking for employer plans gets the public employer plans only'
+);
+select is(
+  (select code from public.v_plans where org_type = 'recruitment_company'), 'recruitment_partner',
+  'filtering by organization type returns the plan of that type'
+);
+select pg_temp.new_org(:'own1', 'recruitment_company') as rc \gset
+select pg_temp.subscribe(:'rc', 'recruitment_partner', 'active');
+select is(
+  private.org_plan_code(:'rc') || '/' || private.org_limit(:'rc', 'active_jobs') || '/' || private.org_limit(:'rc', 'members'),
+  'recruitment_partner/10/3', 'an organization of that type resolves its plan and limits through the same helpers'
+);
+select is(private.org_limit(:'o', 'active_jobs'), 4, 'the employer limits are unaffected');
 
 -- The index the trial lookup reads by (FR-A2, D36)
 create function pg_temp.explain_lines(p_sql text) returns setof text

@@ -87,8 +87,8 @@ comment on table billing.subscriptions is
 create index subscriptions_organization_idx on billing.subscriptions (organization_id);
 create unique index subscriptions_one_live_per_organization
   on billing.subscriptions (organization_id) where status <> 'canceled';
-create index subscriptions_plan_idx on billing.subscriptions (plan_code);
--- Serves the policy predicate of plans_select_public and the pricing page (public plans of a type in display order).
+-- Every column a policy reads is indexed; this one serves plans_select_public and the pricing page (public plans of a
+-- type in display order). The table stays small, so the planner may still scan it.
 create index plans_public_idx on billing.plans (org_type, sort) where is_public;
 
 alter table billing.plans owner to billing_owner;
@@ -193,8 +193,9 @@ revoke all on public.v_plans, public.v_my_subscription from public, anon, authen
 grant select on public.v_plans to anon, authenticated;
 grant select on public.v_my_subscription to authenticated;
 
--- One audit row per changed plan, limit, feature or override. Migrations run as postgres, so actor_id is null for them;
--- an update records the changed columns only.
+-- One audit row per changed plan, limit, feature or override. Migrations run as postgres, so actor_id is null for them.
+-- The key columns (plan_code, limit_key, feature_key, organization_id) are always in the metadata; an update records
+-- the changed columns only in before and after. An override is filed under its organization.
 create function private.billing_plan_audit() returns trigger
 language plpgsql
 security definer
@@ -205,6 +206,8 @@ declare
   v_new jsonb := case when tg_op <> 'DELETE' then to_jsonb(new) end;
   v_row jsonb := coalesce(v_new, v_old);
   v_code text := case tg_table_name when 'plans' then v_row ->> 'code' else v_row ->> 'plan_code' end;
+  v_entity_type text := case tg_table_name when 'organization_limit_overrides' then 'organization' else 'plan' end;
+  v_entity_id text := coalesce(v_code, v_row ->> 'organization_id');
 begin
   if tg_op = 'UPDATE' then
     if v_old = v_new then
@@ -218,8 +221,11 @@ begin
   end if;
 
   perform audit.record(
-    'billing.plan_changed', 'plan', v_code,
-    jsonb_build_object('table', tg_table_name, 'plan_code', v_code, 'operation', lower(tg_op), 'before', v_old, 'after', v_new)
+    'billing.plan_changed', v_entity_type, v_entity_id,
+    jsonb_strip_nulls(jsonb_build_object(
+      'table', tg_table_name, 'plan_code', v_code, 'organization_id', v_row ->> 'organization_id',
+      'limit_key', v_row ->> 'limit_key', 'feature_key', v_row ->> 'feature_key'
+    )) || jsonb_build_object('operation', lower(tg_op), 'before', v_old, 'after', v_new)
   );
   return null;
 end;
@@ -241,7 +247,8 @@ create trigger organization_limit_overrides_audit
   for each row execute function private.billing_plan_audit();
 
 -- Entitlements (ARCHITECTURE.md section 10.4). The fallback plan 'free_' || organization type is used for an organization
--- without a live subscription; a plan code with no row in billing.plans denies. The limits are not enforced while
+-- without a live subscription; a plan code with no row in billing.plans denies (a limit of 0, no feature, an error from
+-- the guard). The limits are not enforced while
 -- private.settings.entitlements_enforced (inserted by the team migration) is false, except for a lapsed organization:
 -- one that is on a free plan and has a subscription row, all of them canceled (C11).
 create or replace function private.org_limit(p_org uuid, p_key text) returns integer
@@ -250,10 +257,13 @@ stable
 security definer
 set search_path = ''
 as $$
-  select coalesce(
-    (select o.limit_value from billing.organization_limit_overrides o where o.organization_id = p_org and o.limit_key = p_key),
-    (select l.limit_value from billing.plan_limits l where l.plan_code = private.org_plan_code(p_org) and l.limit_key = p_key)
-  )
+  select case
+    when exists (select 1 from billing.plans p where p.code = private.org_plan_code(p_org)) then coalesce(
+      (select o.limit_value from billing.organization_limit_overrides o where o.organization_id = p_org and o.limit_key = p_key),
+      (select l.limit_value from billing.plan_limits l where l.plan_code = private.org_plan_code(p_org) and l.limit_key = p_key)
+    )
+    else 0
+  end
 $$;
 
 create function private.free_plan_restricted(p_org uuid) returns boolean
@@ -275,7 +285,10 @@ stable
 security definer
 set search_path = ''
 as $$
-  select not coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+  select not (
+      coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+      or coalesce(private.free_plan_restricted(p_org), false)
+    )
     or exists (
       select 1 from billing.plan_features f
       where f.plan_code = private.org_plan_code(p_org) and f.feature_key = p_key
@@ -302,6 +315,30 @@ begin
   if v_limit is not null and p_current >= v_limit then
     raise exception 'CHARA_LIMIT_REACHED' using detail = p_key, errcode = 'P0001';
   end if;
+end;
+$$;
+
+-- The invitation dialog shows the limit whenever it applies: enforced, or the organization has lapsed.
+create or replace function public.team_member_allowance(p_org uuid) returns table (member_limit integer, used integer)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or not private.is_org_member(p_org, 'admin') then
+    raise exception 'CHARA_FORBIDDEN';
+  end if;
+  if not private.is_aal2() then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
+  end if;
+
+  return query
+  select
+    case when coalesce((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false)
+           or private.free_plan_restricted(p_org)
+      then private.org_limit(p_org, 'members') end,
+    private.team_size(p_org);
 end;
 $$;
 
