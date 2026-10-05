@@ -35,6 +35,7 @@ process.env.E2E_AUTH_ADMIN_KEY ||= localAdminKey();
 // the environment: they are defined here once (webServer processes and workers inherit them).
 process.env.ACCOUNT_OPS_PORT ||= "54430";
 process.env.SCAN_DOCUMENT_PORT ||= "54431";
+process.env.DOCUMENT_URL_PORT ||= "54432";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
 
 export default defineConfig({
@@ -79,6 +80,12 @@ export default defineConfig({
     {
       command: `../../supabase/functions/serve-local.sh scan-document ${process.env.SCAN_DOCUMENT_PORT}`,
       port: Number(process.env.SCAN_DOCUMENT_PORT),
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: `../../supabase/functions/serve-local.sh document-url ${process.env.DOCUMENT_URL_PORT}`,
+      port: Number(process.env.DOCUMENT_URL_PORT),
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,
     },
