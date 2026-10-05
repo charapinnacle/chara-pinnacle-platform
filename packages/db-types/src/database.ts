@@ -475,6 +475,11 @@ isOneToOne: false
 "my_platform_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]
                            },
+"passport_limits":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "availability_window_months": number,"skills_max": number,"work_authorization_expiry_max_years": number
+            }[]
+                           },
 "pending_reconsents":
 { Args: Record<PropertyKey, never>; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number

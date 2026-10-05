@@ -28,7 +28,8 @@ values (current_setting('t.o')::uuid, :'adm', 'admin', now()), (current_setting(
 insert into public.platform_staff (user_id, role) values (:'slg', 'admin'), (:'adm2', 'verification_reviewer'), (:'late', 'trust_safety');
 
 -- One answer per table: the rows a select returns, the rows an update and a delete reach, and the state of an insert
--- for candidate A's id. A refusal shows as E and its SQLSTATE.
+-- for candidate A's id. A refusal shows as E and its SQLSTATE. A profile row is deleted only with the account, so
+-- worker_profiles has no delete grant and a delete is refused for everyone instead of reaching no row.
 create function pg_temp.count_as(p_user uuid, p_role text, p_sql text, p_aal text) returns text
 language plpgsql as $$
 begin
@@ -75,7 +76,10 @@ $$;
 
 create function pg_temp.denied(p_select text, p_update text, p_delete text, p_insert text) returns text
 language sql as $$
-  select string_agg(format('%s: select=%s update=%s delete=%s insert=%s; ', t, p_select, p_update, p_delete, p_insert), '' order by o)
+  select string_agg(
+    format('%s: select=%s update=%s delete=%s insert=%s; ', t, p_select, p_update,
+      case when t = 'worker_profiles' and p_delete = '0' then 'E42501' else p_delete end, p_insert),
+    '' order by o)
   from unnest(array['worker_profiles', 'worker_skills', 'worker_languages', 'worker_preferred_countries', 'worker_work_authorizations'])
     with ordinality as x(t, o)
 $$;
@@ -137,8 +141,8 @@ select is(
   '42501', 'AC10: A cannot change searchable'
 );
 select is(
-  pg_temp.affected_as(:'wa', 'authenticated', format($$delete from public.worker_profiles where user_id = %L$$, :'wa')),
-  0::bigint, 'AC10: A cannot delete the profile row'
+  pg_temp.state_as(:'wa', format($$delete from public.worker_profiles where user_id = %L$$, :'wa')),
+  '42501', 'AC10: A cannot delete the profile row, and nobody holds a delete grant on it'
 );
 select is(
   (select count(*) from public.worker_profiles where user_id = :'wa'), 1::bigint, 'AC10: the profile row is still there'

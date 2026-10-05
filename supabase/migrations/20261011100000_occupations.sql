@@ -11,6 +11,8 @@ create table public.occupations (
 
 comment on table public.occupations is 'ISCO-08 unit groups (International Labour Organization); synonyms are CHARA additions for search.';
 
+-- Kept for the occupation search of FR-C3 (ARCHITECTURE.md, indexes); the passport screen filters the full list in the
+-- browser and does not use it yet.
 create index occupations_label_trgm on public.occupations using gin (label extensions.gin_trgm_ops);
 
 alter table public.occupations enable row level security;

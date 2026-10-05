@@ -1,5 +1,5 @@
 begin;
-select plan(69);
+select plan(79);
 
 \ir passport_fixture.inc
 
@@ -61,6 +61,19 @@ select is(
 );
 update private.settings set value = '30' where key = 'worker_skills_max';
 delete from public.worker_skills where skill = 'One too many';
+
+-- The limit trigger takes the profile row lock and fails closed when its setting is missing; the race itself needs two
+-- sessions and is covered by the lock check (OPEN_QUESTIONS D41).
+select ok(
+  pg_get_functiondef('private.worker_list_limit'::regproc) like '%from public.worker_profiles p where p.user_id = new.worker_user_id for no key update%',
+  'AC7: the limit trigger locks the candidate''s profile row before it counts'
+);
+delete from private.settings where key = 'worker_skills_max';
+select is(
+  pg_temp.call_as(:'wb', 'authenticated', format($$insert into public.worker_skills (worker_user_id, skill) values (%L, 'Carpentry')$$, :'wb'), 'aal1'),
+  'P0001|CHARA_LIMIT_REACHED|worker_skills', 'AC7: a missing limit setting refuses the insert instead of lifting the limit'
+);
+insert into private.settings (key, value) values ('worker_skills_max', '30');
 
 -- AC7: languages
 select is(
@@ -197,6 +210,55 @@ select is(
   pg_temp.state_as(:'wa', format($$insert into public.worker_skills (worker_user_id, skill) values (%L, 'Welding')$$, :'wa')),
   'ok', 'a removed skill can be added again, and the count had room again'
 );
+
+-- AC4 and AC8: the name rule is letters and combining marks only; the same samples run in
+-- apps/web/tests/unit/passport-validation.test.ts against the web rule
+select is_empty(
+  $$
+    select n from (values
+      ('Amina', true), ('O''Brien-Smith', true), ('Zoë', true), ('J.R.', true), ('ª', true), ('ℓ', true), ('Åsa', true),
+      ('A' || chr(65039), true), ('A' || chr(8413), true), ('A' || chr(12330), true),
+      (' Amina', false), ('Amina ', false), ('Amina1', false), ('<b>x</b>', false), ('Amina' || chr(10) || 'Okafor', false),
+      ('Amina' || chr(1633), false), (chr(2406) || 'Amina', false), ('Amina' || chr(3665), false), ('Amina' || chr(120782), false),
+      ('Am' || chr(65279) || 'ina', false), ('Amina' || chr(8203), false), ('Amina' || chr(1548), false), ('Amina' || chr(3647), false),
+      ('-Amina', false), ('', false)
+    ) as t(n, expected) where private.is_person_name(n) is distinct from expected
+  $$,
+  'AC4: a name is letters and combining marks, spaces, hyphens, apostrophes and full stops; digits of any script and invisible characters are refused'
+);
+select ok(private.is_person_name(repeat('a', 80)) and not private.is_person_name(repeat('a', 81)), 'AC8: a name has 1 to 80 characters');
+select is(
+  pg_temp.state_as(:'wa', format($$update public.worker_profiles set first_name = 'Amina' || chr(1633) where user_id = %L$$, :'wa')),
+  '23514', 'AC8: a first name with an Arabic-Indic digit cannot be stored through the Data API either'
+);
+
+-- The limits and windows the forms quote come from the settings, for a signed-in user only
+create function pg_temp.limits_as(p_user uuid) returns jsonb
+language plpgsql as $$
+declare
+  v_limits jsonb;
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  set local role authenticated;
+  select to_jsonb(l) into v_limits from public.passport_limits() l;
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
+  return v_limits;
+end;
+$$;
+select is(
+  pg_temp.limits_as(:'wa'),
+  '{"skills_max": 30, "availability_window_months": 24, "work_authorization_expiry_max_years": 50}'::jsonb,
+  'a candidate reads the skills limit and the two date windows'
+);
+update private.settings set value = '40' where key = 'worker_skills_max';
+select is((pg_temp.limits_as(:'wa') ->> 'skills_max')::integer, 40, 'a changed setting is what the candidate reads');
+select is((select count(*) from public.passport_limits()), 0::bigint, 'without a signed-in user the limits are not returned');
+select is(
+  split_part(pg_temp.call_as(null, 'anon', $$select * from public.passport_limits()$$), '|', 1),
+  '42501', 'anonymous cannot call passport_limits'
+);
+select ok(not has_function_privilege('service_role', 'public.passport_limits()', 'execute'), 'service_role cannot call passport_limits');
 
 select * from finish();
 rollback;
