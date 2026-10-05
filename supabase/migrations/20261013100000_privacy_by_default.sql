@@ -8,11 +8,10 @@
 -- Owner-changeable: how long a share stays valid once its application is Hired or Not selected (P13).
 insert into private.settings (key, value) values ('share_expiry_days_after_final', '30');
 
--- scope holds the ids of the documents the candidate selected for that application, never document types: an unselected
--- document, or one of the same type uploaded after the application, is not readable (D18). application_id gets its
--- foreign key to job_applications with apply_to_job; one application has one share. consent_id has no foreign key: a
--- reference would make TRUNCATE on the consent ledger fail on the key before its append-only trigger refuses it. The
--- grant reads the consent through a join on the candidate, so a missing or foreign row grants nothing.
+-- scope holds document ids, never types, so a document uploaded after the application is not readable (D18).
+-- application_id gets its foreign key with apply_to_job. consent_id has no foreign key: a reference would make TRUNCATE
+-- on the consent ledger fail on the key before its append-only trigger refuses it; the grant joins the consent on the
+-- candidate, so a missing or foreign row grants nothing.
 create table public.passport_shares (
   id uuid primary key default gen_random_uuid(),
   worker_user_id uuid not null references public.worker_profiles (user_id) on delete cascade,
@@ -47,7 +46,6 @@ create policy passport_shares_select_own on public.passport_shares
   for select to authenticated
   using (worker_user_id = (select auth.uid()));
 
--- What a share grants is fixed when it is made: only the revocation and the expiry may be written, each once.
 create function private.passport_shares_guard() returns trigger
 language plpgsql
 set search_path = ''
@@ -72,7 +70,7 @@ create trigger passport_shares_guard
 
 alter table public.passport_shares enable always trigger passport_shares_guard;
 
--- The audit rows name the organisation and the application, never a document or a person (NFR-C1).
+-- NFR-C1: the audit rows name the organisation and the application, never a document or a person.
 create function private.passport_shares_audit() returns trigger
 language plpgsql
 security definer
@@ -103,9 +101,7 @@ create trigger passport_shares_audit
 
 alter table public.passport_shares enable always trigger passport_shares_audit;
 
--- One row per successful grant, written by document_access_grant only (a refusal raises and writes nothing, D16). The ids
--- carry no foreign key, so the evidence outlives the share, the document and the account. The candidate's view of it,
--- its append-only triggers and its retention arrive with FR-B5.
+-- The ids carry no foreign key, so the evidence outlives the share, the document and the account.
 create table audit.document_access_log (
   id bigint generated always as identity primary key,
   share_id uuid,
@@ -121,11 +117,8 @@ alter table audit.document_access_log enable row level security;
 alter table audit.document_access_log force row level security;
 revoke all on table audit.document_access_log from public, anon, authenticated, service_role;
 
--- The single door to a candidate document for anyone but its owner. Every refusal raises before anything is written; a
--- success writes one log row (no deduplication) and returns where the object is, for the document-url function to sign.
--- A caller is authorised before the state of the document is looked at, so a stranger cannot tell a pending file from a
--- missing share. A later 'withdrawn' consent row of the same purpose cancels the grant at once; the ledger is ordered by
--- id because created_at is the transaction time and ties. Platform staff have no path here in Phase 1 (FR-F3).
+-- The caller is authorised before the scan state is read, so a stranger cannot tell a pending file from a missing share.
+-- The consent ledger is compared by id because created_at is the transaction time and ties.
 create function public.document_access_grant(p_document_id uuid, p_purpose text)
 returns table (bucket_id text, object_path text, file_name text)
 language plpgsql
@@ -169,6 +162,10 @@ begin
     end if;
   end if;
 
+  if p_purpose is distinct from (case when v_document.worker_user_id = v_uid then 'owner_download' else 'application_review' end) then
+    raise exception 'CHARA_FORBIDDEN' using errcode = '42501', detail = 'purpose_mismatch';
+  end if;
+
   if v_document.scan_status not in ('clean', 'skipped') then
     raise exception 'CHARA_DOCUMENT_NOT_SCANNED';
   end if;
@@ -183,8 +180,7 @@ $$;
 revoke all on function public.document_access_grant(uuid, text) from public, anon, authenticated, service_role;
 grant execute on function public.document_access_grant(uuid, text) to authenticated;
 
--- delete_worker_document of FR-B2, now ending the access of the shares whose scope holds the document: the whole share
--- for that application is revoked (the candidate was warned), not just the one document.
+-- The whole share is revoked, not just the one document: the candidate was warned by the delete dialog.
 create or replace function public.delete_worker_document(p_document_id uuid) returns void
 language plpgsql
 security definer

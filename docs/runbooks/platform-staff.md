@@ -73,17 +73,24 @@ An abandoned job is run again by queueing a message with the action and user id 
 
 `document-url` (`verify_jwt = true`) is the only way a third party gets a link to a candidate document: it runs `document_access_grant` with the caller's own token and signs a 60-second, download-only link for the path the grant returns. It has no shared secret and no Vault entry; the platform provides `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. Deploy it with `npx supabase functions deploy document-url --use-api`. Verify on each environment: a request without `Authorization` answers 401; a member of an organisation with a share, for a document in its scope, answers 200 with a `url` and one new `audit.document_access_log` row; the same member for a document outside the scope answers 403 with no `url` and no new row.
 
-Quarterly privacy review (KPI "privacy incidents", target 0; FR-B3): the following lists every opening that fell outside its share at the time; it must return no row. Any row is a privacy incident to report to the Platform Administrator, and so is any complaint received through the complaints and dispute process.
+Quarterly privacy review (KPI "privacy incidents", target 0; FR-B3): the following lists every opening that fell outside its share at the time (outside the scope, after a revocation, an expiry or a withdrawal of the consent, for another organisation or candidate), every opening by someone other than the owner that has no share (also one whose share row is gone), and every row whose purpose does not match who opened it; it must return no row. Any row is a privacy incident to report to the Platform Administrator, and so is any complaint received through the complaints and dispute process.
 
 ```sql
 select l.id, l.accessed_at, l.document_id, l.share_id
 from audit.document_access_log l
-join public.passport_shares s on s.id = l.share_id
-where not s.scope ? l.document_id::text
-   or l.accessed_at >= s.revoked_at
-   or l.accessed_at >= s.expires_at
-   or s.organization_id is distinct from l.organization_id
-   or s.worker_user_id is distinct from l.worker_user_id;
+left join public.passport_shares s on s.id = l.share_id
+where (l.purpose = 'owner_download') is distinct from (l.accessed_by = l.worker_user_id)
+   or (s.id is null and l.accessed_by <> l.worker_user_id)
+   or (s.id is not null and (
+        not s.scope ? l.document_id::text
+     or l.accessed_at >= s.revoked_at
+     or l.accessed_at >= s.expires_at
+     or s.organization_id is distinct from l.organization_id
+     or s.worker_user_id is distinct from l.worker_user_id
+     or exists (
+          select 1 from public.consents c
+          join public.consents w on w.user_id = c.user_id and w.purpose = c.purpose and w.action = 'withdrawn' and w.id > c.id
+          where c.id = s.consent_id and w.created_at <= l.accessed_at)));
 ```
 
 ## 4. Quarterly access review

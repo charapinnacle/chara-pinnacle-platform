@@ -1,5 +1,5 @@
 begin;
-select plan(28);
+select plan(32);
 
 \ir privacy_fixture.inc
 
@@ -65,10 +65,13 @@ insert into public.passport_shares (worker_user_id, organization_id, application
 values (:'wa', pg_temp.o(), gen_random_uuid(), to_jsonb(array[:'d5']::uuid[]), (select max(id) from public.consents where user_id = :'wb'));
 select is(pg_temp.grant_as(:'mem', :'d5', p_aal => 'aal1'), '42501|CHARA_FORBIDDEN|', 'a share whose consent belongs to another person grants nothing');
 
--- The purpose is one of two values; a refused purpose writes no row.
-select is(split_part(pg_temp.grant_as(:'mem', :'d1', null, 'aal1'), '|', 1), '23502', 'a null purpose is refused (not_null_violation)');
-select is(split_part(pg_temp.grant_as(:'mem', :'d1', '', 'aal1'), '|', 1), '23514', 'an empty purpose is refused (check_violation)');
-select is(split_part(pg_temp.grant_as(:'mem', :'d1', 'other', 'aal1'), '|', 1), '23514', 'an unknown purpose is refused (check_violation)');
+-- The purpose follows the caller: application_review for a member of the organisation, owner_download for the owner. Any
+-- other value, and the other caller's value, is refused and writes no row.
+select is(pg_temp.grant_as(:'mem', :'d1', null, 'aal1'), '42501|CHARA_FORBIDDEN|purpose_mismatch', 'a null purpose is refused');
+select is(pg_temp.grant_as(:'mem', :'d1', '', 'aal1'), '42501|CHARA_FORBIDDEN|purpose_mismatch', 'an empty purpose is refused');
+select is(pg_temp.grant_as(:'mem', :'d1', 'other', 'aal1'), '42501|CHARA_FORBIDDEN|purpose_mismatch', 'an unknown purpose is refused');
+select is(pg_temp.grant_as(:'mem', :'d1', 'owner_download', 'aal1'), '42501|CHARA_FORBIDDEN|purpose_mismatch', 'a member of the organisation cannot label the opening an owner download');
+select is(pg_temp.grant_as(:'wa', :'d1', 'application_review', 'aal1'), '42501|CHARA_FORBIDDEN|purpose_mismatch', 'the owner cannot label the opening an application review');
 select is(pg_temp.logged(), 3::bigint, 'a refused purpose wrote no row');
 
 -- Anonymous and tokenless callers.
@@ -97,13 +100,49 @@ select is(
   't|t|t|owner_download', 'the owner row has no share and no organisation'
 );
 
--- The quarterly privacy check (KPI: privacy incidents, target 0): an opening that was outside its share.
-select is(
-  (select count(*) from audit.document_access_log l join public.passport_shares s on s.id = l.share_id
-   where not s.scope ? l.document_id::text or l.accessed_at >= s.revoked_at or l.accessed_at >= s.expires_at
-      or s.organization_id is distinct from l.organization_id or s.worker_user_id is distinct from l.worker_user_id),
-  0::bigint, 'no log row falls outside its share (scope, revocation, expiry, organisation, candidate)'
-);
+-- The quarterly privacy check of docs/runbooks/platform-staff.md (KPI: privacy incidents, target 0), the same text.
+create function pg_temp.incidents() returns setof bigint language sql as $$
+  select l.id
+  from audit.document_access_log l
+  left join public.passport_shares s on s.id = l.share_id
+  where (l.purpose = 'owner_download') is distinct from (l.accessed_by = l.worker_user_id)
+     or (s.id is null and l.accessed_by <> l.worker_user_id)
+     or (s.id is not null and (
+          not s.scope ? l.document_id::text
+       or l.accessed_at >= s.revoked_at
+       or l.accessed_at >= s.expires_at
+       or s.organization_id is distinct from l.organization_id
+       or s.worker_user_id is distinct from l.worker_user_id
+       or exists (
+            select 1 from public.consents c
+            join public.consents w on w.user_id = c.user_id and w.purpose = c.purpose and w.action = 'withdrawn' and w.id > c.id
+            where c.id = s.consent_id and w.created_at <= l.accessed_at)))
+$$;
+
+select is_empty('select * from pg_temp.incidents()', 'no log row of the legitimate openings is an incident');
+
+-- Negative control: each kind of bad opening, written straight into the log, is found and nothing else is.
+select pg_temp.doc(:'d2', :'wa');
+select pg_temp.share(pg_temp.o(), :'wa', array[:'d2']::uuid[], 'sharing-notice-b');
+insert into public.consents (user_id, purpose, version, action) values (:'wa', 'sharing-notice-b', 1, 'withdrawn');
+create temp table bad (id bigint) on commit drop;
+with ins as (
+  insert into audit.document_access_log (share_id, document_id, worker_user_id, organization_id, accessed_by, purpose)
+  select s.id, v.doc, :'wa'::uuid, s.organization_id, :'mem'::uuid, v.purpose
+  from public.passport_shares s, (values (:'d3'::uuid, 'application_review'), (:'d1'::uuid, 'owner_download')) as v (doc, purpose)
+  where s.worker_user_id = :'wa' and s.scope ? :'d1'
+  union all
+  select s.id, :'d2'::uuid, :'wa'::uuid, s.organization_id, :'mem'::uuid, 'application_review'
+  from public.passport_shares s where s.scope ? :'d2'
+  union all
+  select null::uuid, :'d1'::uuid, :'wa'::uuid, null::uuid, :'mem'::uuid, 'application_review'
+  union all
+  select gen_random_uuid(), :'d1'::uuid, :'wa'::uuid, pg_temp.o(), :'mem'::uuid, 'application_review'
+  returning id
+)
+insert into bad select id from ins;
+select is((select count(*) from bad), 5::bigint, 'setup: out of scope, mislabelled, after a withdrawal, share-less and share-gone openings');
+select results_eq('select * from pg_temp.incidents() order by 1', 'select id from bad order by 1', 'the review query returns exactly the bad openings');
 
 select * from finish();
 rollback;

@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(9);
 
 \ir privacy_fixture.inc
 
@@ -8,14 +8,20 @@ create function pg_temp.candidate_tables() returns regclass[] language sql as $$
                'public.worker_work_authorizations', 'public.worker_documents', 'public.passport_shares']::regclass[]
 $$;
 
--- AC10: the functions the API roles can run that read candidate data are exactly the ones below; a new one makes this
--- test fail until it is reviewed and added. Each is either the owner's own action or the one grant.
+-- AC10: the functions the API roles can run that read candidate data, directly or through one private helper, are exactly
+-- the ones below; a new one makes this test fail until it is reviewed and added. Each is either the owner's own action
+-- or the one grant. The match is on source text, so a helper two calls away or a dynamic query would not be seen.
 select set_eq(
   $$select p.proname::text
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))
-      and p.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'$$,
+      and (p.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
+        or exists (
+          select 1 from pg_proc q
+          where q.pronamespace = 'private'::regnamespace
+            and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
+            and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
   $$values ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('passport_limits')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'
 );
@@ -68,6 +74,10 @@ select set_eq(
 select is(
   pg_temp.state_as(:'wb', format($$update public.worker_profiles set searchable = true where user_id = %L$$, :'wb')),
   '42501', 'AC10: the candidate update of searchable is refused'
+);
+select is(
+  (select searchable from public.worker_profiles where user_id = :'wb'),
+  false, 'AC10: and searchable stays false'
 );
 
 select * from finish();
