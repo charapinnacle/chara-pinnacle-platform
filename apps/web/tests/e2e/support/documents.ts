@@ -123,6 +123,9 @@ export async function openDocuments(page: Page, user: TestUser): Promise<void> {
   await expect(page.getByRole("heading", { name: "Documents", level: 2, exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
+// The live region of the upload form that announces the chosen file and the result of an upload.
+export const announcements = (page: Page) => page.locator('form [aria-live="polite"]');
+
 export function row(page: Page, title: string) {
   return page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: title, exact: true }) });
 }

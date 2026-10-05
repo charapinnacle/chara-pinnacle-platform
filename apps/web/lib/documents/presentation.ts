@@ -32,9 +32,17 @@ export function formatFileSize(bytes: number): string {
   return `${oneDecimal(bytes / MEGABYTE)} MB`;
 }
 
-export const REJECTED_LABEL = "File rejected: not a valid PDF, JPG or PNG";
+const REJECTED_LABEL = "File rejected: not a valid PDF, JPG or PNG";
 
-// A pending row is either an upload this page just finished and is waiting to have checked, or one that never finished.
+// The scan starts a moment after the bytes arrive and the database announces a pending object again from the second
+// minute on (private.rescan_pending_documents), so a pending row younger than this is still being checked.
+const SCAN_WINDOW_MS = 5 * 60_000;
+
+export function isAwaitingScan(scanStatus: string, createdAt: string, nowMs: number): boolean {
+  return scanStatus === "pending" && nowMs - Date.parse(createdAt) < SCAN_WINDOW_MS;
+}
+
+// A pending row is either an upload that is being checked, or one that never finished.
 export function documentStatus(scanStatus: string, checking: boolean): { label: string; usable: boolean } {
   if (scanStatus === "skipped" || scanStatus === "clean") return { label: "Ready", usable: true };
   if (scanStatus === "rejected") return { label: REJECTED_LABEL, usable: false };

@@ -11,16 +11,16 @@ import type { DocumentItem } from "@/lib/documents/fetch-documents";
 import { formatDate } from "@/lib/i18n/format";
 import { documentTypeOptions } from "@/lib/validation/documents";
 
-type DocumentRowProps = { item: DocumentItem; today: string; checking: boolean; onChanged: () => void };
+type DocumentRowProps = { item: DocumentItem; today: string; onChanged: () => void };
 
 const typeLabels: Record<string, string> = Object.fromEntries(documentTypeOptions.map((o) => [o.value, o.label]));
 
-export function DocumentRow({ item, today, checking, onChanged }: DocumentRowProps) {
+export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
   const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const download = useTeamCall("Could not download the file");
   const remove = useTeamCall("Could not delete the document");
-  const status = documentStatus(item.scanStatus, checking);
+  const status = documentStatus(item.scanStatus, item.checking);
   const expiry = expiryLabel(item.expiresOn, today);
 
   return (

@@ -1,5 +1,6 @@
+import { execute, literal } from "./support/db";
 import { expect, test } from "./support/test";
-import { documentRows, openDocuments, removalJobs, row, auditActions, seedDocument } from "./support/documents";
+import { announcements, documentRows, openDocuments, removalJobs, row, auditActions, seedDocument } from "./support/documents";
 import { createCommittedUser } from "./support/login";
 import { messageCount } from "./support/mailpit";
 import { daysFromToday } from "./support/passport";
@@ -80,7 +81,7 @@ test.describe("candidate documents: the list", () => {
       await file.focus();
       const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.keyboard.press(key)]);
       await chooser.setFiles({ name: "next.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7") });
-      await expect(page.getByText("Selected file: next.pdf (8 B)")).toBeVisible();
+      await expect(announcements(page)).toHaveText("Selected file: next.pdf (8 B)");
     }
 
     const links: { disposition: string | undefined; token: string | null }[] = [];
@@ -205,5 +206,25 @@ test.describe("candidate documents: the list", () => {
     await expect(page.getByRole("rowheader")).toHaveCount(27);
     await expect(page.getByRole("rowheader").last()).toHaveText("Document 01");
     await expect(page.getByRole("button", { name: "Show more documents" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Delete Document 27" }).click();
+    await page.getByRole("button", { name: "Delete document", exact: true }).click();
+    await expect(page.getByText("Document deleted", { exact: true })).toBeVisible();
+    await expect(row(page, "Document 27")).toHaveCount(0);
+    await expect(page.getByRole("rowheader")).toHaveCount(26);
+    await expect(page.getByRole("rowheader").last()).toHaveText("Document 01");
+  });
+
+  test("FR-B2: a recent pending upload reads as being checked, also after a reload, and an old one as not finished", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    const recent = await seedDocument(user.id, { title: "Just sent", scanStatus: "pending", createdAt: isoAgo(0) });
+    await seedDocument(user.id, { title: "Long ago", scanStatus: "pending", createdAt: new Date(Date.now() - 600_000).toISOString() });
+    await openDocuments(page, user);
+    await expect(row(page, "Just sent")).toContainText("Checking the file");
+    await expect(row(page, "Long ago")).toContainText("Upload not finished");
+
+    execute(`update public.worker_documents set scan_status = 'skipped' where id = ${literal(recent.id)}`);
+    await expect(row(page, "Just sent")).toContainText("Ready", { timeout: 15_000 });
+    await expect(row(page, "Long ago")).toContainText("Upload not finished");
   });
 });

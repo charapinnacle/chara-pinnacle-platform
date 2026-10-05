@@ -1,9 +1,9 @@
 import { DocumentRow } from "@/components/documents/document-row";
 import type { DocumentItem } from "@/lib/documents/fetch-documents";
 
-type DocumentTableProps = { items: DocumentItem[]; today: string; checking: readonly string[]; onChanged: () => void };
+type DocumentTableProps = { items: DocumentItem[]; today: string; onChanged: () => void };
 
-export function DocumentTable({ items, today, checking, onChanged }: DocumentTableProps) {
+export function DocumentTable({ items, today, onChanged }: DocumentTableProps) {
   return (
     <div className="relative overflow-x-auto rounded-lg border">
       <table className="w-full text-start text-body">
@@ -22,13 +22,7 @@ export function DocumentTable({ items, today, checking, onChanged }: DocumentTab
         </thead>
         <tbody>
           {items.map((item) => (
-            <DocumentRow
-              key={item.id}
-              item={item}
-              today={today}
-              checking={checking.includes(item.id)}
-              onChanged={onChanged}
-            />
+            <DocumentRow key={item.id} item={item} today={today} onChanged={onChanged} />
           ))}
         </tbody>
       </table>

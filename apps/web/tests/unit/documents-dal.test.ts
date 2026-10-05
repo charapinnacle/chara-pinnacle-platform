@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from }) }
 vi.mock("@/lib/supabase/browser", () => ({ createClient: () => ({ from }) }));
 
 const { getDocumentReminders } = await import("@/lib/dal/documents");
-const { DOCUMENT_PAGE_SIZE, fetchDocuments } = await import("@/lib/documents/fetch-documents");
+const { fetchDocuments } = await import("@/lib/documents/fetch-documents");
 
 afterEach(() => vi.useRealTimers());
 
@@ -76,24 +76,25 @@ describe("fetchDocuments", () => {
       createdAt: "2026-10-02T10:00:00+00:00",
       expiresOn: null,
       scanStatus: "skipped",
+      checking: false,
     });
     expect(steps).toEqual([
       ["from", "worker_documents"],
       ["select", "id, title, type, size_bytes, created_at, expires_on, scan_status"],
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
-      ["limit", DOCUMENT_PAGE_SIZE + 1],
+      ["limit", 26],
     ]);
   });
 
   it("says another page exists and does not return the extra row", async () => {
     outcome = {
-      data: Array.from({ length: DOCUMENT_PAGE_SIZE + 1 }, (_, i) => row(`d${i}`, "2026-10-01T10:00:00+00:00")),
+      data: Array.from({ length: 26 }, (_, i) => row(`d${i}`, "2026-10-01T10:00:00+00:00")),
       error: null,
     };
     const page = await fetchDocuments(null);
     expect(page.hasMore).toBe(true);
-    expect(page.items).toHaveLength(DOCUMENT_PAGE_SIZE);
+    expect(page.items).toHaveLength(25);
   });
 
   it("continues after the last row on the index order, created_at then id", async () => {
@@ -102,6 +103,35 @@ describe("fetchDocuments", () => {
     expect(steps.at(-1)).toEqual([
       "or",
       "created_at.lt.2026-10-01T10:00:00+00:00,and(created_at.eq.2026-10-01T10:00:00+00:00,id.lt.x)",
+    ]);
+  });
+
+  it("asks for the rows already shown on a reload, within what the API returns", async () => {
+    outcome = { data: [], error: null };
+    await fetchDocuments(null, 60);
+    expect(steps.at(-1)).toEqual(["limit", 61]);
+    await fetchDocuments(null, 400);
+    expect(steps.at(-1)).toEqual(["limit", 100]);
+    await fetchDocuments(null, 3);
+    expect(steps.at(-1)).toEqual(["limit", 26]);
+  });
+
+  it("marks a pending row of the last minutes as being checked and an old one as not finished", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-03T12:00:00Z"));
+    outcome = {
+      data: [
+        { ...row("new", "2026-10-03T11:58:00+00:00"), scan_status: "pending" },
+        { ...row("old", "2026-10-03T11:50:00+00:00"), scan_status: "pending" },
+        { ...row("done", "2026-10-03T11:59:00+00:00"), scan_status: "skipped" },
+      ],
+      error: null,
+    };
+    const page = await fetchDocuments(null);
+    expect(page.items.map((item) => [item.id, item.checking])).toEqual([
+      ["new", true],
+      ["old", false],
+      ["done", false],
     ]);
   });
 

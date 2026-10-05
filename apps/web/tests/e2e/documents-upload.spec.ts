@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import {
   BUCKET,
+  announcements,
   FAKE_PDF,
   auditActions,
   documentRows,
@@ -55,11 +56,11 @@ test.describe("candidate documents: upload", () => {
       title: "Amina Okafor CV 2026",
       file: { name: "My CV (final).pdf", mimeType: "application/pdf", buffer: pdfBytes(1_258_291) },
     });
-    await expect(page.getByText("Selected file: My CV (final).pdf (1.2 MB)")).toBeVisible();
+    await expect(announcements(page)).toHaveText("Selected file: My CV (final).pdf (1.2 MB)");
     await upload(page).click();
     await expect(page.getByRole("button", { name: /^Uploading/ })).toBeDisabled();
     await expect(page.getByText("Document uploaded", { exact: true })).toBeVisible();
-    await expect(page.getByText("Uploaded My CV (final).pdf. We are checking the file.")).toBeVisible();
+    await expect(announcements(page)).toHaveText("Uploaded My CV (final).pdf. We are checking the file.");
 
     expect(rowsWhenSent).toHaveLength(1);
     expect(rowsWhenSent[0]).toMatchObject({ title: "Amina Okafor CV 2026", scan_status: "pending", size_bytes: 1_258_291 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentStatus, expiryLabel, formatFileSize, REJECTED_LABEL, reminderCutoff } from "@/lib/documents/presentation";
+import { documentStatus, expiryLabel, formatFileSize, isAwaitingScan, reminderCutoff } from "@/lib/documents/presentation";
 
 describe("expiryLabel", () => {
   const today = "2026-10-03";
@@ -54,13 +54,30 @@ describe("documentStatus", () => {
   });
 
   it("says why a rejected file is not usable", () => {
-    expect(documentStatus("rejected", false)).toEqual({ label: REJECTED_LABEL, usable: false });
-    expect(REJECTED_LABEL).toBe("File rejected: not a valid PDF, JPG or PNG");
+    expect(documentStatus("rejected", false)).toEqual({
+      label: "File rejected: not a valid PDF, JPG or PNG",
+      usable: false,
+    });
   });
 
   it("tells a pending upload that is being checked from one that never finished", () => {
     expect(documentStatus("pending", true)).toEqual({ label: "Checking the file", usable: false });
     expect(documentStatus("pending", false)).toEqual({ label: "Upload not finished", usable: false });
     expect(documentStatus("unexpected", false).usable).toBe(false);
+  });
+});
+
+describe("isAwaitingScan", () => {
+  const now = Date.parse("2026-10-03T12:00:00Z");
+
+  it.each([
+    ["pending", "2026-10-03T12:00:00Z", true],
+    ["pending", "2026-10-03T11:55:01Z", true],
+    ["pending", "2026-10-03T11:55:00Z", false],
+    ["pending", "2026-10-02T12:00:00Z", false],
+    ["skipped", "2026-10-03T11:59:00Z", false],
+    ["rejected", "2026-10-03T11:59:00Z", false],
+  ])("a %s row created %s is being checked: %s", (status, createdAt, expected) => {
+    expect(isAwaitingScan(status, createdAt, now)).toBe(expected);
   });
 });

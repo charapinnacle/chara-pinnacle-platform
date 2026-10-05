@@ -25,11 +25,11 @@ type Outcome = { errors?: Record<string, string>; message?: string; uploaded?: s
 
 const SEND_FAILED = "The file could not be sent. Delete the unfinished upload from the list and try again.";
 
-type UploadFormProps = { onChanged: () => void; onUploaded: (documentId: string) => void };
+type UploadFormProps = { onChanged: () => void; onFailed: (documentId: string) => void };
 
 // Metadata first, then the bytes: the Server Action creates the row and the signed upload URL, and the browser sends the
 // file straight to Storage, so no file passes through a Next.js request.
-export function UploadForm({ onChanged, onUploaded }: UploadFormProps) {
+export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
   const form = useForm<UploadFormInput>({ resolver: zodResolver(uploadFormSchema), defaultValues: emptyForm });
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not upload the document" });
   const [announcement, setAnnouncement] = useState("");
@@ -55,9 +55,9 @@ export function UploadForm({ onChanged, onUploaded }: UploadFormProps) {
         const { error } = await createClient()
           .storage.from(DOCUMENT_BUCKET)
           .uploadToSignedUrl(path, token, file, { contentType: file.type });
+        if (error) onFailed(documentId);
         onChanged();
         if (error) return { message: SEND_FAILED };
-        onUploaded(documentId);
         return { uploaded: file.name };
       },
       (result) => {

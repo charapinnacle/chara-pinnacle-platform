@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  MAX_FILE_BYTES,
   renameFormSchema,
   sanitiseFileName,
   uploadFormSchema,
@@ -18,10 +17,6 @@ function messages(result: ReturnType<typeof upload>): string[] {
 }
 
 describe("the file limit", () => {
-  it("is 15 MB", () => {
-    expect(MAX_FILE_BYTES).toBe(MB15);
-  });
-
   it.each([
     [0, false],
     [1, true],
