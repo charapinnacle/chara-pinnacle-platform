@@ -7,7 +7,7 @@ import { controlClassName, FormField } from "@/components/forms/form-field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-type Option = { value: string; label: string };
+type Option = { value: string; label: string; keywords?: string };
 
 type ComboboxFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   React.ComponentProps<typeof FormField<T, N>>,
@@ -15,6 +15,8 @@ type ComboboxFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
 > & {
   placeholder: string;
   options: readonly Option[];
+  emptyText?: string;
+  freeText?: boolean;
 };
 
 type ComboboxProps = {
@@ -24,6 +26,8 @@ type ComboboxProps = {
   placeholder: string;
   value: string;
   options: readonly Option[];
+  emptyText: string;
+  freeText: boolean;
   inputRef: React.Ref<HTMLInputElement>;
   onChange: (value: string) => void;
   onBlur: () => void;
@@ -35,14 +39,32 @@ function optionId(id: string, index: number): string {
   return `${id}-option-${index}`;
 }
 
-function Combobox({ id, name, label, placeholder, value, options, inputRef, onChange, onBlur, ...aria }: ComboboxProps) {
+// Choosing mode: the value is the code of one option and typed text only filters. Free-text mode: the value is the text
+// itself, the options are suggestions, and Enter without an arrowed-to suggestion keeps the typed text.
+function Combobox({
+  id,
+  name,
+  label,
+  placeholder,
+  value,
+  options,
+  emptyText,
+  freeText,
+  inputRef,
+  onChange,
+  onBlur,
+  ...aria
+}: ComboboxProps) {
   const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const selected = options.find((option) => option.value === value);
-  const needle = query?.trim().toLowerCase() ?? "";
-  const matches = needle ? options.filter((option) => option.label.toLowerCase().includes(needle)) : options;
+  const selected = freeText ? undefined : options.find((option) => option.value === value);
+  const text = freeText ? value : (query ?? selected?.label ?? "");
+  const needle = (freeText ? value : (query ?? "")).trim().toLowerCase();
+  const matches = needle
+    ? options.filter((option) => `${option.label} ${option.keywords ?? ""}`.toLowerCase().includes(needle))
+    : options;
   const active = Math.min(activeIndex, matches.length - 1);
 
   useEffect(() => {
@@ -50,7 +72,7 @@ function Combobox({ id, name, label, placeholder, value, options, inputRef, onCh
   }, [open, active, id]);
 
   function choose(option: Option) {
-    onChange(option.value);
+    onChange(freeText ? option.label : option.value);
     setQuery(null);
     setOpen(false);
   }
@@ -93,11 +115,11 @@ function Combobox({ id, name, label, placeholder, value, options, inputRef, onCh
         aria-controls={`${id}-listbox`}
         aria-activedescendant={open && matches[active] ? optionId(id, active) : undefined}
         className={cn("h-11 pe-10", controlClassName)}
-        value={query ?? selected?.label ?? ""}
+        value={text}
         onChange={(event) => {
           setQuery(event.target.value);
-          show(0);
-          if (event.target.value === "") onChange("");
+          show(freeText ? -1 : 0);
+          if (freeText || event.target.value === "") onChange(event.target.value);
         }}
         onKeyDown={onKeyDown}
         onBlur={() => {
@@ -111,12 +133,12 @@ function Combobox({ id, name, label, placeholder, value, options, inputRef, onCh
         id={`${id}-listbox`}
         role="listbox"
         aria-label={label}
-        hidden={!open}
+        hidden={!open || (freeText && matches.length === 0)}
         className="absolute inset-x-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-input bg-card py-1 text-base shadow-md"
       >
         {matches.length === 0 ? (
           <li role="option" aria-disabled aria-selected={false} className="px-3.5 py-2 text-muted-foreground">
-            No match
+            {emptyText}
           </li>
         ) : (
           matches.map((option, index) => (
@@ -141,6 +163,8 @@ function Combobox({ id, name, label, placeholder, value, options, inputRef, onCh
 export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
   placeholder,
   options,
+  emptyText = "No match",
+  freeText = false,
   ...fieldProps
 }: ComboboxFieldProps<T, N>) {
   return (
@@ -153,6 +177,8 @@ export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
           inputRef={ref}
           value={String(value ?? "")}
           options={options}
+          emptyText={emptyText}
+          freeText={freeText}
         />
       )}
     </FormField>

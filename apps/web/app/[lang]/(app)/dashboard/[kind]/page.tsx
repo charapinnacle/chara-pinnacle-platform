@@ -4,10 +4,14 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { GuidedSteps } from "@/components/organization/guided-steps";
+import { CompletenessCard } from "@/components/passport/completeness-card";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
+import { getPassport } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
+import { computeCompleteness } from "@/lib/passport/completeness";
 import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
+import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Dashboard — CHARA" };
 
@@ -18,7 +22,15 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
   if (user.accountKind !== dashboardSegments[kind]) {
     redirect(homePath(lang, user.accountKind));
   }
-  if (kind !== "employer") return <AuthCard title="Dashboard" />;
+  if (kind === "worker") {
+    const passport = await getPassport(user.id);
+    if (!passport) redirect(`/${lang}/onboarding`);
+    return (
+      <AuthCard title="Dashboard" description={`Welcome, ${passport.firstName}`}>
+        <CompletenessCard lang={lang} completeness={computeCompleteness(passport, todayUtc())} />
+      </AuthCard>
+    );
+  }
 
   const [organizations, twoStepDone] = await Promise.all([
     getMyOrganizations(user.id),

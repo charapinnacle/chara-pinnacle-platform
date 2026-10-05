@@ -35,15 +35,15 @@ test.describe("login form", () => {
     page,
   }) => {
     const user = await createCommittedUser("worker");
-    await page.goto(`/en/login?next=${encodeURIComponent("/en/onboarding")}`);
+    await page.goto(`/en/login?next=${encodeURIComponent("/en/passport")}`);
     await page.getByLabel("Email", { exact: true }).focus();
     await page.keyboard.type(user.email);
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
     await page.keyboard.type(user.password);
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByRole("heading", { name: "Your account type is Worker" })).toBeVisible();
+    await expect(page).toHaveURL(/\/en\/passport$/);
+    await expect(page.getByRole("heading", { name: "Your passport" })).toBeVisible();
   });
 
   test("FR-A3 AC12: an external next value is ignored and the user lands on their own dashboard", async ({
@@ -61,12 +61,12 @@ test.describe("login form", () => {
 
   test("FR-A3 AC12: a protected page remembers where the visitor was going", async ({ page }) => {
     const user = await createCommittedUser("worker");
-    await page.goto("/en/onboarding");
-    await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent("/en/onboarding")}`);
+    await page.goto("/en/passport");
+    await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent("/en/passport")}`);
     await page.waitForLoadState("networkidle");
     await fillLogin(page, user.email, user.password);
     await page.getByRole("button", { name: "Log in" }).click();
-    await expect(page).toHaveURL(/\/en\/onboarding$/);
+    await expect(page).toHaveURL(/\/en\/passport$/);
   });
 
   test("FR-A3 AC12: the button shows a pending state and a double click sends one request", async ({

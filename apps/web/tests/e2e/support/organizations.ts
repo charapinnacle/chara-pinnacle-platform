@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { callAs } from "./accounts";
+import { choose } from "./combobox";
 import { literal, query } from "./db";
 import { expect } from "./test";
 import { logIn } from "./login-page";
@@ -52,11 +53,6 @@ export async function fillCompany(page: Page, details: CompanyDetails): Promise<
   if (details.identifierKind) {
     await page.getByLabel("Type of identifier", { exact: true }).selectOption({ value: details.identifierKind });
   }
-}
-
-async function choose(page: Page, label: string, option: string): Promise<void> {
-  await page.getByRole("combobox", { name: label, exact: true }).fill(option);
-  await page.getByRole("option", { name: option, exact: true }).click();
 }
 
 export function organizationRows(userId: string) {

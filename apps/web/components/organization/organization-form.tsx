@@ -14,6 +14,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { createOrganization } from "@/lib/actions/organizations";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { toOptions } from "@/lib/reference-options";
 import { mfaPath } from "@/lib/routes";
 import {
   identifierKindOptions,
@@ -36,10 +37,6 @@ const ids = {
   identifier: "org-identifier",
   identifierKind: "org-identifier-kind",
 } as const satisfies Record<keyof OrganizationFormInput, string>;
-
-function toOptions(items: readonly ReferenceItem[]) {
-  return items.map((item) => ({ value: item.code, label: item.name }));
-}
 
 export function OrganizationForm({ lang, countries, industries }: OrganizationFormProps) {
   const form = useForm<OrganizationFormInput>({
