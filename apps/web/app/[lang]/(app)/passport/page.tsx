@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { DocumentsSection } from "@/components/documents/documents-section";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthorizationsSection } from "@/components/passport/authorizations-section";
 import { BasicsForm } from "@/components/passport/basics-form";
@@ -85,6 +86,13 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
           countries={countries}
           expiryYears={limits.authorizationExpiryYears}
         />
+      </PassportSection>
+      <PassportSection
+        id="documents"
+        title="Documents"
+        description="Upload your CV and certificates. Only you can see them: they are stored privately and you can download, rename or delete them here."
+      >
+        <DocumentsSection />
       </PassportSection>
     </div>
   );

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { DocumentReminders } from "@/components/documents/document-reminders";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { CompletenessCard } from "@/components/passport/completeness-card";
+import { getDocumentReminders } from "@/lib/dal/documents";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getPassport } from "@/lib/dal/passport";
@@ -23,11 +25,13 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
     redirect(homePath(lang, user.accountKind));
   }
   if (kind === "worker") {
-    const passport = await getPassport(user.id);
+    const [passport, reminders] = await Promise.all([getPassport(user.id), getDocumentReminders()]);
     if (!passport) redirect(`/${lang}/onboarding`);
+    const today = todayUtc();
     return (
       <AuthCard title="Dashboard" description={`Welcome, ${passport.firstName}`}>
-        <CompletenessCard lang={lang} completeness={computeCompleteness(passport, todayUtc())} />
+        <CompletenessCard lang={lang} completeness={computeCompleteness(passport, today)} />
+        <DocumentReminders lang={lang} reminders={reminders} today={today} />
       </AuthCard>
     );
   }
