@@ -9,7 +9,7 @@ const UNIT_GROUPS = `
 0310|Armed forces occupations, other ranks
 1111|Legislators
 1112|Senior government officials
-1113|Traditional chiefs and heads of village
+1113|Traditional chiefs and heads of villages
 1114|Senior officials of special-interest organizations
 1120|Managing directors and chief executives
 1211|Finance managers
@@ -25,7 +25,7 @@ const UNIT_GROUPS = `
 1322|Mining managers
 1323|Construction managers
 1324|Supply, distribution and related managers
-1330|Information and communications technology service managers
+1330|Information and communications technology services managers
 1341|Child care services managers
 1342|Health services managers
 1343|Aged care services managers
@@ -196,13 +196,13 @@ const UNIT_GROUPS = `
 3353|Government social benefits officials
 3354|Government licensing officials
 3355|Police inspectors and detectives
-3359|Regulatory government associate professionals not elsewhere classified
+3359|Government regulatory associate professionals not elsewhere classified
 3411|Legal and related associate professionals
 3412|Social work associate professionals
 3413|Religious associate professionals
-3421|Athletes
+3421|Athletes and sports players
 3422|Sports coaches, instructors and officials
-3423|Fitness and recreation instructors and program leaders
+3423|Fitness and recreation instructors and programme leaders
 3431|Photographers
 3432|Interior designers and decorators
 3433|Gallery, museum and library technicians
@@ -212,7 +212,7 @@ const UNIT_GROUPS = `
 3512|Information and communications technology user support technicians
 3513|Computer network and systems technicians
 3514|Web technicians
-3521|Broadcasting and audio-visual technicians
+3521|Broadcasting and audiovisual technicians
 3522|Telecommunications engineering technicians
 4110|General office clerks
 4120|Secretaries (general)
@@ -238,7 +238,7 @@ const UNIT_GROUPS = `
 4323|Transport clerks
 4411|Library clerks
 4412|Mail carriers and sorting clerks
-4413|Coding, proof-reading and related clerks
+4413|Coding, proofreading and related clerks
 4414|Scribes and related workers
 4415|Filing and copying clerks
 4416|Personnel clerks
@@ -262,7 +262,7 @@ const UNIT_GROUPS = `
 5169|Personal services workers not elsewhere classified
 5211|Stall and market salespersons
 5212|Street food salespersons
-5221|Shop keepers
+5221|Shopkeepers
 5222|Shop supervisors
 5223|Shop sales assistants
 5230|Cashiers and ticket clerks
@@ -357,10 +357,10 @@ const UNIT_GROUPS = `
 7522|Cabinet-makers and related workers
 7523|Woodworking-machine tool setters and operators
 7531|Tailors, dressmakers, furriers and hatters
-7532|Garment and related pattern-makers and cutters
+7532|Garment and related patternmakers and cutters
 7533|Sewing, embroidery and related workers
 7534|Upholsterers and related workers
-7535|Pelt dressers, tanners and fell mongers
+7535|Pelt dressers, tanners and fellmongers
 7536|Shoemakers and related workers
 7541|Underwater divers
 7542|Shotfirers and blasters
@@ -430,7 +430,7 @@ const UNIT_GROUPS = `
 9334|Shelf fillers
 9411|Fast food preparers
 9412|Kitchen helpers
-9510|Street and related service workers
+9510|Street and related services workers
 9520|Street vendors (excluding food)
 9611|Garbage and recycling collectors
 9612|Refuse sorters
