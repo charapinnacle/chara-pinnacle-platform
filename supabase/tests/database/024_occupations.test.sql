@@ -1,9 +1,17 @@
 begin;
-select plan(14);
+select plan(16);
 
 select has_table('public', 'occupations', 'occupations table exists');
 select columns_are('public', 'occupations', array['code', 'label', 'synonyms'], 'occupations has the ISCO code, the label and the synonyms');
-select cmp_ok((select count(*) from public.occupations), '>=', 430::bigint, 'the ISCO-08 unit groups are seeded');
+select is((select count(*) from public.occupations), 436::bigint, 'all 436 ISCO-08 unit groups are seeded');
+select is(
+  (select count(distinct left(code, 3)) from public.occupations), 130::bigint,
+  'every one of the 130 ISCO-08 minor groups has a unit group'
+);
+select is(
+  (select label from public.occupations where code = '9624'), 'Water and firewood collectors',
+  'the water and firewood collectors unit group is seeded under 9624'
+);
 select is_empty($$select 1 from public.occupations where code !~ '^[0-9]{4}$'$$, 'every code has four digits');
 select is(
   (select count(distinct left(code, 1)) from public.occupations), 10::bigint,

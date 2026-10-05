@@ -438,6 +438,7 @@ const UNIT_GROUPS = `
 9621|Messengers, package deliverers and luggage porters
 9622|Odd-job persons
 9623|Meter readers and vending-machine collectors
+9624|Water and firewood collectors
 9629|Elementary workers not elsewhere classified
 `;
 

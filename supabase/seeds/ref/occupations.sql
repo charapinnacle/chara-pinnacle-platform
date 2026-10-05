@@ -436,5 +436,6 @@ insert into public.occupations (code, label, synonyms) values
   ('9621', 'Messengers, package deliverers and luggage porters', array['courier', 'delivery person', 'porter', 'bellhop']),
   ('9622', 'Odd-job persons', array['handyman', 'odd job worker']),
   ('9623', 'Meter readers and vending-machine collectors', '{}'),
+  ('9624', 'Water and firewood collectors', '{}'),
   ('9629', 'Elementary workers not elsewhere classified', '{}')
 on conflict (code) do update set label = excluded.label, synonyms = excluded.synonyms;
