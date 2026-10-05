@@ -54,9 +54,7 @@ export async function fetchDocuments(
   };
 }
 
-// How many active shares hold the document: not revoked and not expired. The scope is jsonb, so the value is JSON text
-// (an array would be sent as a Postgres array literal). Read under the owner's row policy: the candidate has a handful
-// of shares, and the index on worker_user_id serves the policy.
+// The scope is jsonb, so the value is JSON text; an array would be sent as a Postgres array literal.
 export async function fetchShareCount(documentId: string): Promise<number> {
   const { count, error } = await createClient()
     .from("passport_shares")

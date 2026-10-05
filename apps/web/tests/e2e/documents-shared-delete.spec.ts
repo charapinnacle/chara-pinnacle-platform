@@ -22,8 +22,16 @@ test.describe("candidate documents: deleting a shared document", () => {
     await openDocuments(page, user);
 
     const dialog = page.getByRole("dialog", { name: "Delete Amina Okafor CV 2026?" });
+    await page.route(shareReads, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
     await page.getByRole("button", { name: "Delete Amina Okafor CV 2026" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Loading");
+    await expect(dialog.getByRole("button", { name: "Delete document" })).toBeDisabled();
     await expect(dialog.getByText("This document is shared with 2 applications.", { exact: false })).toBeVisible();
+    await expect(dialog.getByRole("status")).toHaveCount(0);
+    await page.unroute(shareReads);
     await expect(dialog).toContainText("Deleting it ends the employers' access to all documents shared in them.");
     await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
     await expectNoAxeViolations(page);

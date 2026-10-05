@@ -87,6 +87,12 @@ describe("shareWarning", () => {
     expect(shareWarning(0)).toBeNull();
   });
 
+  it("says the share state is unknown when the count could not be read", () => {
+    expect(shareWarning(null)).toBe(
+      "We could not check whether this document is shared. If it is, deleting it ends the employers' access to all documents shared with it.",
+    );
+  });
+
   it("names the number of applications and that all documents shared in them lose access", () => {
     expect(shareWarning(1)).toBe(
       "This document is shared with 1 application. Deleting it ends the employers' access to all documents shared in it.",

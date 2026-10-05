@@ -16,7 +16,6 @@ interface Grant {
   file_name: string;
 }
 
-// What the caller is told: a status and a word, never the database message or a path.
 function refusal(error: { code?: string; message?: string }): Response {
   const { code = "", message = "" } = error;
   if (message === "CHARA_FORBIDDEN") {
@@ -41,10 +40,6 @@ function refusal(error: { code?: string; message?: string }): Response {
   return json(502, { error: "unavailable" });
 }
 
-// Only document_access_grant decides: the function runs it with the caller's own token, so the database sees the
-// caller, and it signs a link only for the path the grant returned (after the access-log row exists). The platform
-// verifies the JWT (verify_jwt = true); a token it let through but the database rejects ends in a 401 here, before
-// anything is signed. A link lives 60 seconds and makes the browser save the file instead of showing it.
 export async function handleDocumentUrl(req: Request, deps: DocumentUrlDeps): Promise<Response> {
   if (req.method !== "POST") {
     return json(405, { error: "method_not_allowed" });

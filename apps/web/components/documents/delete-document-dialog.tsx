@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { toast } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { ModalDialog } from "@/components/team/modal-dialog";
@@ -8,9 +9,6 @@ import { useTeamCall } from "@/components/team/use-team-call";
 import { deleteDocument } from "@/lib/actions/documents";
 import { fetchShareCount } from "@/lib/documents/fetch-documents";
 import { shareWarning } from "@/lib/documents/presentation";
-
-const SHARES_UNKNOWN =
-  "We could not check whether this document is shared. If it is, deleting it ends the employers' access to all documents shared with it.";
 
 type DeleteDocumentDialogProps = { id: string; title: string; open: boolean; onClose: () => void; onDeleted: () => void };
 
@@ -38,10 +36,11 @@ function DeleteBody({ id, onClose, onDeleted }: Omit<DeleteDocumentDialogProps, 
     };
   }, [id]);
 
-  const warning = typeof shares === "number" ? shareWarning(shares) : shares === null ? SHARES_UNKNOWN : null;
+  const warning = shares === undefined ? null : shareWarning(shares);
   return (
     <>
       <p className="text-body leading-relaxed">The file is removed from your passport. This cannot be undone.</p>
+      {shares === undefined ? <LoadingSkeleton rows={1} /> : null}
       {warning ? (
         <p role="alert" className="text-body leading-relaxed font-medium">
           {warning}
