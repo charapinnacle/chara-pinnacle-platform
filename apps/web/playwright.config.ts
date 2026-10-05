@@ -31,14 +31,18 @@ function localAdminKey(): string {
 
 process.env.E2E_AUTH_ADMIN_KEY ||= localAdminKey();
 
-// The account-ops process of supabase/functions/serve-local.sh and the tests that call it read these two values from
+// The Edge Function processes of supabase/functions/serve-local.sh and the tests that call them read these values from
 // the environment: they are defined here once (webServer processes and workers inherit them).
 process.env.ACCOUNT_OPS_PORT ||= "54430";
+process.env.SCAN_DOCUMENT_PORT ||= "54431";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
 
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: true,
+  // The CI runner is slower than a development machine and runs the tests in parallel: the 5 s default is too tight
+  // for flows that cross several requests (upload, invitations, skeleton states).
+  expect: { timeout: 10_000 },
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? "github" : "list",
   globalTeardown: "./tests/e2e/global-teardown.ts",
@@ -67,8 +71,14 @@ export default defineConfig({
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
   webServer: [
     {
-      command: "../../supabase/functions/serve-local.sh",
+      command: `../../supabase/functions/serve-local.sh account-ops ${process.env.ACCOUNT_OPS_PORT}`,
       port: Number(process.env.ACCOUNT_OPS_PORT),
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: `../../supabase/functions/serve-local.sh scan-document ${process.env.SCAN_DOCUMENT_PORT}`,
+      port: Number(process.env.SCAN_DOCUMENT_PORT),
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,
     },

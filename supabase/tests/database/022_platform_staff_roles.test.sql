@@ -307,7 +307,7 @@ select ok(
   not exists (
     select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prosecdef and has_function_privilege('service_role', p.oid, 'execute')
-      and p.proname not in ('account_ops_dequeue', 'account_ops_ack', 'account_ops_end_sessions')
+      and p.proname not in ('account_ops_dequeue', 'account_ops_ack', 'account_ops_end_sessions', 'document_set_scan_status')
   ),
   'service_role executes no other function of public'
 );

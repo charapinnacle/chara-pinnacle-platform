@@ -141,7 +141,7 @@ export type PreferredCountryInput = z.input<typeof preferredCountrySchema>;
 export const idSchema = z.uuid();
 export const codeSchema = z.string().regex(/^[A-Za-z]{2}$/);
 
-function parseDate(value: string): Date | null {
+export function parseDate(value: string): Date | null {
   if (!DATE_PATTERN.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;

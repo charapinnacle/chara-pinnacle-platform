@@ -6,12 +6,15 @@ const BATCH_SIZE = 100;
 const CONCURRENCY = 5;
 const TIME_BUDGET_MS = 100_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const BUCKET_ID = /^[a-z0-9-]{1,63}$/;
+const OBJECT_PATH = /^[A-Za-z0-9._/-]{1,300}$/;
 
-interface Job {
-  msgId: number;
-  action: "sign_out" | "reset_mfa";
-  userId: string;
-}
+type Job =
+  & { msgId: number; userId: string }
+  & (
+    | { action: "sign_out" | "reset_mfa" }
+    | { action: "delete_object"; bucketId: string; path: string }
+  );
 
 interface AccountOpsDeps {
   client: SupabaseClient;
@@ -26,11 +29,27 @@ function parseJob(row: unknown): Job | null {
   if (typeof msgId !== "number" || typeof message !== "object" || message === null) {
     return null;
   }
-  const { action, user_id: userId } = message as { action?: unknown; user_id?: unknown };
-  if ((action !== "sign_out" && action !== "reset_mfa") || typeof userId !== "string" || !UUID.test(userId)) {
+  const {
+    action,
+    user_id: userId,
+    bucket_id: bucketId,
+    path,
+  } = message as { action?: unknown; user_id?: unknown; bucket_id?: unknown; path?: unknown };
+  if (typeof userId !== "string" || !UUID.test(userId)) {
     return null;
   }
-  return { msgId, action, userId };
+  if (action === "sign_out" || action === "reset_mfa") {
+    return { msgId, action, userId };
+  }
+  // An object is only ever removed from the folder of the user the job names.
+  if (
+    action === "delete_object" && typeof bucketId === "string" && BUCKET_ID.test(bucketId) &&
+    typeof path === "string" &&
+    OBJECT_PATH.test(path) && path.startsWith(`${userId}/`)
+  ) {
+    return { msgId, action, userId, bucketId, path };
+  }
+  return null;
 }
 
 async function endSessions(client: SupabaseClient, userId: string): Promise<number> {
@@ -59,7 +78,19 @@ async function deleteFactors(client: SupabaseClient, userId: string): Promise<nu
   return deleted;
 }
 
+// Removing an object that is already gone succeeds, so a second run changes nothing.
+async function removeObject(client: SupabaseClient, bucketId: string, path: string): Promise<number> {
+  const { data, error } = await client.storage.from(bucketId).remove([path]);
+  if (error) {
+    throw error;
+  }
+  return data.length;
+}
+
 async function run(client: SupabaseClient, job: Job): Promise<Record<string, number>> {
+  if (job.action === "delete_object") {
+    return { objects_removed: await removeObject(client, job.bucketId, job.path) };
+  }
   const sessionsEnded = await endSessions(client, job.userId);
   if (job.action === "reset_mfa") {
     return { factors_deleted: await deleteFactors(client, job.userId), sessions_ended: sessionsEnded };

@@ -2,7 +2,6 @@
 
 import { useTransition } from "react";
 import { toast } from "@/components/feedback/toast-store";
-import type { TeamResult } from "@/lib/actions/team";
 import { isRedirectError } from "@/lib/redirect-error";
 
 // A button that runs one team action: a toast says what happened, and onSettled runs first so that a modal is closed
@@ -10,7 +9,7 @@ import { isRedirectError } from "@/lib/redirect-error";
 export function useTeamCall(failureTitle: string) {
   const [pending, startTransition] = useTransition();
 
-  function run(call: () => Promise<TeamResult>, success: string, onSettled?: () => void) {
+  function run(call: () => Promise<{ message?: string }>, success: string, onSettled?: () => void) {
     startTransition(async () => {
       try {
         const result = await call();
