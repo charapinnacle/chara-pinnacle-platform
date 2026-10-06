@@ -152,13 +152,13 @@ select ok(
   'the organisation list has a keyset index'
 );
 select ok(
-  exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'jobs' and indexname = 'jobs_public_created_idx'
-          and indexdef like '%WHERE%status = ''open''%'),
-  'the public rows have a partial index'
+  exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'jobs' and indexname = 'jobs_created_by_idx'
+          and indexdef like '%(created_by)%WHERE%created_by IS NOT NULL%'),
+  'the erasure of an account finds its vacancies through an index'
 );
 select ok(
-  exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'jobs' and indexdef like '%USING gin (search_vector)%'),
-  'the search vector has a GIN index'
+  exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'jobs' and indexname = 'jobs_posted_on_behalf_idx'),
+  'the hiring-on-behalf foreign key has an index'
 );
 select ok(
   (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.jobs'::regclass)

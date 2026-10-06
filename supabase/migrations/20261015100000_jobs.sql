@@ -69,16 +69,17 @@ comment on column public.jobs.created_by is
 
 -- The member read, the owner's list (keyset on created_at, id) and every policy filter on organization_id.
 create index jobs_organization_created_idx on public.jobs (organization_id, created_at desc, id desc);
--- The rows the public policy shows, newest first.
-create index jobs_public_created_idx on public.jobs (created_at desc, id desc)
-  where status = 'open' and deleted_at is null and moderation_state = 'visible';
-create index jobs_search_vector_idx on public.jobs using gin (search_vector);
+-- The foreign keys that can run a referential action: erasing an account sets created_by to null, and the query that
+-- does it must not read the whole table. Partial, as the organization indexes of invited_by are.
+create index jobs_created_by_idx on public.jobs (created_by) where created_by is not null;
+create index jobs_posted_on_behalf_idx on public.jobs (posted_on_behalf_of_organization_id)
+  where posted_on_behalf_of_organization_id is not null;
 
 alter table public.jobs enable row level security;
 alter table public.jobs force row level security;
 
 -- created_by and search_vector are not readable through the API: the first would name a person on a public page, the
--- second is read by the search function of FR-C3. posted_on_behalf_of_organization_id is not insertable (Phase 1).
+-- second is read by the search function of FR-C3, which adds its indexes. posted_on_behalf_of_organization_id is not insertable (Phase 1).
 grant select (
   id, organization_id, posted_on_behalf_of_organization_id, title, description, occupation_id, industry_code,
   country_code, city, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation,
@@ -162,9 +163,10 @@ alter table public.jobs enable always trigger jobs_audit;
 
 -- The KPI "validation error rate" (FR-C1) is the share of submitted forms that were refused. The web tier reports each
 -- refused submission here, with the names of the fields at fault and nothing they held; the accepted ones are the
--- job.created rows. Only an owner or admin of the organisation can report, and the ceiling per user and hour is a
--- setting, so the audit log cannot be filled through this function. Beyond the ceiling the call does nothing.
-insert into private.settings (key, value) values ('job_form_invalid_per_hour_max', '120');
+-- job.created rows. Only an owner or admin of the organisation can report, the names must be those of the form, and
+-- the ceiling per user and hour is a setting, so the append-only audit log cannot be filled through this function.
+-- Beyond the ceiling the call does nothing.
+insert into private.settings (key, value) values ('job_form_invalid_per_hour_max', '30');
 
 create index log_job_form_invalid_actor_idx on audit.log (actor_id, created_at) where action = 'job.form_invalid';
 
@@ -182,7 +184,10 @@ begin
   end if;
   if p_fields is null
      or cardinality(p_fields) not between 1 and 20
-     or exists (select 1 from unnest(p_fields) f where f is null or f !~ '^[A-Za-z]{1,40}$') then
+     or not (p_fields <@ array[
+       'title', 'description', 'occupation', 'industry', 'country', 'city', 'employmentType', 'salaryMin', 'salaryMax',
+       'salaryCurrency', 'salaryPeriod', 'accommodation', 'visaSupport', 'recruitmentPreference'
+     ]) then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_fields';
   end if;
   if (select count(*) from audit.log l

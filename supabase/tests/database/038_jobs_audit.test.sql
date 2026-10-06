@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(31);
 
 \ir jobs_fixture.inc
 
@@ -103,6 +103,10 @@ select is(
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format($$select public.record_job_form_invalid(%L, array['not a field name'])$$, current_setting('t.a')), 'aal1'),
   'P0001|CHARA_INVALID_INPUT|p_fields', 'a value that is not a field name is refused'
+);
+select is(
+  pg_temp.call_as(:'adm', 'authenticated', format($$select public.record_job_form_invalid(%L, array['title', 'someOtherField'])$$, current_setting('t.a')), 'aal1'),
+  'P0001|CHARA_INVALID_INPUT|p_fields', 'a well-formed name that is not a field of the form is refused'
 );
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format($$select public.record_job_form_invalid(%L, array_fill('a'::text, array[21]))$$, current_setting('t.a')), 'aal1'),
