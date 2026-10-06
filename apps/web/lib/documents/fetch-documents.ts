@@ -53,3 +53,15 @@ export async function fetchDocuments(
     })),
   };
 }
+
+// The scope is jsonb, so the value is JSON text; an array would be sent as a Postgres array literal.
+export async function fetchShareCount(documentId: string): Promise<number> {
+  const { count, error } = await createClient()
+    .from("passport_shares")
+    .select("id", { count: "exact", head: true })
+    .contains("scope", JSON.stringify([documentId]))
+    .is("revoked_at", null)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+  if (error) throw new Error("The shares could not be counted", { cause: error });
+  return count ?? 0;
+}

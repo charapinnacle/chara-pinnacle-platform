@@ -7,7 +7,7 @@ let outcome: { data: unknown; error: unknown } = { data: [], error: null };
 function from(table: string) {
   steps = [["from", table]];
   const chain: Record<string, unknown> = {};
-  for (const name of ["select", "not", "neq", "lte", "eq", "in", "order", "limit", "or"]) {
+  for (const name of ["select", "not", "neq", "lte", "eq", "in", "order", "limit", "or", "contains", "is"]) {
     chain[name] = (...args: unknown[]) => {
       steps.push([name, ...args]);
       return chain;
@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from }) }
 vi.mock("@/lib/supabase/browser", () => ({ createClient: () => ({ from }) }));
 
 const { getDocumentReminders, hasUsableCv } = await import("@/lib/dal/documents");
-const { fetchDocuments } = await import("@/lib/documents/fetch-documents");
+const { fetchDocuments, fetchShareCount } = await import("@/lib/documents/fetch-documents");
 
 afterEach(() => vi.useRealTimers());
 
@@ -162,5 +162,31 @@ describe("fetchDocuments", () => {
   it("rejects when the read fails, so the screen can show its retry state", async () => {
     outcome = { data: null, error: { message: "network" } };
     await expect(fetchDocuments(null)).rejects.toThrow("The documents could not be loaded");
+  });
+});
+
+describe("fetchShareCount", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-03T12:00:00Z"));
+  });
+
+  it("counts the active shares whose scope holds the document id, without reading any row", async () => {
+    outcome = { data: null, error: null, count: 2 } as typeof outcome;
+    expect(await fetchShareCount("doc-1")).toBe(2);
+    expect(steps).toEqual([
+      ["from", "passport_shares"],
+      ["select", "id", { count: "exact", head: true }],
+      ["contains", "scope", '["doc-1"]'],
+      ["is", "revoked_at", null],
+      ["or", "expires_at.is.null,expires_at.gt.2026-10-03T12:00:00.000Z"],
+    ]);
+  });
+
+  it("is zero when the count is missing and throws when the read fails", async () => {
+    outcome = { data: null, error: null };
+    expect(await fetchShareCount("doc-1")).toBe(0);
+    outcome = { data: null, error: { message: "secret" } };
+    await expect(fetchShareCount("doc-1")).rejects.toThrow("The shares could not be counted");
   });
 });
