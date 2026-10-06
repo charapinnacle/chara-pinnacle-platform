@@ -172,6 +172,7 @@ test.describe("team membership: page guard and status", () => {
     setName(bare.user.id, "Bo Bare");
     setName(member.user.id, "Max Member");
     await signInAtAal2(page, team.owner, team.ownerSecret, `/en/org/${team.slug}`);
+    await page.waitForLoadState("networkidle");
 
     await page.route(
       (url) => url.pathname === membersPath(team.slug) && url.searchParams.has("_rsc"),
