@@ -20,7 +20,6 @@ function from(table: string) {
 vi.mock("@/lib/supabase/browser", () => ({ createClient: () => ({ from }) }));
 
 const { fetchAccessLog } = await import("@/lib/access-log/fetch-access-log");
-const { purposeLabel } = await import("@/lib/access-log/presentation");
 const { formatDateTime } = await import("@/lib/i18n/format");
 
 const row = (id: number, at: string) => ({
@@ -28,7 +27,6 @@ const row = (id: number, at: string) => ({
   organization_name: "Acme Bau",
   document_title: "Amina Okafor CV 2026",
   accessed_at: at,
-  purpose: "application_review",
 });
 
 beforeEach(() => {
@@ -45,11 +43,10 @@ describe("fetchAccessLog", () => {
       organizationName: "Acme Bau",
       documentTitle: "Amina Okafor CV 2026",
       accessedAt: "2026-10-02T10:00:00+00:00",
-      purpose: "application_review",
     });
     expect(steps).toEqual([
       ["from", "v_my_document_access_log"],
-      ["select", "id, organization_name, document_title, accessed_at, purpose"],
+      ["select", "id, organization_name, document_title, accessed_at"],
       ["order", "accessed_at", { ascending: false }],
       ["order", "id", { ascending: false }],
       ["limit", 26],
@@ -80,13 +77,6 @@ describe("fetchAccessLog", () => {
   it("rejects when the read fails, so the screen can show its retry state", async () => {
     outcome = { data: null, error: { message: "network" } };
     await expect(fetchAccessLog(null)).rejects.toThrow("The access log could not be loaded");
-  });
-});
-
-describe("purposeLabel", () => {
-  it("names the application review and falls back for an unknown purpose", () => {
-    expect(purposeLabel("application_review")).toBe("Application review");
-    expect(purposeLabel("something_new")).toBe("Opened");
   });
 });
 

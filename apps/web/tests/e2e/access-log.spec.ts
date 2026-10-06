@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { userToken } from "./support/accounts";
 import { expectNoAxeViolations } from "./support/axe";
@@ -22,6 +23,7 @@ async function openAccessLog(page: Page, user: TestUser) {
   return section;
 }
 
+// Two entries at minute 25 straddle the page boundary: positions 25 and 26 tie on the time and only the id tells them apart.
 async function thirtyOpenings() {
   const worker = await createCommittedUser("worker");
   const cv = await seedDocument(worker.id, { title: CV });
@@ -34,13 +36,13 @@ async function thirtyOpenings() {
     beta,
     seedShare(worker.id, beta.organizationId, [certificate.id]),
     certificate.id,
-    Array.from({ length: 15 }, (_, i) => i + 16),
+    [...Array.from({ length: 10 }, (_, i) => i + 16), 25, 26, 27, 28, 29],
   );
   return worker;
 }
 
 test.describe("document access log", () => {
-  test("FR-B5 AC5: the passport page lists 25 openings newest first, the keyboard reaches page 2 with 5, and axe is clean", async ({ page }) => {
+  test("FR-B5 AC5: the passport page lists 25 openings newest first, the keyboard reaches page 2 with the other 5 across a tie in time, and axe is clean", async ({ page }) => {
     const worker = await thirtyOpenings();
     const section = await openAccessLog(page, worker);
 
@@ -63,6 +65,9 @@ test.describe("document access log", () => {
     await page.keyboard.press("Enter");
     await expect(section.getByRole("rowheader")).toHaveCount(5);
     await expect(section.getByRole("rowheader")).toHaveText(Array(5).fill("Beta Works"));
+    const secondPage = await section.locator("tbody time").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("datetime") ?? ""));
+    expect(secondPage[0]).toBe(times[24]);
+    expect(new Set([...times, ...secondPage]).size).toBe(29);
     await expect(section.getByText("Page 2", { exact: true })).toBeVisible();
     await expect(section.getByRole("button", { name: "Next page" })).toHaveCount(0);
     await expect(section.locator('[tabindex="-1"]')).toBeFocused();
@@ -130,6 +135,35 @@ test.describe("document access log", () => {
     await page.reload();
     await expect(section.getByRole("rowheader")).toHaveText(["Acme Bau"]);
     await expect(section.locator("tbody td").first()).toHaveText("Deleted document");
+  });
+
+  test("FR-B5 AC7: the entry of an organisation that no longer exists stays, shown as A former organisation", async ({ page }) => {
+    const worker = await createCommittedUser("worker");
+    const cv = await seedDocument(worker.id, { title: CV });
+    const employer = await createEmployer("Acme Bau");
+    seedOpenings(
+      worker.id,
+      { ...employer, organizationId: randomUUID() },
+      seedShare(worker.id, employer.organizationId, [cv.id]),
+      cv.id,
+      [5],
+    );
+    const section = await openAccessLog(page, worker);
+    await expect(section.getByRole("rowheader")).toHaveText(["A former organisation"]);
+    await expect(section.locator("tbody td").first()).toHaveText(CV);
+  });
+
+  test("FR-B5 AC6: when page 2 fails to load, Previous page brings back the first page", async ({ page }) => {
+    const worker = await thirtyOpenings();
+    const section = await openAccessLog(page, worker);
+    await expect(section.getByRole("rowheader")).toHaveCount(25);
+    await page.route(logRequests, (route) => route.abort());
+    await section.getByRole("button", { name: "Next page" }).click();
+    await expect(section.getByRole("heading", { name: "Your access log could not be loaded" })).toBeVisible();
+    await page.unroute(logRequests);
+    await section.getByRole("button", { name: "Previous page" }).click();
+    await expect(section.getByRole("rowheader")).toHaveCount(25);
+    await expect(section.getByText("Page 1", { exact: true })).toBeVisible();
   });
 
   test("FR-B5 AC10: Report suspicious access opens the complaints page and sends nothing that writes", async ({ page, context }) => {

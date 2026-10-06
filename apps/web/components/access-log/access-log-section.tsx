@@ -74,6 +74,18 @@ export function AccessLogSection() {
           >
             Retry
           </FormButton>
+          {trail.length > 0 ? (
+            <FormButton
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setPhase("loading");
+                go(trail.slice(0, -1));
+              }}
+            >
+              Previous page
+            </FormButton>
+          ) : null}
         </EmptyState>
       ) : null}
       {phase === "ready" && items.length === 0 ? (

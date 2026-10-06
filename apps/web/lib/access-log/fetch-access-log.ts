@@ -5,7 +5,6 @@ export type AccessLogItem = {
   organizationName: string | null;
   documentTitle: string | null;
   accessedAt: string;
-  purpose: string;
 };
 
 export type AccessLogCursor = { accessedAt: string; id: number };
@@ -21,7 +20,7 @@ export async function fetchAccessLog(
 ): Promise<{ items: AccessLogItem[]; hasMore: boolean }> {
   let query = createClient()
     .from("v_my_document_access_log")
-    .select("id, organization_name, document_title, accessed_at, purpose")
+    .select("id, organization_name, document_title, accessed_at")
     .order("accessed_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(ACCESS_LOG_PAGE_SIZE + 1);
@@ -33,7 +32,7 @@ export async function fetchAccessLog(
   return {
     hasMore: data.length > ACCESS_LOG_PAGE_SIZE,
     items: data.slice(0, ACCESS_LOG_PAGE_SIZE).flatMap((row) =>
-      row.id === null || row.accessed_at === null || row.purpose === null
+      row.id === null || row.accessed_at === null
         ? []
         : [
             {
@@ -41,7 +40,6 @@ export async function fetchAccessLog(
               organizationName: row.organization_name,
               documentTitle: row.document_title,
               accessedAt: row.accessed_at,
-              purpose: row.purpose,
             },
           ],
     ),

@@ -1,9 +1,10 @@
 import { LegalLink } from "@/components/forms/text-link";
-import { COMPLAINTS_SLUG, DELETED_DOCUMENT, purposeLabel } from "@/lib/access-log/presentation";
 import type { AccessLogItem } from "@/lib/access-log/fetch-access-log";
 import { formatDateTime } from "@/lib/i18n/format";
 
 const FORMER_ORGANISATION = "A former organisation";
+const DELETED_DOCUMENT = "Deleted document";
+const COMPLAINTS_SLUG = "complaints-and-dispute-process";
 
 export function AccessLogTable({ items }: { items: AccessLogItem[] }) {
   return (
@@ -35,7 +36,7 @@ export function AccessLogTable({ items }: { items: AccessLogItem[] }) {
                 <td className="px-3 py-3">
                   <time dateTime={item.accessedAt}>{formatDateTime(item.accessedAt)}</time>
                 </td>
-                <td className="px-3 py-3">{purposeLabel(item.purpose)}</td>
+                <td className="px-3 py-3">Application review</td>
                 <td className="px-3 py-3">
                   <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
                     Report suspicious access
