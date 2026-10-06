@@ -29,7 +29,7 @@ A deleted vacancy (owner only, no screen in Phase 1) leaves the table, so it lea
 
 ## 2. Validation error rate
 
-The web tier reports every submission of the new-vacancy form that was refused, with the names of the fields at fault and nothing they held (`public.record_job_form_invalid`, action `job.form_invalid`); every accepted submission is a `job.created` row. The rate is the share of refused submissions. One person who corrects a form three times counts three refused submissions and one accepted. The call stops writing after `job_form_invalid_per_hour_max` (120) reports per user and hour, a setting in `private.settings`, so the rate reads low only for someone who submits an invalid form more than twice a minute.
+The web tier reports every submission of the new-vacancy form that was refused, whether the browser refused it before sending or the server refused it (`createJob`: schema failure, or a constraint mapped to a field), with the names of the fields at fault and nothing they held (`public.record_job_form_invalid`, action `job.form_invalid`); every accepted submission is a `job.created` row. A refusal that maps to no field (not allowed, generic failure) is not a form error and is not counted. The rate is the share of refused submissions. One person who corrects a form three times counts three refused submissions and one accepted. The call stops writing after `job_form_invalid_per_hour_max` (30) reports per user and hour, a setting in `private.settings`, so the rate reads low only for someone who submits an invalid form more than once every two minutes.
 
 ```sql
 select
