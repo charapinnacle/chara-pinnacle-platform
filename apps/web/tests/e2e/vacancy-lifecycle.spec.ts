@@ -3,6 +3,7 @@ import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal } from "./support/db";
 import { logIn } from "./support/login-page";
+import { uniqueToken } from "./support/organizations";
 import {
   addCompanyUser,
   jobStatus,
@@ -105,37 +106,50 @@ test.describe("vacancy lifecycle", () => {
     expect(await offered(page)).toEqual([]);
   });
 
-  test("FR-C2 AC7, AC1: the owner publishes, pauses and reopens, and the public page follows at the next request", async ({
+  test("FR-C2 AC7, AC1: the owner publishes, pauses and reopens, and the public page and the search follow at the next request", async ({
     page,
     browser,
   }) => {
     const acme = await newCompany();
-    const id = seedJob(acme, { title: "Lifecycle welder" });
+    const marker = `zq${uniqueToken()}`;
+    const title = `Lifecycle welder ${marker}`;
+    const id = seedJob(acme, { title });
     const visitor = await browser.newContext();
     const anonymous = await visitor.newPage();
     const publicUrl = `/en/jobs/${id}`;
+    const searchUrl = `/en/jobs?q=${marker}`;
+    const listed = async () => {
+      await anonymous.goto(searchUrl);
+      await expect(anonymous.getByRole("heading", { name: "Find jobs", level: 1 })).toBeVisible();
+      return anonymous.locator("ul > li").filter({ hasText: marker });
+    };
 
     await logIn(page, acme.owner, jobUrl(acme.slug, id));
     await expect(page).toHaveURL(jobUrl(acme.slug, id));
     expect((await anonymous.goto(publicUrl))?.status()).toBe(404);
+    await expect(await listed()).toHaveCount(0);
 
     await page.getByRole("button", { name: "Publish", exact: true }).dblclick();
     await expect(page.getByRole("status").filter({ hasText: "Open" })).toBeVisible();
     await expect(page.getByText("The vacancy is published", { exact: true })).toBeVisible();
     const response = await anonymous.goto(publicUrl);
     expect(response?.status()).toBe(200);
-    await expect(anonymous.getByRole("heading", { name: "Lifecycle welder", level: 1 })).toBeVisible();
+    await expect(anonymous.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+    await expect(await listed()).toHaveCount(1);
     expect(statusAudit(id)).toHaveLength(1);
 
     await page.getByRole("button", { name: "Pause", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Paused - not public" })).toBeVisible();
     expect((await anonymous.goto(publicUrl))?.status()).toBe(404);
     await expect(anonymous.getByRole("heading", { name: UNAVAILABLE })).toBeVisible();
+    await expect(await listed()).toHaveCount(0);
+    await expect(anonymous.getByRole("heading", { name: "No vacancies match your search" })).toBeVisible();
 
     await page.getByRole("button", { name: "Reopen", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: /^Open/ })).toBeVisible();
     expect((await anonymous.goto(publicUrl))?.status()).toBe(200);
-    await expect(anonymous.getByRole("heading", { name: "Lifecycle welder", level: 1 })).toBeVisible();
+    await expect(anonymous.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+    await expect(await listed()).toHaveCount(1);
 
     expect(statusAudit(id).map(({ actor_id, metadata }) => [actor_id, metadata.from, metadata.to])).toEqual([
       [acme.owner.id, "draft", "open"],
