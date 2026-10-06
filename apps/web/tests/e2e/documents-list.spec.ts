@@ -144,6 +144,9 @@ test.describe("candidate documents: the list", () => {
       await expectNothingClipped(width, 7);
     }
 
+    const noExpiry = row(page, "Still checking");
+    await expect(noExpiry.getByRole("rowheader").or(noExpiry.getByRole("cell"))).toHaveCount(7);
+
     await page.setViewportSize({ width: 360, height: 800 });
     await page.getByRole("button", { name: `Rename ${longTitle}` }).click();
     await expect(page.getByRole("textbox", { name: `New title for ${longTitle}` })).toBeFocused();
