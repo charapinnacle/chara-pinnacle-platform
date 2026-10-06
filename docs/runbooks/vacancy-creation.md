@@ -1,26 +1,19 @@
 # Runbook: vacancy creation review
 
-FR-C1, design point D45 (OPEN_QUESTIONS.md). The SOP (Vacancy Creation, semi-annual review) measures two KPIs, "vacancies published within 1 day of creation" and "validation error rate". Both are read from the audit log and the vacancies table by CHARA staff as the database owner (SQL editor of the project); no screen shows them.
+FR-C1, design points D45 and D47 (OPEN_QUESTIONS.md). The SOP (Vacancy Creation, semi-annual review) measures two KPIs, "vacancies published within 1 day of creation" and "validation error rate". Both are read from the audit log and the vacancies table by CHARA staff as the database owner (SQL editor of the project); no screen shows them.
 
 ## 1. Vacancies published within 1 day of creation
 
-`jobs.created_at` is the creation time. The publication time is the first `audit.log` row `job.updated` whose metadata has `status_to = 'open'`: the audit trigger of `public.jobs` writes it for every status change, whatever changed the status (the lifecycle of FR-C2 writes the status, the trigger records it). A vacancy that was never opened has no such row and counts as not published.
+`jobs.created_at` is the creation time and `jobs.published_at` the time the vacancy first became Open: the guard trigger of FR-C2 sets it once, at the first change to Open, whatever made the change, and a later pause or reopening does not move it (D47). A vacancy that was never opened has no `published_at` and counts as not published.
 
 ```sql
-with first_open as (
-  select entity_id::uuid as job_id, min(created_at) as published_at
-  from audit.log
-  where action = 'job.updated' and metadata ->> 'status_to' = 'open'
-  group by 1
-)
 select
   date_trunc('month', j.created_at)::date as month,
   count(*) as created,
-  count(f.published_at) as published,
-  round(100.0 * count(*) filter (where f.published_at - j.created_at <= interval '1 day') / nullif(count(*), 0), 1)
+  count(j.published_at) as published,
+  round(100.0 * count(*) filter (where j.published_at - j.created_at <= interval '1 day') / nullif(count(*), 0), 1)
     as published_within_1_day_pct
 from public.jobs j
-left join first_open f on f.job_id = j.id
 group by 1
 order by 1 desc;
 ```
