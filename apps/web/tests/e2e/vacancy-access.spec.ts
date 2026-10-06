@@ -47,7 +47,6 @@ test.describe("vacancy pages: who sees what", () => {
     const other = await outsider.newPage();
     await signInAsEmployer(other, betaAdmin);
     for (const path of [newJobUrl(acme.slug), jobUrl(acme.slug, id), previewUrl(acme.slug, id), jobsUrl(acme.slug)]) {
-      await other.goto(path);
       await expectNotFound(other, path);
       await expect(other.getByText("Preview welder")).toHaveCount(0);
     }
@@ -163,7 +162,6 @@ test.describe("vacancy pages: who sees what", () => {
     const betaJob = seedJob(beta, { title: "Beta only" });
     await signInAsEmployer(page, acme.owner);
     for (const path of [jobUrl(acme.slug, betaJob), previewUrl(acme.slug, betaJob)]) {
-      await page.goto(path);
       await expectNotFound(page, path);
     }
     await expect(page.getByText("Beta only")).toHaveCount(0);
@@ -175,7 +173,6 @@ test.describe("vacancy pages: who sees what", () => {
     const candidate = await createCommittedUser("worker");
     await signIn(page, candidate);
     for (const path of [jobsUrl(acme.slug), newJobUrl(acme.slug), jobUrl(acme.slug, id), previewUrl(acme.slug, id)]) {
-      await page.goto(path);
       await expectNotFound(page, path);
     }
   });
@@ -183,7 +180,10 @@ test.describe("vacancy pages: who sees what", () => {
 
 // These pages stream behind the loading boundary of the app group, so Next answers with status 200 and the not-found
 // page, marked noindex; the public vacancy address is not behind one and answers 404 (checked where it is visited).
+// The 200 is the recorded departure from FR-C1 AC10 (D45); the status is pinned so that a change shows up here.
 async function expectNotFound(page: Page, path: string) {
+  const response = await page.goto(path);
+  expect(response?.status(), path).toBe(200);
   await expect(page.getByRole("heading", { name: "Page not found" }), path).toBeVisible();
   await expect(page.locator('meta[name="robots"]').first(), path).toHaveAttribute("content", /noindex/);
 }

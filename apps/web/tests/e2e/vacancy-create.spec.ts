@@ -128,7 +128,7 @@ test.describe("create vacancy", () => {
     await expect(page.locator("#job-industry-error")).toHaveText("Select an industry from the list.");
     await expect(industry).toBeFocused();
     await expect(summary(page).getByRole("link", { name: "Select an industry from the list." })).toBeVisible();
-    expect(calls.filter(({ id }) => id).length).toBe(calls.length);
+    expect(calls.map(({ body }) => body).join("")).not.toContain("Welder");
     expect(jobRows(company.id)).toEqual([]);
   });
 
