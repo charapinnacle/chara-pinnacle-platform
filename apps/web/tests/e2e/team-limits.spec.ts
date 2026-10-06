@@ -16,8 +16,8 @@ import {
 } from "./support/team";
 import { expect, test } from "./support/test";
 
-// The limits are switched on for this file only and the file runs in one worker, so that no other worker sees a
-// limit that was set for these organizations.
+// The limits are switched on for the whole database while this file runs, so it has a project of its own that follows
+// the others (playwright.config.ts) and runs in one worker.
 test.describe.configure({ mode: "serial" });
 test.beforeAll(enforceLimits);
 test.afterAll(restoreLimits);

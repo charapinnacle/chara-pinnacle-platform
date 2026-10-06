@@ -140,7 +140,7 @@ export function restoreLimits(): void {
 }
 
 // As the billing webhook leaves a paying organization: a live subscription to the plan, whose limits then apply.
-export function subscribe(team: Team, planCode: "employer_starter" | "employer_professional"): void {
+export function subscribe(team: Pick<Team, "id">, planCode: "employer_starter" | "employer_professional"): void {
   execute(
     `insert into billing.subscriptions (organization_id, plan_code, status, provider)
      values (${literal(team.id)}, ${literal(planCode)}, 'active', 'null')`,
