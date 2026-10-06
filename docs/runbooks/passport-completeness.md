@@ -4,7 +4,7 @@ FR-B4, design point D41 (OPEN_QUESTIONS.md). The completeness percentage is comp
 
 ## 1. Weights
 
-The weights and their rules are one list in `apps/web/lib/passport/completeness.ts`, shown to the candidate under 'How is this calculated?'. They add up to 100: name and country 10, headline 5, occupation 15, skills 15 (at least 3), languages 10 (at least 1), years of experience 10 (0 counts), availability 10 (any choice), work authorisation 10 (one entry without expiry or expiring today or later), CV 15 (a CV that is not deleted and whose scan status is `clean` or `skipped`). The nudge shows below 60. If CHARA changes a weight, change the list and the query below together; the pgTAP test `031_completeness.test.sql` holds the query and fails when it no longer gives 10, 55, 85 and 100 for its reference profiles.
+The weights and their rules are one list in `apps/web/lib/passport/completeness.ts`, shown to the candidate under 'How is this calculated?'. They add up to 100: name and country 10, headline 5, occupation 15, skills 15 (at least 3), languages 10 (at least 1), years of experience 10 (0 counts), availability 10 (any choice), work authorisation 10 (one entry without expiry or expiring today or later), CV 15 (a CV that is not deleted and whose scan status is `clean` or `skipped`). The nudge shows below 60. The TypeScript list is the source. If CHARA changes a weight, change the list, the query below and the copy of the query in `031_completeness.test.sql` together: that pgTAP test (and the Vitest test of the list) check the numbers 10, 55, 85 and 100 for their reference profiles, but neither reads this file, so a query edited here alone is not caught.
 
 ## 2. Monthly review
 
@@ -45,6 +45,6 @@ Distribution in bands of ten points (replace the final select of the query above
 select (score / 10) * 10 as band, count(*) as profiles from scores group by 1 order by 1;
 ```
 
-To compare cohorts, add `p.created_at` to the `scores` select and group by `date_trunc('month', created_at)`. A run over 5,000 candidates and 50,000 documents took about 90 ms on the local stack; every lookup uses the primary or owner index of its table.
+To compare cohorts, add `p.created_at` to the `scores` select and group by `date_trunc('month', created_at)`. Indicative local measurement (EXPLAIN ANALYZE as the database owner in a rolled-back transaction on the local stack, 5,000 candidates, 50,000 documents of which a seventh were deleted, 4 skills for 80 percent of the candidates): the whole query ran in about 165 ms, and every lookup used the primary or owner index of its table. It scans every profile, so run it outside peak hours once the table is much larger.
 
 Record the month, the two KPI values and any decision (for example a changed weight) in the ticket for the review.
