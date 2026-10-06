@@ -135,6 +135,7 @@ interface Salary {
 
 interface SeedJobOptions {
   title: string;
+  description: string;
   status: string;
   moderation: string;
   createdAt: string;
@@ -149,6 +150,7 @@ interface SeedJobOptions {
 
 const SEED_DEFAULTS: SeedJobOptions = {
   title: "Seeded welder",
+  description: "Line one of the description.\nLine two of it, which is long enough to pass the limit.",
   status: "draft",
   moderation: "visible",
   createdAt: "now()",
@@ -163,7 +165,7 @@ const SEED_DEFAULTS: SeedJobOptions = {
 
 // A vacancy as an administrator would have saved it, written by the database owner so that a test can give it any status.
 export function seedJob(company: Company, options: Partial<SeedJobOptions> = {}): string {
-  const { title, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport } = {
+  const { title, description, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport } = {
     ...SEED_DEFAULTS,
     ...options,
   };
@@ -172,7 +174,7 @@ export function seedJob(company: Company, options: Partial<SeedJobOptions> = {})
     `insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city,
         employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support,
         recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at)
-     values (${literal(company.id)}, ${literal(title)}, ${literal("Line one of the description.\nLine two of it, which is long enough to pass the limit.")},
+     values (${literal(company.id)}, ${literal(title)}, ${literal(description)},
         '7212', 'C', ${literal(country)}, ${literal(city)}, ${literal(employment)}, ${amount(salary?.min)}, ${amount(salary?.max)},
         ${salary ? literal(salary.currency) : "null"}, ${salary ? literal(salary.period) : "null"}, ${accommodation}, ${visaSupport},
         'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt})
