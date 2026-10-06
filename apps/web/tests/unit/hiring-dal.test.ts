@@ -21,7 +21,7 @@ function builder(table: string) {
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: builder }) }));
 
-const { getEmployer, getJob, getPublicJob, JOBS_PAGE_SIZE, listJobs } = await import("@/lib/dal/hiring");
+const { getEmployer, getJob, getJobLimit, getPublicJob, JOBS_PAGE_SIZE, listJobs } = await import("@/lib/dal/hiring");
 
 const row = {
   id: "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
@@ -174,5 +174,28 @@ describe("getEmployer", () => {
       country: "Germany",
       website: "https://acme.example",
     });
+  });
+});
+
+describe("getJobLimit", () => {
+  it("reads the plan name, the limit and the open count of the organization from the member view", async () => {
+    result = { data: { plan_name: "Basic", active_jobs_limit: 3, open_jobs: 3 }, error: null };
+    await expect(getJobLimit("org-1")).resolves.toEqual({ planName: "Basic", limit: 3, used: 3 });
+    expect(calls).toContainEqual(["v_org_limits.select", "plan_name, active_jobs_limit, open_jobs"]);
+    expect(calls).toContainEqual(["v_org_limits.eq", "organization_id", "org-1"]);
+  });
+
+  it.each([
+    ["an organization the caller is not a member of", null],
+    ["an unlimited plan", { plan_name: "Enterprise", active_jobs_limit: null, open_jobs: 7 }],
+    ["a plan that is not in billing.plans", { plan_name: null, active_jobs_limit: 0, open_jobs: 0 }],
+  ])("has no prompt for %s", async (_, data) => {
+    result = { data, error: null };
+    await expect(getJobLimit("org-1")).resolves.toBeNull();
+  });
+
+  it("throws on a failed read, with the cause attached and no text for the caller", async () => {
+    result = { data: null, error: { message: "secret detail" } };
+    await expect(getJobLimit("org-1")).rejects.toThrow("The vacancy limit could not be loaded");
   });
 });

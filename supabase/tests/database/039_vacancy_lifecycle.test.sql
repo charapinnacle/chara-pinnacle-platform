@@ -283,7 +283,10 @@ select is(
   'a second run changes and writes nothing'
 );
 
+-- With the limits on, reopening goes through the active_jobs check (FR-C6): Beta is given a Basic plan for the setup.
 update private.settings set value = 'true' where key = 'entitlements_enforced';
+insert into billing.subscriptions (organization_id, plan_code, status, provider)
+values (current_setting('t.b')::uuid, 'employer_starter', 'active', 'null');
 select pg_temp.set_status(:'adm2', :'b1', 'open') as reopen \gset
 select is(
   (select status from public.jobs where id = :'b1'), 'open'::public.job_status, 'setup: the administrator of the organisation reopens one vacancy'
@@ -294,6 +297,7 @@ select is(
   'the rule applies whether or not entitlements are enforced'
 );
 update private.settings set value = 'false' where key = 'entitlements_enforced';
+delete from billing.subscriptions where organization_id = current_setting('t.b')::uuid;
 
 select throws_ok(
   format($$update public.jobs set status = 'paused' where id = %L$$, :'acme_other'), '42501', 'CHARA_FORBIDDEN',

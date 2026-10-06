@@ -53,7 +53,13 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: ["**/consent-versions.spec.ts", "**/account-ops.spec.ts", "**/account-erasure.spec.ts"],
+      testIgnore: [
+        "**/consent-versions.spec.ts",
+        "**/account-ops.spec.ts",
+        "**/account-erasure.spec.ts",
+        "**/team-limits.spec.ts",
+        "**/vacancy-limits.spec.ts",
+      ],
     },
     {
       name: "versions",
@@ -74,6 +80,21 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/account-erasure.spec.ts",
       dependencies: ["account-ops"],
+    },
+    // The plan limits are switched on for the whole database while these specs run: a vacancy published by any other
+    // spec in that time would meet a limit of its organization, so they follow every other project, one after the
+    // other (each puts the setting back when it ends).
+    {
+      name: "limits-team",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/team-limits.spec.ts",
+      dependencies: ["chromium", "versions", "account-ops", "account-erasure"],
+    },
+    {
+      name: "limits-vacancies",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/vacancy-limits.spec.ts",
+      dependencies: ["limits-team"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

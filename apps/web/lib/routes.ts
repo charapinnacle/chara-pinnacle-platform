@@ -34,3 +34,7 @@ export function jobsPath(lang: string, slug: string): string {
 export function jobPath(lang: string, slug: string, id: string): string {
   return `${jobsPath(lang, slug)}/${id}`;
 }
+
+export function billingPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/billing`;
+}

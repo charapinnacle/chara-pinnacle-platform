@@ -105,11 +105,23 @@ isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "jobs_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
       foreignKeyName: "jobs_posted_on_behalf_of_organization_id_fkey"
       columns: ["posted_on_behalf_of_organization_id"]
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "jobs_posted_on_behalf_of_organization_id_fkey"
+      columns: ["posted_on_behalf_of_organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     },{
       foreignKeyName: "jobs_salary_currency_fkey"
       columns: ["salary_currency"]
@@ -180,6 +192,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_invitations_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     }
                   ]
                 },"organization_members": {
@@ -205,6 +223,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_members_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     },{
       foreignKeyName: "organization_members_user_id_fkey"
       columns: ["user_id"]
@@ -236,6 +260,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_ownership_transfers_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     },{
       foreignKeyName: "organization_ownership_transfers_to_user_id_fkey"
       columns: ["to_user_id"]
@@ -286,6 +316,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "passport_shares_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     }
                   ]
                 },"platform_staff": {
@@ -493,6 +529,13 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"v_org_limits": {
+                  Row: {
+                    "active_jobs_limit": number | null,"open_jobs": number | null,"organization_id": string | null,"plan_name": string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"v_plans": {
                   Row: {
                     "code": string | null,"contact_sales": boolean | null,"currency": string | null,"features": Json | null,"interval": string | null,"is_default_trial": boolean | null,"is_public": boolean | null,"limits": Json | null,"name": string | null,"org_type": Database["public"]['Enums']["organization_type"] | null,"price_minor": number | null,"sort": number | null,"trial_days": number | null
@@ -614,6 +657,9 @@ isOneToOne: false
                            },
 "record_job_form_invalid":
 { Args: { "p_fields": (string)[],"p_org": string }; Returns: undefined
+                           },
+"record_job_limit_prompt":
+{ Args: { "p_org": string }; Returns: undefined
                            },
 "recovery_link_is_fresh":
 { Args: { "p_token_hash": string }; Returns: boolean

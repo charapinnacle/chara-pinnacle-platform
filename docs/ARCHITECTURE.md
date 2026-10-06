@@ -216,7 +216,7 @@ Application state machine (SDD §4.2; enforced in `set_application_status`, `bul
 - Bulk changes and declines apply the same guard per application. Before anything is applied the UI shows a confirmation step listing the selected applicants, the target state and the reason. There is no undo: a decline is final and its email is sent (OPEN_QUESTIONS.md, P14).
 - For an organization on `free_employer` (lapsed, or any organization on that plan once limits are enforced) `set_application_status`, `bulk_set_application_status` and note inserts are refused and `viewed` is not set; past applicants stay readable (§10.4; OPEN_QUESTIONS.md, C11). `withdraw_application` is never blocked.
 
-Vacancy state machine (FR-C2; enforced by the trigger `private.jobs_guard_transition`, BEFORE UPDATE OF `status` on `public.jobs`; every change is audited). The UPDATE policy limits status changes to owners and admins, and the trigger re-checks the role, so a caller with no signed-in user is refused unless `chara.actor_fn = 'pause_jobs_on_lapse'` (then only open to paused passes). A change to the status the vacancy already has is a no-op: no trigger, no audit row. A refusal raises `CHARA_INVALID_TRANSITION` (the detail names both statuses); the audit action is `job.status_changed` with `from` and `to` in the metadata. The `active_jobs` limit check of the rows marked so is `private.jobs_enforce_limits` (FR-C6, U23), which must run after the guard (name its trigger so that it sorts after `jobs_guard_transition`).
+Vacancy state machine (FR-C2; enforced by the trigger `private.jobs_guard_transition`, BEFORE UPDATE OF `status` on `public.jobs`; every change is audited). The UPDATE policy limits status changes to owners and admins, and the trigger re-checks the role, so a caller with no signed-in user is refused unless `chara.actor_fn = 'pause_jobs_on_lapse'` (then only open to paused passes). A change to the status the vacancy already has is a no-op: no trigger, no audit row. A refusal raises `CHARA_INVALID_TRANSITION` (the detail names both statuses); the audit action is `job.status_changed` with `from` and `to` in the metadata. The `active_jobs` limit check of the rows marked so is `private.jobs_enforce_limits` (FR-C6), the trigger `jobs_limit_check`, which sorts after `jobs_guard_transition` so that a wrong role or a change the table does not list is refused first.
 
 | From | To | Allowed actor | Check |
 |---|---|---|---|
@@ -361,7 +361,7 @@ Hot index: `create index organization_members_user_org on public.organization_me
 - No cross-table joins inside policies except through `private.*` helpers.
 - `as restrictive` only for MFA (`aal2`) gates and moderation visibility. aal2 is required only for invitations, `platform_staff`, member-management RPCs and billing reads; never for reading one's own membership or organization, so a new owner still at aal1 can reach onboarding and MFA enrolment (proposed — see OPEN_QUESTIONS.md, D8).
 - Multi-table or privileged writes go through SECURITY DEFINER RPCs in `public` (owned by `postgres`, `set search_path = ''`, first lines re-check `auth.uid()`/role/aal, write `audit.record()`).
-  - Phase 1: `accept_consents`, `withdraw_consent`, `set_account_kind` (added with the profiles migration; proposed — see OPEN_QUESTIONS.md, D9), `create_organization`, `invite_member`, `accept_invitation`, `remove_member`, `transfer_ownership`, `change_member_role` (added with the organizations migration; proposed — see OPEN_QUESTIONS.md, D14), `grant_platform_role`, `revoke_platform_role` (U13; OPEN_QUESTIONS.md, D11, D39), `create_worker_passport`, `passport_limits`, `document_access_grant`, `search_jobs`, `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`, `moderate_job`, `suspend_user`, `suspend_organization`, `reinstate_user`, `reinstate_organization` (§11), `reset_mfa` (§6.1; proposed — see OPEN_QUESTIONS.md, D17), `list_organization_members`, `list_platform_staff` and `my_platform_roles` (§6.1; OPEN_QUESTIONS.md, D37), `record_job_form_invalid` (U21; D45), `publish_legal_document`, `billing_checkout_start`, `request_data_export`, `request_account_deletion`.
+  - Phase 1: `accept_consents`, `withdraw_consent`, `set_account_kind` (added with the profiles migration; proposed — see OPEN_QUESTIONS.md, D9), `create_organization`, `invite_member`, `accept_invitation`, `remove_member`, `transfer_ownership`, `change_member_role` (added with the organizations migration; proposed — see OPEN_QUESTIONS.md, D14), `grant_platform_role`, `revoke_platform_role` (U13; OPEN_QUESTIONS.md, D11, D39), `create_worker_passport`, `passport_limits`, `document_access_grant`, `search_jobs`, `apply_to_job`, `withdraw_application`, `set_application_status`, `bulk_set_application_status`, `moderate_job`, `suspend_user`, `suspend_organization`, `reinstate_user`, `reinstate_organization` (§11), `reset_mfa` (§6.1; proposed — see OPEN_QUESTIONS.md, D17), `list_organization_members`, `list_platform_staff` and `my_platform_roles` (§6.1; OPEN_QUESTIONS.md, D37), `record_job_form_invalid` (U21; D45), `record_job_limit_prompt` (U23; D48; writes the audit action `limit.prompt_shown` only for an organisation at its limit), `publish_legal_document`, `billing_checkout_start`, `request_data_export`, `request_account_deletion`.
   - Later phase: `share_document`, `withdraw_share` (sharing outside an application), `publish_requirement`, `invite_partners`, `respond_to_invitation`, `submit_candidate`, `approve_submission`, `chara_match`, `verification_start/submit/claim/request_info/decide/suspend`, `report_content`, `moderation_decide`.
 - Service RPCs called by Edge Functions have EXECUTE granted to `service_role` only; they are listed in §8.
 - RPC errors use stable codes (`CHARA_FORBIDDEN`, `CHARA_LIMIT_REACHED`, `CHARA_FEATURE_NOT_IN_PLAN`, `CHARA_DOCUMENT_NOT_SCANNED`, …) that the DAL maps to UI messages.
@@ -685,7 +685,7 @@ Plans, limits and features are rows, not code.
 - (later phase) `verification_products(sku verification_basic | professional | enterprise, price_minor 4900 | 9900 | 19900 (Enterprise is a starting price), interval 'year', eligible_levels text[])`; `verification_fees(id, organization_id, sku, paid_at, expires_at, provider_payment_ref unique)` — a paid fee only allows `verification_submit` for a paid level; it never touches `verifications.status`.
 - Every `billing` table has RLS enabled and forced and a policy `to billing_owner using (true) with check (true)`, because BYPASSRLS is not inherited through role membership (§10.3). `service_role` has no grants on the schema.
 - Workers have no rows anywhere in `billing`; checkout RPCs reject `account_kind = 'worker'`.
-- UI reads through `public.v_plans`, `public.v_my_subscription` and, later phase, `public.v_active_boosts` (security_invoker; SELECT granted on the underlying tables with RLS policies: plans/products public, subscriptions/boosts by org members; provider refs excluded from the views).
+- UI reads through `public.v_plans`, `public.v_my_subscription`, `public.v_org_limits` (U23; D48; security_invoker, select for `authenticated`, the organisations of the caller: plan name, `active_jobs` limit, open vacancies, for the upgrade prompt) and, later phase, `public.v_active_boosts` (security_invoker; SELECT granted on the underlying tables with RLS policies: plans/products public, subscriptions/boosts by org members; provider refs excluded from the views).
 
 ### 10.2 Adapter interface (`supabase/functions/_shared/billing/provider.ts`)
 
@@ -835,19 +835,21 @@ begin
   end if;
 end $$;
 
--- Canonical use: BEFORE triggers on the counted tables (works for direct inserts and RPCs alike)
+-- Canonical use: BEFORE triggers on the counted tables (works for direct inserts and RPCs alike). The organization
+-- row is locked FOR NO KEY UPDATE first, so two publishes of one organization are serialised (the count then sees
+-- the other one's commit), and a soft-deleted vacancy is not counted (FR-C6, D48).
 create or replace function private.jobs_enforce_limits() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if new.status = 'open' and (tg_op = 'INSERT' or old.status is distinct from 'open') then
-    perform private.assert_within_limit(new.organization_id, 'active_jobs',
-      (select count(*) from public.jobs j
-        where j.organization_id = new.organization_id and j.status = 'open' and j.id <> new.id));
-  end if;
+  if tg_op = 'UPDATE' and old.status = 'open' then return new; end if;
+  perform 1 from public.organizations o where o.id = new.organization_id for no key update;
+  perform private.assert_within_limit(new.organization_id, 'active_jobs',
+    (select count(*)::integer from public.jobs j
+      where j.organization_id = new.organization_id and j.status = 'open' and j.deleted_at is null and j.id <> new.id));
   return new;
 end $$;
-create trigger jobs_enforce_limits before insert or update of status on public.jobs
-  for each row execute function private.jobs_enforce_limits();
+create trigger jobs_limit_check before insert or update of status on public.jobs
+  for each row when (new.status = 'open') execute function private.jobs_enforce_limits();
 -- Feature gates inside RPCs:  if not private.has_feature(v_org, 'chara_match') then raise exception 'CHARA_FEATURE_NOT_IN_PLAN' using detail = 'chara_match'; end if;
 ```
 

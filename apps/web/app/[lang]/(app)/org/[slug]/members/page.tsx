@@ -11,6 +11,7 @@ import { TransferOwnership, TransferResponse } from "@/components/team/ownership
 import { getAllowance, getInvitations, getMembers, getPendingTransfer, type TeamMember } from "@/lib/dal/team";
 import { requireOrgRole, roleRank } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
+import { billingPath } from "@/lib/routes";
 import { roleLabels } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Team — CHARA", robots: { index: false } };
@@ -46,7 +47,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
     .filter((member) => member.role !== "owner")
     .map((member) => ({ value: member.userId, label: displayName(member) }));
   const invite = allowance ? (
-    <InviteDialog slug={slug} billingHref={`/${lang}/org/${slug}/billing`} allowance={allowance} />
+    <InviteDialog slug={slug} billingHref={billingPath(lang, slug)} allowance={allowance} />
   ) : null;
 
   return (
