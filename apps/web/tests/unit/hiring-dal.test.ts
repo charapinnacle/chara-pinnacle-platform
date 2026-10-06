@@ -97,8 +97,9 @@ describe("the stale flag", () => {
   const oldDay = (days: number) => new Date(Date.now() - days * 86_400_000 - 60_000).toISOString();
 
   it("is set on a vacancy that has been open for more than 90 days since its last status change", async () => {
-    result = { data: { ...row, status: "open", status_changed_at: oldDay(90) }, error: null };
-    await expect(getJob("org-1", row.id)).resolves.toMatchObject({ staleOpen: true, statusChangedAt: oldDay(90) });
+    const changedAt = oldDay(90);
+    result = { data: { ...row, status: "open", status_changed_at: changedAt }, error: null };
+    await expect(getJob("org-1", row.id)).resolves.toMatchObject({ staleOpen: true, statusChangedAt: changedAt });
     result = { data: { ...row, status: "open", status_changed_at: oldDay(89) }, error: null };
     await expect(getJob("org-1", row.id)).resolves.toMatchObject({ staleOpen: false });
   });
