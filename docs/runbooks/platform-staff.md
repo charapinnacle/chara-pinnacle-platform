@@ -97,15 +97,15 @@ where (l.purpose = 'owner_download') is distinct from (l.accessed_by = l.worker_
 
 Retention: `private.retention_policies` holds one period in days per entity (`document_access_log`: 730, 24 months); `private.apply_retention()` runs daily at 03:17 UTC (pg_cron job `apply-retention`) and writes one `audit.log` row `retention.run` per entity with the period and the number of rows removed. Change a period with a forward migration (`update private.retention_policies set days = ...`); the administrator page that edits it is a later unit. Check that the job runs: `select created_at, metadata from audit.log where action = 'retention.run' order by id desc limit 7;` must show one row a day.
 
-Quarterly review (SOP FR-B5, KPI "access-log coverage of downloads", target 100 %). Every signed link for the bucket `passport-documents` is made after `document_access_grant` has written its row, so coverage is by construction and the pgTAP catalogue test (036, AC11) fails if a second path appears. To measure it, compare the two sides for the quarter and expect equal counts: the number of signed links (hosting log, Storage API requests `POST /object/sign/passport-documents/...`) and
+Quarterly review (SOP FR-B5, KPI "access-log coverage of downloads", target 100 %). Every signed link for the bucket `passport-documents` that an organisation member or platform staff asks for is made after `document_access_grant` has written its row (a repeat by the same person for the same document within 10 seconds shares the first row), so coverage is by construction and the pgTAP catalogue test (036, AC11) fails if a second path appears. To measure it, compare the two sides for the quarter and expect a row for every link of a third party (repeats within 10 seconds share a row, so the rows can be fewer than the links by exactly those repeats): the signed links (hosting log, Storage API requests `POST /object/sign/passport-documents/...`) and
 
 ```sql
 select purpose, count(*) from audit.document_access_log
-where accessed_at >= date_trunc('quarter', now() - interval '1 day') and accessed_at < date_trunc('quarter', now())
+where accessed_at >= date_trunc('quarter', now()) - interval '3 months' and accessed_at < date_trunc('quarter', now())
 group by purpose;
 ```
 
-The Storage log count is operational (the database holds no record of the links); any link without a row is an incident. Candidates report suspicious access through the complaints and dispute process page (no report record exists in Phase 1); the Trust and Safety Administrator asks the operator of the database for the candidate's openings: `select accessed_at, organization_id, document_id, share_id, accessed_by from audit.document_access_log where worker_user_id = '<candidate>' order by accessed_at desc;` and, with the privacy review above, decides whether to suspend the organisation.
+The Storage log count is operational (the database holds no record of the links); a link for a third party without a row is an incident. Links the candidate signs with their own session for their own objects (the path starts with the candidate's user id and the caller is that user) can exist without a row and are not incidents (D44, departure 4). Candidates report suspicious access through the complaints and dispute process page (no report record exists in Phase 1); the Trust and Safety Administrator asks the operator of the database for the candidate's openings: `select accessed_at, organization_id, document_id, share_id, accessed_by from audit.document_access_log where worker_user_id = '<candidate>' order by accessed_at desc;` and, with the privacy review above, decides whether to suspend the organisation.
 
 ## 4. Quarterly access review
 

@@ -1,5 +1,5 @@
 begin;
-select plan(67);
+select plan(79);
 
 \ir privacy_fixture.inc
 
@@ -16,6 +16,12 @@ select pg_temp.doc(:'dc', :'wb');
 select pg_temp.share(pg_temp.o(), :'wa', array[:'d1']::uuid[]);
 select pg_temp.share(pg_temp.p(), :'wa', array[:'d2']::uuid[]);
 select pg_temp.share(pg_temp.o(), :'wb', array[:'dc']::uuid[]);
+
+select is(
+  (select value #>> '{}' from private.settings where key = 'document_access_repeat_seconds'), '10',
+  'a caller who repeats a call within 10 seconds is logged once by default'
+);
+update private.settings set value = '0' where key = 'document_access_repeat_seconds';
 
 select is(pg_temp.grant_as(:'mem', :'d1', p_aal => 'aal1'), 'ok', 'setup: a member of O opens d1');
 select is(pg_temp.grant_as(:'mem', :'d1', p_aal => 'aal1'), 'ok', 'setup: and again');
@@ -172,11 +178,42 @@ select is(current_setting('chara.retention_run'), 'off', 'AC9: the deletion exce
 select throws_ok($$delete from audit.document_access_log$$, '42501', 'audit.document_access_log is append-only', 'AC9: a direct delete is still refused');
 select is(pg_temp.logged(), 5::bigint, 'AC9: the five current rows remain');
 
--- Indexes the page and the job read.
+-- Indexes the page and the job read, and the job that runs the retention.
 select is(
   (select count(*) from pg_indexes where schemaname = 'audit' and tablename = 'document_access_log'
-     and indexname in ('document_access_log_owner_idx', 'document_access_log_share_idx', 'document_access_log_accessed_at_idx')),
-  3::bigint, 'the owner, share and time indexes exist'
+     and indexname in ('document_access_log_owner_idx', 'document_access_log_accessed_at_idx')),
+  2::bigint, 'the owner and time indexes exist'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname = 'audit' and tablename = 'document_access_log'
+     and indexname = 'document_access_log_owner_idx' and indexdef like '%WHERE (organization_id IS NOT NULL)'),
+  1::bigint, 'the owner index holds only the rows the page lists'
+);
+select is(
+  (select count(*) from cron.job where jobname = 'apply-retention' and schedule = '17 3 * * *'
+     and command = 'select private.apply_retention()' and active),
+  1::bigint, 'AC9: the retention job is scheduled daily'
+);
+
+-- A repeated call inside the window adds no row, so a loop cannot fill the append-only log; another caller, another
+-- document or a window of zero still logs.
+update private.settings set value = '10' where key = 'document_access_repeat_seconds';
+select is(pg_temp.grant_as(:'mem', :'d1', p_aal => 'aal1'), 'ok', 'a member of O who opened d1 opens it again within the window');
+select is(pg_temp.logged(), 5::bigint, 'the repeat adds no row');
+select is(pg_temp.grant_as(:'wa', :'d1', 'owner_download', 'aal1'), 'ok', 'A downloads d1 again within the window');
+select is(pg_temp.logged(), 5::bigint, 'the repeated owner download adds no row');
+select is(pg_temp.grant_as(:'own1', :'d1'), 'ok', 'another member of O opens d1');
+select is(pg_temp.logged(), 6::bigint, 'a different caller is logged');
+update private.settings set value = '0' where key = 'document_access_repeat_seconds';
+select is(pg_temp.grant_as(:'mem', :'d1', p_aal => 'aal1'), 'ok', 'with a window of zero the same member opens d1 again');
+select is(pg_temp.logged(), 7::bigint, 'and every call is logged');
+
+-- FR-B5 AC7: an organisation that no longer exists leaves the entry, with no name.
+insert into audit.document_access_log (share_id, document_id, worker_user_id, organization_id, accessed_by, purpose)
+values (null, :'d1', :'wa', gen_random_uuid(), :'mem', 'application_review');
+select is(
+  pg_temp.val_as(:'wa', 'aal1', format($$select coalesce(organization_name, 'none') from public.v_my_document_access_log where id = %s$$, (select max(id) from audit.document_access_log))),
+  'none', 'AC7: the entry of a vanished organisation is listed with no organisation name'
 );
 
 -- FR-B5 AC11: the grant is the one function that hands out a storage path, and no policy gives a third party a read.

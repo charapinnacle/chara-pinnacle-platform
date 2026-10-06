@@ -2,8 +2,11 @@
 -- function that writes it came with FR-B3. This migration makes the log tamper-proof, lets the candidate read their own
 -- entries through a view, indexes what the page and the retention job read, and adds the retention rule.
 
-create index document_access_log_owner_idx on audit.document_access_log (worker_user_id, accessed_at desc, id desc);
-create index document_access_log_share_idx on audit.document_access_log (share_id) where share_id is not null;
+-- The page lists only openings by organisations, so the index holds only those: the owner's own downloads, one per
+-- click, never lengthen a page read. The accessed_at index serves the retention delete and the repeat check of
+-- document_access_grant, which looks at the last few seconds only.
+create index document_access_log_owner_idx on audit.document_access_log (worker_user_id, accessed_at desc, id desc)
+  where organization_id is not null;
 create index document_access_log_accessed_at_idx on audit.document_access_log (accessed_at);
 
 -- Append-only like audit.log, with one exception: the retention job deletes expired rows and says so with a setting that
@@ -116,3 +119,74 @@ $$;
 revoke all on function private.apply_retention() from public, anon, authenticated, service_role;
 
 select cron.schedule('apply-retention', '17 3 * * *', 'select private.apply_retention()');
+
+-- The log is append-only and kept for 730 days, so one caller must not be able to fill it by repeating a call: a caller who
+-- already has an entry for the same document and purpose within document_access_repeat_seconds adds none, because that
+-- entry still says who opened what and when. The check reads the accessed_at index over the last seconds only. The grant
+-- is replaced here with that one change (the privacy-by-default migration is on main and stays as it is).
+insert into private.settings (key, value) values ('document_access_repeat_seconds', '10');
+
+create or replace function public.document_access_grant(p_document_id uuid, p_purpose text)
+returns table (bucket_id text, object_path text, file_name text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_document public.worker_documents;
+  v_share uuid;
+  v_org uuid;
+  v_repeat integer := (select (value #>> '{}')::integer from private.settings where key = 'document_access_repeat_seconds');
+begin
+  if v_uid is null then
+    raise exception 'CHARA_UNAUTHENTICATED' using errcode = '42501';
+  end if;
+
+  select * into v_document from public.worker_documents d where d.id = p_document_id and d.deleted_at is null;
+  if not found then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
+  if v_document.worker_user_id <> v_uid then
+    select s.id, s.organization_id into v_share, v_org
+    from public.passport_shares s
+    join public.consents c on c.id = s.consent_id and c.user_id = s.worker_user_id and c.action = 'granted'
+    where s.worker_user_id = v_document.worker_user_id
+      and s.organization_id in (select private.member_org_ids())
+      and s.revoked_at is null
+      and (s.expires_at is null or s.expires_at > now())
+      and s.scope ? v_document.id::text
+      and not exists (
+        select 1 from public.consents w
+        where w.user_id = c.user_id and w.purpose = c.purpose and w.action = 'withdrawn' and w.id > c.id
+      )
+      and exists (select 1 from public.profiles p where p.id = s.worker_user_id and p.status = 'active')
+      and exists (select 1 from public.organizations o where o.id = s.organization_id and o.status = 'active')
+    order by s.created_at desc
+    limit 1;
+    if v_org is null then
+      raise exception 'CHARA_FORBIDDEN' using errcode = '42501';
+    end if;
+  end if;
+
+  if p_purpose is distinct from (case when v_document.worker_user_id = v_uid then 'owner_download' else 'application_review' end) then
+    raise exception 'CHARA_FORBIDDEN' using errcode = '42501', detail = 'purpose_mismatch';
+  end if;
+
+  if v_document.scan_status not in ('clean', 'skipped') then
+    raise exception 'CHARA_DOCUMENT_NOT_SCANNED';
+  end if;
+
+  if not exists (
+    select 1 from audit.document_access_log l
+    where l.accessed_at > now() - make_interval(secs => coalesce(v_repeat, 0))
+      and l.accessed_by = v_uid and l.document_id = v_document.id and l.purpose = p_purpose
+  ) then
+    insert into audit.document_access_log (share_id, document_id, worker_user_id, organization_id, accessed_by, purpose)
+    values (v_share, v_document.id, v_document.worker_user_id, v_org, v_uid, p_purpose);
+  end if;
+
+  return query select v_document.bucket_id, v_document.storage_path, v_document.file_name;
+end;
+$$;
