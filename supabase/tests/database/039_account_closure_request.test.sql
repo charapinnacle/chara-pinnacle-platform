@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(56);
 
 \ir privacy_fixture.inc
 
@@ -172,6 +172,24 @@ select is(
 );
 select is(pg_temp.call_as(null, 'service_role', format('select public.erase_user(%L)', :'wd')), 'ok', 'AC6: erase_user proceeds for D');
 select is((select count(*) from public.profiles where id = :'wd'), 0::bigint, 'AC6: D is erased');
+
+-- NFR-S6: request and cancel in turn are capped per candidate and day, by a setting.
+select is(
+  (select value #>> '{}' from private.settings where key = 'account_deletion_requests_per_day_max'), '5',
+  'the number of requests per day is a setting, 5 by default'
+);
+select pg_temp.must(pg_temp.refused(:'wnew', 'select public.request_account_deletion()')),
+       pg_temp.must(pg_temp.refused(:'wnew', 'select public.cancel_account_deletion()'))
+from generate_series(1, 5);
+select is(pg_temp.audits(:'wnew', 'account.deletion_requested'), 5::bigint, 'five requests in a day are accepted and audited');
+select is(
+  pg_temp.refused(:'wnew', 'select public.request_account_deletion()'), 'P0001|CHARA_FORBIDDEN|rate_limited',
+  'the sixth request in a day is refused'
+);
+select is(
+  pg_temp.audits(:'wnew', 'account.deletion_requested') + pg_temp.queued(:'wnew', 'deletion_requested') + (pg_temp.requested(:'wnew') is not null)::integer,
+  10::bigint, 'and writes no audit row, queues no email and sets no request'
+);
 
 select * from finish();
 rollback;

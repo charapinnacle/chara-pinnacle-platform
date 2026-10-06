@@ -6,6 +6,7 @@
 
 insert into private.settings (key, value) values
   ('account_deletion_cooling_off_days', '30'),
+  ('account_deletion_requests_per_day_max', '5'),
   ('privacy_contact_email', '""');
 
 comment on column public.profiles.deleted_at is
@@ -19,8 +20,9 @@ revoke select on public.profiles from authenticated;
 grant select (id, account_kind, intended_account_kind, pending_consents, display_name, preferred_lang, status, deleted_at, created_at)
   on public.profiles to authenticated;
 
--- The daily job reads the requests whose cooling-off period is over, oldest first.
-create index profiles_deletion_requested_idx on public.profiles (deleted_at) where deleted_at is not null;
+-- The daily job reads the requests whose cooling-off period is over, oldest first: the accounts to erase (no hold) and
+-- the held ones apart, so a long list of holds never takes the place of an account that is due.
+create index profiles_deletion_requested_idx on public.profiles (legal_hold, deleted_at) where deleted_at is not null;
 
 -- erase_user finds the rows of one user in these tables; the existing indexes either exclude the rows it needs or lead
 -- with other columns.
@@ -219,16 +221,21 @@ begin
 end;
 $$;
 
-create function private.cooling_off_ends_at(p_requested_at timestamptz) returns timestamptz
+create function private.cooling_off_days() returns integer
 language sql
 stable
 set search_path = ''
 as $$
-  select p_requested_at + make_interval(days => (
-    select (s.value #>> '{}')::integer from private.settings s where s.key = 'account_deletion_cooling_off_days'
-  ))
+  select (s.value #>> '{}')::integer from private.settings s where s.key = 'account_deletion_cooling_off_days'
 $$;
 
+create function private.cooling_off_ends_at(p_requested_at timestamptz) returns timestamptz
+language sql
+stable
+set search_path = ''
+as $$ select p_requested_at + make_interval(days => private.cooling_off_days()) $$;
+
+revoke all on function private.cooling_off_days() from public, anon, authenticated, service_role;
 revoke all on function private.cooling_off_ends_at(timestamptz) from public, anon, authenticated, service_role;
 
 -- What the settings page shows: the request time, when the data will be erased, whether the request can still be
@@ -252,7 +259,7 @@ begin
   requested_at := v_requested;
   erases_on := private.cooling_off_ends_at(v_requested);
   can_cancel := v_requested is not null and now() < erases_on;
-  cooling_off_days := (select (s.value #>> '{}')::integer from private.settings s where s.key = 'account_deletion_cooling_off_days');
+  cooling_off_days := private.cooling_off_days();
   return next;
 end;
 $$;
@@ -262,6 +269,8 @@ grant execute on function public.account_deletion_status() to authenticated;
 
 -- The request takes effect at once and a repeat changes nothing, so a double click or a retried request writes one audit
 -- row and queues one email. Platform staff must give up their role first: erasing the last administrator is refused.
+-- Requesting and cancelling in turn writes audit rows and queues an email each time, so the requests of one candidate
+-- in 24 hours are capped by a setting (rate_limited beyond it).
 create function public.request_account_deletion() returns void
 language plpgsql
 security definer
@@ -271,6 +280,7 @@ declare
   v_uid uuid := (select auth.uid());
   v_kind public.account_kind;
   v_requested timestamptz;
+  v_max integer := (select (s.value #>> '{}')::integer from private.settings s where s.key = 'account_deletion_requests_per_day_max');
 begin
   select p.account_kind, p.deleted_at into v_kind, v_requested from public.profiles p where p.id = v_uid for update;
   if v_uid is null or v_kind is distinct from 'worker' then
@@ -281,6 +291,11 @@ begin
   end if;
   if exists (select 1 from public.platform_staff s where s.user_id = v_uid and s.revoked_at is null) then
     raise exception 'CHARA_FORBIDDEN' using detail = 'platform_staff';
+  end if;
+  if (select count(*) from audit.log l
+      where l.entity_id = v_uid::text and l.action = 'account.deletion_requested' and l.created_at > now() - interval '24 hours')
+     >= coalesce(v_max, 0) then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'rate_limited';
   end if;
 
   update public.profiles set deleted_at = now() where id = v_uid;
@@ -384,6 +399,7 @@ begin
   delete from public.worker_documents where worker_user_id = p_user_id;
   delete from public.worker_profiles where user_id = p_user_id;
   delete from public.profiles where id = p_user_id;
+  perform pgmq.delete('notifications', array(select n.msg_id from pgmq.q_notifications n where n.message ->> 'user_id' = v_subject));
 
   perform set_config('chara.erasure_user', '', true);
   perform set_config('chara.erasure_pseudonym', '', true);
@@ -403,47 +419,68 @@ $$;
 revoke all on function public.erase_user(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.erase_user(uuid) to service_role;
 
--- Runs daily. An account whose cooling-off period is over gets one erasure job for account-ops, unless a job is already
--- waiting; with a legal hold it stays as it is and the privacy contact hears of it once (the audit row marks that
--- it did). At most 1000 accounts per run keep one run short; the next run takes the rest.
+-- Runs daily, in three bounded passes of at most 1000 accounts each (the next run takes the rest). An account whose
+-- cooling-off period is over gets one erasure job for account-ops, unless a job is already waiting. One under a legal
+-- hold stays as it is and the privacy contact hears of it once (the audit row marks that it did); the held accounts are
+-- selected apart, so they never take a place in the batch of the accounts that are due. The last pass repairs an
+-- erasure that stopped after the database step (its jobs abandoned while Storage or Auth was down): an auth user
+-- without a profile gets a job again, and erase_user then only purges the files and deletes the user.
 create function private.queue_account_erasures() returns integer
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_due record;
+  v_id uuid;
   v_contact text := (select s.value #>> '{}' from private.settings s where s.key = 'privacy_contact_email');
   v_queued integer := 0;
 begin
-  for v_due in
-    select p.id, p.deleted_at, p.legal_hold
+  for v_id in
+    select p.id
     from public.profiles p
-    where p.deleted_at is not null and p.deleted_at <= now() - make_interval(days => (
-      select (s.value #>> '{}')::integer from private.settings s where s.key = 'account_deletion_cooling_off_days'
-    ))
+    where p.deleted_at is not null and p.legal_hold
+      and p.deleted_at <= now() - make_interval(days => private.cooling_off_days())
+      and not exists (
+        select 1 from audit.log l
+        where l.entity_id = p.id::text and l.action = 'account.erasure_paused' and l.created_at >= p.deleted_at
+      )
     order by p.deleted_at
     limit 1000
   loop
-    if v_due.legal_hold then
-      if not exists (
-        select 1 from audit.log l
-        where l.entity_id = v_due.id::text and l.action = 'account.erasure_paused' and l.created_at >= v_due.deleted_at
-      ) then
-        perform audit.record('account.erasure_paused', 'profile', v_due.id::text);
-        if coalesce(v_contact, '') <> '' then
-          perform pgmq.send('notifications', jsonb_build_object(
-            'kind', 'erasure_paused', 'email', v_contact, 'user_id', v_due.id, 'mandatory', true
-          ));
-        end if;
-      end if;
-    elsif not exists (
-      select 1 from pgmq.q_account_ops q
-      where q.message ->> 'action' = 'erase_user' and q.message ->> 'user_id' = v_due.id::text
-    ) then
-      perform pgmq.send('account_ops', jsonb_build_object('action', 'erase_user', 'user_id', v_due.id));
-      v_queued := v_queued + 1;
+    perform audit.record('account.erasure_paused', 'profile', v_id::text);
+    if coalesce(v_contact, '') <> '' then
+      perform pgmq.send('notifications', jsonb_build_object(
+        'kind', 'erasure_paused', 'email', v_contact, 'user_id', v_id, 'mandatory', true
+      ));
     end if;
+  end loop;
+
+  for v_id in
+    select p.id
+    from public.profiles p
+    where p.deleted_at is not null and not p.legal_hold
+      and p.deleted_at <= now() - make_interval(days => private.cooling_off_days())
+      and not exists (
+        select 1 from pgmq.q_account_ops q where q.message ->> 'action' = 'erase_user' and q.message ->> 'user_id' = p.id::text
+      )
+    order by p.deleted_at
+    limit 1000
+  loop
+    perform pgmq.send('account_ops', jsonb_build_object('action', 'erase_user', 'user_id', v_id));
+    v_queued := v_queued + 1;
+  end loop;
+
+  for v_id in
+    select u.id
+    from auth.users u
+    where not exists (select 1 from public.profiles p where p.id = u.id)
+      and not exists (
+        select 1 from pgmq.q_account_ops q where q.message ->> 'action' = 'erase_user' and q.message ->> 'user_id' = u.id::text
+      )
+    limit 1000
+  loop
+    perform pgmq.send('account_ops', jsonb_build_object('action', 'erase_user', 'user_id', v_id));
+    v_queued := v_queued + 1;
   end loop;
   return v_queued;
 end;
@@ -480,18 +517,56 @@ begin
 end;
 $$;
 
+-- account_ops_dequeue (platform staff roles migration) with the same change as account_ops_ack: an abandoned job of a user
+-- whose profile is gone (the erasure stopped after the database step) must not write the old user id back into the audit
+-- log. The daily job queues such an account again.
+create or replace function public.account_ops_dequeue(p_limit integer default 25) returns table (msg_id bigint, message jsonb)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_max integer := (select (value #>> '{}')::integer from private.settings where key = 'account_ops_max_attempts');
+  v_job pgmq.message_record;
+begin
+  for v_job in select * from pgmq.read('account_ops', 60, least(greatest(coalesce(p_limit, 25), 1), 100)) loop
+    if v_job.read_ct > v_max then
+      perform pgmq.delete('account_ops', v_job.msg_id);
+      perform audit.record(
+        'account_ops_abandoned', 'user',
+        (select p.id::text from public.profiles p where p.id::text = v_job.message ->> 'user_id'),
+        jsonb_build_object('action', v_job.message ->> 'action', 'msg_id', v_job.msg_id)
+      );
+    else
+      if v_job.read_ct > 1 then
+        perform pgmq.set_vt('account_ops', v_job.msg_id, 60 * v_job.read_ct);
+      end if;
+      msg_id := v_job.msg_id;
+      message := v_job.message;
+      return next;
+    end if;
+  end loop;
+end;
+$$;
+
 -- A Platform Administrator sets or clears the hold by a ticketed SQL statement (no screen in Phase 1); the trigger makes it
--- audited. The ticket and reason travel in the transaction setting chara.audit_reason, as for the platform roles.
+-- audited. The ticket and reason travel in the transaction setting chara.audit_reason, as for the platform roles; a
+-- change without one is refused.
 create function private.profiles_legal_hold_audit() returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_reason text := nullif(current_setting('chara.audit_reason', true), '');
 begin
+  if v_reason is null then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'reason';
+  end if;
   perform audit.record(
     case when new.legal_hold then 'account.legal_hold_set' else 'account.legal_hold_cleared' end,
     'profile', new.id::text,
-    jsonb_strip_nulls(jsonb_build_object('reason', nullif(current_setting('chara.audit_reason', true), '')))
+    jsonb_build_object('reason', v_reason)
   );
   return null;
 end;

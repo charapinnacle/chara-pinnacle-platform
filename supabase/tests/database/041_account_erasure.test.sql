@@ -1,5 +1,5 @@
 begin;
-select plan(65);
+select plan(72);
 
 \ir privacy_fixture.inc
 
@@ -201,6 +201,11 @@ select is(
   (select count(*) from pgmq.q_notifications where message ->> 'kind' = 'deletion_completed'), 1::bigint, 'AC11: and queues no second email'
 );
 
+select is(
+  (select count(*) from pgmq.q_notifications where message ->> 'user_id' = :'wa'), 0::bigint,
+  'AC11: the earlier messages of the user are removed from the notification queue'
+);
+
 -- A job acknowledged after the erasure does not write the old user id back into the audit log; one for a user who still
 -- has a profile is audited with the id as before.
 select set_config('t.job_b', pgmq.send('account_ops', jsonb_build_object('action', 'sign_out', 'user_id', :'wb'::uuid))::text, true);
@@ -224,6 +229,33 @@ select is(
 select is(
   (select count(*) from audit.log where entity_id = :'wa' or metadata::text like '%' || :'wa' || '%'), 0::bigint,
   'and the user id is still nowhere in the audit log'
+);
+
+-- An erasure that stops after the database step (Storage or Auth down for longer than the attempts): the abandoned job
+-- names nobody, and the next daily run queues the account again.
+select set_config('t.job_x', pgmq.send('account_ops', jsonb_build_object('action', 'erase_user', 'user_id', :'wa'::uuid))::text, true);
+update pgmq.q_account_ops set read_ct = 9, vt = now() - interval '1 second' where msg_id = current_setting('t.job_x')::bigint;
+select is(
+  (select count(*) from public.account_ops_dequeue(25) d where d.message ->> 'user_id' = :'wa'), 0::bigint,
+  'a job of the erased user past the attempt limit is not handed out'
+);
+select is(
+  (select count(*) from audit.log where action = 'account_ops_abandoned' and entity_id is null and metadata ->> 'action' = 'erase_user'), 1::bigint,
+  'it is audited as abandoned, naming nobody'
+);
+select is(
+  (select count(*) from audit.log where entity_id = :'wa' or metadata::text like '%' || :'wa' || '%'), 0::bigint,
+  'and the user id is still nowhere in the audit log'
+);
+select is(
+  (select count(*) from pgmq.q_account_ops where message ->> 'action' = 'erase_user' and message ->> 'user_id' = :'wa'), 0::bigint,
+  'no job is left for the account that still has an auth user'
+);
+select is(private.queue_account_erasures() >= 1, true, 'the daily run queues the account again');
+select private.queue_account_erasures();
+select is(
+  (select message from pgmq.q_account_ops where message ->> 'user_id' = :'wa' and message ->> 'action' = 'erase_user'),
+  jsonb_build_object('action', 'erase_user', 'user_id', :'wa'::uuid), 'with exactly one job, which erase_user turns into the purge of the files and the auth user'
 );
 
 -- Candidate B is untouched.

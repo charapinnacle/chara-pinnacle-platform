@@ -351,8 +351,8 @@ select is(
   'a message past the attempt limit is not handed out'
 );
 select is(
-  (select format('%s|%s', count(*), min(metadata ->> 'action')) from audit.log where action = 'account_ops_abandoned' and entity_id = :'nobody'),
-  '1|reset_mfa', 'it is audited as abandoned'
+  (select format('%s|%s', count(*), min(metadata ->> 'action')) from audit.log where action = 'account_ops_abandoned' and entity_id is null),
+  '1|reset_mfa', 'it is audited as abandoned, naming nobody because the user has no profile'
 );
 select is(
   (select count(*) from pgmq.q_account_ops where message ->> 'reason' = 'test-attempts'), 0::bigint,
