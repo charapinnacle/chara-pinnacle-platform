@@ -4,6 +4,8 @@
 -- the trigger below is the only judge of which change is allowed, so no caller has another path. The one change the
 -- system makes is Open -> Paused when an organisation lapses to the free plan, through private.pause_jobs_on_lapse.
 -- The active_jobs limit check on Draft -> Open, Paused -> Open and Closed -> Open is FR-C6.
+-- No backfill: before this migration no API role could write the status, so every existing row is a draft and the
+-- creation-time default of status_changed_at is right.
 
 alter table public.jobs
   add column status_changed_at timestamptz not null default now(),
@@ -19,7 +21,8 @@ grant update (status) on public.jobs to authenticated;
 
 -- The error codes are the stable messages of the other functions: CHARA_INVALID_TRANSITION for a change the table does
 -- not list (the detail names both statuses, nothing else), CHARA_FORBIDDEN for a caller who is not an owner or admin
--- of the organisation. A change to the status the vacancy already has does not fire the trigger: it is a no-op.
+-- of the organisation. A soft-deleted vacancy never changes status (CHARA_INVALID_TRANSITION, detail 'deleted'). A change
+-- to the status the vacancy already has does not fire the trigger: it is a no-op.
 create function private.jobs_guard_transition() returns trigger
 language plpgsql
 security definer
@@ -28,6 +31,10 @@ as $$
 declare
   v_system boolean := coalesce(current_setting('chara.actor_fn', true), '') = 'pause_jobs_on_lapse';
 begin
+  if old.deleted_at is not null then
+    raise exception 'CHARA_INVALID_TRANSITION' using detail = 'deleted';
+  end if;
+
   if not (
     (old.status = 'draft' and new.status = 'open')
     or (old.status = 'open' and new.status in ('paused', 'closed', 'filled'))
@@ -70,7 +77,7 @@ set search_path = ''
 as $$
 begin
   perform set_config('chara.actor_fn', 'pause_jobs_on_lapse', true);
-  update public.jobs set status = 'paused' where organization_id = p_org and status = 'open';
+  update public.jobs set status = 'paused' where organization_id = p_org and status = 'open' and deleted_at is null;
   perform set_config('chara.actor_fn', '', true);
 end;
 $$;

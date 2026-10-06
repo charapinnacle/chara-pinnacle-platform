@@ -1,5 +1,5 @@
 begin;
-select plan(68);
+select plan(76);
 
 \ir jobs_fixture.inc
 
@@ -106,12 +106,17 @@ select is(
   (select count(*) from audit.log where entity_id = :'chain' and action = 'job.status_changed'), 3::bigint,
   'and has one audit row per change'
 );
+-- The query of docs/runbooks/vacancy-lifecycle.md section 1, with its audit.log read narrowed to the vacancy of this test.
 select is(
-  (select count(*) from (
-     select a.metadata ->> 'to' as to_s, lead(a.created_at) over (partition by a.entity_id order by a.id) as next_at
-     from audit.log a where a.action = 'job.status_changed' and a.entity_id = :'chain'
-   ) x where x.to_s = 'open' and x.next_at is not null),
-  1::bigint, 'the KPI "average time Open" (an Open row and the next change) is answerable from the audit rows'
+  (with changes as (
+     select entity_id::uuid as job_id, created_at, metadata ->> 'to' as to_status,
+            lead(created_at) over (partition by entity_id order by id) as next_at
+     from audit.log
+     where action = 'job.status_changed' and entity_id = :'chain'
+   )
+   select count(*) || '/' || count(next_at) || '/' || (avg(next_at - created_at) is not null)
+   from changes where to_status = 'open'),
+  '2/1/true', 'the KPI "average time Open" finds two spells, one of them ended, and averages the ended one'
 );
 
 select pg_temp.job_in('open') as moderated \gset
@@ -155,6 +160,43 @@ select throws_ok(
 select is((select status from public.jobs where id = :'bare'), 'open'::public.job_status, 'and the vacancy stays open');
 
 -- AC3: only an owner or admin of the organisation changes status.
+-- RLS stops a non-admin before the trigger runs, so the guard's own check is reached with the table owner (which skips
+-- RLS) carrying the user's claims.
+select pg_temp.job_in('open') as guard_job \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'mem'::text, 'role', 'authenticated', 'aal', 'aal1')::text, true) as as_member \gset
+select throws_ok(
+  format($$update public.jobs set status = 'paused' where id = %L$$, :'guard_job'), '42501', 'CHARA_FORBIDDEN',
+  'the guard refuses a member of the organisation even where row level security is skipped'
+);
+select set_config('request.jwt.claims', json_build_object('sub', :'adm2'::text, 'role', 'authenticated', 'aal', 'aal1')::text, true) as as_other \gset
+select throws_ok(
+  format($$update public.jobs set status = 'paused' where id = %L$$, :'guard_job'), '42501', 'CHARA_FORBIDDEN',
+  'and an admin of another organisation'
+);
+select is(
+  (select status::text || '/' || (select count(*) from audit.log where entity_id = :'guard_job' and action = 'job.status_changed')
+   from public.jobs where id = :'guard_job'),
+  'open/0', 'the status and the audit log are unchanged'
+);
+select set_config('request.jwt.claims', json_build_object('sub', :'adm'::text, 'role', 'authenticated', 'aal', 'aal1')::text, true) as as_admin \gset
+select lives_ok(
+  format($$update public.jobs set status = 'paused' where id = %L$$, :'guard_job'), 'the same update by an admin of the organisation succeeds'
+);
+select set_config('request.jwt.claims', '', true) as claims_off \gset
+select is((select status from public.jobs where id = :'guard_job'), 'paused'::public.job_status, 'and pauses the vacancy');
+
+-- A soft-deleted vacancy is immutable: no actor changes its status and the lapse skips it.
+select pg_temp.job_in('open', null, 'visible', true, 'Deleted open') as gone \gset
+select is(
+  pg_temp.set_status(:'own1', :'gone', 'paused'), 'P0001|CHARA_INVALID_TRANSITION|deleted',
+  'the owner cannot change the status of a soft-deleted vacancy'
+);
+select is(
+  (select status::text || '/' || (select count(*) from audit.log where entity_id = :'gone' and action = 'job.status_changed')
+   from public.jobs where id = :'gone'),
+  'open/0', 'which keeps its status and writes no audit row'
+);
+
 select pg_temp.job_in('open') as acme_open \gset
 select is(
   pg_temp.affected_as(:'mem', 'authenticated', format($$update public.jobs set status = 'paused' where id = %L$$, :'acme_open')), 0::bigint,
@@ -203,6 +245,7 @@ select pg_temp.job_in('draft', current_setting('t.b')::uuid) as bd \gset
 select pg_temp.job_in('paused', current_setting('t.b')::uuid) as bp \gset
 select pg_temp.job_in('closed', current_setting('t.b')::uuid) as bc \gset
 select pg_temp.job_in('open', current_setting('t.a')::uuid) as acme_other \gset
+select pg_temp.job_in('open', current_setting('t.b')::uuid, 'visible', true, 'Deleted open of Beta') as bdel \gset
 
 select is((select value #>> '{}' from private.settings where key = 'entitlements_enforced'), 'false', 'setup: entitlements are not enforced');
 select count(*) as before_all from public.jobs \gset
@@ -227,6 +270,11 @@ select is(
   3::bigint, 'with no actor and the function named in the metadata'
 );
 select is((select count(*) from audit.log where entity_id in (:'bd', :'bp', :'bc') and action = 'job.status_changed'), 0::bigint, 'no row for the vacancies it did not change');
+select is(
+  (select status::text || '/' || (select count(*) from audit.log where entity_id = :'bdel' and action = 'job.status_changed')
+   from public.jobs where id = :'bdel'),
+  'open/0', 'a soft-deleted open vacancy is not paused and writes no audit row'
+);
 select is((select status from public.jobs where id = :'acme_other'), 'open'::public.job_status, 'a vacancy of another organisation is not touched');
 select is(current_setting('chara.actor_fn', true), '', 'the setting does not outlive the function');
 select private.pause_jobs_on_lapse(current_setting('t.b')::uuid) as lapse_again \gset

@@ -38,7 +38,15 @@ where status = 'open' and deleted_at is null and status_changed_at < now() - int
 order by status_changed_at;
 ```
 
-The count per month for the review is the same query with `count(*)`, or `count(*) filter (...)` against `count(*) filter (where status = 'open')`.
+The KPI value for the review is the number of stale vacancies against the number of Open ones:
+
+```sql
+select
+  count(*) filter (where status = 'open' and status_changed_at < now() - interval '90 days') as stale,
+  count(*) filter (where status = 'open') as open
+from public.jobs
+where deleted_at is null;
+```
 
 ## 3. Cost
 
