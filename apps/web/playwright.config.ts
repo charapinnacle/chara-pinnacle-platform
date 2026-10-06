@@ -61,6 +61,7 @@ export default defineConfig({
         "**/vacancy-limits.spec.ts",
         "**/public-search-failure.spec.ts",
         "**/vacancy-page-failure.spec.ts",
+        "**/saved-vacancies-failure.spec.ts",
       ],
     },
     {
@@ -111,6 +112,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/vacancy-page-failure.spec.ts",
       dependencies: ["search-failure"],
+    },
+    // The saved list function and the insert privilege of saved_jobs are withdrawn from the API role while this spec runs.
+    {
+      name: "saved-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/saved-vacancies-failure.spec.ts",
+      dependencies: ["vacancy-page-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
