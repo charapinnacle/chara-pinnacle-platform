@@ -144,7 +144,8 @@ test.describe("team membership: invitations", () => {
     await expect(page).toHaveURL(`/en/invitations/${token}`);
     await expect(page.getByRole("heading", { name: `Join ${secondName}` })).toBeVisible();
     await page.getByRole("button", { name: "Accept invitation" }).click();
-    await expect(page).toHaveURL(`/en/org/${second.slug}`);
+    // An admin of the new organization is asked for two-step verification at once (FR-A4).
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent(`/en/org/${second.slug}`)}`);
 
     expect(memberRows(second).map((row) => [row.user_id, row.role])).toContainEqual([first.owner.id, "admin"]);
     expect(memberRows(first).map((row) => [row.user_id, row.role])).toContainEqual([first.owner.id, "owner"]);
