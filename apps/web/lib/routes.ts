@@ -22,3 +22,11 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
 export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }
+
+export function jobsPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/jobs`;
+}
+
+export function jobPath(lang: string, slug: string, id: string): string {
+  return `${jobsPath(lang, slug)}/${id}`;
+}

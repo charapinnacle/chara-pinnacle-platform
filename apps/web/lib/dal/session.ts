@@ -1,7 +1,7 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
@@ -91,6 +91,13 @@ export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
 
 type OrganizationAccess = { id: string; slug: string; displayName: string; role: MemberRole };
 
+type OrgRoleOptions = {
+  // Vacancy pages are not gated by two-step verification (FR-A4 AC3).
+  mfa?: boolean;
+  // Vacancy pages answer a user who is no member as if the page did not exist (FR-C1).
+  hideFromOutsiders?: boolean;
+};
+
 // The role is looked up in the database on every request, never read from the token, so a removed or demoted member
 // is refused on the very next request. A user who is no member, or whose role is below minRole, gets the forbidden
 // page, and so does an unknown slug. Owners and admins must be at aal2 on every organization page (FR-A4); a plain
@@ -99,6 +106,7 @@ export async function requireOrgRole(
   lang: string,
   slug: string,
   minRole: MemberRole,
+  { mfa = true, hideFromOutsiders = false }: OrgRoleOptions = {},
 ): Promise<{ user: CurrentUser; organization: OrganizationAccess }> {
   const user = await requireUser(lang);
   const supabase = await createClient();
@@ -110,8 +118,9 @@ export async function requireOrgRole(
     .not("accepted_at", "is", null)
     .maybeSingle();
   if (error) throw new Error("The organization role could not be loaded", { cause: error });
+  if (!data && hideFromOutsiders) notFound();
   if (!data || roleRank[data.role] < roleRank[minRole]) redirect(`/${lang}/forbidden`);
-  if (data.role !== "member") await requireAal2(lang, user);
+  if (mfa && data.role !== "member") await requireAal2(lang, user);
   const { id, display_name } = data.organizations;
   return { user, organization: { id, slug, displayName: display_name, role: data.role } };
 }
