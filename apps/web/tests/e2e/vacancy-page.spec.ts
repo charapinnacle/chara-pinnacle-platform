@@ -138,6 +138,10 @@ test.describe("the public vacancy page", () => {
     await page.getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(next);
     await expect(page.getByRole("heading", { name: "Login welder", level: 1 })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+    await expect(page.getByText("Applying and saving open soon.")).toBeVisible();
+    await expectNoAxeViolations(page);
 
     for (const hostile of ["//evil.example", "https://evil.example"]) {
       await page.context().clearCookies();
@@ -225,16 +229,22 @@ test.describe("the public vacancy page", () => {
   }) => {
     const company = await newCompany();
     execute(`update public.organizations set website = ${literal(WEBSITE)} where id = ${literal(company.id)}`);
+    const [{ display_name }] = query<{ display_name: string }>(
+      `select display_name from public.organizations where id = ${literal(company.id)}`,
+    );
+    const title = `Keyboard welder - ${display_name} | CHARA`;
     const id = openJob(company, "Keyboard welder");
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(publicUrl(id));
     await expect(page.getByRole("heading", { name: "Keyboard welder", level: 1 })).toBeVisible();
+    await expect(page).toHaveTitle(title);
     await expectNoAxeViolations(page);
 
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto(publicUrl(id));
     await expect(page.getByRole("heading", { name: "Keyboard welder", level: 1 })).toBeVisible();
+    await expect(page).toHaveTitle(title);
     await expectNoAxeViolations(page);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 

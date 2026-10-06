@@ -51,6 +51,7 @@ test.describe("the public vacancy page when a vacancy is not available", () => {
       }
       await page.goto(publicUrl(id));
       await expect(page.getByRole("heading", { name: UNAVAILABLE })).toBeVisible();
+      expect(await page.title(), id).toBe("Vacancy not available | CHARA");
       pages.add(
         JSON.stringify([
           await page.title(),
