@@ -1,5 +1,3 @@
-import { isUsableScanStatus } from "@/lib/documents/presentation";
-
 type CompletenessItemKey =
   | "names"
   | "occupation"
@@ -35,16 +33,13 @@ const completenessItems: readonly CompletenessItem[] = [
 
 const MIN_SKILLS_FOR_SCORE = 3;
 
-// Below this percentage the passport and the dashboard show the nudge banner.
 const NUDGE_BELOW_PERCENT = 60;
 
 export function showsNudge(percent: number): boolean {
   return percent < NUDGE_BELOW_PERCENT;
 }
 
-export type CompletenessDocument = { type: string; scanStatus: string; deletedAt: string | null };
-
-// The passport as the data layer returns it, with the candidate's documents, or any object with these fields.
+// The passport as the data layer returns it, with whether the candidate has a usable CV, or any object with these fields.
 type CompletenessInput = {
   headline: string | null;
   occupationId: string | null;
@@ -53,7 +48,7 @@ type CompletenessInput = {
   skills: readonly unknown[];
   languages: readonly unknown[];
   authorizations: readonly { expiresOn: string | null }[];
-  documents: readonly CompletenessDocument[];
+  hasCv: boolean;
 };
 
 export type Completeness = {
@@ -62,16 +57,14 @@ export type Completeness = {
   next: CompletenessItem | null;
 };
 
-// today is a UTC date, YYYY-MM-DD: an authorisation counts until its expiry date has passed. A CV counts when it is not
-// deleted and its scan status is clean or skipped, the same test that lets a file be downloaded.
+// today is a UTC date, YYYY-MM-DD: an authorisation counts until its expiry date has passed. hasCv is true for an
+// undeleted CV whose scan status is clean or skipped (hasUsableCv).
 export function computeCompleteness(input: CompletenessInput, today: string): Completeness {
   const done: Record<CompletenessItemKey, boolean> = {
     names: true,
     occupation: input.occupationId !== null,
     skills: input.skills.length >= MIN_SKILLS_FOR_SCORE,
-    cv: input.documents.some(
-      ({ type, scanStatus, deletedAt }) => type === "cv" && deletedAt === null && isUsableScanStatus(scanStatus),
-    ),
+    cv: input.hasCv,
     languages: input.languages.length >= 1,
     experience: input.yearsExperience !== null,
     availability: input.availability !== null,

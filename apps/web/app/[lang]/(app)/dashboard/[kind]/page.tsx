@@ -6,7 +6,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { CompletenessCard } from "@/components/passport/completeness-card";
-import { getDocumentReminders, getUsableCvs } from "@/lib/dal/documents";
+import { getDocumentReminders, hasUsableCv } from "@/lib/dal/documents";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getPassport } from "@/lib/dal/passport";
@@ -25,12 +25,18 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
     redirect(homePath(lang, user.accountKind));
   }
   if (kind === "worker") {
-    const [passport, reminders, cvs] = await Promise.all([getPassport(user.id), getDocumentReminders(), getUsableCvs()]);
+    const [passport, reminders, hasCv] = await Promise.all([getPassport(user.id), getDocumentReminders(), hasUsableCv()]);
     if (!passport) redirect(`/${lang}/onboarding`);
     const today = todayUtc();
     return (
       <AuthCard title="Dashboard" description={`Welcome, ${passport.firstName}`}>
-        <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, documents: cvs }, today)} />
+        <div className="grid gap-4">
+          <h2 className="text-lg font-semibold">Your passport</h2>
+          <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, today)} />
+          <TextLink standalone href={`/${lang}/passport`}>
+            Open your passport
+          </TextLink>
+        </div>
         <DocumentReminders lang={lang} reminders={reminders} today={today} />
       </AuthCard>
     );

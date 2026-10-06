@@ -3,22 +3,16 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { showsNudge, type Completeness } from "@/lib/passport/completeness";
 
-type CompletenessCardProps = { lang: string; completeness: Completeness; onPassportPage?: boolean };
+type CompletenessCardProps = { lang: string; completeness: Completeness };
 
-export function CompletenessCard({ lang, completeness, onPassportPage = false }: CompletenessCardProps) {
+export function CompletenessCard({ lang, completeness }: CompletenessCardProps) {
   const { percent, items, next } = completeness;
-  const passportPath = `/${lang}/passport`;
-  const nextHref = next ? `${passportPath}#${next.section}` : passportPath;
   return (
     <div className="grid gap-4">
-      {onPassportPage ? null : <h2 className="text-lg font-semibold">Your passport</h2>}
       <div className="grid gap-2">
         <p className="font-medium">{percent}% complete</p>
         <progress
           aria-label="Passport completeness"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={percent}
           value={percent}
           max={100}
           className="h-2 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary"
@@ -27,7 +21,7 @@ export function CompletenessCard({ lang, completeness, onPassportPage = false }:
       <p className="text-body">
         {next ? (
           <>
-            Next: <TextLink href={nextHref}>{next.label}</TextLink>
+            Next: <TextLink href={`/${lang}/passport#${next.section}`}>{next.label}</TextLink>
           </>
         ) : (
           "Profile complete"
@@ -35,8 +29,7 @@ export function CompletenessCard({ lang, completeness, onPassportPage = false }:
       </p>
       {next && showsNudge(percent) ? (
         <Notice role="note" aria-label="Complete your passport">
-          A complete passport gives employers more to act on. Start with:{" "}
-          <TextLink href={nextHref}>{next.label}</TextLink>
+          A complete passport gives employers more to act on.
         </Notice>
       ) : null}
       <ol className="grid gap-1 text-body">
@@ -74,11 +67,6 @@ export function CompletenessCard({ lang, completeness, onPassportPage = false }:
           </ul>
         </div>
       </details>
-      {onPassportPage ? null : (
-        <TextLink standalone href={passportPath}>
-          Open your passport
-        </TextLink>
-      )}
     </div>
   );
 }

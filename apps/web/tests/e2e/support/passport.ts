@@ -95,8 +95,8 @@ export async function expectTabOrderFollowsPage(page: Page): Promise<void> {
   }
 }
 
-// Gives a candidate the first six items of the completeness meter (names and country, occupation, three skills) and,
-// with seedDocument, a CV: 55 percent.
+// Gives a candidate name and country, an occupation and three skills (40 percent); with seedDocument, a CV as well
+// (55 percent).
 export function seedOccupationAndSkills(userId: string): void {
   const id = literal(userId);
   execute(

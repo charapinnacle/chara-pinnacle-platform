@@ -12,12 +12,11 @@ const empty: CompletenessInput = {
   skills: [],
   languages: [],
   authorizations: [],
-  documents: [],
+  hasCv: false,
 };
 const score = (patch: Partial<CompletenessInput>) => computeCompleteness({ ...empty, ...patch }, TODAY);
 const many = (count: number) => Array.from({ length: count }, (_, index) => `item ${index}`);
 const expiring = (...dates: (string | null)[]) => dates.map((expiresOn) => ({ expiresOn }));
-const cv = (scanStatus: string, deletedAt: string | null = null, type = "cv") => ({ type, scanStatus, deletedAt });
 
 const full: Partial<CompletenessInput> = {
   headline: "Welder",
@@ -27,7 +26,7 @@ const full: Partial<CompletenessInput> = {
   skills: many(3),
   languages: many(1),
   authorizations: expiring(null),
-  documents: [cv("clean")],
+  hasCv: true,
 };
 
 describe("computeCompleteness", () => {
@@ -54,10 +53,10 @@ describe("computeCompleteness", () => {
   });
 
   it("scores 10, 55, 85 and 100 for the four reference profiles, always a whole number from 0 to 100", () => {
-    const withoutCv = { ...full, documents: [] };
+    const withoutCv = { ...full, hasCv: false };
     const results = [
       score({}).percent,
-      score({ occupationId: "7212", skills: many(3), documents: [cv("skipped")] }).percent,
+      score({ occupationId: "7212", skills: many(3), hasCv: true }).percent,
       score(withoutCv).percent,
       score(full).percent,
     ];
@@ -89,24 +88,15 @@ describe("computeCompleteness", () => {
     expect(percents).toEqual([10, 10, 20, 20]);
   });
 
-  it("counts a CV only when it is not deleted and its scan status is clean or skipped", () => {
-    const documents = [
-      [cv("clean", null, "certificate")],
-      [cv("clean", "2026-10-01T10:00:00Z")],
-      [cv("rejected")],
-      [cv("pending")],
-      [cv("skipped")],
-      [cv("clean")],
-      [cv("rejected"), cv("clean", null, "certificate"), cv("pending"), cv("skipped")],
-    ];
-    expect(documents.map((list) => score({ documents: list }).percent)).toEqual([10, 10, 10, 10, 25, 25, 25]);
+  it("counts the CV item when the candidate has a usable CV", () => {
+    expect([false, true].map((hasCv) => score({ hasCv }).percent)).toEqual([10, 25]);
   });
 
   it("suggests the next item in the fixed order as items are completed", () => {
     const steps: Partial<CompletenessInput>[] = [
       { occupationId: "7212" },
       { skills: many(3) },
-      { documents: [cv("clean")] },
+      { hasCv: true },
       { languages: many(1) },
       { yearsExperience: 2 },
       { availability: "now" },

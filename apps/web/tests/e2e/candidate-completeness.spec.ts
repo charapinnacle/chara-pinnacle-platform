@@ -13,7 +13,7 @@ const meter = (page: Page) => page.getByRole("progressbar", { name: "Passport co
 
 async function expectMeter(page: Page, percent: number, next: string | null): Promise<void> {
   await expect(page.getByText(`${percent}% complete`, { exact: true })).toBeVisible();
-  await expect(meter(page)).toHaveAttribute("aria-valuenow", String(percent));
+  await expect(meter(page)).toHaveAttribute("value", String(percent));
   if (next) await expect(page.getByText("Next:")).toContainText(next);
   else await expect(page.getByText("Next:")).toHaveCount(0);
 }
@@ -29,12 +29,12 @@ test.describe("candidate passport: completeness", () => {
 
     await expectMeter(page, 55, "Languages");
     await expect(banner(page)).toBeVisible();
-    await expect(banner(page).getByRole("link", { name: "Languages" })).toHaveAttribute("href", "/en/passport#languages");
+    await expect(page.getByRole("link", { name: "Languages" })).toHaveAttribute("href", "/en/passport#languages");
 
     await page.goto("/en/passport");
     await expectMeter(page, 55, "Languages");
     await expect(banner(page)).toBeVisible();
-    await banner(page).getByRole("link", { name: "Languages" }).click();
+    await page.getByRole("link", { name: "Languages" }).click();
     await expect(page).toHaveURL(/\/en\/passport#languages$/);
 
     await page.getByLabel("Headline", { exact: true }).fill("Electrician");
@@ -73,15 +73,14 @@ test.describe("candidate passport: completeness", () => {
     await page.goto("/en/passport");
 
     await expect(page.getByText("55% complete", { exact: true })).toBeVisible();
-    await expect(meter(page)).toHaveAttribute("aria-valuemin", "0");
-    await expect(meter(page)).toHaveAttribute("aria-valuemax", "100");
-    await expect(meter(page)).toHaveAttribute("aria-valuenow", "55");
+    await expect(meter(page)).toHaveAttribute("max", "100");
+    await expect(meter(page)).toHaveAttribute("value", "55");
 
     const summary = page.getByText("How is this calculated?", { exact: true });
     await summary.focus();
     await page.keyboard.press("Enter");
     const published = computeCompleteness(
-      { headline: null, occupationId: null, yearsExperience: null, availability: null, skills: [], languages: [], authorizations: [], documents: [] },
+      { headline: null, occupationId: null, yearsExperience: null, availability: null, skills: [], languages: [], authorizations: [], hasCv: false },
       "2026-10-03",
     ).items;
     expect(published).toHaveLength(9);
@@ -155,7 +154,8 @@ test.describe("candidate passport: completeness", () => {
     const employerPage = await context.newPage();
     await logIn(employerPage, employer);
     await expect(employerPage).toHaveURL(/\/en\/dashboard\/employer$/);
-    await expect(employerPage.locator("body")).not.toContainText(/complete/i);
+    await expect(employerPage.getByText(/% complete/)).toHaveCount(0);
+    await expect(employerPage.getByText("Passport completeness")).toHaveCount(0);
     await expect(employerPage.getByRole("progressbar")).toHaveCount(0);
     await employerPage.goto("/en/passport");
     await expect(employerPage).toHaveURL(/\/en\/dashboard\/employer$/);

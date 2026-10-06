@@ -11,7 +11,7 @@ import { OccupationForm } from "@/components/passport/occupation-form";
 import { PreferredCountriesSection } from "@/components/passport/preferred-countries-section";
 import { PassportSection } from "@/components/passport/section";
 import { SkillsSection } from "@/components/passport/skills-section";
-import { getUsableCvs } from "@/lib/dal/documents";
+import { hasUsableCv } from "@/lib/dal/documents";
 import { getPassport, getPassportLimits } from "@/lib/dal/passport";
 import { getCountries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { requireUser } from "@/lib/dal/session";
@@ -26,9 +26,9 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
   const user = await requireUser(lang);
   if (user.accountKind !== "worker") redirect(homePath(lang, user.accountKind));
 
-  const [passport, cvs, limits, countries, languages, occupations] = await Promise.all([
+  const [passport, hasCv, limits, countries, languages, occupations] = await Promise.all([
     getPassport(user.id),
-    getUsableCvs(),
+    hasUsableCv(),
     getPassportLimits(),
     getCountries(),
     getLanguages(),
@@ -49,11 +49,7 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
       </header>
 
       <PassportSection id="completeness" title="Completeness">
-        <CompletenessCard
-          lang={lang}
-          completeness={computeCompleteness({ ...passport, documents: cvs }, todayUtc())}
-          onPassportPage
-        />
+        <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, todayUtc())} />
       </PassportSection>
       <PassportSection id="basics" title="Your details">
         <BasicsForm
