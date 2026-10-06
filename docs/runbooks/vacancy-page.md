@@ -10,11 +10,11 @@ FR-C4, design point D50 (OPEN_QUESTIONS.md). The SOP (Vacancy Page Presentation,
 {"event":"vacancy_action","action":"apply","jobId":"6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11","viewer":"visitor"}
 ```
 
-`viewer` is `visitor` (no session, or an account that has not chosen its kind), `candidate` or `company`. `outcome` is `unavailable` for a draft, paused, closed, filled, hidden, suspended or deleted vacancy, an unknown id and an id that is not a uuid; that line has no `jobId`, because the id is text from the address. A failed read of the vacancy is not a view: it is an error of the page and shows in the error log. Nobody who looked is named and no address is written. The log platform stamps every line with its own time.
+`viewer` is `visitor` (no session, or an account that has not chosen its kind), `candidate` or `company` (a company user, and also platform staff and administrators: every account kind other than worker). `outcome` is `unavailable` for a draft, paused, closed, filled, hidden, suspended or deleted vacancy, an unknown id and an id that is not a uuid; that line has no `jobId`, because the id is text from the address. A failed read of the vacancy is not a view: it is an error of the page and shows in the error log. Nobody who looked is named and no address is written. The log platform stamps every line with its own time.
 
 ## 2. KPI: Apply click-through rate
 
-The share of views of an open vacancy that end in a press of Apply, for the viewers who can apply (a company user cannot, so it is left out). Export the lines of the period from the log platform to a file with one line per event, then:
+The share of views of an open vacancy that end in a press of Apply, for the viewers who can apply (a company user cannot, so it is left out). Nothing is stored by the application, so the rate reaches back only as far as the log platform keeps the lines: export the lines of every period before its retention runs out, to a file with one line per event, then:
 
 ```sh
 # Apply click-through rate
