@@ -96,12 +96,68 @@ describe("getJob", () => {
 });
 
 describe("getPublicJob", () => {
-  it("repeats the public conditions so that a member's session does not read a draft", async () => {
-    result = { data: row, error: null };
+  const publicRow = {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    occupation: "Welders and flame cutters",
+    industry: "Manufacturing",
+    country_code: "DE",
+    country: "Germany",
+    city: "Hamburg",
+    employment_type: "full_time",
+    salary_min: 2800,
+    salary_max: null,
+    salary_currency: "EUR",
+    salary_period: "month",
+    accommodation: true,
+    visa_support: false,
+    recruitment_preference: "both",
+    published_at: "2026-10-06T10:00:00+00:00",
+    employer_display_name: "Acme Bau",
+    employer_country: "Germany",
+    employer_industry: null,
+    employer_website: "https://acme.example",
+  };
+
+  it("asks the public function for the vacancy and reads no table, so a member's session sees no more than a visitor's", async () => {
+    result = { data: [publicRow], error: null };
     await getPublicJob(row.id);
-    expect(calls).toContainEqual(["jobs.eq", "status", "open"]);
-    expect(calls).toContainEqual(["jobs.eq", "moderation_state", "visible"]);
-    expect(calls).toContainEqual(["jobs.is", "deleted_at", null]);
+    expect(calls).toEqual([["rpc.get_public_job", { p_id: row.id }]]);
+  });
+
+  it("maps the row to the vacancy, the date of publication and the public profile of the employer", async () => {
+    result = { data: [publicRow], error: null };
+    await expect(getPublicJob(row.id)).resolves.toEqual({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      occupation: "Welders and flame cutters",
+      industry: "Manufacturing",
+      country: "Germany",
+      countryCode: "DE",
+      city: "Hamburg",
+      employmentType: "full_time",
+      salaryMin: 2800,
+      salaryMax: null,
+      salaryCurrency: "EUR",
+      salaryPeriod: "month",
+      accommodation: true,
+      visaSupport: false,
+      recruitmentPreference: "both",
+      publishedAt: "2026-10-06T10:00:00+00:00",
+      employer: { displayName: "Acme Bau", country: "Germany", industry: null, website: "https://acme.example" },
+    });
+  });
+
+  it("gives null when the function returns no row, whatever the reason", async () => {
+    result = { data: [], error: null };
+    await expect(getPublicJob(row.id)).resolves.toBeNull();
+  });
+
+  it("throws when the read fails, so the page is an error and never 'no longer available'", async () => {
+    result = { data: null, error: { code: "42501", message: "permission denied for function get_public_job" } };
+    await expect(getPublicJob(row.id)).rejects.toThrow("The vacancy could not be loaded");
   });
 });
 
@@ -179,11 +235,20 @@ describe("listJobs", () => {
 });
 
 describe("getEmployer", () => {
-  it("reads the name, the country and the website of the organization", async () => {
-    result = { data: { display_name: "Acme Bau", website: "https://acme.example", countries: { name: "Germany" } }, error: null };
+  it("reads the name, the country, the industry and the website of the organization", async () => {
+    result = {
+      data: {
+        display_name: "Acme Bau",
+        website: "https://acme.example",
+        countries: { name: "Germany" },
+        industries: { name: "Construction" },
+      },
+      error: null,
+    };
     await expect(getEmployer("org-1")).resolves.toEqual({
       displayName: "Acme Bau",
       country: "Germany",
+      industry: "Construction",
       website: "https://acme.example",
     });
   });

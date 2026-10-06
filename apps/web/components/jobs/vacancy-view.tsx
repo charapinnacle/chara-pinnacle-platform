@@ -1,23 +1,25 @@
 import { Building2 } from "lucide-react";
-import { FormButton } from "@/components/forms/form-button";
-import type { Employer, Job } from "@/lib/dal/hiring";
-import { formatSalary } from "@/lib/jobs/presentation";
+import { TextLink } from "@/components/forms/text-link";
+import type { Employer, VacancyDetails } from "@/lib/dal/hiring";
+import { formatDate } from "@/lib/i18n/format";
+import { formatSalary, publicWebsite } from "@/lib/jobs/presentation";
 import { employmentTypeLabels, recruitmentPreferenceLabels } from "@/lib/validation/job";
 
 type VacancyViewProps = {
-  job: Job;
+  job: VacancyDetails;
   employer?: Employer | null;
-  showActions?: boolean;
+  publishedAt?: string;
+  actions?: React.ReactNode;
 };
 
 function yesNo(value: boolean): string {
   return value ? "Yes" : "No";
 }
 
-// The public layout of a vacancy. The employer card and the Apply and Save actions come from the pages that own them:
-// the preview shows both, switched off, and the public page shows neither until FR-C4.
-export function VacancyView({ job, employer = null, showActions = false }: VacancyViewProps) {
-  const details = [
+// The public layout of a vacancy, shared by the public page and the employer's preview. The employer card, the date
+// of publication and the actions come from the pages that own them: a draft has no date, and the actions differ.
+export function VacancyView({ job, employer = null, publishedAt, actions }: VacancyViewProps) {
+  const details: (readonly [string, React.ReactNode])[] = [
     ["Occupation", job.occupation],
     ["Industry", job.industry],
     ["Location", `${job.city}, ${job.country}`],
@@ -26,7 +28,9 @@ export function VacancyView({ job, employer = null, showActions = false }: Vacan
     ["Accommodation", yesNo(job.accommodation)],
     ["Visa support", yesNo(job.visaSupport)],
     ["Recruitment", recruitmentPreferenceLabels[job.recruitmentPreference]],
-  ] as const;
+    ...(publishedAt ? [["Published", <time key="published" dateTime={publishedAt}>{formatDate(publishedAt)}</time>] as const] : []),
+  ];
+  const website = publicWebsite(employer?.website ?? null);
 
   return (
     <article className="grid gap-8">
@@ -43,6 +47,8 @@ export function VacancyView({ job, employer = null, showActions = false }: Vacan
         ))}
       </dl>
 
+      {actions}
+
       <section aria-labelledby="job-description-heading" className="grid gap-2">
         <h2 id="job-description-heading" className="text-lg font-semibold">
           Description
@@ -57,22 +63,21 @@ export function VacancyView({ job, employer = null, showActions = false }: Vacan
             {employer.displayName}
           </h2>
           <p className="text-body text-muted-foreground">Based in {employer.country}</p>
-          {employer.website ? <p className="text-sm break-all">{employer.website}</p> : null}
+          {employer.industry ? <p className="text-body text-muted-foreground">Industry: {employer.industry}</p> : null}
+          {website ? (
+            <TextLink
+              standalone
+              href={website.href}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              prefetch={false}
+              className="break-all"
+            >
+              {website.label}
+              <span className="sr-only"> (opens in a new tab)</span>
+            </TextLink>
+          ) : null}
         </section>
-      ) : null}
-
-      {showActions ? (
-        <div className="grid gap-2">
-          <div className="flex flex-wrap gap-3">
-            <FormButton disabled className="w-auto">
-              Apply
-            </FormButton>
-            <FormButton disabled variant="secondary" className="w-auto">
-              Save
-            </FormButton>
-          </div>
-          <p className="text-sm text-muted-foreground">Apply and Save work once the vacancy is published.</p>
-        </div>
       ) : null}
     </article>
   );
