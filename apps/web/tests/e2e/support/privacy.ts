@@ -10,9 +10,9 @@ export interface Employer {
 }
 
 // An organization with its owner and one plain member, both able to sign in.
-export async function createEmployer(): Promise<Employer> {
+export async function createEmployer(displayName = "Acme Bau"): Promise<Employer> {
   const owner = await createCommittedUser("company");
-  await registerOrganization(owner, uniqueName("Acme Bau GmbH"), "Acme Bau");
+  await registerOrganization(owner, uniqueName("Acme Bau GmbH"), displayName);
   const member = await createCommittedUser("company");
   const { id: organizationId } = organizationRows(owner.id)[0];
   execute(
@@ -71,4 +71,20 @@ export async function requestDocumentUrl(
     body: JSON.stringify({ documentId, purpose }),
   });
   return { status: response.status, body: (await response.json()) as { url?: string; error?: string } };
+}
+
+// What document_access_grant wrote for openings that happened some minutes ago, so that a page has entries to list.
+export function seedOpenings(
+  workerId: string,
+  employer: Employer,
+  shareId: string,
+  documentId: string,
+  minutesAgo: number[],
+): void {
+  execute(
+    `insert into audit.document_access_log (share_id, document_id, worker_user_id, organization_id, accessed_by, purpose, accessed_at)
+     select ${literal(shareId)}, ${literal(documentId)}, ${literal(workerId)}, ${literal(employer.organizationId)},
+            ${literal(employer.member.id)}, 'application_review', now() - make_interval(mins => m)
+     from unnest(array[${minutesAgo.join(",")}]) as m`,
+  );
 }

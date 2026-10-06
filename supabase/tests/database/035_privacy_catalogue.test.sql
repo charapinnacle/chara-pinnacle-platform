@@ -39,8 +39,9 @@ select is_empty(
     from pg_depend d
     join pg_rewrite r on r.oid = d.objid
     join pg_class c on c.oid = r.ev_class and c.relkind in ('v', 'm')
-    where d.refobjid = any (pg_temp.candidate_tables()) and c.relnamespace = 'public'::regnamespace$$,
-  'AC10: no view or materialized view in public reads a candidate table'
+    where d.refobjid = any (pg_temp.candidate_tables()) and c.relnamespace = 'public'::regnamespace
+      and c.relname <> 'v_my_document_access_log'$$,
+  'AC10: no view or materialized view in public reads a candidate table, except the candidate''s own access log (FR-B5)'
 );
 select is_empty(
   $$select c.relname::text from pg_class c

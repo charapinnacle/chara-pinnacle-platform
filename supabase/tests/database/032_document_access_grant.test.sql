@@ -3,6 +3,9 @@ select plan(38);
 
 \ir privacy_fixture.inc
 
+-- These tests count the rows of single calls; the repeat window is tested in 036.
+update private.settings set value = '0' where key = 'document_access_repeat_seconds';
+
 \set d4 '00000000-0000-0000-0000-0000000d0004'
 \set d5 '00000000-0000-0000-0000-0000000d0005'
 \set d6 '00000000-0000-0000-0000-0000000d0006'
@@ -84,7 +87,7 @@ select is(
   (select count(distinct accessed_by) from audit.document_access_log), 3::bigint, 'AC3: one row for each caller'
 );
 select is(pg_temp.grant_as(:'mem', :'d1', p_aal => 'aal1'), 'ok', 'a second opening by the same person is allowed');
-select is(pg_temp.logged(), 4::bigint, 'and is logged again, without deduplication');
+select is(pg_temp.logged(), 4::bigint, 'and is logged again when no repeat window is set');
 
 -- AC4, AC5, AC6: only the document ids of the scope, only the owning organisation.
 select is(pg_temp.grant_as(:'own1', :'d2'), '42501|CHARA_FORBIDDEN|', 'AC4: a CV of the same candidate that was not selected is refused');
