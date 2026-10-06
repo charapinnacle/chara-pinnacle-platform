@@ -111,6 +111,45 @@ test.describe("candidate documents: the list", () => {
     await expectNoAxeViolations(page);
   });
 
+  test("FR-B2 AC6: no sideways scroll and no clipped button at 320, 360, 768 and 1280 px, also while a title is renamed", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    const longTitle = "Amina_Okafor_Curriculum_Vitae_2026_final_version_v7_signed_BBBBBBBBBBBBBBBBBBBBBBBB";
+    await seedDocument(user.id, { title: longTitle });
+    await seedDocument(user.id, { title: "Welding certificate", type: "certificate", expiresOn: daysFromToday(20), createdAt: "2026-09-28T10:00:00Z" });
+    await seedDocument(user.id, { title: "Still checking", scanStatus: "pending" });
+    await openDocuments(page, user);
+
+    const wrapper = page.getByRole("table", { name: "Your documents, newest first" }).locator("..");
+    const controls = wrapper.getByRole("button").or(wrapper.getByRole("textbox"));
+    const expectNothingClipped = async (width: number, count: number) => {
+      await expect(controls).toHaveCount(count);
+      expect(await wrapper.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+      // The Experience form already makes the whole page wider than a 320 px screen: there the controls are checked
+      // against the screen edge instead.
+      if (width > 320) expect(await overflow(page)).toBeLessThanOrEqual(0);
+      const frame = await wrapper.boundingBox();
+      for (const control of await controls.all()) {
+        const box = await control.boundingBox();
+        const inside = box && frame && box.x >= frame.x && box.x + box.width <= Math.min(frame.x + frame.width, width);
+        expect(inside, await control.innerText()).toBe(true);
+      }
+    };
+
+    for (const width of [320, 360, 768, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await expect(row(page, "Welding certificate")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Download Welding certificate" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Rename Welding certificate" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Delete Still checking" })).toBeVisible();
+      await expectNothingClipped(width, 7);
+    }
+
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.getByRole("button", { name: `Rename ${longTitle}` }).click();
+    await expect(page.getByRole("textbox", { name: `New title for ${longTitle}` })).toBeFocused();
+    await expectNothingClipped(360, 8);
+  });
+
   test("FR-B2 AC7: a rename keeps the file and the path, refuses an empty and an overlong title, and Escape cancels", async ({ page }) => {
     const user = await createCommittedUser("worker");
     const seeded = await seedDocument(user.id, { title: "Amina Okafor CV 2026" });

@@ -15,6 +15,10 @@ type DocumentRowProps = { item: DocumentItem; today: string; onChanged: () => vo
 
 const typeLabels: Record<string, string> = Object.fromEntries(documentTypeOptions.map((o) => [o.value, o.label]));
 
+// Each cell prints its own column heading, and an empty cell hides with it.
+const labelled =
+  "flex items-baseline gap-3 before:w-20 before:shrink-0 before:text-sm before:font-semibold before:text-muted-foreground before:content-[attr(data-label)] empty:hidden";
+
 export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
   const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -23,8 +27,8 @@ export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
   const expiry = expiryLabel(item.expiresOn, today);
 
   return (
-    <tr className="border-t align-top">
-      <th scope="row" className="min-w-40 px-3 py-3 text-start font-medium break-words">
+    <tr role="row" className="grid grid-cols-1 gap-1.5 border-t p-3 first:border-t-0">
+      <th role="rowheader" scope="row" className="text-start font-medium break-words">
         {renaming ? (
           <RenameForm
             documentId={item.id}
@@ -38,12 +42,14 @@ export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
           item.title
         )}
       </th>
-      <td className="px-3 py-3">{typeLabels[item.type]}</td>
-      <td className="px-3 py-3 whitespace-nowrap">{formatFileSize(item.sizeBytes)}</td>
-      <td className="px-3 py-3 whitespace-nowrap">{formatDate(item.createdAt)}</td>
-      <td className="px-3 py-3">{expiry ?? (item.expiresOn ? formatDate(item.expiresOn) : "")}</td>
-      <td className="min-w-32 px-3 py-3">{status.label}</td>
-      <td className="px-3 py-3">
+      <td role="cell" data-label="Type" className={labelled}>{typeLabels[item.type]}</td>
+      <td role="cell" data-label="Size" className={labelled}>{formatFileSize(item.sizeBytes)}</td>
+      <td role="cell" data-label="Uploaded" className={labelled}>{formatDate(item.createdAt)}</td>
+      <td role="cell" data-label="Expires" className={labelled}>
+        {expiry ?? (item.expiresOn ? formatDate(item.expiresOn) : "")}
+      </td>
+      <td role="cell" data-label="Status" className={labelled}>{status.label}</td>
+      <td role="cell" className="mt-2">
         <div className="flex flex-wrap gap-2">
           {status.usable && !renaming ? (
             <>
