@@ -32,6 +32,13 @@ export function formatFileSize(bytes: number): string {
   return `${oneDecimal(bytes / MEGABYTE)} MB`;
 }
 
+// A document the candidate can download and, later, share: the scan found nothing wrong, or no vendor scans yet.
+export const USABLE_SCAN_STATUSES = ["skipped", "clean"] as const;
+
+export function isUsableScanStatus(scanStatus: string): boolean {
+  return (USABLE_SCAN_STATUSES as readonly string[]).includes(scanStatus);
+}
+
 const REJECTED_LABEL = "File rejected: not a valid PDF, JPG or PNG";
 
 // The scan starts a moment after the bytes arrive and the database announces a pending object again from the second
@@ -44,7 +51,7 @@ export function isAwaitingScan(scanStatus: string, createdAt: string, nowMs: num
 
 // A pending row is either an upload that is being checked, or one that never finished.
 export function documentStatus(scanStatus: string, checking: boolean): { label: string; usable: boolean } {
-  if (scanStatus === "skipped" || scanStatus === "clean") return { label: "Ready", usable: true };
+  if (isUsableScanStatus(scanStatus)) return { label: "Ready", usable: true };
   if (scanStatus === "rejected") return { label: REJECTED_LABEL, usable: false };
   return { label: checking ? "Checking the file" : "Upload not finished", usable: false };
 }

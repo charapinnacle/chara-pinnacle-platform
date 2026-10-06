@@ -4,6 +4,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { requireUser } from "@/lib/dal/session";
+import { isUsableScanStatus } from "@/lib/documents/presentation";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -113,7 +114,7 @@ export async function getDocumentDownload(documentId: string): Promise<DownloadR
     .maybeSingle();
   if (error) return refusal(error);
   if (!row) return { message: "This document no longer exists." };
-  if (row.scan_status !== "skipped" && row.scan_status !== "clean") {
+  if (!isUsableScanStatus(row.scan_status)) {
     return { message: "This file cannot be downloaded." };
   }
   const { data, error: signError } = await supabase.storage

@@ -72,7 +72,7 @@ export function passportAudit(userId: string) {
 // screen: from top to bottom, which at phone width is also the order of the markup.
 export async function expectTabOrderFollowsPage(page: Page): Promise<void> {
   const controls = await page.evaluate(() => {
-    const found = [...document.querySelectorAll<HTMLElement>("main a[href], main input, main select, main button")].filter(
+    const found = [...document.querySelectorAll<HTMLElement>("main a[href], main input, main select, main button, main summary")].filter(
       (element) => !element.matches(":disabled, [type=hidden]") && element.getClientRects().length > 0,
     );
     found.forEach((element, index) => element.setAttribute("data-tab-check", String(index)));
@@ -93,4 +93,26 @@ export async function expectTabOrderFollowsPage(page: Page): Promise<void> {
     const stops = (await focused.getAttribute("type")) === "date" ? 4 : 1;
     for (let stop = 0; stop < stops; stop += 1) await page.keyboard.press("Tab");
   }
+}
+
+// Gives a candidate name and country, an occupation and three skills (40 percent); with seedDocument, a CV as well
+// (55 percent).
+export function seedOccupationAndSkills(userId: string): void {
+  const id = literal(userId);
+  execute(
+    `update public.worker_profiles set occupation_id = '7411' where user_id = ${id};
+     insert into public.worker_skills (worker_user_id, skill) values (${id}, 'Welding'), (${id}, 'Wiring'), (${id}, 'Cabling')`,
+  );
+}
+
+// Everything the meter asks for except the CV.
+export function seedAllButCv(userId: string): void {
+  const id = literal(userId);
+  seedOccupationAndSkills(userId);
+  execute(
+    `update public.worker_profiles
+       set headline = 'Electrician', years_experience = 6, availability = 'now' where user_id = ${id};
+     insert into public.worker_languages (worker_user_id, language_code, cefr_level) values (${id}, 'en', 'B2');
+     insert into public.worker_work_authorizations (worker_user_id, country_code) values (${id}, 'DE')`,
+  );
 }
