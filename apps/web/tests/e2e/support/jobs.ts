@@ -129,13 +129,13 @@ export function jobAudit(organizationId: string, action: string) {
 // A vacancy as an administrator would have saved it, written by the database owner so that a test can give it any status.
 export function seedJob(
   company: Company,
-  { title = "Seeded welder", status = "draft", moderation = "visible", createdAt = "now()" } = {},
+  { title = "Seeded welder", status = "draft", moderation = "visible", createdAt = "now()", statusChangedAt = "now()" } = {},
 ): string {
   const output = execute(
     `insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city,
-        employment_type, recruitment_preference, status, moderation_state, created_by, created_at)
+        employment_type, recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at)
      values (${literal(company.id)}, ${literal(title)}, ${literal("Line one of the description.\nLine two of it, which is long enough to pass the limit.")},
-        '7212', 'C', 'DE', 'Hamburg', 'full_time', 'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt})
+        '7212', 'C', 'DE', 'Hamburg', 'full_time', 'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt})
      returning id`,
   );
   return output.trim();
@@ -143,4 +143,15 @@ export function seedJob(
 
 export async function expectDraftBanner(page: Page): Promise<void> {
   await expect(page.getByRole("status").filter({ hasText: "Draft - not public" })).toBeVisible();
+}
+
+export function statusAudit(jobId: string) {
+  return query<{ actor_id: string | null; metadata: { from: string; to: string; actor_fn?: string } }>(
+    `select actor_id, metadata - 'organization_id' as metadata from audit.log
+     where action = 'job.status_changed' and entity_id = ${literal(jobId)} order by id`,
+  );
+}
+
+export function jobStatus(jobId: string): string {
+  return execute(`select status from public.jobs where id = ${literal(jobId)}`).trim();
 }
