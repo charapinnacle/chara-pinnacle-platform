@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { PreviewActions } from "@/components/jobs/vacancy-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { getEmployer, getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -25,7 +26,7 @@ export default async function JobPreviewPage({ params }: PageProps<"/[lang]/org/
       <Notice tone="info" role="status">
         Preview - not public
       </Notice>
-      <VacancyView job={job} employer={employer} showActions />
+      <VacancyView job={job} employer={employer} actions={<PreviewActions />} />
       <TextLink standalone href={jobPath(lang, slug, job.id)}>
         Back to the vacancy
       </TextLink>

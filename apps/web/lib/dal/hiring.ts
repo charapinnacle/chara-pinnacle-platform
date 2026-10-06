@@ -1,6 +1,7 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isStaleOpen, type LimitPrompt } from "@/lib/jobs/lifecycle";
 import { logSearch } from "@/lib/jobs/search-log";
@@ -47,7 +48,14 @@ type JobSummary = {
   createdAt: string;
 };
 
-export type Employer = { displayName: string; country: string; website: string | null };
+// The fields of a vacancy that the page shows; a draft's preview and the public page both render them.
+export type VacancyDetails = Omit<Job, "status" | "moderationState" | "statusChangedAt" | "staleOpen" | "createdAt">;
+
+// The public profile of an employer, as the SOP names it: name, country, industry and website. Never the legal name.
+export type Employer = { displayName: string; country: string; industry: string | null; website: string | null };
+
+// An open vacancy as a visitor sees it, with the employer and the date it was first published.
+export type PublicJob = VacancyDetails & { countryCode: string; publishedAt: string; employer: Employer };
 
 type JobPage = { jobs: JobSummary[]; nextCursor: string | null };
 
@@ -114,18 +122,40 @@ export async function getJob(organizationId: string, id: string): Promise<Job | 
   return data && toJob(data);
 }
 
-// The conditions repeat the public read policy, because a member's session would otherwise also read a draft here.
-export async function getPublicJob(id: string): Promise<Job | null> {
+// The function applies the public predicate itself, so a member of the organization gets no more than a visitor and a
+// vacancy that is not public gives no row. Cached per request: the page and its metadata both ask for the same vacancy.
+export const getPublicJob = cache(async (id: string): Promise<PublicJob | null> => {
   const supabase = await createClient();
-  const { data, error } = await selectJob(supabase)
-    .eq("id", id)
-    .eq("status", "open")
-    .eq("moderation_state", "visible")
-    .is("deleted_at", null)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_public_job", { p_id: id });
   if (error) throw new Error("The vacancy could not be loaded", { cause: error });
-  return data && toJob(data);
-}
+  const row = data[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    occupation: row.occupation,
+    industry: row.industry,
+    country: row.country,
+    countryCode: row.country_code,
+    city: row.city,
+    employmentType: row.employment_type,
+    salaryMin: row.salary_min ?? null,
+    salaryMax: row.salary_max ?? null,
+    salaryCurrency: row.salary_currency ?? null,
+    salaryPeriod: row.salary_period ?? null,
+    accommodation: row.accommodation,
+    visaSupport: row.visa_support,
+    recruitmentPreference: row.recruitment_preference,
+    publishedAt: row.published_at,
+    employer: {
+      displayName: row.employer_display_name,
+      country: row.employer_country,
+      industry: row.employer_industry ?? null,
+      website: row.employer_website ?? null,
+    },
+  };
+});
 
 // Newest first, in keyset pages of JOBS_PAGE_SIZE; one row more is read to know whether a next page exists. PostgREST
 // has no row comparison, so the cursor is an OR filter: the planner reads the organization's index range and filters it,
@@ -168,11 +198,18 @@ export async function getEmployer(organizationId: string): Promise<Employer | nu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("display_name, website, countries(name)")
+    .select("display_name, website, countries(name), industries(name)")
     .eq("id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The employer could not be loaded", { cause: error });
-  return data && { displayName: data.display_name, country: data.countries?.name ?? "", website: data.website };
+  return (
+    data && {
+      displayName: data.display_name,
+      country: data.countries?.name ?? "",
+      industry: data.industries?.name ?? null,
+      website: data.website,
+    }
+  );
 }
 
 // The plan name, the open-vacancy limit and the number of open vacancies, for the upgrade prompt. The view shows an
