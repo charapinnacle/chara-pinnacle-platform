@@ -6,6 +6,7 @@ import type { PublicJob } from "@/lib/dal/hiring";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/actions/vacancy", () => ({ requireLogin: async () => undefined }));
+vi.mock("@/lib/actions/saved-jobs", () => ({ setSavedJob: async () => ({}) }));
 
 const jobId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const job: PublicJob = {
@@ -68,22 +69,32 @@ describe("VacancyView", () => {
   });
 });
 
+const actions = (viewer: "visitor" | "candidate" | "company", saved = false) =>
+  renderToStaticMarkup(<VacancyActions job={{ id: jobId, title: "Welder" }} lang="en" viewer={viewer} saved={saved} />);
+
 describe("VacancyActions", () => {
   it("offers a visitor Apply and Save as buttons that submit a form", () => {
-    const html = renderToStaticMarkup(<VacancyActions jobId={jobId} viewer="visitor" />);
+    const html = actions("visitor");
     expect(html.match(/<form/g)).toHaveLength(2);
     expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*>Apply<\/button>/);
-    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*>Save<\/button>/);
+    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-label="Save vacancy: Welder"[^>]*>.*Save<\/button>/);
   });
 
   it("offers a company user neither button and says why", () => {
-    const html = renderToStaticMarkup(<VacancyActions jobId={jobId} viewer="company" />);
+    const html = actions("company");
     expect(html).not.toContain("<button");
     expect(html).toContain("Only candidates can apply");
   });
 
-  it("shows a candidate both buttons switched off until their units exist", () => {
-    const html = renderToStaticMarkup(<VacancyActions jobId={jobId} viewer="candidate" />);
-    expect(html.match(/<button[^>]*\sdisabled=/g)).toHaveLength(2);
+  it("gives a candidate Apply switched off until the application step exists and a working Save that is not yet pressed", () => {
+    const html = actions("candidate");
+    expect(html.match(/<button[^>]*\sdisabled=/g)).toHaveLength(1);
+    expect(html).toMatch(/<button[^>]*\sdisabled=[^>]*>Apply<\/button>/);
+    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-pressed="false"[^>]*aria-label="Save vacancy: Welder"[^>]*>.*Save<\/button>/);
+  });
+
+  it("shows the Save of a vacancy the candidate saved as pressed and says Saved", () => {
+    const html = actions("candidate", true);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>.*Saved<\/button>/);
   });
 });
