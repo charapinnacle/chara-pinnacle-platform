@@ -93,6 +93,20 @@ where (l.purpose = 'owner_download') is distinct from (l.accessed_by = l.worker_
           where c.id = s.consent_id and w.created_at <= l.accessed_at)));
 ```
 
+### Document access log (FR-B5)
+
+Retention: `private.retention_policies` holds one period in days per entity (`document_access_log`: 730, 24 months); `private.apply_retention()` runs daily at 03:17 UTC (pg_cron job `apply-retention`) and writes one `audit.log` row `retention.run` per entity with the period and the number of rows removed. Change a period with a forward migration (`update private.retention_policies set days = ...`); the administrator page that edits it is a later unit. Check that the job runs: `select created_at, metadata from audit.log where action = 'retention.run' order by id desc limit 7;` must show one row a day.
+
+Quarterly review (SOP FR-B5, KPI "access-log coverage of downloads", target 100 %). Every signed link for the bucket `passport-documents` is made after `document_access_grant` has written its row, so coverage is by construction and the pgTAP catalogue test (036, AC11) fails if a second path appears. To measure it, compare the two sides for the quarter and expect equal counts: the number of signed links (hosting log, Storage API requests `POST /object/sign/passport-documents/...`) and
+
+```sql
+select purpose, count(*) from audit.document_access_log
+where accessed_at >= date_trunc('quarter', now() - interval '1 day') and accessed_at < date_trunc('quarter', now())
+group by purpose;
+```
+
+The Storage log count is operational (the database holds no record of the links); any link without a row is an incident. Candidates report suspicious access through the complaints and dispute process page (no report record exists in Phase 1); the Trust and Safety Administrator asks the operator of the database for the candidate's openings: `select accessed_at, organization_id, document_id, share_id, accessed_by from audit.document_access_log where worker_user_id = '<candidate>' order by accessed_at desc;` and, with the privacy review above, decides whether to suspend the organisation.
+
 ## 4. Quarterly access review
 
 Run by the Platform Administrator with the release owner. The list covers every active and revoked role, who granted it, the two-step status and the last sign-in; `dormant` flags an active role whose holder has not signed in for 90 days (or never, since the grant). Each dormant account is revoked or confirmed in the sign-off.
