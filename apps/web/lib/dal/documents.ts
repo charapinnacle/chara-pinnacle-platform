@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import { reminderCutoff } from "@/lib/documents/presentation";
+import { reminderCutoff, USABLE_SCAN_STATUSES } from "@/lib/documents/presentation";
+import type { CompletenessDocument } from "@/lib/passport/completeness";
 import { createClient } from "@/lib/supabase/server";
 import { todayUtc } from "@/lib/validation/passport";
 
@@ -20,4 +21,18 @@ export const getDocumentReminders = cache(async (): Promise<DocumentReminder[]> 
     .limit(100);
   if (error) throw new Error("The document reminders could not be loaded", { cause: error });
   return data.flatMap(({ id, title, expires_on }) => (expires_on === null ? [] : [{ id, title, expiresOn: expires_on }]));
+});
+
+// The completeness meter asks one question of the documents: is there a CV that can be used. One row answers it, so the
+// query stops at the first; the owner's row policy hides deleted rows and the owner's index serves the lookup.
+export const getUsableCvs = cache(async (): Promise<CompletenessDocument[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("worker_documents")
+    .select("type, scan_status, deleted_at")
+    .eq("type", "cv")
+    .in("scan_status", USABLE_SCAN_STATUSES)
+    .limit(1);
+  if (error) throw new Error("The documents could not be loaded", { cause: error });
+  return data.map(({ type, scan_status, deleted_at }) => ({ type, scanStatus: scan_status, deletedAt: deleted_at }));
 });

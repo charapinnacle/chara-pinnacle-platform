@@ -7,7 +7,7 @@ let outcome: { data: unknown; error: unknown } = { data: [], error: null };
 function from(table: string) {
   steps = [["from", table]];
   const chain: Record<string, unknown> = {};
-  for (const name of ["select", "not", "neq", "lte", "order", "limit", "or"]) {
+  for (const name of ["select", "not", "neq", "lte", "eq", "in", "order", "limit", "or"]) {
     chain[name] = (...args: unknown[]) => {
       steps.push([name, ...args]);
       return chain;
@@ -21,7 +21,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from }) }));
 vi.mock("@/lib/supabase/browser", () => ({ createClient: () => ({ from }) }));
 
-const { getDocumentReminders } = await import("@/lib/dal/documents");
+const { getDocumentReminders, getUsableCvs } = await import("@/lib/dal/documents");
 const { fetchDocuments } = await import("@/lib/documents/fetch-documents");
 
 afterEach(() => vi.useRealTimers());
@@ -49,6 +49,30 @@ describe("getDocumentReminders", () => {
   it("throws without leaking the cause into the message when the read fails", async () => {
     outcome = { data: null, error: { message: "secret" } };
     await expect(getDocumentReminders()).rejects.toThrow("The document reminders could not be loaded");
+  });
+});
+
+describe("getUsableCvs", () => {
+  it("asks for one CV whose scan status lets it be used and maps it for the completeness score", async () => {
+    outcome = { data: [{ type: "cv", scan_status: "clean", deleted_at: null }], error: null };
+    expect(await getUsableCvs()).toEqual([{ type: "cv", scanStatus: "clean", deletedAt: null }]);
+    expect(steps).toEqual([
+      ["from", "worker_documents"],
+      ["select", "type, scan_status, deleted_at"],
+      ["eq", "type", "cv"],
+      ["in", "scan_status", ["skipped", "clean"]],
+      ["limit", 1],
+    ]);
+  });
+
+  it("returns no document when the candidate has no usable CV", async () => {
+    outcome = { data: [], error: null };
+    expect(await getUsableCvs()).toEqual([]);
+  });
+
+  it("throws without leaking the cause into the message when the read fails", async () => {
+    outcome = { data: null, error: { message: "secret" } };
+    await expect(getUsableCvs()).rejects.toThrow("The documents could not be loaded");
   });
 });
 

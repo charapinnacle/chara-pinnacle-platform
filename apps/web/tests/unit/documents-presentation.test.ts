@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentStatus, expiryLabel, formatFileSize, isAwaitingScan, reminderCutoff } from "@/lib/documents/presentation";
+import { documentStatus, expiryLabel, formatFileSize, isAwaitingScan, isUsableScanStatus, reminderCutoff } from "@/lib/documents/presentation";
 
 describe("expiryLabel", () => {
   const today = "2026-10-03";
@@ -44,6 +44,12 @@ describe("formatFileSize", () => {
     [15_728_640, "15 MB"],
   ])("%i bytes read %s", (bytes, text) => {
     expect(formatFileSize(bytes)).toBe(text);
+  });
+});
+
+describe("isUsableScanStatus", () => {
+  it("accepts clean and skipped and nothing else", () => {
+    expect(["clean", "skipped", "pending", "rejected", ""].map(isUsableScanStatus)).toEqual([true, true, false, false, false]);
   });
 });
 

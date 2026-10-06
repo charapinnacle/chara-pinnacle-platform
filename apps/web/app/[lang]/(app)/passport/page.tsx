@@ -4,16 +4,20 @@ import { DocumentsSection } from "@/components/documents/documents-section";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthorizationsSection } from "@/components/passport/authorizations-section";
 import { BasicsForm } from "@/components/passport/basics-form";
+import { CompletenessCard } from "@/components/passport/completeness-card";
 import { ExperienceForm } from "@/components/passport/experience-form";
 import { LanguagesSection } from "@/components/passport/languages-section";
 import { OccupationForm } from "@/components/passport/occupation-form";
 import { PreferredCountriesSection } from "@/components/passport/preferred-countries-section";
 import { PassportSection } from "@/components/passport/section";
 import { SkillsSection } from "@/components/passport/skills-section";
+import { getUsableCvs } from "@/lib/dal/documents";
 import { getPassport, getPassportLimits } from "@/lib/dal/passport";
 import { getCountries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { requireUser } from "@/lib/dal/session";
+import { computeCompleteness } from "@/lib/passport/completeness";
 import { homePath } from "@/lib/routes";
+import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Your passport — CHARA", robots: { index: false } };
 
@@ -22,8 +26,9 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
   const user = await requireUser(lang);
   if (user.accountKind !== "worker") redirect(homePath(lang, user.accountKind));
 
-  const [passport, limits, countries, languages, occupations] = await Promise.all([
+  const [passport, cvs, limits, countries, languages, occupations] = await Promise.all([
     getPassport(user.id),
+    getUsableCvs(),
     getPassportLimits(),
     getCountries(),
     getLanguages(),
@@ -43,6 +48,13 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
         </TextLink>
       </header>
 
+      <PassportSection id="completeness" title="Completeness">
+        <CompletenessCard
+          lang={lang}
+          completeness={computeCompleteness({ ...passport, documents: cvs }, todayUtc())}
+          onPassportPage
+        />
+      </PassportSection>
       <PassportSection id="basics" title="Your details">
         <BasicsForm
           countries={countries}

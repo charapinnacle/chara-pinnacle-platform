@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DocumentTable } from "@/components/documents/document-table";
 import { UploadForm } from "@/components/documents/upload-form";
@@ -24,6 +25,7 @@ export function DocumentsSection() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [reloads, setReloads] = useState(0);
+  const router = useRouter();
   const shown = useRef(0);
   // Rows whose bytes this page failed to send: they are not being checked, whatever their age.
   const failed = useRef(new Set<string>());
@@ -49,11 +51,21 @@ export function DocumentsSection() {
     };
   }, [reloads]);
 
-  const reload = () => setReloads((count) => count + 1);
+  // The completeness meter above the list is rendered on the server and counts a CV once its scan has passed, so the page
+  // asks for it again after each change and when a scan has ended.
+  const reload = () => {
+    setReloads((count) => count + 1);
+    router.refresh();
+  };
 
   // The scan runs a moment after the bytes arrive: the list asks again while a document is still being checked, and a
   // pending row stops counting as checked once it is older than the scan window.
   const waiting = items.some((item) => item.checking);
+  const wasWaiting = useRef(false);
+  useEffect(() => {
+    if (wasWaiting.current && !waiting) router.refresh();
+    wasWaiting.current = waiting;
+  }, [waiting, router]);
   useEffect(() => {
     if (!waiting) return;
     const timer = setTimeout(() => setReloads((count) => count + 1), SCAN_POLL_MS);

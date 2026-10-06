@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeCompleteness } from "@/lib/passport/completeness";
+import { computeCompleteness, showsNudge } from "@/lib/passport/completeness";
 
 type CompletenessInput = Parameters<typeof computeCompleteness>[0];
 
@@ -12,10 +12,23 @@ const empty: CompletenessInput = {
   skills: [],
   languages: [],
   authorizations: [],
+  documents: [],
 };
 const score = (patch: Partial<CompletenessInput>) => computeCompleteness({ ...empty, ...patch }, TODAY);
 const many = (count: number) => Array.from({ length: count }, (_, index) => `item ${index}`);
 const expiring = (...dates: (string | null)[]) => dates.map((expiresOn) => ({ expiresOn }));
+const cv = (scanStatus: string, deletedAt: string | null = null, type = "cv") => ({ type, scanStatus, deletedAt });
+
+const full: Partial<CompletenessInput> = {
+  headline: "Welder",
+  occupationId: "7212",
+  yearsExperience: 6,
+  availability: "now",
+  skills: many(3),
+  languages: many(1),
+  authorizations: expiring(null),
+  documents: [cv("clean")],
+};
 
 describe("computeCompleteness", () => {
   it("scores a new passport at 10 percent and suggests the occupation first", () => {
@@ -24,33 +37,36 @@ describe("computeCompleteness", () => {
     expect(result.next?.label).toBe("Occupation");
   });
 
-  it("uses the published weights, which add up to 85 until the CV item exists", () => {
+  it("uses the published weights, which add up to 100", () => {
     const { items } = score({});
     expect(Object.fromEntries(items.map((item) => [item.key, item.weight]))).toEqual({
       names: 10,
+      headline: 5,
       occupation: 15,
       skills: 15,
       languages: 10,
       experience: 10,
       availability: 10,
       authorization: 10,
-      headline: 5,
+      cv: 15,
     });
-    expect(items.reduce((sum, item) => sum + item.weight, 0)).toBe(85);
+    expect(items.reduce((sum, item) => sum + item.weight, 0)).toBe(100);
   });
 
-  it("scores a complete passport at 85 and has nothing left to suggest", () => {
-    const result = score({
-      headline: "Welder",
-      occupationId: "7212",
-      yearsExperience: 6,
-      availability: "now",
-      skills: many(3),
-      languages: many(1),
-      authorizations: expiring(null),
-    });
-    expect(result.percent).toBe(85);
-    expect(result.next).toBeNull();
+  it("scores 10, 55, 85 and 100 for the four reference profiles, always a whole number from 0 to 100", () => {
+    const withoutCv = { ...full, documents: [] };
+    const results = [
+      score({}).percent,
+      score({ occupationId: "7212", skills: many(3), documents: [cv("skipped")] }).percent,
+      score(withoutCv).percent,
+      score(full).percent,
+    ];
+    expect(results).toEqual([10, 55, 85, 100]);
+    for (const percent of results) expect(Number.isInteger(percent) && percent >= 0 && percent <= 100).toBe(true);
+  });
+
+  it("has nothing left to suggest for a complete profile", () => {
+    expect(score(full).next).toBeNull();
   });
 
   it("counts skills from three tags and languages from one", () => {
@@ -73,10 +89,24 @@ describe("computeCompleteness", () => {
     expect(percents).toEqual([10, 10, 20, 20]);
   });
 
+  it("counts a CV only when it is not deleted and its scan status is clean or skipped", () => {
+    const documents = [
+      [cv("clean", null, "certificate")],
+      [cv("clean", "2026-10-01T10:00:00Z")],
+      [cv("rejected")],
+      [cv("pending")],
+      [cv("skipped")],
+      [cv("clean")],
+      [cv("rejected"), cv("clean", null, "certificate"), cv("pending"), cv("skipped")],
+    ];
+    expect(documents.map((list) => score({ documents: list }).percent)).toEqual([10, 10, 10, 10, 25, 25, 25]);
+  });
+
   it("suggests the next item in the fixed order as items are completed", () => {
     const steps: Partial<CompletenessInput>[] = [
       { occupationId: "7212" },
       { skills: many(3) },
+      { documents: [cv("clean")] },
       { languages: many(1) },
       { yearsExperience: 2 },
       { availability: "now" },
@@ -92,6 +122,7 @@ describe("computeCompleteness", () => {
     expect(suggested).toEqual([
       "Occupation",
       "Skills",
+      "CV",
       "Languages",
       "Years of experience",
       "Availability",
@@ -99,5 +130,16 @@ describe("computeCompleteness", () => {
       "Headline",
       undefined,
     ]);
+  });
+
+  it("points each suggestion at the passport section where the item is added", () => {
+    expect(score({}).next?.section).toBe("occupation");
+    expect(score({ occupationId: "7212", skills: many(3) }).next?.section).toBe("documents");
+  });
+});
+
+describe("showsNudge", () => {
+  it("is true below 60 percent and false from 60 percent", () => {
+    expect([0, 59, 60, 100].map(showsNudge)).toEqual([true, true, false, false]);
   });
 });
