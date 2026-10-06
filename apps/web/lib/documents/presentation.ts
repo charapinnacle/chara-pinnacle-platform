@@ -48,3 +48,13 @@ export function documentStatus(scanStatus: string, checking: boolean): { label: 
   if (scanStatus === "rejected") return { label: REJECTED_LABEL, usable: false };
   return { label: checking ? "Checking the file" : "Upload not finished", usable: false };
 }
+
+// null applications: the count could not be read.
+export function shareWarning(applications: number | null): string | null {
+  if (applications === null) {
+    return "We could not check whether this document is shared. If it is, deleting it ends the employers' access to all documents shared with it.";
+  }
+  if (applications === 0) return null;
+  const [noun, pronoun] = applications === 1 ? ["application", "it"] : ["applications", "them"];
+  return `This document is shared with ${applications} ${noun}. Deleting it ends the employers' access to all documents shared in ${pronoun}.`;
+}

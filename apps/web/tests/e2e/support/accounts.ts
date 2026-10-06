@@ -120,7 +120,7 @@ export function publishNewVersion(slug: string, changeSummary: string): number {
   return Number(output.trim());
 }
 
-async function userToken(user: TestUser): Promise<string> {
+export async function userToken(user: TestUser): Promise<string> {
   const response = await fetch(
     `${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`,
     {

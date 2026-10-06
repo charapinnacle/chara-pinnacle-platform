@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
+import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import { RenameForm } from "@/components/documents/rename-form";
-import { ModalDialog } from "@/components/team/modal-dialog";
 import { useTeamCall } from "@/components/team/use-team-call";
-import { deleteDocument, getDocumentDownload } from "@/lib/actions/documents";
+import { getDocumentDownload } from "@/lib/actions/documents";
 import { documentStatus, expiryLabel, formatFileSize } from "@/lib/documents/presentation";
 import type { DocumentItem } from "@/lib/documents/fetch-documents";
 import { formatDate } from "@/lib/i18n/format";
@@ -19,7 +19,6 @@ export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
   const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const download = useTeamCall("Could not download the file");
-  const remove = useTeamCall("Could not delete the document");
   const status = documentStatus(item.scanStatus, item.checking);
   const expiry = expiryLabel(item.expiresOn, today);
 
@@ -71,30 +70,13 @@ export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
             Delete<span className="sr-only"> {item.title}</span>
           </FormButton>
         </div>
-        <ModalDialog open={confirming} onClose={() => setConfirming(false)} title={`Delete ${item.title}?`}>
-          <p className="text-body leading-relaxed">The file is removed from your passport. This cannot be undone.</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormButton type="button" variant="secondary" className="w-full" onClick={() => setConfirming(false)}>
-              Cancel
-            </FormButton>
-            <FormButton
-              type="button"
-              busy={remove.pending}
-              onClick={() =>
-                remove.run(
-                  () => deleteDocument(item.id),
-                  "Document deleted",
-                  () => {
-                    setConfirming(false);
-                    onChanged();
-                  },
-                )
-              }
-            >
-              Delete document
-            </FormButton>
-          </div>
-        </ModalDialog>
+        <DeleteDocumentDialog
+          id={item.id}
+          title={item.title}
+          open={confirming}
+          onClose={() => setConfirming(false)}
+          onDeleted={onChanged}
+        />
       </td>
     </tr>
   );

@@ -214,6 +214,31 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"passport_shares": {
+                  Row: {
+                    "application_id": string,"consent_id": number,"created_at": string,"expires_at": string | null,"id": string,"organization_id": string,"revoked_at": string | null,"scope": NonNullable<Json>,"worker_user_id": string
+                  }
+                  Insert: {
+                    "application_id": string,"consent_id": number,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"organization_id": string,"revoked_at"?: string | null,"scope": NonNullable<Json>,"worker_user_id": string
+                  }
+                  Update: {
+                    "application_id"?: string,"consent_id"?: number,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"organization_id"?: string,"revoked_at"?: string | null,"scope"?: NonNullable<Json>,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "passport_shares_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "passport_shares_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"platform_staff": {
                   Row: {
                     "granted_at": string,"granted_by": string | null,"id": number,"revoked_at": string | null,"role": Database["public"]['Enums']["platform_role"],"user_id": string
@@ -465,6 +490,11 @@ isOneToOne: false
                            },
 "delete_worker_document":
 { Args: { "p_document_id": string }; Returns: undefined
+                           },
+"document_access_grant":
+{ Args: { "p_document_id": string,"p_purpose": string }; Returns: {
+              "bucket_id": string,"file_name": string,"object_path": string
+            }[]
                            },
 "document_set_scan_status":
 { Args: { "p_document_id": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
