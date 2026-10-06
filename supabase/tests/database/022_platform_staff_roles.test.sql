@@ -307,7 +307,7 @@ select ok(
   not exists (
     select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prosecdef and has_function_privilege('service_role', p.oid, 'execute')
-      and p.proname not in ('account_ops_dequeue', 'account_ops_ack', 'account_ops_end_sessions', 'document_set_scan_status')
+      and p.proname not in ('account_ops_dequeue', 'account_ops_ack', 'account_ops_end_sessions', 'document_set_scan_status', 'erase_user')
   ),
   'service_role executes no other function of public'
 );
@@ -351,8 +351,8 @@ select is(
   'a message past the attempt limit is not handed out'
 );
 select is(
-  (select format('%s|%s', count(*), min(metadata ->> 'action')) from audit.log where action = 'account_ops_abandoned' and entity_id = :'nobody'),
-  '1|reset_mfa', 'it is audited as abandoned'
+  (select format('%s|%s', count(*), min(metadata ->> 'action')) from audit.log where action = 'account_ops_abandoned' and entity_id is null),
+  '1|reset_mfa', 'it is audited as abandoned, naming nobody because the user has no profile'
 );
 select is(
   (select count(*) from pgmq.q_account_ops where message ->> 'reason' = 'test-attempts'), 0::bigint,

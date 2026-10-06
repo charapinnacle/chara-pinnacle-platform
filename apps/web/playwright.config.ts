@@ -53,7 +53,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: ["**/consent-versions.spec.ts", "**/account-ops.spec.ts"],
+      testIgnore: ["**/consent-versions.spec.ts", "**/account-ops.spec.ts", "**/account-erasure.spec.ts"],
     },
     {
       name: "versions",
@@ -61,12 +61,19 @@ export default defineConfig({
       testMatch: "**/consent-versions.spec.ts",
       dependencies: ["chromium"],
     },
-    // account-ops takes every job in the queue, so these tests must not overlap the ones that count queued jobs.
+    // account-ops takes every job in the queue, so these tests must not overlap the ones that count queued jobs, and
+    // the two specs that run it follow one another as projects: in one project their files would run side by side.
     {
       name: "account-ops",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/account-ops.spec.ts",
       dependencies: ["chromium", "versions"],
+    },
+    {
+      name: "account-erasure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/account-erasure.spec.ts",
+      dependencies: ["account-ops"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
