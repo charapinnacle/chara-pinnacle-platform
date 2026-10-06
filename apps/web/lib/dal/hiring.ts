@@ -2,7 +2,7 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { isStaleOpen } from "@/lib/jobs/lifecycle";
+import { isStaleOpen, type LimitPrompt } from "@/lib/jobs/lifecycle";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
@@ -154,4 +154,18 @@ export async function getEmployer(organizationId: string): Promise<Employer | nu
     .maybeSingle();
   if (error) throw new Error("The employer could not be loaded", { cause: error });
   return data && { displayName: data.display_name, country: data.countries?.name ?? "", website: data.website };
+}
+
+// The plan name, the open-vacancy limit and the number of open vacancies, for the upgrade prompt. The view shows an
+// organization to its members only; a limit of null (unlimited) or a plan that is not in billing.plans has no prompt.
+export async function getJobLimit(organizationId: string): Promise<LimitPrompt | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("v_org_limits")
+    .select("plan_name, active_jobs_limit, open_jobs")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error) throw new Error("The vacancy limit could not be loaded", { cause: error });
+  if (!data || data.plan_name === null || data.active_jobs_limit === null || data.open_jobs === null) return null;
+  return { planName: data.plan_name, limit: data.active_jobs_limit, used: data.open_jobs };
 }

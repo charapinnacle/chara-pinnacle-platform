@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { getJobLimit } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
+import type { LimitPrompt } from "@/lib/jobs/lifecycle";
 import { statusLabels } from "@/lib/jobs/presentation";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +16,7 @@ import { jobFormSchema, jobIdSchema, toJobInsert, type JobFormInput } from "@/li
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
-type JobActionResult = { errors?: FieldErrors; message?: string };
+type JobActionResult = { errors?: FieldErrors; message?: string; limitReached?: LimitPrompt };
 
 const CHECK_VALUE = "Check this value.";
 const NOT_ALLOWED = "You are not allowed to create vacancies for this company.";
@@ -103,6 +105,23 @@ export async function reportInvalidJobForm(slug: string, fields: string[]): Prom
 const statusChangeSchema = z.object({ id: jobIdSchema, to: z.enum(["open", "paused", "closed", "filled"]) });
 
 const CHANGED_ELSEWHERE = "This vacancy was changed by someone else, reload.";
+const LIMIT_REACHED = "Your plan's limit of open vacancies is reached. Pause or close a vacancy to make room.";
+
+// The prompt is the one place the plan limit is shown to a person, so each one is reported for the KPI of FR-C6; the
+// database records it only when the organization really is at its limit. Best effort, as recordInvalidForm.
+async function recordLimitPrompt(supabase: Client, organizationId: string): Promise<void> {
+  const { error } = await supabase.rpc("record_job_limit_prompt", { p_org: organizationId });
+  if (error) console.error("Recording the limit prompt failed", { code: error.code, message: error.message });
+}
+
+// The trigger refused the change because the plan allows no more open vacancies. The numbers come from the database
+// after the refusal, so the prompt shows what the other admin's publish left behind.
+async function limitRefusal(supabase: Client, organizationId: string): Promise<JobActionResult> {
+  const limitReached = await getJobLimit(organizationId).catch(() => null);
+  if (!limitReached) return { message: LIMIT_REACHED };
+  await recordLimitPrompt(supabase, organizationId);
+  return { limitReached };
+}
 
 // The database guard decides which change is allowed; a refusal as an invalid transition means another person moved the
 // vacancy since this page was loaded, so the message names the status it has now.
@@ -112,6 +131,7 @@ async function statusRefusal(
   organizationId: string,
   id: string,
 ): Promise<JobActionResult> {
+  if (error.message === "CHARA_LIMIT_REACHED") return limitRefusal(supabase, organizationId);
   if (error.message === "CHARA_INVALID_TRANSITION") {
     const { data } = await supabase.from("jobs").select("status").eq("id", id).eq("organization_id", organizationId).maybeSingle();
     return { message: data ? `${CHANGED_ELSEWHERE} It is now ${statusLabels[data.status]}.` : CHANGED_ELSEWHERE };

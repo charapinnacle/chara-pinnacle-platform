@@ -7,7 +7,7 @@ import { VacancyView } from "@/components/jobs/vacancy-view";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { jobPath, jobsPath } from "@/lib/routes";
+import { billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
 
@@ -28,7 +28,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
         {` · ${jobDateText(job)}`}
       </Notice>
       {organization.role === "member" ? null : (
-        <JobStatusActions slug={slug} jobId={job.id} status={job.status} />
+        <JobStatusActions slug={slug} jobId={job.id} status={job.status} billingHref={billingPath(lang, slug)} />
       )}
       <VacancyView job={job} />
       <div className="flex flex-wrap gap-x-6">

@@ -50,3 +50,9 @@ export const STALE_OPEN_TEXT = `Open for more than ${STALE_AFTER_DAYS} days`;
 export function isStaleOpen(status: JobStatus, statusChangedAt: string, now: Date): boolean {
   return status === "open" && now.getTime() - new Date(statusChangedAt).getTime() > STALE_AFTER_DAYS * DAY_MS;
 }
+
+export type LimitPrompt = { planName: string; limit: number; used: number };
+
+export function limitUsageText({ limit, used }: Pick<LimitPrompt, "limit" | "used">): string {
+  return `${used} of ${limit} open vacancies`;
+}
