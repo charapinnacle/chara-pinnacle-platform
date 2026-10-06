@@ -126,42 +126,47 @@ export function jobAudit(organizationId: string, action: string) {
   );
 }
 
-export interface Salary {
+interface Salary {
   min: number | null;
   max: number | null;
   currency: string;
   period: string;
 }
 
+interface SeedJobOptions {
+  title: string;
+  status: string;
+  moderation: string;
+  createdAt: string;
+  statusChangedAt: string;
+  country: string;
+  city: string;
+  employment: string;
+  salary: Salary | null;
+  accommodation: boolean;
+  visaSupport: boolean;
+}
+
+const SEED_DEFAULTS: SeedJobOptions = {
+  title: "Seeded welder",
+  status: "draft",
+  moderation: "visible",
+  createdAt: "now()",
+  statusChangedAt: "now()",
+  country: "DE",
+  city: "Hamburg",
+  employment: "full_time",
+  salary: null,
+  accommodation: false,
+  visaSupport: false,
+};
+
 // A vacancy as an administrator would have saved it, written by the database owner so that a test can give it any status.
-export function seedJob(
-  company: Company,
-  {
-    title = "Seeded welder",
-    status = "draft",
-    moderation = "visible",
-    createdAt = "now()",
-    statusChangedAt = "now()",
-    country = "DE",
-    city = "Hamburg",
-    employment = "full_time",
-    salary = null,
-    accommodation = false,
-    visaSupport = false,
-  }: {
-    title?: string;
-    status?: string;
-    moderation?: string;
-    createdAt?: string;
-    statusChangedAt?: string;
-    country?: string;
-    city?: string;
-    employment?: string;
-    salary?: Salary | null;
-    accommodation?: boolean;
-    visaSupport?: boolean;
-  } = {},
-): string {
+export function seedJob(company: Company, options: Partial<SeedJobOptions> = {}): string {
+  const { title, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport } = {
+    ...SEED_DEFAULTS,
+    ...options,
+  };
   const amount = (value: number | null | undefined) => (value === null || value === undefined ? "null" : String(value));
   const output = execute(
     `insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city,
