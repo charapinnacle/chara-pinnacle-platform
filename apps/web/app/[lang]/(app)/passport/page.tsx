@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { AccessLogSection } from "@/components/access-log/access-log-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthorizationsSection } from "@/components/passport/authorizations-section";
@@ -101,6 +102,13 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
         description="Upload your CV and certificates. Only you can see them: they are stored privately and you can download, rename or delete them here."
       >
         <DocumentsSection />
+      </PassportSection>
+      <PassportSection
+        id="access-log"
+        title="Access log"
+        description="Every time an organisation opens one of your documents, it is recorded here with the date and time. If you do not recognise an entry, report it."
+      >
+        <AccessLogSection />
       </PassportSection>
     </div>
   );

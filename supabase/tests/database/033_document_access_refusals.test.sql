@@ -3,6 +3,9 @@ select plan(32);
 
 \ir privacy_fixture.inc
 
+-- These tests count the rows of single calls; the repeat window is tested in 036.
+update private.settings set value = '0' where key = 'document_access_repeat_seconds';
+
 \set d4 '00000000-0000-0000-0000-0000000d0004'
 \set d5 '00000000-0000-0000-0000-0000000d0005'
 \set d9 '00000000-0000-0000-0000-0000000d0009'

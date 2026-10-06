@@ -183,34 +183,57 @@ describe("deleteDocument", () => {
 });
 
 describe("getDocumentDownload", () => {
-  const row = { storage_path: `${userId}/${documentId}/My_CV__final_.pdf`, file_name: "My_CV__final_.pdf", scan_status: "skipped" };
+  const grant = { bucket_id: "passport-documents", object_path: `${userId}/${documentId}/My_CV__final_.pdf`, file_name: "My_CV__final_.pdf" };
 
-  it("signs the path for 60 seconds as a download under the stored file name", async () => {
-    outcome = { data: row, error: null };
+  it("asks the grant for an owner download and signs the path it returns for 60 seconds as a download", async () => {
+    rpcMock.mockResolvedValue({ data: [grant], error: null });
     expect(await actions.getDocumentDownload(documentId)).toEqual({ url: "https://storage.test/object?token=x" });
-    expect(calls[0].filters).toEqual({ id: documentId });
-    expect(signMock).toHaveBeenCalledWith("passport-documents", row.storage_path, 60, { download: "My_CV__final_.pdf" });
+    expect(rpcMock).toHaveBeenCalledWith("document_access_grant", { p_document_id: documentId, p_purpose: "owner_download" });
+    expect(signMock).toHaveBeenCalledWith("passport-documents", grant.object_path, 60, { download: "My_CV__final_.pdf" });
+    expect(calls).toEqual([]);
   });
 
-  it.each(["pending", "rejected"])("offers no link for a %s file", async (scanStatus) => {
-    outcome = { data: { ...row, scan_status: scanStatus }, error: null };
+  it("signs nothing before the grant has answered", async () => {
+    const order: string[] = [];
+    rpcMock.mockImplementation(async () => {
+      order.push("grant");
+      return { data: [grant], error: null };
+    });
+    signMock.mockImplementation(async () => {
+      order.push("sign");
+      return { data: { signedUrl: "https://storage.test/object?token=x" }, error: null };
+    });
+    await actions.getDocumentDownload(documentId);
+    expect(order).toEqual(["grant", "sign"]);
+  });
+
+  it("offers no link for a file that was not checked, and signs nothing", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { code: "P0001", message: "CHARA_DOCUMENT_NOT_SCANNED" } });
     expect(await actions.getDocumentDownload(documentId)).toEqual({ message: "This file cannot be downloaded." });
     expect(signMock).not.toHaveBeenCalled();
   });
 
-  it("offers a link for a file a scanning vendor passed", async () => {
-    outcome = { data: { ...row, scan_status: "clean" }, error: null };
-    expect(await actions.getDocumentDownload(documentId)).toHaveProperty("url");
-  });
-
-  it("finds no row for a document of someone else or a deleted one", async () => {
-    outcome = { data: null, error: null };
+  it("finds no document of someone else or a deleted one", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { code: "P0002", message: "CHARA_NOT_FOUND" } });
     expect(await actions.getDocumentDownload(documentId)).toEqual({ message: "This document no longer exists." });
     expect(signMock).not.toHaveBeenCalled();
   });
 
+  it("answers generically when the grant refuses for another reason or answers nothing", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { code: "42501", message: "CHARA_FORBIDDEN" } });
+    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
+    expect(signMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call the database for an id that is not one", async () => {
+    expect(await actions.getDocumentDownload("../x")).toEqual({ message: GENERIC });
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
   it("answers generically when the link cannot be made", async () => {
-    outcome = { data: row, error: null };
+    rpcMock.mockResolvedValue({ data: [grant], error: null });
     signMock.mockResolvedValue({ data: null, error: { message: "boom" } });
     expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
   });
