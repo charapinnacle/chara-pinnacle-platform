@@ -63,7 +63,6 @@ grant execute on function private.member_org_job_limit(uuid) to authenticated;
 create view public.v_org_limits with (security_invoker = true) as
 select
   o.id as organization_id,
-  p.code as plan_code,
   p.name as plan_name,
   private.member_org_job_limit(o.id) as active_jobs_limit,
   (select count(*)::integer from public.jobs j
@@ -77,8 +76,8 @@ grant select on public.v_org_limits to authenticated;
 -- The KPI "upgrade conversions from limit prompts" needs the prompts shown, and a refusal rolls its own audit row back.
 -- The web tier reports each prompt it shows here. The function re-derives the facts: it records only when the
 -- organisation really is at its limit (nothing the caller sends is stored), only for an owner or admin, and at most
--- the ceiling per user and hour, so the append-only audit log cannot be filled through it. Beyond the ceiling, or when
--- the organisation is not at its limit, the call does nothing.
+-- the ceiling per user and hour, so the append-only audit log cannot be filled through it. Beyond the ceiling, when
+-- the organisation is not at its limit, or when its plan is unknown, the call does nothing.
 insert into private.settings (key, value) values ('limit_prompt_per_hour_max', '30');
 
 create index log_limit_prompt_actor_idx on audit.log (actor_id, created_at) where action = 'limit.prompt_shown';
@@ -107,10 +106,9 @@ begin
   begin
     perform private.assert_within_limit(p_org, 'active_jobs', v_open);
     return;
-  exception when raise_exception then
-    if sqlerrm <> 'CHARA_LIMIT_REACHED' then
-      return;
-    end if;
+  exception
+    when raise_exception then null;
+    when insufficient_privilege then return;
   end;
 
   perform audit.record(

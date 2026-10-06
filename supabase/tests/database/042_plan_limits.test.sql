@@ -1,5 +1,5 @@
 begin;
-select plan(74);
+select plan(80);
 
 \ir jobs_fixture.inc
 
@@ -157,8 +157,8 @@ select pg_temp.seed(current_setting('t.a')::uuid, 'open', 2);
 select pg_temp.seed(current_setting('t.a')::uuid, 'draft', 1);
 select pg_temp.seed(current_setting('t.a')::uuid, 'paused', 1);
 select is(
-  (select pg_temp.val_as(:'adm', 'aal1', $$select organization_id || '|' || plan_code || '|' || plan_name || '|' || active_jobs_limit || '|' || open_jobs from public.v_org_limits where organization_id = current_setting('t.a')::uuid$$)),
-  current_setting('t.a') || '|employer_starter|Basic|3|2',
+  (select pg_temp.val_as(:'adm', 'aal1', $$select organization_id || '|' || plan_name || '|' || active_jobs_limit || '|' || open_jobs from public.v_org_limits where organization_id = current_setting('t.a')::uuid$$)),
+  current_setting('t.a') || '|Basic|3|2',
   'an admin of Acme reads the plan, the limit and the open count of Acme from v_org_limits'
 );
 select is(
@@ -170,8 +170,8 @@ select is(
   '0', 'an admin of Beta sees no row of Acme'
 );
 select is(
-  (select pg_temp.val_as(:'adm2', 'aal1', $$select organization_id || '|' || plan_code || '|' || active_jobs_limit || '|' || open_jobs from public.v_org_limits$$)),
-  current_setting('t.b') || '|free_employer|0|0', 'and reads only the row of Beta, on the free plan with a limit of 0'
+  (select pg_temp.val_as(:'adm2', 'aal1', $$select organization_id || '|' || plan_name || '|' || active_jobs_limit || '|' || open_jobs from public.v_org_limits$$)),
+  current_setting('t.b') || '|Free|0|0', 'and reads only the row of Beta, on the free plan with a limit of 0'
 );
 select is(
   (select split_part(pg_temp.call_as(null, 'anon', 'select * from public.v_org_limits'), '|', 1)), '42501',
@@ -373,6 +373,27 @@ update billing.plan_limits set limit_value = null where plan_code = 'employer_st
 select is(pg_temp.set_status(:'own1', :'unlimited_job', 'open'), 'ok', 'a null limit never blocks, even at 100 open vacancies');
 update billing.plan_limits set limit_value = 3 where plan_code = 'employer_starter' and limit_key = 'active_jobs';
 
+-- The Configure step: a per-organisation override (Enterprise) replaces the plan limit in the trigger, up or down.
+select pg_temp.set_enforced('false');
+select pg_temp.org_on('employer_enterprise') as ent \gset
+select pg_temp.seed(:'ent', 'open', 50);
+select pg_temp.seed(:'ent', 'draft', 2);
+select pg_temp.set_enforced('true');
+select (array(select id from public.jobs where organization_id = :'ent' and status = 'draft' order by id)) as ent_drafts \gset
+select (:'ent_drafts'::uuid[])[1] as ent1, (:'ent_drafts'::uuid[])[2] as ent2 \gset
+select is(pg_temp.set_status(:'own1', :'ent1', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'Enterprise at its plan limit of 50 is refused');
+insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'ent', 'active_jobs', 80);
+select is(pg_temp.set_status(:'own1', :'ent1', 'open'), 'ok', 'with an override of 80 the 51st vacancy is published');
+update billing.organization_limit_overrides set limit_value = 51 where organization_id = :'ent' and limit_key = 'active_jobs';
+select is(pg_temp.set_status(:'own1', :'ent2', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'an override lowered to 51 refuses the 52nd');
+select pg_temp.set_enforced('false');
+select pg_temp.org_on('employer_starter') as basic_override \gset
+select pg_temp.seed(:'basic_override', 'open', 2);
+select (pg_temp.seed(:'basic_override', 'draft'))[1] as basic_override_job \gset
+select pg_temp.set_enforced('true');
+insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'basic_override', 'active_jobs', 2);
+select is(pg_temp.set_status(:'own1', :'basic_override_job', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'an override of 2 on Basic refuses the third vacancy that the plan alone would allow');
+
 -- Order and scope of the checks.
 select is(
   (select array_agg(t.tgname::text order by t.tgname) from pg_trigger t
@@ -446,6 +467,14 @@ select is(
 select is(
   split_part(pg_temp.call_as(null, 'service_role', format($$select public.record_job_limit_prompt(%L)$$, current_setting('t.a'))), '|', 1),
   '42501', 'nor the service role'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format($$select public.record_job_limit_prompt(%L)$$, :'unknown_org'), 'aal1'), 'ok',
+  'an organisation whose plan is unknown reports no prompt and gets no error'
+);
+select is(
+  (select count(*) from audit.log where action = 'limit.prompt_shown' and entity_id = :'unknown_org'), 0::bigint,
+  'and nothing is recorded for it'
 );
 update private.settings set value = '2' where key = 'limit_prompt_per_hour_max';
 select pg_temp.call_as(:'adm', 'authenticated', format($$select public.record_job_limit_prompt(%L)$$, current_setting('t.a')), 'aal1') as again1 \gset
