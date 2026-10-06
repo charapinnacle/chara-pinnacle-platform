@@ -47,13 +47,15 @@ export function formatSalary({ salaryMin, salaryMax, salaryCurrency, salaryPerio
   return salaryMin !== null ? `From ${money(salaryMin)}, ${period}` : `Up to ${money(salaryMax ?? 0)}, ${period}`;
 }
 
-// The employer's website as a link target: only http and https are linked, so a value of another scheme is shown as
-// nothing, whatever the table let through.
+// The employer's website as a link target: only http and https are linked, and an address with a user name or password
+// is not (the label shows the host only, so it would hide where the link really goes). Whatever the table let through,
+// the rest is shown as nothing.
 export function publicWebsite(value: string | null): { href: string; label: string } | null {
   if (!value) return null;
   try {
     const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:" ? { href: url.href, label: url.host } : null;
+    const linkable = (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+    return linkable ? { href: url.href, label: url.host } : null;
   } catch {
     return null;
   }

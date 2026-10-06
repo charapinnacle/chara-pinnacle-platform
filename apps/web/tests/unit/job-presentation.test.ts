@@ -57,4 +57,10 @@ describe("publicWebsite", () => {
       expect(publicWebsite(value), String(value)).toBeNull();
     }
   });
+
+  it("links nothing for an address with a user name or password, which the label would hide", () => {
+    for (const value of ["https://a:b@acme.example", "https://acme.example@evil.example", "https://user@acme.example"]) {
+      expect(publicWebsite(value), value).toBeNull();
+    }
+  });
 });
