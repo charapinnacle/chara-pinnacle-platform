@@ -131,7 +131,7 @@ async function statusRefusal(
   organizationId: string,
   id: string,
 ): Promise<JobActionResult> {
-  if (error.message === "CHARA_LIMIT_REACHED") return limitRefusal(supabase, organizationId);
+  if (error.message === "CHARA_LIMIT_REACHED" && error.details === "active_jobs") return limitRefusal(supabase, organizationId);
   if (error.message === "CHARA_INVALID_TRANSITION") {
     const { data } = await supabase.from("jobs").select("status").eq("id", id).eq("organization_id", organizationId).maybeSingle();
     return { message: data ? `${CHANGED_ELSEWHERE} It is now ${statusLabels[data.status]}.` : CHANGED_ELSEWHERE };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isStaleOpen, limitUsageText, statusActions } from "@/lib/jobs/lifecycle";
+import { isStaleOpen, statusActions } from "@/lib/jobs/lifecycle";
 
 const now = new Date("2026-10-06T12:00:00.000Z");
 const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -48,12 +48,5 @@ describe("statusActions", () => {
     expect(all.filter((action) => action.confirm).map((action) => action.to).sort()).toEqual(["closed", "closed", "filled", "filled"]);
     for (const action of all.filter((item) => item.to === "filled")) expect(action.confirm?.body).toMatch(/final/i);
     for (const action of all.filter((item) => item.to === "open" || item.to === "paused")) expect(action.confirm).toBeUndefined();
-  });
-});
-
-describe("limitUsageText", () => {
-  it("states the usage against the limit", () => {
-    expect(limitUsageText({ limit: 3, used: 3 })).toBe("3 of 3 open vacancies");
-    expect(limitUsageText({ limit: 0, used: 0 })).toBe("0 of 0 open vacancies");
   });
 });

@@ -78,8 +78,8 @@ const input: JobFormInput = {
   recruitmentPreference: "both",
 };
 
-function refusal(message: string, code: string) {
-  return { data: null, error: { message, code, details: null } };
+function refusal(message: string, code: string, details: string | null = null) {
+  return { data: null, error: { message, code, details } };
 }
 
 beforeEach(() => {
@@ -297,7 +297,7 @@ describe("changeJobStatus at the plan limit (FR-C6 AC11)", () => {
   const limitRow = { data: { plan_name: "Basic", active_jobs_limit: 3, open_jobs: 3 }, error: null };
 
   it("turns CHARA_LIMIT_REACHED into the upgrade prompt with the plan, the limit and the usage, and reports the prompt", async () => {
-    maybeSingleMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001")).mockResolvedValueOnce(limitRow);
+    maybeSingleMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001", "active_jobs")).mockResolvedValueOnce(limitRow);
     await expect(changeJobStatus("acme-bau", jobId, "open")).resolves.toEqual({
       limitReached: { planName: "Basic", limit: 3, used: 3 },
     });
@@ -309,7 +309,7 @@ describe("changeJobStatus at the plan limit (FR-C6 AC11)", () => {
 
   it("falls back to a plain message, with no prompt and no report, when the limit cannot be read", async () => {
     maybeSingleMock
-      .mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001"))
+      .mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001", "active_jobs"))
       .mockResolvedValueOnce({ data: null, error: { code: "08006", message: "connection lost: secret detail" } });
     const result = await changeJobStatus("acme-bau", jobId, "open");
     expect(result).toEqual({ message: "Your plan's limit of open vacancies is reached. Pause or close a vacancy to make room." });
@@ -319,7 +319,7 @@ describe("changeJobStatus at the plan limit (FR-C6 AC11)", () => {
 
   it("still shows the prompt when the report cannot be recorded", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    maybeSingleMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001")).mockResolvedValueOnce(limitRow);
+    maybeSingleMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001", "active_jobs")).mockResolvedValueOnce(limitRow);
     rpcMock.mockResolvedValue({ data: null, error: { code: "42501", message: "CHARA_FORBIDDEN" } });
     await expect(changeJobStatus("acme-bau", jobId, "open")).resolves.toEqual({
       limitReached: { planName: "Basic", limit: 3, used: 3 },
@@ -336,6 +336,16 @@ describe("changeJobStatus at the plan limit (FR-C6 AC11)", () => {
     expect(result).toEqual({ message: "You are not allowed to change the status of this vacancy." });
     expect(JSON.stringify(result)).not.toContain("unknown_plan");
     expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("shows no vacancy prompt for a limit of another key", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    maybeSingleMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "P0001", "members"));
+    await expect(changeJobStatus("acme-bau", jobId, "open")).resolves.toEqual({
+      message: "We could not complete this request. Try again.",
+    });
+    expect(rpcMock).not.toHaveBeenCalled();
+    log.mockRestore();
   });
 
   it("maps an unexpected error to the generic failure, without its text", async () => {

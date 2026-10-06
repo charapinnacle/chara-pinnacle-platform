@@ -52,7 +52,3 @@ export function isStaleOpen(status: JobStatus, statusChangedAt: string, now: Dat
 }
 
 export type LimitPrompt = { planName: string; limit: number; used: number };
-
-export function limitUsageText({ limit, used }: Pick<LimitPrompt, "limit" | "used">): string {
-  return `${used} of ${limit} open vacancies`;
-}

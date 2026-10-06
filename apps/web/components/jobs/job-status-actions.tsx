@@ -7,7 +7,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { ModalDialog } from "@/components/team/modal-dialog";
 import { useTeamCall } from "@/components/team/use-team-call";
 import { changeJobStatus } from "@/lib/actions/jobs";
-import { limitUsageText, statusActions, type LimitPrompt, type StatusAction } from "@/lib/jobs/lifecycle";
+import { statusActions, type LimitPrompt, type StatusAction } from "@/lib/jobs/lifecycle";
 import type { Database } from "@chara-pinnacle/db-types";
 
 type JobStatusActionsProps = {
@@ -62,11 +62,17 @@ export function JobStatusActions({ slug, jobId, status, billingHref }: JobStatus
       {prompt ? (
         <Notice tone="error" role="alert">
           <p className="font-medium">
-            Your {prompt.planName} plan allows {prompt.limit} open vacancies: {limitUsageText(prompt)}.
+            Your {prompt.planName} plan has {prompt.used} of {prompt.limit} open vacancies in use.
           </p>
           <p>
-            This vacancy was not opened. Pause or close another vacancy to make room, or{" "}
-            <TextLink href={billingHref}>upgrade your plan</TextLink>.
+            This vacancy was not opened.{" "}
+            {prompt.used > 0 && prompt.limit > 0 ? (
+              <>
+                Pause or close another vacancy to make room, or <TextLink href={billingHref}>upgrade your plan</TextLink>.
+              </>
+            ) : (
+              <TextLink href={billingHref}>Upgrade your plan</TextLink>
+            )}
           </p>
         </Notice>
       ) : null}

@@ -35,7 +35,7 @@ test.describe("vacancy plan limits", () => {
     await expect(page).toHaveURL(jobUrl(acme.slug, draft));
     await page.getByRole("button", { name: "Publish", exact: true }).click();
     const prompt = page.getByRole("alert").filter({ hasText: "open vacancies" });
-    await expect(prompt).toContainText("Your Basic plan allows 3 open vacancies: 3 of 3 open vacancies.");
+    await expect(prompt).toContainText("Your Basic plan has 3 of 3 open vacancies in use.");
     await expect(prompt).toContainText("Pause or close another vacancy to make room");
     await expect(prompt.getByRole("link", { name: /upgrade your plan/i })).toHaveAttribute("href", `/en/org/${acme.slug}/billing`);
     await expect(page.getByText(PUBLISHED, { exact: true })).toHaveCount(0);
@@ -68,16 +68,17 @@ test.describe("vacancy plan limits", () => {
     await other.context.close();
   });
 
-  test("FR-C6 AC10: a Free organization is told its plan allows 0 open vacancies, and reopening a paused vacancy is checked the same way", async ({
+  test("FR-C6 AC10: a Free organization is told it has 0 of 0 open vacancies in use, and reopening a paused vacancy is checked the same way", async ({
     page,
   }) => {
     const acme = await newCompany();
     const draft = seedJob(acme, { title: "Free draft" });
     await logIn(page, acme.owner, jobUrl(acme.slug, draft));
     await page.getByRole("button", { name: "Publish", exact: true }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "open vacancies" })).toContainText(
-      "Your Free plan allows 0 open vacancies: 0 of 0 open vacancies.",
-    );
+    const free = page.getByRole("alert").filter({ hasText: "open vacancies" });
+    await expect(free).toContainText("Your Free plan has 0 of 0 open vacancies in use.");
+    await expect(free).not.toContainText("Pause or close");
+    await expect(free.getByRole("link", { name: /upgrade your plan/i })).toHaveAttribute("href", `/en/org/${acme.slug}/billing`);
     expect(jobStatus(draft)).toBe("draft");
 
     subscribe(acme, "employer_starter");
@@ -85,7 +86,7 @@ test.describe("vacancy plan limits", () => {
     const paused = seedJob(acme, { title: "Paused", status: "paused" });
     await page.goto(jobUrl(acme.slug, paused));
     await page.getByRole("button", { name: "Reopen", exact: true }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "open vacancies" })).toContainText("3 of 3 open vacancies");
+    await expect(page.getByRole("alert").filter({ hasText: "open vacancies" })).toContainText("3 of 3 open vacancies in use");
     expect(jobStatus(paused)).toBe("paused");
     expect([first, second, third].map(jobStatus)).toEqual(["open", "open", "open"]);
   });
