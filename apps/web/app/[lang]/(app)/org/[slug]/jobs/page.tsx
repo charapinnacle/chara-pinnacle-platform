@@ -4,10 +4,9 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { formatDate } from "@/lib/i18n/format";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { jobStatusText } from "@/lib/jobs/presentation";
+import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { index: false } };
@@ -54,7 +53,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                   {jobStatusText(job.status, job.moderationState)}
                 </span>
                 <span>
-                  {job.city}, {job.country} · Status changed {formatDate(job.statusChangedAt)}
+                  {job.city}, {job.country} · {jobDateText(job)}
                 </span>
                 {job.staleOpen ? <span className="font-medium text-foreground">{STALE_OPEN_TEXT}</span> : null}
               </p>

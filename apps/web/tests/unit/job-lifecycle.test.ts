@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isStaleOpen, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
+import { isStaleOpen, statusActions } from "@/lib/jobs/lifecycle";
 
 const now = new Date("2026-10-06T12:00:00.000Z");
 const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -21,10 +21,6 @@ describe("isStaleOpen", () => {
   it("counts from the instant of the change, not from the day", () => {
     expect(isStaleOpen("open", new Date(now.getTime() - 90 * 86_400_000 - 1).toISOString(), now)).toBe(true);
   });
-
-  it("goes with a text that names the 90 days", () => {
-    expect(STALE_OPEN_TEXT).toBe("Open for more than 90 days");
-  });
 });
 
 describe("statusActions", () => {
@@ -38,6 +34,8 @@ describe("statusActions", () => {
     expect(offered("filled")).toEqual([]);
   });
 
+  // The single check that the offers match the transition table of supabase/tests/database/039_vacancy_lifecycle.test.sql;
+  // change both together.
   it("targets the statuses of the transition table", () => {
     const pairs = Object.entries(statusActions).flatMap(([from, actions]) => actions.map((action) => `${from}>${action.to}`));
     expect(pairs.sort()).toEqual(

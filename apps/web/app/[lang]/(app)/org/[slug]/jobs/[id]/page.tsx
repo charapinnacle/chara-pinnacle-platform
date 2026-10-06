@@ -6,10 +6,9 @@ import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { formatDate } from "@/lib/i18n/format";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { jobPath, jobsPath } from "@/lib/routes";
-import { jobStatusText } from "@/lib/jobs/presentation";
+import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancy — CHARA", robots: { index: false } };
@@ -26,7 +25,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
       <Notice tone="info" role="status">
         {jobStatusText(job.status, job.moderationState)}
         {job.staleOpen ? ` · ${STALE_OPEN_TEXT}` : ""}
-        {job.status === "draft" ? "" : ` · Status changed ${formatDate(job.statusChangedAt)}`}
+        {` · ${jobDateText(job)}`}
       </Notice>
       {organization.role === "member" ? null : (
         <JobStatusActions slug={slug} jobId={job.id} status={job.status} />

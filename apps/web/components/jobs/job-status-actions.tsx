@@ -10,14 +10,15 @@ import type { Database } from "@chara-pinnacle/db-types";
 
 type JobStatusActionsProps = { slug: string; jobId: string; status: Database["public"]["Enums"]["job_status"] };
 
-// One button per change the vacancy allows in its status; Close and Mark as filled ask first. The page is refreshed by
-// the action, so the buttons follow the new status.
+// The action revalidates the page, so the buttons follow the new status without local state.
 export function JobStatusActions({ slug, jobId, status }: JobStatusActionsProps) {
   const [confirming, setConfirming] = useState<StatusAction | null>(null);
+  const [running, setRunning] = useState<StatusAction["to"] | null>(null);
   const call = useTeamCall("The status was not changed");
   const actions = statusActions[status];
 
   function run(action: StatusAction) {
+    setRunning(action.to);
     call.run(() => changeJobStatus(slug, jobId, action.to), action.done, () => setConfirming(null));
   }
 
@@ -30,7 +31,7 @@ export function JobStatusActions({ slug, jobId, status }: JobStatusActionsProps)
           type="button"
           variant={action.to === "open" ? "primary" : "secondary"}
           className="w-auto"
-          busy={call.pending && !action.confirm}
+          busy={call.pending && running === action.to}
           disabled={call.pending}
           onClick={() => (action.confirm ? setConfirming(action) : run(action))}
         >
