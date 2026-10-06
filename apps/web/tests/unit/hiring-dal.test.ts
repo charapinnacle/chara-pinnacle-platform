@@ -281,7 +281,6 @@ describe("searchJobs", () => {
           id: row.id,
           title: "Welder MIG/MAG",
           employerName: "Acme Bau",
-          employerSlug: "acme-bau",
           countryCode: "DE",
           city: "Hamburg",
           employmentType: "full_time",
@@ -306,11 +305,17 @@ describe("searchJobs", () => {
   it("logs the search with the count of the page", async () => {
     result = { data: [found], error: null };
     await searchJobs({ q: "welder", limit: 20 });
-    expect(logSearch).toHaveBeenCalledWith({ q: "welder", limit: 20 }, expect.any(Number), 1);
+    expect(logSearch).toHaveBeenCalledWith({ q: "welder", limit: 20 }, expect.any(Number), 1, "ok");
   });
 
   it("throws on a failed call, with the cause attached and no text for the caller", async () => {
     result = { data: null, error: { message: "secret detail" } };
     await expect(searchJobs({ limit: 20 })).rejects.toThrow("The vacancies could not be searched");
+  });
+
+  it("logs a failed search too, with no results and the outcome error", async () => {
+    result = { data: null, error: { message: "canceling statement due to statement timeout" } };
+    await expect(searchJobs({ q: "welder", limit: 20 })).rejects.toThrow("The vacancies could not be searched");
+    expect(logSearch).toHaveBeenLastCalledWith({ q: "welder", limit: 20 }, expect.any(Number), 0, "error");
   });
 });

@@ -56,7 +56,6 @@ export type JobSearchResult = {
   id: string;
   title: string;
   employerName: string;
-  employerSlug: string;
   countryCode: string;
   city: string;
   employmentType: Enums["employment_type"];
@@ -213,14 +212,13 @@ export async function searchJobs(
     p_cursor: filters.cursor,
     p_limit: filters.limit,
   });
+  logSearch(filters, performance.now() - started, data?.length ?? 0, error ? "error" : "ok");
   if (error) throw new Error("The vacancies could not be searched", { cause: error });
-  logSearch(filters, performance.now() - started, data.length);
   return {
     results: data.map((row) => ({
       id: row.id,
       title: row.title,
       employerName: row.employer_display_name,
-      employerSlug: row.employer_slug,
       countryCode: row.country_code,
       city: row.city,
       employmentType: row.employment_type,
