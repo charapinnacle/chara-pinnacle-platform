@@ -202,7 +202,7 @@ Deno.test("a failing acknowledgement counts as a failure so the idempotent job r
 Deno.test("malformed and unknown jobs are never executed or acknowledged", async () => {
   const { calls, client } = harness({
     "POST /rest/v1/rpc/account_ops_dequeue": jobs(
-      { msg_id: 50, message: { action: "erase_user", user_id: USER } },
+      { msg_id: 50, message: { action: "purge", user_id: USER } },
       { msg_id: 51, message: { action: "sign_out", user_id: "not-a-uuid" } },
       { msg_id: 52, message: { action: "sign_out" } },
       { msg_id: 53, message: { action: "sign_out", user_id: `${USER}/../x` } },
@@ -348,4 +348,127 @@ Deno.test("a delete_object job outside the folder of its user, or with a bad buc
   const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
   assert.deepEqual(await response.json(), { processed: 0, failed: 5 });
   assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
+});
+
+const FOLDER_A = "00000000-0000-0000-0000-00000000d001";
+const FOLDER_B = "00000000-0000-0000-0000-00000000d002";
+const erasure = (msgId: number) => ({ msg_id: msgId, message: { action: "erase_user", user_id: USER } });
+const folder = (name: string) => ({ name, id: null });
+const file = (name: string) => ({ name, id: "00000000-0000-0000-0000-0000000000f1" });
+
+// What the Storage API answers for a listing: the folders and files directly under the prefix of the request.
+function tree(entries: Record<string, { name: string; id: string | null }[]>): Route {
+  return (call) => reply(200, entries[(call.body as { prefix: string }).prefix] ?? []);
+}
+
+Deno.test("an erase_user job erases the database rows, purges the nested storage prefix, deletes the auth user and acknowledges", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(90)),
+    "POST /rest/v1/rpc/erase_user": reply(200, true),
+    "POST /storage/v1/object/list/passport-documents": tree({
+      [USER]: [folder(FOLDER_A), folder(FOLDER_B)],
+      [`${USER}/${FOLDER_A}`]: [file("cv.pdf"), file("cert.pdf")],
+      [`${USER}/${FOLDER_B}`]: [file("other.png")],
+    }),
+    "DELETE /storage/v1/object/passport-documents": (call) =>
+      reply(200, (call.body as { prefixes: string[] }).prefixes.map((name) => ({ name }))),
+    "DELETE /auth/v1/admin/users/{id}": reply(200, {}),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.path.startsWith("/rest/v1/rpc/erase_user")).map((c) => c.body), [{
+    p_user_id: USER,
+  }]);
+  assert.deepEqual(calls.filter((c) => c.method === "DELETE" && c.path.startsWith("/storage/")).map((c) => c.body), [
+    { prefixes: [`${USER}/${FOLDER_A}/cv.pdf`, `${USER}/${FOLDER_A}/cert.pdf`, `${USER}/${FOLDER_B}/other.png`] },
+  ]);
+  assert.deepEqual(calls.filter((c) => c.path === `/auth/v1/admin/users/${USER}`).map((c) => c.method), ["DELETE"]);
+  const order = calls.map((c) => c.path.split("/").slice(3, 5).join("/"));
+  assert.ok(order.indexOf("rpc/erase_user") < order.indexOf("object/list"), "the database part comes first");
+  assert.ok(
+    calls.findIndex((c) => c.path.startsWith("/storage/") && c.method === "DELETE") <
+      calls.findIndex((c) => c.path === `/auth/v1/admin/users/${USER}`),
+    "the files go before the auth user",
+  );
+  assert.deepEqual(acks(calls), [{
+    p_msg_id: 90,
+    p_result: { profile_erased: 1, objects_removed: 3, auth_user_deleted: 1 },
+  }]);
+});
+
+Deno.test("a repeated erase_user job finishes the files and the auth user and reports that nothing was left in the database", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(91)),
+    "POST /rest/v1/rpc/erase_user": reply(200, false),
+    "POST /storage/v1/object/list/passport-documents": tree({}),
+    "DELETE /auth/v1/admin/users/{id}": reply(404, { code: 404, error_code: "user_not_found", msg: "gone" }),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.equal(calls.filter((c) => c.method === "DELETE" && c.path.startsWith("/storage/")).length, 0);
+  assert.deepEqual(acks(calls), [{
+    p_msg_id: 91,
+    p_result: { profile_erased: 0, objects_removed: 0, auth_user_deleted: 0 },
+  }]);
+});
+
+Deno.test("a folder with more than one page of files is listed page by page", async () => {
+  const pages = [Array.from({ length: 100 }, (_, i) => file(`f${i}.pdf`)), [file("last.pdf")]];
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(92)),
+    "POST /rest/v1/rpc/erase_user": reply(200, true),
+    "POST /storage/v1/object/list/passport-documents": (call) => {
+      const { prefix, limit, offset } = call.body as { prefix: string; limit: number; offset: number };
+      if (prefix === USER) {
+        return reply(200, offset === 0 ? [folder(FOLDER_A)] : []);
+      }
+      assert.equal(limit, 100);
+      return reply(200, pages[offset / 100] ?? []);
+    },
+    "DELETE /storage/v1/object/passport-documents": (call) =>
+      reply(200, (call.body as { prefixes: string[] }).prefixes.map((name) => ({ name }))),
+    "DELETE /auth/v1/admin/users/{id}": reply(200, {}),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  const removals = calls.filter((c) => c.method === "DELETE" && c.path.startsWith("/storage/")).map((c) =>
+    (c.body as { prefixes: string[] }).prefixes.length
+  );
+  assert.deepEqual(removals, [100, 1]);
+  assert.equal((acks(calls)[0] as { p_result: { objects_removed: number } }).p_result.objects_removed, 101);
+});
+
+Deno.test("when erase_user refuses (cooling-off, legal hold) nothing else is touched and the job stays queued", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(93)),
+    "POST /rest/v1/rpc/erase_user": reply(400, {
+      code: "P0001",
+      message: "CHARA_FORBIDDEN",
+      details: "legal_hold",
+      hint: null,
+    }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.equal(calls.filter((c) => c.path.startsWith("/storage/") || c.path.startsWith("/auth/")).length, 0);
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("a failing purge or user deletion leaves the job queued, with the database part already done", async () => {
+  for (const failing of ["storage", "auth"]) {
+    const { calls, client } = harness({
+      "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(94)),
+      "POST /rest/v1/rpc/erase_user": reply(200, true),
+      "POST /storage/v1/object/list/passport-documents": failing === "storage"
+        ? reply(500, { statusCode: "500", error: "Internal", message: "boom" })
+        : tree({}),
+      "DELETE /auth/v1/admin/users/{id}": reply(500, { code: 500, error_code: "unexpected_failure", msg: "boom" }),
+    });
+    const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+    assert.deepEqual(await response.json(), { processed: 0, failed: 1 }, failing);
+    assert.deepEqual(acks(calls), [], failing);
+    assert.equal(calls.filter((c) => c.path.startsWith("/auth/")).length, failing === "auth" ? 1 : 0, failing);
+  }
 });

@@ -286,12 +286,6 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
-    },{
-      foreignKeyName: "passport_shares_worker_user_id_fkey"
-      columns: ["worker_user_id"]
-isOneToOne: false
-      referencedRelation: "worker_profiles"
-      referencedColumns: ["user_id"]
     }
                   ]
                 },"platform_staff": {
@@ -321,13 +315,13 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "account_kind": Database["public"]['Enums']["account_kind"] | null,"created_at": string,"deleted_at": string | null,"display_name": string | null,"id": string,"intended_account_kind": Database["public"]['Enums']["account_kind"] | null,"pending_consents": NonNullable<Json>,"preferred_lang": string,"status": Database["public"]['Enums']["profile_status"]
+                    "account_kind": Database["public"]['Enums']["account_kind"] | null,"created_at": string,"deleted_at": string | null,"display_name": string | null,"id": string,"intended_account_kind": Database["public"]['Enums']["account_kind"] | null,"legal_hold": boolean,"pending_consents": NonNullable<Json>,"preferred_lang": string,"status": Database["public"]['Enums']["profile_status"]
                   }
                   Insert: {
-                    "account_kind"?: Database["public"]['Enums']["account_kind"] | null,"created_at"?: string,"deleted_at"?: string | null,"display_name"?: string | null,"id": string,"intended_account_kind"?: Database["public"]['Enums']["account_kind"] | null,"pending_consents"?: NonNullable<Json>,"preferred_lang"?: string,"status"?: Database["public"]['Enums']["profile_status"]
+                    "account_kind"?: Database["public"]['Enums']["account_kind"] | null,"created_at"?: string,"deleted_at"?: string | null,"display_name"?: string | null,"id": string,"intended_account_kind"?: Database["public"]['Enums']["account_kind"] | null,"legal_hold"?: boolean,"pending_consents"?: NonNullable<Json>,"preferred_lang"?: string,"status"?: Database["public"]['Enums']["profile_status"]
                   }
                   Update: {
-                    "account_kind"?: Database["public"]['Enums']["account_kind"] | null,"created_at"?: string,"deleted_at"?: string | null,"display_name"?: string | null,"id"?: string,"intended_account_kind"?: Database["public"]['Enums']["account_kind"] | null,"pending_consents"?: NonNullable<Json>,"preferred_lang"?: string,"status"?: Database["public"]['Enums']["profile_status"]
+                    "account_kind"?: Database["public"]['Enums']["account_kind"] | null,"created_at"?: string,"deleted_at"?: string | null,"display_name"?: string | null,"id"?: string,"intended_account_kind"?: Database["public"]['Enums']["account_kind"] | null,"legal_hold"?: boolean,"pending_consents"?: NonNullable<Json>,"preferred_lang"?: string,"status"?: Database["public"]['Enums']["profile_status"]
                   }
                   Relationships: [
                     {
@@ -524,6 +518,11 @@ isOneToOne: false
 "accept_ownership_transfer":
 { Args: { "p_org": string }; Returns: undefined
                            },
+"account_deletion_status":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "can_cancel": boolean,"cooling_off_days": number,"erases_on": string,"requested_at": string
+            }[]
+                           },
 "account_ops_ack":
 { Args: { "p_msg_id": number,"p_result"?: Json }; Returns: boolean
                            },
@@ -534,6 +533,9 @@ isOneToOne: false
                            },
 "account_ops_end_sessions":
 { Args: { "p_user_id": string }; Returns: number
+                           },
+"cancel_account_deletion":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "cancel_ownership_transfer":
 { Args: { "p_org": string }; Returns: undefined
@@ -560,6 +562,9 @@ isOneToOne: false
                            },
 "document_set_scan_status":
 { Args: { "p_document_id": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
+                           },
+"erase_user":
+{ Args: { "p_user_id": string }; Returns: boolean
                            },
 "grant_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
@@ -615,6 +620,9 @@ isOneToOne: false
                            },
 "remove_member":
 { Args: { "p_org": string,"p_user": string }; Returns: undefined
+                           },
+"request_account_deletion":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "reset_mfa":
 { Args: { "p_reason": string,"p_user_id": string }; Returns: undefined
