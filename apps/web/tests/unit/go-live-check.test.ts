@@ -26,6 +26,8 @@ describe("the go-live gate for plan limits (FR-C6 AC12)", () => {
     ["missing", '{"audit_retention_years": 6}', "missing"],
     ["an empty export", "{}", "missing"],
     ['a string that is not "true"', '{"entitlements_enforced": "false"}', '"false"'],
+    ['the text off', '{"entitlements_enforced": "off"}', '"off"'],
+    ["null", '{"entitlements_enforced": null}', "null"],
   ])("fails and names the setting when entitlements_enforced is %s", (_, exported, found) => {
     const result = run(exported);
     expect(result.status).toBe(1);
@@ -36,6 +38,9 @@ describe("the go-live gate for plan limits (FR-C6 AC12)", () => {
   it.each([
     ["jsonb true", '{"entitlements_enforced": true}'],
     ['jsonb "true"', '{"entitlements_enforced": "true"}'],
+    ['the text TRUE', '{"entitlements_enforced": "TRUE"}'],
+    ['the text on, as the database casts it', '{"entitlements_enforced": "on"}'],
+    ['the text " yes " with spaces', '{"entitlements_enforced": " yes "}'],
   ])("passes when entitlements_enforced is %s", (_, exported) => {
     const result = run(exported);
     expect(result.status).toBe(0);
