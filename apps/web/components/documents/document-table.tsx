@@ -6,21 +6,21 @@ type DocumentTableProps = { items: DocumentItem[]; today: string; onChanged: () 
 export function DocumentTable({ items, today, onChanged }: DocumentTableProps) {
   return (
     <div className="relative overflow-x-auto rounded-lg border">
-      <table className="w-full text-start text-body">
+      <table role="table" className="block w-full text-start text-body">
         <caption className="sr-only">Your documents, newest first</caption>
-        <thead className="bg-muted/50 text-start text-sm">
-          <tr>
+        <thead role="rowgroup" className="sr-only">
+          <tr role="row">
             {["Title", "Type", "Size", "Uploaded", "Expires", "Status"].map((heading) => (
-              <th key={heading} scope="col" className="px-3 py-2 text-start font-semibold">
+              <th key={heading} role="columnheader" scope="col">
                 {heading}
               </th>
             ))}
-            <th scope="col" className="px-3 py-2 text-start font-semibold">
+            <th role="columnheader" scope="col">
               <span className="sr-only">Actions</span>
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup" className="block">
           {items.map((item) => (
             <DocumentRow key={item.id} item={item} today={today} onChanged={onChanged} />
           ))}
