@@ -216,7 +216,7 @@ Application state machine (SDD §4.2; enforced in `set_application_status`, `bul
 - Bulk changes and declines apply the same guard per application. Before anything is applied the UI shows a confirmation step listing the selected applicants, the target state and the reason. There is no undo: a decline is final and its email is sent (OPEN_QUESTIONS.md, P14).
 - For an organization on `free_employer` (lapsed, or any organization on that plan once limits are enforced) `set_application_status`, `bulk_set_application_status` and note inserts are refused and `viewed` is not set; past applicants stay readable (§10.4; OPEN_QUESTIONS.md, C11). `withdraw_application` is never blocked.
 
-Vacancy state machine (FR-C2; enforced by the trigger `private.jobs_guard_transition`, BEFORE UPDATE OF `status` on `public.jobs`; every change is audited). The UPDATE policy limits status changes to owners and admins, and the trigger re-checks the role, so a caller with no signed-in user is refused unless `chara.actor_fn = 'pause_jobs_on_lapse'` (then only open to paused passes). A change to the status the vacancy already has is a no-op: no trigger, no audit row. A refusal raises `CHARA_INVALID_TRANSITION` (the detail names both statuses); the audit action is `job.status_changed` with `from` and `to` in the metadata. The `active_jobs` limit check of the rows marked so is `private.jobs_enforce_limits` (FR-C6, U23), which must run after the guard (name its trigger so that it sorts after `jobs_guard_transition`).
+Vacancy state machine (FR-C2; enforced by the trigger `private.jobs_guard_transition`, BEFORE UPDATE OF `status` on `public.jobs`; every change is audited). The UPDATE policy limits status changes to owners and admins, and the trigger re-checks the role, so a caller with no signed-in user is refused unless `chara.actor_fn = 'pause_jobs_on_lapse'` (then only open to paused passes). A change to the status the vacancy already has is a no-op: no trigger, no audit row. A refusal raises `CHARA_INVALID_TRANSITION` (the detail names both statuses); the audit action is `job.status_changed` with `from` and `to` in the metadata. The `active_jobs` limit check of the rows marked so is `private.jobs_enforce_limits` (FR-C6), the trigger `jobs_limit_check`, which sorts after `jobs_guard_transition` so that a wrong role or a change the table does not list is refused first.
 
 | From | To | Allowed actor | Check |
 |---|---|---|---|
@@ -835,19 +835,21 @@ begin
   end if;
 end $$;
 
--- Canonical use: BEFORE triggers on the counted tables (works for direct inserts and RPCs alike)
+-- Canonical use: BEFORE triggers on the counted tables (works for direct inserts and RPCs alike). The organization
+-- row is locked FOR NO KEY UPDATE first, so two publishes of one organization are serialised (the count then sees
+-- the other one's commit), and a soft-deleted vacancy is not counted (FR-C6, D48).
 create or replace function private.jobs_enforce_limits() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if new.status = 'open' and (tg_op = 'INSERT' or old.status is distinct from 'open') then
-    perform private.assert_within_limit(new.organization_id, 'active_jobs',
-      (select count(*) from public.jobs j
-        where j.organization_id = new.organization_id and j.status = 'open' and j.id <> new.id));
-  end if;
+  if tg_op = 'UPDATE' and old.status = 'open' then return new; end if;
+  perform 1 from public.organizations o where o.id = new.organization_id for no key update;
+  perform private.assert_within_limit(new.organization_id, 'active_jobs',
+    (select count(*)::integer from public.jobs j
+      where j.organization_id = new.organization_id and j.status = 'open' and j.deleted_at is null and j.id <> new.id));
   return new;
 end $$;
-create trigger jobs_enforce_limits before insert or update of status on public.jobs
-  for each row execute function private.jobs_enforce_limits();
+create trigger jobs_limit_check before insert or update of status on public.jobs
+  for each row when (new.status = 'open') execute function private.jobs_enforce_limits();
 -- Feature gates inside RPCs:  if not private.has_feature(v_org, 'chara_match') then raise exception 'CHARA_FEATURE_NOT_IN_PLAN' using detail = 'chara_match'; end if;
 ```
 
