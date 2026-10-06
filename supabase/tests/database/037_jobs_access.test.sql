@@ -71,7 +71,7 @@ select is(pg_temp.val_as(:'own2', 'aal1', format($$select count(*) from public.j
 select is(pg_temp.val_as(:'wa', 'aal1', format($$select count(*) from public.jobs where id = %L$$, :'draft')), '0', 'a candidate does not see the draft');
 select is(pg_temp.affected_as(null, 'anon', format($$select id from public.jobs where id = %L$$, :'draft')), 0::bigint, 'an anonymous visitor does not see the draft');
 
-update public.jobs set status = 'open' where id = :'draft';
+select pg_temp.set_status(:'adm', :'draft', 'open') as made_open \gset
 select is(pg_temp.affected_as(null, 'anon', format($$select id from public.jobs where id = %L$$, :'draft')), 1::bigint, 'an open visible vacancy is public');
 select is(pg_temp.val_as(:'wa', 'aal1', format($$select count(*) from public.jobs where id = %L$$, :'draft')), '1', 'and a candidate reads it');
 update public.jobs set moderation_state = 'hidden' where id = :'draft';
@@ -79,11 +79,13 @@ select is(pg_temp.affected_as(null, 'anon', format($$select id from public.jobs 
 select is(pg_temp.val_as(:'mem', 'aal1', format($$select count(*) from public.jobs where id = %L$$, :'draft')), '1', 'but its members still read it');
 update public.jobs set moderation_state = 'org_suspended' where id = :'draft';
 select is(pg_temp.affected_as(null, 'anon', format($$select id from public.jobs where id = %L$$, :'draft')), 0::bigint, 'a vacancy of a suspended organisation is not public');
-update public.jobs set moderation_state = 'visible', status = 'paused' where id = :'draft';
+update public.jobs set moderation_state = 'visible' where id = :'draft';
+select pg_temp.set_status(:'adm', :'draft', 'paused') as made_paused \gset
 select is(pg_temp.affected_as(null, 'anon', format($$select id from public.jobs where id = %L$$, :'draft')), 0::bigint, 'a paused vacancy is not public');
-update public.jobs set status = 'open', deleted_at = now() where id = :'draft';
+select pg_temp.set_status(:'adm', :'draft', 'open') as made_open_again \gset
+update public.jobs set deleted_at = now() where id = :'draft';
 select is(pg_temp.affected_as(null, 'anon', format($$select id from public.jobs where id = %L$$, :'draft')), 0::bigint, 'a deleted vacancy is not public');
-update public.jobs set status = 'draft', deleted_at = null where id = :'draft';
+update public.jobs set deleted_at = null where id = :'draft';
 
 select is(pg_temp.state_as(:'adm', 'select created_by from public.jobs'), '42501', 'created_by is not readable through the API');
 select is(pg_temp.state_as(:'adm', 'select search_vector from public.jobs'), '42501', 'the search vector is not readable through the API');
@@ -148,8 +150,8 @@ select is(
   'deleted_at cannot be changed'
 );
 select is(
-  pg_temp.state_as(:'adm', format($$update public.jobs set status = 'open' where id = %L$$, :'draft')), '42501',
-  'status cannot be changed through the API before the lifecycle exists'
+  pg_temp.affected_as(:'mem', 'authenticated', format($$update public.jobs set status = 'closed' where id = %L$$, :'draft')), 0::bigint,
+  'a member cannot change the status'
 );
 
 -- Delete: the owner only.

@@ -1,4 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
+import { formatDate } from "@/lib/i18n/format";
 import { salaryPeriodLabels } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
@@ -6,17 +7,23 @@ type Enums = Database["public"]["Enums"];
 type JobStatus = Enums["job_status"];
 type JobModerationState = Enums["job_moderation_state"];
 
-const statusTexts: Record<JobStatus, string> = {
-  draft: "Draft - not public",
+export const statusLabels: Record<JobStatus, string> = {
+  draft: "Draft",
   open: "Open",
-  paused: "Paused - not public",
-  closed: "Closed - not public",
-  filled: "Filled - not public",
+  paused: "Paused",
+  closed: "Closed",
+  filled: "Filled",
 };
 
 // A vacancy hidden by moderation is not public whatever its status.
 export function jobStatusText(status: JobStatus, moderationState: JobModerationState): string {
-  return moderationState === "visible" ? statusTexts[status] : "Hidden - not public";
+  if (moderationState !== "visible") return "Hidden - not public";
+  return status === "open" ? statusLabels.open : `${statusLabels[status]} - not public`;
+}
+
+// status_changed_at of a draft is its creation time, so a draft shows the creation date.
+export function jobDateText(job: { status: JobStatus; createdAt: string; statusChangedAt: string }): string {
+  return job.status === "draft" ? `Created ${formatDate(job.createdAt)}` : `Status changed ${formatDate(job.statusChangedAt)}`;
 }
 
 const amountFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });

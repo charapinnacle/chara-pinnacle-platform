@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(32);
 
 \ir jobs_fixture.inc
 
@@ -44,19 +44,22 @@ select is(
   '["city", "salary_currency", "salary_min", "salary_period"]'::jsonb, 'an update names every changed column, sorted'
 );
 select ok(
-  not ((select metadata from audit.log where action = 'job.updated' and entity_id = :'job' order by id desc limit 1) ? 'status_to'),
+  not ((select metadata from audit.log where action = 'job.updated' and entity_id = :'job' order by id desc limit 1) ? 'to'),
   'a content update carries no status'
 );
-update public.jobs set status = 'open' where id = :'job';
+select pg_temp.set_status(:'adm', :'job', 'open') as made_open \gset
 select is(
-  (select metadata - 'organization_id' from audit.log where action = 'job.updated' and entity_id = :'job' order by id desc limit 1),
-  '{"changed_fields": ["status"], "status_from": "draft", "status_to": "open"}'::jsonb,
-  'a status change records both statuses, which the publication KPI reads'
+  (select metadata - 'organization_id' from audit.log where action = 'job.status_changed' and entity_id = :'job' order by id desc limit 1),
+  '{"from": "draft", "to": "open"}'::jsonb,
+  'a status change is its own action and records both statuses, which the average-time-open KPI reads'
+);
+select is(
+  (select count(*) from audit.log where action = 'job.updated' and entity_id = :'job'), :base::bigint + 1,
+  'a status change writes no job.updated row'
 );
 select ok(
-  (select a.created_at - j.created_at < interval '1 day' from audit.log a, public.jobs j
-   where a.action = 'job.updated' and a.entity_id = :'job' and a.metadata ->> 'status_to' = 'open' and j.id = :'job'),
-  'the KPI query (first status_to open, minus created_at) is answerable from the stored rows'
+  (select p.published_at - j.created_at < interval '1 day' from public.jobs p, public.jobs j where p.id = :'job' and j.id = p.id),
+  'the KPI "published within 1 day of creation" (published_at minus created_at) is answerable from the stored row'
 );
 select ok(
   not exists (select 1 from audit.log where action like 'job.%' and metadata::text like '%Bremen%'),

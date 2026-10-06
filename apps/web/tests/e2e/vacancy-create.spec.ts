@@ -78,7 +78,7 @@ test.describe("create vacancy", () => {
     const admin = await addCompanyUser(company, "admin");
     await logIn(page, admin, jobsUrl(company.slug));
     await expect(page.getByRole("heading", { name: "No vacancies yet" })).toBeVisible();
-    await page.getByRole("link", { name: "New vacancy" }).click();
+    await page.getByRole("link", { name: "Create vacancy" }).click();
     await expect(page).toHaveURL(newJobUrl(company.slug));
     await fillJob(page, { title: "Crane operator", salary: null });
     await page.getByRole("button", { name: "Save vacancy" }).click();

@@ -1,18 +1,20 @@
 "use server";
 
 import type { PostgrestError } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { jobPath } from "@/lib/routes";
+import { statusLabels } from "@/lib/jobs/presentation";
+import { jobPath, jobsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { jobFormSchema, toJobInsert, type JobFormInput } from "@/lib/validation/job";
+import { jobFormSchema, jobIdSchema, toJobInsert, type JobFormInput } from "@/lib/validation/job";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
-type CreateJobResult = { errors?: FieldErrors; message?: string };
+type JobActionResult = { errors?: FieldErrors; message?: string };
 
 const CHECK_VALUE = "Check this value.";
 const NOT_ALLOWED = "You are not allowed to create vacancies for this company.";
@@ -34,7 +36,7 @@ const fieldByConstraint: Record<string, [field: keyof JobFormInput, message: str
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
-function refusal(error: PostgrestError): CreateJobResult {
+function refusal(error: PostgrestError): JobActionResult {
   const constraint = /constraint "([^"]+)"/.exec(error.message)?.[1];
   const known = constraint ? fieldByConstraint[constraint] : undefined;
   if (known) return { errors: { [known[0]]: known[1] } };
@@ -59,7 +61,7 @@ async function recordInvalidForm(supabase: Client, organizationId: string, field
 
 // The organization comes from the slug in the address, checked against the caller's membership and role on every call;
 // nothing about the organization, the status or the author is read from the form.
-export async function createJob(slug: string, input: JobFormInput): Promise<CreateJobResult | undefined> {
+export async function createJob(slug: string, input: JobFormInput): Promise<JobActionResult | undefined> {
   const parsedSlug = slugSchema.safeParse(slug);
   if (!parsedSlug.success) return { message: GENERIC_FAILURE };
   const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", {
@@ -96,4 +98,58 @@ export async function reportInvalidJobForm(slug: string, fields: string[]): Prom
     hideFromOutsiders: true,
   });
   await recordInvalidForm(await createClient(), organization.id, fields);
+}
+
+const statusChangeSchema = z.object({ id: jobIdSchema, to: z.enum(["open", "paused", "closed", "filled"]) });
+
+const CHANGED_ELSEWHERE = "This vacancy was changed by someone else, reload.";
+
+// The database guard decides which change is allowed; a refusal as an invalid transition means another person moved the
+// vacancy since this page was loaded, so the message names the status it has now.
+async function statusRefusal(
+  error: PostgrestError,
+  supabase: Client,
+  organizationId: string,
+  id: string,
+): Promise<JobActionResult> {
+  if (error.message === "CHARA_INVALID_TRANSITION") {
+    const { data } = await supabase.from("jobs").select("status").eq("id", id).eq("organization_id", organizationId).maybeSingle();
+    return { message: data ? `${CHANGED_ELSEWHERE} It is now ${statusLabels[data.status]}.` : CHANGED_ELSEWHERE };
+  }
+  if (error.code === "42501") return { message: "You are not allowed to change the status of this vacancy." };
+  console.error("Change vacancy status failed", { code: error.code, message: error.message });
+  return { message: GENERIC_FAILURE };
+}
+
+// The organization comes from the slug and the caller's role as for createJob; only the target status is read from the
+// call, and the guard in the database checks it against the status the vacancy has now.
+export async function changeJobStatus(
+  slug: string,
+  id: string,
+  to: z.input<typeof statusChangeSchema>["to"],
+): Promise<JobActionResult> {
+  const parsedSlug = slugSchema.safeParse(slug);
+  const parsed = statusChangeSchema.safeParse({ id, to });
+  if (!parsedSlug.success || !parsed.success) return { message: GENERIC_FAILURE };
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", {
+    mfa: false,
+    hideFromOutsiders: true,
+  });
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ status: parsed.data.to })
+    .eq("id", parsed.data.id)
+    .eq("organization_id", organization.id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+  const result = error
+    ? await statusRefusal(error, supabase, organization.id, parsed.data.id)
+    : data
+      ? {}
+      : { message: "This vacancy could not be found." };
+  revalidatePath(jobsPath(defaultLocale, organization.slug));
+  revalidatePath(jobPath(defaultLocale, organization.slug, parsed.data.id));
+  return result;
 }

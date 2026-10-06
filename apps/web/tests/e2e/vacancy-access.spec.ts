@@ -93,16 +93,17 @@ test.describe("vacancy pages: who sees what", () => {
     await expect(page.getByText("Hamburg, Germany")).toBeVisible();
     await expectNoAxeViolations(page);
 
-    for (const change of [
-      "status = 'paused'",
-      "status = 'open', moderation_state = 'hidden'",
-      "moderation_state = 'org_suspended'",
-      "moderation_state = 'visible', deleted_at = now()",
-    ]) {
-      execute(`update public.jobs set ${change} where id = ${literal(id)}`);
-      const response = await page.goto(`/en/jobs/${id}`);
-      expect(response?.status(), change).toBe(404);
-      await expect(page.getByRole("heading", { name: UNAVAILABLE }), change).toBeVisible();
+    const others = [
+      seedJob(acme, { title: "Paused welder", status: "paused" }),
+      seedJob(acme, { title: "Hidden welder", status: "open", moderation: "hidden" }),
+      seedJob(acme, { title: "Suspended welder", status: "open", moderation: "org_suspended" }),
+      seedJob(acme, { title: "Deleted welder", status: "open" }),
+    ];
+    execute(`update public.jobs set deleted_at = now() where id = ${literal(others[3])}`);
+    for (const other of others) {
+      const response = await page.goto(`/en/jobs/${other}`);
+      expect(response?.status(), other).toBe(404);
+      await expect(page.getByRole("heading", { name: UNAVAILABLE }), other).toBeVisible();
     }
   });
 
@@ -117,7 +118,7 @@ test.describe("vacancy pages: who sees what", () => {
     await logIn(page, member, jobsUrl(acme.slug));
     await expect(page).toHaveURL(jobsUrl(acme.slug));
     await expect(page.getByRole("link", { name: "Role welder" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "New vacancy" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Create vacancy" })).toHaveCount(0);
     await page.goto(jobUrl(acme.slug, id));
     await expect(page.getByRole("heading", { name: "Role welder", level: 1 })).toBeVisible();
     await page.goto(newJobUrl(acme.slug));
@@ -127,7 +128,7 @@ test.describe("vacancy pages: who sees what", () => {
     for (const user of [admin, acme.owner]) {
       await logIn(page, user, jobsUrl(acme.slug));
       await expect(page).toHaveURL(jobsUrl(acme.slug));
-      await expect(page.getByRole("link", { name: "New vacancy" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Create vacancy" })).toBeVisible();
       await expectNoAxeViolations(page);
       await page.goto(newJobUrl(acme.slug));
       await expect(page).toHaveURL(newJobUrl(acme.slug));

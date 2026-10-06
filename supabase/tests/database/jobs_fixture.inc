@@ -40,3 +40,9 @@ create function pg_temp.insert_as(p_user uuid, p_over jsonb default '{}', p_org 
 language sql as $$
   select pg_temp.call_as(p_user, 'authenticated', pg_temp.insert_job(coalesce(p_org, current_setting('t.a')::uuid), p_over), 'aal1')
 $$;
+
+-- Changes the status of a vacancy through the guarded update as p_user and returns 'ok' or 'sqlstate|message|detail'.
+create function pg_temp.set_status(p_user uuid, p_job uuid, p_status text) returns text
+language sql as $$
+  select pg_temp.call_as(p_user, 'authenticated', format('update public.jobs set status = %L where id = %L', p_status, p_job), 'aal1')
+$$;
