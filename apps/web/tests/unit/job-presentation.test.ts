@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSalary, jobStatusText } from "@/lib/jobs/presentation";
+import { formatSalary, jobStatusText, publicWebsite } from "@/lib/jobs/presentation";
 
 const none = { salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null };
 
@@ -40,5 +40,21 @@ describe("jobStatusText", () => {
   it("says hidden for a vacancy hidden by moderation whatever its status", () => {
     expect(jobStatusText("open", "hidden")).toBe("Hidden - not public");
     expect(jobStatusText("open", "org_suspended")).toBe("Hidden - not public");
+  });
+});
+
+describe("publicWebsite", () => {
+  it("links an http or https address by its host", () => {
+    expect(publicWebsite("https://acme.example/careers?x=1")).toEqual({
+      href: "https://acme.example/careers?x=1",
+      label: "acme.example",
+    });
+    expect(publicWebsite("http://acme.example")).toEqual({ href: "http://acme.example/", label: "acme.example" });
+  });
+
+  it("links nothing for another scheme, for text that is no address, or for no value", () => {
+    for (const value of ["javascript:alert(1)", "data:text/html,x", "ftp://acme.example", "acme.example", "  ", "", null]) {
+      expect(publicWebsite(value), String(value)).toBeNull();
+    }
   });
 });
