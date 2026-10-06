@@ -8,7 +8,7 @@ Limits are rows of `billing.plan_limits` (`limit_key = 'active_jobs'`; null is u
 
 ## 2. KPI: upgrade conversions from limit prompts
 
-The web tier reports each upgrade prompt it shows (`public.record_job_limit_prompt`); the database records it as one `audit.log` row `limit.prompt_shown` for the organisation, only when the organisation really is at its limit, with the plan, the limit and the open count at that time (at most 30 per user and hour, setting `limit_prompt_per_hour_max`). An organisation has converted when it is on a plan with a higher `active_jobs` limit (or none) than the one it was prompted at, at the time of the review.
+The web tier reports each upgrade prompt it shows (`public.record_job_limit_prompt`); the database records it as one `audit.log` row `limit.prompt_shown` for the organisation, only when the organisation really is at its limit, with the plan, the limit and the open count at that time (at most 30 per user and hour, setting `limit_prompt_per_hour_max`). An organisation has converted when it is on a plan with a higher `active_jobs` limit (or none) than the one it was prompted at, at the time of the review. The database cannot tell that a publish was refused, so an admin who calls the function directly can add up to 30 rows an hour for their own organisation; they inflate the prompted count, so check the actors in `audit.log` when the number looks too high.
 
 ```sql
 with prompted as (
@@ -35,7 +35,7 @@ A lapsed organisation has a limit of 0 and does not count as converted. The prom
 
 ## 3. Go-live gate
 
-Limit enforcement (`private.settings.entitlements_enforced`) is `false` until the billing work package switches it on, and it must be true in production before go-live (OPEN_QUESTIONS.md, C11). Export the production settings and run the check; it exits non-zero and names the setting when the value is false or missing, and accepts the stored jsonb `true` and the jsonb string `"true"`.
+Limit enforcement (`private.settings.entitlements_enforced`) is `false` until the billing work package switches it on, and it must be true in production before go-live (OPEN_QUESTIONS.md, C11). Export the production settings and run the check; it exits non-zero and names the setting when the value is false or missing, and accepts the stored jsonb `true` and every text the database casts to true (`true`, `t`, `yes`, `y`, `on`, `1`, in any case).
 
 ```sh
 psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
