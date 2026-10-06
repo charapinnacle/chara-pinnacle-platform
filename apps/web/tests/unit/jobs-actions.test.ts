@@ -105,6 +105,21 @@ describe("createJob", () => {
     const result = await createJob("acme-bau", { ...input, title: "", city: "", salaryMin: "5000", salaryMax: "4000" });
     expect(Object.keys(result?.errors ?? {}).sort()).toEqual(["city", "salaryMin", "title"]);
     expect(insertMock).not.toHaveBeenCalled();
+    expect(rpcMock).toHaveBeenCalledWith("record_job_form_invalid", { p_org: orgId, p_fields: ["title", "city", "salaryMin"] });
+  });
+
+  it("records no refusal for an input that is not an object, and still answers with the errors", async () => {
+    const result = await createJob("acme-bau", null as unknown as JobFormInput);
+    expect(result?.errors).toBeDefined();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("does not fail the person when the refusal cannot be recorded", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    rpcMock.mockResolvedValue({ data: null, error: { code: "P0001", message: "CHARA_FORBIDDEN" } });
+    const result = await createJob("acme-bau", { ...input, title: "" });
+    expect(Object.keys(result?.errors ?? {})).toEqual(["title"]);
+    log.mockRestore();
   });
 
   it("does not run the validation for a caller the role check refused", async () => {
@@ -124,6 +139,7 @@ describe("createJob", () => {
     singleMock.mockResolvedValue(refusal(`new row for relation "jobs" ${message}`, code));
     await expect(createJob("acme-bau", input)).resolves.toEqual({ errors: { [field]: text } });
     expect(redirectMock).not.toHaveBeenCalled();
+    expect(rpcMock).toHaveBeenCalledWith("record_job_form_invalid", { p_org: orgId, p_fields: [field] });
   });
 
   it("says the caller may not create vacancies when row level security refuses, and reveals nothing else", async () => {
@@ -131,6 +147,7 @@ describe("createJob", () => {
     await expect(createJob("acme-bau", input)).resolves.toEqual({
       message: "You are not allowed to create vacancies for this company.",
     });
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("returns the generic failure for an unknown error, without its text", async () => {

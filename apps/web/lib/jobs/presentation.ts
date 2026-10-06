@@ -3,8 +3,8 @@ import { salaryPeriodLabels } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
 
-export type JobStatus = Enums["job_status"];
-export type JobModerationState = Enums["job_moderation_state"];
+type JobStatus = Enums["job_status"];
+type JobModerationState = Enums["job_moderation_state"];
 
 const statusTexts: Record<JobStatus, string> = {
   draft: "Draft - not public",

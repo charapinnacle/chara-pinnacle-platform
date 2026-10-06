@@ -30,7 +30,7 @@ export type Job = {
   createdAt: string;
 };
 
-export type JobSummary = {
+type JobSummary = {
   id: string;
   title: string;
   city: string;
@@ -101,7 +101,9 @@ export async function getPublicJob(id: string): Promise<Job | null> {
   return data && toJob(data);
 }
 
-// Newest first, in keyset pages of JOBS_PAGE_SIZE; one row more is read to know whether a next page exists.
+// Newest first, in keyset pages of JOBS_PAGE_SIZE; one row more is read to know whether a next page exists. PostgREST
+// has no row comparison, so the cursor is an OR filter: the planner reads the organization's index range and filters it,
+// a cost that grows with the page depth but is bounded by the vacancies of one organization.
 export async function listJobs(organizationId: string, cursor: JobCursor | null): Promise<JobPage> {
   const supabase = await createClient();
   let query = supabase

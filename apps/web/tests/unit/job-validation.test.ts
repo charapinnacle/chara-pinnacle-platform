@@ -84,6 +84,19 @@ describe("the vacancy form schema (FR-C1 AC2)", () => {
     expect(errorsFor({ title: "Weld\ner" })).toHaveProperty("title");
     expect(errorsFor({ city: "Ham\u0007burg" })).toHaveProperty("city");
     expect(errorsFor({ title: "Weld\u0085er" })).toHaveProperty("title");
+    expect(errorsFor({ title: "Weld\u2028er", city: "Ham\u2029burg" })).toHaveProperty("title");
+    expect(errorsFor({ city: "Ham\u2029burg" })).toHaveProperty("city");
+  });
+
+  it("counts characters as the database does, so an emoji is one character in every limit", () => {
+    expect(errorsFor({ title: "\u{1F477}".repeat(3) })).toEqual({ title: "The title must have at least 5 characters." });
+    expect(errorsFor({ title: "\u{1F477}".repeat(5) })).toEqual({});
+    expect(errorsFor({ title: "\u{1F477}".repeat(120), city: "\u{1F3D7}".repeat(100) })).toEqual({});
+    expect(errorsFor({ title: "\u{1F477}".repeat(121) })).toHaveProperty("title");
+    expect(errorsFor({ description: "\u{1F477}".repeat(49) })).toHaveProperty("description");
+    expect(errorsFor({ description: "\u{1F477}".repeat(50) })).toEqual({});
+    expect(errorsFor({ description: "\u{1F477}".repeat(10_000) })).toEqual({});
+    expect(errorsFor({ description: "\u{1F477}".repeat(10_001) })).toHaveProperty("description");
   });
 
   it("refuses an occupation that is not a four-digit code and normalises the industry and country codes", () => {

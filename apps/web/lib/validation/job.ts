@@ -5,7 +5,7 @@ type JobInsertRow = Database["public"]["Tables"]["jobs"]["Insert"];
 
 // The only columns a client may send when it creates a vacancy; status, moderation_state, deleted_at, created_by and
 // the hiring-on-behalf organisation belong to the server and are not in this type, so the mapper cannot carry them.
-export type JobInsert = Pick<
+type JobInsert = Pick<
   JobInsertRow,
   | "organization_id"
   | "title"
@@ -58,13 +58,11 @@ export const recruitmentPreferenceOptions = recruitmentPreferences.map((value) =
 const MAX_AMOUNT = 9_999_999.99;
 const AMOUNT_FORMAT = "Enter an amount of 0 or more, for example 2800 or 2800.50.";
 
-function hasControlCharacter(value: string, allowLineBreaks: boolean): boolean {
-  return Array.from(value).some((character) => {
-    const code = character.charCodeAt(0);
-    if (allowLineBreaks && (code === 9 || code === 10 || code === 13)) return false;
-    return code < 32 || (code >= 127 && code <= 159);
-  });
-}
+const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
+const LINE_BREAKS_AND_TABS = /[\t\n\r]/g;
+
+// The table checks count characters, not UTF-16 units, so an emoji is one character here as there.
+const characters = (value: string) => Array.from(value).length;
 
 const NO_CONTROL_CHARACTERS = "Remove the special characters.";
 
@@ -92,16 +90,18 @@ export const jobFormSchema = z
       .string({ error: "Enter the title." })
       .trim()
       .min(1, { error: "Enter the title." })
-      .min(5, { error: "The title must have at least 5 characters." })
-      .max(120, { error: "The title must have 120 characters or fewer." })
-      .refine((value) => !hasControlCharacter(value, false), { error: NO_CONTROL_CHARACTERS }),
+      .refine((value) => characters(value) >= 5, { error: "The title must have at least 5 characters." })
+      .refine((value) => characters(value) <= 120, { error: "The title must have 120 characters or fewer." })
+      .refine((value) => !CONTROL_CHARACTER.test(value), { error: NO_CONTROL_CHARACTERS }),
     description: z
       .string({ error: "Enter the description." })
       .trim()
       .min(1, { error: "Enter the description." })
-      .min(50, { error: "The description must have at least 50 characters." })
-      .max(10_000, { error: "The description must have 10,000 characters or fewer." })
-      .refine((value) => !hasControlCharacter(value, true), { error: NO_CONTROL_CHARACTERS }),
+      .refine((value) => characters(value) >= 50, { error: "The description must have at least 50 characters." })
+      .refine((value) => characters(value) <= 10_000, { error: "The description must have 10,000 characters or fewer." })
+      .refine((value) => !CONTROL_CHARACTER.test(value.replace(LINE_BREAKS_AND_TABS, "")), {
+        error: NO_CONTROL_CHARACTERS,
+      }),
     occupation: z
       .string({ error: "Select an occupation from the list." })
       .trim()
@@ -120,8 +120,8 @@ export const jobFormSchema = z
       .string({ error: "Enter the city." })
       .trim()
       .min(1, { error: "Enter the city." })
-      .max(100, { error: "The city must have 100 characters or fewer." })
-      .refine((value) => !hasControlCharacter(value, false), { error: NO_CONTROL_CHARACTERS }),
+      .refine((value) => characters(value) <= 100, { error: "The city must have 100 characters or fewer." })
+      .refine((value) => !CONTROL_CHARACTER.test(value), { error: NO_CONTROL_CHARACTERS }),
     employmentType: z
       .string({ error: "Select an employment type." })
       .pipe(z.enum(employmentTypes, { error: "Select an employment type." })),
