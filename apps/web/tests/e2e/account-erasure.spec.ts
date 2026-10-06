@@ -126,7 +126,10 @@ test.describe("account erasure by account-ops", () => {
     const user = await candidateWithFiles();
     await callAs(user, "request_account_deletion");
     backdateRequest(user.id, "31 days");
-    execute(`update public.profiles set legal_hold = true where id = ${literal(user.id)}`);
+    execute(
+      `begin; select set_config('chara.audit_reason', 'Test hold, ticket 1', true);
+       update public.profiles set legal_hold = true where id = ${literal(user.id)}; commit;`,
+    );
 
     runErasureJob();
     expect(erasureJobs(user.id)).toBe(0);
@@ -136,7 +139,10 @@ test.describe("account erasure by account-ops", () => {
     expect(objectNames(user.id)).toHaveLength(2);
     expect(count(`select 1 from audit.log where action = 'account.erasure_paused' and entity_id = ${literal(user.id)}`)).toBe(1);
 
-    execute(`update public.profiles set legal_hold = false where id = ${literal(user.id)}`);
+    execute(
+      `begin; select set_config('chara.audit_reason', 'Test hold, ticket 1', true);
+       update public.profiles set legal_hold = false where id = ${literal(user.id)}; commit;`,
+    );
     runErasureJob();
     await runAccountOps();
     expect(profiles(user.id)).toBe(0);

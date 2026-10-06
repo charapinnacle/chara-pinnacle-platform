@@ -99,6 +99,11 @@ describe("refusals with a message of their own", () => {
     expect(await cancelAccountDeletion()).toEqual({ message: "The time to cancel is over. Your account is being erased." });
   });
 
+  it("tells a candidate who asked too often to try again tomorrow", async () => {
+    rpcMock.mockReturnValue({ data: null, error: { message: "CHARA_FORBIDDEN", code: "P0001", details: "rate_limited" } });
+    expect(await requestAccountDeletion()).toEqual({ message: "You have asked too often today. Try again tomorrow." });
+  });
+
   it("tells a candidate who holds a platform role to have it removed first", async () => {
     rpcMock.mockReturnValue({ data: null, error: { message: "CHARA_FORBIDDEN", code: "P0001", details: "platform_staff" } });
     expect(await requestAccountDeletion()).toEqual({ message: "Your account holds a platform role. Ask an administrator to remove it first." });

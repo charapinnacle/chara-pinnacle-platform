@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { ModalDialog } from "@/components/team/modal-dialog";
@@ -15,12 +15,22 @@ export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays
   const [open, setOpen] = useState(false);
   const request = useTeamCall("Could not request the deletion");
   const cancel = useTeamCall("Could not cancel the deletion");
+  const banner = useRef<HTMLDivElement>(null);
+  const focusBanner = useRef(false);
+
+  useEffect(() => {
+    if (requestedAt && focusBanner.current) {
+      focusBanner.current = false;
+      banner.current?.focus();
+    }
+  }, [requestedAt]);
 
   if (requestedAt && erasesOn) {
     return (
       <div className="grid gap-4">
-        <Notice tone="info" role="status">
+        <Notice ref={banner} tabIndex={-1} tone="info" role="status" className="outline-none">
           Deletion requested on {formatIsoDate(requestedAt)}. Your data will be erased on {formatIsoDate(erasesOn)}.
+          {canCancel ? null : " The time to cancel is over and the erasure is in progress."}
         </Notice>
         {canCancel ? (
           <FormButton
@@ -60,6 +70,7 @@ export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays
             busy={request.pending}
             onClick={() =>
               request.run(requestAccountDeletion, "Deletion requested", () => {
+                focusBanner.current = true;
                 close();
                 router.refresh();
               })

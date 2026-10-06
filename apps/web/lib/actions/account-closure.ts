@@ -11,6 +11,7 @@ type ClosureResult = { message?: string };
 
 const REFUSALS: Record<string, string> = {
   cooling_off_ended: "The time to cancel is over. Your account is being erased.",
+  rate_limited: "You have asked too often today. Try again tomorrow.",
   platform_staff: "Your account holds a platform role. Ask an administrator to remove it first.",
 };
 

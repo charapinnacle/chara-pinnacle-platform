@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { closureAudit, profileState, queuedNotifications } from "./support/closure";
+import { backdateRequest, closureAudit, profileState, queuedNotifications } from "./support/closure";
 import { createCommittedUser } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
 import { daysFromToday, signIn } from "./support/passport";
@@ -28,6 +28,7 @@ test.describe("candidate account closure: settings page", () => {
     );
     await expect(page.getByRole("button", { name: "Cancel deletion" })).toBeVisible();
     await expect(deleteButton(page)).toHaveCount(0);
+    await expect(banner).toBeFocused();
 
     const state = profileState(user.id);
     expect(state.status).toBe("active");
@@ -122,6 +123,22 @@ test.describe("candidate account closure: settings page", () => {
       await page.keyboard.press("Tab");
     }
     await expect(cancel).toBeFocused();
+  });
+
+  test("FR-B6 AC6: once the time to cancel is over the banner says so and offers no cancel", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    await signIn(page, user);
+    await page.goto("/en/settings");
+    await deleteButton(page).click();
+    await dialog(page).getByRole("button", { name: "Request deletion" }).click();
+    await expect(page.getByRole("button", { name: "Cancel deletion" })).toBeVisible();
+
+    backdateRequest(user.id, "31 days");
+    await page.reload();
+    await expect(page.getByRole("status")).toHaveText(
+      `Deletion requested on ${daysFromToday(-31)}. Your data will be erased on ${daysFromToday(-1)}. The time to cancel is over and the erasure is in progress.`,
+    );
+    await expect(page.getByRole("button", { name: "Cancel deletion" })).toHaveCount(0);
   });
 
   test("FR-B6 AC4: an employer is sent to the own dashboard and a visitor to the login page", async ({ page }) => {
