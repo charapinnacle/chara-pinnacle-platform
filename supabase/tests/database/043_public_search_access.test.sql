@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(30);
 
 \ir search_fixture.inc
 
@@ -97,9 +97,11 @@ select ok(
   'jobs has the pg_trgm GIN index on title'
 );
 select is(
-  (select count(*) from pg_indexes where tablename = 'jobs' and schemaname = 'public'
+  (select array_agg(indexname::text order by indexname) from pg_indexes
+   where tablename = 'jobs' and schemaname = 'public'
      and indexdef like '%WHERE%status = ''open''%deleted_at IS NULL%moderation_state = ''visible''%'),
-  5::bigint, 'five indexes hold only public vacancies, which covers the policy columns status, deleted_at and moderation_state'
+  array['jobs_public_city_idx', 'jobs_public_employment_type_idx', 'jobs_public_industry_idx', 'jobs_public_newest_idx'],
+  'these four indexes each hold only public vacancies (status, deleted_at and moderation_state in the predicate), which covers the policy columns'
 );
 select ok(
   exists (select 1 from pg_indexes where indexname = 'jobs_public_industry_idx' and indexdef like '%(industry_code, created_at DESC, id DESC)%'),
@@ -108,10 +110,6 @@ select ok(
 select ok(
   exists (select 1 from pg_indexes where indexname = 'jobs_public_employment_type_idx' and indexdef like '%(employment_type, created_at DESC, id DESC)%'),
   'employment_type has an index'
-);
-select ok(
-  exists (select 1 from pg_indexes where indexname = 'jobs_public_salary_idx' and indexdef like '%(salary_currency, salary_period, salary_max)%'),
-  'the salary filter has an index on (salary_currency, salary_period, salary_max)'
 );
 select ok(
   exists (select 1 from pg_indexes where indexname = 'jobs_public_city_idx' and indexdef like '%private.fold_text(city)%'),

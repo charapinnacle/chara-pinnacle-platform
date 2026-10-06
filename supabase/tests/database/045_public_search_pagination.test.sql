@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(35);
 
 \ir search_fixture.inc
 
@@ -110,6 +110,9 @@ select is(
 select is(pg_temp.search_ids('anon', null, format('p_q => %L', repeat('a', 101))), 'P0001|CHARA_INVALID_INPUT|p_q', 'a keyword of 101 characters is refused');
 select is(pg_temp.search_ids('anon', null, format('p_q => %L', repeat('a', 100))) like 'P0001%', false, 'a keyword of 100 characters is accepted');
 select is(pg_temp.search_ids('anon', null, format('p_city => %L', repeat('a', 101))), 'P0001|CHARA_INVALID_INPUT|p_city', 'a city of 101 characters is refused');
+select is(pg_temp.search_ids('anon', null, format('p_city => %L', repeat('a', 100))) like 'P0001%', false, 'a city of 100 characters is accepted');
+select is(pg_temp.search_ids('anon', null, format('p_occupation => %L', repeat('1', 11))), 'P0001|CHARA_INVALID_INPUT|p_occupation', 'an occupation of 11 characters is refused');
+select is(pg_temp.search_ids('anon', null, format('p_industry => %L', repeat('C', 11))), 'P0001|CHARA_INVALID_INPUT|p_industry', 'an industry of 11 characters is refused');
 select is(pg_temp.search_ids('anon', null, 'p_country => ''DEU'''), 'P0001|CHARA_INVALID_INPUT|p_country', 'a country of three letters is refused');
 select is(pg_temp.search_ids('anon', null, 'p_country => ''1A'''), 'P0001|CHARA_INVALID_INPUT|p_country', 'a country with a digit is refused');
 select is(pg_temp.search_ids('anon', null, 'p_recruitment => ''both'''), 'P0001|CHARA_INVALID_INPUT|p_recruitment', 'recruitment both is refused: it is not a filter');

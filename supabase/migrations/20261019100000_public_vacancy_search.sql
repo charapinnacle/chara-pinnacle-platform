@@ -27,7 +27,9 @@ create index jobs_title_trgm_idx on public.jobs using gin (title extensions.gin_
 -- The proposed indexes. Each holds only the public vacancies (the predicate of jobs_select_public, which is how the
 -- policy columns status, moderation_state and deleted_at are covered) and ends with the order of the results, so a
 -- filter that selects many rows reads them newest first and stops after one page. Drafts and closed vacancies, which
--- are the bulk of the rows over time, cost these indexes nothing.
+-- are the bulk of the rows over time, cost these indexes nothing. The minimum salary has no index of its own (D49): a
+-- range on salary_max cannot end with the order of the results, and the planner chose such an index even for broad
+-- thresholds, reading and sorting every salaried vacancy above it; the newest-first scan with the filter is faster.
 create index jobs_public_newest_idx on public.jobs (created_at desc, id desc)
   where status = 'open' and deleted_at is null and moderation_state = 'visible';
 create index jobs_public_industry_idx on public.jobs (industry_code, created_at desc, id desc)
@@ -35,8 +37,6 @@ create index jobs_public_industry_idx on public.jobs (industry_code, created_at 
 create index jobs_public_employment_type_idx on public.jobs (employment_type, created_at desc, id desc)
   where status = 'open' and deleted_at is null and moderation_state = 'visible';
 create index jobs_public_city_idx on public.jobs (private.fold_text(city), created_at desc, id desc)
-  where status = 'open' and deleted_at is null and moderation_state = 'visible';
-create index jobs_public_salary_idx on public.jobs (salary_currency, salary_period, salary_max)
   where status = 'open' and deleted_at is null and moderation_state = 'visible';
 
 -- The filters are optional parameters; a parameter that is null does not filter. The error code is the stable message
