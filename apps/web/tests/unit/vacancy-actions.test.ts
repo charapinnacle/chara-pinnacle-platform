@@ -46,4 +46,11 @@ describe("requireLogin", () => {
     await expect(requireLogin("apply", "../../x")).rejects.toThrow("REDIRECT:/en/jobs");
     expect(logMock).not.toHaveBeenCalled();
   });
+
+  it("sends an action that is neither apply nor save to Find Jobs and counts nothing", async () => {
+    for (const action of ["x", "", "APPLY", "a".repeat(10_000)]) {
+      await expect(requireLogin(action as "apply", id)).rejects.toThrow("REDIRECT:/en/jobs");
+    }
+    expect(logMock).not.toHaveBeenCalled();
+  });
 });
