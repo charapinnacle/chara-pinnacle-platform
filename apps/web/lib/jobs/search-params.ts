@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { employmentTypes, salaryPeriods } from "@/lib/validation/job";
 
+// The limits below repeat those of public.search_jobs, which stays the authority and clamps or refuses again:
+// 20 and 50 are its v_limit, 100 its p_q and p_city length, 9,999,999.99 its p_salary_min ceiling.
 const SEARCH_DEFAULT_LIMIT = 20;
 const SEARCH_MAX_LIMIT = 50;
 
@@ -8,8 +10,17 @@ const MAX_TEXT = 100;
 const MAX_SALARY = 9_999_999.99;
 const SALARY_FORMAT = "Enter an amount above 0 and up to 9,999,999.99, for example 2800 or 2800.50.";
 
-// The shape of the cursor search_jobs returns; the database parses it again and refuses anything else.
-const CURSOR = /^[0-9]+(\.[0-9]+)?(e[+-][0-9]+)?\|[0-9T:.Z-]+\|[0-9a-f-]{36}$/;
+// The exact shape of the next_cursor search_jobs returns: the relevance, the creation time in UTC with microseconds, the id.
+// The function casts the parts and refuses a cursor that does not cast, which would be an error page for a typed address.
+const CURSOR =
+  /^\d+(?:\.\d+)?(?:e[+-]\d+)?\|(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.\d{6}Z\|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function isCursor(value: string): boolean {
+  const seconds = CURSOR.exec(value)?.[1];
+  if (seconds === undefined) return false;
+  const parsed = new Date(`${seconds}Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(seconds);
+}
 
 const characters = (value: string) => Array.from(value).length;
 
@@ -153,7 +164,7 @@ export function parseSearchParams(raw: RawParams): { filters: JobSearchFilters; 
 
   const cursor = first(raw.cursor);
   if (cursor !== undefined) {
-    if (CURSOR.test(cursor)) filters.cursor = cursor;
+    if (isCursor(cursor)) filters.cursor = cursor;
     else errors.cursor = "The page link is not valid, so the first page is shown.";
   }
   return { filters, errors };

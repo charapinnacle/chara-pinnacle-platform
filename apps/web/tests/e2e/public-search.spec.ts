@@ -230,6 +230,20 @@ test.describe("public vacancy search", () => {
     await expect(page.getByLabel("Salary at least")).toHaveValue("");
   });
 
+  test("FR-C3 AC7: a crafted page link is reported and the first page is shown, not the error page", async ({ page }) => {
+    const company = await newCompany();
+    const marker = newMarker();
+    seedJob(company, { title: `Welder ${marker}`, status: "open" });
+    const uuid = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
+
+    for (const cursor of [`0|T|${"-".repeat(36)}`, `0|2026-13-45T10:00:00.123456Z|${uuid}`]) {
+      await page.goto(`/en/jobs?q=${marker}&cursor=${encodeURIComponent(cursor)}`);
+      await expect(page.getByRole("alert").filter({ hasText: "The page link is not valid, so the first page is shown." })).toBeVisible();
+      await expect(cards(page, marker)).toHaveCount(1);
+      await expect(page.getByText("The vacancies could not be loaded")).toHaveCount(0);
+    }
+  });
+
   test("FR-C3 AC9: at 360 px the page, with results and without, has no accessibility violations and no sideways scroll", async ({ page }) => {
     const company = await newCompany();
     const marker = newMarker();

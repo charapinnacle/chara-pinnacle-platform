@@ -140,6 +140,29 @@ describe("parseSearchParams", () => {
     expect(Object.keys(refused.errors)).toEqual(["cursor"]);
     expect(refused.filters.cursor).toBeUndefined();
   });
+
+  it("drops a cursor that has the look of one but that the database could not read", () => {
+    const uuid = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
+    for (const cursor of [
+      `0|T|${"-".repeat(36)}`,
+      `0|2026-13-45T10:00:00.123456Z|${uuid}`,
+      `0|2026-02-30T10:00:00.123456Z|${uuid}`,
+      `0|2026-10-07T25:00:00.123456Z|${uuid}`,
+      `0|2026-10-07T10:00:00Z|${uuid}`,
+      `0|2026-10-07T10:00:00.123456Z|${"-".repeat(36)}`,
+      `x|2026-10-07T10:00:00.123456Z|${uuid}`,
+    ]) {
+      const refused = parse({ cursor, q: "welder" });
+      expect(Object.keys(refused.errors), cursor).toEqual(["cursor"]);
+      expect(refused.filters.cursor, cursor).toBeUndefined();
+      expect(refused.filters.q).toBe("welder");
+    }
+  });
+
+  it("accepts the relevance in the exponent form a real prints", () => {
+    const cursor = "1.2345679e-05|2026-10-07T10:00:00.123456Z|6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
+    expect(parse({ cursor }).filters.cursor).toBe(cursor);
+  });
 });
 
 describe("searchQuery", () => {
