@@ -1,15 +1,14 @@
 import { Circle, CircleCheck } from "lucide-react";
+import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
-import type { Completeness } from "@/lib/passport/completeness";
+import { showsNudge, type Completeness } from "@/lib/passport/completeness";
 
 type CompletenessCardProps = { lang: string; completeness: Completeness };
 
 export function CompletenessCard({ lang, completeness }: CompletenessCardProps) {
   const { percent, items, next } = completeness;
-  const passportPath = `/${lang}/passport`;
   return (
-    <section className="grid gap-4">
-      <h2 className="text-lg font-semibold">Your passport</h2>
+    <div className="grid gap-4">
       <div className="grid gap-2">
         <p className="font-medium">{percent}% complete</p>
         <progress
@@ -22,12 +21,17 @@ export function CompletenessCard({ lang, completeness }: CompletenessCardProps) 
       <p className="text-body">
         {next ? (
           <>
-            Next: <TextLink href={`${passportPath}#${next.section}`}>{next.label}</TextLink>
+            Next: <TextLink href={`/${lang}/passport#${next.section}`}>{next.label}</TextLink>
           </>
         ) : (
-          "You have added everything we ask for so far."
+          "Profile complete"
         )}
       </p>
+      {next && showsNudge(percent) ? (
+        <Notice role="note" aria-label="Complete your passport">
+          A complete passport gives employers more to act on.
+        </Notice>
+      ) : null}
       <ol className="grid gap-1 text-body">
         {items.map((item) => (
           <li key={item.key} className="flex items-center gap-3">
@@ -43,9 +47,26 @@ export function CompletenessCard({ lang, completeness }: CompletenessCardProps) 
           </li>
         ))}
       </ol>
-      <TextLink standalone href={passportPath}>
-        Open your passport
-      </TextLink>
-    </section>
+      <details className="text-body">
+        <summary className="min-h-11 w-fit cursor-pointer rounded-sm py-2.5 font-medium text-primary underline underline-offset-4">
+          How is this calculated?
+        </summary>
+        <div className="grid gap-2 pt-2">
+          <p className="text-muted-foreground">
+            The score is the sum of the points of the items you have completed, out of 100. Nothing else counts.
+          </p>
+          <ul className="grid gap-1">
+            {items.map((item) => (
+              <li key={item.key}>
+                <span className="font-medium">
+                  {item.label}: {item.weight} points
+                </span>
+                <span className="text-muted-foreground">. {item.rule}.</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </details>
+    </div>
   );
 }
