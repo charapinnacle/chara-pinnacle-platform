@@ -6,6 +6,7 @@ import { listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { jobPath, jobsPath } from "@/lib/routes";
+import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { jobStatusText } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
@@ -19,7 +20,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
   const canCreate = organization.role !== "member";
   const newJob = canCreate ? (
     <TextLink standalone href={`${jobsPath(lang, slug)}/new`}>
-      New vacancy
+      Create vacancy
     </TextLink>
   ) : null;
 
@@ -48,9 +49,14 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
               <TextLink href={jobPath(lang, slug, job.id)} className="break-words">
                 {job.title}
               </TextLink>
-              <p className="text-sm text-muted-foreground">
-                {job.city}, {job.country} · {jobStatusText(job.status, job.moderationState)} · Created{" "}
-                {formatDate(job.createdAt)}
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <span className="rounded-full border bg-accent px-2 py-0.5 font-medium text-accent-foreground">
+                  {jobStatusText(job.status, job.moderationState)}
+                </span>
+                <span>
+                  {job.city}, {job.country} · Status changed {formatDate(job.statusChangedAt)}
+                </span>
+                {job.staleOpen ? <span className="font-medium text-foreground">{STALE_OPEN_TEXT}</span> : null}
               </p>
             </li>
           ))}

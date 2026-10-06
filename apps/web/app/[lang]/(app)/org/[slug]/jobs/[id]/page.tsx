@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
+import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
+import { formatDate } from "@/lib/i18n/format";
+import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
@@ -22,7 +25,12 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
     <div className="mx-auto grid w-full max-w-3xl gap-6">
       <Notice tone="info" role="status">
         {jobStatusText(job.status, job.moderationState)}
+        {job.staleOpen ? ` · ${STALE_OPEN_TEXT}` : ""}
+        {job.status === "draft" ? "" : ` · Status changed ${formatDate(job.statusChangedAt)}`}
       </Notice>
+      {organization.role === "member" ? null : (
+        <JobStatusActions slug={slug} jobId={job.id} status={job.status} />
+      )}
       <VacancyView job={job} />
       <div className="flex flex-wrap gap-x-6">
         <TextLink standalone href={`${jobPath(lang, slug, job.id)}/preview`}>

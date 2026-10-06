@@ -41,6 +41,7 @@ const row = {
   recruitment_preference: "both",
   status: "draft",
   moderation_state: "visible",
+  status_changed_at: "2026-10-06T10:00:00.123456+00:00",
   created_at: "2026-10-06T10:00:00.123456+00:00",
   occupations: { label: "Welders and flame cutters" },
   industries: { name: "Manufacturing" },
@@ -92,6 +93,30 @@ describe("getPublicJob", () => {
   });
 });
 
+describe("the stale flag", () => {
+  const oldDay = (days: number) => new Date(Date.now() - days * 86_400_000 - 60_000).toISOString();
+
+  it("is set on a vacancy that has been open for more than 90 days since its last status change", async () => {
+    result = { data: { ...row, status: "open", status_changed_at: oldDay(90) }, error: null };
+    await expect(getJob("org-1", row.id)).resolves.toMatchObject({ staleOpen: true, statusChangedAt: oldDay(90) });
+    result = { data: { ...row, status: "open", status_changed_at: oldDay(89) }, error: null };
+    await expect(getJob("org-1", row.id)).resolves.toMatchObject({ staleOpen: false });
+  });
+
+  it("is set per row of the list, and only on an open vacancy", async () => {
+    result = {
+      data: [
+        { ...row, id: "a", status: "open", status_changed_at: oldDay(91), countries: { name: "Germany" } },
+        { ...row, id: "b", status: "paused", status_changed_at: oldDay(120), countries: { name: "Germany" } },
+        { ...row, id: "c", status: "open", status_changed_at: oldDay(10), countries: { name: "Germany" } },
+      ],
+      error: null,
+    };
+    const { jobs } = await listJobs("org-1", null);
+    expect(jobs.map((job) => [job.id, job.staleOpen])).toEqual([["a", true], ["b", false], ["c", false]]);
+  });
+});
+
 describe("listJobs", () => {
   function rows(count: number) {
     return Array.from({ length: count }, (_, index) => ({
@@ -100,6 +125,7 @@ describe("listJobs", () => {
       city: "Hamburg",
       status: "draft",
       moderation_state: "visible",
+      status_changed_at: "2026-10-06T10:00:00.000000+00:00",
       created_at: `2026-10-06T10:00:${String(59 - index).padStart(2, "0")}.000000+00:00`,
       countries: { name: "Germany" },
     }));

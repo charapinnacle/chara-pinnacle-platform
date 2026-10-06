@@ -2,6 +2,7 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { isStaleOpen } from "@/lib/jobs/lifecycle";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
@@ -27,6 +28,8 @@ export type Job = {
   recruitmentPreference: Enums["recruitment_preference"];
   status: Enums["job_status"];
   moderationState: Enums["job_moderation_state"];
+  statusChangedAt: string;
+  staleOpen: boolean;
   createdAt: string;
 };
 
@@ -37,6 +40,8 @@ type JobSummary = {
   country: string;
   status: Enums["job_status"];
   moderationState: Enums["job_moderation_state"];
+  statusChangedAt: string;
+  staleOpen: boolean;
   createdAt: string;
 };
 
@@ -48,7 +53,7 @@ const selectJob = (supabase: Client) =>
   supabase
     .from("jobs")
     .select(
-      "id, title, description, occupation_id, industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support, recruitment_preference, status, moderation_state, created_at, occupations(label), industries(name), countries(name)",
+      "id, title, description, occupation_id, industry_code, country_code, city, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support, recruitment_preference, status, moderation_state, status_changed_at, created_at, occupations(label), industries(name), countries(name)",
     );
 
 type JobRow = QueryData<ReturnType<typeof selectJob>>[number];
@@ -72,6 +77,8 @@ function toJob(row: JobRow): Job {
     recruitmentPreference: row.recruitment_preference,
     status: row.status,
     moderationState: row.moderation_state,
+    statusChangedAt: row.status_changed_at,
+    staleOpen: isStaleOpen(row.status, row.status_changed_at, new Date()),
     createdAt: row.created_at,
   };
 }
@@ -108,7 +115,7 @@ export async function listJobs(organizationId: string, cursor: JobCursor | null)
   const supabase = await createClient();
   let query = supabase
     .from("jobs")
-    .select("id, title, city, status, moderation_state, created_at, countries(name)")
+    .select("id, title, city, status, moderation_state, status_changed_at, created_at, countries(name)")
     .eq("organization_id", organizationId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -119,6 +126,7 @@ export async function listJobs(organizationId: string, cursor: JobCursor | null)
   }
   const { data, error } = await query;
   if (error) throw new Error("The vacancies could not be loaded", { cause: error });
+  const now = new Date();
   const page = data.slice(0, JOBS_PAGE_SIZE).map((row) => ({
     id: row.id,
     title: row.title,
@@ -126,6 +134,8 @@ export async function listJobs(organizationId: string, cursor: JobCursor | null)
     country: row.countries?.name ?? "",
     status: row.status,
     moderationState: row.moderation_state,
+    statusChangedAt: row.status_changed_at,
+    staleOpen: isStaleOpen(row.status, row.status_changed_at, now),
     createdAt: row.created_at,
   }));
   const last = page[page.length - 1];
