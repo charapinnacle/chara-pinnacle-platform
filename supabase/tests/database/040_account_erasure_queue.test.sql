@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(28);
 
 \ir passport_fixture.inc
 
@@ -63,6 +63,33 @@ update public.profiles set deleted_at = now() - interval '40 days', legal_hold =
 select is(private.queue_account_erasures(), 0, 'a held account queues nothing');
 select is(pg_temp.paused(:'w'), 1::bigint, 'a pause is audited without a contact address');
 select is(pg_temp.paused_mails(:'w'), 0::bigint, 'and no notification is queued');
+
+-- The hold is set and cleared by a ticketed statement, and each change is audited with its reason.
+select set_config('chara.audit_reason', 'Dispute 4711, ticket 5120', true);
+update public.profiles set legal_hold = true where id = :'y';
+select set_config('chara.audit_reason', '', true);
+select is(
+  (select metadata ->> 'reason' from audit.log where action = 'account.legal_hold_set' and entity_id = :'y'), 'Dispute 4711, ticket 5120',
+  'setting the hold writes one audit row with the reason'
+);
+update public.profiles set legal_hold = false where id = :'y';
+select is(
+  (select count(*) from audit.log where action = 'account.legal_hold_cleared' and entity_id = :'y'), 1::bigint,
+  'clearing the hold writes one audit row'
+);
+select is(
+  (select metadata from audit.log where action = 'account.legal_hold_cleared' and entity_id = :'y'), '{}'::jsonb,
+  'a change without a reason records none'
+);
+update public.profiles set display_name = 'Yara' where id = :'y';
+select is(
+  (select count(*) from audit.log where action like 'account.legal_hold_%' and entity_id = :'y'), 2::bigint,
+  'a change of another column writes no hold row'
+);
+select is(
+  pg_temp.call_as(:'y', 'authenticated', 'select legal_hold from public.profiles', 'aal1') ~ '^42501\|permission denied', true,
+  'the candidate cannot read the flag'
+);
 
 select is(
   (select schedule from cron.job where jobname = 'queue-account-erasures'), '30 2 * * *', 'the job runs daily'

@@ -452,3 +452,56 @@ $$;
 revoke all on function private.queue_account_erasures() from public, anon, authenticated, service_role;
 
 select cron.schedule('queue-account-erasures', '30 2 * * *', 'select private.queue_account_erasures()');
+
+-- account_ops_ack (platform staff roles migration) with one change: the audit row of a job names the user only while the
+-- user still has a profile. A job acknowledged after the erasure (the erase job itself, or a file removal that was
+-- still queued) would otherwise write the old user id back into the audit log, next to the pseudonymised rows.
+create or replace function public.account_ops_ack(p_msg_id bigint, p_result jsonb default '{}') returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_message jsonb;
+begin
+  if p_result is null or jsonb_typeof(p_result) <> 'object' then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'result';
+  end if;
+  select q.message into v_message from pgmq.q_account_ops q where q.msg_id = p_msg_id;
+  if v_message is null or not pgmq.delete('account_ops', p_msg_id) then
+    return false;
+  end if;
+  perform audit.record(
+    'account_ops_done', 'user',
+    (select p.id::text from public.profiles p where p.id::text = v_message ->> 'user_id'),
+    jsonb_build_object('action', v_message ->> 'action', 'msg_id', p_msg_id) || p_result
+  );
+  return true;
+end;
+$$;
+
+-- A Platform Administrator sets or clears the hold by a ticketed SQL statement (no screen in Phase 1); the trigger makes it
+-- audited. The ticket and reason travel in the transaction setting chara.audit_reason, as for the platform roles.
+create function private.profiles_legal_hold_audit() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform audit.record(
+    case when new.legal_hold then 'account.legal_hold_set' else 'account.legal_hold_cleared' end,
+    'profile', new.id::text,
+    jsonb_strip_nulls(jsonb_build_object('reason', nullif(current_setting('chara.audit_reason', true), '')))
+  );
+  return null;
+end;
+$$;
+
+revoke all on function private.profiles_legal_hold_audit() from public, anon, authenticated, service_role;
+
+create trigger profiles_legal_hold_audit
+  after update of legal_hold on public.profiles
+  for each row when (old.legal_hold is distinct from new.legal_hold)
+  execute function private.profiles_legal_hold_audit();
+
+alter table public.profiles enable always trigger profiles_legal_hold_audit;

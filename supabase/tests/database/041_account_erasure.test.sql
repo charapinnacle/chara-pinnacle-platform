@@ -1,5 +1,5 @@
 begin;
-select plan(60);
+select plan(65);
 
 \ir privacy_fixture.inc
 
@@ -199,6 +199,31 @@ select is(current_setting('t.erased'), 'false', 'AC11: it reports that nothing w
 select is((select count(*) from audit.log where action = 'account.erased'), 1::bigint, 'AC11: it writes no second account.erased row');
 select is(
   (select count(*) from pgmq.q_notifications where message ->> 'kind' = 'deletion_completed'), 1::bigint, 'AC11: and queues no second email'
+);
+
+-- A job acknowledged after the erasure does not write the old user id back into the audit log; one for a user who still
+-- has a profile is audited with the id as before.
+select set_config('t.job_b', pgmq.send('account_ops', jsonb_build_object('action', 'sign_out', 'user_id', :'wb'::uuid))::text, true);
+select set_config('t.job_a', pgmq.send('account_ops', jsonb_build_object('action', 'sign_out', 'user_id', :'wa'::uuid))::text, true);
+select is(
+  pg_temp.call_as(null, 'service_role', $$select public.account_ops_ack(current_setting('t.job_b')::bigint)$$),
+  'ok', 'the ack of a job of a user who still exists runs'
+);
+select is(
+  pg_temp.call_as(null, 'service_role', $$select public.account_ops_ack(current_setting('t.job_a')::bigint)$$),
+  'ok', 'the ack of a job of the erased user runs'
+);
+select is(
+  (select count(*) from audit.log where action = 'account_ops_done' and entity_id = :'wb'), 1::bigint,
+  'the audit row of the user who exists names the user'
+);
+select is(
+  (select count(*) from audit.log where action = 'account_ops_done' and entity_id is null), 1::bigint,
+  'the audit row of the erased user names nobody'
+);
+select is(
+  (select count(*) from audit.log where entity_id = :'wa' or metadata::text like '%' || :'wa' || '%'), 0::bigint,
+  'and the user id is still nowhere in the audit log'
 );
 
 -- Candidate B is untouched.
