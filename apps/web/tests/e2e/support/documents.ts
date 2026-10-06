@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { env } from "@/lib/env";
 import { execute, literal, query } from "./db";
+import { waitForHydration } from "./hydration";
 import { signIn } from "./passport";
 import { expect } from "./test";
 import type { TestUser } from "./test-user";
@@ -121,6 +122,7 @@ export async function openDocuments(page: Page, user: TestUser): Promise<void> {
   await signIn(page, user);
   await page.goto("/en/passport");
   await expect(page.getByRole("heading", { name: "Documents", level: 2, exact: true })).toBeVisible({ timeout: 15_000 });
+  await waitForHydration(page.getByLabel("Type", { exact: true }));
 }
 
 // The live region of the upload form that announces the chosen file and the result of an upload.
