@@ -430,7 +430,14 @@ isOneToOne: false
                 }
           }
           Views: {
-            "v_my_subscription": {
+            "v_my_document_access_log": {
+                  Row: {
+                    "accessed_at": string | null,"document_title": string | null,"id": number | null,"organization_name": string | null,"purpose": string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"v_my_subscription": {
                   Row: {
                     "cancel_at": string | null,"current_period_end": string | null,"organization_id": string | null,"past_due_since": string | null,"plan_code": string | null,"plan_name": string | null,"status": string | null,"trial_ends_at": string | null
                   }

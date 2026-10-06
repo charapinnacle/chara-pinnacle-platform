@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(20);
 
 select has_schema('private');
 select has_schema('audit');
@@ -12,8 +12,18 @@ select set_eq(
 );
 
 select ok(
-  not has_schema_privilege('anon', 'audit', 'usage') and not has_schema_privilege('authenticated', 'audit', 'usage'),
-  'anon and authenticated have no usage on schema audit'
+  not has_schema_privilege('anon', 'audit', 'usage'),
+  'anon has no usage on schema audit'
+);
+-- authenticated has usage only so that the candidate's view of the document access log (FR-B5) can read its table as the
+-- caller; every other table of the schema stays closed and the grant on the log names columns, never accessed_by.
+select is_empty(
+  $$select c.relname::text from pg_class c
+    where c.relnamespace = 'audit'::regnamespace and c.relkind in ('r', 'p', 'v', 'm')
+      and (has_table_privilege('authenticated', c.oid, 'select, insert, update, delete, truncate, references, trigger')
+        or has_any_column_privilege('authenticated', c.oid, 'select, insert, update, references'))
+      and c.relname <> 'document_access_log'$$,
+  'authenticated holds no privilege on any table of schema audit except the document access log'
 );
 select ok(
   not has_schema_privilege('anon', 'stats', 'usage') and not has_schema_privilege('authenticated', 'stats', 'usage'),
