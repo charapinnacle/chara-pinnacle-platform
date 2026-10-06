@@ -99,29 +99,28 @@ export async function deleteDocument(documentId: string): Promise<DocumentResult
   return settle();
 }
 
-// A link that lives 60 seconds and makes the browser save the file instead of showing it. Only a document that passed the
-// check is offered: the candidate's row policy finds the row and the storage select policy lets the session sign the path.
+// A link that lives 60 seconds and makes the browser save the file instead of showing it. The path comes from
+// document_access_grant, which checks the scan state and logs the download before anything is signed; the storage select
+// policy then lets the owner's session sign the path it returned.
 export async function getDocumentDownload(documentId: string): Promise<DownloadResult> {
   await requireUser(defaultLocale);
   const id = documentIdSchema.safeParse(documentId);
   if (!id.success) return { message: GENERIC_FAILURE };
   const supabase = await createClient();
-  const { data: row, error } = await supabase
-    .from("worker_documents")
-    .select("storage_path, file_name, scan_status")
-    .eq("id", id.data)
-    .maybeSingle();
-  if (error) return refusal(error);
-  if (!row) return { message: "This document no longer exists." };
-  if (row.scan_status !== "skipped" && row.scan_status !== "clean") {
-    return { message: "This file cannot be downloaded." };
+  const { data, error } = await supabase.rpc("document_access_grant", { p_document_id: id.data, p_purpose: "owner_download" });
+  if (error) {
+    if (error.code === "P0002") return { message: "This document no longer exists." };
+    if (error.message === "CHARA_DOCUMENT_NOT_SCANNED") return { message: "This file cannot be downloaded." };
+    return refusal(error);
   }
-  const { data, error: signError } = await supabase.storage
-    .from(DOCUMENT_BUCKET)
-    .createSignedUrl(row.storage_path, 60, { download: row.file_name });
+  const grant = data[0];
+  if (!grant) return { message: GENERIC_FAILURE };
+  const { data: signed, error: signError } = await supabase.storage
+    .from(grant.bucket_id)
+    .createSignedUrl(grant.object_path, 60, { download: grant.file_name });
   if (signError) {
     console.error("Document download link failed", { message: signError.message });
     return { message: GENERIC_FAILURE };
   }
-  return { url: data.signedUrl };
+  return { url: signed.signedUrl };
 }
