@@ -53,7 +53,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: ["**/consent-versions.spec.ts", "**/account-ops.spec.ts"],
+      testIgnore: ["**/consent-versions.spec.ts", "**/account-ops.spec.ts", "**/account-erasure.spec.ts"],
     },
     {
       name: "versions",
@@ -65,7 +65,7 @@ export default defineConfig({
     {
       name: "account-ops",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: "**/account-ops.spec.ts",
+      testMatch: ["**/account-ops.spec.ts", "**/account-erasure.spec.ts"],
       dependencies: ["chromium", "versions"],
     },
   ],
