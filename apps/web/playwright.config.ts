@@ -59,6 +59,7 @@ export default defineConfig({
         "**/account-erasure.spec.ts",
         "**/team-limits.spec.ts",
         "**/vacancy-limits.spec.ts",
+        "**/public-search-failure.spec.ts",
       ],
     },
     {
@@ -95,6 +96,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/vacancy-limits.spec.ts",
       dependencies: ["limits-team"],
+    },
+    // The search function is withdrawn from the API roles while this spec runs, so it follows every other project.
+    {
+      name: "search-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/public-search-failure.spec.ts",
+      dependencies: ["limits-vacancies"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

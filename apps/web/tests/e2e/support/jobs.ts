@@ -126,16 +126,56 @@ export function jobAudit(organizationId: string, action: string) {
   );
 }
 
+interface Salary {
+  min: number | null;
+  max: number | null;
+  currency: string;
+  period: string;
+}
+
+interface SeedJobOptions {
+  title: string;
+  status: string;
+  moderation: string;
+  createdAt: string;
+  statusChangedAt: string;
+  country: string;
+  city: string;
+  employment: string;
+  salary: Salary | null;
+  accommodation: boolean;
+  visaSupport: boolean;
+}
+
+const SEED_DEFAULTS: SeedJobOptions = {
+  title: "Seeded welder",
+  status: "draft",
+  moderation: "visible",
+  createdAt: "now()",
+  statusChangedAt: "now()",
+  country: "DE",
+  city: "Hamburg",
+  employment: "full_time",
+  salary: null,
+  accommodation: false,
+  visaSupport: false,
+};
+
 // A vacancy as an administrator would have saved it, written by the database owner so that a test can give it any status.
-export function seedJob(
-  company: Company,
-  { title = "Seeded welder", status = "draft", moderation = "visible", createdAt = "now()", statusChangedAt = "now()" } = {},
-): string {
+export function seedJob(company: Company, options: Partial<SeedJobOptions> = {}): string {
+  const { title, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport } = {
+    ...SEED_DEFAULTS,
+    ...options,
+  };
+  const amount = (value: number | null | undefined) => (value === null || value === undefined ? "null" : String(value));
   const output = execute(
     `insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city,
-        employment_type, recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at)
+        employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support,
+        recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at)
      values (${literal(company.id)}, ${literal(title)}, ${literal("Line one of the description.\nLine two of it, which is long enough to pass the limit.")},
-        '7212', 'C', 'DE', 'Hamburg', 'full_time', 'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt})
+        '7212', 'C', ${literal(country)}, ${literal(city)}, ${literal(employment)}, ${amount(salary?.min)}, ${amount(salary?.max)},
+        ${salary ? literal(salary.currency) : "null"}, ${salary ? literal(salary.period) : "null"}, ${accommodation}, ${visaSupport},
+        'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt})
      returning id`,
   );
   return output.trim();

@@ -24,8 +24,8 @@ type JobInsert = Pick<
   | "recruitment_preference"
 >;
 
-const employmentTypes = ["full_time", "part_time", "contract", "temporary", "seasonal"] as const;
-const salaryPeriods = ["hour", "month", "year"] as const;
+export const employmentTypes = ["full_time", "part_time", "contract", "temporary", "seasonal"] as const;
+export const salaryPeriods = ["hour", "month", "year"] as const;
 const recruitmentPreferences = ["local", "international", "both"] as const;
 
 export const employmentTypeLabels: Record<(typeof employmentTypes)[number], string> = {

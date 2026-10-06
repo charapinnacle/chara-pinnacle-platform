@@ -676,6 +676,11 @@ isOneToOne: false
 "revoke_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
+"search_jobs":
+{ Args: { "p_accommodation"?: boolean,"p_city"?: string,"p_country"?: string,"p_cursor"?: string,"p_employment_type"?: Database["public"]['Enums']["employment_type"],"p_industry"?: string,"p_limit"?: number,"p_occupation"?: string,"p_q"?: string,"p_recruitment"?: Database["public"]['Enums']["recruitment_preference"],"p_salary_currency"?: string,"p_salary_min"?: number,"p_salary_period"?: Database["public"]['Enums']["salary_period"],"p_visa_support"?: boolean }; Returns: {
+              "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"employer_display_name": string,"employer_slug": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"next_cursor": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
+            }[]
+                           },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
                            },

@@ -19,9 +19,21 @@ function builder(table: string) {
 }
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: builder }) }));
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => ({
+    from: builder,
+    rpc: (name: string, args: unknown) => {
+      calls.push([`rpc.${name}`, args]);
+      return Promise.resolve(result);
+    },
+  }),
+}));
+vi.mock("@/lib/jobs/search-log", () => ({ logSearch: vi.fn() }));
 
-const { getEmployer, getJob, getJobLimit, getPublicJob, JOBS_PAGE_SIZE, listJobs } = await import("@/lib/dal/hiring");
+const { getEmployer, getJob, getJobLimit, getPublicJob, JOBS_PAGE_SIZE, listJobs, searchJobs } = await import(
+  "@/lib/dal/hiring"
+);
+const { logSearch } = await import("@/lib/jobs/search-log");
 
 const row = {
   id: "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
@@ -197,5 +209,113 @@ describe("getJobLimit", () => {
   it("throws on a failed read, with the cause attached and no text for the caller", async () => {
     result = { data: null, error: { message: "secret detail" } };
     await expect(getJobLimit("org-1")).rejects.toThrow("The vacancy limit could not be loaded");
+  });
+});
+
+describe("searchJobs", () => {
+  const found = {
+    id: row.id,
+    title: "Welder MIG/MAG",
+    employer_display_name: "Acme Bau",
+    employer_slug: "acme-bau",
+    country_code: "DE",
+    city: "Hamburg",
+    employment_type: "full_time",
+    salary_min: null,
+    salary_max: 3400,
+    salary_currency: "EUR",
+    salary_period: "month",
+    accommodation: true,
+    visa_support: false,
+    recruitment_preference: "both",
+    created_at: "2026-10-06T10:00:00.123456+00:00",
+    next_cursor: null,
+  };
+
+  it("passes every filter, the cursor and the limit to the function as its parameters", async () => {
+    result = { data: [], error: null };
+    await searchJobs({
+      q: "welder",
+      country: "DE",
+      city: "Hamburg",
+      occupation: "7212",
+      industry: "C",
+      employment_type: "full_time",
+      salary_min: 3000,
+      salary_currency: "EUR",
+      salary_period: "month",
+      accommodation: true,
+      visa_support: true,
+      recruitment: "local",
+      cursor: "0|2026-10-07T10:00:00.000000Z|6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
+      limit: 10,
+    });
+    expect(calls).toEqual([
+      [
+        "rpc.search_jobs",
+        {
+          p_q: "welder",
+          p_country: "DE",
+          p_city: "Hamburg",
+          p_occupation: "7212",
+          p_industry: "C",
+          p_employment_type: "full_time",
+          p_salary_min: 3000,
+          p_salary_currency: "EUR",
+          p_salary_period: "month",
+          p_accommodation: true,
+          p_visa_support: true,
+          p_recruitment: "local",
+          p_cursor: "0|2026-10-07T10:00:00.000000Z|6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
+          p_limit: 10,
+        },
+      ],
+    ]);
+  });
+
+  it("maps the rows to cards with no person in them and a salary that may have no minimum", async () => {
+    result = { data: [found], error: null };
+    await expect(searchJobs({ limit: 20 })).resolves.toEqual({
+      results: [
+        {
+          id: row.id,
+          title: "Welder MIG/MAG",
+          employerName: "Acme Bau",
+          countryCode: "DE",
+          city: "Hamburg",
+          employmentType: "full_time",
+          salaryMin: null,
+          salaryMax: 3400,
+          salaryCurrency: "EUR",
+          salaryPeriod: "month",
+          accommodation: true,
+          visaSupport: false,
+          createdAt: "2026-10-06T10:00:00.123456+00:00",
+        },
+      ],
+      nextCursor: null,
+    });
+  });
+
+  it("takes the cursor of the last row as the next page", async () => {
+    result = { data: [found, { ...found, next_cursor: "0.5|2026-10-07T10:00:00.000000Z|x" }], error: null };
+    await expect(searchJobs({ limit: 2 })).resolves.toMatchObject({ nextCursor: "0.5|2026-10-07T10:00:00.000000Z|x" });
+  });
+
+  it("logs the search with the count of the page", async () => {
+    result = { data: [found], error: null };
+    await searchJobs({ q: "welder", limit: 20 });
+    expect(logSearch).toHaveBeenCalledWith({ q: "welder", limit: 20 }, expect.any(Number), 1, "ok");
+  });
+
+  it("throws on a failed call, with the cause attached and no text for the caller", async () => {
+    result = { data: null, error: { message: "secret detail" } };
+    await expect(searchJobs({ limit: 20 })).rejects.toThrow("The vacancies could not be searched");
+  });
+
+  it("logs a failed search too, with no results and the outcome error", async () => {
+    result = { data: null, error: { message: "canceling statement due to statement timeout" } };
+    await expect(searchJobs({ q: "welder", limit: 20 })).rejects.toThrow("The vacancies could not be searched");
+    expect(logSearch).toHaveBeenLastCalledWith({ q: "welder", limit: 20 }, expect.any(Number), 0, "error");
   });
 });

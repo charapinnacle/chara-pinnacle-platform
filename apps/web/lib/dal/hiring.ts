@@ -3,6 +3,8 @@ import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isStaleOpen, type LimitPrompt } from "@/lib/jobs/lifecycle";
+import { logSearch } from "@/lib/jobs/search-log";
+import type { JobSearchFilters } from "@/lib/jobs/search-params";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
@@ -48,6 +50,23 @@ type JobSummary = {
 export type Employer = { displayName: string; country: string; website: string | null };
 
 type JobPage = { jobs: JobSummary[]; nextCursor: string | null };
+
+// One result card of the public search: the key facts of an open vacancy and the employer's public name, no person.
+export type JobSearchResult = {
+  id: string;
+  title: string;
+  employerName: string;
+  countryCode: string;
+  city: string;
+  employmentType: Enums["employment_type"];
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  salaryPeriod: Enums["salary_period"] | null;
+  accommodation: boolean;
+  visaSupport: boolean;
+  createdAt: string;
+};
 
 const selectJob = (supabase: Client) =>
   supabase
@@ -168,4 +187,49 @@ export async function getJobLimit(organizationId: string): Promise<LimitPrompt |
   if (error) throw new Error("The vacancy limit could not be loaded", { cause: error });
   if (!data || data.plan_name === null || data.active_jobs_limit === null || data.open_jobs === null) return null;
   return { planName: data.plan_name, limit: data.active_jobs_limit, used: data.open_jobs };
+}
+
+// The public search. The function applies the public predicate itself, so it answers the same for a visitor, a candidate
+// and a member of a company; the cursor of the last row of a page, when there is a next page, starts the next one.
+export async function searchJobs(
+  filters: JobSearchFilters,
+): Promise<{ results: JobSearchResult[]; nextCursor: string | null }> {
+  const supabase = await createClient();
+  const started = performance.now();
+  const { data, error } = await supabase.rpc("search_jobs", {
+    p_q: filters.q,
+    p_country: filters.country,
+    p_city: filters.city,
+    p_occupation: filters.occupation,
+    p_industry: filters.industry,
+    p_employment_type: filters.employment_type,
+    p_salary_min: filters.salary_min,
+    p_salary_currency: filters.salary_currency,
+    p_salary_period: filters.salary_period,
+    p_accommodation: filters.accommodation,
+    p_visa_support: filters.visa_support,
+    p_recruitment: filters.recruitment,
+    p_cursor: filters.cursor,
+    p_limit: filters.limit,
+  });
+  logSearch(filters, performance.now() - started, data?.length ?? 0, error ? "error" : "ok");
+  if (error) throw new Error("The vacancies could not be searched", { cause: error });
+  return {
+    results: data.map((row) => ({
+      id: row.id,
+      title: row.title,
+      employerName: row.employer_display_name,
+      countryCode: row.country_code,
+      city: row.city,
+      employmentType: row.employment_type,
+      salaryMin: row.salary_min ?? null,
+      salaryMax: row.salary_max ?? null,
+      salaryCurrency: row.salary_currency ?? null,
+      salaryPeriod: row.salary_period ?? null,
+      accommodation: row.accommodation,
+      visaSupport: row.visa_support,
+      createdAt: row.created_at,
+    })),
+    nextCursor: data.at(-1)?.next_cursor ?? null,
+  };
 }

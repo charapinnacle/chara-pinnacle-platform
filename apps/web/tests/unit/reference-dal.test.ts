@@ -22,7 +22,11 @@ function from(table: string) {
 }
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from }) }));
+vi.mock("next/cache", () => ({ unstable_cache: <Read>(read: Read) => read }));
+vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from }) }));
+vi.mock("@/lib/env", () => ({
+  env: { NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54421", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test" },
+}));
 
 const { getOccupations } = await import("@/lib/dal/reference");
 
