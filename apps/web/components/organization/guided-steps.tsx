@@ -1,10 +1,8 @@
 import { Circle, CircleCheck } from "lucide-react";
 import { TextLink } from "@/components/forms/text-link";
-import { mfaPath } from "@/lib/routes";
+import { jobsPath, mfaPath } from "@/lib/routes";
 
 type GuidedStepsProps = { lang: string; organizationSlug: string; twoStepDone: boolean };
-
-const upcoming = ["Start the free trial", "Post the first vacancy"];
 
 export function GuidedSteps({ lang, organizationSlug, twoStepDone }: GuidedStepsProps) {
   return (
@@ -23,12 +21,14 @@ export function GuidedSteps({ lang, organizationSlug, twoStepDone }: GuidedSteps
           <TextLink href={mfaPath(lang)}>Set up two-step verification</TextLink>
         )}
       </li>
-      {upcoming.map((step) => (
-        <li key={step} className="flex items-center gap-3 text-muted-foreground">
-          <Circle aria-hidden className="size-5 shrink-0" />
-          <span>{step}</span>
-        </li>
-      ))}
+      <li className="flex items-center gap-3 text-muted-foreground">
+        <Circle aria-hidden className="size-5 shrink-0" />
+        <span>Start the free trial</span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Circle aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+        <TextLink href={jobsPath(lang, organizationSlug)}>Post the first vacancy</TextLink>
+      </li>
       <li className="flex items-center gap-3">
         <Circle aria-hidden className="size-5 shrink-0 text-muted-foreground" />
         <TextLink href={`/${lang}/org/${organizationSlug}/members`}>Invite a team member</TextLink>

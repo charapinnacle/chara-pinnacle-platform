@@ -6,13 +6,18 @@ const redirectMock = vi.hoisted(() =>
   }),
 );
 const headerValues = vi.hoisted(() => ({ pathname: "/en/org/acme-bau/members" as string | null }));
+const notFoundMock = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error("NOT_FOUND");
+  }),
+);
 const claimsMock = vi.fn();
 const profileMock = vi.fn();
 const membershipMock = vi.fn();
 const eqCalls: [string, unknown][] = [];
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("next/navigation", () => ({ redirect: redirectMock, notFound: notFoundMock }));
 vi.mock("next/headers", () => ({ headers: async () => ({ get: () => headerValues.pathname }) }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -90,6 +95,28 @@ describe("requireOrgRole", () => {
     claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1", aal: "aal1" } } });
     await expect(requireOrgRole("en", "acme-bau", "member")).resolves.toMatchObject({ organization: { role: "member" } });
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("holds back the two-step prompt for a page that is not gated, such as the vacancy pages", async () => {
+    membershipMock.mockResolvedValue(membership("owner"));
+    claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1", aal: "aal1" } } });
+    await expect(requireOrgRole("en", "acme-bau", "member", { mfa: false })).resolves.toMatchObject({
+      organization: { role: "owner" },
+    });
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("answers a stranger with not found, not forbidden, when the page hides its organization", async () => {
+    membershipMock.mockResolvedValue({ data: null, error: null });
+    await expect(requireOrgRole("en", "other-org", "member", { hideFromOutsiders: true })).rejects.toThrow("NOT_FOUND");
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("still gives a member the forbidden page where an admin is needed, even when outsiders get not found", async () => {
+    membershipMock.mockResolvedValue(membership("member"));
+    await expect(requireOrgRole("en", "acme-bau", "admin", { hideFromOutsiders: true })).rejects.toThrow(
+      "REDIRECT:/en/forbidden",
+    );
   });
 
   it("fails loudly when the membership cannot be read, rather than treating the user as a stranger", async () => {

@@ -66,7 +66,7 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U38 | `feat/application-notifications` | FR-D6 | U37, U28 |
 | U39 | `feat/email-preferences` | FR-I3 | U37 |
 | U40 | `feat/account-emails` | FR-I1 | U37 |
-| U41 | `feat/admin-console` | FR-F1; replaces the heading-only `/admin` page of FR-A4 and shows the MFA status of `list_platform_staff` (FR-A4 AC4, AC12) | U13 |
+| U41 | `feat/admin-console` | FR-F1; replaces the heading-only `/admin` page of FR-A4 and shows the MFA status of `list_platform_staff` (FR-A4 AC4, AC12); `suspend_organization` also makes the policies of `public.jobs` refuse inserts and updates for a suspended organization (D45) | U13 |
 | U42 | `feat/audited-actions` | FR-F2 | U41 |
 | U43 | `feat/no-staff-document-access` | FR-F3 | U19, U41 |
 | U44 | `feat/vacancy-moderation` | FR-C7 | U41, U37 |

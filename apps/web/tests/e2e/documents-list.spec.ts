@@ -55,7 +55,7 @@ test.describe("candidate documents: the list", () => {
       await route.continue();
     });
     await page.reload();
-    await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
+    await expect(page.locator("#documents").getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
     await expect(row(page, "Amina Okafor CV 2026")).toBeVisible();
     await page.unroute(listRequests);
 

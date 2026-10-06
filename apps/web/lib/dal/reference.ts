@@ -23,7 +23,7 @@ async function readAll<Row>(what: string, readPage: (from: number) => PromiseLik
   });
 }
 
-async function readNamed(table: "countries" | "industries" | "languages"): Promise<ReferenceItem[]> {
+async function readNamed(table: "countries" | "currencies" | "industries" | "languages"): Promise<ReferenceItem[]> {
   const supabase = await createClient();
   const items = await readAll(table, (from) =>
     supabase.from(table).select("code, name", { count: "exact" }).order("code").range(from, from + PAGE_SIZE - 1),
@@ -32,6 +32,7 @@ async function readNamed(table: "countries" | "industries" | "languages"): Promi
 }
 
 export const getCountries = cache(() => readNamed("countries"));
+export const getCurrencies = cache(() => readNamed("currencies"));
 export const getIndustries = cache(() => readNamed("industries"));
 export const getLanguages = cache(() => readNamed("languages"));
 
