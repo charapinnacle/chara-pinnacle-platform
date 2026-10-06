@@ -23,6 +23,10 @@ export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }
 
+export function settingsPath(lang: string): string {
+  return `/${lang}/settings`;
+}
+
 export function jobsPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/jobs`;
 }
