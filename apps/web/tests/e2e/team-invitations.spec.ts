@@ -1,6 +1,7 @@
 import { expectNoAxeViolations } from "./support/axe";
 import { currentDocuments } from "./support/accounts";
 import { createCommittedUser } from "./support/login";
+import { waitForHydration } from "./support/hydration";
 import { extractLinks, waitForMessage } from "./support/mailpit";
 import { uniqueName } from "./support/organizations";
 import { ageBox, documentBox, newEmail, PASSWORD } from "./support/signup-page";
@@ -168,6 +169,7 @@ test.describe("team membership: invitations", () => {
       await page.goto(membersPath(team.slug));
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
       const trigger = page.getByRole("button", { name: "Invite member" });
+      await waitForHydration(trigger);
       await trigger.focus();
       await page.keyboard.press("Enter");
       const dialog = page.getByRole("dialog", { name: "Invite a team member" });
