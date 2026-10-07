@@ -80,6 +80,12 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
                   {formatShortDate(event.createdAt)}
                 </time>
               </p>
+              {event.note ? (
+                <div className="mt-1 grid gap-0.5">
+                  <p className="text-sm text-muted-foreground">Message from the employer</p>
+                  <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
+                </div>
+              ) : null}
             </li>
           ))}
         </ol>

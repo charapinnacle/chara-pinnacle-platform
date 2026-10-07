@@ -28,7 +28,7 @@ type MyApplication = {
 
 type ApplicationDetail = MyApplication & { vacancyIsOpen: boolean; coverNote: string | null };
 
-type TimelineEvent = { id: number; toStatus: ApplicationStatus; createdAt: string };
+type TimelineEvent = { id: number; toStatus: ApplicationStatus; note: string | null; createdAt: string };
 
 export type ApplyRefusal =
   | { kind: "not_open" }
@@ -172,16 +172,17 @@ export async function getMyApplication(id: string): Promise<ApplicationDetail | 
   };
 }
 
-// The events of one application, oldest first. The grant leaves out the actor, so no employer user id can be read.
+// The events of one application, oldest first, with the note an employer member wrote for the candidate. The grant leaves
+// out the actor, so no employer user id can be read.
 export async function listTimeline(applicationId: string): Promise<TimelineEvent[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("application_events")
-    .select("id, to_status, created_at")
+    .select("id, to_status, note, created_at")
     .eq("application_id", applicationId)
     .order("created_at")
     .order("id")
     .limit(READ_LIMIT);
   if (error) throw new Error("The timeline could not be loaded", { cause: error });
-  return data.map((row) => ({ id: row.id, toStatus: row.to_status, createdAt: row.created_at }));
+  return data.map((row) => ({ id: row.id, toStatus: row.to_status, note: row.note, createdAt: row.created_at }));
 }
