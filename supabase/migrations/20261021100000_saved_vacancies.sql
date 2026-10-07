@@ -4,9 +4,9 @@
 -- undeleted vacancy be saved. The list is read through list_saved_jobs, a definer function, because a vacancy that was
 -- saved while public can later be paused, closed, filled, hidden by moderation, suspended with its organisation or
 -- deleted, and the list must say which without disclosing what moderation withdrew. A daily job removes the rows of
--- vacancies that have been Closed or Filled for more than the number of days of a setting (90).
+-- vacancies that have been Closed, Filled or deleted for more than the days of the retention policy 'saved_jobs' (90).
 
-insert into private.settings (key, value) values ('saved_job_cleanup_days', '90');
+insert into private.retention_policies (entity, days) values ('saved_jobs', 90);
 
 -- worker_user_id follows the profile, so erase_user (FR-B6) removes the rows with it, and job_id follows the vacancy.
 create table public.saved_jobs (
@@ -23,9 +23,10 @@ comment on table public.saved_jobs is
 -- index for the cascade when a vacancy is deleted and for the clean-up join. The primary key serves every policy test.
 create index saved_jobs_list_idx on public.saved_jobs (worker_user_id, created_at desc, job_id desc);
 create index saved_jobs_job_idx on public.saved_jobs (job_id);
--- The clean-up finds the vacancies that have been Closed or Filled for more than the period; Draft, Open and Paused
--- vacancies, the bulk of the rows, cost this index nothing.
+-- The clean-up finds the vacancies that have been Closed or Filled, or deleted, for more than the period; Draft, Open
+-- and Paused vacancies that were never deleted, the bulk of the rows, cost these indexes nothing.
 create index jobs_closed_filled_idx on public.jobs (status_changed_at) where status in ('closed', 'filled');
+create index jobs_deleted_idx on public.jobs (deleted_at) where deleted_at is not null;
 
 alter table public.saved_jobs enable row level security;
 alter table public.saved_jobs force row level security;
@@ -54,16 +55,22 @@ create policy saved_jobs_delete_own on public.saved_jobs
   for delete to authenticated
   using (worker_user_id = (select auth.uid()));
 
--- One audit row per save that adds a row (a repeated save adds none), which is what the KPI "saved-to-applied
--- conversion" counts: the saves of a period against the applications that follow them. Unsaving and the clean-up leave
--- no row of their own; the clean-up writes one summary row per run.
+-- One audit row the first time a candidate saves a vacancy, which is what the KPI "saved-to-applied conversion" counts:
+-- the saves of a period against the applications that follow them. The audit log is append-only, so a candidate who
+-- saves and unsaves in a loop must not add a row per cycle: a pair that already has its row adds none. Unsaving and the
+-- clean-up leave no row of their own; the clean-up writes one summary row per run.
 create function private.saved_jobs_audit() returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
 begin
-  perform audit.record('saved_job.created', 'job', new.job_id::text);
+  if not exists (
+    select 1 from audit.log l
+    where l.action = 'saved_job.created' and l.entity_id = new.job_id::text and l.actor_id = (select auth.uid())
+  ) then
+    perform audit.record('saved_job.created', 'job', new.job_id::text);
+  end if;
   return null;
 end;
 $$;
@@ -150,24 +157,31 @@ $$;
 revoke all on function public.list_saved_jobs(text, integer) from public, anon, authenticated, service_role;
 grant execute on function public.list_saved_jobs(text, integer) to authenticated;
 
--- Runs daily. Removes the saved rows of every vacancy whose status is Closed or Filled and has been so for more than
--- saved_job_cleanup_days (the days run from status_changed_at, so a vacancy that is reopened starts again); Paused and
--- hidden vacancies are flagged in the list but kept. A second run removes nothing more. One audit row per run says how
--- many rows went, so the control is visible without reading the table.
+-- Runs daily. Removes the saved rows of every vacancy that has been Closed or Filled for more than the days of the
+-- retention policy 'saved_jobs' (the days run from status_changed_at, so a vacancy that is reopened starts again) and
+-- of every vacancy that was deleted more than that many days ago; Paused and hidden vacancies are flagged in the list
+-- but kept (moderation has no timestamp to age on). A second run removes nothing more. One audit row per run says how
+-- many rows went, so the control is visible without reading the table. A missing policy fails the run, which
+-- cron.job_run_details shows, instead of a run that looks healthy and removes nothing.
 create function private.cleanup_saved_jobs() returns bigint
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_days integer := (select (value #>> '{}')::integer from private.settings where key = 'saved_job_cleanup_days');
+  v_days integer := (select p.days from private.retention_policies p where p.entity = 'saved_jobs');
+  v_cutoff timestamptz;
   v_removed bigint;
 begin
+  if v_days is null then
+    raise exception 'CHARA_SETTING_MISSING' using detail = 'saved_jobs';
+  end if;
+  v_cutoff := now() - make_interval(days => v_days);
   delete from public.saved_jobs s
   using public.jobs j
   where j.id = s.job_id
-    and j.status in ('closed', 'filled')
-    and j.status_changed_at < now() - make_interval(days => v_days);
+    and ((j.status in ('closed', 'filled') and j.status_changed_at < v_cutoff)
+      or (j.deleted_at is not null and j.deleted_at < v_cutoff));
   get diagnostics v_removed = row_count;
   perform audit.record(
     'saved_jobs.cleanup', 'saved_jobs', null, jsonb_build_object('days', v_days, 'removed', v_removed)

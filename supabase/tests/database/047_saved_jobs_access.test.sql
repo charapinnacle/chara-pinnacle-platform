@@ -101,10 +101,10 @@ select is(
   '23505', 'a plain repeated insert is refused by the primary key'
 );
 
--- The audit trail of the KPI: one row for the save that added a row, none for the repeated saves.
+-- The audit trail of the KPI: one row the first time the pair is saved, none for the repeated saves, also after an unsave.
 select is(
   (select count(*) from audit.log where action = 'saved_job.created' and actor_id = :'wa' and entity_id = :'open_id'),
-  2::bigint, 'one audit row per saved row that was added (the first save and the later plain insert)'
+  1::bigint, 'one audit row for the pair although the row was added twice (the first save and, after an unsave, the later insert)'
 );
 
 -- FR-C5 AC4: private and for candidates only.

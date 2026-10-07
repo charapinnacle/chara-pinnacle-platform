@@ -143,6 +143,12 @@ test.describe("saved vacancies", () => {
       expect(savedAuditCount(candidate.id, id)).toBe(1);
     }
     expect(savedJobIds(candidate.id)).toHaveLength(3);
+
+    const [again] = savedJobIds(candidate.id);
+    execute(`delete from public.saved_jobs where worker_user_id = ${literal(candidate.id)} and job_id = ${literal(again)}`);
+    await saveInSession(candidate.id, again);
+    expect(savedJobIds(candidate.id)).toContain(again);
+    expect(savedAuditCount(candidate.id, again)).toBe(1);
   });
 
   test("FR-C5 AC7: the saved list flags each state, offers Apply only for an open vacancy and discloses nothing of a hidden one", async ({

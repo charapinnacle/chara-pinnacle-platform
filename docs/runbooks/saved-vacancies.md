@@ -5,7 +5,7 @@ FR-C5, design point D51 (OPEN_QUESTIONS.md). The SOP (Saved Vacancies E2E, annua
 ## 1. What is stored
 
 - `public.saved_jobs(worker_user_id, job_id, created_at)`: one row per candidate and vacancy while the candidate keeps it. Unsaving deletes the row.
-- `audit.log` rows `saved_job.created` (actor = the candidate, entity = the vacancy id): one for every save that added a row. A repeated save adds none. They outlive the saved row, and the erasure of an account (FR-B6) replaces the actor by its pseudonym like every other audit row.
+- `audit.log` rows `saved_job.created` (actor = the candidate, entity = the vacancy id): one the first time the candidate saves the vacancy. A repeated save, also after an unsave, adds none, so a save and unsave loop does not grow the log. The audit log is used on purpose for this event and follows its retention (6 years); a dedicated event table with its own `retention_policies` row is the alternative if CHARA wants a shorter life for this behavioural record. They outlive the saved row, and the erasure of an account (FR-B6) replaces the actor by its pseudonym like every other audit row.
 - `audit.log` rows `saved_jobs.cleanup`: one per run of the clean-up, with `days` and `removed` in the metadata.
 
 ## 2. KPI: saved-to-applied conversion
@@ -50,7 +50,7 @@ The saved page shows each vacancy as Open, or as "No longer open" (paused, close
 
 ## 4. Control: the clean-up job
 
-`private.cleanup_saved_jobs()` runs daily at 03:47 UTC (pg_cron job `cleanup-saved-jobs`). It deletes the rows of vacancies that are Closed or Filled and whose status last changed more than `saved_job_cleanup_days` days ago (setting in `private.settings`, 90). A vacancy that is reopened starts again from its new `status_changed_at`; Paused and hidden vacancies are flagged but kept. Check it:
+`private.cleanup_saved_jobs()` runs daily at 03:47 UTC (pg_cron job `cleanup-saved-jobs`). It deletes the rows of vacancies that are Closed or Filled and whose status last changed more than the days of the policy `saved_jobs` ago (row in `private.retention_policies`, 90, next to the other retention periods), and the rows of vacancies deleted more than that many days ago. A vacancy that is reopened starts again from its new `status_changed_at`. Paused, hidden and suspended vacancies are flagged but kept (a vacancy can be reopened, and moderation has no date to age on): the candidate unsaves them. If the policy row is missing the run fails with `CHARA_SETTING_MISSING`, which the second query below shows. Check it:
 
 ```sql
 -- The last runs and the rows each removed
@@ -60,15 +60,18 @@ select start_time, status, return_message from cron.job_run_details
 where command = 'select private.cleanup_saved_jobs()' order by start_time desc limit 10;
 -- Clutter that the job should have removed: must be 0 an hour after a run
 select count(*) from public.saved_jobs s join public.jobs j on j.id = s.job_id
-where j.status in ('closed', 'filled')
-  and j.status_changed_at < now() - make_interval(days => (select (value #>> '{}')::integer from private.settings where key = 'saved_job_cleanup_days'));
+cross join (select now() - make_interval(days => days) as cutoff from private.retention_policies where entity = 'saved_jobs') c
+where (j.status in ('closed', 'filled') and j.status_changed_at < c.cutoff) or j.deleted_at < c.cutoff;
+-- Rows that are kept on purpose and flagged in the list: paused, hidden or suspended, not deleted
+select j.status, j.moderation_state, count(*) from public.saved_jobs s join public.jobs j on j.id = s.job_id
+where j.deleted_at is null and (j.status = 'paused' or j.moderation_state <> 'visible') group by 1, 2;
 ```
 
-To change the period, update the setting with a ticketed statement (`update private.settings set value = '60' where key = 'saved_job_cleanup_days'`); the page text does not name the number. A shorter period takes effect at the next run and removes the rows that are older than it at once, without warning to the candidates.
+To change the period, update the policy with a ticketed statement (`update private.retention_policies set days = 60 where entity = 'saved_jobs'`); the page text does not name the number. A shorter period takes effect at the next run and removes the rows that are older than it at once, without warning to the candidates.
 
 ## 5. Annual review
 
 1. Run `npm run e2e -w @chara-pinnacle/web -- saved-vacancies` (and the project `saved-failure`, which runs last in a full `npm run e2e`) and `npm run db:test`, and read the result.
 2. Read the KPI of section 2 for the year and the monthly trend.
 3. Read the clutter signals: the average number of saved rows per candidate (`select avg(c) from (select count(*) c from public.saved_jobs group by worker_user_id) t`), the share of saved rows whose vacancy is not Open, and the `removed` counts of section 4. A high share of dead rows means the period is too long for CHARA's candidates.
-4. Decide with CHARA whether Paused vacancies should also be removed after some period (today they are kept because an employer can reopen them).
+4. Read the count of kept rows of paused, hidden and suspended vacancies (last query of section 4). Decide with CHARA whether they should also be removed after some period (today they are kept because an employer can reopen a paused vacancy and moderation has no date to age on).
