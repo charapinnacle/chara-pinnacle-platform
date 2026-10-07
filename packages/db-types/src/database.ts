@@ -845,6 +845,9 @@ isOneToOne: false
 "transfer_ownership":
 { Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
                            },
+"withdraw_application":
+{ Args: { "p_application_id": string }; Returns: undefined
+                           },
 "withdraw_consent":
 { Args: { "p_purpose": string }; Returns: undefined
                            }
