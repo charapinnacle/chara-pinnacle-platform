@@ -22,13 +22,14 @@ vi.mock("@/lib/supabase/server", () => ({
           return chain;
         };
       }
+      chain.maybeSingle = () => Promise.resolve({ data: (rows.data as unknown[] | null)?.[0] ?? null, error: rows.error });
       chain.then = (resolve: (value: Result) => unknown) => Promise.resolve(rows).then(resolve);
       return chain;
     },
   }),
 }));
 
-const { applyToJob, getApplicationStates, getApplyDocuments, getMyApplication, listMyApplications, listTimeline } = await import(
+const { applyToJob, getApplicationStates, getApplyDocuments, getApplyOccupation, getMyApplication, listMyApplications, listTimeline } = await import(
   "@/lib/dal/applications"
 );
 
@@ -95,6 +96,26 @@ describe("applyToJob", () => {
     rpcResult = { data: null, error: { code: "XX000", message: "connection to server lost", details: "secret detail" } };
     expect(await applyToJob(jobId, null, [])).toEqual({ kind: "failed" });
     expect(console.error).toHaveBeenCalledWith("Apply to vacancy failed", { code: "XX000", message: "connection to server lost" });
+  });
+});
+
+describe("getApplyOccupation", () => {
+  it("reads the occupation of the candidate's own passport only", async () => {
+    rows = { data: [{ occupation_id: "7212" }], error: null };
+    expect(await getApplyOccupation("user-1")).toEqual({ occupationId: "7212" });
+    expect(calls).toEqual([["worker_profiles.select", "occupation_id"], ["worker_profiles.eq", "user_id", "user-1"]]);
+  });
+
+  it("tells a passport without an occupation from no passport", async () => {
+    rows = { data: [{ occupation_id: null }], error: null };
+    expect(await getApplyOccupation("user-1")).toEqual({ occupationId: null });
+    rows = { data: [], error: null };
+    expect(await getApplyOccupation("user-1")).toBeNull();
+  });
+
+  it("fails loudly when the read fails", async () => {
+    rows = { data: null, error: { message: "boom" } };
+    await expect(getApplyOccupation("user-1")).rejects.toThrow("The passport could not be loaded");
   });
 });
 

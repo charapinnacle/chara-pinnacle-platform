@@ -7,7 +7,7 @@ import type { ApplyLimits } from "@/lib/validation/application";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
-export const APPLICATIONS_PAGE_SIZE = 20;
+const APPLICATIONS_PAGE_SIZE = 20;
 
 // The Data API returns at most 100 rows: the most documents offered on the apply form, applications read for a page of
 // vacancies and events read for one application.
@@ -38,7 +38,7 @@ export type ApplyRefusal =
   | { kind: "forbidden" }
   | { kind: "failed" };
 
-export type ApplyResult = { kind: "created"; applicationId: string } | { kind: "existing"; applicationId: string } | ApplyRefusal;
+type ApplyResult = { kind: "created"; applicationId: string } | { kind: "existing"; applicationId: string } | ApplyRefusal;
 
 export const getApplyLimits = cache(async (): Promise<ApplyLimits> => {
   const supabase = await createClient();
@@ -46,6 +46,14 @@ export const getApplyLimits = cache(async (): Promise<ApplyLimits> => {
   if (error) throw new Error("The application limits could not be loaded", { cause: error });
   return { coverNoteMaxChars: data.cover_note_max_chars, documentsMax: data.documents_max };
 });
+
+// Name and country are not null, so the occupation is the one field a passport can lack; no row means no passport.
+export async function getApplyOccupation(userId: string): Promise<{ occupationId: string | null } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("worker_profiles").select("occupation_id").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error("The passport could not be loaded", { cause: error });
+  return data ? { occupationId: data.occupation_id } : null;
+}
 
 // The candidate's own documents that can be shared, newest first; the row policy hides deleted ones and a file that
 // failed its check cannot be opened by anyone, so it is not offered.
@@ -62,8 +70,7 @@ export async function getApplyDocuments(): Promise<ApplyDocument[]> {
   return data;
 }
 
-// The caller's application for each of the vacancies: the non-withdrawn one when there is one, else the latest withdrawn
-// one. The row policy shows a caller only their own rows, so for anyone else the answer is none.
+// The row policy limits the rows to the caller's own; a withdrawn row never hides an active one for the same vacancy.
 export async function getApplicationStates(jobIds: string[]): Promise<Map<string, ApplicationState>> {
   if (jobIds.length === 0) return new Map();
   const supabase = await createClient();

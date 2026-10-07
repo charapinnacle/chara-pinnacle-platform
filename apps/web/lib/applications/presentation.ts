@@ -19,7 +19,7 @@ export const CROSS_BORDER_NOTICE =
 
 export const NOT_ACCEPTING = "This vacancy is no longer accepting applications";
 
-// The fields apply_to_job names when a passport is incomplete, with the section of the passport page that holds each.
+// The keys are the field names in the detail of CHARA_PROFILE_INCOMPLETE.
 export const profileFields: Record<string, { label: string; section: string }> = {
   first_name: { label: "First name", section: "basics" },
   last_name: { label: "Last name", section: "basics" },

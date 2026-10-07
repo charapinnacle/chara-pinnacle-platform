@@ -29,7 +29,7 @@ const shortDateFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-// A date as 3 Oct 2026.
+// The form of the application dates, 3 Oct 2026 (FR-D7 AC6); every date of an application uses it.
 export function formatShortDate(iso: string): string {
   return shortDateFormat.format(new Date(iso));
 }

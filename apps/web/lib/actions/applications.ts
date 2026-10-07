@@ -32,8 +32,8 @@ function refusalMessage(refusal: ApplyRefusal): ApplyActionResult {
   }
 }
 
-// The candidate comes from the session and the vacancy from the address; the form sends the note, the documents and the
-// consent. Success and a repeated application both end on the application page: the second one with a notice.
+// The candidate comes from the session, never from the form; a repeated application ends on the application page too,
+// so a second press shows the first application, not an error.
 export async function applyToVacancy(jobId: string, input: ApplyFormInput): Promise<ApplyActionResult | undefined> {
   const id = jobIdSchema.safeParse(jobId);
   if (!id.success) return { message: GENERIC_FAILURE };

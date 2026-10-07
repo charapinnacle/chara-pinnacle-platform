@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
+import { NotAcceptingNotice } from "@/components/applications/not-accepting-notice";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
@@ -12,7 +13,7 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { applyToVacancy } from "@/lib/actions/applications";
-import { CROSS_BORDER_NOTICE, NOT_ACCEPTING } from "@/lib/applications/presentation";
+import { CROSS_BORDER_NOTICE } from "@/lib/applications/presentation";
 import type { ApplyDocument } from "@/lib/dal/applications";
 import { applyFormSchema, type ApplyFormInput, type ApplyLimits } from "@/lib/validation/application";
 
@@ -56,16 +57,7 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents }: Appl
     );
   }
 
-  if (notOpen) {
-    return (
-      <Notice tone="error" role="alert" className="grid gap-2">
-        <p className="font-semibold">{NOT_ACCEPTING}</p>
-        <TextLink standalone href={`/${lang}/jobs`}>
-          Find vacancies
-        </TextLink>
-      </Notice>
-    );
-  }
+  if (notOpen) return <NotAcceptingNotice lang={lang} />;
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onValid)}>
