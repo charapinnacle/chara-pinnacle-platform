@@ -193,9 +193,18 @@ describe("the candidate's reads", () => {
     });
   });
 
-  it("reads the timeline without the actor of an event", async () => {
-    rows = { data: [{ id: 1, to_status: "applied", created_at: "2026-10-03T10:00:00Z" }], error: null };
-    expect(await listTimeline(applicationId)).toEqual([{ id: 1, toStatus: "applied", createdAt: "2026-10-03T10:00:00Z" }]);
-    expect(calls).toContainEqual(["application_events.select", "id, to_status, created_at"]);
+  it("reads the timeline with the note of a stage change and without the actor of an event", async () => {
+    rows = {
+      data: [
+        { id: 1, to_status: "applied", note: null, created_at: "2026-10-03T10:00:00Z" },
+        { id: 2, to_status: "rejected", note: "Position filled", created_at: "2026-10-04T10:00:00Z" },
+      ],
+      error: null,
+    };
+    expect(await listTimeline(applicationId)).toEqual([
+      { id: 1, toStatus: "applied", note: null, createdAt: "2026-10-03T10:00:00Z" },
+      { id: 2, toStatus: "rejected", note: "Position filled", createdAt: "2026-10-04T10:00:00Z" },
+    ]);
+    expect(calls).toContainEqual(["application_events.select", "id, to_status, note, created_at"]);
   });
 });
