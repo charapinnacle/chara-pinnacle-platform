@@ -6,6 +6,8 @@ const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 
 // NFR-U1: fails on a serious or critical WCAG 2.2 A/AA violation and names the rule, its impact and the elements.
 export async function expectNoAxeViolations(page: Page): Promise<void> {
+  // The title is streamed after the page content, and a client navigation changes the address before it arrives.
+  await expect(page).toHaveTitle(/\S/);
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG_22_AA_TAGS).analyze();
   const blocking = violations
     .filter(({ impact }) => impact && BLOCKING_IMPACTS.has(impact))
