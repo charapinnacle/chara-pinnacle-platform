@@ -45,8 +45,8 @@ select is(
 select is(
   (select row(c.user_id, c.purpose, c.version, c.action)::text from public.consents c where c.id = (
      select s.consent_id from public.passport_shares s where s.application_id = current_setting('t.app')::uuid)),
-  row(:'wa'::uuid, 'share_passport:' || current_setting('t.a'), (select max(version) from public.legal_documents where slug = 'sharing-notice'), 'granted')::text,
-  'AC2: the consent is granted for sharing with the organisation, at the version of the sharing notice'
+  row(:'wa'::uuid, 'share_passport:' || current_setting('t.a') || ':' || current_setting('t.app'), (select max(version) from public.legal_documents where slug = 'sharing-notice'), 'granted')::text,
+  'AC2: the consent is granted for sharing with the organisation and this application, at the version of the sharing notice'
 );
 select is(
   (select row(e.from_status, e.to_status, e.actor_id, e.note)::text from public.application_events e where e.application_id = current_setting('t.app')::uuid),

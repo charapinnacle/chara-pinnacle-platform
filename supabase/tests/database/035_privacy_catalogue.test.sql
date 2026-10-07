@@ -11,7 +11,8 @@ $$;
 -- AC10: the functions the API roles can run that read candidate data, directly or through one private helper, are exactly
 -- the ones below; a new one makes this test fail until it is reviewed and added. Each is either the owner's own action,
 -- the one grant, or (mark_application_viewed) the system's move of an application for a member of the organisation, which
--- reads no candidate data and reaches the share only through the private function that sets its expiry. The match is on source text, so a helper two calls away or a dynamic query would not be seen.
+-- reads no candidate data and reaches the share only through the private function that sets its expiry, or
+-- (withdraw_application) the candidate's withdrawal, which revokes the share of the own application. The match is on source text, so a helper two calls away or a dynamic query would not be seen.
 select set_eq(
   $$select p.proname::text
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -23,13 +24,13 @@ select set_eq(
           where q.pronamespace = 'private'::regnamespace
             and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
             and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
-  $$values ('apply_to_job'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('mark_application_viewed'), ('passport_limits')$$,
+  $$values ('apply_to_job'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('mark_application_viewed'), ('passport_limits'), ('withdraw_application')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'
 );
 
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public' and p.proname in ('apply_to_job', 'create_worker_passport', 'delete_worker_document', 'passport_limits')
+   where n.nspname = 'public' and p.proname in ('apply_to_job', 'create_worker_passport', 'delete_worker_document', 'passport_limits', 'withdraw_application')
      and p.prosrc !~* 'auth\.uid'),
   0::bigint, 'AC10: the allow-listed owner functions act for the caller (auth.uid)'
 );

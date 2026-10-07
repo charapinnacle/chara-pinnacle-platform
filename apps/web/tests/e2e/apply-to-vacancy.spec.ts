@@ -67,7 +67,7 @@ test.describe("apply to a vacancy", () => {
     expect(share).toMatchObject({ organization_id: company.id, scope: [cv.id], expires_at: null, revoked_at: null });
     expect(share.scope).not.toContain(certificate.id);
     const [consent] = consentOf(share.consent_id);
-    expect(consent).toMatchObject({ user_id: candidate.id, purpose: `share_passport:${company.id}`, action: "granted" });
+    expect(consent).toMatchObject({ user_id: candidate.id, purpose: `share_passport:${company.id}:${application.id}`, action: "granted" });
     expect(eventRows(application.id)).toEqual([
       { from_status: null, to_status: "applied", actor_id: candidate.id, note: null, created_at: expect.any(String) },
     ]);

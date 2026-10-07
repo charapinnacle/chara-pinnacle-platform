@@ -51,14 +51,14 @@ create function pg_temp.seed_app(
 ) returns uuid
 language plpgsql as $$
 declare
+  v_app uuid := gen_random_uuid();
   v_org uuid := coalesce(p_org, current_setting('t.a')::uuid);
   v_job uuid := coalesce(p_job, pg_temp.seed_job('{"title": "Status vacancy", "status": "paused"}', v_org));
-  v_app uuid := gen_random_uuid();
   v_share uuid := gen_random_uuid();
   v_consent bigint;
 begin
   insert into public.consents (user_id, purpose, version, action)
-  values (p_worker, 'share_passport:' || v_org, private.current_legal_version('sharing-notice'), 'granted')
+  values (p_worker, 'share_passport:' || v_org || ':' || v_app, private.current_legal_version('sharing-notice'), 'granted')
   returning id into v_consent;
   insert into public.job_applications (id, job_id, organization_id, worker_user_id, status, passport_share_id, profile_snapshot)
   values (v_app, v_job, v_org, p_worker, p_status::public.application_status, v_share,

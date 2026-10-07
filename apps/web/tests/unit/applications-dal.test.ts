@@ -29,7 +29,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { applyToJob, getApplicationStates, getApplyDocuments, getApplyOccupation, getMyApplication, listMyApplications, listTimeline } = await import(
+const { applyToJob, getApplicationStates, getApplyDocuments, getApplyOccupation, getMyApplication, listMyApplications, listTimeline, withdrawApplication } = await import(
   "@/lib/dal/applications"
 );
 
@@ -227,5 +227,21 @@ describe("the candidate's reads", () => {
   it("refuses a timeline row whose columns are null instead of showing it", async () => {
     rows = { data: [{ created_at: null, to_status: null, note: null, actor_role: null }], error: null };
     await expect(listTimeline(applicationId)).rejects.toThrow();
+  });
+});
+
+describe("withdrawApplication", () => {
+  it("sends the id of the application and reports no refusal", async () => {
+    expect(await withdrawApplication(applicationId)).toBeNull();
+    expect(calls).toEqual([["rpc", "withdraw_application", { p_application_id: applicationId }]]);
+  });
+
+  it.each([
+    ["CHARA_NOT_FOUND", { kind: "not_found" }],
+    ["CHARA_INVALID_TRANSITION", { kind: "not_withdrawable" }],
+    ["permission denied for function withdraw_application", { kind: "failed" }],
+  ])("maps the error %s to %j without the text of the database", async (message, expected) => {
+    rpcResult = { data: null, error: { message, code: "P0001", details: null } };
+    expect(await withdrawApplication(applicationId)).toEqual(expected);
   });
 });

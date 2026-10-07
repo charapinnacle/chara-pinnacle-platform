@@ -1,12 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
-import { applyToJob, getApplyLimits, type ApplyRefusal } from "@/lib/dal/applications";
+import { applyToJob, getApplyLimits, getMyApplication, withdrawApplication, type ApplyRefusal } from "@/lib/dal/applications";
 import { requireUser } from "@/lib/dal/session";
 import { NOT_ACCEPTING, profileFields } from "@/lib/applications/presentation";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { applicationPath } from "@/lib/routes";
+import { applicationPath, applicationsPath } from "@/lib/routes";
 import { applyInputSchema, type ApplyFormInput } from "@/lib/validation/application";
 import { jobIdSchema } from "@/lib/validation/job";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
@@ -49,4 +51,27 @@ export async function applyToVacancy(jobId: string, input: ApplyFormInput): Prom
     redirect(result.kind === "existing" ? `${path}?existing=1` : path);
   }
   return refusalMessage(result);
+}
+
+// The candidate comes from the session and the database checks that the application is theirs. A second press, or a second
+// tab, finds the application already withdrawn: that is the outcome the candidate asked for, not an error.
+export async function withdrawMyApplication(applicationId: string): Promise<{ message?: string }> {
+  await requireUser(defaultLocale);
+  const id = z.uuid().safeParse(applicationId);
+  if (!id.success) return { message: GENERIC_FAILURE };
+
+  const refusal = await withdrawApplication(id.data);
+  revalidatePath(applicationPath(defaultLocale, id.data));
+  revalidatePath(applicationsPath(defaultLocale));
+  if (!refusal) return {};
+  switch (refusal.kind) {
+    case "not_found":
+      return { message: "This application could not be found." };
+    case "not_withdrawable":
+      return (await getMyApplication(id.data))?.status === "withdrawn"
+        ? {}
+        : { message: "This application can no longer be withdrawn. Reload to see its stage." };
+    case "failed":
+      return { message: GENERIC_FAILURE };
+  }
 }

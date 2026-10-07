@@ -179,10 +179,8 @@ test.describe("the candidate's journey tracker", () => {
     await page.goto(applicationUrl(paused));
     await expect(page.getByRole("heading", { name: "Paused welder", level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: "View the vacancy" })).toHaveCount(0);
-    const withdraw = page.getByRole("button", { name: "Withdraw application" });
-    await expect(withdraw).toHaveCount(1);
-    await expect(withdraw).toBeDisabled();
-    await expect(withdraw).toHaveAccessibleDescription("Withdrawing will be available soon.");
+    await expect(page.getByRole("button", { name: "Withdraw application" })).toBeEnabled();
+    await expect(page.getByText("Withdrawing will be available soon.")).toHaveCount(0);
   });
 
   test("FR-D3 AC1: a decline shows the employer's reason on the Not selected event", async ({ page }) => {

@@ -66,28 +66,29 @@ export function auditCount(action: string, entityId: string): number {
 }
 
 // An application as apply_to_job would have written it, written by the database owner so that a test can give it any
-// stage and date. The share and the consent are the ones apply_to_job makes.
+// stage and date. The share and the consent (which names the application) are the ones apply_to_job makes.
 export function seedApplication(
   workerId: string,
   jobId: string,
   organizationId: string,
-  options: { status?: string; createdAt?: string; coverNote?: string | null } = {},
+  options: { status?: string; createdAt?: string; coverNote?: string | null; documentIds?: string[] } = {},
 ): string {
-  const { status = "applied", createdAt = "now()", coverNote = null } = options;
+  const { status = "applied", createdAt = "now()", coverNote = null, documentIds = [] } = options;
   return execute(
-    `with consent as (
+    `with ids as (select gen_random_uuid() as application_id, gen_random_uuid() as share_id),
+     consent as (
        insert into public.consents (user_id, purpose, version, action)
-       select ${literal(workerId)}, 'share_passport:' || ${literal(organizationId)}, max(d.version), 'granted'
-       from public.legal_documents d where d.slug = 'sharing-notice'
+       select ${literal(workerId)}, 'share_passport:' || ${literal(organizationId)} || ':' || ids.application_id, max(d.version), 'granted'
+       from public.legal_documents d, ids where d.slug = 'sharing-notice' group by ids.application_id
        returning id
-     ), ids as (select gen_random_uuid() as application_id, gen_random_uuid() as share_id),
+     ),
      application as (
        insert into public.job_applications (id, job_id, organization_id, worker_user_id, status, cover_note, passport_share_id, profile_snapshot, created_at)
        select application_id, ${literal(jobId)}, ${literal(organizationId)}, ${literal(workerId)}, ${literal(status)}, ${coverNote === null ? "null" : literal(coverNote)}, share_id, '{}', ${createdAt}
        from ids returning id
      ), share as (
        insert into public.passport_shares (id, worker_user_id, organization_id, application_id, scope, consent_id)
-       select ids.share_id, ${literal(workerId)}, ${literal(organizationId)}, application.id, '[]', consent.id from ids, application, consent
+       select ids.share_id, ${literal(workerId)}, ${literal(organizationId)}, application.id, ${literal(JSON.stringify(documentIds))}::jsonb, consent.id from ids, application, consent
        returning application_id
      )
      insert into public.application_events (application_id, from_status, to_status, actor_id, created_at)
@@ -111,11 +112,7 @@ export function seedEvent(
 // candidate in Applied whose only event is n minutes old: the lower the number, the newer the latest event.
 export function seedManyApplications(workerId: string, company: Company, count: number): void {
   execute(
-    `with consent as (
-       insert into public.consents (user_id, purpose, version, action)
-       select ${literal(workerId)}, 'share_passport:' || ${literal(company.id)}, max(d.version), 'granted'
-       from public.legal_documents d where d.slug = 'sharing-notice' returning id
-     ), vacancies as (
+    `with vacancies as (
        insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city, employment_type,
                                 recruitment_preference, status, created_by)
        select ${literal(company.id)}, 'Listed welder ' || n, 'Line one of the description.' || chr(10) || 'Line two of it, which is long enough to pass the limit.',
@@ -125,9 +122,14 @@ export function seedManyApplications(workerId: string, company: Company, count: 
        insert into public.job_applications (id, job_id, organization_id, worker_user_id, status, passport_share_id, profile_snapshot, created_at)
        select gen_random_uuid(), v.id, ${literal(company.id)}, ${literal(workerId)}, 'applied', gen_random_uuid(), '{}', now() - interval '100 days'
        from vacancies v returning id, passport_share_id, job_id
+     ), consents as (
+       insert into public.consents (user_id, purpose, version, action)
+       select ${literal(workerId)}, 'share_passport:' || ${literal(company.id)} || ':' || a.id, max(d.version), 'granted'
+       from applications a, public.legal_documents d where d.slug = 'sharing-notice' group by a.id returning id, purpose
      ), shares as (
        insert into public.passport_shares (id, worker_user_id, organization_id, application_id, scope, consent_id)
-       select a.passport_share_id, ${literal(workerId)}, ${literal(company.id)}, a.id, '[]', c.id from applications a, consent c returning application_id
+       select a.passport_share_id, ${literal(workerId)}, ${literal(company.id)}, a.id, '[]', c.id
+       from applications a join consents c on c.purpose = 'share_passport:' || ${literal(company.id)} || ':' || a.id returning application_id
      )
      insert into public.application_events (application_id, from_status, to_status, actor_id, created_at)
      select a.id, null, 'applied', ${literal(workerId)}, now() - make_interval(mins => v.n)

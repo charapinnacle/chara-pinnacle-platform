@@ -178,10 +178,10 @@ select is(pg_temp.call_as(null, 'postgres', 'delete from public.application_even
 select is(pg_temp.call_as(null, 'postgres', 'truncate public.application_events'), '42501|application_events is append-only|', 'and a truncate');
 
 -- The consent check that replaced the foreign key.
-select is(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s', 0, 'granted')$$, :'wnew', current_setting('t.a'))), 'ok', 'a sharing consent for an organisation at a version of the sharing notice is accepted');
-select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s', 999, 'granted')$$, :'wnew', current_setting('t.a'))), '|', 1), '23503', 'an unknown version of the notice is refused');
+select is(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s:%s', 0, 'granted')$$, :'wnew', current_setting('t.a'), gen_random_uuid())), 'ok', 'a sharing consent for an application of an organisation at a version of the sharing notice is accepted');
+select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s:%s', 999, 'granted')$$, :'wnew', current_setting('t.a'), gen_random_uuid())), '|', 1), '23503', 'an unknown version of the notice is refused');
 select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:not-an-organisation', 0, 'granted')$$, :'wnew')), '|', 1), '23503', 'a purpose that names no organisation is refused');
-select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s', null, 'granted')$$, :'wnew', current_setting('t.a'))), '|', 1), '23502', 'a missing version is still a not-null violation');
+select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s:%s', null, 'granted')$$, :'wnew', current_setting('t.a'), gen_random_uuid())), '|', 1), '23502', 'a missing version is still a not-null violation');
 
 -- A legal document that a consent refers to cannot be deleted or re-keyed, which the foreign key used to guarantee.
 select is(split_part(pg_temp.call_as(null, 'postgres', $$delete from public.legal_documents where slug = 'sharing-notice' and version = 0$$), '|', 1), '23503', 'the sharing notice of a granted consent cannot be deleted');
