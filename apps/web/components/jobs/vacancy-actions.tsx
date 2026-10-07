@@ -1,5 +1,5 @@
-import { FormButton } from "@/components/forms/form-button";
-import { LinkButton } from "@/components/forms/link-button";
+import Link from "next/link";
+import { FormButton, formButtonVariants } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { SaveJob } from "@/components/jobs/save-job";
 import { requireLogin } from "@/lib/actions/vacancy";
@@ -8,6 +8,7 @@ import type { ApplicationState } from "@/lib/dal/applications";
 import { formatShortDate } from "@/lib/i18n/format";
 import type { Viewer } from "@/lib/jobs/viewer";
 import { applicationPath, applyPath } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 type VacancyActionsProps = {
   job: { id: string; title: string };
@@ -54,7 +55,15 @@ function CandidateApply({ jobId, lang, application }: { jobId: string; lang: str
   return (
     <div className="flex flex-wrap items-center gap-3">
       {application ? <p className="font-medium">You withdrew your application</p> : null}
-      <LinkButton href={applyPath(lang, jobId)}>{application ? "Apply again" : "Apply"}</LinkButton>
+      <Link
+        href={applyPath(lang, jobId)}
+        className={cn(
+          formButtonVariants(),
+          "inline-flex h-11 w-auto items-center justify-center rounded-lg border border-transparent bg-primary px-6 text-base text-primary-foreground",
+        )}
+      >
+        {application ? "Apply again" : "Apply"}
+      </Link>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const formButtonVariants = cva(
+export const formButtonVariants = cva(
   "font-semibold shadow-xs transition-[background-color,box-shadow] hover:shadow-sm focus-visible:ring-0",
   {
     variants: {
