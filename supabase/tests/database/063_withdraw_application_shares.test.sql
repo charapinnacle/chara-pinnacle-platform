@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(29);
 
 \ir status_fixture.inc
 
@@ -83,15 +83,10 @@ select is(
   '23503', 'a third part is refused'
 );
 
--- A consent written before this migration names the organisation only: the withdrawn row copies its purpose and version.
-create temp table t_legacy as select pg_temp.seed_app('interview') as app;
-select is(pg_temp.withdraw_as(:'wa', (select app from t_legacy)), 'ok', 'a candidate withdraws an application whose consent names only the organisation');
+-- The organisation alone is not a purpose any more.
 select is(
-  (select jsonb_agg(c.purpose || '#' || c.action order by c.id) from public.consents c where c.id >= (
-     select s.consent_id from public.passport_shares s where s.application_id = (select app from t_legacy))
-     and c.purpose = 'share_passport:' || current_setting('t.a')),
-  jsonb_build_array('share_passport:' || current_setting('t.a') || '#granted', 'share_passport:' || current_setting('t.a') || '#withdrawn'),
-  'and the withdrawn row has the same purpose'
+  split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s', 0, 'granted')$$, :'wb', current_setting('t.a'))), '|', 1),
+  '23503', 'a purpose that names the organisation and no application is refused'
 );
 
 -- A share that was already revoked (a deleted document) is still withdrawn from the ledger.
@@ -108,7 +103,7 @@ select is(
   'and the withdrawn row is appended next to the granted one'
 );
 
--- FR-D4 KPI and risk: the queries of docs/runbooks/applications.md, as written there.
+-- FR-D4 KPI and risk: the queries of docs/runbooks/application-withdrawal.md section 3.
 create temp table t_cohort as
   select pg_temp.seed_app('applied') as a, pg_temp.seed_app('withdrawn') as b, pg_temp.seed_app('hired') as c, pg_temp.seed_app('withdrawn') as d;
 update public.job_applications set created_at = '2026-03-10T10:00:00Z'
@@ -119,7 +114,7 @@ select results_eq(
            round(100.0 * count(*) filter (where a.status = 'withdrawn') / count(*), 1) as rate
     from public.job_applications a where a.created_at < '2026-04-01' group by 1 order by 1$$,
   $$values ('2026-03-01'::date, 4::bigint, 2::bigint, 50.0::numeric)$$,
-  'KPI withdrawal rate: the cohort query of the runbook, as written, gives the share of the month''s applications that were withdrawn'
+  'KPI withdrawal rate: the runbook query limited to one month gives the share of the month''s applications that were withdrawn'
 );
 select is(
   (select count(*) from public.job_applications a join public.passport_shares s on s.application_id = a.id

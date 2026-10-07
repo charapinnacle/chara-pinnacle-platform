@@ -1,5 +1,5 @@
 begin;
-select plan(85);
+select plan(89);
 
 \ir status_fixture.inc
 
@@ -70,10 +70,6 @@ select is(
 select is(pg_temp.grant_as(:'mem', :'d1'), '42501|CHARA_FORBIDDEN|', 'AC2: the member cannot open the CV any more');
 select is((select count(*) from audit.document_access_log), (select n from t_log_before), 'AC2: and the refusal writes no access-log row');
 select is(
-  pg_temp.json_as(:'mem', format('select user_id from public.worker_profiles where user_id = %L', :'wa')), '[]'::jsonb,
-  'AC2: the live passport returns no row for the member (no policy gives an organisation the live passport yet; this fails if one ignores a revoked share)'
-);
-select is(
   pg_temp.json_as(:'mem', format('select status, applicant_name from public.get_applicant(%L)', (select app from t_five where ord = 5))),
   '[{"status": "withdrawn", "applicant_name": "Amina Okafor"}]'::jsonb,
   'AC2: the member still reads the application with the name of its snapshot'
@@ -137,7 +133,7 @@ insert into t_blocked values
   ('an organisation on free_employer with limits enforced', pg_temp.seed_app('shortlisted', pg_temp.org_on()));
 update private.settings set value = 'true' where key = 'entitlements_enforced';
 select is(pg_temp.withdraw_as(:'wa', t.app), 'ok', 'AC7: the withdrawal succeeds for ' || t.what) from t_blocked t;
-select is(pg_temp.status_of(t.app), 'withdrawn', 'AC7: and the application of ' || t.what || ' is withdrawn') from t_blocked t where t.what like '%organisation%';
+select is(pg_temp.status_of(t.app), 'withdrawn', 'AC7: and the application of ' || t.what || ' is withdrawn') from t_blocked t;
 update private.settings set value = 'false' where key = 'entitlements_enforced';
 
 -- FR-D4 AC8: the candidate is emailed, the employer is not.

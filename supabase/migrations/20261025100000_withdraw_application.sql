@@ -7,10 +7,10 @@
 -- The consent of a share now names the application as well as the organisation (share_passport:<organisation>:<application>).
 -- document_access_grant cancels a share when a later withdrawn row has the same user and purpose; with the organisation
 -- alone, withdrawing one application of an organisation would have cancelled the candidate's other shares to it (FR-D4 AC11).
--- The grant is not changed. Consents written before this migration keep their purpose; the withdrawn row copies the purpose
--- and the version of the granted row that the share points at.
+-- The grant is not changed. Only the per-application form is accepted: nothing is deployed that holds the old form. The
+-- withdrawn row copies the purpose and the version of the granted row that the share points at.
 
--- The purpose may end in the application id.
+-- The purpose ends in the application id.
 create or replace function private.consents_check_document() returns trigger
 language plpgsql
 set search_path = ''
@@ -22,7 +22,7 @@ begin
   if not exists (
     select 1 from public.legal_documents d
     where d.version = new.version
-      and d.slug = (case when new.purpose ~ '^share_passport:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$'
+      and d.slug = (case when new.purpose ~ '^share_passport:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
                          then 'sharing-notice' else new.purpose end)
   ) then
     raise exception 'insert or update on table "consents" violates foreign key constraint "consents_purpose_version_fkey"'
