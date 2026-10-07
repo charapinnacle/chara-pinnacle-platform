@@ -4,7 +4,7 @@ import { z } from "zod";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
-import { applicationNextSteps, applicationStatusLabels, eventActorLabels } from "@/lib/applications/presentation";
+import { applicationNextSteps, applicationStatusLabels, eventActorLabels, eventNoteLabels } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
 import { logTrackerView } from "@/lib/applications/tracker-log";
 import { getMyApplication, listTimeline } from "@/lib/dal/applications";
@@ -61,9 +61,14 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
         </h2>
         <p className="leading-7">{applicationNextSteps[application.status]}</p>
         {allowedTargets(application.status, "candidate", { shortlisting: false }).includes("withdrawn") ? (
-          <FormButton type="button" variant="secondary" disabled className="w-auto justify-self-start">
-            Withdraw application
-          </FormButton>
+          <>
+            <FormButton type="button" variant="secondary" disabled aria-describedby="withdraw-hint" className="w-auto justify-self-start">
+              Withdraw application
+            </FormButton>
+            <p id="withdraw-hint" className="text-sm text-muted-foreground">
+              Withdrawing will be available soon.
+            </p>
+          </>
         ) : null}
       </section>
 
@@ -87,8 +92,8 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
           Timeline
         </h2>
         <ol className="grid gap-2">
-          {timeline.map((event, index) => (
-            <li key={index} className="rounded-xl border bg-card p-3">
+          {timeline.map((event) => (
+            <li key={`${event.createdAt}-${event.toStatus}`} className="rounded-xl border bg-card p-3">
               <p className="font-medium">
                 {applicationStatusLabels[event.toStatus]}{" "}
                 <time dateTime={event.createdAt} className="font-normal text-muted-foreground">
@@ -98,7 +103,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
               <p className="text-sm text-muted-foreground">{eventActorLabels[event.actorRole]}</p>
               {event.note ? (
                 <div className="mt-1 grid gap-0.5">
-                  <p className="text-sm text-muted-foreground">Message from the employer</p>
+                  <p className="text-sm text-muted-foreground">{eventNoteLabels[event.actorRole]}</p>
                   <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
                 </div>
               ) : null}

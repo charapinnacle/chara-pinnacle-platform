@@ -3,7 +3,7 @@ import type { Database } from "@chara-pinnacle/db-types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { cache } from "react";
 import { z } from "zod";
-import { isApplicationStatus } from "@/lib/applications/presentation";
+import { type EventActorRole, eventActorLabels, isApplicationStatus } from "@/lib/applications/presentation";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplyLimits } from "@/lib/validation/application";
 
@@ -44,14 +44,14 @@ const timelineEvent = z.object({
   created_at: z.string(),
   to_status: z.custom<ApplicationStatus>(isApplicationStatus),
   note: z.string().nullable(),
-  actor_role: z.enum(["you", "employer", "system"]),
+  actor_role: z.enum(Object.keys(eventActorLabels) as [EventActorRole, ...EventActorRole[]]),
 });
 
 type TimelineEvent = {
   toStatus: ApplicationStatus;
   note: string | null;
   createdAt: string;
-  actorRole: "you" | "employer" | "system";
+  actorRole: EventActorRole;
 };
 
 export type ApplyRefusal =

@@ -35,6 +35,14 @@ export const applicationNextSteps: Record<ApplicationStatus, string> = {
 
 export const eventActorLabels = { you: "By you", employer: "By the employer", system: "Automatic" } as const;
 
+export type EventActorRole = keyof typeof eventActorLabels;
+
+export const eventNoteLabels: Record<EventActorRole, string> = {
+  you: "Your note",
+  employer: "Message from the employer",
+  system: "Note",
+};
+
 export const CROSS_BORDER_NOTICE =
   "Cross-border hiring can be subject to legal requirements, such as work permits and visas. Check what applies to you and to the employer's country before you accept an offer.";
 
