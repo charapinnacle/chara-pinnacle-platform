@@ -161,6 +161,25 @@ test.describe("the applicant list", () => {
     await context.close();
   });
 
+  test("FR-E1 step 1: a member opens the applicants of a vacancy from the vacancy page and all applicants from the organization page", async ({ browser }) => {
+    const company = await newCompany();
+    const job = seedJob(company, { title: "Linked welder", status: "open" });
+    seedListApplicant(company, job, { name: "Ana Silva", appliedAt: "2026-09-04T10:00:00Z", completeness: 80 });
+    const { context, page } = await memberSession(browser, company);
+
+    await page.goto(`/en/org/${company.slug}/jobs/${job}`);
+    await page.getByRole("link", { name: "Applicants" }).click();
+    await expect(page).toHaveURL(new RegExp(`/applicants\\?job=${job}$`));
+    await expect(page.getByRole("link", { name: "Linked welder" })).toBeVisible();
+    await expect(listRows(page)).toHaveCount(1);
+
+    await page.goto(`/en/org/${company.slug}`);
+    await page.getByRole("link", { name: "Applicants" }).click();
+    await expect(page).toHaveURL(new RegExp(`/applicants$`));
+    await expect(page.getByRole("columnheader")).toHaveText(["Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
+    await context.close();
+  });
+
   test("FR-E1 AC7: no application, no match for a filter, and the way back", async ({ browser }) => {
     const company = await newCompany();
     subscribe(company, "employer_starter");
