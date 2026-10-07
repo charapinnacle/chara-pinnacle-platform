@@ -248,8 +248,12 @@ test.describe("saved vacancies", () => {
       const id = openJob(company, `Welder ${marker} ${String(n).padStart(2, "0")}`);
       seedSaved(candidate.id, id, `now() - interval '${n} minutes'`);
     }
+    const prefetched = page.waitForResponse(
+      (response) => /\/en\/saved\?_rsc=/.test(response.url()) && response.request().headers()["next-router-prefetch"] === "1",
+    );
     await logIn(page, candidate);
     await expect(page).toHaveURL(/\/dashboard\/worker$/);
+    await prefetched;
 
     let navigationDelay = 1500;
     await page.route(/\/en\/saved/, async (route) => {
@@ -280,7 +284,7 @@ test.describe("saved vacancies", () => {
     await save.focus();
     await page.keyboard.press("Enter");
     await expect(save).toHaveAttribute("aria-pressed", "true");
-    await expect(save).toBeEnabled();
+    await expect(save).not.toHaveAttribute("aria-busy");
     await page.keyboard.press("Space");
     await expect(save).toHaveAttribute("aria-pressed", "false");
   });
