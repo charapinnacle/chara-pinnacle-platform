@@ -63,6 +63,7 @@ export default defineConfig({
         "**/vacancy-page-failure.spec.ts",
         "**/saved-vacancies-failure.spec.ts",
         "**/apply-failure.spec.ts",
+        "**/applicant-list-failure.spec.ts",
       ],
     },
     {
@@ -127,6 +128,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/apply-failure.spec.ts",
       dependencies: ["saved-failure"],
+    },
+    // The applications table is locked, and the applicants view withdrawn from the API role, while this spec runs.
+    {
+      name: "applicants-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/applicant-list-failure.spec.ts",
+      dependencies: ["apply-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
