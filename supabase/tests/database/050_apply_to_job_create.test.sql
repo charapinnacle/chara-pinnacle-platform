@@ -181,7 +181,7 @@ select is(
 -- Reads: the candidate reads the own rows only, and not the actor of an event.
 select is(pg_temp.affected_as(:'wa', 'authenticated', 'select 1 from public.job_applications'), 5::bigint, 'the candidate reads the own five applications of this run');
 select is(pg_temp.affected_as(:'wb', 'authenticated', 'select 1 from public.job_applications'), 1::bigint, 'another candidate reads only the own one');
-select is(pg_temp.affected_as(:'own1', 'authenticated', 'select 1 from public.job_applications'), 0::bigint, 'a member of the organisation reads none (the employer read is FR-D5)');
+select is(pg_temp.affected_as(:'own1', 'authenticated', 'select 1 from public.job_applications'), 6::bigint, 'a member of the organisation reads the six applications to its vacancies (FR-D5)');
 select is(pg_temp.affected_as(:'wa', 'authenticated', 'select 1 from public.application_events'), 5::bigint, 'the candidate reads the events of the own applications');
 select is(pg_temp.state_as(:'wa', 'select actor_id from public.application_events'), '42501', 'but not the actor of an event');
 select is(pg_temp.call_as(null, 'anon', 'select 1 from public.job_applications') || '/' || pg_temp.call_as(null, 'anon', 'select 1 from public.application_events'), '42501|permission denied for table job_applications|/42501|permission denied for table application_events|', 'anonymous callers have no grant');
