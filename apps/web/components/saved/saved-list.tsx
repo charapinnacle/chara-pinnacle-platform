@@ -22,6 +22,7 @@ function SavedRow({ job, lang, onRemove }: SavedRowProps) {
 
   function unsave() {
     run(async () => {
+      // The row about to leave would take the focus with it.
       document.getElementById(SAVED_HEADING_ID)?.focus();
       onRemove(job.id);
       return setSavedJob(job.id, false);
@@ -68,8 +69,6 @@ function SavedRow({ job, lang, onRemove }: SavedRowProps) {
 
 type SavedListProps = { lang: string; jobs: SavedJob[]; nextHref: string | null; firstHref: string | null };
 
-// The rows leave at once when the candidate presses Unsave; the action then refreshes the page from the database, and
-// a failure puts the row back with a toast.
 export function SavedList({ lang, jobs, nextHref, firstHref }: SavedListProps) {
   const [visible, removeRow] = useOptimistic(jobs, (current, id: string) => current.filter((job) => job.id !== id));
 

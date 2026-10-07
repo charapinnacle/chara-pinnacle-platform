@@ -11,8 +11,6 @@ export type SavedJob =
   | { id: string; savedAt: string; available: true; status: SavedStatus; title: string; employerName: string }
   | { id: string; savedAt: string; available: false };
 
-// The candidate's saved vacancies, newest saved first, in keyset pages of SAVED_PAGE_SIZE. The function answers for the
-// caller only and returns nothing that moderation withdrew.
 export async function listSavedJobs(cursor: string | null): Promise<{ jobs: SavedJob[]; nextCursor: string | null }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_saved_jobs", {
@@ -32,8 +30,7 @@ export async function listSavedJobs(cursor: string | null): Promise<{ jobs: Save
   };
 }
 
-// Which of the given vacancies the signed-in candidate has saved; row level security shows each caller only their own
-// rows, so for anyone else the answer is none.
+// No user filter: row level security shows each caller only their own rows, so for anyone else the answer is none.
 export async function getSavedJobIds(ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const supabase = await createClient();

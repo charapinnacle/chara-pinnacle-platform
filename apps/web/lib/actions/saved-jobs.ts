@@ -11,9 +11,7 @@ import { jobIdSchema } from "@/lib/validation/job";
 
 type SavedJobResult = { message?: string };
 
-// Save and unsave of the signed-in candidate. The database decides: row level security admits only a worker account,
-// its own rows and an Open, visible vacancy, and the primary key with ON CONFLICT makes a repeated save a no-op, also
-// when two presses arrive together. An unsave of a row that is not there deletes nothing and is not an error.
+// ON CONFLICT DO NOTHING keeps a repeated save a no-op, also when two presses arrive together.
 export async function setSavedJob(jobId: string, saved: boolean): Promise<SavedJobResult> {
   const id = jobIdSchema.safeParse(jobId);
   if (!id.success || typeof saved !== "boolean") return { message: GENERIC_FAILURE };

@@ -8,10 +8,8 @@ import { setSavedJob } from "@/lib/actions/saved-jobs";
 
 type SaveJobButtonProps = { jobId: string; title: string; saved: boolean };
 
-// The candidate's Save on a result card and on the vacancy page: a toggle whose state the database confirms, so the
-// button never claims a save that failed. The name stays "Save vacancy: <title>" and aria-pressed carries the state.
-// The button is not disabled while a call runs (a disabled button loses the focus of a keyboard user); a press that
-// arrives meanwhile is ignored.
+// Not disabled while a call runs: a disabled button loses the focus of a keyboard user, so a press that arrives
+// meanwhile is ignored. The state changes only once the database has confirmed it.
 export function SaveJobButton({ jobId, title, saved: initiallySaved }: SaveJobButtonProps) {
   const [saved, setSaved] = useState(initiallySaved);
   const { pending, run } = useTeamCall("Your saved vacancies were not changed");

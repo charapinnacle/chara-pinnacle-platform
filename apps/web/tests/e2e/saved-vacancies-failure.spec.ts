@@ -9,13 +9,15 @@ import { publicUrl } from "./support/vacancy-page";
 
 const LIST = "public.list_saved_jobs(text, integer)";
 const INSERT = "insert (worker_user_id, job_id) on public.saved_jobs";
+const DELETE = "delete on public.saved_jobs";
 
-// The list function and the insert privilege are withdrawn from the API role for the whole database while this file
+// The list function and the insert and delete privileges are withdrawn from the API role for the whole database while this file
 // runs, so it has a project of its own that follows the others (playwright.config.ts).
 test.describe.configure({ mode: "serial" });
 test.afterEach(() => {
   execute(`grant execute on function ${LIST} to authenticated`);
   execute(`grant ${INSERT} to authenticated`);
+  execute(`grant ${DELETE} to authenticated`);
 });
 
 test.describe("saved vacancies when the database fails", () => {
@@ -60,5 +62,31 @@ test.describe("saved vacancies when the database fails", () => {
     await save.click();
     await expect(save).toHaveAttribute("aria-pressed", "true");
     expect(savedJobIds(candidate.id)).toEqual([id]);
+  });
+
+  test("FR-C5 AC11: a failed Unsave puts the row back, shows a toast and removes nothing", async ({ page }) => {
+    const company = await newCompany();
+    const candidate = await createCommittedUser("worker");
+    const id = seedJob(company, { title: "Staying welder", status: "open" });
+    seedSaved(candidate.id, id);
+    await logIn(page, candidate);
+    await expect(page).toHaveURL(/\/dashboard\/worker$/);
+    await page.goto(SAVED_URL);
+    const unsave = page.getByRole("button", { name: "Unsave vacancy: Staying welder" });
+    await waitForHydration(unsave);
+    execute(`revoke ${DELETE} from authenticated`);
+
+    await unsave.click();
+    await expect(page.getByText("The vacancy was not removed", { exact: true })).toBeVisible();
+    await expect(page.getByText("We could not complete this request. Try again.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Staying welder" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No saved vacancies yet" })).toHaveCount(0);
+    expect(savedJobIds(candidate.id)).toEqual([id]);
+    await expect(page.getByText("permission denied")).toHaveCount(0);
+
+    execute(`grant ${DELETE} to authenticated`);
+    await unsave.click();
+    await expect(page.getByRole("heading", { name: "No saved vacancies yet" })).toBeVisible();
+    expect(savedJobIds(candidate.id)).toEqual([]);
   });
 });
