@@ -22,8 +22,8 @@ export async function createEmployer(displayName = "Acme Bau"): Promise<Employer
   return { owner, member, organizationId };
 }
 
-// What apply_to_job writes for an application: a granted consent and a share of the selected documents. The application
-// itself does not exist yet (FR-D1), so its id is a fresh one.
+// What apply_to_job writes for an application: a granted consent, a vacancy of the organisation with an application of
+// the candidate, and a share of the selected documents.
 export function seedShare(workerId: string, organizationId: string, documentIds: string[]): string {
   return execute(
     `with consent as (
@@ -31,10 +31,19 @@ export function seedShare(workerId: string, organizationId: string, documentIds:
        select ${literal(workerId)}, d.slug, d.version, 'granted' from public.legal_documents d
        where d.slug = 'privacy-policy' order by d.version desc limit 1
        returning id
+     ), vacancy as (
+       insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city, employment_type, recruitment_preference)
+       values (${literal(organizationId)}, 'Seeded vacancy', 'A seeded vacancy with a description that is long enough to pass the check.',
+               '7212', 'C', 'DE', 'Hamburg', 'full_time', 'both')
+       returning id
+     ), application as (
+       insert into public.job_applications (job_id, organization_id, worker_user_id, passport_share_id, profile_snapshot)
+       select vacancy.id, ${literal(organizationId)}, ${literal(workerId)}, gen_random_uuid(), '{}' from vacancy
+       returning id
      )
      insert into public.passport_shares (worker_user_id, organization_id, application_id, scope, consent_id)
-     select ${literal(workerId)}, ${literal(organizationId)}, gen_random_uuid(), ${literal(JSON.stringify(documentIds))}::jsonb, consent.id
-     from consent returning id`,
+     select ${literal(workerId)}, ${literal(organizationId)}, application.id, ${literal(JSON.stringify(documentIds))}::jsonb, consent.id
+     from consent, application returning id`,
   ).trim();
 }
 

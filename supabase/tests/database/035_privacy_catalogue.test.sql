@@ -22,13 +22,13 @@ select set_eq(
           where q.pronamespace = 'private'::regnamespace
             and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
             and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
-  $$values ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('passport_limits')$$,
+  $$values ('apply_to_job'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('passport_limits')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'
 );
 
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public' and p.proname in ('create_worker_passport', 'delete_worker_document', 'passport_limits')
+   where n.nspname = 'public' and p.proname in ('apply_to_job', 'create_worker_passport', 'delete_worker_document', 'passport_limits')
      and p.prosrc !~* 'auth\.uid'),
   0::bigint, 'AC10: the allow-listed owner functions act for the caller (auth.uid)'
 );

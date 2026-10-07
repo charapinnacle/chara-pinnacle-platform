@@ -32,7 +32,7 @@ jq -s '([.[] | select(.event == "vacancy_view" and .outcome == "unavailable")] |
        / ([.[] | select(.event == "vacancy_view")] | length)' pages.jsonl
 ```
 
-Until the application step of FR-D1 exists (U27) a candidate's buttons are switched off, so the rate counts visitors who are sent to log in; from U27 the same event is written when a candidate presses Apply (the action that handles the press logs it before it redirects). Applications that were actually submitted are read from `job_applications` (FR-D1), not from this log.
+A visitor's press of Apply is logged by the action that sends them to log in, a candidate's by the apply page when it shows the form (so the rate counts forms opened, not the presses of a link that is a plain GET). Applications that were actually submitted are the `application.submitted` rows of the audit log (FR-D1, `docs/runbooks/applications.md`), not this log.
 
 ## 3. Control: server rendering from live data
 

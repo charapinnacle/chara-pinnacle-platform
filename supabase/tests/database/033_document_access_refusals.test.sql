@@ -60,12 +60,12 @@ select is(pg_temp.logged(), 3::bigint, 'only the three successful openings are l
 -- A share whose consent is missing or belongs to someone else grants nothing.
 select pg_temp.doc(:'d4', :'wa');
 insert into public.passport_shares (worker_user_id, organization_id, application_id, scope, consent_id)
-values (:'wa', pg_temp.o(), gen_random_uuid(), to_jsonb(array[:'d4']::uuid[]), -1);
+values (:'wa', pg_temp.o(), pg_temp.stub_application(pg_temp.o(), :'wa'), to_jsonb(array[:'d4']::uuid[]), -1);
 select is(pg_temp.grant_as(:'mem', :'d4', p_aal => 'aal1'), '42501|CHARA_FORBIDDEN|', 'a share with no consent row grants nothing');
 insert into public.consents (user_id, purpose, version, action) values (:'wb', 'sharing-notice', 1, 'granted');
 select pg_temp.doc(:'d5', :'wa');
 insert into public.passport_shares (worker_user_id, organization_id, application_id, scope, consent_id)
-values (:'wa', pg_temp.o(), gen_random_uuid(), to_jsonb(array[:'d5']::uuid[]), (select max(id) from public.consents where user_id = :'wb'));
+values (:'wa', pg_temp.o(), pg_temp.stub_application(pg_temp.o(), :'wa'), to_jsonb(array[:'d5']::uuid[]), (select max(id) from public.consents where user_id = :'wb'));
 select is(pg_temp.grant_as(:'mem', :'d5', p_aal => 'aal1'), '42501|CHARA_FORBIDDEN|', 'a share whose consent belongs to another person grants nothing');
 
 -- The purpose follows the caller: application_review for a member of the organisation, owner_download for the owner. Any

@@ -151,7 +151,7 @@ test.describe("saved vacancies", () => {
     expect(savedAuditCount(candidate.id, again)).toBe(1);
   });
 
-  test("FR-C5 AC7: the saved list flags each state, offers Apply only for an open vacancy and discloses nothing of a hidden one", async ({
+  test("FR-C5 AC7: the saved list flags each state, offers Quick apply only for an open vacancy and discloses nothing of a hidden one", async ({
     page,
   }) => {
     const company = await newCompany();
@@ -181,7 +181,7 @@ test.describe("saved vacancies", () => {
     await expect(open).toContainText("Open");
     await expect(open).toContainText(display_name);
     await expect(open).not.toContainText("No longer open");
-    await expect(open.getByRole("link", { name: /^Apply/ })).toHaveAttribute("href", `/en/jobs/${ids.open}`);
+    await expect(open.getByRole("link", { name: /^Quick apply/ })).toHaveAttribute("href", `/en/jobs/${ids.open}/apply`);
 
     for (const state of ["paused", "closed", "filled"]) {
       const closed = row(page, `Welder ${state} ${marker}`);

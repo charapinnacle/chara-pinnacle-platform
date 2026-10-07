@@ -120,7 +120,7 @@ test.describe("the public vacancy page", () => {
     ).toThrow();
   });
 
-  test("FR-C4 AC3: Apply and Save lead a visitor to log in and back to the vacancy; an absolute next is ignored", async ({ page }) => {
+  test("FR-C4 AC3: Save leads a visitor to log in and back to the vacancy, Apply to the apply form; an absolute next is ignored", async ({ page }) => {
     const company = await newCompany();
     const id = openJob(company, "Login welder");
     const candidate = await createCommittedUser("worker");
@@ -128,7 +128,7 @@ test.describe("the public vacancy page", () => {
 
     await page.goto(publicUrl(id));
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(next)}`);
+    await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(`${next}/apply`)}`);
     await page.goBack();
     await page.getByRole("button", { name: "Save vacancy: Login welder" }).click();
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(next)}`);
@@ -138,10 +138,9 @@ test.describe("the public vacancy page", () => {
     await page.getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(next);
     await expect(page.getByRole("heading", { name: "Login welder", level: 1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
+    await expect(page.getByRole("link", { name: "Apply", exact: true })).toHaveAttribute("href", `${next}/apply`);
     await expect(page.getByRole("button", { name: "Save vacancy: Login welder" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Save vacancy: Login welder" })).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByText("Applying opens soon.")).toBeVisible();
     await expectNoAxeViolations(page);
 
     for (const hostile of ["//evil.example", "https://evil.example"]) {

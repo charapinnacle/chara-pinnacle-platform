@@ -197,3 +197,12 @@ export function parseJobCursor(value: unknown): JobCursor | null {
 export function formatJobCursor({ createdAt, id }: JobCursor): string {
   return `${createdAt}${CURSOR_SEPARATOR}${id}`;
 }
+
+// The exact shape of the next_cursor of the keyset lists of the database (saved vacancies, applications). Dropping a
+// cursor the function would refuse makes a mistyped address show the first page, not an error page; parseJobCursor adds
+// the calendar check the pattern lacks.
+const LIST_CURSOR = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function parseListCursor(value: unknown): string | null {
+  return typeof value === "string" && LIST_CURSOR.test(value) && parseJobCursor(value) ? value : null;
+}

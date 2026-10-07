@@ -16,12 +16,13 @@ exception when others then
 end;
 $$;
 
-create function pg_temp.new_share(p_scope text, p_application uuid default gen_random_uuid(), p_consent bigint default null) returns text
+create function pg_temp.new_share(p_scope text, p_application uuid default null, p_consent bigint default null) returns text
 language sql as $$
   select pg_temp.try(format(
     $f$insert into public.passport_shares (worker_user_id, organization_id, application_id, scope, consent_id)
        values (%L, %L, %L, %L::jsonb, coalesce(%L::bigint, (select max(id) from public.consents)))$f$,
-    current_setting('t.a'), current_setting('t.o'), p_application, p_scope, p_consent))
+    current_setting('t.a'), current_setting('t.o'),
+    coalesce(p_application, pg_temp.stub_application(current_setting('t.o')::uuid, current_setting('t.a')::uuid)), p_scope, p_consent))
 $$;
 
 select set_config('t.a', :'wa', true);

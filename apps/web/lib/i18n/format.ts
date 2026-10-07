@@ -21,3 +21,15 @@ export function formatDateTime(iso: string): string {
 export function formatIsoDate(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
+
+const shortDateFormat = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+// The form of the application dates, 3 Oct 2026 (FR-D7 AC6); every date of an application uses it.
+export function formatShortDate(iso: string): string {
+  return shortDateFormat.format(new Date(iso));
+}

@@ -62,6 +62,7 @@ export default defineConfig({
         "**/public-search-failure.spec.ts",
         "**/vacancy-page-failure.spec.ts",
         "**/saved-vacancies-failure.spec.ts",
+        "**/apply-failure.spec.ts",
       ],
     },
     {
@@ -119,6 +120,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/saved-vacancies-failure.spec.ts",
       dependencies: ["vacancy-page-failure"],
+    },
+    // The functions that apply and list applications are withdrawn from the API role while this spec runs.
+    {
+      name: "apply-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/apply-failure.spec.ts",
+      dependencies: ["saved-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

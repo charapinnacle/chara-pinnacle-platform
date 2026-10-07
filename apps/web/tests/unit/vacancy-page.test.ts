@@ -5,6 +5,7 @@ import type { PublicJob } from "@/lib/dal/hiring";
 const getPublicJobMock = vi.hoisted(() => vi.fn());
 const getCurrentUserMock = vi.hoisted(() => vi.fn());
 const getSavedJobIdsMock = vi.hoisted(() => vi.fn());
+const getApplicationStatesMock = vi.hoisted(() => vi.fn());
 const logMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
@@ -16,6 +17,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
 vi.mock("@/lib/dal/hiring", () => ({ getPublicJob: getPublicJobMock }));
 vi.mock("@/lib/dal/saved-jobs", () => ({ getSavedJobIds: getSavedJobIdsMock }));
+vi.mock("@/lib/dal/applications", () => ({ getApplicationStates: getApplicationStatesMock }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser: getCurrentUserMock }));
 vi.mock("@/lib/jobs/vacancy-log", () => ({ logVacancy: logMock }));
 vi.mock("@/lib/jobs/job-posting", () => ({ jobPostingJsonLd: () => "{}" }));
@@ -31,6 +33,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   getCurrentUserMock.mockResolvedValue(null);
   getSavedJobIdsMock.mockResolvedValue(new Set());
+  getApplicationStatesMock.mockResolvedValue(new Map());
 });
 
 type Props = { children: [unknown, ReactElement<{ actions: ReactElement<Record<string, unknown>> }>] };
@@ -59,12 +62,25 @@ describe("PublicJobPage view events", () => {
     expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ viewer: "candidate", saved: false });
   });
 
+  it("gives a candidate the application for this vacancy, asking about this vacancy only, and none when there is none", async () => {
+    getPublicJobMock.mockResolvedValue({ id, title: "Welder", employer: {} } as PublicJob);
+    getCurrentUserMock.mockResolvedValue({ accountKind: "worker" });
+    const state = { id: "app-1", status: "shortlisted", createdAt: "2026-10-03T09:00:00+00:00" };
+    getApplicationStatesMock.mockResolvedValue(new Map([[id, state]]));
+    expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ application: state });
+    expect(getApplicationStatesMock).toHaveBeenCalledWith([id]);
+
+    getApplicationStatesMock.mockResolvedValue(new Map());
+    expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ application: null });
+  });
+
   it("does not ask who saved the vacancy for a visitor or a company user", async () => {
     getPublicJobMock.mockResolvedValue({ id, title: "Welder", employer: {} } as PublicJob);
     expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ viewer: "visitor", saved: false });
     getCurrentUserMock.mockResolvedValue({ accountKind: "company" });
     expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ viewer: "company", saved: false });
     expect(getSavedJobIdsMock).not.toHaveBeenCalled();
+    expect(getApplicationStatesMock).not.toHaveBeenCalled();
   });
 
   it("logs an unavailable view without an id, before the not-found page", async () => {
