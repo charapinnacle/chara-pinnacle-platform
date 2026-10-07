@@ -55,11 +55,11 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
             {applications.map((application) => (
               <li key={application.id} className="grid gap-2 rounded-xl border bg-card p-4">
                 <h2 className="text-lg font-semibold">
-                  <TextLink href={applicationPath(lang, application.id)} className="break-words">
+                  <TextLink href={applicationPath(lang, application.id)} className="wrap-anywhere">
                     {application.jobTitle}
                   </TextLink>
                 </h2>
-                <p className="font-medium break-words">{application.employerName}</p>
+                <p className="font-medium wrap-anywhere">{application.employerName}</p>
                 <p>
                   <span className={badgeClassName}>{applicationStatusLabels[application.status]}</span>
                 </p>

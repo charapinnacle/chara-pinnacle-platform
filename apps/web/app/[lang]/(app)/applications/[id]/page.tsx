@@ -26,8 +26,8 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
       <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight break-words sm:text-[1.75rem]">{application.jobTitle}</h1>
-        <p className="text-body font-medium break-words">{application.employerName}</p>
+        <h1 className="text-2xl font-semibold tracking-tight wrap-anywhere sm:text-[1.75rem]">{application.jobTitle}</h1>
+        <p className="text-body font-medium wrap-anywhere">{application.employerName}</p>
         <TextLink standalone href={applicationsPath(lang)}>
           My applications
         </TextLink>
@@ -63,7 +63,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
           <h2 id="cover-note-heading" className="text-lg font-semibold">
             Your cover note
           </h2>
-          <p className="leading-7 break-words whitespace-pre-line">{application.coverNote}</p>
+          <p className="leading-7 wrap-anywhere whitespace-pre-line">{application.coverNote}</p>
         </section>
       ) : null}
 
