@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFormSchema, applyInputSchema, CONSENT_REQUIRED } from "@/lib/validation/application";
+import { applyFormSchema, applyInputSchema, CONSENT_REQUIRED, parseApplicationListParams } from "@/lib/validation/application";
 
 const limits = { coverNoteMaxChars: 2000, documentsMax: 10 };
 const form = applyFormSchema(limits);
@@ -62,5 +62,18 @@ describe("the apply form schema", () => {
     const small = applyFormSchema({ coverNoteMaxChars: 5, documentsMax: 1 });
     expect(small.safeParse({ ...valid, coverNote: "abcdef" }).error?.issues[0].message).toBe("Cover note must be at most 5 characters");
     expect(small.safeParse({ ...valid, documentIds: [uuid(1), uuid(2)] }).error?.issues[0].message).toBe("Select at most 1 documents");
+  });
+});
+
+describe("the address of the application list (FR-D3 AC2, AC10)", () => {
+  it("keeps a stored stage and a page from 1 to 999", () => {
+    expect(parseApplicationListParams({ stage: "interview", page: "3" })).toEqual({ stage: "interview", page: 3 });
+    expect(parseApplicationListParams({ stage: "rejected", page: "999" })).toEqual({ stage: "rejected", page: 999 });
+  });
+
+  it("falls back to every stage and the first page for anything else", () => {
+    for (const params of [{}, { stage: "foo", page: "0" }, { stage: "Interview", page: "-1" }, { stage: ["a", "b"], page: ["2"] }, { stage: "__proto__", page: "1000" }, { page: "2.5" }, { page: "02" }, { page: "" }]) {
+      expect(parseApplicationListParams(params), JSON.stringify(params)).toEqual({ stage: null, page: 1 });
+    }
   });
 });

@@ -1,4 +1,8 @@
+import type { Database } from "@chara-pinnacle/db-types";
 import { z } from "zod";
+import { isApplicationStatus } from "@/lib/applications/presentation";
+
+type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 export type ApplyLimits = { coverNoteMaxChars: number; documentsMax: number };
 
@@ -29,3 +33,13 @@ export function applyInputSchema(limits: ApplyLimits) {
 }
 
 export type ApplyFormInput = z.input<ReturnType<typeof applyFormSchema>>;
+
+// The list of the candidate's applications is addressed by ?stage= and ?page=: a value that is not one of the stored
+// stages, or a page that is not a number from 1 to 999, falls back to every stage and the first page.
+export function parseApplicationListParams(params: Record<string, unknown>): { stage: ApplicationStatus | null; page: number } {
+  const { stage, page } = params;
+  return {
+    stage: isApplicationStatus(stage) ? stage : null,
+    page: typeof page === "string" && /^[1-9]\d{0,2}$/.test(page) ? Number(page) : 1,
+  };
+}

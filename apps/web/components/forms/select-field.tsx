@@ -2,6 +2,7 @@
 
 import type { FieldPath, FieldValues } from "react-hook-form";
 import { FormField } from "@/components/forms/form-field";
+import { selectClassName } from "@/components/forms/select-class";
 
 type SelectFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   React.ComponentProps<typeof FormField<T, N>>,
@@ -21,7 +22,7 @@ export function SelectField<T extends FieldValues, N extends FieldPath<T>>({
     <FormField {...fieldProps}>
       {(controlProps) => (
         <select
-          className="h-11 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-base text-foreground transition-colors hover:border-muted-foreground aria-invalid:border-destructive"
+          className={selectClassName}
           {...controlProps}
         >
           <option value="">{placeholder}</option>

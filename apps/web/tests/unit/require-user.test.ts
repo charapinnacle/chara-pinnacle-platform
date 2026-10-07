@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { requirePlatformStaff, requireUser } = await import("@/lib/dal/session");
+const { requireCandidate, requirePlatformStaff, requireUser } = await import("@/lib/dal/session");
 
 function pending(slug: string) {
   return {
@@ -168,5 +168,45 @@ describe("requirePlatformStaff", () => {
       name === "my_platform_roles" ? { data: null, error: { message: "boom" } } : { data: [], error: null },
     );
     await expect(requirePlatformStaff("en")).rejects.toThrow("could not be loaded");
+  });
+});
+
+describe("requireCandidate", () => {
+  const roles = (data: string[] | null, error: { message: string } | null = null) =>
+    rpcMock.mockImplementation(async (name: string) => (name === "my_platform_roles" ? { data, error } : { data: [], error: null }));
+
+  it("lets a candidate through without asking for the platform roles", async () => {
+    await expect(requireCandidate("en")).resolves.toMatchObject({ id: "user-1", accountKind: "worker" });
+    expect(rpcMock).not.toHaveBeenCalledWith("my_platform_roles");
+  });
+
+  it("sends a visitor to log in with the page asked for", async () => {
+    claimsMock.mockResolvedValue({ data: null });
+    headerValues.pathname = "/en/applications";
+    await expect(requireCandidate("en")).rejects.toThrow(`REDIRECT:/en/login?next=${encodeURIComponent("/en/applications")}`);
+  });
+
+  it("sends a company user to the employer dashboard", async () => {
+    profileMock.mockResolvedValue({ data: { account_kind: "company", intended_account_kind: "company", status: "active" } });
+    roles([]);
+    await expect(requireCandidate("en")).rejects.toThrow("REDIRECT:/en/dashboard/employer");
+  });
+
+  it("sends platform staff to the administration, whatever their account kind", async () => {
+    profileMock.mockResolvedValue({ data: { account_kind: "company", intended_account_kind: "company", status: "active" } });
+    roles(["trust_safety"]);
+    await expect(requireCandidate("en")).rejects.toThrow("REDIRECT:/en/admin");
+  });
+
+  it("sends an account that has not chosen its kind to the step that finishes it", async () => {
+    profileMock.mockResolvedValue({ data: { account_kind: null, intended_account_kind: "worker", status: "active" } });
+    roles([]);
+    await expect(requireCandidate("en")).rejects.toThrow("REDIRECT:/en/onboarding");
+  });
+
+  it("fails loudly when the roles cannot be loaded", async () => {
+    profileMock.mockResolvedValue({ data: { account_kind: "company", intended_account_kind: "company", status: "active" } });
+    roles(null, { message: "boom" });
+    await expect(requireCandidate("en")).rejects.toThrow("could not be loaded");
   });
 });

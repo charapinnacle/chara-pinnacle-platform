@@ -159,23 +159,37 @@ describe("the candidate's reads", () => {
     expect(calls).toContainEqual(["worker_documents.limit", 100]);
   });
 
-  it("asks for a page of 20 applications and passes the cursor on", async () => {
+  it("asks for a page of 20 applications and one more, at the offset of the page, with no stage by default", async () => {
     rpcResult = { data: [], error: null };
-    await listMyApplications("c");
-    expect(calls).toEqual([["rpc", "list_my_applications", { p_cursor: "c", p_limit: 20 }]]);
+    await listMyApplications(null, 3);
+    expect(calls).toEqual([["rpc", "my_applications", { p_stage: undefined, p_limit: 21, p_offset: 40 }]]);
   });
 
-  it("maps a row of the list and takes the cursor of the last row", async () => {
-    rpcResult = {
-      data: [
-        { id: "a", job_id: jobId, job_title: "Welder", employer_display_name: "Acme", status: "rejected", applied_at: "2026-10-03T10:00:00Z", next_cursor: null },
-        { id: "b", job_id: jobId, job_title: "Fitter", employer_display_name: "Acme", status: "applied", applied_at: "2026-10-02T10:00:00Z", next_cursor: "next" },
-      ],
-      error: null,
-    };
-    const page = await listMyApplications(null);
-    expect(page.nextCursor).toBe("next");
-    expect(page.applications[0]).toEqual({ id: "a", jobId, jobTitle: "Welder", employerName: "Acme", status: "rejected", appliedAt: "2026-10-03T10:00:00Z" });
+  it("passes the stage on to the function", async () => {
+    rpcResult = { data: [], error: null };
+    await listMyApplications("interview", 1);
+    expect(calls).toEqual([["rpc", "my_applications", { p_stage: "interview", p_limit: 21, p_offset: 0 }]]);
+  });
+
+  it("maps the rows of the list without the vacancy state and says there is a next page only for a 21st row", async () => {
+    const row = (n: number) => ({
+      id: `a${n}`, job_title: "Welder", employer_display_name: "Acme", job_status: "paused", moderation_state: "visible",
+      status: "rejected", applied_at: "2026-10-03T10:00:00Z", last_event_at: "2026-10-05T10:00:00Z",
+    });
+    rpcResult = { data: Array.from({ length: 21 }, (_, n) => row(n)), error: null };
+    const full = await listMyApplications(null, 1);
+    expect(full.hasNext).toBe(true);
+    expect(full.applications).toHaveLength(20);
+    expect(full.applications[0]).toEqual({
+      id: "a0", jobTitle: "Welder", employerName: "Acme", status: "rejected", appliedAt: "2026-10-03T10:00:00Z", lastEventAt: "2026-10-05T10:00:00Z",
+    });
+    rpcResult = { data: Array.from({ length: 20 }, (_, n) => row(n)), error: null };
+    expect((await listMyApplications(null, 2)).hasNext).toBe(false);
+  });
+
+  it("throws when the list cannot be read, with no database text in the message", async () => {
+    rpcResult = { data: null, error: { message: "permission denied for function my_applications" } };
+    await expect(listMyApplications(null, 1)).rejects.toThrow("The applications could not be loaded");
   });
 
   it("gives null for an application the function does not return", async () => {
@@ -193,18 +207,24 @@ describe("the candidate's reads", () => {
     });
   });
 
-  it("reads the timeline with the note of a stage change and without the actor of an event", async () => {
+  it("reads the timeline from the view, without an id or an actor id, with the note and who acted", async () => {
     rows = {
       data: [
-        { id: 1, to_status: "applied", note: null, created_at: "2026-10-03T10:00:00Z" },
-        { id: 2, to_status: "rejected", note: "Position filled", created_at: "2026-10-04T10:00:00Z" },
+        { created_at: "2026-10-03T10:00:00Z", to_status: "applied", note: null, actor_role: "you" },
+        { created_at: "2026-10-04T10:00:00Z", to_status: "rejected", note: "Position filled", actor_role: "employer" },
       ],
       error: null,
     };
     expect(await listTimeline(applicationId)).toEqual([
-      { id: 1, toStatus: "applied", note: null, createdAt: "2026-10-03T10:00:00Z" },
-      { id: 2, toStatus: "rejected", note: "Position filled", createdAt: "2026-10-04T10:00:00Z" },
+      { toStatus: "applied", note: null, createdAt: "2026-10-03T10:00:00Z", actorRole: "you" },
+      { toStatus: "rejected", note: "Position filled", createdAt: "2026-10-04T10:00:00Z", actorRole: "employer" },
     ]);
-    expect(calls).toContainEqual(["application_events.select", "id, to_status, note, created_at"]);
+    expect(calls).toContainEqual(["v_my_application_timeline.select", "created_at, to_status, note, actor_role"]);
+    expect(calls).toContainEqual(["v_my_application_timeline.eq", "application_id", applicationId]);
+  });
+
+  it("refuses a timeline row whose columns are null instead of showing it", async () => {
+    rows = { data: [{ created_at: null, to_status: null, note: null, actor_role: null }], error: null };
+    await expect(listTimeline(applicationId)).rejects.toThrow();
   });
 });
