@@ -9,8 +9,8 @@ export const applicantUrl = (slug: string, id: string) => `/en/org/${slug}/appli
 export const ALREADY_MOVED = "This applicant was already moved. Reload to see the current stage";
 
 // An application in any stage whose snapshot carries the name the applicant page shows.
-export function seedNamedApplication(candidate: TestUser, jobId: string, company: Company, status: string): string {
-  const id = seedApplication(candidate.id, jobId, company.id, { status });
+export function seedNamedApplication(candidate: TestUser, jobId: string, company: Company, status: string, documentIds: string[] = []): string {
+  const id = seedApplication(candidate.id, jobId, company.id, { status, documentIds });
   execute(
     `update public.job_applications set profile_snapshot = '{"first_name": "Ana", "last_name": "Silva"}' where id = ${literal(id)}`,
   );

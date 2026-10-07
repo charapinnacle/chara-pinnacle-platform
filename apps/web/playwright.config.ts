@@ -121,7 +121,7 @@ export default defineConfig({
       testMatch: "**/saved-vacancies-failure.spec.ts",
       dependencies: ["vacancy-page-failure"],
     },
-    // The functions that apply and list applications are withdrawn from the API role while this spec runs.
+    // The functions that apply, list and withdraw applications are withdrawn from the API role while this spec runs.
     {
       name: "apply-failure",
       use: { ...devices["Desktop Chrome"] },
