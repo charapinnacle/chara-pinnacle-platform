@@ -50,3 +50,7 @@ export function applicationsPath(lang: string, cursor?: string): string {
 export function applicationPath(lang: string, id: string): string {
   return `/${lang}/applications/${id}`;
 }
+
+export function applicantPath(lang: string, slug: string, id: string): string {
+  return `/${lang}/org/${slug}/applicants/${id}`;
+}

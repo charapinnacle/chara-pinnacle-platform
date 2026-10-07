@@ -52,3 +52,14 @@ create function pg_temp.grant_as(p_user uuid, p_doc uuid, p_aal text default 'aa
 language sql as $$
   select pg_temp.call_as(p_user, 'authenticated', format('select * from public.document_access_grant(%L, %L)', p_doc, 'application_review'), p_aal)
 $$;
+
+-- Gives an application any status as the database owner: the transition trigger (FR-D2) judges every change of status,
+-- so a test that needs a state the functions would not reach in one step switches it off for the one update.
+create function pg_temp.force_status(p_app uuid, p_status text) returns void
+language plpgsql as $$
+begin
+  alter table public.job_applications disable trigger applications_guard_transition;
+  update public.job_applications set status = p_status::public.application_status where id = p_app;
+  alter table public.job_applications enable always trigger applications_guard_transition;
+end;
+$$;

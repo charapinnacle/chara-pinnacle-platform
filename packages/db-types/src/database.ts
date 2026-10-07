@@ -662,6 +662,11 @@ isOneToOne: false
               "application_id": string,"outcome": string
             }[]
                            },
+"bulk_set_application_status":
+{ Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {
+              "application_id": string,"error_code": string,"ok": boolean
+            }[]
+                           },
 "cancel_account_deletion":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
@@ -694,6 +699,11 @@ isOneToOne: false
 "erase_user":
 { Args: { "p_user_id": string }; Returns: boolean
                            },
+"get_applicant":
+{ Args: { "p_application_id": string }; Returns: {
+              "applicant_name": string,"applied_at": string,"id": string,"job_id": string,"job_title": string,"note_max_chars": number,"organization_id": string,"shortlisting_available": boolean,"stage_change_blocked": string,"status": Database["public"]['Enums']["application_status"]
+            }[]
+                           },
 "get_my_application":
 { Args: { "p_id": string }; Returns: {
               "applied_at": string,"cover_note": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"status": Database["public"]['Enums']["application_status"],"vacancy_is_open": boolean
@@ -715,6 +725,11 @@ isOneToOne: false
 "invite_member":
 { Args: { "p_email": string,"p_org": string,"p_role": string }; Returns: {
               "expires_at": string,"token": string
+            }[]
+                           },
+"list_applicant_events":
+{ Args: { "p_application_id": string }; Returns: {
+              "actor_kind": string,"actor_name": string,"created_at": string,"from_status": Database["public"]['Enums']["application_status"],"id": number,"note": string,"to_status": Database["public"]['Enums']["application_status"]
             }[]
                            },
 "list_my_applications":
@@ -741,6 +756,9 @@ isOneToOne: false
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
             }[]
+                           },
+"mark_application_viewed":
+{ Args: { "p_application_id": string }; Returns: undefined
                            },
 "my_platform_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]
@@ -788,6 +806,9 @@ isOneToOne: false
                            },
 "set_account_kind":
 { Args: { "p_consents"?: Json }; Returns: Database["public"]['Enums']["account_kind"]
+                           },
+"set_application_status":
+{ Args: { "p_application_id": string,"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: undefined
                            },
 "set_legal_entity_identifier":
 { Args: { "p_identifier": string,"p_kind": string,"p_org": string }; Returns: undefined

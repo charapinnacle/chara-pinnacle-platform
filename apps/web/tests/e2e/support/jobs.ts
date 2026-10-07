@@ -197,3 +197,13 @@ export function statusAudit(jobId: string) {
 export function jobStatus(jobId: string): string {
   return execute(`select status from public.jobs where id = ${literal(jobId)}`).trim();
 }
+
+// These pages stream behind the loading boundary of the app group, so Next answers with status 200 and the not-found
+// page, marked noindex; the public vacancy address is not behind one and answers 404 (checked where it is visited).
+// The 200 is the recorded departure from FR-C1 AC10 (D45); the status is pinned so that a change shows up here.
+export async function expectNotFound(page: Page, path: string) {
+  const response = await page.goto(path);
+  expect(response?.status(), path).toBe(200);
+  await expect(page.getByRole("heading", { name: "Page not found" }), path).toBeVisible();
+  await expect(page.locator('meta[name="robots"]').first(), path).toHaveAttribute("content", /noindex/);
+}

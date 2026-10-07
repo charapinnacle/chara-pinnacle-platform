@@ -20,7 +20,7 @@ declare
 begin
   perform pg_temp.must_ok(pg_temp.apply_as(current_setting('t.wa')::uuid, v_job, 'first', array[current_setting('t.d1')::uuid]));
   v_app := current_setting('t.app')::uuid;
-  update public.job_applications set status = p_label::public.application_status where id = v_app;
+  perform pg_temp.force_status(v_app, p_label);
   v_before := pg_temp.counts();
   v_result := pg_temp.apply_as(current_setting('t.wa')::uuid, v_job, 'second', array[current_setting('t.d1')::uuid]);
   return v_result || '/' || current_setting('t.outcome') || '/' || (current_setting('t.app')::uuid = v_app)::text || '/' ||
@@ -53,7 +53,8 @@ select is(
 select is(pg_temp.raw((select id from t_j), :'wa', 'withdrawn'), 'ok', 'AC2: a withdrawn row for the pair is allowed next to the active one');
 select is(pg_temp.raw((select id from t_j), :'wb', 'applied'), 'ok', 'AC2: another candidate for the same vacancy is allowed');
 select is(pg_temp.raw((select other from t_j), :'wa', 'applied'), 'ok', 'AC2: the same candidate for another vacancy is allowed');
-update public.job_applications set status = 'withdrawn' where job_id = (select id from t_j) and worker_user_id = :'wa' and status = 'applied';
+select a.id as first_id from public.job_applications a where a.job_id = (select id from t_j) and a.worker_user_id = :'wa' and a.status = 'applied' \gset
+select pg_temp.force_status(:'first_id', 'withdrawn');
 select is(pg_temp.raw((select id from t_j), :'wa', 'applied'), 'ok', 'AC2: after the first is withdrawn a new active row is allowed');
 select is(pg_temp.raw((select id from t_j), :'wa', 'withdrawn'), 'ok', 'AC2: a further withdrawn row is allowed');
 select is(
@@ -71,7 +72,7 @@ select is(
 create temp table t_r as select pg_temp.open_job('Reapply open') as open_id, pg_temp.open_job('Reapply paused') as paused_id;
 select is(pg_temp.apply_as(:'wa', (select open_id from t_r), null, array[:'d1']::uuid[]), 'ok', 'AC3: the candidate applies');
 select set_config('t.first', current_setting('t.app'), true) as keep3 \gset
-update public.job_applications set status = 'withdrawn' where id = current_setting('t.first')::uuid;
+select pg_temp.force_status(current_setting('t.first')::uuid, 'withdrawn');
 create temp table t_b3 as select pg_temp.counts() as c;
 select is(pg_temp.apply_as(:'wa', (select open_id from t_r), null, array[:'d1']::uuid[]), 'ok', 'AC3: after withdrawal a new application is possible on an open vacancy');
 select is(current_setting('t.outcome'), 'created', 'AC3: the outcome is created');
@@ -87,7 +88,7 @@ select is(
   'AC3: exactly one non-withdrawn application exists'
 );
 select is(pg_temp.apply_as(:'wb', (select paused_id from t_r)), 'ok', 'setup: a second candidate applies to the vacancy that is paused next');
-update public.job_applications set status = 'withdrawn' where id = current_setting('t.app')::uuid;
+select pg_temp.force_status(current_setting('t.app')::uuid, 'withdrawn');
 select is(pg_temp.set_status(:'own1', (select paused_id from t_r), 'paused'), 'ok', 'setup: the vacancy is paused');
 create temp table t_b3b as select pg_temp.counts() as c;
 select is(pg_temp.apply_as(:'wb', (select paused_id from t_r)), 'P0001|CHARA_JOB_NOT_OPEN|', 'AC3: re-applying to a paused vacancy raises CHARA_JOB_NOT_OPEN');
