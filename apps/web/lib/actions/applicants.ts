@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { type BoardCounts, getBoardCounts } from "@/lib/dal/applicant-list";
 import { getApplicant, setApplicationStatus, type StageRefusal } from "@/lib/dal/applicants";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -58,4 +59,13 @@ export async function changeApplicantStage(
   const refusal = await setApplicationStatus(parsedId.data, parsed.data.status, parsed.data.note);
   revalidatePath(applicantPath(defaultLocale, organization.slug, parsedId.data));
   return refusal ? refusalMessage(refusal) : { done: true };
+}
+
+// What the polling board asks, every few seconds: the count of each stage of a vacancy, or null for an id that is none.
+// There is no page guard on this path, to keep it to one request: the function counts with the rights of the caller, so
+// the database lets through only the applications of the organizations the caller is an active member of, and a caller
+// without a session gets an error.
+export async function readBoardCounts(jobId: string): Promise<BoardCounts | null> {
+  const parsedId = z.uuid().safeParse(jobId);
+  return parsedId.success ? getBoardCounts(parsedId.data) : null;
 }

@@ -41,7 +41,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { APPLICANTS_PAGE_SIZE, BOARD_COLUMN_LIMIT, exportApplicants, getApplicantAccess, listApplicants, listBoard } = await import(
+const { APPLICANTS_PAGE_SIZE, exportApplicants, getApplicantAccess, getBoardCounts, listApplicants, listBoard } = await import(
   "@/lib/dal/applicant-list"
 );
 
@@ -142,12 +142,27 @@ describe("listBoard", () => {
     expect(columns.map((column) => column.total)).toEqual([40, 41, 42, 43, 44, 45, 46, 47]);
     expect(named("eq").filter(([column]) => column === "status").map(([, value]) => value)).toEqual(pipelineStages);
     expect(named("eq").filter(([column]) => column === "job_id")).toHaveLength(8);
-    expect(named("limit")).toEqual(Array(8).fill([BOARD_COLUMN_LIMIT]));
+    expect(named("limit")).toEqual(Array(8).fill([25]));
   });
 
   it("fails as a whole when one column cannot be read", async () => {
     results = [{ data: [], error: null, count: 0 }, { data: null, error: { message: "boom" }, count: null }];
     await expect(listBoard(org, job)).rejects.toThrow("The board could not be loaded");
+  });
+});
+
+describe("getBoardCounts", () => {
+  it("asks for the vacancy and gives every stage a count, 0 for a stage the database left out", async () => {
+    rpcResult = { data: [{ status: "interview", total: 2 }, { status: "applied", total: 5 }], error: null };
+    expect(await getBoardCounts(job)).toEqual({
+      applied: 5, viewed: 0, shortlisted: 0, interview: 2, offer: 0, hired: 0, rejected: 0, withdrawn: 0,
+    });
+    expect(rpcCalls).toEqual([["get_board_counts", { p_job_id: job }]]);
+  });
+
+  it("throws, without the database text, when the read fails", async () => {
+    rpcResult = { data: null, error: { message: "permission denied for function get_board_counts" } };
+    await expect(getBoardCounts(job)).rejects.toThrow("The board counts could not be loaded");
   });
 });
 

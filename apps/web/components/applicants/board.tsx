@@ -6,7 +6,7 @@ import { BoardCard, moveButtonId } from "@/components/applicants/board-card";
 import { StageChangeDialog } from "@/components/applicants/stage-change";
 import { TextLink } from "@/components/forms/text-link";
 import { useTeamCall } from "@/components/team/use-team-call";
-import { changeApplicantStage } from "@/lib/actions/applicants";
+import { changeApplicantStage, readBoardCounts } from "@/lib/actions/applicants";
 import { moveCard } from "@/lib/applicants/board";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
@@ -26,11 +26,14 @@ type BoardProps = {
   noteMaxChars: number;
 };
 
-const POLL_MS = 10_000;
+const POLL_MS = 5_000;
+const IDLE_MS = 5 * 60_000;
 
 // The board is the page's data plus the moves not yet confirmed by the server. A new read of the page replaces it, so a
 // move the server refused (a stale card, a lapsed plan) disappears with the next refresh. Other members' moves arrive by
-// polling every 10 seconds, only while the tab is visible and nothing here is being changed.
+// polling the count of each stage every 5 seconds, and the page is read again only when a count differs (a move or a new
+// application always changes one). It polls only while the tab is visible, nothing here is being changed and the member
+// has touched the page in the last 5 minutes. A poll that fails waits for the next one: the board shows what it had.
 export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMaxChars }: BoardProps) {
   const router = useRouter();
   const [source, setSource] = useState(columns);
@@ -48,11 +51,24 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
 
   useEffect(() => {
     if (call.pending || declining) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh();
+    let active = true;
+    let lastInput = Date.now();
+    const noteInput = () => {
+      lastInput = Date.now();
+    };
+    const inputs = ["pointerdown", "pointermove", "keydown"] as const;
+    for (const input of inputs) window.addEventListener(input, noteInput, { passive: true });
+    const timer = setInterval(async () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastInput > IDLE_MS) return;
+      const counts = await readBoardCounts(jobId).catch(() => null);
+      if (active && counts && columns.some((column) => counts[column.status] !== column.total)) router.refresh();
     }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [router, call.pending, declining]);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      for (const input of inputs) window.removeEventListener(input, noteInput);
+    };
+  }, [router, jobId, columns, call.pending, declining]);
 
   useEffect(() => {
     const id = focusAfter.current;

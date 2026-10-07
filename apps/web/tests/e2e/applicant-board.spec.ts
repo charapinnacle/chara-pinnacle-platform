@@ -81,7 +81,7 @@ test.describe("the pipeline board", () => {
 
     await move(m2.page, "Cand 1", "Interview");
     await expect(boardColumn(m2.page, "Interview").getByRole("listitem")).toHaveCount(2);
-    await expect.poll(() => columnCounts(m1.page), { timeout: 20_000 }).toMatchObject({ Applied: "1", Interview: "2" });
+    await expect.poll(() => columnCounts(m1.page), { timeout: 10_000 }).toMatchObject({ Applied: "1", Interview: "2" });
     await expect(boardColumn(m1.page, "Interview").getByRole("link", { name: "Cand 1" })).toBeVisible();
     expect(await m1.page.evaluate(() => "sameDocument" in window)).toBe(true);
     expect(statusOf(ids[0])).toBe("interview");

@@ -11,7 +11,7 @@ export const APPLICANTS_PAGE_SIZE = 50;
 
 // The board shows the newest applications of each stage; the count of the column is the whole stage, and the rest is
 // in the list filtered by that stage.
-export const BOARD_COLUMN_LIMIT = 25;
+const BOARD_COLUMN_LIMIT = 25;
 
 export type ApplicantRow = {
   id: string;
@@ -32,6 +32,8 @@ type ApplicantAccess = {
   csvExportAvailable: boolean;
   noteMaxChars: number;
 };
+
+export type BoardCounts = Record<ApplicationStatus, number>;
 
 export type BoardColumn = { status: ApplicationStatus; total: number; rows: ApplicantRow[] };
 
@@ -143,6 +145,17 @@ export async function listBoard(organizationId: string, jobId: string): Promise<
       return { status, total: count, rows: data.map((row) => applicantRow.parse(row)) };
     }),
   );
+}
+
+// The number of applications in each stage of a vacancy, for the board to see whether it is out of date: one request,
+// where reading the columns takes eight.
+export async function getBoardCounts(jobId: string): Promise<BoardCounts> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_board_counts", { p_job_id: jobId });
+  if (error) throw new Error("The board counts could not be loaded", { cause: error });
+  const counts = Object.fromEntries(pipelineStages.map((status) => [status, 0])) as BoardCounts;
+  for (const row of data) counts[row.status] = row.total;
+  return counts;
 }
 
 // The rows of the list for the CSV file, all pages of the filter. The function writes the audit row.
