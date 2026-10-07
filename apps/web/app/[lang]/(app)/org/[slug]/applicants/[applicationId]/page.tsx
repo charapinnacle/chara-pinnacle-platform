@@ -11,10 +11,7 @@ import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
 
-const blockedText = {
-  organization_suspended: "Your organization is suspended, so the stage cannot be changed.",
-  read_only_free_plan: "Your organization has no active paid plan, so the stage cannot be changed.",
-} as const;
+const blockedText = "Your organization has no active paid plan, so the stage cannot be changed.";
 
 const actorText = { candidate: "Candidate", system: "System" } as const;
 
@@ -67,7 +64,7 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
 
       {applicant.stageChangeBlocked ? (
         <Notice tone="info" role="status">
-          {blockedText[applicant.stageChangeBlocked]}
+          {blockedText}
         </Notice>
       ) : targets.length > 0 ? (
         <div>
