@@ -26,13 +26,12 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true });
   const id = z.uuid().safeParse(applicationId);
   if (!id.success) notFound();
-  let applicant = await getApplicant(id.data);
-  if (!applicant || applicant.organizationId !== organization.id) notFound();
-  if (applicant.status === "applied") {
-    await markApplicationViewed(id.data);
-    applicant = (await getApplicant(id.data)) ?? applicant;
-  }
-  const events = await listApplicantEvents(id.data);
+  const first = await getApplicant(id.data);
+  if (!first || first.organizationId !== organization.id) notFound();
+  const firstOpen = first.status === "applied";
+  if (firstOpen) await markApplicationViewed(id.data);
+  const [reread, events] = await Promise.all([firstOpen ? getApplicant(id.data) : first, listApplicantEvents(id.data)]);
+  const applicant = reread ?? first;
   const targets = allowedTargets(applicant.status, "employer", { shortlisting: applicant.shortlistingAvailable });
   const name = applicant.applicantName ?? "Former candidate";
 
