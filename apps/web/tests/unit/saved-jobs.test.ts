@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseSavedCursor, SAVED_PAGE_SIZE, savedPath } from "@/lib/jobs/saved";
+import { SAVED_PAGE_SIZE, savedPath } from "@/lib/jobs/saved";
+import { parseListCursor } from "@/lib/validation/job";
 
 const id = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const cursor = `2026-10-06T10:00:00.123456Z|${id}`;
 
-describe("parseSavedCursor", () => {
+describe("parseListCursor", () => {
   it("accepts the cursor list_saved_jobs returns", () => {
-    expect(parseSavedCursor(cursor)).toBe(cursor);
+    expect(parseListCursor(cursor)).toBe(cursor);
   });
 
   it("drops everything the function would refuse, so a mistyped address shows the first page", () => {
@@ -28,7 +29,7 @@ describe("parseSavedCursor", () => {
       `${cursor}\n`,
       `'; drop table saved_jobs; --`,
     ]) {
-      expect(parseSavedCursor(value), String(value)).toBeNull();
+      expect(parseListCursor(value), String(value)).toBeNull();
     }
   });
 });

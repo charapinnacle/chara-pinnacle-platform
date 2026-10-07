@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SavedList } from "@/components/saved/saved-list";
+import type { ApplicationState } from "@/lib/dal/applications";
 import type { SavedJob } from "@/lib/dal/saved-jobs";
 
 vi.mock("server-only", () => ({}));
@@ -17,17 +18,31 @@ const visible = (id: string, status: "open" | "paused" | "closed" | "filled", ti
 });
 const withdrawn: SavedJob = { id: "hidden-id", savedAt, available: false };
 
-const render = (jobs: SavedJob[], nextHref: string | null = null, firstHref: string | null = null) =>
-  renderToStaticMarkup(<SavedList lang="en" jobs={jobs} nextHref={nextHref} firstHref={firstHref} />);
+const render = (
+  jobs: SavedJob[],
+  nextHref: string | null = null,
+  firstHref: string | null = null,
+  applications: Record<string, ApplicationState> = {},
+) => renderToStaticMarkup(<SavedList lang="en" jobs={jobs} applications={applications} nextHref={nextHref} firstHref={firstHref} />);
 
 describe("SavedList", () => {
-  it("flags an open vacancy as Open and links its title and an Apply link to its page", () => {
+  it("flags an open vacancy as Open, links its title to its page and offers Quick apply to the application step", () => {
     const html = render([visible("job-1", "open", "Open welder")]);
     expect(html).toContain(">Open</span>");
     expect(html).not.toContain("No longer open");
-    expect(html.match(/href="\/en\/jobs\/job-1"/g)).toHaveLength(2);
-    expect(html).toMatch(/>Apply<span class="sr-only"> for Open welder<\/span>/);
+    expect(html.match(/href="\/en\/jobs\/job-1"/g)).toHaveLength(1);
+    expect(html).toMatch(/href="\/en\/jobs\/job-1\/apply"[^>]*>Quick apply<span class="sr-only"> for Open welder<\/span>/);
     expect(html).toContain("Acme Bau");
+    expect(html).not.toContain("Applied");
+  });
+
+  it("marks a vacancy with an application as Applied and links the application instead of Quick apply", () => {
+    const html = render([visible("job-1", "open", "Open welder")], null, null, {
+      "job-1": { id: "app-1", status: "shortlisted", createdAt: savedAt },
+    });
+    expect(html).toContain(">Applied</span>");
+    expect(html).toMatch(/href="\/en\/applications\/app-1"[^>]*>View your application/);
+    expect(html).not.toContain("Quick apply");
   });
 
   it("flags a paused, closed or filled vacancy as no longer open, with title and employer and no link to the page", () => {
@@ -37,7 +52,7 @@ describe("SavedList", () => {
       expect(html, status).toContain("Gone welder");
       expect(html, status).toContain("Acme Bau");
       expect(html, status).not.toContain("/en/jobs/job-2");
-      expect(html, status).not.toContain("Apply");
+      expect(html, status).not.toContain("Quick apply");
     }
   });
 
@@ -47,7 +62,7 @@ describe("SavedList", () => {
     expect(html).not.toContain("Acme");
     expect(html).not.toContain("No longer open");
     expect(html).not.toContain("/en/jobs/");
-    expect(html).not.toContain("Apply");
+    expect(html).not.toContain("Quick apply");
     expect(html).toContain("Unsave");
   });
 

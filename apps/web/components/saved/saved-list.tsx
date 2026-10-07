@@ -7,15 +7,17 @@ import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { useTeamCall } from "@/components/team/use-team-call";
 import { setSavedJob } from "@/lib/actions/saved-jobs";
+import type { ApplicationState } from "@/lib/dal/applications";
 import type { SavedJob } from "@/lib/dal/saved-jobs";
 import { formatDate } from "@/lib/i18n/format";
 import { SAVED_HEADING_ID } from "@/lib/jobs/saved";
+import { applicationPath, applyPath } from "@/lib/routes";
 
 const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-medium text-accent-foreground";
 
-type SavedRowProps = { job: SavedJob; lang: string; onRemove: (id: string) => void };
+type SavedRowProps = { job: SavedJob; lang: string; applied: ApplicationState | null; onRemove: (id: string) => void };
 
-function SavedRow({ job, lang, onRemove }: SavedRowProps) {
+function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
   const { pending, run } = useTeamCall("The vacancy was not removed");
   const open = job.available && job.status === "open";
   const title = job.available ? job.title : null;
@@ -45,6 +47,7 @@ function SavedRow({ job, lang, onRemove }: SavedRowProps) {
           <p className="font-medium break-words">{job.employerName}</p>
           <p>
             <span className={badgeClassName}>{open ? "Open" : "No longer open"}</span>
+            {applied ? <span className={`${badgeClassName} ms-2`}>Applied</span> : null}
           </p>
         </>
       ) : (
@@ -54,9 +57,13 @@ function SavedRow({ job, lang, onRemove }: SavedRowProps) {
         Saved <time dateTime={job.savedAt}>{formatDate(job.savedAt)}</time>
       </p>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        {open ? (
-          <TextLink standalone href={`/${lang}/jobs/${job.id}`}>
-            Apply<span className="sr-only"> for {title}</span>
+        {applied ? (
+          <TextLink standalone href={applicationPath(lang, applied.id)}>
+            View your application<span className="sr-only"> for {title}</span>
+          </TextLink>
+        ) : open ? (
+          <TextLink standalone href={applyPath(lang, job.id)}>
+            Quick apply<span className="sr-only"> for {title}</span>
           </TextLink>
         ) : null}
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={unsave}>
@@ -67,9 +74,16 @@ function SavedRow({ job, lang, onRemove }: SavedRowProps) {
   );
 }
 
-type SavedListProps = { lang: string; jobs: SavedJob[]; nextHref: string | null; firstHref: string | null };
+type SavedListProps = {
+  lang: string;
+  jobs: SavedJob[];
+  // The non-withdrawn application of the candidate for each vacancy, by vacancy id.
+  applications: Record<string, ApplicationState>;
+  nextHref: string | null;
+  firstHref: string | null;
+};
 
-export function SavedList({ lang, jobs, nextHref, firstHref }: SavedListProps) {
+export function SavedList({ lang, jobs, applications, nextHref, firstHref }: SavedListProps) {
   const [visible, removeRow] = useOptimistic(jobs, (current, id: string) => current.filter((job) => job.id !== id));
 
   if (visible.length === 0) {
@@ -92,7 +106,7 @@ export function SavedList({ lang, jobs, nextHref, firstHref }: SavedListProps) {
     <div className="grid gap-4">
       <ul className="grid gap-3">
         {visible.map((job) => (
-          <SavedRow key={job.id} job={job} lang={lang} onRemove={removeRow} />
+          <SavedRow key={job.id} job={job} lang={lang} applied={applications[job.id] ?? null} onRemove={removeRow} />
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-x-6">

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { VacancyActions } from "@/components/jobs/vacancy-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { PageContainer } from "@/components/layout/page-container";
+import { getApplicationStates, type ApplicationState } from "@/lib/dal/applications";
 import { getPublicJob } from "@/lib/dal/hiring";
 import { getSavedJobIds } from "@/lib/dal/saved-jobs";
 import { getCurrentUser } from "@/lib/dal/session";
@@ -34,7 +35,10 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
     notFound();
   }
   logVacancy({ event: "vacancy_view", outcome: "ok", jobId: job.id, viewer });
-  const saved = viewer === "candidate" && (await getSavedJobIds([job.id])).has(job.id);
+  const [savedIds, applications] =
+    viewer === "candidate"
+      ? await Promise.all([getSavedJobIds([job.id]), getApplicationStates([job.id])])
+      : [new Set<string>(), new Map<string, ApplicationState>()];
   return (
     <PageContainer layout="page" className="max-w-3xl">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jobPostingJsonLd(job) }} />
@@ -42,7 +46,7 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
         job={job}
         employer={job.employer}
         publishedAt={job.publishedAt}
-        actions={<VacancyActions job={job} lang={lang} viewer={viewer} saved={saved} />}
+        actions={<VacancyActions job={job} lang={lang} viewer={viewer} saved={savedIds.has(job.id)} application={applications.get(job.id) ?? null} />}
       />
     </PageContainer>
   );

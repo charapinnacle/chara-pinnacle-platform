@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { VacancyActions } from "@/components/jobs/vacancy-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
+import type { ApplicationState } from "@/lib/dal/applications";
 import type { PublicJob } from "@/lib/dal/hiring";
 
 vi.mock("server-only", () => ({}));
@@ -69,8 +70,10 @@ describe("VacancyView", () => {
   });
 });
 
-const actions = (viewer: "visitor" | "candidate" | "company", saved = false) =>
-  renderToStaticMarkup(<VacancyActions job={{ id: jobId, title: "Welder" }} lang="en" viewer={viewer} saved={saved} />);
+const actions = (viewer: "visitor" | "candidate" | "company", saved = false, application: ApplicationState | null = null) =>
+  renderToStaticMarkup(
+    <VacancyActions job={{ id: jobId, title: "Welder" }} lang="en" viewer={viewer} saved={saved} application={application} />,
+  );
 
 describe("VacancyActions", () => {
   it("offers a visitor Apply and Save as buttons that submit a form", () => {
@@ -86,11 +89,33 @@ describe("VacancyActions", () => {
     expect(html).toContain("Only candidates can apply");
   });
 
-  it("gives a candidate Apply switched off until the application step exists and a working Save that is not yet pressed", () => {
+  it("gives a candidate with no application an Apply link to the application step and a working Save", () => {
     const html = actions("candidate");
-    expect(html.match(/<button[^>]*\sdisabled=/g)).toHaveLength(1);
-    expect(html).toMatch(/<button[^>]*\sdisabled=[^>]*>Apply<\/button>/);
+    expect(html).toMatch(new RegExp(`<a[^>]*href="/en/jobs/${jobId}/apply"[^>]*>Apply</a>`));
+    expect(html).not.toContain("<form");
     expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-pressed="false"[^>]*aria-label="Save vacancy: Welder"[^>]*>.*Save<\/button>/);
+    expect(html).not.toContain("Applying opens soon");
+  });
+
+  it("shows the date and stage of a non-withdrawn application with a link to it and no Apply", () => {
+    const html = actions("candidate", false, { id: "app-1", status: "shortlisted", createdAt: "2026-10-03T09:00:00+00:00" });
+    expect(html).toContain("You applied on 3 Oct 2026, stage Shortlisted");
+    expect(html).toMatch(/<a[^>]*href="\/en\/applications\/app-1"[^>]*>View your application<\/a>/);
+    expect(html).not.toContain(">Apply<");
+    expect(html).not.toContain("Apply again");
+  });
+
+  it("says Not selected for a rejected application", () => {
+    expect(actions("candidate", false, { id: "app-1", status: "rejected", createdAt: "2026-10-03T09:00:00+00:00" })).toContain(
+      "stage Not selected",
+    );
+  });
+
+  it("offers Apply again after a withdrawal", () => {
+    const html = actions("candidate", false, { id: "app-1", status: "withdrawn", createdAt: "2026-10-03T09:00:00+00:00" });
+    expect(html).toContain("You withdrew your application");
+    expect(html).toMatch(new RegExp(`<a[^>]*href="/en/jobs/${jobId}/apply"[^>]*>Apply again</a>`));
+    expect(html).not.toContain("View your application");
   });
 
   it("shows the Save of a vacancy the candidate saved as pressed and says Saved", () => {

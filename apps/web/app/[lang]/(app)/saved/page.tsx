@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { SavedList } from "@/components/saved/saved-list";
+import { getApplicationStates } from "@/lib/dal/applications";
 import { listSavedJobs } from "@/lib/dal/saved-jobs";
 import { requireUser } from "@/lib/dal/session";
-import { parseSavedCursor, SAVED_HEADING_ID, savedPath } from "@/lib/jobs/saved";
+import { SAVED_HEADING_ID, savedPath } from "@/lib/jobs/saved";
 import { homePath } from "@/lib/routes";
+import { parseListCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Saved vacancies — CHARA", robots: { index: false } };
 
@@ -16,8 +18,10 @@ export default async function SavedPage({ params, searchParams }: PageProps<"/[l
   if (user.accountKind === null) redirect(homePath(lang, null));
   if (user.accountKind !== "worker") notFound();
 
-  const cursor = parseSavedCursor((await searchParams).cursor);
+  const cursor = parseListCursor((await searchParams).cursor);
   const { jobs, nextCursor } = await listSavedJobs(cursor);
+  const states = await getApplicationStates(jobs.map((job) => job.id));
+  const applications = Object.fromEntries([...states].filter(([, state]) => state.status !== "withdrawn"));
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
@@ -33,6 +37,7 @@ export default async function SavedPage({ params, searchParams }: PageProps<"/[l
       <SavedList
         lang={lang}
         jobs={jobs}
+        applications={applications}
         nextHref={nextCursor ? savedPath(lang, nextCursor) : null}
         firstHref={cursor ? savedPath(lang) : null}
       />

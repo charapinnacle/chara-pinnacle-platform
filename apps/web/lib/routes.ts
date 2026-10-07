@@ -38,3 +38,15 @@ export function jobPath(lang: string, slug: string, id: string): string {
 export function billingPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/billing`;
 }
+
+export function applyPath(lang: string, jobId: string): string {
+  return `/${lang}/jobs/${jobId}/apply`;
+}
+
+export function applicationsPath(lang: string, cursor?: string): string {
+  return cursor ? `/${lang}/applications?cursor=${encodeURIComponent(cursor)}` : `/${lang}/applications`;
+}
+
+export function applicationPath(lang: string, id: string): string {
+  return `/${lang}/applications/${id}`;
+}

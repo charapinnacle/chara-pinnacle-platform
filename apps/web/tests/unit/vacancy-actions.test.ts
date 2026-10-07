@@ -26,9 +26,15 @@ describe("requireLogin", () => {
   const vacancyPage = `/en/jobs/${id}`;
   const login = (next: string) => `REDIRECT:/en/login?next=${encodeURIComponent(next)}`;
 
-  it("counts the press and sends the visitor to log in with the vacancy page as the way back", async () => {
-    await expect(requireLogin("apply", id, vacancyPage)).rejects.toThrow(login(vacancyPage));
+  it("counts the press and sends the visitor to log in with the apply form of the vacancy as the way back", async () => {
+    await expect(requireLogin("apply", id, vacancyPage)).rejects.toThrow(login(`/en/jobs/${id}/apply`));
     expect(logMock).toHaveBeenCalledWith({ event: "vacancy_action", action: "apply", jobId: id, viewer: "visitor" });
+  });
+
+  it("sends Apply to the apply form whatever way back the page names", async () => {
+    for (const next of ["https://evil.example/", "//evil.example", "/en/jobs?q=welder", ""]) {
+      await expect(requireLogin("apply", id, next)).rejects.toThrow(login(`/en/jobs/${id}/apply`));
+    }
   });
 
   it("counts a press of Save as such", async () => {
