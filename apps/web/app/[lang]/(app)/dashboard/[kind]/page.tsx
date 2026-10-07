@@ -11,6 +11,7 @@ import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getPassport } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
+import { savedPath } from "@/lib/jobs/saved";
 import { computeCompleteness } from "@/lib/passport/completeness";
 import { dashboardSegments, homePath, isDashboardSegment, settingsPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
@@ -35,6 +36,9 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
           <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, today)} />
           <TextLink standalone href={`/${lang}/passport`}>
             Open your passport
+          </TextLink>
+          <TextLink standalone href={savedPath(lang)}>
+            Saved vacancies
           </TextLink>
           <TextLink standalone href={settingsPath(lang)}>
             Account settings

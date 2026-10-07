@@ -4,6 +4,7 @@ import { VacancyActions } from "@/components/jobs/vacancy-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { PageContainer } from "@/components/layout/page-container";
 import { getPublicJob } from "@/lib/dal/hiring";
+import { getSavedJobIds } from "@/lib/dal/saved-jobs";
 import { getCurrentUser } from "@/lib/dal/session";
 import { jobPostingJsonLd } from "@/lib/jobs/job-posting";
 import { logVacancy } from "@/lib/jobs/vacancy-log";
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/jobs/[id]"
 // visible, an id that does not exist and an id that is not a uuid all end in the same notFound(), and a failed read
 // throws instead: the error page, never "no longer available".
 export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/[id]">) {
-  const { id } = await params;
+  const { id, lang } = await params;
   const [job, user] = await Promise.all([loadJob(id), getCurrentUser()]);
   const viewer = viewerOf(user);
   if (!job) {
@@ -33,6 +34,7 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
     notFound();
   }
   logVacancy({ event: "vacancy_view", outcome: "ok", jobId: job.id, viewer });
+  const saved = viewer === "candidate" && (await getSavedJobIds([job.id])).has(job.id);
   return (
     <PageContainer layout="page" className="max-w-3xl">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jobPostingJsonLd(job) }} />
@@ -40,7 +42,7 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
         job={job}
         employer={job.employer}
         publishedAt={job.publishedAt}
-        actions={<VacancyActions jobId={job.id} viewer={viewer} />}
+        actions={<VacancyActions job={job} lang={lang} viewer={viewer} saved={saved} />}
       />
     </PageContainer>
   );

@@ -76,7 +76,7 @@ test.describe("the public vacancy page", () => {
     await expect(website).toHaveAttribute("rel", "nofollow noopener noreferrer");
 
     await expect(page.getByRole("button", { name: "Apply" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Save vacancy: Welder MIG/MAG" })).toBeEnabled();
 
     const { html } = await bodyOf(page, publicUrl(id));
     expect(jsonLd(html)).toEqual({
@@ -130,7 +130,7 @@ test.describe("the public vacancy page", () => {
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(next)}`);
     await page.goBack();
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Save vacancy: Login welder" }).click();
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(next)}`);
 
     await page.getByLabel("Email", { exact: true }).fill(candidate.email);
@@ -139,8 +139,9 @@ test.describe("the public vacancy page", () => {
     await expect(page).toHaveURL(next);
     await expect(page.getByRole("heading", { name: "Login welder", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
-    await expect(page.getByText("Applying and saving open soon.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save vacancy: Login welder" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Save vacancy: Login welder" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText("Applying opens soon.")).toBeVisible();
     await expectNoAxeViolations(page);
 
     for (const hostile of ["//evil.example", "https://evil.example"]) {
@@ -165,7 +166,7 @@ test.describe("the public vacancy page", () => {
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { name: "Company welder", level: 1 })).toBeVisible();
       await expect(page.getByRole("button", { name: "Apply" })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /^Save/ })).toHaveCount(0);
       await expect(page.getByText("Only candidates can apply for vacancies or save them.")).toBeVisible();
     }
   });
@@ -249,7 +250,7 @@ test.describe("the public vacancy page", () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
     const apply = page.getByRole("button", { name: "Apply" });
-    const save = page.getByRole("button", { name: "Save", exact: true });
+    const save = page.getByRole("button", { name: "Save vacancy: Keyboard welder" });
     await apply.focus();
     await expect(apply).toBeFocused();
     expect(await apply.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("solid");

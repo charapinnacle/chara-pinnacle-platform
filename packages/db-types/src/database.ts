@@ -368,6 +368,31 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"saved_jobs": {
+                  Row: {
+                    "created_at": string,"job_id": string,"worker_user_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"job_id": string,"worker_user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"job_id"?: string,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "saved_jobs_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_jobs_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"worker_documents": {
                   Row: {
                     "bucket_id": string,"created_at": string,"deleted_at": string | null,"expires_on": string | null,"file_name": string,"id": string,"mime": string,"scan_status": string,"size_bytes": number,"storage_path": string,"title": string,"type": Database["public"]['Enums']["worker_document_type"],"worker_user_id": string
@@ -640,6 +665,11 @@ isOneToOne: false
 "list_platform_staff":
 { Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
               "granted_at": string,"id": number,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["platform_role"],"user_id": string
+            }[]
+                           },
+"list_saved_jobs":
+{ Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
+              "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
             }[]
                            },
 "my_platform_roles":
