@@ -3,6 +3,7 @@ import { expectNoAxeViolations } from "./axe";
 import { execute, literal, query } from "./db";
 import { createCommittedUser } from "./login";
 import { overflow } from "./login-page";
+import type { Company } from "./jobs";
 import type { TestUser } from "./test-user";
 
 export interface ApplicationRow {
@@ -92,6 +93,46 @@ export function seedApplication(
      insert into public.application_events (application_id, from_status, to_status, actor_id, created_at)
      select share.application_id, null, 'applied', ${literal(workerId)}, ${createdAt} from share returning application_id`,
   ).trim();
+}
+
+// An event of an application as an employer member or the system would have written it, with its own time.
+export function seedEvent(
+  applicationId: string,
+  { from, to, actorId = null, note = null, at }: { from: string | null; to: string; actorId?: string | null; note?: string | null; at: string },
+): void {
+  execute(
+    `insert into public.application_events (application_id, from_status, to_status, actor_id, note, created_at)
+     values (${literal(applicationId)}, ${from === null ? "null" : literal(from)}, ${literal(to)}, ${actorId === null ? "null" : literal(actorId)},
+             ${note === null ? "null" : literal(note)}, ${literal(at)})`,
+  );
+}
+
+// count vacancies "Listed welder 1" to "Listed welder <count>" of the organisation, each with an application of the
+// candidate in Applied whose only event is n minutes old: the lower the number, the newer the latest event.
+export function seedManyApplications(workerId: string, company: Company, count: number): void {
+  execute(
+    `with consent as (
+       insert into public.consents (user_id, purpose, version, action)
+       select ${literal(workerId)}, 'share_passport:' || ${literal(company.id)}, max(d.version), 'granted'
+       from public.legal_documents d where d.slug = 'sharing-notice' returning id
+     ), vacancies as (
+       insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city, employment_type,
+                                recruitment_preference, status, created_by)
+       select ${literal(company.id)}, 'Listed welder ' || n, 'Line one of the description.' || chr(10) || 'Line two of it, which is long enough to pass the limit.',
+              '7212', 'C', 'DE', 'Hamburg', 'full_time', 'both', 'open', ${literal(company.owner.id)}
+       from generate_series(1, ${count}) n returning id, substring(title from '[0-9]+$')::int as n
+     ), applications as (
+       insert into public.job_applications (id, job_id, organization_id, worker_user_id, status, passport_share_id, profile_snapshot, created_at)
+       select gen_random_uuid(), v.id, ${literal(company.id)}, ${literal(workerId)}, 'applied', gen_random_uuid(), '{}', now() - interval '100 days'
+       from vacancies v returning id, passport_share_id, job_id
+     ), shares as (
+       insert into public.passport_shares (id, worker_user_id, organization_id, application_id, scope, consent_id)
+       select a.passport_share_id, ${literal(workerId)}, ${literal(company.id)}, a.id, '[]', c.id from applications a, consent c returning application_id
+     )
+     insert into public.application_events (application_id, from_status, to_status, actor_id, created_at)
+     select a.id, null, 'applied', ${literal(workerId)}, now() - make_interval(mins => v.n)
+     from applications a join vacancies v on v.id = a.job_id`,
+  );
 }
 
 // NFR-U1 and NFR-U2: the state on screen has no serious WCAG 2.2 A/AA violation and no horizontal scroll at 1280 and 360 px.
