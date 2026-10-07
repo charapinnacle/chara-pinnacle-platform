@@ -97,11 +97,11 @@ test.describe("the applicant list", () => {
     expect(stages).toEqual([...stages].sort((a, b) => b - a));
     expect(stages[0]).toBe(7);
 
-    await page.getByRole("link", { name: "Sort by Completeness" }).click();
+    await page.getByRole("link", { name: "Sort by Completeness (%)" }).click();
     await expect(header("Completeness (%)")).toHaveAttribute("aria-sort", "ascending");
     let numbers = (await column(3)).map((text) => Number.parseInt(text, 10));
     expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
-    await page.getByRole("link", { name: "Sort by Completeness" }).click();
+    await page.getByRole("link", { name: "Sort by Completeness (%)" }).click();
     await expect(header("Completeness (%)")).toHaveAttribute("aria-sort", "descending");
     numbers = (await column(3)).map((text) => Number.parseInt(text, 10));
     expect(numbers).toEqual([...numbers].sort((a, b) => b - a));
@@ -142,9 +142,11 @@ test.describe("the applicant list", () => {
       await expect(page.getByLabel("Filter by stage")).toHaveValue("");
       await expect(page.getByText("Page 1 of 2")).toBeVisible();
     }
-    await page.goto(applicantsUrl(company.slug, `?job=${jobJ}&page=9`));
-    await expect(listRows(page)).toHaveCount(1);
-    await expect(page.getByText("Page 2 of 2")).toBeVisible();
+    for (const past of ["9", "1000", "123456"]) {
+      await page.goto(applicantsUrl(company.slug, `?job=${jobJ}&page=${past}`));
+      await expect(listRows(page)).toHaveCount(1);
+      await expect(page.getByText("Page 2 of 2")).toBeVisible();
+    }
 
     await page.goto(applicantsUrl(company.slug));
     await expect(listRows(page)).toHaveCount(50);
@@ -155,6 +157,13 @@ test.describe("the applicant list", () => {
     await page.getByRole("link", { name: "Next page" }).click();
     await expect(listRows(page)).toHaveCount(3);
     expect(new Set((await column(1)).slice(0, 3))).toEqual(new Set(["Welder J", "Fitter K"]));
+    await expect(page.getByRole("link", { name: /^Sort by (Completeness|Documents)/ })).toHaveCount(0);
+    await page.getByRole("link", { name: "Sort by Stage" }).click();
+    await expect(header("Stage")).toHaveAttribute("aria-sort", "ascending");
+    await expect(listRows(page)).toHaveCount(50);
+    await page.goto(applicantsUrl(company.slug, "?sort=documents&dir=asc"));
+    await expect(header("Applied")).toHaveAttribute("aria-sort", "ascending");
+    await expect(header("Documents")).not.toHaveAttribute("aria-sort", /.+/);
     await page.goto(applicantsUrl(company.slug, "?stage=shortlisted&sort=applied"));
     await expect(listRows(page)).toHaveCount(7);
     await expect(page.getByLabel("Filter by stage")).toHaveValue("shortlisted");

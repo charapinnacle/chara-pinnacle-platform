@@ -19,15 +19,26 @@ describe("parseApplicantListParams", () => {
     });
     expect(parseApplicantListParams({ page: "-3" }).page).toBe(1);
     expect(parseApplicantListParams({ page: "abc" }).page).toBe(1);
-    expect(parseApplicantListParams({ page: "1000" }).page).toBe(1);
+    expect(parseApplicantListParams({ page: "1000000" }).page).toBe(1);
   });
 
   it("keeps the values the page does offer", () => {
     expect(parseApplicantListParams({ job, view: "board", sort: "documents", dir: "asc", stage: "rejected", page: "9" })).toEqual({
       job, view: "board", sort: "documents", dir: "asc", stage: "rejected", page: 9,
     });
-    for (const sort of ["applied", "stage", "completeness", "documents"]) expect(parseApplicantListParams({ sort }).sort).toBe(sort);
+    for (const sort of ["applied", "stage", "completeness", "documents"]) expect(parseApplicantListParams({ job, sort }).sort).toBe(sort);
     for (const stage of pipelineStages) expect(parseApplicantListParams({ stage }).stage).toBe(stage);
+  });
+
+  it("accepts a page far past the last one, which the read answers with the last page", () => {
+    expect(parseApplicantListParams({ page: "1000" }).page).toBe(1000);
+    expect(parseApplicantListParams({ page: "999999" }).page).toBe(999999);
+  });
+
+  it("sorts all the vacancies by applied date or stage only, because the other sorts read every application", () => {
+    expect(parseApplicantListParams({ sort: "stage", dir: "asc" })).toMatchObject({ sort: "stage", dir: "asc" });
+    expect(parseApplicantListParams({ sort: "completeness", dir: "asc" })).toMatchObject({ sort: "applied", dir: "asc" });
+    expect(parseApplicantListParams({ sort: "documents" }).sort).toBe("applied");
   });
 
   it("offers the board for one vacancy only", () => {
@@ -38,8 +49,9 @@ describe("parseApplicantListParams", () => {
 });
 
 describe("the pipeline order", () => {
-  it("is the order of the labels, which is the order of the enum", () => {
-    expect(pipelineStages).toEqual(Object.keys(applicationStatusLabels));
+  it("is the order of the enum, with a column for every label", () => {
+    expect(pipelineStages).toEqual(["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"]);
+    expect([...pipelineStages].sort()).toEqual(Object.keys(applicationStatusLabels).sort());
   });
 });
 

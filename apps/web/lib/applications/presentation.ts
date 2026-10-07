@@ -14,17 +14,9 @@ export const applicationStatusLabels: Record<ApplicationStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
-// The order of the pipeline, which is the order of the enum and so the order a sort by stage gives.
-export const pipelineStages: readonly ApplicationStatus[] = [
-  "applied",
-  "viewed",
-  "shortlisted",
-  "interview",
-  "offer",
-  "hired",
-  "rejected",
-  "withdrawn",
-];
+// The order of the pipeline, which is the order of the labels above and so of the enum: the type of the labels makes a new
+// stage a compile error there, and the board columns follow.
+export const pipelineStages = Object.keys(applicationStatusLabels) as ApplicationStatus[];
 
 export const FORMER_CANDIDATE = "Former candidate";
 

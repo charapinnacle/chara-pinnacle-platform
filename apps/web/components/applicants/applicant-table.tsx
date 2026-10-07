@@ -10,18 +10,19 @@ import type { ApplicantListParams, ApplicantSort } from "@/lib/validation/applic
 
 type ApplicantTableProps = { lang: string; slug: string; rows: ApplicantRow[]; params: ApplicantListParams };
 
-const sortable: { key: ApplicantSort; label: string; sortLabel: string }[] = [
+const sortable: { key: ApplicantSort; label: string; sortLabel: string; vacancyOnly?: true }[] = [
   { key: "stage", label: "Stage", sortLabel: "Sort by Stage" },
   { key: "applied", label: "Applied", sortLabel: "Sort by Applied date" },
-  { key: "completeness", label: "Completeness (%)", sortLabel: "Sort by Completeness" },
-  { key: "documents", label: "Documents", sortLabel: "Sort by Documents" },
+  { key: "completeness", label: "Completeness (%)", sortLabel: "Sort by Completeness (%)", vacancyOnly: true },
+  { key: "documents", label: "Documents", sortLabel: "Sort by Documents", vacancyOnly: true },
 ];
 
 const cell = "max-sm:flex max-sm:gap-2 max-sm:before:font-medium max-sm:before:text-muted-foreground max-sm:before:content-[attr(data-label)] sm:px-3 sm:py-3";
 const headCell = "text-start font-medium sm:px-3 sm:py-2";
 
-// Each header sorts by its column: the first click ascending, the next descending. On a narrow screen the rows become
-// cards and the headers a row of sort links.
+// Each header sorts by its column: the first click ascending, the next descending; the list of all vacancies sorts by
+// stage and applied date only (parseApplicantListParams). On a narrow screen the rows become cards and the headers a row
+// of sort links.
 export function ApplicantTable({ lang, slug, rows, params }: ApplicantTableProps) {
   const showVacancy = params.job === null;
 
@@ -38,7 +39,14 @@ export function ApplicantTable({ lang, slug, rows, params }: ApplicantTableProps
               Vacancy
             </th>
           ) : null}
-          {sortable.map(({ key, label, sortLabel }) => {
+          {sortable.map(({ key, label, sortLabel, vacancyOnly }) => {
+            if (vacancyOnly && showVacancy) {
+              return (
+                <th key={key} scope="col" className={`${headCell} max-sm:sr-only`}>
+                  {label}
+                </th>
+              );
+            }
             const active = params.sort === key;
             const next = active && params.dir === "asc" ? "desc" : "asc";
             return (
