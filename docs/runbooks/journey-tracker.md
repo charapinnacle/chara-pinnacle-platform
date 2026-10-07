@@ -45,8 +45,8 @@ select column_name from information_schema.columns where table_schema = 'public'
 ## 5. Hand-offs
 
 - U30 (FR-D4): the page renders `Withdraw application` for the five stages that `allowedTargets(status, "candidate", ...)` offers it for, **disabled**, because `withdraw_application` does not exist yet. U30 replaces that button with the confirmation dialog and the action.
-- U33 (FR-E2) creates `application_notes`. FR-D3 AC1, AC5 and AC6 name an internal note ("Weak English") that must appear nowhere on the candidate's pages: U33 adds that note to `journey-tracker.spec.ts` (AC1, AC6) and the checks of AC5 to the pgTAP tests (`application_notes` returns no row to the candidate, no output column of the view or `my_applications` carries its text).
-- U31 (FR-D5) adds the employer's read of the same tables; the view and the function stay the candidate's reads.
+- U33 (FR-E2) adds the notes form to the applicant page; the table `application_notes` came with U31. FR-D3 AC1, AC5 and AC6 name an internal note ("Weak English") that must appear nowhere on the candidate's pages: U33 adds that note to `journey-tracker.spec.ts` (AC1, AC6) and the checks of AC5 to the pgTAP tests (`application_notes` returns no row to the candidate, no output column of the view or `my_applications` carries its text).
+- U31 (FR-D5) added the employer's read of the same tables; the view joins the application and keeps only the candidate's own rows, and the function stays the candidate's read.
 
 ## 6. Semi-annual review
 
