@@ -1,11 +1,13 @@
 begin;
-select plan(42);
+select plan(50);
 
 \ir status_fixture.inc
 
 \set d4 '00000000-0000-0000-0000-0000000d0004'
 \set d5 '00000000-0000-0000-0000-0000000d0005'
 \set d6 '00000000-0000-0000-0000-0000000d0006'
+
+select count(*) as logged_before from audit.document_access_log \gset
 
 -- FR-E2: the reads of the applicant page. wa applies with d1 (a CV, skipped), d2 (a certificate, clean), d4 (deleted
 -- afterwards), d5 (rejected) and d6 (pending); d3 is uploaded after the application and is in no scope.
@@ -141,7 +143,7 @@ select is(
 );
 
 -- No read writes an access-log row.
-select is((select count(*) from audit.document_access_log), 0::bigint, 'AC6: none of the reads wrote an access-log row');
+select is((select count(*) from audit.document_access_log), :'logged_before'::bigint, 'AC6: none of the reads wrote an access-log row');
 
 -- AC7, AC8: the notes.
 select pg_temp.call_as(:'mem', 'authenticated', format($$insert into public.application_notes (application_id, organization_id, body) values (%L, %L, 'Call on Monday')$$, :'a1', current_setting('t.a')), 'aal1') as n1 \gset
@@ -170,6 +172,39 @@ select is(
   pg_temp.json_as(pg_temp.member_of((select org from t_lapsed)), format('select count(*) as n from public.list_application_notes(%L)', :'al')),
   '[{"n": 0}]'::jsonb, 'a lapsed organisation reads its notes'
 );
+
+
+-- AC9: notes under the plan rules. L is lapsed, N has never had a subscription, E is on free_employer; each has a note.
+create function pg_temp.note_in(p_org uuid, p_app uuid) returns text
+language sql as $$
+  select pg_temp.call_as(
+    pg_temp.member_of(p_org), 'authenticated',
+    format($f$insert into public.application_notes (application_id, organization_id, body) values (%L, %L, 'Another note')$f$, p_app, p_org), 'aal1')
+$$;
+create temp table t_plans as select pg_temp.org_on('employer_starter', 'canceled') as l, pg_temp.org_on() as n, pg_temp.org_on() as e;
+select pg_temp.seed_app('applied', (select l from t_plans)) as app_l \gset
+select pg_temp.seed_app('applied', (select n from t_plans)) as app_n \gset
+select pg_temp.seed_app('applied', (select e from t_plans)) as app_e \gset
+insert into public.application_notes (application_id, organization_id, author_id, body)
+values (:'app_l', (select l from t_plans), pg_temp.member_of((select l from t_plans)), 'Existing note of L'),
+       (:'app_e', (select e from t_plans), pg_temp.member_of((select e from t_plans)), 'Existing note of E');
+
+select is(pg_temp.note_in((select l from t_plans), :'app_l'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC9: limits not enforced, a lapsed organisation is refused a note');
+select is(pg_temp.note_in((select n from t_plans), :'app_n'), 'ok', 'AC9: and an organisation that never subscribed may add one');
+update private.settings set value = 'true' where key = 'entitlements_enforced';
+select is(pg_temp.note_in((select l from t_plans), :'app_l'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC9: limits enforced, the lapsed organisation is refused the same way');
+select is(pg_temp.note_in((select e from t_plans), :'app_e'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC9: and an organisation on free_employer');
+select is(pg_temp.note_in((select n from t_plans), :'app_n'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC9: and the one that never subscribed');
+select is(
+  pg_temp.json_as(pg_temp.member_of((select l from t_plans)), format('select body from public.list_application_notes(%L)', :'app_l')),
+  '[{"body": "Existing note of L"}]'::jsonb, 'AC9: the existing notes of L stay readable'
+);
+select is(
+  pg_temp.json_as(pg_temp.member_of((select e from t_plans)), format('select body from public.list_application_notes(%L)', :'app_e')),
+  '[{"body": "Existing note of E"}]'::jsonb, 'AC9: and those of E'
+);
+update private.settings set value = 'false' where key = 'entitlements_enforced';
+select is((select count(*) from public.application_notes where application_id in (:'app_l', :'app_e')), 2::bigint, 'AC9: the refused notes left no row');
 
 select * from finish();
 rollback;

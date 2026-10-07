@@ -144,8 +144,12 @@ test.describe("the pipeline board", () => {
     await dragCard(page, "Chi Wei", "Not selected");
     await expect(dialog).toBeVisible();
     expect(statusOf(chiId)).toBe("applied");
-    await dialog.getByLabel("Visible to the candidate").fill("Position filled");
     await dialog.getByRole("button", { name: "Review" }).click();
+    await expect(dialog.getByRole("alert").first()).toContainText("Choose a reason");
+    expect(statusOf(chiId)).toBe("applied");
+    await dialog.getByLabel("Reason (visible to the candidate)", { exact: true }).selectOption({ label: "Position filled" });
+    await dialog.getByRole("button", { name: "Review" }).click();
+    await expect(dialog.getByText("Position filled", { exact: true })).toBeVisible();
     expect(statusOf(chiId)).toBe("applied");
     await dialog.getByRole("button", { name: "Confirm" }).click();
     await expect(boardColumn(page, "Not selected").getByRole("link", { name: "Chi Wei" })).toBeVisible();
