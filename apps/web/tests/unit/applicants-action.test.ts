@@ -39,6 +39,15 @@ describe("changeApplicantStage", () => {
     expect(setStatusMock).not.toHaveBeenCalled();
   });
 
+  it("needs a reason for a decline and sends it as the note", async () => {
+    for (const note of ["", "   "]) {
+      expect((await changeApplicantStage("acme", applicationId, { status: "rejected", note })).errors).toEqual({ note: "Enter a reason" });
+    }
+    expect(setStatusMock).not.toHaveBeenCalled();
+    expect(await changeApplicantStage("acme", applicationId, { status: "rejected", note: " Position filled " })).toEqual({ done: true });
+    expect(setStatusMock).toHaveBeenCalledWith(applicationId, "rejected", "Position filled");
+  });
+
   it("does not call the database for an address or an id that is not valid", async () => {
     expect((await changeApplicantStage("Not A Slug", applicationId, input)).message).toBe("We could not complete this request. Try again.");
     expect((await changeApplicantStage("acme", "not-a-uuid", input)).message).toBe("We could not complete this request. Try again.");

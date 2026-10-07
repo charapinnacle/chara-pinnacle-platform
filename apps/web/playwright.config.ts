@@ -37,6 +37,7 @@ process.env.ACCOUNT_OPS_PORT ||= "54430";
 process.env.SCAN_DOCUMENT_PORT ||= "54431";
 process.env.DOCUMENT_URL_PORT ||= "54432";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
+process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_URL_PORT}/`;
 
 export default defineConfig({
   testDir: "tests/e2e",

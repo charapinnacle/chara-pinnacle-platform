@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { stageChangeFormSchema, stageChangeInputSchema } from "@/lib/validation/applicant";
+import {
+  declineReasonOptions,
+  declineReasonTexts,
+  noteInputSchema,
+  stageChangeFormSchema,
+  stageChangeInputSchema,
+} from "@/lib/validation/applicant";
 
 describe("stageChangeInputSchema", () => {
-  it.each(["shortlisted", "interview", "offer", "hired", "rejected"])("accepts the target %s", (status) => {
+  it.each(["shortlisted", "interview", "offer", "hired"])("accepts the target %s with no note", (status) => {
     expect(stageChangeInputSchema.parse({ status, note: "" })).toEqual({ status, note: "" });
   });
 
@@ -13,12 +19,21 @@ describe("stageChangeInputSchema", () => {
   });
 
   it("trims the note and keeps an empty one empty", () => {
-    expect(stageChangeInputSchema.parse({ status: "rejected", note: "  Position filled  " }).note).toBe("Position filled");
-    expect(stageChangeInputSchema.parse({ status: "rejected", note: "   " }).note).toBe("");
+    expect(stageChangeInputSchema.parse({ status: "offer", note: "  Start in May  " }).note).toBe("Start in May");
+    expect(stageChangeInputSchema.parse({ status: "offer", note: "   " }).note).toBe("");
   });
 
   it("takes no limit on the note, which the database enforces", () => {
     expect(stageChangeInputSchema.safeParse({ status: "offer", note: "a".repeat(5000) }).success).toBe(true);
+  });
+
+  it("needs a reason for a decline, and trims it", () => {
+    expect(stageChangeInputSchema.parse({ status: "rejected", note: "  Position filled  " })).toEqual({ status: "rejected", note: "Position filled" });
+    for (const note of ["", "   ", "\n\t"]) {
+      const result = stageChangeInputSchema.safeParse({ status: "rejected", note });
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]).toMatchObject({ path: ["note"], message: "Enter a reason" });
+    }
   });
 });
 
@@ -26,15 +41,64 @@ describe("stageChangeFormSchema", () => {
   const schema = stageChangeFormSchema(1000);
 
   it("accepts a note of the limit and refuses one character more, after trimming", () => {
-    expect(schema.safeParse({ status: "offer", note: `  ${"a".repeat(1000)}  ` }).success).toBe(true);
-    const over = schema.safeParse({ status: "offer", note: "a".repeat(1001) });
+    expect(schema.safeParse({ status: "offer", reason: "", note: `  ${"a".repeat(1000)}  ` }).success).toBe(true);
+    const over = schema.safeParse({ status: "offer", reason: "", note: "a".repeat(1001) });
     expect(over.success).toBe(false);
     expect(over.error?.issues[0].message).toBe("Note must be at most 1000 characters");
   });
 
   it("quotes the limit it was built with", () => {
-    expect(stageChangeFormSchema(5).safeParse({ status: "offer", note: "abcdef" }).error?.issues[0].message).toBe(
+    expect(stageChangeFormSchema(5).safeParse({ status: "offer", reason: "", note: "abcdef" }).error?.issues[0].message).toBe(
       "Note must be at most 5 characters",
     );
+  });
+
+  it("ignores the reason for a stage other than Not selected", () => {
+    expect(schema.parse({ status: "interview", reason: "position_filled", note: "Week 41" })).toMatchObject({ status: "interview", note: "Week 41" });
+  });
+
+  it.each(Object.entries(declineReasonTexts))("turns the template %s into its text as the note of a decline", (reason, text) => {
+    expect(schema.parse({ status: "rejected", reason, note: "" })).toMatchObject({ status: "rejected", note: text });
+  });
+
+  it("offers the two templates and Other, with the wording the candidate reads", () => {
+    expect(declineReasonOptions).toEqual([
+      { value: "position_filled", label: "Position filled" },
+      { value: "qualifications_not_matching", label: "Qualifications do not match the requirements of this role" },
+      { value: "other", label: "Other" },
+    ]);
+  });
+
+  it("takes the typed text as the reason of a decline with Other, 1 to the limit of characters", () => {
+    expect(schema.parse({ status: "rejected", reason: "other", note: "  Moved abroad  " })).toMatchObject({ note: "Moved abroad" });
+    expect(schema.safeParse({ status: "rejected", reason: "other", note: "a".repeat(1000) }).success).toBe(true);
+    const over = schema.safeParse({ status: "rejected", reason: "other", note: "a".repeat(1001) });
+    expect(over.error?.issues[0].message).toBe("Note must be at most 1000 characters");
+  });
+
+  it("blocks a decline with no reason, an unknown reason, or Other with blank text", () => {
+    for (const reason of ["", "bogus"]) {
+      const result = schema.safeParse({ status: "rejected", reason, note: "typed text is not enough" });
+      expect(result.error?.issues[0]).toMatchObject({ path: ["reason"], message: "Choose a reason" });
+    }
+    const blank = schema.safeParse({ status: "rejected", reason: "other", note: "   " });
+    expect(blank.error?.issues[0]).toMatchObject({ path: ["note"], message: "Enter a reason" });
+  });
+});
+
+describe("noteInputSchema", () => {
+  it("trims a note and keeps it as typed text", () => {
+    expect(noteInputSchema.parse({ body: "  <b>x</b>  " })).toEqual({ body: "<b>x</b>" });
+  });
+
+  it("blocks an empty or blank note", () => {
+    for (const body of ["", "   ", "\n \t"]) {
+      expect(noteInputSchema.safeParse({ body }).error?.issues[0].message).toBe("Enter a note");
+    }
+  });
+
+  it("accepts 2000 characters and blocks 2001", () => {
+    expect(noteInputSchema.safeParse({ body: "a".repeat(2000) }).success).toBe(true);
+    expect(noteInputSchema.safeParse({ body: "a".repeat(2001) }).error?.issues[0].message).toBe("Note must be at most 2000 characters");
   });
 });

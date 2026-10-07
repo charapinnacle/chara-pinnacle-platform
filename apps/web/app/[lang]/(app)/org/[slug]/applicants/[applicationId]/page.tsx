@@ -1,14 +1,27 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
+import { InternalNotes } from "@/components/applicants/internal-notes";
+import { ProfileSnapshot } from "@/components/applicants/profile-snapshot";
+import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { Notice } from "@/components/forms/notice";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
+import {
+  getApplicantProfile,
+  NOTES_LIMIT,
+  isProfileChanged,
+  listApplicationNotes,
+  listSharedDocuments,
+} from "@/lib/dal/applicant-review";
 import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/dal/applicants";
-import { requireOrgRole } from "@/lib/dal/session";
+import { getCountries, getLanguages } from "@/lib/dal/reference";
+import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
+import { homePath } from "@/lib/routes";
+import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
 
@@ -18,9 +31,12 @@ const actorText = { candidate: "Candidate", system: "System" } as const;
 
 // The first open by a member is the system's move from Applied to Viewed, made before the page is read so that it shows the
 // stage the candidate sees. An application of another organisation, or one that is not the organisation of the address,
-// is not found. A suspended organisation's applicants are not shown at all (FR-D5).
+// is not found, and a candidate is sent to their own home (FR-E2). A suspended organisation's applicants are not shown at
+// all (FR-D5).
 export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[slug]/applicants/[applicationId]">) {
   const { lang, slug, applicationId } = await params;
+  const user = await requireUser(lang);
+  if (user.accountKind === "worker") redirect(homePath(lang, user.accountKind));
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true });
   if (organization.suspended) return <SuspendedOrganization />;
   const id = z.uuid().safeParse(applicationId);
@@ -29,7 +45,17 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
   if (!first || first.organizationId !== organization.id) notFound();
   const firstOpen = first.status === "applied";
   if (firstOpen) await markApplicationViewed(id.data);
-  const [reread, events] = await Promise.all([firstOpen ? getApplicant(id.data) : first, listApplicantEvents(id.data)]);
+  const [reread, events, profile, documents, changed, notes, countries, languages] = await Promise.all([
+    firstOpen ? getApplicant(id.data) : first,
+    listApplicantEvents(id.data),
+    getApplicantProfile(id.data),
+    listSharedDocuments(id.data),
+    isProfileChanged(id.data),
+    listApplicationNotes(id.data),
+    getCountries(),
+    getLanguages(),
+  ]);
+  if (!profile) notFound();
   const applicant = reread ?? first;
   const targets = allowedTargets(applicant.status, "employer", { shortlisting: applicant.shortlistingAvailable });
   const name = applicant.applicantName ?? FORMER_CANDIDATE;
@@ -73,6 +99,31 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
           {applicationStatusLabels[applicant.status]} is a final stage. No further stage can be chosen.
         </Notice>
       )}
+
+      <ProfileSnapshot
+        snapshot={profile.snapshot}
+        coverNote={profile.coverNote}
+        submittedAt={applicant.appliedAt}
+        changed={changed}
+        countries={Object.fromEntries(countries.map(({ code, name }) => [code, name]))}
+        languages={Object.fromEntries(languages.map(({ code, name }) => [code, name]))}
+      />
+
+      <SharedDocuments
+        slug={slug}
+        applicationId={applicant.id}
+        documents={documents}
+        shareEnded={changed === null}
+        today={todayUtc()}
+      />
+
+      <InternalNotes
+        slug={slug}
+        applicationId={applicant.id}
+        notes={notes}
+        blocked={applicant.stageChangeBlocked !== null}
+        limit={NOTES_LIMIT}
+      />
 
       <section aria-labelledby="history-heading" className="grid gap-2">
         <h2 id="history-heading" className="text-lg font-semibold">

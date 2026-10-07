@@ -14,9 +14,10 @@ import { changeApplicantStage } from "@/lib/actions/applicants";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import type { Database } from "@chara-pinnacle/db-types";
 import {
+  declineReasonOptions,
   stageChangeFormSchema,
-  type StageChangeFormInput,
   type StageChangeFormOutput,
+  type StageChangeFormValues,
 } from "@/lib/validation/applicant";
 
 export type StageChangeProps = {
@@ -28,10 +29,11 @@ export type StageChangeProps = {
   initialStatus?: Database["public"]["Enums"]["application_status"];
 };
 
-const ids = { status: "stage-change-status", note: "stage-change-note" } as const;
+const ids = { status: "stage-change-status", reason: "stage-change-reason", note: "stage-change-note" } as const;
 
-// Two steps in one dialog: choose the stage and write the note, then check what will be sent. Nothing is applied before
-// the second step is confirmed; a refusal closes the dialog and shows a toast, which a dialog would hide.
+// Two steps in one dialog: choose the stage and write the note, or for Not selected choose the reason, then check what
+// will be sent. Nothing is applied before the second step is confirmed; a refusal closes the dialog and shows a toast,
+// which a dialog would hide.
 export function StageChangeForm({
   slug,
   applicationId,
@@ -42,15 +44,19 @@ export function StageChangeForm({
   onClose,
 }: StageChangeProps & { onClose: () => void }) {
   const schema = useMemo(() => stageChangeFormSchema(noteMaxChars), [noteMaxChars]);
-  const form = useForm<StageChangeFormInput, undefined, StageChangeFormOutput>({
+  const form = useForm<StageChangeFormValues, undefined, StageChangeFormOutput>({
     resolver: zodResolver(schema),
-    defaultValues: { status: initialStatus ?? "", note: "" },
+    defaultValues: { status: initialStatus ?? "", reason: "", note: "" },
     shouldFocusError: false,
   });
   const [review, setReview] = useState<StageChangeFormOutput | null>(null);
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The stage was not changed" });
   const noteLength = useWatch({ control, name: "note" }).length;
+  const status = useWatch({ control, name: "status" });
+  const reason = useWatch({ control, name: "reason" });
+  const declining = status === "rejected";
+  const noteLabel = declining ? "Other reason (visible to the candidate)" : "Note (visible to the candidate)";
 
   const items: ErrorSummaryItem[] = (Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
     const error = formState.errors[name];
@@ -59,7 +65,7 @@ export function StageChangeForm({
 
   function confirm(values: StageChangeFormOutput) {
     return submit(
-      () => changeApplicantStage(slug, applicationId, values),
+      () => changeApplicantStage(slug, applicationId, { status: values.status, note: values.note }),
       (result) => {
         if (result.done) {
           onClose();
@@ -88,7 +94,9 @@ export function StageChangeForm({
               <dd className="font-medium">{applicationStatusLabels[review.status]}</dd>
             </div>
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">Visible to the candidate</dt>
+              <dt className="text-sm text-muted-foreground">
+                {review.status === "rejected" ? "Reason (visible to the candidate)" : "Note (visible to the candidate)"}
+              </dt>
               <dd className="wrap-anywhere whitespace-pre-line">{review.note === "" ? "No note" : review.note}</dd>
             </div>
           </dl>
@@ -111,7 +119,7 @@ export function StageChangeForm({
           <ErrorSummary
             ref={summaryRef}
             items={items}
-            onSelect={(key) => form.setFocus(key as FieldPath<StageChangeFormInput>)}
+            onSelect={(key) => form.setFocus(key as FieldPath<StageChangeFormValues>)}
           />
           <SelectField
             control={control}
@@ -121,13 +129,25 @@ export function StageChangeForm({
             placeholder="Choose a stage"
             options={targets.map((value) => ({ value, label: applicationStatusLabels[value] }))}
           />
-          <TextareaField
-            control={control}
-            name="note"
-            id={ids.note}
-            label="Visible to the candidate"
-            description={`Optional. The candidate sees this note. ${noteLength}/${noteMaxChars}`}
-          />
+          {declining ? (
+            <SelectField
+              control={control}
+              name="reason"
+              id={ids.reason}
+              label="Reason (visible to the candidate)"
+              placeholder="Choose a reason"
+              options={declineReasonOptions}
+            />
+          ) : null}
+          {!declining || reason === "other" ? (
+            <TextareaField
+              control={control}
+              name="note"
+              id={ids.note}
+              label={noteLabel}
+              description={`${declining ? "" : "Optional. "}The candidate sees this text. ${noteLength}/${noteMaxChars}`}
+            />
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <FormButton type="button" variant="secondary" className="w-full" onClick={onClose}>
               Cancel

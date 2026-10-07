@@ -8,7 +8,7 @@ import { getApplicant, setApplicationStatus, type StageRefusal } from "@/lib/dal
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { applicantPath } from "@/lib/routes";
-import { stageChangeInputSchema, type StageChangeFormInput } from "@/lib/validation/applicant";
+import { stageChangeInputSchema, type StageChangeInput } from "@/lib/validation/applicant";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -44,7 +44,7 @@ function refusalMessage(refusal: StageRefusal): StageActionResult {
 export async function changeApplicantStage(
   slug: string,
   applicationId: string,
-  input: StageChangeFormInput,
+  input: StageChangeInput,
 ): Promise<StageActionResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   const parsedId = z.uuid().safeParse(applicationId);
