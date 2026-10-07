@@ -1,9 +1,9 @@
 -- Apply to a vacancy (FR-D1, FR-D7; ARCHITECTURE.md sections 4, 7.3; OPEN_QUESTIONS.md D52). A candidate applies to an
 -- Open, visible vacancy once, with an optional cover note and a selection of their own documents. apply_to_job writes,
 -- in one transaction, the consent, the share (scoped to the selected document ids), the application, its first event,
--- the audit row and one queue message per member of the employer; nothing else writes to these tables, and no API role
--- has an insert, update or delete grant on them. A second call for the same vacancy returns the existing application
--- and counts a duplicate attempt (FR-D7); the number of calls per candidate and hour is capped by a setting.
+-- the audit row and one queue message per member of the employer. A second call for the same vacancy returns the
+-- existing application and counts a duplicate attempt (FR-D7); the number of calls per candidate and hour is capped by
+-- a setting. list_my_applications and get_my_application are the candidate's reads.
 
 insert into private.settings (key, value) values
   ('apply_cover_note_max_chars', '2000'),
@@ -11,143 +11,8 @@ insert into private.settings (key, value) values
   ('apply_rate_limit_max', '60'),
   ('apply_rate_limit_window_seconds', '3600');
 
-create type public.application_status as enum (
-  'applied', 'viewed', 'shortlisted', 'interview', 'offer', 'hired', 'rejected', 'withdrawn'
-);
-
--- worker_user_id and actor_id carry no foreign key to the profile: erase_user replaces the user id by a pseudonym and the
--- application outlives the account. organization_id is the tenant of the vacancy, copied by apply_to_job. The share and
--- the application name each other: passport_shares.application_id has the foreign key (and is unique), and
--- passport_share_id, the way back, has none, because each row would have to exist before the other.
-create table public.job_applications (
-  id uuid primary key default gen_random_uuid(),
-  job_id uuid not null references public.jobs (id),
-  organization_id uuid not null references public.organizations (id),
-  worker_user_id uuid not null,
-  status public.application_status not null default 'applied',
-  cover_note text check (cover_note is null or (cover_note = btrim(cover_note) and length(cover_note) between 1 and 10000)),
-  passport_share_id uuid not null,
-  profile_snapshot jsonb not null check (jsonb_typeof(profile_snapshot) = 'object'),
-  created_at timestamptz not null default now()
-);
-
-comment on table public.job_applications is
-  'One application of a candidate to a vacancy. Written only by apply_to_job; the candidate reads the own rows.';
-comment on column public.job_applications.profile_snapshot is
-  'The passport as it was when the candidate applied: no email, date of birth, storage path or file name. Never updated.';
-
--- At most one non-withdrawn application per candidate and vacancy (FR-D7).
-create unique index job_applications_one_active_per_job_worker
-  on public.job_applications (job_id, worker_user_id) where status <> 'withdrawn';
--- The candidate's own list (keyset on created_at and id) and the policy column.
-create index job_applications_worker_created_idx on public.job_applications (worker_user_id, created_at desc, id desc);
--- The applicant list of a vacancy (FR-E1) and the foreign key to jobs, which the partial unique index cannot serve.
-create index job_applications_job_status_idx on public.job_applications (job_id, status);
-create index job_applications_organization_idx on public.job_applications (organization_id);
-
-alter table public.job_applications enable row level security;
-alter table public.job_applications force row level security;
-
-grant select on public.job_applications to authenticated;
-
-create policy job_applications_select_own on public.job_applications
-  for select to authenticated
-  using (worker_user_id = (select auth.uid()));
-
-alter table public.passport_shares
-  add constraint passport_shares_application_id_fkey foreign key (application_id) references public.job_applications (id);
-
-create table public.application_events (
-  id bigint generated always as identity primary key,
-  application_id uuid not null references public.job_applications (id),
-  from_status public.application_status,
-  to_status public.application_status not null,
-  actor_id uuid,
-  note text,
-  created_at timestamptz not null default now()
-);
-
-comment on table public.application_events is
-  'Append-only history of an application. Written only by the application RPCs; the candidate reads it without actor_id.';
-
-create index application_events_application_idx on public.application_events (application_id, created_at, id);
--- erase_user finds the events a candidate caused.
-create index application_events_actor_idx on public.application_events (actor_id) where actor_id is not null;
-
-alter table public.application_events enable row level security;
-alter table public.application_events force row level security;
-
--- actor_id is left out: it names the employer member who moved an application.
-grant select (id, application_id, from_status, to_status, note, created_at) on public.application_events to authenticated;
-
-create policy application_events_select_own on public.application_events
-  for select to authenticated
-  using (application_id in (select a.id from public.job_applications a where a.worker_user_id = (select auth.uid())));
-
--- Append-only, except that erase_user may put a pseudonym where the candidate's id was and change nothing else.
-create function private.application_events_guard() returns trigger
-language plpgsql
-set search_path = ''
-as $$
-begin
-  if tg_op = 'UPDATE' and private.erasure_subject() is not null
-     and (new.id, new.application_id, new.from_status, new.to_status, new.note, new.created_at)
-           is not distinct from (old.id, old.application_id, old.from_status, old.to_status, old.note, old.created_at)
-     and new.actor_id is not distinct from
-           (case when old.actor_id = private.erasure_subject() then private.erasure_pseudonym() else old.actor_id end) then
-    return new;
-  end if;
-  raise exception 'application_events is append-only' using errcode = '42501';
-end;
-$$;
-
-revoke all on function private.application_events_guard() from public, anon, authenticated, service_role;
-
-create trigger application_events_append_only
-  before update or delete on public.application_events
-  for each row execute function private.application_events_guard();
-create trigger application_events_no_truncate
-  before truncate on public.application_events
-  for each statement execute function private.refuse_change();
-
-alter table public.application_events enable always trigger application_events_append_only;
-alter table public.application_events enable always trigger application_events_no_truncate;
-
--- A consent for sharing names the organisation, so withdrawing it later withdraws the shares of that organisation only
--- (document_access_grant compares user and purpose). The purpose is then not the slug of a legal document: the version
--- still refers to the sharing notice, and this trigger keeps the check the foreign key made.
-alter table public.consents drop constraint consents_purpose_version_fkey;
-
-create function private.consents_check_document() returns trigger
-language plpgsql
-set search_path = ''
-as $$
-begin
-  if new.purpose is null or new.version is null then
-    return new;
-  end if;
-  if not exists (
-    select 1 from public.legal_documents d
-    where d.version = new.version
-      and d.slug = (case when new.purpose ~ '^share_passport:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-                         then 'sharing-notice' else new.purpose end)
-  ) then
-    raise exception 'insert or update on table "consents" violates foreign key constraint "consents_purpose_version_fkey"'
-      using errcode = '23503';
-  end if;
-  return new;
-end;
-$$;
-
-revoke all on function private.consents_check_document() from public, anon, authenticated, service_role;
-
-create trigger consents_check_document
-  before insert on public.consents
-  for each row execute function private.consents_check_document();
-
-alter table public.consents enable always trigger consents_check_document;
-
--- The limits the form quotes and the function enforces.
+-- The limits the form quotes and the function enforces. The note is capped at 10,000 characters, the check of the column,
+-- whatever the setting says.
 create function public.apply_limits() returns table (cover_note_max_chars integer, documents_max integer)
 language plpgsql
 stable
@@ -155,7 +20,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  select (s.value #>> '{}')::integer into cover_note_max_chars from private.settings s where s.key = 'apply_cover_note_max_chars';
+  select least((s.value #>> '{}')::integer, 10000) into cover_note_max_chars from private.settings s where s.key = 'apply_cover_note_max_chars';
   select (s.value #>> '{}')::integer into documents_max from private.settings s where s.key = 'apply_documents_max';
   if cover_note_max_chars is null or documents_max is null then
     raise exception 'CHARA_SETTING_MISSING' using detail = 'apply_limits';
@@ -174,7 +39,8 @@ create index log_apply_actor_idx on audit.log (actor_id, created_at)
 
 -- p_note is trimmed (an empty note is stored as null); p_document_ids is deduplicated. The profile row is locked for the
 -- whole call, so two calls of one candidate run one after the other: the second finds the application of the first and
--- the hourly count is exact.
+-- the hourly count is exact. The lock is NO KEY UPDATE, which does not block the foreign key checks of the candidate's
+-- other inserts (a document, a saved vacancy, a consent).
 -- Errors: CHARA_FORBIDDEN (not an active candidate), CHARA_RATE_LIMITED, CHARA_INVALID_INPUT (detail p_note or
 -- p_document_ids), CHARA_JOB_NOT_OPEN (one code for a vacancy that is not open and visible, deleted or unknown),
 -- CHARA_PROFILE_INCOMPLETE (detail: the missing fields), CHARA_NOT_FOUND (a document that is not the caller's own or is
@@ -206,7 +72,7 @@ declare
   v_recipients jsonb[];
 begin
   select p.account_kind, p.status, p.deleted_at into v_kind, v_status, v_closing
-  from public.profiles p where p.id = v_uid for update;
+  from public.profiles p where p.id = v_uid for no key update;
   if v_uid is null or not found or v_kind is distinct from 'worker' then
     raise exception 'CHARA_FORBIDDEN' using detail = 'worker_account_required';
   end if;
@@ -427,88 +293,3 @@ $$;
 
 revoke all on function public.get_my_application(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.get_my_application(uuid) to authenticated;
-
--- The erasure of a candidate (FR-B6) also moves their applications to the pseudonym, empties the cover note and removes
--- the name and the headline from the snapshot, and moves the events they caused; every pseudonym is new, so two erased
--- candidates of one vacancy do not meet at the unique index.
-create or replace function public.erase_user(p_user_id uuid) returns boolean
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_kind public.account_kind;
-  v_requested timestamptz;
-  v_hold boolean;
-  v_email text;
-  v_pseudonym uuid := gen_random_uuid();
-  v_subject text := p_user_id::text;
-begin
-  select p.account_kind, p.deleted_at, p.legal_hold into v_kind, v_requested, v_hold
-  from public.profiles p where p.id = p_user_id for update;
-  if not found then
-    return false;
-  end if;
-  if v_kind is distinct from 'worker' then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'worker_account_required';
-  end if;
-  if v_requested is null then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'deletion_not_requested';
-  end if;
-  if now() < private.cooling_off_ends_at(v_requested) then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'cooling_off_not_ended';
-  end if;
-  if v_hold then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'legal_hold';
-  end if;
-  if exists (select 1 from public.platform_staff s where s.user_id = p_user_id and s.revoked_at is null) then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'platform_staff';
-  end if;
-
-  select u.email into v_email from auth.users u where u.id = p_user_id;
-  perform set_config('chara.erasure_user', v_subject, true);
-  perform set_config('chara.erasure_pseudonym', v_pseudonym::text, true);
-
-  update public.passport_shares
-  set worker_user_id = v_pseudonym, scope = '[]', revoked_at = coalesce(revoked_at, now())
-  where worker_user_id = p_user_id;
-  update public.job_applications a
-  set worker_user_id = v_pseudonym, cover_note = null,
-      profile_snapshot = a.profile_snapshot - 'first_name' - 'last_name' - 'headline'
-  where a.worker_user_id = p_user_id;
-  update public.application_events set actor_id = v_pseudonym where actor_id = p_user_id;
-  update public.consents set user_id = v_pseudonym where user_id = p_user_id;
-  update audit.document_access_log
-  set worker_user_id = v_pseudonym, accessed_by = case when accessed_by = p_user_id then v_pseudonym else accessed_by end
-  where worker_user_id = p_user_id;
-  update audit.log
-  set actor_id = case when actor_id = p_user_id then v_pseudonym else actor_id end,
-      entity_id = case when entity_id = v_subject then v_pseudonym::text else entity_id end,
-      ip = case when actor_id = p_user_id then null else ip end,
-      metadata = replace(metadata::text, v_subject, v_pseudonym::text)::jsonb
-  where actor_id = p_user_id or entity_id = v_subject
-     or (entity_type = 'platform_staff'
-         and entity_id = any (array(select s.id::text from public.platform_staff s where s.user_id = p_user_id)));
-
-  delete from public.worker_documents where worker_user_id = p_user_id;
-  delete from public.worker_profiles where user_id = p_user_id;
-  delete from public.profiles where id = p_user_id;
-  perform pgmq.delete('notifications', array(select n.msg_id from pgmq.q_notifications n where n.message ->> 'user_id' = v_subject));
-
-  perform set_config('chara.erasure_user', '', true);
-  perform set_config('chara.erasure_pseudonym', '', true);
-
-  perform audit.record(
-    'account.erased', 'profile', v_pseudonym::text,
-    jsonb_build_object('requested_at', v_requested, 'completed_at', now())
-  );
-  -- The auth user is deleted next, so the address travels in the message; notify must not archive it.
-  if v_email is not null then
-    perform pgmq.send('notifications', jsonb_build_object('kind', 'deletion_completed', 'email', v_email, 'mandatory', true));
-  end if;
-  return true;
-end;
-$$;
-
-revoke all on function public.erase_user(uuid) from public, anon, authenticated, service_role;
-grant execute on function public.erase_user(uuid) to service_role;

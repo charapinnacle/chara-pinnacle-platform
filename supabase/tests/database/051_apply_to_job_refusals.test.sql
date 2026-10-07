@@ -1,5 +1,5 @@
 begin;
-select plan(38);
+select plan(40);
 
 \ir apply_fixture.inc
 
@@ -97,6 +97,9 @@ select is((select row(cover_note_max_chars, documents_max)::text from public.app
 update private.settings set value = '5' where key = 'apply_cover_note_max_chars';
 create temp table t_job9 as select pg_temp.open_job('Setting vacancy') as id;
 select is(pg_temp.apply_as(:'wa', (select id from t_job9), 'abcdef'), 'P0001|CHARA_INVALID_INPUT|p_note', 'a lower setting refuses a note of 6 characters');
+update private.settings set value = '20000' where key = 'apply_cover_note_max_chars';
+select is((select cover_note_max_chars from public.apply_limits()), 10000, 'a setting above the check of the column is capped at 10000 characters');
+select is(pg_temp.apply_as(:'wa', (select id from t_job9), repeat('a', 10001)), 'P0001|CHARA_INVALID_INPUT|p_note', 'so a longer note is a validation error and never the check constraint');
 update private.settings set value = '2000' where key = 'apply_cover_note_max_chars';
 delete from private.settings where key = 'apply_documents_max';
 select is(pg_temp.apply_as(:'wa', (select id from t_job9)), 'P0001|CHARA_SETTING_MISSING|apply_limits', 'a missing setting fails the call instead of lifting the limit');

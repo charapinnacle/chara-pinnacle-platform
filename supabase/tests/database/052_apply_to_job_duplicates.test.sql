@@ -1,5 +1,5 @@
 begin;
-select plan(57);
+select plan(62);
 
 \ir apply_fixture.inc
 
@@ -181,6 +181,20 @@ select is(pg_temp.call_as(null, 'postgres', format($$insert into public.consents
 select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s', 999, 'granted')$$, :'wnew', current_setting('t.a'))), '|', 1), '23503', 'an unknown version of the notice is refused');
 select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:not-an-organisation', 0, 'granted')$$, :'wnew')), '|', 1), '23503', 'a purpose that names no organisation is refused');
 select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into public.consents (user_id, purpose, version, action) values (%L, 'share_passport:%s', null, 'granted')$$, :'wnew', current_setting('t.a'))), '|', 1), '23502', 'a missing version is still a not-null violation');
+
+-- A legal document that a consent refers to cannot be deleted or re-keyed, which the foreign key used to guarantee.
+select is(split_part(pg_temp.call_as(null, 'postgres', $$delete from public.legal_documents where slug = 'sharing-notice' and version = 0$$), '|', 1), '23503', 'the sharing notice of a granted consent cannot be deleted');
+select is(split_part(pg_temp.call_as(null, 'postgres', $$update public.legal_documents set version = 7 where slug = 'sharing-notice' and version = 0$$), '|', 1), '23503', 'nor re-keyed');
+select is(pg_temp.call_as(null, 'postgres', $$update public.legal_documents set title = 'Sharing notice, corrected' where slug = 'sharing-notice' and version = 0$$), 'ok', 'a change of the title is not a change of the key');
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+values ('sharing-notice', 3, 'Sharing notice', 'Text.', 'A version that no consent has.', now());
+select is(pg_temp.call_as(null, 'postgres', $$delete from public.legal_documents where slug = 'sharing-notice' and version = 3$$), 'ok', 'a version without a consent can be deleted');
+
+select ok(
+  pg_get_functiondef('public.apply_to_job(uuid,text,uuid[])'::regprocedure) ilike '%for no key update%'
+    and pg_get_functiondef('public.erase_user(uuid)'::regprocedure) ilike '%for no key update%',
+  'the profile lock of apply_to_job and erase_user is NO KEY UPDATE, which does not block the foreign key checks of the candidate''s other inserts'
+);
 
 select * from finish();
 rollback;
