@@ -43,15 +43,16 @@ create function pg_temp.member_of(p_org uuid) returns uuid
 language sql as $$ select user_id from public.organization_members where organization_id = p_org and role = 'member' limit 1 $$;
 
 -- A paused vacancy (it takes no plan limit and its applications still move: OPEN_QUESTIONS.md P16) of an organisation
--- (Acme when null) and an application of a candidate (wa) to it, written as the database
+-- (Acme when null; p_job names another vacancy instead) and an application of a candidate (wa) to it, written as the database
 -- owner in any state with the share and the consent apply_to_job makes, one event (null to applied) by the candidate.
 create function pg_temp.seed_app(
-  p_status text default 'applied', p_org uuid default null, p_worker uuid default '00000000-0000-0000-0000-00000000a101'
+  p_status text default 'applied', p_org uuid default null, p_worker uuid default '00000000-0000-0000-0000-00000000a101',
+  p_job uuid default null
 ) returns uuid
 language plpgsql as $$
 declare
   v_org uuid := coalesce(p_org, current_setting('t.a')::uuid);
-  v_job uuid := pg_temp.seed_job('{"title": "Status vacancy", "status": "paused"}', v_org);
+  v_job uuid := coalesce(p_job, pg_temp.seed_job('{"title": "Status vacancy", "status": "paused"}', v_org));
   v_app uuid := gen_random_uuid();
   v_share uuid := gen_random_uuid();
   v_consent bigint;

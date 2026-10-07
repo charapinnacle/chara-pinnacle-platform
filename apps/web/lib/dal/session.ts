@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
-import { mfaPath } from "@/lib/routes";
+import { homePath, mfaPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 import type { MemberRole } from "@/lib/validation/team";
 
@@ -77,15 +77,29 @@ async function requireAal2(lang: string, user: CurrentUser): Promise<void> {
   if (user.aal !== "aal2") redirect(mfaPath(lang, await requestedPath()));
 }
 
+async function hasPlatformRole(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_platform_roles");
+  if (error) throw new Error("The platform roles could not be loaded", { cause: error });
+  return data.length > 0;
+}
+
 // The platform roles are looked up, never read from the token. A user who holds no active role gets the forbidden page
 // without an MFA prompt; staff must be at aal2 for every administration page (FR-A4).
 export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
   const user = await requireUser(lang);
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("my_platform_roles");
-  if (error) throw new Error("The platform roles could not be loaded", { cause: error });
-  if (data.length === 0) redirect(`/${lang}/forbidden`);
+  if (!(await hasPlatformRole())) redirect(`/${lang}/forbidden`);
   await requireAal2(lang, user);
+  return user;
+}
+
+// The pages of a candidate: a visitor goes to log in (requireUser), platform staff to the administration, any other
+// account to its own home.
+export async function requireCandidate(lang: string): Promise<CurrentUser> {
+  const user = await requireUser(lang);
+  if (user.accountKind !== "worker") {
+    redirect((await hasPlatformRole()) ? `/${lang}/admin` : homePath(lang, user.accountKind));
+  }
   return user;
 }
 

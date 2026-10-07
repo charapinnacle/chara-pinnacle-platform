@@ -1,26 +1,29 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { z } from "zod";
+import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
-import { applicationStatusLabels } from "@/lib/applications/presentation";
+import { applicationNextSteps, applicationStatusLabels, eventActorLabels, eventNoteLabels } from "@/lib/applications/presentation";
+import { allowedTargets } from "@/lib/applications/stage-machine";
+import { logTrackerView } from "@/lib/applications/tracker-log";
 import { getMyApplication, listTimeline } from "@/lib/dal/applications";
-import { requireUser } from "@/lib/dal/session";
+import { requireCandidate } from "@/lib/dal/session";
 import { formatShortDate } from "@/lib/i18n/format";
-import { applicationsPath, homePath } from "@/lib/routes";
+import { applicationsPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Application — CHARA", robots: { index: false } };
 
 // The candidate's own application: an id that is somebody else's, unknown or not a uuid shows the not-found page.
 export default async function ApplicationPage({ params, searchParams }: PageProps<"/[lang]/applications/[id]">) {
   const { lang, id } = await params;
-  const user = await requireUser(lang);
-  if (user.accountKind !== "worker") redirect(homePath(lang, user.accountKind));
+  await requireCandidate(lang);
 
   const applicationId = z.uuid().safeParse(id);
   if (!applicationId.success) notFound();
   const [application, timeline] = await Promise.all([getMyApplication(applicationId.data), listTimeline(applicationId.data)]);
   if (!application) notFound();
+  logTrackerView("application");
   const existing = (await searchParams).existing === "1";
 
   return (
@@ -52,6 +55,23 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
         </div>
       </dl>
 
+      <section aria-labelledby="next-step-heading" className="grid gap-2">
+        <h2 id="next-step-heading" className="text-lg font-semibold">
+          What usually happens next
+        </h2>
+        <p className="leading-7">{applicationNextSteps[application.status]}</p>
+        {allowedTargets(application.status, "candidate", { shortlisting: false }).includes("withdrawn") ? (
+          <>
+            <FormButton type="button" variant="secondary" disabled aria-describedby="withdraw-hint" className="w-auto justify-self-start">
+              Withdraw application
+            </FormButton>
+            <p id="withdraw-hint" className="text-sm text-muted-foreground">
+              Withdrawing will be available soon.
+            </p>
+          </>
+        ) : null}
+      </section>
+
       {application.vacancyIsOpen ? (
         <TextLink standalone href={`/${lang}/jobs/${application.jobId}`}>
           View the vacancy
@@ -73,16 +93,17 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
         </h2>
         <ol className="grid gap-2">
           {timeline.map((event) => (
-            <li key={event.id} className="rounded-xl border bg-card p-3">
+            <li key={`${event.createdAt}-${event.toStatus}`} className="rounded-xl border bg-card p-3">
               <p className="font-medium">
                 {applicationStatusLabels[event.toStatus]}{" "}
                 <time dateTime={event.createdAt} className="font-normal text-muted-foreground">
                   {formatShortDate(event.createdAt)}
                 </time>
               </p>
+              <p className="text-sm text-muted-foreground">{eventActorLabels[event.actorRole]}</p>
               {event.note ? (
                 <div className="mt-1 grid gap-0.5">
-                  <p className="text-sm text-muted-foreground">Message from the employer</p>
+                  <p className="text-sm text-muted-foreground">{eventNoteLabels[event.actorRole]}</p>
                   <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
                 </div>
               ) : null}

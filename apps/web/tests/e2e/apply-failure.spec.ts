@@ -14,7 +14,7 @@ import { logIn } from "./support/login-page";
 import { expect, test } from "./support/test";
 
 const APPLY = "public.apply_to_job(uuid, text, uuid[])";
-const LIST = "public.list_my_applications(text, integer)";
+const LIST = "public.my_applications(public.application_status, integer, integer)";
 const GET = "public.get_my_application(uuid)";
 
 // The functions are withdrawn from the API role for the whole database while this file runs, so it has a project of its
@@ -54,7 +54,7 @@ test.describe("applications when the database fails", () => {
     expect(applicationRows(candidate.id)[0]).toMatchObject({ cover_note: "My typed note" });
   });
 
-  test("FR-D1: a failed read of the list shows a message and a retry that works once the database answers", async ({ page }) => {
+  test("FR-D1, FR-D3 AC3: a failed read of the list shows a toast, a message and a retry that works once the database answers", async ({ page }) => {
     const company = await newCompany();
     const candidate = await newApplicant();
     seedApplication(candidate.id, seedJob(company, { title: "Retry welder", status: "open" }), company.id);
@@ -64,8 +64,9 @@ test.describe("applications when the database fails", () => {
 
     await page.goto(APPLICATIONS_URL);
     await expect(page.getByRole("heading", { name: "Your applications could not be loaded", level: 2 })).toBeVisible();
+    await expect(page.getByText("Check your connection and try again.", { exact: true })).toBeVisible();
     await expect(page.getByText("You have not applied to any vacancy yet")).toHaveCount(0);
-    await expect(page.getByText(/permission denied|list_my_applications/)).toHaveCount(0);
+    await expect(page.getByText(/permission denied|my_applications/)).toHaveCount(0);
 
     execute(`grant execute on function ${LIST} to authenticated`);
     await page.getByRole("button", { name: "Try again" }).click();

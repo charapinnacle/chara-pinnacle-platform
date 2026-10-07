@@ -1,6 +1,7 @@
 import type { Database } from "@chara-pinnacle/db-types";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
+type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 export const dashboardSegments = { worker: "worker", employer: "company" } as const satisfies Record<
   string,
@@ -43,8 +44,12 @@ export function applyPath(lang: string, jobId: string): string {
   return `/${lang}/jobs/${jobId}/apply`;
 }
 
-export function applicationsPath(lang: string, cursor?: string): string {
-  return cursor ? `/${lang}/applications?cursor=${encodeURIComponent(cursor)}` : `/${lang}/applications`;
+export function applicationsPath(lang: string, { stage, page }: { stage?: ApplicationStatus | null; page?: number } = {}): string {
+  const query = new URLSearchParams();
+  if (stage) query.set("stage", stage);
+  if (page && page > 1) query.set("page", String(page));
+  const text = query.toString();
+  return text ? `/${lang}/applications?${text}` : `/${lang}/applications`;
 }
 
 export function applicationPath(lang: string, id: string): string {

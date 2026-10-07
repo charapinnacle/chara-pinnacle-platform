@@ -2,6 +2,8 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { cache } from "react";
+import { z } from "zod";
+import { type EventActorRole, eventActorLabels, isApplicationStatus } from "@/lib/applications/presentation";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplyLimits } from "@/lib/validation/application";
 
@@ -19,16 +21,38 @@ export type ApplicationState = { id: string; status: ApplicationStatus; createdA
 
 type MyApplication = {
   id: string;
+  jobTitle: string;
+  employerName: string;
+  status: ApplicationStatus;
+  appliedAt: string;
+  lastEventAt: string;
+};
+
+type ApplicationDetail = {
+  id: string;
   jobId: string;
   jobTitle: string;
   employerName: string;
   status: ApplicationStatus;
   appliedAt: string;
+  vacancyIsOpen: boolean;
+  coverNote: string | null;
 };
 
-type ApplicationDetail = MyApplication & { vacancyIsOpen: boolean; coverNote: string | null };
+// The view has no id and no user id; its columns are typed as nullable, so the boundary checks them.
+const timelineEvent = z.object({
+  created_at: z.string(),
+  to_status: z.custom<ApplicationStatus>(isApplicationStatus),
+  note: z.string().nullable(),
+  actor_role: z.enum(Object.keys(eventActorLabels) as [EventActorRole, ...EventActorRole[]]),
+});
 
-type TimelineEvent = { id: number; toStatus: ApplicationStatus; note: string | null; createdAt: string };
+type TimelineEvent = {
+  toStatus: ApplicationStatus;
+  note: string | null;
+  createdAt: string;
+  actorRole: EventActorRole;
+};
 
 export type ApplyRefusal =
   | { kind: "not_open" }
@@ -131,25 +155,29 @@ export async function applyToJob(jobId: string, note: string | null, documentIds
     : { kind: "created", applicationId: row.application_id };
 }
 
+// One page of the candidate's applications: the function asks one row more than the page holds to tell whether a next
+// page exists, and returns nothing that is not the candidate's own.
 export async function listMyApplications(
-  cursor: string | null,
-): Promise<{ applications: MyApplication[]; nextCursor: string | null }> {
+  stage: ApplicationStatus | null,
+  page: number,
+): Promise<{ applications: MyApplication[]; hasNext: boolean }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_my_applications", {
-    p_cursor: cursor ?? undefined,
-    p_limit: APPLICATIONS_PAGE_SIZE,
+  const { data, error } = await supabase.rpc("my_applications", {
+    p_stage: stage ?? undefined,
+    p_limit: APPLICATIONS_PAGE_SIZE + 1,
+    p_offset: (page - 1) * APPLICATIONS_PAGE_SIZE,
   });
   if (error) throw new Error("The applications could not be loaded", { cause: error });
   return {
-    applications: data.map((row) => ({
+    applications: data.slice(0, APPLICATIONS_PAGE_SIZE).map((row) => ({
       id: row.id,
-      jobId: row.job_id,
       jobTitle: row.job_title,
       employerName: row.employer_display_name,
       status: row.status,
       appliedAt: row.applied_at,
+      lastEventAt: row.last_event_at,
     })),
-    nextCursor: data.at(-1)?.next_cursor ?? null,
+    hasNext: data.length > APPLICATIONS_PAGE_SIZE,
   };
 }
 
@@ -172,17 +200,19 @@ export async function getMyApplication(id: string): Promise<ApplicationDetail | 
   };
 }
 
-// The events of one application, oldest first, with the note an employer member wrote for the candidate. The grant leaves
-// out the actor, so no employer user id can be read.
+// The events of one application, oldest first, with the note an employer member wrote for the candidate and who acted,
+// as you, employer or system. The view carries no user id of the employer.
 export async function listTimeline(applicationId: string): Promise<TimelineEvent[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("application_events")
-    .select("id, to_status, note, created_at")
+    .from("v_my_application_timeline")
+    .select("created_at, to_status, note, actor_role")
     .eq("application_id", applicationId)
     .order("created_at")
-    .order("id")
     .limit(READ_LIMIT);
   if (error) throw new Error("The timeline could not be loaded", { cause: error });
-  return data.map((row) => ({ id: row.id, toStatus: row.to_status, note: row.note, createdAt: row.created_at }));
+  return data.map((row) => {
+    const event = timelineEvent.parse(row);
+    return { toStatus: event.to_status, note: event.note, createdAt: event.created_at, actorRole: event.actor_role };
+  });
 }

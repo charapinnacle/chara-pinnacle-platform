@@ -590,7 +590,26 @@ isOneToOne: false
                 }
           }
           Views: {
-            "v_my_document_access_log": {
+            "v_my_application_timeline": {
+                  Row: {
+                    "actor_role": string | null,"application_id": string | null,"created_at": string | null,"from_status": Database["public"]['Enums']["application_status"] | null,"note": string | null,"to_status": Database["public"]['Enums']["application_status"] | null
+                  }
+                  Insert: {
+                           "actor_role"?: never,"application_id"?: string | null,"created_at"?: string | null,"from_status"?: Database["public"]['Enums']["application_status"] | null,"note"?: string | null,"to_status"?: Database["public"]['Enums']["application_status"] | null
+                         }
+                        Update: {
+                           "actor_role"?: never,"application_id"?: string | null,"created_at"?: string | null,"from_status"?: Database["public"]['Enums']["application_status"] | null,"note"?: string | null,"to_status"?: Database["public"]['Enums']["application_status"] | null
+                         }
+                        Relationships: [
+                    {
+      foreignKeyName: "application_events_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "job_applications"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"v_my_document_access_log": {
                   Row: {
                     "accessed_at": string | null,"document_title": string | null,"id": number | null,"organization_name": string | null,"purpose": string | null
                   }
@@ -732,11 +751,6 @@ isOneToOne: false
               "actor_kind": string,"actor_name": string,"created_at": string,"from_status": Database["public"]['Enums']["application_status"],"id": number,"note": string,"to_status": Database["public"]['Enums']["application_status"]
             }[]
                            },
-"list_my_applications":
-{ Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
-              "applied_at": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"next_cursor": string,"status": Database["public"]['Enums']["application_status"]
-            }[]
-                           },
 "list_organization_invitations":
 { Args: { "p_limit"?: number,"p_org": string }; Returns: {
               "email": string,"expires_at": string,"id": string,"is_open": boolean,"role": Database["public"]['Enums']["member_role"]
@@ -759,6 +773,11 @@ isOneToOne: false
                            },
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
+                           },
+"my_applications":
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_stage"?: Database["public"]['Enums']["application_status"] }; Returns: {
+              "applied_at": string,"employer_display_name": string,"id": string,"job_status": Database["public"]['Enums']["job_status"],"job_title": string,"last_event_at": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"status": Database["public"]['Enums']["application_status"]
+            }[]
                            },
 "my_platform_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]

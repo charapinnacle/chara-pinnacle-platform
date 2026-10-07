@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dashboardSegments, homePath, isDashboardSegment, mfaPath } from "@/lib/routes";
+import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, mfaPath } from "@/lib/routes";
 
 describe("homePath", () => {
   it("sends each account kind to its own dashboard", () => {
@@ -32,5 +32,18 @@ describe("mfaPath", () => {
     expect(mfaPath("en", "/en/org/acme-bau/billing?tab=a&b=c")).toBe(
       `/en/mfa?next=${encodeURIComponent("/en/org/acme-bau/billing?tab=a&b=c")}`,
     );
+  });
+});
+
+describe("applicationsPath", () => {
+  it("is the plain address for the first page of every stage", () => {
+    expect(applicationsPath("en")).toBe("/en/applications");
+    expect(applicationsPath("en", { stage: null, page: 1 })).toBe("/en/applications");
+  });
+
+  it("carries the stage and the page from the second on", () => {
+    expect(applicationsPath("en", { stage: "interview" })).toBe("/en/applications?stage=interview");
+    expect(applicationsPath("en", { page: 2 })).toBe("/en/applications?page=2");
+    expect(applicationsPath("en", { stage: "rejected", page: 3 })).toBe("/en/applications?stage=rejected&page=3");
   });
 });

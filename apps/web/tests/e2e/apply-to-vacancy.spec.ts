@@ -99,11 +99,11 @@ test.describe("apply to a vacancy", () => {
     await expect(page.locator("ul > li").first()).toContainText(longTitle);
     await expectAccessibleAtBothWidths(page);
     await page.getByRole("link", { name: "Next page" }).click();
-    await expect(page).toHaveURL(/\/en\/applications\?cursor=/);
+    await expect(page).toHaveURL(`${APPLICATIONS_URL}?page=2`);
     await expect(page.locator("ul > li")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Next page" })).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
-    await page.getByRole("link", { name: "Back to the first page" }).click();
+    await page.getByRole("link", { name: "Previous page" }).click();
     await expect(page).toHaveURL(APPLICATIONS_URL);
     await expect(page.locator("ul > li")).toHaveCount(20);
   });

@@ -69,7 +69,7 @@ where a.status <> 'applied'
 
 ## 5. Hand-offs
 
-- U29 (journey tracker) replaces the timeline of `/applications/[id]` and adds `v_my_application_timeline` and the next-step texts; the note is already shown there as `Message from the employer`.
+- U29 (journey tracker) replaced the timeline of `/applications/[id]` by `v_my_application_timeline` and added the next-step texts (`docs/runbooks/journey-tracker.md`); the note is shown there as `Message from the employer`.
 - U30 (withdraw) consumes the `candidate` branch of `allowedTargets` in `apps/web/lib/applications/stage-machine.ts` (FR-D2 AC11 names the role parameter; nothing calls it before U30, so it is not dead code); it writes `chara.actor_fn = 'withdraw_application'` around its update (the guard already lists that function), revokes the share and must not call `assert_org_writable`.
 - U31 adds the employer read policies of the two tables and `application_notes`; U32 to U35 call `set_application_status` and `bulk_set_application_status` from the list and the board and link to the applicant page; U33 reuses `mark_application_viewed` as `open_application` and reconciles its AC3 (the actor of the Viewed event is null here); U34 adds the selection, the confirmation step and the reason templates in front of `bulk_set_application_status`.
 - U37 and U38: `notify` reads the `status_changed` messages above.
