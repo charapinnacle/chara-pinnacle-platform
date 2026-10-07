@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(27);
 
 \ir status_fixture.inc
 
@@ -69,8 +69,13 @@ select is(
 );
 select is(
   (select count(*) from pg_policies where schemaname = 'public' and tablename in ('job_applications', 'application_events', 'application_notes')
-     and (coalesce(qual, '') || coalesce(with_check, '')) ~ 'member_org_ids' and (coalesce(qual, '') || coalesce(with_check, '')) !~ 'SELECT private\.member_org_ids'),
+     and (coalesce(qual, '') || coalesce(with_check, '')) ~ 'member_org_ids' and (coalesce(qual, '') || coalesce(with_check, '')) !~ 'SELECT private\.(active_)?member_org_ids'),
   0::bigint, 'AC12: and every policy calls member_org_ids inside a sub-select'
+);
+select is(
+  (select count(*) from pg_policies where schemaname = 'public' and tablename in ('job_applications', 'application_events', 'application_notes')
+     and policyname like '%select_member' and qual ~ 'ARRAY\(\s*SELECT private\.active_member_org_ids'),
+  3::bigint, 'AC12: the three member read policies take the organisations as an array, so that a read without a filter uses an index'
 );
 create function pg_temp.leading_index(p_table regclass, p_column text) returns boolean
 language sql as $$

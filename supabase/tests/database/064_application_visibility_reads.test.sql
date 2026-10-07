@@ -1,5 +1,5 @@
 begin;
-select plan(42);
+select plan(45);
 
 \ir status_fixture.inc
 
@@ -109,11 +109,32 @@ select is(
 select is(pg_temp.status_of((select min(id::text)::uuid from t_four)), 'applied', 'AC9: the status is unchanged');
 select is(pg_temp.n_as(pg_temp.member_of((select org from t_lapsed)), 'select 1 from public.job_applications'), '4', 'AC9: the lapsed organisation still reads the four');
 
--- A suspended organisation: the policies are not what refuses it (the pages do), and its candidates keep their rows.
+-- AC11: a suspended organisation is refused in the database: its members read no application, event or note, and the two
+-- reads of the applicant page return no row; its candidates keep their rows.
 create temp table t_susp as select pg_temp.org_on() as org;
 create temp table t_susp_app as select pg_temp.seed_app('applied', (select org from t_susp), :'wnew') as id;
+insert into public.application_notes (application_id, organization_id, author_id, body)
+values ((select id from t_susp_app), (select org from t_susp), pg_temp.owner_of((select org from t_susp)), 'Internal');
+select is(
+  pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.job_applications') || pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.application_events')
+    || pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.application_notes'),
+  '111', 'AC11: a member of the organisation reads its application, event and note while it is active'
+);
 update public.organizations set status = 'suspended' where id = (select org from t_susp);
-select is(pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.job_applications'), '1', 'a member of a suspended organisation still reads its application in the database');
+select is(
+  pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.job_applications') || pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.application_events')
+    || pg_temp.n_as(pg_temp.member_of((select org from t_susp)), 'select 1 from public.application_notes'),
+  '000', 'AC11: once it is suspended its member reads none of them'
+);
+select is(
+  pg_temp.n_as(pg_temp.owner_of((select org from t_susp)), 'select 1 from public.job_applications') || pg_temp.n_as(pg_temp.owner_of((select org from t_susp)), 'select 1 from public.application_notes'),
+  '00', 'AC11: nor does its owner'
+);
+select is(
+  pg_temp.json_as(pg_temp.member_of((select org from t_susp)), format('select * from public.get_applicant(%L)', (select id from t_susp_app)))
+    || pg_temp.json_as(pg_temp.member_of((select org from t_susp)), format('select * from public.list_applicant_events(%L)', (select id from t_susp_app))),
+  '[]'::jsonb || '[]'::jsonb, 'AC11: get_applicant and list_applicant_events return no row for it'
+);
 select is(pg_temp.n_as(:'wnew', 'select 1 from public.job_applications where id = ' || quote_literal((select id from t_susp_app))), '1', 'AC11: the candidate of a suspended organisation''s vacancy still reads the own application');
 
 -- No direct write by any API role, including the database function owner rights an RPC runs with.

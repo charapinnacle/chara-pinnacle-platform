@@ -42,12 +42,6 @@ isOneToOne: false
       referencedRelation: "job_applications"
       referencedColumns: ["id","organization_id"]
     },{
-      foreignKeyName: "application_notes_author_id_fkey"
-      columns: ["author_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "application_notes_organization_id_fkey"
       columns: ["organization_id"]
 isOneToOne: false

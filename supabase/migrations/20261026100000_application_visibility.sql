@@ -1,5 +1,5 @@
 -- Application visibility (FR-D5; ARCHITECTURE.md sections 4, 5; OPEN_QUESTIONS.md D56). A candidate reads the own
--- applications and their events, an accepted member of the organisation reads those of its vacancies, and nobody else reads
+-- applications and their events, an accepted member of an active organisation reads those of its vacancies, and nobody else reads
 -- either table. Internal notes (application_notes) belong to the organisation: a candidate has no policy on them. Nothing
 -- writes to the applications and their events except the RPCs; a note is the one direct insert, by a member.
 -- An attempt on an application of another organisation through one of the RPCs is logged by the database (RAISE LOG).
@@ -8,22 +8,38 @@
 alter policy job_applications_select_own on public.job_applications rename to job_applications_select_worker;
 alter policy application_events_select_own on public.application_events rename to application_events_select_worker;
 
--- Accepted members only, any role: member_org_ids lists the organisations of the caller whose invitation is accepted, so a
--- removed member and a pending invitation see nothing from the next query on. The organisation's status is not looked at:
--- the pages refuse a suspended organisation, and past applicants of a lapsed one stay readable (OPEN_QUESTIONS.md C11).
--- The two policies of a table are OR-ed. "= any (array(select ...))" keeps both arms index conditions (a bitmap OR of the
+-- Accepted members of an active organisation, any role: member_org_ids lists the organisations of the caller whose
+-- invitation is accepted, so a removed member and a pending invitation see nothing from the next query on, and a suspended
+-- organisation's members see nothing either (trust and safety, ARCHITECTURE.md section 11). Past applicants of a lapsed
+-- organisation stay readable: only the status is looked at, not the plan (OPEN_QUESTIONS.md C11).
+create function private.active_member_org_ids() returns setof uuid
+language sql
+stable
+security definer
+rows 5
+set search_path = ''
+as $$
+  select o.id
+  from public.organizations o
+  where o.id in (select private.member_org_ids()) and o.status = 'active'
+$$;
+
+revoke all on function private.active_member_org_ids() from public, anon, authenticated, service_role;
+grant execute on function private.active_member_org_ids() to authenticated;
+
+-- The policies of a table are OR-ed. "= any (array(select ...))" keeps both arms index conditions (a bitmap OR of the
 -- worker and the organisation index), where "in (select ...)" would turn the OR into a scan of the whole table for a
 -- query without a filter. The events are checked row by row against the application, so that one event lookup costs one
 -- index probe and not the build of the hash of all the applications of a large organisation.
 create policy job_applications_select_member on public.job_applications
   for select to authenticated
-  using (organization_id = any (array(select private.member_org_ids())));
+  using (organization_id = any (array(select private.active_member_org_ids())));
 
 create policy application_events_select_member on public.application_events
   for select to authenticated
   using (exists (
     select 1 from public.job_applications a
-    where a.id = application_events.application_id and a.organization_id = any (array(select private.member_org_ids()))
+    where a.id = application_events.application_id and a.organization_id = any (array(select private.active_member_org_ids()))
   ));
 
 -- The timeline stays the candidate's reading (FR-D3): with the member policy above, the policy of the events alone no
@@ -48,7 +64,7 @@ create table public.application_notes (
   id bigint generated always as identity primary key,
   application_id uuid not null,
   organization_id uuid not null references public.organizations (id),
-  author_id uuid not null default auth.uid() references public.profiles (id),
+  author_id uuid not null default auth.uid(),
   body text not null check (body = btrim(body) and length(body) between 1 and 2000),
   created_at timestamptz not null default now(),
   foreign key (application_id, organization_id) references public.job_applications (id, organization_id)
@@ -70,7 +86,7 @@ grant insert (application_id, organization_id, author_id, body) on public.applic
 
 create policy application_notes_select_member on public.application_notes
   for select to authenticated
-  using (organization_id in (select private.member_org_ids()));
+  using (organization_id = any (array(select private.active_member_org_ids())));
 
 create policy application_notes_insert_member on public.application_notes
   for insert to authenticated
@@ -205,8 +221,9 @@ begin
 end;
 $$;
 
--- The two reads of the applicant page return no row for an application the caller cannot see (the page answers it as an
--- unknown id); the attempt is logged all the same, which makes them volatile.
+-- The two reads of the applicant page return no row for an application the caller cannot see, nor for one of a suspended
+-- organisation (the page answers it as an unknown id); an attempt on another organisation's is logged all the same, which
+-- makes them volatile.
 create or replace function public.get_applicant(p_application_id uuid) returns table (
   id uuid,
   organization_id uuid,
@@ -233,15 +250,11 @@ begin
     nullif(btrim(concat_ws(' ', a.profile_snapshot ->> 'first_name', a.profile_snapshot ->> 'last_name')), ''),
     a.status, a.created_at,
     private.has_feature(a.organization_id, 'shortlisting'),
-    case
-      when o.status <> 'active' then 'organization_suspended'
-      when private.free_plan_restricted(a.organization_id) then 'read_only_free_plan'
-    end,
+    case when private.free_plan_restricted(a.organization_id) then 'read_only_free_plan' end,
     (select (s.value #>> '{}')::integer from private.settings s where s.key = 'application_status_note_max_chars')
   from public.job_applications a
   join public.jobs j on j.id = a.job_id
-  join public.organizations o on o.id = a.organization_id
-  where a.id = p_application_id and a.organization_id in (select private.member_org_ids());
+  where a.id = p_application_id and a.organization_id in (select private.active_member_org_ids());
   if not found then
     perform private.log_cross_tenant('get_applicant', p_application_id);
   end if;
@@ -274,7 +287,7 @@ begin
   from public.job_applications a
   join public.application_events e on e.application_id = a.id
   left join public.profiles p on p.id = e.actor_id
-  where a.id = p_application_id and a.organization_id in (select private.member_org_ids())
+  where a.id = p_application_id and a.organization_id in (select private.active_member_org_ids())
   order by e.created_at, e.id
   limit 100;
   if not found then
@@ -282,3 +295,89 @@ begin
   end if;
 end;
 $$;
+
+-- The erasure of a candidate (FR-B6) also deletes the internal notes on their applications: a note is free text about
+-- them, which the pseudonym of the application would not hide. The function is that of 20261022100200 with the one delete.
+create or replace function public.erase_user(p_user_id uuid) returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_kind public.account_kind;
+  v_requested timestamptz;
+  v_hold boolean;
+  v_email text;
+  v_pseudonym uuid := gen_random_uuid();
+  v_subject text := p_user_id::text;
+begin
+  select p.account_kind, p.deleted_at, p.legal_hold into v_kind, v_requested, v_hold
+  from public.profiles p where p.id = p_user_id for no key update;
+  if not found then
+    return false;
+  end if;
+  if v_kind is distinct from 'worker' then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'worker_account_required';
+  end if;
+  if v_requested is null then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'deletion_not_requested';
+  end if;
+  if now() < private.cooling_off_ends_at(v_requested) then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'cooling_off_not_ended';
+  end if;
+  if v_hold then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'legal_hold';
+  end if;
+  if exists (select 1 from public.platform_staff s where s.user_id = p_user_id and s.revoked_at is null) then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'platform_staff';
+  end if;
+
+  select u.email into v_email from auth.users u where u.id = p_user_id;
+  perform set_config('chara.erasure_user', v_subject, true);
+  perform set_config('chara.erasure_pseudonym', v_pseudonym::text, true);
+
+  delete from public.application_notes n using public.job_applications a
+  where a.id = n.application_id and a.worker_user_id = p_user_id;
+  update public.passport_shares
+  set worker_user_id = v_pseudonym, scope = '[]', revoked_at = coalesce(revoked_at, now())
+  where worker_user_id = p_user_id;
+  update public.job_applications a
+  set worker_user_id = v_pseudonym, cover_note = null,
+      profile_snapshot = a.profile_snapshot - 'first_name' - 'last_name' - 'headline'
+  where a.worker_user_id = p_user_id;
+  update public.application_events set actor_id = v_pseudonym where actor_id = p_user_id;
+  update public.consents set user_id = v_pseudonym where user_id = p_user_id;
+  update audit.document_access_log
+  set worker_user_id = v_pseudonym, accessed_by = case when accessed_by = p_user_id then v_pseudonym else accessed_by end
+  where worker_user_id = p_user_id;
+  update audit.log
+  set actor_id = case when actor_id = p_user_id then v_pseudonym else actor_id end,
+      entity_id = case when entity_id = v_subject then v_pseudonym::text else entity_id end,
+      ip = case when actor_id = p_user_id then null else ip end,
+      metadata = replace(metadata::text, v_subject, v_pseudonym::text)::jsonb
+  where actor_id = p_user_id or entity_id = v_subject
+     or (entity_type = 'platform_staff'
+         and entity_id = any (array(select s.id::text from public.platform_staff s where s.user_id = p_user_id)));
+
+  delete from public.worker_documents where worker_user_id = p_user_id;
+  delete from public.worker_profiles where user_id = p_user_id;
+  delete from public.profiles where id = p_user_id;
+  perform pgmq.delete('notifications', array(select n.msg_id from pgmq.q_notifications n where n.message ->> 'user_id' = v_subject));
+
+  perform set_config('chara.erasure_user', '', true);
+  perform set_config('chara.erasure_pseudonym', '', true);
+
+  perform audit.record(
+    'account.erased', 'profile', v_pseudonym::text,
+    jsonb_build_object('requested_at', v_requested, 'completed_at', now())
+  );
+  -- The auth user is deleted next, so the address travels in the message; notify must not archive it.
+  if v_email is not null then
+    perform pgmq.send('notifications', jsonb_build_object('kind', 'deletion_completed', 'email', v_email, 'mandatory', true));
+  end if;
+  return true;
+end;
+$$;
+
+revoke all on function public.erase_user(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.erase_user(uuid) to service_role;

@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(46);
 
 \ir status_fixture.inc
 
@@ -117,7 +117,7 @@ select is(
 select is(pg_temp.call_as(null, 'service_role', 'delete from public.application_notes', 'aal1'), '42501|permission denied for table application_notes|', 'service_role cannot delete a note');
 select is(pg_temp.call_as(:'mem', 'authenticated', format($$insert into public.application_notes (created_at, application_id, organization_id, body) values (now(), %L, %L, 'x')$$, :'x', current_setting('t.a')), 'aal1'), '42501|permission denied for table application_notes|', 'the time is not the caller''s to set');
 
--- A removed member and a pending invitation cannot add a note.
+-- A pending invitation, another candidate, platform staff and an anonymous session cannot add a note.
 select is(split_part(pg_temp.note_as(:'pending', :'x', current_setting('t.a')::uuid), '|', 1), '42501', 'a pending invitation cannot add a note');
 select is(split_part(pg_temp.note_as(:'wb', :'x', current_setting('t.a')::uuid), '|', 1), '42501', 'another candidate cannot add a note');
 select is(split_part(pg_temp.call_as(:'st_admin', 'authenticated', format($$insert into public.application_notes (application_id, organization_id, body) values (%L, %L, 'x')$$, :'x', current_setting('t.a')), 'aal2'), '|', 1), '42501', 'platform staff cannot add a note');
@@ -142,6 +142,28 @@ select is(
   'P0001|CHARA_FORBIDDEN|organization_suspended', 'a member of a suspended organisation cannot add a note'
 );
 select is((select count(*) from public.application_notes), 3::bigint, 'only the three accepted notes exist');
+
+-- AC4: a removed member cannot add a note from the next statement on.
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format('select public.remove_member(%L, %L)', current_setting('t.a'), :'mem'), 'aal2'), 'ok',
+  'AC4: the owner removes a member'
+);
+select is(
+  pg_temp.note_as(:'mem', :'x', current_setting('t.a')::uuid), '42501|new row violates row-level security policy for table "application_notes"|',
+  'AC4: the removed member''s note is refused by the row-level security policy'
+);
+select is((select count(*) from public.application_notes), 3::bigint, 'AC4: and no note was added');
+
+-- The erasure of a candidate (FR-B6) deletes the notes on their applications and leaves the others.
+select pg_temp.seed_app('applied', current_setting('t.a')::uuid, :'wb') as wb_app \gset
+insert into public.application_notes (application_id, organization_id, author_id, body) values (:'wb_app', current_setting('t.a')::uuid, :'own1', 'Ana Silva, weak English');
+update public.profiles set deleted_at = now() - interval '31 days' where id = :'wb';
+select is((select count(*) from public.application_notes where application_id = :'wb_app'), 1::bigint, 'the note on the application of the candidate who will be erased exists');
+select is(pg_temp.call_as(null, 'service_role', format('select public.erase_user(%L)', :'wb')), 'ok', 'erase_user runs for that candidate');
+select is(
+  (select count(*) from public.application_notes where application_id = :'wb_app') || '/' || (select count(*) from public.application_notes),
+  '0/3', 'the note on their application is deleted and the three others stay'
+);
 
 select * from finish();
 rollback;
