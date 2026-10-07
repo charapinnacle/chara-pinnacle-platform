@@ -1,0 +1,140 @@
+begin;
+select plan(21);
+
+\ir apply_fixture.inc
+
+-- Five applications of candidate A (the vacancy of the first one is hidden later), one of candidate B.
+create temp table t_jobs as
+  select n, pg_temp.open_job('Listed vacancy ' || n) as id from generate_series(1, 5) n;
+create temp table t_apps (n integer primary key, id uuid not null);
+create function pg_temp.apply_n(p_user uuid, p_n integer) returns uuid
+language plpgsql as $$
+begin
+  perform set_config('t.x', pg_temp.apply_as(p_user, (select id from t_jobs where n = p_n)), true);
+  update public.job_applications set created_at = now() - make_interval(mins => 10 - p_n) where id = current_setting('t.app')::uuid;
+  return current_setting('t.app')::uuid;
+end;
+$$;
+insert into t_apps select n, pg_temp.apply_n(:'wa', n) from generate_series(1, 5) n;
+select pg_temp.apply_n(:'wb', 1) as wb_first \gset
+select set_config('t.wb_app', current_setting('t.app'), true) as keep \gset
+
+create function pg_temp.list_as(p_user uuid, p_args text default '') returns jsonb
+language plpgsql as $$
+declare
+  v_result jsonb;
+  v_state text;
+  v_message text;
+  v_detail text;
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  set local role authenticated;
+  begin
+    execute format(
+      'select coalesce(jsonb_agg(to_jsonb(s) order by s.o), ''[]'') from (select l.*, row_number() over () as o from public.list_my_applications(%s) l) s', p_args
+    ) into v_result;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text, v_detail = pg_exception_detail;
+    v_result := to_jsonb(format('%s|%s|%s', v_state, v_message, coalesce(v_detail, '')));
+  end;
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
+  return v_result;
+end;
+$$;
+
+select is(
+  (select jsonb_agg(r ->> 'id' order by o) from jsonb_array_elements(pg_temp.list_as(:'wa')) with ordinality as x(r, o)),
+  (select jsonb_agg(id order by n desc) from t_apps), 'the list has the five applications, newest first'
+);
+select is(
+  (select r - 'id' - 'job_id' - 'applied_at' - 'o' from jsonb_array_elements(pg_temp.list_as(:'wa')) r limit 1),
+  jsonb_build_object('status', 'applied', 'job_title', 'Listed vacancy 5', 'next_cursor', null,
+                     'employer_display_name', (select display_name from public.organizations where id = current_setting('t.a')::uuid)),
+  'a row has the vacancy title, the employer display name and the status, and nothing else about the vacancy'
+);
+select is(jsonb_array_length(pg_temp.list_as(:'wb')), 1, 'another candidate gets only the own application');
+select is(pg_temp.list_as(:'own1'), to_jsonb('P0001|CHARA_FORBIDDEN|'::text), 'a company user is refused');
+select is(pg_temp.call_as(null, 'anon', 'select * from public.list_my_applications()'), '42501|permission denied for function list_my_applications|', 'anonymous callers have no EXECUTE');
+
+-- Keyset pages.
+select is(jsonb_array_length(pg_temp.list_as(:'wa', 'p_limit => 2')), 2, 'a page of two rows');
+select is(
+  (pg_temp.list_as(:'wa', 'p_limit => 2') -> 1 ->> 'next_cursor') is not null and (pg_temp.list_as(:'wa', 'p_limit => 2') -> 0 ->> 'next_cursor') is null,
+  true, 'only the last row of a page that has a next page carries the cursor'
+);
+select set_config('t.cursor', pg_temp.list_as(:'wa', 'p_limit => 2') -> 1 ->> 'next_cursor', true) as keep2 \gset
+select is(
+  (select jsonb_agg(r ->> 'job_title' order by o) from jsonb_array_elements(pg_temp.list_as(:'wa', format('p_limit => 2, p_cursor => %L', current_setting('t.cursor')))) with ordinality as x(r, o)),
+  '["Listed vacancy 3", "Listed vacancy 2"]'::jsonb, 'the next page continues after the cursor'
+);
+select is(
+  (select jsonb_agg(r ->> 'job_title') from jsonb_array_elements(pg_temp.list_as(:'wa', format('p_limit => 2, p_cursor => %L',
+     pg_temp.list_as(:'wa', format('p_limit => 2, p_cursor => %L', current_setting('t.cursor'))) -> 1 ->> 'next_cursor'))) r),
+  '["Listed vacancy 1"]'::jsonb, 'the last page has the rest and no cursor'
+);
+select is(pg_temp.list_as(:'wa', $$p_cursor => 'x'$$), to_jsonb('P0001|CHARA_INVALID_INPUT|p_cursor'::text), 'a cursor of another shape is refused');
+select is(jsonb_array_length(pg_temp.list_as(:'wa', 'p_limit => 500')), 5, 'a limit above the maximum is lowered to 50');
+
+-- The list and the page keep the application after the vacancy has left the public site.
+select pg_temp.set_status(:'own1', (select id from t_jobs where n = 1), 'paused') as paused \gset
+select pg_temp.set_status(:'own1', (select id from t_jobs where n = 2), 'closed') as closed \gset
+update public.jobs set moderation_state = 'hidden' where id = (select id from t_jobs where n = 3);
+select is(
+  (select jsonb_agg(r ->> 'job_title' order by o) from jsonb_array_elements(pg_temp.list_as(:'wa')) with ordinality as x(r, o)),
+  '["Listed vacancy 5", "Listed vacancy 4", "Listed vacancy 3", "Listed vacancy 2", "Listed vacancy 1"]'::jsonb,
+  'all five stay in the list with their titles after being paused, closed and hidden'
+);
+
+create function pg_temp.get_as(p_user uuid, p_id uuid, p_role text default 'authenticated') returns jsonb
+language plpgsql as $$
+declare
+  v_result jsonb;
+  v_state text;
+  v_message text;
+begin
+  perform set_config('request.jwt.claims', case when p_user is null then '' else json_build_object('sub', p_user, 'role', p_role, 'aal', 'aal1')::text end, true);
+  execute format('set local role %I', p_role);
+  begin
+    execute format('select coalesce(jsonb_agg(to_jsonb(g)), ''[]'') from public.get_my_application(%L) g', p_id) into v_result;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text;
+    v_result := to_jsonb(v_state || '|' || v_message);
+  end;
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
+  return v_result;
+end;
+$$;
+select is(
+  (pg_temp.get_as(:'wa', (select id from t_apps where n = 5)) -> 0) - 'id' - 'job_id' - 'applied_at',
+  jsonb_build_object('job_title', 'Listed vacancy 5', 'vacancy_is_open', true, 'status', 'applied', 'cover_note', null,
+                     'employer_display_name', (select display_name from public.organizations where id = current_setting('t.a')::uuid)),
+  'get_my_application gives the vacancy and whether it can still be opened'
+);
+select is(
+  (select string_agg((pg_temp.get_as(:'wa', a.id) -> 0 ->> 'vacancy_is_open'), ',' order by a.n) from t_apps a),
+  'false,false,false,true,true', 'the vacancy of a paused, closed or hidden vacancy cannot be opened; an open one can'
+);
+select is(pg_temp.get_as(:'wb', (select id from t_apps where n = 5)), '[]'::jsonb, 'another candidate gets no row for the application');
+select is(pg_temp.get_as(:'wa', gen_random_uuid()), '[]'::jsonb, 'an unknown id gives no row');
+select is(pg_temp.get_as(:'own1', (select id from t_apps where n = 5)), to_jsonb('P0001|CHARA_FORBIDDEN'::text), 'a company user is refused');
+select is(pg_temp.get_as(null, (select id from t_apps where n = 5), 'anon'), to_jsonb('42501|permission denied for function get_my_application'::text), 'an anonymous caller has no EXECUTE');
+
+-- The cover note of the candidate is shown back to the candidate, to nobody else.
+select pg_temp.apply_as(:'wb', pg_temp.open_job('Note vacancy'), 'My note') as noted \gset
+select is(pg_temp.get_as(:'wb', current_setting('t.app')::uuid) -> 0 ->> 'cover_note', 'My note', 'the page shows the own cover note');
+
+-- Indexes.
+select is(
+  (select count(*) from pg_indexes where tablename = 'job_applications' and indexname in
+    ('job_applications_worker_created_idx', 'job_applications_one_active_per_job_worker', 'job_applications_job_status_idx', 'job_applications_organization_idx')),
+  4::bigint, 'the list, the duplicate rule, the vacancy and the organisation each have an index'
+);
+select is(
+  (select count(*) from pg_indexes where tablename = 'application_events' and indexname in ('application_events_application_idx', 'application_events_actor_idx')),
+  2::bigint, 'the timeline and the erasure each have an index on the events'
+);
+
+select * from finish();
+rollback;
