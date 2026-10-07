@@ -811,6 +811,11 @@ isOneToOne: false
               "csv_export_available": boolean,"note_max_chars": number,"shortlisting_available": boolean,"stage_change_blocked": string
             }[]
                            },
+"get_board_counts":
+{ Args: { "p_job_id": string }; Returns: {
+              "status": Database["public"]['Enums']["application_status"],"total": number
+            }[]
+                           },
 "get_my_application":
 { Args: { "p_id": string }; Returns: {
               "applied_at": string,"cover_note": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"status": Database["public"]['Enums']["application_status"],"vacancy_is_open": boolean

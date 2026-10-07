@@ -1,5 +1,5 @@
 begin;
-select plan(38);
+select plan(51);
 
 \ir applicants_fixture.inc
 
@@ -85,9 +85,12 @@ select is(pg_temp.val_as(:'st_trust', 'aal2', 'select count(*) from public.v_job
 select is(pg_temp.val_as(:'st_review', 'aal2', 'select count(*) from public.v_job_applicants'), '0', 'AC10: a verification reviewer sees none');
 select is(pg_temp.call_as(null, 'anon', 'select 1 from public.v_job_applicants'), '42501|permission denied for view v_job_applicants|', 'AC10: an anonymous request is denied by the missing grant');
 select is(pg_temp.call_as(null, 'service_role', 'select 1 from public.v_job_applicants'), '42501|permission denied for view v_job_applicants|', 'AC10: service_role is denied too');
+select pg_temp.seed_applicant(pg_temp.seed_job('{"status": "open"}', (select org from t_b)), (select org from t_b), 'applied', now(), 'Sus Pended', 10, 2) as sus \gset
+select passport_share_id as sus_share from public.job_applications where id = :'sus' \gset
+select is(pg_temp.val_as(:'mb', 'aal1', format('select private.application_document_count(%L)', :'sus_share')), '2', 'AC11: a member of an active organisation reads the document count of its share');
 update public.organizations set status = 'suspended' where id = (select org from t_b);
-select pg_temp.seed_applicant(pg_temp.seed_job('{"status": "open"}', (select org from t_b)), (select org from t_b), 'applied', now(), 'Sus Pended', 10, 0);
 select is(pg_temp.val_as(:'mb', 'aal1', 'select count(*) from public.v_job_applicants'), '0', 'AC11: the members of a suspended organisation see none of its applicants');
+select is(pg_temp.val_as(:'mb', 'aal1', format('select private.application_document_count(%L)', :'sus_share')), null, 'AC11: and the document count of its share is null for them');
 
 -- A candidate reads the own application through the view and nothing else.
 select pg_temp.apply_as(:'wa', pg_temp.open_job('Own vacancy', (select org from t_a))) as applied \gset
@@ -146,10 +149,41 @@ select is(pg_temp.access_of(:'m1', (select org from t_b)), '[]'::jsonb, 'access:
 select is(pg_temp.access_of(:'wa', (select org from t_a)), to_jsonb('P0001|CHARA_FORBIDDEN|company_account_required'::text), 'access: a candidate is refused');
 select is(pg_temp.call_as(null, 'anon', format('select * from public.get_applicant_access(%L)', (select org from t_a))), '42501|permission denied for function get_applicant_access|', 'access: an anonymous caller has no EXECUTE');
 
+-- A pending invitee and a removed member of organisation A are not members: no access row, no applicant and no count.
+select pg_temp.ex_member((select org from t_a), false) as pending_a \gset
+select pg_temp.ex_member((select org from t_a), true) as removed_a \gset
+select is(pg_temp.access_of(:'pending_a', (select org from t_a)), '[]'::jsonb, 'AC10: an invitee who has not accepted gets no access row');
+select is(pg_temp.val_as(:'pending_a', 'aal1', 'select count(*) from public.v_job_applicants'), '0', 'AC10: and sees no applicant');
+select is(pg_temp.val_as(:'pending_a', 'aal1', format('select private.application_document_count(%L)', :'ana_share')), null, 'AC10: and reads no document count');
+select is(pg_temp.access_of(:'removed_a', (select org from t_a)), '[]'::jsonb, 'AC10: a removed member gets no access row');
+select is(pg_temp.val_as(:'removed_a', 'aal1', 'select count(*) from public.v_job_applicants'), '0', 'AC10: and sees no applicant');
+select is(pg_temp.val_as(:'removed_a', 'aal1', format('select private.application_document_count(%L)', :'ana_share')), null, 'AC10: and reads no document count');
+
+-- get_board_counts: the stages of one vacancy as the caller may read them.
+create function pg_temp.board_counts_of(p_user uuid, p_job uuid) returns jsonb
+language sql as $$ select pg_temp.json_as(p_user, format('select status, total from public.get_board_counts(%L) order by status', p_job)) $$;
+select job_id as sus_job from public.job_applications where id = :'sus' \gset
+select is(
+  pg_temp.board_counts_of(:'m1', (select id from t_j)),
+  '[{"status": "applied", "total": 1}, {"status": "shortlisted", "total": 1}, {"status": "hired", "total": 2}, {"status": "withdrawn", "total": 1}]'::jsonb,
+  'board counts: a member reads the number of applications of each stage, a stage with none has no row'
+);
+select is(pg_temp.board_counts_of(:'m1', :'sus_job'), '[]'::jsonb, 'board counts: a vacancy of another organisation counts nothing');
+select is(
+  pg_temp.board_counts_of(:'pending_a', (select id from t_j)) || pg_temp.board_counts_of(:'removed_a', (select id from t_j)) || pg_temp.board_counts_of(:'wb', (select id from t_j)),
+  '[]'::jsonb, 'board counts: an invitee, a removed member and another candidate count nothing'
+);
+select is(pg_temp.call_as(null, 'anon', format('select * from public.get_board_counts(%L)', (select id from t_j))), '42501|permission denied for function get_board_counts|', 'board counts: an anonymous caller has no EXECUTE');
+
 -- Indexes of the list and the sort of the view.
 select is(
-  (select count(*) from pg_indexes where tablename = 'job_applications' and indexname in ('job_applications_job_created_idx', 'job_applications_organization_created_idx')),
-  2::bigint, 'the vacancy list and the organisation list each have an index in the order of the list'
+  (select count(*) from pg_indexes where tablename = 'job_applications' and indexname in ('job_applications_job_created_idx', 'job_applications_organization_created_idx', 'job_applications_organization_status_idx')),
+  3::bigint, 'the vacancy list, the organisation list and its sort by stage each have an index in the order of the list'
+);
+select is(
+  (select indexdef from pg_indexes where indexname = 'job_applications_organization_status_idx'),
+  'CREATE INDEX job_applications_organization_status_idx ON public.job_applications USING btree (organization_id, status, created_at DESC, id DESC)',
+  'the stage sort of the organisation list is served by an index'
 );
 select is(
   (select indexdef from pg_indexes where indexname = 'job_applications_job_created_idx'),

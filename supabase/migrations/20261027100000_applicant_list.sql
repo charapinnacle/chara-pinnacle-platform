@@ -110,10 +110,12 @@ from public.job_applications a;
 revoke all on public.v_job_applicants from public, anon, authenticated, service_role;
 grant select on public.v_job_applicants to authenticated;
 
--- The list of one vacancy (newest first, any stage) and of the whole organisation. The index of the organisation alone
--- is a prefix of the second, so it goes.
+-- The list of one vacancy (newest first, any stage) and of the whole organisation, which is sorted by applied date or by
+-- stage only (completeness and documents are not columns, so they would sort every application of the organisation). The
+-- index of the organisation alone is a prefix of the second, so it goes.
 create index job_applications_job_created_idx on public.job_applications (job_id, created_at desc, id desc);
 create index job_applications_organization_created_idx on public.job_applications (organization_id, created_at desc, id desc);
+create index job_applications_organization_status_idx on public.job_applications (organization_id, status, created_at desc, id desc);
 drop index public.job_applications_organization_idx;
 
 -- What the applicant pages of an organisation offer: the stage change is blocked for a lapsed organisation (or any on
@@ -152,10 +154,10 @@ grant execute on function public.get_applicant_access(uuid) to authenticated;
 -- The applicants of one vacancy, optionally of one stage, for the CSV file: a json array of
 -- {candidate_name, status, applied_at, completeness, documents}, newest first, the rows the list shows and nothing else.
 -- It is one value because the Data API cuts a set of rows at 100. One audit row records who exported which vacancy and
--- how many rows, never a candidate. Errors: CHARA_UNAUTHENTICATED, CHARA_INVALID_INPUT (p_job_id), CHARA_NOT_FOUND
--- (a vacancy of another organisation is the same as one that does not exist), CHARA_FEATURE_NOT_IN_PLAN (detail
--- read_only_free_plan, or csv_export when the plan lacks it), CHARA_LIMIT_REACHED (detail applicant_export_max_rows),
--- CHARA_SETTING_MISSING.
+-- how many rows, never a candidate. Errors: CHARA_UNAUTHENTICATED, CHARA_FORBIDDEN (company_account_required),
+-- CHARA_INVALID_INPUT (p_job_id), CHARA_NOT_FOUND (a vacancy of another organisation is the same as one that does not
+-- exist), CHARA_FEATURE_NOT_IN_PLAN (detail read_only_free_plan, or csv_export when the plan lacks it),
+-- CHARA_LIMIT_REACHED (detail applicant_export_max_rows), CHARA_SETTING_MISSING.
 create function public.export_applicants(p_job_id uuid, p_stage public.application_status default null) returns jsonb
 language plpgsql
 security definer
@@ -164,11 +166,13 @@ as $$
 declare
   v_max integer := (select (s.value #>> '{}')::integer from private.settings s where s.key = 'applicant_export_max_rows');
   v_org uuid;
-  v_count integer;
   v_rows jsonb;
 begin
   if (select auth.uid()) is null then
     raise exception 'CHARA_UNAUTHENTICATED' using errcode = '42501';
+  end if;
+  if private.account_kind() is distinct from 'company' then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'company_account_required';
   end if;
   if p_job_id is null then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_job_id';
@@ -188,23 +192,25 @@ begin
     raise exception 'CHARA_SETTING_MISSING' using detail = 'applicant_export_max_rows';
   end if;
 
-  select count(*) into v_count from public.job_applications a
-  where a.job_id = p_job_id and (p_stage is null or a.status = p_stage);
-  if v_count > v_max then
-    raise exception 'CHARA_LIMIT_REACHED' using detail = 'applicant_export_max_rows';
-  end if;
-
+  -- One more row than the limit is read, so that a larger filter is refused and the audited count is the one exported.
   select coalesce(jsonb_agg(jsonb_build_object(
     'candidate_name', v.candidate_name, 'status', v.status, 'applied_at', v.applied_at,
     'completeness', v.completeness, 'documents', v.documents
   ) order by v.applied_at desc, v.id desc), '[]')
   into v_rows
-  from public.v_job_applicants v
-  where v.job_id = p_job_id and (p_stage is null or v.status = p_stage);
+  from (
+    select * from public.v_job_applicants x
+    where x.job_id = p_job_id and (p_stage is null or x.status = p_stage)
+    order by x.applied_at desc, x.id desc
+    limit v_max + 1
+  ) v;
+  if jsonb_array_length(v_rows) > v_max then
+    raise exception 'CHARA_LIMIT_REACHED' using detail = 'applicant_export_max_rows';
+  end if;
 
   perform audit.record(
     'applicants_exported', 'job', p_job_id::text,
-    jsonb_build_object('organization_id', v_org, 'stage', p_stage, 'rows', v_count)
+    jsonb_build_object('organization_id', v_org, 'stage', p_stage, 'rows', jsonb_array_length(v_rows))
   );
   return v_rows;
 end;
@@ -212,3 +218,18 @@ $$;
 
 revoke all on function public.export_applicants(uuid, public.application_status) from public, anon, authenticated, service_role;
 grant execute on function public.export_applicants(uuid, public.application_status) to authenticated;
+
+-- The number of applications of a vacancy in each stage, for the board to poll: one request instead of the eight column
+-- reads. It runs with the rights of the caller, so the row policy of FR-D5 decides what is counted; a stage with no
+-- application has no row.
+create function public.get_board_counts(p_job_id uuid) returns table (status public.application_status, total bigint)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select a.status, count(*) from public.job_applications a where a.job_id = p_job_id group by a.status
+$$;
+
+revoke all on function public.get_board_counts(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.get_board_counts(uuid) to authenticated;

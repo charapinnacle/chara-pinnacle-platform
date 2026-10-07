@@ -1,5 +1,5 @@
 begin;
-select plan(45);
+select plan(48);
 
 \ir applicants_fixture.inc
 
@@ -123,7 +123,12 @@ select is(pg_temp.set_as(:'wa', :'ana_app', 'interview'), 'P0001|CHARA_FORBIDDEN
 select is(pg_temp.call_as(null, 'anon', format('select public.set_application_status(%L, ''interview'')', :'ana_app')), '42501|permission denied for function set_application_status|', 'AC10: an anonymous call has no EXECUTE');
 
 select is(pg_temp.export_as(:'mn', :'jp'), to_jsonb('P0002|CHARA_NOT_FOUND|'::text), 'AC10: a member of B cannot export a vacancy of A');
-select is(pg_temp.export_as(:'wb', :'jp'), to_jsonb('P0002|CHARA_NOT_FOUND|'::text), 'AC10: nor another candidate');
+select is(pg_temp.export_as(:'wb', :'jp'), to_jsonb('P0001|CHARA_FORBIDDEN|company_account_required'::text), 'AC10: another candidate is refused as a candidate');
+select is(pg_temp.export_as(:'wa', :'jp'), to_jsonb('P0001|CHARA_FORBIDDEN|company_account_required'::text), 'AC10: and so is the candidate who applied to the vacancy');
+select pg_temp.ex_member((select org from t_p), false) as pending_a \gset
+select pg_temp.ex_member((select org from t_p), true) as removed_a \gset
+select is(pg_temp.export_as(:'pending_a', :'jp'), to_jsonb('P0002|CHARA_NOT_FOUND|'::text), 'AC10: an invitee who has not accepted cannot export');
+select is(pg_temp.export_as(:'removed_a', :'jp'), to_jsonb('P0002|CHARA_NOT_FOUND|'::text), 'AC10: nor a removed member');
 select is(pg_temp.export_as(:'st_admin', :'jp'), to_jsonb('P0002|CHARA_NOT_FOUND|'::text), 'AC10: nor a platform administrator');
 select is(pg_temp.call_as(null, 'authenticated', format('select public.export_applicants(%L)', :'jp'), 'aal1'), '42501|CHARA_UNAUTHENTICATED|', 'AC10: a session without a user is unauthenticated');
 select is(pg_temp.call_as(null, 'anon', format('select public.export_applicants(%L)', :'jp')), '42501|permission denied for function export_applicants|', 'AC10: an anonymous call has no EXECUTE');

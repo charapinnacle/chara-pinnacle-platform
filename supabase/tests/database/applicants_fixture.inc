@@ -33,3 +33,21 @@ begin
   return v_app;
 end;
 $$;
+
+-- A user of an organisation who has no access: p_removed false is an invitee who has not accepted, true a member who was
+-- removed. Both are company accounts, so only the membership keeps them out.
+create function pg_temp.ex_member(p_org uuid, p_removed boolean) returns uuid
+language plpgsql as $$
+declare
+  v_user uuid := gen_random_uuid();
+begin
+  perform pg_temp.new_user(v_user);
+  update public.profiles set account_kind = intended_account_kind where id = v_user;
+  insert into public.organization_members (organization_id, user_id, role, accepted_at)
+  values (p_org, v_user, 'member', case when p_removed then now() end);
+  if p_removed then
+    delete from public.organization_members where organization_id = p_org and user_id = v_user;
+  end if;
+  return v_user;
+end;
+$$;
