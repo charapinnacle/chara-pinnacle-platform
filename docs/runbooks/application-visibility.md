@@ -14,7 +14,7 @@ FR-D5, design point D56 (OPEN_QUESTIONS.md). The SOP is "Application Visibility 
 
 ## 2. The log of attempts across organisations
 
-`set_application_status` (and each item of `bulk_set_application_status`), `mark_application_viewed`, `withdraw_application`, `get_applicant` and `list_applicant_events` write one line to the Postgres log when the caller asks for an application that exists and is neither the caller's own nor one of the caller's organisations:
+`set_application_status` (and each item of `bulk_set_application_status`), `mark_application_viewed`, `withdraw_application`, `get_applicant`, `list_applicant_events`, `application_documents`, `application_profile_changed` and `list_application_notes` write one line to the Postgres log when the caller asks for an application that exists and is neither the caller's own nor one of the caller's organisations:
 
 ```
 LOG:  CHARA_CROSS_TENANT caller=<user id> function=<name> application=<application id>
