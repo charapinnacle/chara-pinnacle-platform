@@ -13,7 +13,7 @@ type Applicant = {
   status: ApplicationStatus;
   appliedAt: string;
   shortlistingAvailable: boolean;
-  stageChangeBlocked: "organization_suspended" | "read_only_free_plan" | null;
+  stageChangeBlocked: "read_only_free_plan" | null;
   noteMaxChars: number;
 };
 

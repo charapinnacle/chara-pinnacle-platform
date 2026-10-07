@@ -103,7 +103,13 @@ export async function requireCandidate(lang: string): Promise<CurrentUser> {
   return user;
 }
 
-type OrganizationAccess = { id: string; slug: string; displayName: string; role: MemberRole };
+type OrganizationAccess = {
+  id: string;
+  slug: string;
+  displayName: string;
+  role: MemberRole;
+  suspended: boolean;
+};
 
 type OrgRoleOptions = {
   // Vacancy pages are not gated by two-step verification (FR-A4 AC3).
@@ -126,7 +132,7 @@ export async function requireOrgRole(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_members")
-    .select("role, organizations!inner(id, slug, display_name)")
+    .select("role, organizations!inner(id, slug, display_name, status)")
     .eq("user_id", user.id)
     .eq("organizations.slug", slug)
     .not("accepted_at", "is", null)
@@ -135,6 +141,6 @@ export async function requireOrgRole(
   if (!data && hideFromOutsiders) notFound();
   if (!data || roleRank[data.role] < roleRank[minRole]) redirect(`/${lang}/forbidden`);
   if (mfa && data.role !== "member") await requireAal2(lang, user);
-  const { id, display_name } = data.organizations;
-  return { user, organization: { id, slug, displayName: display_name, role: data.role } };
+  const { id, display_name, status } = data.organizations;
+  return { user, organization: { id, slug, displayName: display_name, role: data.role, suspended: status === "suspended" } };
 }

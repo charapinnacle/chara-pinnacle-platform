@@ -71,7 +71,7 @@ where a.status <> 'applied'
 
 - U29 (journey tracker) replaced the timeline of `/applications/[id]` by `v_my_application_timeline` and added the next-step texts (`docs/runbooks/journey-tracker.md`); the note is shown there as `Message from the employer`.
 - U30 (withdraw) built `withdraw_application` on `private.move_application` and the `candidate` branch of `allowedTargets`; see `docs/runbooks/application-withdrawal.md`. Its audit row is `application.withdrawn`, not `application.status_changed`.
-- U31 adds the employer read policies of the two tables and `application_notes`; U32 to U35 call `set_application_status` and `bulk_set_application_status` from the list and the board and link to the applicant page; U33 reuses `mark_application_viewed` as `open_application` and reconciles its AC3 (the actor of the Viewed event is null here); U34 adds the selection, the confirmation step and the reason templates in front of `bulk_set_application_status`.
+- U31 (FR-D5) added the employer read policies of the two tables and `application_notes` (`docs/runbooks/application-visibility.md`), and the applicant page now refuses a suspended organisation instead of reading with a notice; U32 to U35 call `set_application_status` and `bulk_set_application_status` from the list and the board and link to the applicant page; U33 reuses `mark_application_viewed` as `open_application` and reconciles its AC3 (the actor of the Viewed event is null here); U34 adds the selection, the confirmation step and the reason templates in front of `bulk_set_application_status`.
 - U37 and U38: `notify` reads the `status_changed` messages above.
 
 ## 6. Semi-annual review

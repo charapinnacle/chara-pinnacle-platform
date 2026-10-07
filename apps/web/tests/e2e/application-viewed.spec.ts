@@ -102,13 +102,12 @@ test.describe("the first open of an application", () => {
     expect(eventRows(applicationId)).toHaveLength(1);
   });
 
-  test("FR-D2 AC3: a suspended organisation reads the applicant, the stage stays Applied and no stage can be chosen", async ({ page }) => {
+  test("FR-D2 AC3, FR-D5 AC11: a suspended organisation is refused the applicant and nothing is opened", async ({ page }) => {
     const { company, member, applicationId } = await setup();
     execute(`update public.organizations set status = 'suspended' where id = ${literal(company.id)}`);
     await logIn(page, member, applicantUrl(company.slug, applicationId));
-    await expect(page.getByRole("heading", { name: "Ana Silva", level: 1 })).toBeVisible();
-    await expect(stageValue(page)).toHaveText("Applied");
-    await expect(page.getByRole("status").filter({ hasText: "Your organization is suspended, so the stage cannot be changed." })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended, so its applicants are not available." })).toBeVisible();
+    await expect(page.getByText("Ana Silva")).toHaveCount(0);
     await expect(changeStageButton(page)).toHaveCount(0);
     expect(query<{ n: number }>(`select count(*)::int as n from public.application_events where application_id = ${literal(applicationId)}`)[0].n).toBe(1);
   });

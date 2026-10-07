@@ -39,8 +39,8 @@ vi.mock("@/lib/supabase/server", () => ({
 
 const { requireOrgRole } = await import("@/lib/dal/session");
 
-function membership(role: "owner" | "admin" | "member") {
-  return { data: { role, organizations: { id: "org-1", slug: "acme-bau", display_name: "Acme Bau" } }, error: null };
+function membership(role: "owner" | "admin" | "member", status: "active" | "suspended" = "active") {
+  return { data: { role, organizations: { id: "org-1", slug: "acme-bau", display_name: "Acme Bau", status } }, error: null };
 }
 
 beforeEach(() => {
@@ -58,10 +58,15 @@ describe("requireOrgRole", () => {
   it("looks the membership up by user and slug and returns the organization with the role", async () => {
     await expect(requireOrgRole("en", "acme-bau", "member")).resolves.toMatchObject({
       user: { id: "user-1" },
-      organization: { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", role: "owner" },
+      organization: { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", role: "owner", suspended: false },
     });
     expect(eqCalls).toContainEqual(["organization_members.user_id", "user-1"]);
     expect(eqCalls).toContainEqual(["organization_members.organizations.slug", "acme-bau"]);
+  });
+
+  it("tells a suspended organization from an active one", async () => {
+    membershipMock.mockResolvedValue(membership("member", "suspended"));
+    await expect(requireOrgRole("en", "acme-bau", "member")).resolves.toMatchObject({ organization: { suspended: true } });
   });
 
   it("sends a visitor without a session to log in", async () => {

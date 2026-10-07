@@ -24,6 +24,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"application_notes": {
+                  Row: {
+                    "application_id": string,"author_id": string,"body": string,"created_at": string,"id": number,"organization_id": string
+                  }
+                  Insert: {
+                    "application_id": string,"author_id"?: string,"body": string,"created_at"?: string,"id"?: never,"organization_id": string
+                  }
+                  Update: {
+                    "application_id"?: string,"author_id"?: string,"body"?: string,"created_at"?: string,"id"?: never,"organization_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "application_notes_application_id_organization_id_fkey"
+      columns: ["application_id","organization_id"]
+isOneToOne: false
+      referencedRelation: "job_applications"
+      referencedColumns: ["id","organization_id"]
+    },{
+      foreignKeyName: "application_notes_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "application_notes_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"consents": {
                   Row: {
                     "action": Database["public"]['Enums']["consent_action"],"created_at": string,"id": number,"purpose": string,"user_id": string,"version": number
@@ -594,13 +625,7 @@ isOneToOne: false
                   Row: {
                     "actor_role": string | null,"application_id": string | null,"created_at": string | null,"from_status": Database["public"]['Enums']["application_status"] | null,"note": string | null,"to_status": Database["public"]['Enums']["application_status"] | null
                   }
-                  Insert: {
-                           "actor_role"?: never,"application_id"?: string | null,"created_at"?: string | null,"from_status"?: Database["public"]['Enums']["application_status"] | null,"note"?: string | null,"to_status"?: Database["public"]['Enums']["application_status"] | null
-                         }
-                        Update: {
-                           "actor_role"?: never,"application_id"?: string | null,"created_at"?: string | null,"from_status"?: Database["public"]['Enums']["application_status"] | null,"note"?: string | null,"to_status"?: Database["public"]['Enums']["application_status"] | null
-                         }
-                        Relationships: [
+                  Relationships: [
                     {
       foreignKeyName: "application_events_application_id_fkey"
       columns: ["application_id"]

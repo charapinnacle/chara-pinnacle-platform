@@ -11,19 +11,26 @@ import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
 
-const blockedText = {
-  organization_suspended: "Your organization is suspended, so the stage cannot be changed.",
-  read_only_free_plan: "Your organization has no active paid plan, so the stage cannot be changed.",
-} as const;
+const blockedText = "Your organization has no active paid plan, so the stage cannot be changed.";
 
 const actorText = { candidate: "Candidate", system: "System" } as const;
 
 // The first open by a member is the system's move from Applied to Viewed, made before the page is read so that it shows the
 // stage the candidate sees. An application of another organisation, or one that is not the organisation of the address,
-// is not found.
+// is not found. A suspended organisation's applicants are not shown at all (FR-D5).
 export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[slug]/applicants/[applicationId]">) {
   const { lang, slug, applicationId } = await params;
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true });
+  if (organization.suspended) {
+    return (
+      <div className="mx-auto grid w-full max-w-3xl gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Applicants</h1>
+        <Notice tone="error" role="alert">
+          This organization is suspended, so its applicants are not available.
+        </Notice>
+      </div>
+    );
+  }
   const id = z.uuid().safeParse(applicationId);
   if (!id.success) notFound();
   const first = await getApplicant(id.data);
@@ -57,7 +64,7 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
 
       {applicant.stageChangeBlocked ? (
         <Notice tone="info" role="status">
-          {blockedText[applicant.stageChangeBlocked]}
+          {blockedText}
         </Notice>
       ) : targets.length > 0 ? (
         <div>

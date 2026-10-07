@@ -37,7 +37,7 @@ language sql as $$
 $$;
 create temp table t_suspended as select pg_temp.org_on() as org;
 update public.organizations set status = 'suspended' where id = (select org from t_suspended);
-select is(pg_temp.blocked((select org from t_suspended)), '{"stage_change_blocked": "organization_suspended", "shortlisting_available": true}', 'a suspended organisation is reported as blocked');
+select is(pg_temp.blocked((select org from t_suspended)), null, 'a suspended organisation''s applicant is not returned (FR-D5 AC11)');
 select is(pg_temp.blocked(pg_temp.org_on('employer_starter', 'canceled')), '{"stage_change_blocked": "read_only_free_plan", "shortlisting_available": false}', 'a lapsed organisation is read only and has no shortlisting');
 select is(pg_temp.blocked(pg_temp.org_on('employer_noshort')), '{"stage_change_blocked": null, "shortlisting_available": true}', 'with limits not enforced a plan without the feature still offers it');
 update private.settings set value = 'true' where key = 'entitlements_enforced';
