@@ -22,6 +22,12 @@ export type Database = {
 isOneToOne: false
       referencedRelation: "job_applications"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "application_events_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "v_job_applicants"
+      referencedColumns: ["id"]
     }
                   ]
                 },"application_notes": {
@@ -40,6 +46,12 @@ isOneToOne: false
       columns: ["application_id","organization_id"]
 isOneToOne: false
       referencedRelation: "job_applications"
+      referencedColumns: ["id","organization_id"]
+    },{
+      foreignKeyName: "application_notes_application_id_organization_id_fkey"
+      columns: ["application_id","organization_id"]
+isOneToOne: false
+      referencedRelation: "v_job_applicants"
       referencedColumns: ["id","organization_id"]
     },{
       foreignKeyName: "application_notes_organization_id_fkey"
@@ -392,6 +404,12 @@ isOneToOne: false
       referencedRelation: "job_applications"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "passport_shares_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "v_job_applicants"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "passport_shares_organization_id_fkey"
       columns: ["organization_id"]
 isOneToOne: false
@@ -621,7 +639,38 @@ isOneToOne: false
                 }
           }
           Views: {
-            "v_my_application_timeline": {
+            "v_job_applicants": {
+                  Row: {
+                    "applied_at": string | null,"candidate_name": string | null,"completeness": number | null,"documents": number | null,"id": string | null,"job_id": string | null,"job_title": string | null,"organization_id": string | null,"status": Database["public"]['Enums']["application_status"] | null
+                  }
+                  Insert: {
+                           "applied_at"?: string | null,"candidate_name"?: never,"completeness"?: never,"documents"?: never,"id"?: string | null,"job_id"?: string | null,"job_title"?: never,"organization_id"?: string | null,"status"?: Database["public"]['Enums']["application_status"] | null
+                         }
+                        Update: {
+                           "applied_at"?: string | null,"candidate_name"?: never,"completeness"?: never,"documents"?: never,"id"?: string | null,"job_id"?: string | null,"job_title"?: never,"organization_id"?: string | null,"status"?: Database["public"]['Enums']["application_status"] | null
+                         }
+                        Relationships: [
+                    {
+      foreignKeyName: "job_applications_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "job_applications_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "job_applications_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
+                },"v_my_application_timeline": {
                   Row: {
                     "actor_role": string | null,"application_id": string | null,"created_at": string | null,"from_status": Database["public"]['Enums']["application_status"] | null,"note": string | null,"to_status": Database["public"]['Enums']["application_status"] | null
                   }
@@ -631,6 +680,12 @@ isOneToOne: false
       columns: ["application_id"]
 isOneToOne: false
       referencedRelation: "job_applications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "application_events_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "v_job_applicants"
       referencedColumns: ["id"]
     }
                   ]
@@ -743,9 +798,17 @@ isOneToOne: false
 "erase_user":
 { Args: { "p_user_id": string }; Returns: boolean
                            },
+"export_applicants":
+{ Args: { "p_job_id": string,"p_stage"?: Database["public"]['Enums']["application_status"] }; Returns: Json
+                           },
 "get_applicant":
 { Args: { "p_application_id": string }; Returns: {
               "applicant_name": string,"applied_at": string,"id": string,"job_id": string,"job_title": string,"note_max_chars": number,"organization_id": string,"shortlisting_available": boolean,"stage_change_blocked": string,"status": Database["public"]['Enums']["application_status"]
+            }[]
+                           },
+"get_applicant_access":
+{ Args: { "p_organization_id": string }; Returns: {
+              "csv_export_available": boolean,"note_max_chars": number,"shortlisting_available": boolean,"stage_change_blocked": string
             }[]
                            },
 "get_my_application":

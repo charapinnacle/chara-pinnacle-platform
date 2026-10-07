@@ -35,5 +35,8 @@ values
   ('employer_professional', 'shortlisting'),
   ('employer_professional', 'analytics_advanced'),
   ('employer_enterprise', 'shortlisting'),
-  ('employer_enterprise', 'analytics_advanced')
+  ('employer_enterprise', 'analytics_advanced'),
+  ('employer_starter', 'csv_export'),
+  ('employer_professional', 'csv_export'),
+  ('employer_enterprise', 'csv_export')
 on conflict (plan_code, feature_key) do nothing;

@@ -65,7 +65,7 @@ select is(pg_temp.get_as(:'wb', current_setting('t.app')::uuid) -> 0 ->> 'cover_
 -- Indexes.
 select is(
   (select count(*) from pg_indexes where tablename = 'job_applications' and indexname in
-    ('job_applications_worker_created_idx', 'job_applications_one_active_per_job_worker', 'job_applications_job_status_idx', 'job_applications_organization_idx')),
+    ('job_applications_worker_created_idx', 'job_applications_one_active_per_job_worker', 'job_applications_job_status_idx', 'job_applications_organization_created_idx')),
   4::bigint, 'the list, the duplicate rule, the vacancy and the organisation each have an index'
 );
 select is(

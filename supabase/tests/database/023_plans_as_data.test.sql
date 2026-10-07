@@ -97,10 +97,10 @@ select results_eq(
 select results_eq(
   $$select plan_code, feature_key from billing.plan_features order by plan_code, feature_key$$,
   $$values
-    ('employer_enterprise', 'analytics_advanced'), ('employer_enterprise', 'shortlisting'),
-    ('employer_professional', 'analytics_advanced'), ('employer_professional', 'shortlisting'),
-    ('employer_starter', 'shortlisting')$$,
-  'shortlisting is on every paid plan, analytics_advanced on Professional and Enterprise, and the free plan has no feature'
+    ('employer_enterprise', 'analytics_advanced'), ('employer_enterprise', 'csv_export'), ('employer_enterprise', 'shortlisting'),
+    ('employer_professional', 'analytics_advanced'), ('employer_professional', 'csv_export'), ('employer_professional', 'shortlisting'),
+    ('employer_starter', 'csv_export'), ('employer_starter', 'shortlisting')$$,
+  'shortlisting and csv_export are on every paid plan, analytics_advanced on Professional and Enterprise, and the free plan has no feature'
 );
 select is_empty(
   $$select 1 from billing.plan_limits where limit_key = any (array['active_requirements', 'messages_per_month',
@@ -142,7 +142,7 @@ select is(
 select is(
   (select format('%s|%s|%s', count(*), sum(price_minor), (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features))
    from billing.plans),
-  '4|11800|13', 'no plan, limit or feature row changed'
+  '4|11800|16', 'no plan, limit or feature row changed'
 );
 select is(
   (select count(*) from (values ('anon'), ('authenticated')) r (rol)
@@ -186,7 +186,7 @@ select is(
 );
 select is(
   pg_temp.read_as(null, 'anon', 'aal1', $$select format('%s|%s|%s|%s|%s|%s|%s|%s|%s', code, name, price_minor, currency, interval, trial_days, limits ->> 'active_jobs', limits ->> 'members', features) from public.v_plans where code = 'employer_professional'$$),
-  'employer_professional|Professional|7900|EUR|month|30|15|5|["analytics_advanced", "shortlisting"]',
+  'employer_professional|Professional|7900|EUR|month|30|15|5|["analytics_advanced", "csv_export", "shortlisting"]',
   'a plan row carries code, name, price, currency, interval, trial days, limits and features'
 );
 select is(
@@ -257,7 +257,7 @@ select throws_ok($$insert into billing.plan_limits values ('employer_starter', '
 select throws_ok($$insert into billing.plan_limits values ('no_such_plan', 'probe_limit', 1)$$, '23503', null, 'a limit of a plan that does not exist is refused');
 select throws_ok($$insert into billing.plan_features values ('no_such_plan', 'probe_feature')$$, '23503', null, 'a feature of a plan that does not exist is refused');
 select throws_ok($$insert into billing.plan_features values ('employer_starter', 'Bad Key')$$, '23514', null, 'a feature key that is not snake_case is refused');
-select is((select count(*) from billing.plans) + (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features), 17::bigint,
+select is((select count(*) from billing.plans) + (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features), 20::bigint,
   'the refused statements wrote no row');
 select lives_ok(
   $$insert into billing.plans (code, org_type, name, price_minor, currency, interval, trial_days, is_public, sort) values ('probe_zero', 'employer', 'Zero', 0, 'EUR', 'month', 0, false, 90),

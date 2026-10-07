@@ -148,9 +148,10 @@ select is(
     'available_from', null, 'skills', jsonb_build_array('MIG welding', 'TIG welding'),
     'languages', jsonb_build_array(jsonb_build_object('code', 'de', 'level', 'A2'), jsonb_build_object('code', 'en', 'level', 'C1')),
     'preferred_countries', jsonb_build_array('AE', 'DE'),
-    'work_authorizations', jsonb_build_array(jsonb_build_object('country', 'NG', 'expires_on', '2030-05-01'))
+    'work_authorizations', jsonb_build_array(jsonb_build_object('country', 'NG', 'expires_on', '2030-05-01')),
+    'completeness', 85
   ),
-  'AC9: the snapshot holds the name, headline, country, occupation, skills, languages with levels, experience, availability, preferred countries and work authorisation with expiry'
+  'AC9: the snapshot holds the name, headline, country, occupation, skills, languages with levels, experience, availability, preferred countries, work authorisation with expiry and the completeness of the passport'
 );
 select is(
   (select count(*) from jsonb_object_keys(current_setting('t.snap')::jsonb) k where k ~* 'mail|birth|path|file|document|nationality'),
