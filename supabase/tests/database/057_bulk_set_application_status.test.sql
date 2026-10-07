@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(44);
 
 \ir status_fixture.inc
 
@@ -52,6 +52,7 @@ select is(
   pg_temp.bulk_as(:'mem', array(select a1 from t_ten union all select a1 from t_ten) || array(select gen_random_uuid() from generate_series(1, 99)), 'interview'),
   to_jsonb('P0001|CHARA_INVALID_INPUT|p_application_ids'::text), '101 ids as sent are refused although two are the same'
 );
+select is(pg_temp.bulk_as(:'mem', array[(select a1 from t_ten)], null), to_jsonb('P0001|CHARA_INVALID_INPUT|p_status'::text), 'a null target is refused');
 select is(pg_temp.bulk_as(:'mem', array[(select a1 from t_ten)], 'applied'), to_jsonb('P0001|CHARA_INVALID_INPUT|p_status'::text), 'the target applied is refused');
 select is(pg_temp.bulk_as(:'mem', array[(select a1 from t_ten)], 'viewed'), to_jsonb('P0001|CHARA_INVALID_INPUT|p_status'::text), 'the target viewed is refused');
 select is(pg_temp.bulk_as(:'mem', array[(select a1 from t_ten)], 'withdrawn'), to_jsonb('P0001|CHARA_INVALID_INPUT|p_status'::text), 'the target withdrawn is refused');
@@ -87,11 +88,12 @@ select is(
 );
 select is(
   (select jsonb_agg(l.metadata - 'ids') from audit.log l where l.action = 'application.bulk_status_changed' and l.actor_id = :'mem' and l.metadata ->> 'to' = 'offer'),
-  '[{"to": "offer", "applied": 1, "requested": 3}]'::jsonb, 'AC7: one audit row for the call with the target, requested and applied'
+  jsonb_build_array(jsonb_build_object('organization_id', current_setting('t.a'), 'to', 'offer', 'applied', 1, 'requested', 3)),
+  'AC7: one audit row for the call with the organisation, the target, requested and applied'
 );
 select is(
-  (select jsonb_array_length(l.metadata -> 'ids') from audit.log l where l.action = 'application.bulk_status_changed' and l.metadata ->> 'to' = 'offer'),
-  3, 'AC7: and the three ids'
+  (select l.metadata -> 'ids' from audit.log l where l.action = 'application.bulk_status_changed' and l.metadata ->> 'to' = 'offer'),
+  to_jsonb(array[(select a2 from t_mixed)]), 'AC7: and the one id that was applied, not the two that were refused'
 );
 select is(
   (select count(*) from audit.log l where l.metadata::text like '%Secret reason text%'), 0::bigint, 'AC7: no audit row holds the note'
@@ -131,8 +133,15 @@ select is(
   (select s.revoked_at is not null and s.expires_at is null from public.passport_shares s where s.application_id = (select a4 from t_stale)),
   true, 'AC11: and the withdrawn application keeps its revoked share'
 );
+create temp table t_mark as select coalesce(max(id), 0) as m from audit.log;
+select pg_temp.bulk_as(:'mem', array[(select a4 from t_stale)], 'interview') as refused_only \gset
+select is(
+  (select jsonb_agg(l.metadata) from audit.log l where l.id > (select m from t_mark) and l.action = 'application.bulk_status_changed'),
+  '[{"to": "interview", "ids": [], "applied": 0, "requested": 1, "organization_id": null}]'::jsonb,
+  'a call that applied nothing is audited once, with no organisation and no ids'
+);
 
--- FR-D2 AC9 and FR-E3 AC8: a restricted organisation is refused as a whole; FR-E3 AC9: callers and other organisations.
+-- FR-E3 AC8: a restricted organisation is refused as a whole (FR-D2 AC9 says per item; FR-E3 AC8 is followed, see D53); FR-E3 AC9: callers and other organisations.
 insert into billing.subscriptions (organization_id, plan_code, status, provider)
 select o.id, 'employer_starter', 'canceled', 'null' from (select pg_temp.org_on() as id) o;
 create temp table t_lapsed as
@@ -141,9 +150,9 @@ create temp table t_lapsed as
   from billing.subscriptions s where s.status = 'canceled' and s.plan_code = 'employer_starter';
 select is(
   pg_temp.bulk_as((select member from t_lapsed), array[(select a1 from t_lapsed), (select a2 from t_lapsed)], 'interview'),
-  to_jsonb('P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan'::text), 'AC9: a lapsed organisation is refused as a whole'
+  to_jsonb('P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan'::text), 'FR-E3 AC8: a lapsed organisation is refused as a whole'
 );
-select is((select pg_temp.status_of(a1) || pg_temp.status_of(a2) from t_lapsed), 'appliedapplied', 'AC9: and nothing moved');
+select is((select pg_temp.status_of(a1) || pg_temp.status_of(a2) from t_lapsed), 'appliedapplied', 'FR-E3 AC8: and nothing moved');
 
 create temp table t_cross as select pg_temp.seed_app('applied') as a_of_a, pg_temp.seed_app('applied', current_setting('t.b')::uuid) as a_of_b;
 select is(
@@ -152,6 +161,11 @@ select is(
   'a member of A moves the item of A and is told the item of B was not found'
 );
 select is(pg_temp.status_of((select a_of_b from t_cross)), 'applied', 'and the item of B is unchanged');
+select is(
+  (select count(*) from audit.log l where l.action = 'application.bulk_status_changed'
+     and l.metadata -> 'ids' @> to_jsonb(array[(select a_of_b::text from t_cross)])),
+  0::bigint, 'and the audit rows never list an id of another organisation'
+);
 select is(
   pg_temp.items(pg_temp.bulk_as(:'st_admin', array[(select a_of_a from t_cross)], 'offer')), (select a_of_a || '=CHARA_NOT_FOUND' from t_cross),
   'a platform administrator who is no member gets not found for an id of A'

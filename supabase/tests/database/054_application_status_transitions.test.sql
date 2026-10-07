@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(30);
 
 \ir status_fixture.inc
 
@@ -111,6 +111,11 @@ select is(pg_temp.event_count(current_setting('t.open')::uuid), 2::bigint, 'AC2:
 create temp table t_short as select pg_temp.seed_app('shortlisted') as id;
 select pg_temp.viewed_as(:'mem', (select id from t_short)) as opened \gset
 select is(pg_temp.status_of((select id from t_short)) || pg_temp.event_count((select id from t_short)), 'shortlisted1', 'AC2: opening a shortlisted application changes nothing');
+
+select is(
+  pg_temp.call_as(:'mem', 'authenticated', format($$select public.set_application_status(%L, null)$$, current_setting('t.open')::uuid), 'aal1'),
+  'P0001|CHARA_INVALID_INPUT|p_status', 'a null target is CHARA_INVALID_INPUT, not an internal error'
+);
 
 -- The trigger judges every change of status, whoever makes it: the database owner needs the name of a function that may
 -- make it, and Withdrawn is the candidate's function only.

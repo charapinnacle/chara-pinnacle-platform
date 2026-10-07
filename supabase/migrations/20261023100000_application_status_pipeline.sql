@@ -185,8 +185,8 @@ revoke all on function private.change_application_status(uuid, public.applicatio
 -- A member of the job's organisation (owner, admin or member; owners and admins reach the page at aal2, which the page
 -- checks) moves an application to p_status with an optional note that the candidate sees. Applied, Viewed and Withdrawn
 -- are no targets for an employer. Errors: CHARA_FORBIDDEN (not a company account; detail organization_suspended),
--- CHARA_NOT_FOUND, CHARA_INVALID_INPUT (detail p_note), CHARA_INVALID_TRANSITION, CHARA_FEATURE_NOT_IN_PLAN (detail
--- shortlisting, or read_only_free_plan), CHARA_SETTING_MISSING.
+-- CHARA_NOT_FOUND, CHARA_INVALID_INPUT (detail p_note; p_status for a null target), CHARA_INVALID_TRANSITION,
+-- CHARA_FEATURE_NOT_IN_PLAN (detail shortlisting, or read_only_free_plan), CHARA_SETTING_MISSING.
 create function public.set_application_status(
   p_application_id uuid, p_status public.application_status, p_note text default null
 ) returns void
@@ -197,6 +197,9 @@ as $$
 begin
   if (select auth.uid()) is null or private.account_kind() is distinct from 'company' then
     raise exception 'CHARA_FORBIDDEN' using detail = 'company_account_required';
+  end if;
+  if p_status is null then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_status';
   end if;
   perform private.change_application_status(p_application_id, p_status, private.normalize_status_note(p_note));
 end;
