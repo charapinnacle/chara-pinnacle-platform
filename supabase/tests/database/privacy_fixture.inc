@@ -39,6 +39,22 @@ language sql as $$
           'application/pdf', 1000, p_scan)
 $$;
 
+-- An application of p_owner to a new vacancy of p_org, as apply_to_job writes it, for a share that a test inserts next.
+create function pg_temp.stub_application(p_org uuid, p_owner uuid) returns uuid
+language plpgsql as $$
+declare
+  v_job uuid;
+  v_application uuid := gen_random_uuid();
+begin
+  insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city, employment_type, recruitment_preference)
+  values (p_org, 'Welder MIG/MAG', btrim(repeat('Weld steel frames in our workshop. ', 2)), '7212', 'C', 'DE', 'Hamburg', 'full_time', 'both')
+  returning id into v_job;
+  insert into public.job_applications (id, job_id, organization_id, worker_user_id, passport_share_id, profile_snapshot)
+  values (v_application, v_job, p_org, p_owner, gen_random_uuid(), '{}');
+  return v_application;
+end;
+$$;
+
 -- A granted consent and a share to p_org for a new application. The consent purpose is the slug of a sharing notice.
 create function pg_temp.share(
   p_org uuid, p_owner uuid, p_scope uuid[], p_purpose text default 'sharing-notice', p_expires timestamptz default null
@@ -50,7 +66,7 @@ declare
 begin
   insert into public.consents (user_id, purpose, version, action) values (p_owner, p_purpose, 1, 'granted') returning id into v_consent;
   insert into public.passport_shares (worker_user_id, organization_id, application_id, scope, consent_id, expires_at)
-  values (p_owner, p_org, gen_random_uuid(), to_jsonb(p_scope), v_consent, p_expires)
+  values (p_owner, p_org, pg_temp.stub_application(p_org, p_owner), to_jsonb(p_scope), v_consent, p_expires)
   returning id into v_share;
   return v_share;
 end;

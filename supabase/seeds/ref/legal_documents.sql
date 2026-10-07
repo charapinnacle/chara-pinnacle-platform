@@ -1,5 +1,6 @@
 -- Version 0 of every Phase 1 legal document is a DRAFT placeholder (OPEN_QUESTIONS.md L5, L7): the text is not
 -- approved by legal counsel. The first approved text is published later as version 1 and becomes the current version.
+-- sharing-notice is the text shown with the consent of an application: its version is stored with each consent to share (FR-D1).
 -- age-18-plus holds the wording of the age attestation (FR-A9); its slug is the consent purpose.
 -- Existing rows are never overwritten, so a text that was published afterwards is not touched by a re-seed.
 
@@ -22,7 +23,8 @@ from (values
   ('worker-terms', 'Worker Terms'),
   ('complaints-and-dispute-process', 'Complaints and Dispute Process'),
   ('account-suspension-and-termination-rules', 'Account Suspension and Termination Rules'),
-  ('imprint', 'Imprint')
+  ('imprint', 'Imprint'),
+  ('sharing-notice', 'Sharing Notice')
 ) as d (slug, title)
 on conflict (slug, version) do nothing;
 
