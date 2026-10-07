@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ApplicantTable } from "@/components/applicants/applicant-table";
 import { Board } from "@/components/applicants/board";
+import { ExportButton } from "@/components/applicants/export-button";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { StageFilter } from "@/components/applications/stage-filter";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -21,6 +22,8 @@ import { applicantsExportPath, applicantsPath, homePath, jobPath, jobsPath } fro
 import { parseApplicantListParams } from "@/lib/validation/applicant-list";
 
 export const metadata: Metadata = { title: "Applicants — CHARA", robots: { index: false } };
+
+const csvNotInPlanText = "Your plan does not include the CSV export.";
 
 const frozenText =
   "Your organization has no active paid plan. Applicant changes and the CSV export are disabled until a plan is chosen.";
@@ -108,13 +111,13 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
           <div className="flex flex-wrap items-end justify-between gap-4">
             <StageFilter basePath={applicantsPath(lang, slug, withoutStage)} stage={parsed.stage} />
             {parsed.job ? (
-              <form method="post" action={applicantsExportPath(lang, slug)}>
-                <input type="hidden" name="job" value={parsed.job} />
-                <input type="hidden" name="stage" value={parsed.stage ?? ""} />
-                <FormButton type="submit" variant="secondary" className="w-auto" disabled={!access.csvExportAvailable}>
-                  Export CSV
-                </FormButton>
-              </form>
+              <ExportButton
+                action={applicantsExportPath(lang, slug)}
+                jobId={parsed.job}
+                stage={parsed.stage}
+                disabled={!access.csvExportAvailable}
+                hint={access.csvExportAvailable || frozen ? null : csvNotInPlanText}
+              />
             ) : null}
           </div>
           {list.rows.length === 0 ? (

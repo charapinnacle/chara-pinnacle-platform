@@ -6,7 +6,7 @@ const HEADER = ["Candidate", "Stage", "Applied", "Completeness (%)", "Documents"
 
 // A cell a spreadsheet would read as a formula gets a leading quote; a cell with a comma, a quote or a line break is
 // quoted, with the quotes doubled (RFC 4180).
-export function csvCell(value: string): string {
+function csvCell(value: string): string {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }

@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { applicantsUrl, seedMany, subscribe } from "./support/applicant-list";
+import { applicantsUrl, listRows, seedListApplicant, seedMany, subscribe } from "./support/applicant-list";
 import { execute, literal, query } from "./support/db";
 import { addCompanyUser, newCompany, seedJob } from "./support/jobs";
+import { waitForHydration } from "./support/hydration";
 import { signInBrowser } from "./support/session";
 import { expect, test } from "./support/test";
 
@@ -91,5 +92,76 @@ test.describe("the CSV export", () => {
     await page.goto(applicantsUrl(lapsed.slug, `?job=${job}`));
     await expect(page.getByRole("heading", { name: "No applications yet", level: 2 })).toBeVisible();
     await context.close();
+  });
+  test("FR-E1 AC8, AC12: a refusal after the page was loaded is a toast, the list stays on the screen and no file or audit row is made", async ({ browser }) => {
+    const company = await newCompany();
+    subscribe(company, "employer_professional");
+    const job = seedJob(company, { title: "Toast export welder", status: "open" });
+    seedListApplicant(company, job, { name: "Ana Silva", appliedAt: "2026-09-04T10:00:00Z", completeness: 80 });
+    const member = await addCompanyUser(company, "member");
+    const context = await browser.newContext();
+    await signInBrowser(context, member);
+    const page = await context.newPage();
+    const downloads: string[] = [];
+    page.on("download", (download) => downloads.push(download.suggestedFilename()));
+
+    await page.goto(applicantsUrl(company.slug, `?job=${job}`));
+    const exportButton = page.getByRole("button", { name: "Export CSV" });
+    await waitForHydration(exportButton);
+    await expect(exportButton).toBeEnabled();
+    execute(`update billing.subscriptions set status = 'canceled' where organization_id = ${literal(company.id)}`);
+    await exportButton.click();
+
+    await expect(page.getByText("The export failed", { exact: true })).toBeVisible();
+    await expect(page.getByText("Your plan does not include the CSV export.", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/applicants\\?job=${job}$`));
+    await expect(listRows(page)).toHaveCount(1);
+    await expect(exportButton).toBeEnabled();
+    expect(downloads).toEqual([]);
+    expect(exports(job)).toEqual([]);
+    await context.close();
+  });
+
+  test("FR-E1 AC10: a visitor, a member of another organisation and an owner who has not done the two-step check are sent away and nothing is exported", async ({ browser }) => {
+    const company = await newCompany();
+    subscribe(company, "employer_professional");
+    const job = seedJob(company, { title: "Guarded export welder", status: "open" });
+    seedListApplicant(company, job, { name: "Ana Silva", appliedAt: "2026-09-04T10:00:00Z", completeness: 80 });
+    const other = await newCompany();
+    const outsider = await addCompanyUser(other, "member");
+    const member = await addCompanyUser(company, "member");
+    const path = `/en/org/${company.slug}/applicants/export`;
+    const post = (context: Awaited<ReturnType<typeof browser.newContext>>) =>
+      context.request.post(path, { form: { job, stage: "" }, maxRedirects: 0 });
+
+    const visitor = await browser.newContext();
+    const asVisitor = await post(visitor);
+    expect(asVisitor.status()).toBe(303);
+    expect(asVisitor.headers().location).toBe(`/en/login?next=${encodeURIComponent(path)}`);
+    await visitor.close();
+
+    const outsiderContext = await browser.newContext();
+    await signInBrowser(outsiderContext, outsider);
+    const asOutsider = await post(outsiderContext);
+    expect(asOutsider.status()).toBe(404);
+    expect(await asOutsider.text()).not.toContain("Candidate,Stage");
+    await outsiderContext.close();
+
+    const ownerContext = await browser.newContext();
+    await signInBrowser(ownerContext, company.owner);
+    const asOwner = await post(ownerContext);
+    expect(asOwner.status()).toBe(303);
+    expect(asOwner.headers().location).toBe(`/en/mfa?next=${encodeURIComponent(path)}`);
+    await ownerContext.close();
+    expect(exports(job)).toEqual([]);
+
+    const memberContext = await browser.newContext();
+    await signInBrowser(memberContext, member);
+    const resumed = await memberContext.newPage();
+    await resumed.goto(path);
+    await expect(resumed).toHaveURL(new RegExp(`/en/org/${company.slug}/applicants$`));
+    await expect(resumed.getByRole("heading", { name: "Applicants", level: 1 })).toBeVisible();
+    await memberContext.close();
+    expect(exports(job)).toEqual([]);
   });
 });

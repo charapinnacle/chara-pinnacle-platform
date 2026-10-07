@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { applicantsCsv, csvCell } from "@/lib/applicants/csv";
+import { applicantsCsv } from "@/lib/applicants/csv";
 import type { ApplicantExportRow } from "@/lib/dal/applicant-list";
 
 vi.mock("server-only", () => ({}));
@@ -13,26 +13,34 @@ const row = (over: Partial<ApplicantExportRow>): ApplicantExportRow => ({
   ...over,
 });
 
-describe("csvCell", () => {
+const header = "Candidate,Stage,Applied,Completeness (%),Documents";
+
+// The cell of the candidate name of a file with one row.
+const cellOf = (candidateName: string): string => {
+  const csv = applicantsCsv([row({ candidateName })]);
+  return csv.slice(header.length + 2, csv.lastIndexOf(",Applied,"));
+};
+
+describe("the cell of a name", () => {
   it.each(["=HYPERLINK('http://x')", "+1", "-1", "@SUM(A1)", "\tcmd", "\rcmd"])("prefixes a single quote to a cell that starts with %j", (value) => {
-    expect(csvCell(value).replace(/^"/, "")[0]).toBe("'");
+    expect(cellOf(value).replace(/^"/, "")[0]).toBe("'");
   });
 
   it("quotes a cell with a comma, a double quote or a line break, doubling the quotes", () => {
-    expect(csvCell("Smith, Jo")).toBe('"Smith, Jo"');
-    expect(csvCell('Jo "JJ" Smith')).toBe('"Jo ""JJ"" Smith"');
-    expect(csvCell("a\nb")).toBe('"a\nb"');
-    expect(csvCell("a\r\nb")).toBe('"a\r\nb"');
+    expect(cellOf("Smith, Jo")).toBe('"Smith, Jo"');
+    expect(cellOf('Jo "JJ" Smith')).toBe('"Jo ""JJ"" Smith"');
+    expect(cellOf("a\nb")).toBe('"a\nb"');
+    expect(cellOf("a\r\nb")).toBe('"a\r\nb"');
   });
 
   it("quotes a formula that also has a comma, quote first", () => {
-    expect(csvCell("=A1,B1")).toBe(`"'=A1,B1"`);
+    expect(cellOf("=A1,B1")).toBe(`"'=A1,B1"`);
   });
 
   it("leaves a plain cell as it is", () => {
-    expect(csvCell("Ana Silva")).toBe("Ana Silva");
-    expect(csvCell("80")).toBe("80");
-    expect(csvCell("O'Brien = 1")).toBe("O'Brien = 1");
+    expect(cellOf("Ana Silva")).toBe("Ana Silva");
+    expect(cellOf("80")).toBe("80");
+    expect(cellOf("O'Brien = 1")).toBe("O'Brien = 1");
   });
 });
 

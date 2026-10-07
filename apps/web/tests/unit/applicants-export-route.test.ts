@@ -5,11 +5,16 @@ const getJobMock = vi.hoisted(() => vi.fn());
 const exportMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/navigation", () => ({
+  redirect: (path: string) => {
+    throw new Error(`REDIRECT:${path}`);
+  },
+}));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/hiring", () => ({ getJob: getJobMock }));
 vi.mock("@/lib/dal/applicant-list", () => ({ exportApplicants: exportMock }));
 
-const { POST } = await import("@/app/[lang]/(app)/org/[slug]/applicants/export/route");
+const { GET, POST } = await import("@/app/[lang]/(app)/org/[slug]/applicants/export/route");
 
 const job = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const organization = { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", role: "member", suspended: false };
@@ -93,5 +98,19 @@ describe("the CSV export route", () => {
     expect(response.status).toBe(status);
     expect(response.headers.get("content-disposition")).toBeNull();
     expect(await response.text()).not.toContain("Candidate,Stage");
+  });
+});
+
+describe("the address of the export opened with GET", () => {
+  const get = (slug: string) =>
+    GET(new Request("http://localhost/en/org/acme-bau/applicants/export"), { params: Promise.resolve({ lang: "en", slug }) } as Parameters<typeof GET>[1]);
+
+  it("leads to the list, so that a person sent back here after signing in lands on the applicants", async () => {
+    await expect(get("acme-bau")).rejects.toThrow("REDIRECT:/en/org/acme-bau/applicants");
+    expect(exportMock).not.toHaveBeenCalled();
+  });
+
+  it("answers not found for an address that is not a slug, and never redirects to it", async () => {
+    expect((await get("Not A Slug!")).status).toBe(404);
   });
 });

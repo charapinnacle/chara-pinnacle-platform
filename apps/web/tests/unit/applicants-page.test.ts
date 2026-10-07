@@ -19,7 +19,7 @@ const notFoundMock = vi.hoisted(() =>
 );
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock, useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/hiring", () => ({ getJob: getJobMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
@@ -120,7 +120,40 @@ describe("the list", () => {
     const html = await render({ job });
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Export CSV/);
     expect(html).toContain("disabled until a plan is chosen");
+    expect(html).not.toContain("does not include the CSV export");
     expect(html).toContain("Ana Silva");
+  });
+
+  it("says why the export is off for a plan without it when the organization is not lapsed", async () => {
+    getAccessMock.mockResolvedValue({ ...access, csvExportAvailable: false });
+    const html = await render({ job });
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="([^"]+)"[^>]*>Export CSV/);
+    const id = /aria-describedby="([^"]+)"/.exec(html)?.[1];
+    expect(html).toContain(`<p id="${id}" class="text-sm text-muted-foreground">Your plan does not include the CSV export.</p>`);
+    expect(html).not.toContain("disabled until a plan is chosen");
+  });
+
+  it("shows no reason next to an export that is available", async () => {
+    const html = await render({ job });
+    expect(html).not.toContain("does not include the CSV export");
+    expect(html).not.toContain("aria-describedby");
+  });
+
+  it("offers the sort by stage and by applied date for all the vacancies, and the other two columns as plain headers", async () => {
+    const html = await render({ sort: "completeness" });
+    expect(html).toContain('aria-label="Sort by Stage"');
+    expect(html).toContain('aria-label="Sort by Applied date"');
+    expect(html).not.toContain('aria-label="Sort by Completeness (%)"');
+    expect(html).not.toContain('aria-label="Sort by Documents"');
+    expect(html).toContain("Completeness (%)");
+    expect(listApplicantsMock).toHaveBeenCalledWith("org-1", expect.objectContaining({ job: null, sort: "applied" }));
+  });
+
+  it("offers all four sorts for one vacancy, with the accessible name that contains the visible text", async () => {
+    const html = await render({ job });
+    for (const name of ["Sort by Stage", "Sort by Applied date", "Sort by Completeness (%)", "Sort by Documents"]) {
+      expect(html).toContain(`aria-label="${name}"`);
+    }
   });
 
   it("shows the empty state with a link to the vacancy and no export when there is no application", async () => {
