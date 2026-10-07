@@ -32,7 +32,8 @@ test.describe("who may open an application", () => {
     await expect(member.getByText("Ana Silva")).toHaveCount(0);
     await expectNotFound(member, applicantUrl(companyB.slug, applicationA));
     await expect(member.getByText("Ana Silva")).toHaveCount(0);
-    await member.goto(`/en/org/${companyB.slug}/applicants`);
+    const listing = await member.goto(`/en/org/${companyB.slug}/applicants`);
+    expect(listing?.status()).toBe(404);
     await expect(member.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await expect(member.getByText("Visibility welder B")).toHaveCount(0);
     await context.close();
@@ -50,8 +51,11 @@ test.describe("who may open an application", () => {
   test("FR-D5 AC8: an attempt on another organisation's application leaves one line in the database log, a guess at an id none", async ({
     browser,
   }) => {
-    const { companyA, memberA, memberB, applicationA, applicationB } = await setup();
+    const { companyA, companyB, memberA, memberB, candidateB, applicationA, applicationB } = await setup();
+    const memberB2 = await addCompanyUser(companyB, "member");
     const unknown = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
+    const line = (caller: string, fn: string, application: string) =>
+      new RegExp(`CHARA_CROSS_TENANT caller=${caller} function=${fn} application=${application}$`);
 
     const context = await browser.newContext();
     await signInBrowser(context, memberA);
@@ -60,15 +64,26 @@ test.describe("who may open an application", () => {
     await expectNotFound(page, applicantUrl(companyA.slug, unknown));
     await context.close();
 
-    expect(runAs(memberB.id, `select public.set_application_status(${literal(applicationA)}, 'interview');`)).toContain("CHARA_NOT_FOUND");
-    expect(runAs(memberB.id, `select public.set_application_status(${literal(unknown)}, 'interview');`)).toContain("CHARA_NOT_FOUND");
+    const attempts = (id: string) => [
+      ["set_application_status", memberB.id, `select public.set_application_status(${literal(id)}, 'interview');`],
+      ["mark_application_viewed", memberB.id, `select public.mark_application_viewed(${literal(id)});`],
+      ["withdraw_application", candidateB.id, `select public.withdraw_application(${literal(id)});`],
+      ["withdraw_application", memberB.id, `select public.withdraw_application(${literal(id)});`],
+      ["list_applicant_events", memberB.id, `select * from public.list_applicant_events(${literal(id)});`],
+      ["set_application_status", memberB2.id, `select * from public.bulk_set_application_status(array[${literal(id)}]::uuid[], 'interview', null);`],
+    ] as const;
+    for (const id of [applicationA, unknown]) {
+      for (const [, caller, sql] of attempts(id)) runAs(caller, sql);
+    }
+    expect(runAs(memberA.id, `select * from public.list_applicant_events(${literal(applicationA)});`)).toBe("ok");
 
     await expect.poll(() => cross(applicationB).length).toBe(1);
-    await expect.poll(() => cross(applicationA).length).toBe(1);
-    const [pageLine] = cross(applicationB);
-    expect(pageLine).toMatch(new RegExp(`CHARA_CROSS_TENANT caller=${memberA.id} function=get_applicant application=${applicationB}$`));
-    const [rpcLine] = cross(applicationA);
-    expect(rpcLine).toMatch(new RegExp(`CHARA_CROSS_TENANT caller=${memberB.id} function=set_application_status application=${applicationA}$`));
+    expect(cross(applicationB)[0]).toMatch(line(memberA.id, "get_applicant", applicationB));
+    await expect.poll(() => cross(applicationA).length).toBe(attempts(applicationA).length);
+    const logged = cross(applicationA);
+    for (const [fn, caller] of attempts(applicationA)) {
+      expect(logged.filter((entry) => line(caller, fn, applicationA).test(entry)), `${fn} by ${caller}`).toHaveLength(1);
+    }
     expect(cross(unknown)).toEqual([]);
     expect(execute(`select status from public.job_applications where id = ${literal(applicationA)}`).trim()).toBe("applied");
   });

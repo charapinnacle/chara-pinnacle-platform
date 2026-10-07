@@ -1,9 +1,9 @@
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 
-const CONTAINER = "supabase_db_chara-pinnacle";
+export const CONTAINER = "supabase_db_chara-pinnacle";
 
-const PSQL_ARGS = ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-qAt", "-v", "ON_ERROR_STOP=1", "-c"];
+export const PSQL_ARGS = ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-qAt", "-v", "ON_ERROR_STOP=1", "-c"];
 
 function psql(sql: string): string {
   return execFileSync("docker", [...PSQL_ARGS, sql], { encoding: "utf8" });
