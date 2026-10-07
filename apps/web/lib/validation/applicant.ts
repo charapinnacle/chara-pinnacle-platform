@@ -6,7 +6,7 @@ const stage = z.string({ error: "Choose a stage" }).pipe(z.enum(employerStages, 
 
 // The wording of the decline reasons is fixed text of the application, not user data (FR-E2, FR-E3): the candidate sees it
 // in the journey tracker. The wording is reviewed with legal, as all text the candidate reads.
-export const declineReasonTexts = {
+const declineReasonTexts = {
   position_filled: "Position filled",
   qualifications_not_matching: "Qualifications do not match the requirements of this role",
 } as const;

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   declineReasonOptions,
-  declineReasonTexts,
   noteInputSchema,
   stageChangeFormSchema,
   stageChangeInputSchema,
@@ -57,7 +56,10 @@ describe("stageChangeFormSchema", () => {
     expect(schema.parse({ status: "interview", reason: "position_filled", note: "Week 41" })).toMatchObject({ status: "interview", note: "Week 41" });
   });
 
-  it.each(Object.entries(declineReasonTexts))("turns the template %s into its text as the note of a decline", (reason, text) => {
+  it.each([
+    ["position_filled", "Position filled"],
+    ["qualifications_not_matching", "Qualifications do not match the requirements of this role"],
+  ])("turns the template %s into its text as the note of a decline", (reason, text) => {
     expect(schema.parse({ status: "rejected", reason, note: "" })).toMatchObject({ status: "rejected", note: text });
   });
 

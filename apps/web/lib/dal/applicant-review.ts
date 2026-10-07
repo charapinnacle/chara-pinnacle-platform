@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type DocumentType = Database["public"]["Enums"]["worker_document_type"];
 
-export type ApplicantProfile = { snapshot: ApplicantSnapshot; coverNote: string | null };
+type ApplicantProfile = { snapshot: ApplicantSnapshot; coverNote: string | null };
 
 export type SharedDocument = {
   id: string;
@@ -24,7 +24,7 @@ export type ApplicantNote = { id: number; authorName: string | null; body: strin
 
 export type NoteRefusal = "not_found" | "read_only_free_plan" | "organization_suspended" | "invalid" | "failed";
 
-export type DocumentLink =
+type DocumentLink =
   | { url: string }
   | { refusal: "unavailable" | "not_scanned" | "rate_limited" | "failed" };
 

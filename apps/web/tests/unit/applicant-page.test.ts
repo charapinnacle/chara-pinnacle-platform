@@ -44,7 +44,7 @@ vi.mock("@/components/applicants/stage-change", () => ({ StageChange: () => null
 vi.mock("@/components/applicants/open-document-button", () => ({
   OpenDocumentButton: ({ title }: { title: string }) => `[open ${title}]`,
 }));
-vi.mock("@/components/applicants/note-form", () => ({ NoteForm: () => "[note form]" }));
+vi.mock("@/components/applicants/add-note", () => ({ AddNote: () => "[note form]" }));
 
 const { default: ApplicantPage } = await import("@/app/[lang]/(app)/org/[slug]/applicants/[applicationId]/page");
 

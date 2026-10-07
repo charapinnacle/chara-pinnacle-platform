@@ -1,4 +1,4 @@
-import { NoteForm } from "@/components/applicants/note-form";
+import { AddNote } from "@/components/applicants/add-note";
 import { Notice } from "@/components/forms/notice";
 import type { ApplicantNote } from "@/lib/dal/applicant-review";
 import { formatDateTime } from "@/lib/i18n/format";
@@ -26,7 +26,7 @@ export function InternalNotes({ slug, applicationId, notes, blocked, limit }: In
           Your organization has no active paid plan, so notes cannot be added. The notes written before stay readable.
         </Notice>
       ) : (
-        <NoteForm slug={slug} applicationId={applicationId} />
+        <AddNote slug={slug} applicationId={applicationId} />
       )}
       {notes.length === 0 ? (
         <p className="text-sm text-muted-foreground">No internal notes yet.</p>
