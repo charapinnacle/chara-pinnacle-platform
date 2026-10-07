@@ -253,7 +253,7 @@ test.describe("saved vacancies", () => {
 
     let navigationDelay = 1500;
     await page.route(/\/en\/saved/, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, navigationDelay));
+      if (!route.request().headers()["next-router-prefetch"]) await new Promise((resolve) => setTimeout(resolve, navigationDelay));
       await route.continue();
     });
     await page.getByRole("link", { name: "Saved vacancies" }).click();
