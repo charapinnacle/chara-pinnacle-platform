@@ -2,7 +2,7 @@ import type { Database } from "@chara-pinnacle/db-types";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
-export type StageRole = "employer" | "candidate";
+type StageRole = "employer" | "candidate";
 
 // The moves of an employer member (ARCHITECTURE.md section 4). Viewed is the system's, Withdrawn the candidate's, and the
 // three final states have no way out.

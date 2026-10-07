@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
-export type Applicant = {
+type Applicant = {
   id: string;
   organizationId: string;
   jobTitle: string;
@@ -17,7 +17,7 @@ export type Applicant = {
   noteMaxChars: number;
 };
 
-export type ApplicantEvent = {
+type ApplicantEvent = {
   id: number;
   fromStatus: ApplicationStatus | null;
   toStatus: ApplicationStatus;

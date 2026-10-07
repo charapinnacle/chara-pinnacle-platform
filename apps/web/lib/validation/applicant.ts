@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
+const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
 
 const stage = z.string({ error: "Choose a stage" }).pipe(z.enum(employerStages, { error: "Choose a stage" }));
 
