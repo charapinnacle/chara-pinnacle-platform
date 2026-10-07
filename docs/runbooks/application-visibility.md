@@ -5,10 +5,11 @@ FR-D5, design point D56 (OPEN_QUESTIONS.md). The SOP is "Application Visibility 
 ## 1. The rule and where it is enforced
 
 - A candidate reads the own applications and their events (`job_applications_select_worker`, `application_events_select_worker`).
-- An accepted member of the organisation (owner, admin or member) reads the applications and events of its vacancies (`job_applications_select_member`, `application_events_select_member`) and the internal notes (`application_notes_select_member`) and adds notes (`application_notes_insert_member`). A removed member and an invitation that is not accepted read nothing from the next query on: the policies look the membership up in `organization_members`, not in the token.
+- An accepted member of an active organisation (owner, admin or member) reads the applications and events of its vacancies (`job_applications_select_member`, `application_events_select_member`) and the internal notes (`application_notes_select_member`) and adds notes (`application_notes_insert_member`); the organisations come from `private.active_member_org_ids()`. A removed member and an invitation that is not accepted read nothing from the next query on: the policies look the membership up in `organization_members`, not in the token.
 - Nobody else reads any of the three tables: not another candidate, not another organisation, not the three platform roles, not `service_role` (no grant), not an anonymous session (no grant). No API role writes to `job_applications` or `application_events`; only the RPCs do. A note is the one direct insert and is append-only.
 - The candidate never reads a note: `application_notes` has no candidate policy, and the candidate's timeline (`v_my_application_timeline`) and list (`my_applications`) are built from the events and the application only.
-- Past applicants of a lapsed organisation stay readable (C11); adding a note or changing a stage is refused with `CHARA_FEATURE_NOT_IN_PLAN` (`read_only_free_plan`). A suspended organisation: the pages show 'This organization is suspended, so its applicants are not available.', and note inserts and stage changes are refused (`CHARA_FORBIDDEN`, `organization_suspended`); its candidates keep reading their own applications.
+- Past applicants of a lapsed organisation stay readable (C11); adding a note or changing a stage is refused with `CHARA_FEATURE_NOT_IN_PLAN` (`read_only_free_plan`). A suspended organisation: its members read no row of the three tables and `get_applicant` and `list_applicant_events` return no row; the page shows 'This organization is suspended, so its applicants are not available.', and note inserts and stage changes are refused (`CHARA_FORBIDDEN`, `organization_suspended`); its candidates keep reading their own applications.
+- The notes of a candidate who is erased (FR-B6) are deleted by `erase_user`; the other notes of the organisation stay.
 - Owners and admins reach the applicant pages only at aal2 (`requireOrgRole`, FR-A4 AC3); the policies do not test aal2 (D8).
 
 ## 2. The log of attempts across organisations
@@ -51,20 +52,7 @@ where ((p in ('select', 'insert', 'update', 'references') and has_any_column_pri
 - The RPCs against an application of another organisation, the policy names, the indexes: pgTAP `066_application_visibility_refusals.test.sql`.
 - The pages (404 for another organisation's application, two-step verification, suspended organisation) and the log line: browser tests `application-visibility.spec.ts`, `application-viewed.spec.ts`. Vitest `applicant-page.test.ts` and `require-org-role.test.ts` pin the page decisions.
 
-## 5. Plans of the queries (for the next unit that lists applications)
-
-Measured with 300,000 applications over 3,000 organisations (one with 30,000) and 600,000 events, as an authenticated caller, in a transaction that was rolled back:
-
-- A candidate reading without a filter, or an organisation member reading without a filter: bitmap OR of `job_applications_worker_created_idx` and `job_applications_organization_idx` (0.2 ms for a candidate, 0.7 ms for 100 applications of a member). A list of an organisation's applicants must filter by `job_id` (index `(job_id, status)`), because an organisation-wide list sorted by date has no index of its own.
-- One event lookup by application id: an index probe on `application_events_application_idx` and one probe on the primary key of the application (0.4 ms for an organisation of 30,000 applications).
-- Notes of one application: `application_notes_application_idx`.
-
-## 6. Hand-offs
-
-- U32 (FR-E1) builds `/org/<slug>/applicants`: it must call `requireOrgRole`, show the suspended message and answer another organisation's slug as not found; `application-visibility.spec.ts` (AC10, third request) then moves from a missing route to the real page.
-- U33 (FR-E2) adds the note form and list on the applicant page, reading and inserting `application_notes` under the policies above, and adds the internal note to `journey-tracker.spec.ts` (nothing of it on the candidate's pages).
-
-## 7. Quarterly review
+## 5. Quarterly review
 
 1. Run `npm run db:test` and `npm run e2e -w @chara-pinnacle/web -- application-visibility application-viewed` and read the result.
 2. Run the two catalogue queries of section 4.
