@@ -98,6 +98,7 @@ Deno.test("each refusal of the grant is a status and a word, with no link, no pa
     [database("CHARA_FORBIDDEN", "42501"), 403, "forbidden"],
     [database("CHARA_NOT_FOUND", "P0002"), 404, "not_found"],
     [database("CHARA_DOCUMENT_NOT_SCANNED", "P0001"), 409, "not_scanned"],
+    [database("CHARA_RATE_LIMITED", "P0001"), 429, "rate_limited"],
     [database("CHARA_UNAUTHENTICATED", "42501"), 401, "unauthorized"],
     [database("permission denied for function document_access_grant", "42501"), 401, "unauthorized"],
     [database("JWT expired", "PGRST301"), 401, "unauthorized"],
