@@ -14,7 +14,7 @@ FR-D1 and FR-D7, design point D52 (OPEN_QUESTIONS.md). The SOPs are "Job Applica
 
 | Key | Default | Meaning |
 |---|---|---|
-| `apply_cover_note_max_chars` | 2000 | longest cover note, after trimming (proposed limit) |
+| `apply_cover_note_max_chars` | 2000 | longest cover note, after trimming (proposed limit); the database caps the value at 10,000, the check of the column, whatever is set here |
 | `apply_documents_max` | 10 | most documents of one application (proposed limit) |
 | `apply_rate_limit_max` | 60 | calls per candidate in the window that left an audit row (created applications and duplicate attempts) |
 | `apply_rate_limit_window_seconds` | 3600 | the window |
@@ -75,9 +75,11 @@ select count(*) from public.job_applications a
 where not exists (select 1 from audit.log l where l.action = 'application.submitted' and l.entity_id = a.id::text);
 ```
 
-## 5. Erasure
+## 5. Retention and erasure
 
-`erase_user` (FR-B6) moves the candidate's applications to the pseudonym of the erasure (every account its own, so two erased candidates of one vacancy do not meet at the unique index), empties `cover_note`, removes `first_name`, `last_name` and `headline` from `profile_snapshot` and moves the events the candidate caused. The rest of the snapshot (skills, languages, country, occupation) stays as the criteria say; if CHARA wants it removed too, change the one `update` in `erase_user`.
+No retention period is defined for applications and events (NFR-C1): the SOP and the owner name none (L6), so there is no row in `private.retention_policies` and no clean-up job. Applications are kept until the candidate's account is erased. CHARA decides the period; a row `job_applications` in `retention_policies` and a daily job (the pattern of `private.cleanup_saved_jobs`) are then one migration.
+
+On erasure, `erase_user` (FR-B6) moves the candidate's applications to the pseudonym of the erasure (every account its own, so two erased candidates of one vacancy do not meet at the unique index), empties `cover_note`, removes `first_name`, `last_name` and `headline` from `profile_snapshot` and moves the events the candidate caused. The rest of the snapshot (skills, languages, country, occupation) stays as the criteria say; if CHARA wants it removed too, change the one `update` in `erase_user`.
 
 ## 6. Annual review
 
