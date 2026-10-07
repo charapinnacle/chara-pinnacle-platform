@@ -1,5 +1,5 @@
 begin;
-select plan(50);
+select plan(54);
 
 \ir status_fixture.inc
 
@@ -112,6 +112,8 @@ update public.worker_work_authorizations set expires_on = '2031-05-01' where wor
 select is(pg_temp.changed_as(:'mem', :'a1'), 'ok#true', 'a changed expiry of a work authorisation is a change');
 update public.worker_work_authorizations set expires_on = '2030-05-01' where worker_user_id = :'wa';
 select is(pg_temp.changed_as(:'mem', :'a1'), 'ok#false', 'and back to the snapshot it is none');
+update public.occupations set label = label || ' (renamed)' where code = (select occupation_id from public.worker_profiles where user_id = :'wa');
+select is(pg_temp.changed_as(:'mem', :'a1'), 'ok#false', 'AC2: a renamed occupation in the reference data is no change of the profile');
 
 -- AC2, AC6: a revoked or an expired share shows nothing and the live profile is not read.
 update public.worker_profiles set headline = 'Changed after withdrawing' where user_id = :'wa';
@@ -164,9 +166,24 @@ select is(
 );
 insert into public.application_notes (application_id, organization_id, author_id, body)
 select :'a2', current_setting('t.a')::uuid, :'mem', 'Note ' || g from generate_series(1, 105) g;
-select is(jsonb_array_length(pg_temp.json_as(:'mem', format('select * from public.list_application_notes(%L)', :'a2'))), 100, 'a list is bounded at 100 notes');
+select is(jsonb_array_length(pg_temp.json_as(:'mem', format('select * from public.list_application_notes(%L)', :'a2'))), 50, 'a page is bounded at 50 notes');
 select is(
-  pg_temp.json_as(:'mem', format('select body from public.list_application_notes(%L) limit 1', :'a2')), '[{"body": "Note 105"}]'::jsonb, 'and starts with the newest'
+  pg_temp.json_as(:'mem', format('select body, has_more from public.list_application_notes(%L) limit 1', :'a2')), '[{"body": "Note 105", "has_more": true}]'::jsonb,
+  'and starts with the newest, with the sign that older notes exist'
+);
+select id as last1 from public.application_notes where application_id = :'a2' and body = 'Note 56' \gset
+select id as last2 from public.application_notes where application_id = :'a2' and body = 'Note 6' \gset
+select is(
+  pg_temp.json_as(:'mem', format('select count(*) as n, min(body) filter (where body = ''Note 55'') as first, bool_and(has_more) as more from public.list_application_notes(%L, %L)', :'a2', :'last1')),
+  '[{"n": 50, "first": "Note 55", "more": true}]'::jsonb, 'keyset paging: the next page continues after the last note of the page before'
+);
+select is(
+  pg_temp.json_as(:'mem', format('select count(*) as n, bool_or(has_more) as more from public.list_application_notes(%L, %L)', :'a2', :'last2')),
+  '[{"n": 5, "more": false}]'::jsonb, 'and the last page has the rest and no sign of more'
+);
+select is(
+  pg_temp.json_as(:'mem', format('select count(*) as n from public.list_application_notes(%L, %L)', :'a2', (select id from public.application_notes where application_id = :'a1' limit 1))),
+  '[{"n": 0}]'::jsonb, 'a cursor from another application gives no rows'
 );
 select is(
   pg_temp.json_as(pg_temp.member_of((select org from t_lapsed)), format('select count(*) as n from public.list_application_notes(%L)', :'al')),

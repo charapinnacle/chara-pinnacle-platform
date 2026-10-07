@@ -853,8 +853,8 @@ isOneToOne: false
             }[]
                            },
 "list_application_notes":
-{ Args: { "p_application_id": string }; Returns: {
-              "author_name": string,"body": string,"created_at": string,"id": number
+{ Args: { "p_application_id": string,"p_before_id"?: number }; Returns: {
+              "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
             }[]
                            },
 "list_organization_invitations":

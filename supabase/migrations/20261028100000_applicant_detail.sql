@@ -193,15 +193,27 @@ $$;
 
 revoke all on function private.share_valid(uuid) from public, anon, authenticated, service_role;
 
--- Opening documents: at most 30 requests per person in 60 seconds (NFR-S6, abuse-prone operations). The counter is a
--- row of private.rate_limit_hits (the table of D20, bounded by actions x buckets and purged every five minutes); the
--- bucket is the hash of the user id, so two people can share a bucket by chance, and then share the allowance. A refused
--- call raises, so the increment of a refused call is rolled back with it and the count stays at the limit.
-insert into private.settings (key, value) values
-  ('rate_limit_document_access_max', '30'),
-  ('rate_limit_document_access_seconds', '60');
+-- The counter of rate_limit_attempt (20261004120000), moved into one function so that the web tier's counters and the
+-- per-person counters below are the same code: a window starts with the first hit, a later hit starts a new window in
+-- the same row, and the count never passes max + 1.
+create function private.rate_limit_hit(p_action text, p_bucket integer, p_max integer, p_seconds integer)
+returns table (hit_count integer, window_end timestamptz)
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into private.rate_limit_hits as h (action, bucket, hits, expires_at)
+  values (p_action, p_bucket, 1, now() + make_interval(secs => p_seconds))
+  on conflict (action, bucket) do update set
+    hits = case when h.expires_at <= now() then 1 else least(h.hits + 1, p_max + 1) end,
+    expires_at = case when h.expires_at <= now() then now() + make_interval(secs => p_seconds) else h.expires_at end
+  returning h.hits, h.expires_at
+$$;
 
-create function private.check_rate_limit(p_action text, p_subject uuid) returns void
+revoke all on function private.rate_limit_hit(text, integer, integer, integer) from public, anon, authenticated, service_role;
+
+create or replace function public.rate_limit_attempt(p_action text, p_key text)
+returns table (allowed boolean, retry_after_seconds integer)
 language plpgsql
 security definer
 set search_path = ''
@@ -211,17 +223,54 @@ declare
   v_seconds integer := (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_' || p_action || '_seconds');
   v_buckets integer := (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_buckets');
   v_hits integer;
+  v_expires timestamptz;
+begin
+  if v_max is null or v_seconds is null then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_action';
+  end if;
+  if v_buckets is null or v_buckets < 1 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'rate_limit_buckets';
+  end if;
+  if p_key is null or p_key !~ '^[0-9a-f]{64}$' then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_key';
+  end if;
+
+  select r.hit_count, r.window_end into v_hits, v_expires
+  from private.rate_limit_hit(p_action, (('x' || left(p_key, 8))::bit(32)::bigint % v_buckets)::integer, v_max, v_seconds) r;
+
+  allowed := v_hits <= v_max;
+  retry_after_seconds := case when allowed then 0 else greatest(1, ceil(extract(epoch from v_expires - now()))::integer) end;
+  return next;
+end;
+$$;
+
+-- Opening documents: at most 30 requests per person in 60 seconds (NFR-S6, abuse-prone operations). The counter is a
+-- row of private.rate_limit_hits (the table of D20, bounded by actions x buckets and purged every five minutes). Its
+-- action is 'user:document_access', a name rate_limit_attempt cannot reach because no setting 'rate_limit_user:...'
+-- exists, so a caller of that public function cannot fill the bucket of a known user id. The bucket is the hash of the
+-- user id in a space of its own (rate_limit_user_buckets, to be raised with the number of members, see the runbook), so
+-- two people share a bucket, and then the allowance, only by chance. A refused call raises, so the increment of a
+-- refused call is rolled back with it and the count stays at the limit.
+insert into private.settings (key, value) values
+  ('rate_limit_document_access_max', '30'),
+  ('rate_limit_document_access_seconds', '60'),
+  ('rate_limit_user_buckets', '1048576');
+
+create function private.check_rate_limit(p_action text, p_subject uuid) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_max integer := (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_' || p_action || '_max');
+  v_seconds integer := (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_' || p_action || '_seconds');
+  v_buckets integer := (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_user_buckets');
 begin
   if v_max is null or v_seconds is null or v_buckets is null then
     raise exception 'CHARA_SETTING_MISSING' using detail = 'rate_limit_' || p_action;
   end if;
-  insert into private.rate_limit_hits as h (action, bucket, hits, expires_at)
-  values (p_action, ((hashtextextended(p_subject::text, 0) & 2147483647) % v_buckets)::integer, 1, now() + make_interval(secs => v_seconds))
-  on conflict (action, bucket) do update set
-    hits = case when h.expires_at <= now() then 1 else h.hits + 1 end,
-    expires_at = case when h.expires_at <= now() then now() + make_interval(secs => v_seconds) else h.expires_at end
-  returning h.hits into v_hits;
-  if v_hits > v_max then
+  if (select r.hit_count from private.rate_limit_hit(
+        'user:' || p_action, ((hashtextextended(p_subject::text, 0) & 2147483647) % v_buckets)::integer, v_max, v_seconds) r) > v_max then
     raise exception 'CHARA_RATE_LIMITED';
   end if;
 end;
@@ -354,8 +403,9 @@ revoke all on function public.application_documents(uuid) from public, anon, aut
 grant execute on function public.application_documents(uuid) to authenticated;
 
 -- Whether the live profile differs in content from the snapshot, for a share that is valid; null for a share that is
--- not (the live profile is then not read at all). It says nothing about what changed. The completeness percentage is
--- not content of the profile, so it is left out of the comparison.
+-- not (the live profile is then not read at all). It says nothing about what changed. The completeness
+-- percentage is not content of the profile, and the occupation label is read from the reference data, so both are left
+-- out of the comparison; occupation_id stays in.
 create function public.application_profile_changed(p_application_id uuid) returns boolean
 language plpgsql
 security definer
@@ -367,20 +417,22 @@ begin
   if not private.share_valid(v_app.passport_share_id) then
     return null;
   end if;
-  return (private.profile_snapshot(v_app.worker_user_id) - 'completeness') is distinct from (v_app.profile_snapshot - 'completeness');
+  return (private.profile_snapshot(v_app.worker_user_id) - 'completeness' - 'occupation') is distinct from (v_app.profile_snapshot - 'completeness' - 'occupation');
 end;
 $$;
 
 revoke all on function public.application_profile_changed(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.application_profile_changed(uuid) to authenticated;
 
--- The internal notes of an application, newest first, with the display name of the author. 100 at most (the Data API
--- cuts a set at 100 rows); a lapsed organisation reads its notes, only writing is refused.
-create function public.list_application_notes(p_application_id uuid) returns table (
+-- The internal notes of an application, newest first, 50 to a page, with the display name of the author. p_before_id is
+-- the id of the last note of the page before (keyset on application_notes_application_idx); has_more says that older
+-- notes exist. A lapsed organisation reads its notes, only writing is refused.
+create function public.list_application_notes(p_application_id uuid, p_before_id bigint default null) returns table (
   id bigint,
   author_name text,
   body text,
-  created_at timestamptz
+  created_at timestamptz,
+  has_more boolean
 )
 language plpgsql
 security definer
@@ -390,14 +442,25 @@ declare
   v_app public.job_applications := private.member_application('list_application_notes', p_application_id);
 begin
   return query
-  select n.id, p.display_name, n.body, n.created_at
-  from public.application_notes n
-  left join public.profiles p on p.id = n.author_id
-  where n.application_id = v_app.id
-  order by n.created_at desc, n.id desc
-  limit 100;
+  with page as (
+    select n.id, n.author_id, n.body, n.created_at
+    from public.application_notes n
+    where n.application_id = v_app.id
+      and (p_before_id is null or (n.created_at, n.id) < (
+        select b.created_at, b.id from public.application_notes b where b.id = p_before_id and b.application_id = v_app.id))
+    order by n.created_at desc, n.id desc
+    limit 51
+  ),
+  numbered as (
+    select page.*, row_number() over (order by page.created_at desc, page.id desc) as rn, count(*) over () as total from page
+  )
+  select numbered.id, p.display_name, numbered.body, numbered.created_at, numbered.total > 50
+  from numbered
+  left join public.profiles p on p.id = numbered.author_id
+  where numbered.rn <= 50
+  order by numbered.rn;
 end;
 $$;
 
-revoke all on function public.list_application_notes(uuid) from public, anon, authenticated, service_role;
-grant execute on function public.list_application_notes(uuid) to authenticated;
+revoke all on function public.list_application_notes(uuid, bigint) from public, anon, authenticated, service_role;
+grant execute on function public.list_application_notes(uuid, bigint) to authenticated;

@@ -39,7 +39,8 @@ select results_eq(
     ('rate_limit_mfa_code_max', '10'), ('rate_limit_mfa_code_seconds', '300'),
     ('rate_limit_resend_max', '10'), ('rate_limit_resend_seconds', '300'),
     ('rate_limit_reset_password_max', '10'), ('rate_limit_reset_password_seconds', '300'),
-    ('rate_limit_signup_max', '30'), ('rate_limit_signup_seconds', '300')$$,
+    ('rate_limit_signup_max', '30'), ('rate_limit_signup_seconds', '300'),
+    ('rate_limit_user_buckets', '1048576')$$,
   'the limits of the five actions and the bucket count are settings with their defaults'
 );
 
