@@ -59,8 +59,8 @@ test.describe("the candidate's journey tracker", () => {
     const candidate = await newApplicant();
     const jobId = seedJob(company, { title: "Welder", status: "open" });
     const id = seedApplication(candidate.id, jobId, company.id, { status: "shortlisted", createdAt: "'2026-10-28T09:00:00Z'" });
-    seedEvent(id, { from: "applied", to: "viewed", at: "2026-10-29T09:00:00Z" });
     seedEvent(id, { from: "viewed", to: "shortlisted", actorId: member.id, note: "We will call you next week", at: "2026-11-01T09:00:00Z" });
+    seedEvent(id, { from: "applied", to: "viewed", at: "2026-10-29T09:00:00Z" });
 
     const seen: string[] = [];
     page.on("response", async (response) => {
@@ -179,7 +179,26 @@ test.describe("the candidate's journey tracker", () => {
     await page.goto(applicationUrl(paused));
     await expect(page.getByRole("heading", { name: "Paused welder", level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: "View the vacancy" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Withdraw application" })).toHaveCount(1);
+    const withdraw = page.getByRole("button", { name: "Withdraw application" });
+    await expect(withdraw).toHaveCount(1);
+    await expect(withdraw).toBeDisabled();
+    await expect(withdraw).toHaveAccessibleDescription("Withdrawing will be available soon.");
+  });
+
+  test("FR-D3 AC1: a decline shows the employer's reason on the Not selected event", async ({ page }) => {
+    const company = await newCompany();
+    const member = await addCompanyUser(company, "member");
+    const candidate = await newApplicant();
+    const jobId = seedJob(company, { title: "Declined welder", status: "open" });
+    const id = seedApplication(candidate.id, jobId, company.id, { status: "rejected", createdAt: "'2026-10-28T09:00:00Z'" });
+    seedEvent(id, { from: "applied", to: "rejected", actorId: member.id, note: "Position filled", at: "2026-10-30T09:00:00Z" });
+    await logIn(page, candidate, applicationUrl(id));
+
+    const declined = page.getByRole("region", { name: "Timeline" }).getByRole("listitem").nth(1);
+    await expect(declined).toContainText("Not selected 30 Oct 2026");
+    await expect(declined.getByText("Message from the employer")).toBeVisible();
+    await expect(declined).toContainText("Position filled");
+    await expect(page.getByRole("region", { name: "What usually happens next" })).toContainText("You were not selected");
   });
 
   test("FR-D3 AC10: the list pages by 20, 20 and 5, ordered by the latest event, with a labelled pager", async ({ page }) => {

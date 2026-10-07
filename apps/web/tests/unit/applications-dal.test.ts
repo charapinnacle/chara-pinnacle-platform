@@ -221,6 +221,7 @@ describe("the candidate's reads", () => {
     ]);
     expect(calls).toContainEqual(["v_my_application_timeline.select", "created_at, to_status, note, actor_role"]);
     expect(calls).toContainEqual(["v_my_application_timeline.eq", "application_id", applicationId]);
+    expect(calls).toContainEqual(["v_my_application_timeline.order", "created_at"]);
   });
 
   it("refuses a timeline row whose columns are null instead of showing it", async () => {

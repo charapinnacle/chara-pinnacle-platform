@@ -19,7 +19,7 @@ insert into t_apps select n, pg_temp.apply_n(:'wa', n) from generate_series(1, 5
 select pg_temp.apply_n(:'wb', 1) as wb_first \gset
 select set_config('t.wb_app', current_setting('t.app'), true) as keep \gset
 
--- The page keeps the application after the vacancy has left the public site (the list is covered by 060).
+-- The page keeps the application after the vacancy has left the public site (the list is covered by 061).
 select pg_temp.set_status(:'own1', (select id from t_jobs where n = 1), 'paused') as paused \gset
 select pg_temp.set_status(:'own1', (select id from t_jobs where n = 2), 'closed') as closed \gset
 update public.jobs set moderation_state = 'hidden' where id = (select id from t_jobs where n = 3);

@@ -58,3 +58,10 @@ select column_name from information_schema.columns where table_schema = 'public'
 ## 7. Measured
 
 Rolled-back transaction, 100,000 applications of 20,000 vacancies, 60 of them one candidate's and 100,060 events (`EXPLAIN (ANALYZE)`, statistics current): a page of `my_applications` (the candidate's rows by `job_applications_worker_created_idx`, the vacancy and the organisation by primary key, the latest event of each by an index-only backward scan of `application_events_application_idx`, a sort of the candidate's own rows) 0.7 ms; the timeline of one application 0.03 ms. The list reads all of one candidate's applications to order them by the latest event, which is bounded by what one candidate applies to (the apply rate limit, `docs/runbooks/applications.md`). First-load JavaScript, gzipped chunk by chunk from `.next/diagnostics/route-bundle-stats.json` after `npm run build`: the list 154 KB (it was 153 KB before the stage filter, the one client component of the tracker), the application page 153 KB.
+
+The list is paged by offset over an order that depends on the latest event, so a page boundary can shift when an employer moves an application between two page loads (one row seen twice or skipped). If candidates reach thousands of applications, replace the offset with a keyset on (`last_event_at`, `created_at`, `id`).
+
+## 8. Deploy order and event order
+
+- Apply `20261024100000_journey_tracker.sql` together with, or immediately before, the web release: it drops `list_my_applications`, which the previous release still calls, so the old list page errors until that instance is replaced.
+- The timeline is ordered by `created_at` alone (the view carries no event id). `application_events.created_at` is the transaction time, so two events of one application written in one transaction would tie. Every writer today (`private.move_application`, `apply_to_job`) writes one event per application per transaction; a unit that writes two must give the view a tie-break (event id) first.
