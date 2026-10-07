@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 
 \ir status_fixture.inc
 
@@ -12,6 +12,10 @@ select is(
   pg_temp.json_as(:'mem', format('select job_title, applicant_name, status, shortlisting_available, stage_change_blocked, note_max_chars from public.get_applicant(%L)', :'app_id')),
   '[{"status": "applied", "job_title": "Status vacancy", "applicant_name": "Amina Okafor", "note_max_chars": 1000, "shortlisting_available": true, "stage_change_blocked": null}]'::jsonb,
   'a member reads the title, the name in the snapshot, the stage, the plan facts and the note limit'
+);
+select is(
+  pg_temp.json_as(:'mem', format('select organization_id from public.get_applicant(%L)', :'app_id')),
+  jsonb_build_array(jsonb_build_object('organization_id', current_setting('t.a'))), 'the row names the organisation of the application'
 );
 select is(jsonb_array_length(pg_temp.json_as(:'own1', format('select * from public.get_applicant(%L)', :'app_id'))), 1, 'the owner reads it too');
 select is(jsonb_array_length(pg_temp.json_as(:'adm', format('select * from public.get_applicant(%L)', :'app_id'))), 1, 'and an admin');

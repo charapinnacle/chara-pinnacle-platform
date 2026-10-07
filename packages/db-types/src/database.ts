@@ -701,7 +701,7 @@ isOneToOne: false
                            },
 "get_applicant":
 { Args: { "p_application_id": string }; Returns: {
-              "applicant_name": string,"applied_at": string,"id": string,"job_id": string,"job_title": string,"note_max_chars": number,"shortlisting_available": boolean,"stage_change_blocked": string,"status": Database["public"]['Enums']["application_status"]
+              "applicant_name": string,"applied_at": string,"id": string,"job_id": string,"job_title": string,"note_max_chars": number,"organization_id": string,"shortlisting_available": boolean,"stage_change_blocked": string,"status": Database["public"]['Enums']["application_status"]
             }[]
                            },
 "get_my_application":

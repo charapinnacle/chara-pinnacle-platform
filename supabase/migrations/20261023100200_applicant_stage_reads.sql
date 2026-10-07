@@ -3,11 +3,13 @@
 -- employer's row-level read of the tables is FR-D5; both stay out of this migration. Both functions return no row for an
 -- application the caller cannot see, whatever the reason, so the page answers it as it answers an unknown id.
 
--- stage_change_blocked is null when the caller may change the stage, organization_suspended or read_only_free_plan
--- otherwise (the same refusals set_application_status gives). applicant_name is the name in the snapshot, null once the
--- candidate has been erased. note_max_chars is the limit set_application_status enforces, for the form to quote.
+-- organization_id lets the page refuse an application that is not of the organisation in its address. stage_change_blocked
+-- is null when the caller may change the stage, organization_suspended or read_only_free_plan otherwise (the same refusals
+-- set_application_status gives). applicant_name is the name in the snapshot, null once the candidate has been erased.
+-- note_max_chars is the limit set_application_status enforces, for the form to quote.
 create function public.get_applicant(p_application_id uuid) returns table (
   id uuid,
+  organization_id uuid,
   job_id uuid,
   job_title text,
   applicant_name text,
@@ -28,7 +30,7 @@ begin
   end if;
   return query
   select
-    a.id, a.job_id, j.title,
+    a.id, a.organization_id, a.job_id, j.title,
     nullif(btrim(concat_ws(' ', a.profile_snapshot ->> 'first_name', a.profile_snapshot ->> 'last_name')), ''),
     a.status, a.created_at,
     private.has_feature(a.organization_id, 'shortlisting'),
