@@ -1,5 +1,8 @@
+import { expect, type Page } from "@playwright/test";
+import { expectNoAxeViolations } from "./axe";
 import { execute, literal, query } from "./db";
 import { createCommittedUser } from "./login";
+import { overflow } from "./login-page";
 import type { TestUser } from "./test-user";
 
 export interface ApplicationRow {
@@ -89,6 +92,15 @@ export function seedApplication(
      insert into public.application_events (application_id, from_status, to_status, actor_id, created_at)
      select share.application_id, null, 'applied', ${literal(workerId)}, ${createdAt} from share returning application_id`,
   ).trim();
+}
+
+// NFR-U1 and NFR-U2: the state on screen has no serious WCAG 2.2 A/AA violation and no horizontal scroll at 1280 and 360 px.
+export async function expectAccessibleAtBothWidths(page: Page): Promise<void> {
+  for (const [width, height] of [[1280, 900], [360, 800]] as const) {
+    await page.setViewportSize({ width, height });
+    expect(await overflow(page), `Horizontal overflow at ${width}px on ${page.url()}`).toBeLessThanOrEqual(0);
+    await expectNoAxeViolations(page);
+  }
 }
 
 export const applyUrl = (jobId: string) => `/en/jobs/${jobId}/apply`;

@@ -7,6 +7,7 @@ import {
   auditCount,
   displayName,
   eventRows,
+  expectAccessibleAtBothWidths,
   newApplicant,
   queuedForApplication,
   seedApplication,
@@ -96,10 +97,15 @@ test.describe("one application per vacancy", () => {
     const company = await newCompany();
     const jobId = seedJob(company, { title: "Shortlisted welder", status: "open" });
     const candidate = await newApplicant();
-    const id = seedApplication(candidate.id, jobId, company.id, { status: "shortlisted", createdAt: "'2026-10-03T10:00:00Z'" });
+    const id = seedApplication(candidate.id, jobId, company.id, {
+      status: "shortlisted",
+      createdAt: "'2026-10-03T10:00:00Z'",
+      coverNote: "I have ten years of experience.",
+    });
 
     await logIn(page, candidate, publicUrl(jobId));
     await expect(page.getByText("You applied on 3 Oct 2026, stage Shortlisted")).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
     await expect(page.getByRole("link", { name: "View your application" })).toHaveAttribute("href", applicationUrl(id));
     await expect(page.getByRole("link", { name: "Apply", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Apply" })).toHaveCount(0);
@@ -108,6 +114,9 @@ test.describe("one application per vacancy", () => {
     await expect(page).toHaveURL(`${applicationUrl(id)}?existing=1`);
     await expect(page.getByRole("status").filter({ hasText: "You already applied to this vacancy." })).toBeVisible();
     await expect(page.locator("dd").filter({ hasText: /^Shortlisted$/ })).toBeVisible();
+    await expect(page.getByText("I have ten years of experience.")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Timeline" }).getByRole("listitem")).toContainText("Applied 3 Oct 2026");
+    await expectAccessibleAtBothWidths(page);
     expect(applicationRows(candidate.id)).toHaveLength(1);
     expect(auditCount("application.duplicate_attempt", id)).toBe(0);
   });
@@ -124,6 +133,7 @@ test.describe("one application per vacancy", () => {
     await logIn(page, candidate, publicUrl(jobId));
     await expect(page.getByText("You withdrew your application")).toBeVisible();
     await expect(page.getByRole("link", { name: "View your application" })).toHaveCount(0);
+    await expectAccessibleAtBothWidths(page);
     await page.getByRole("link", { name: "Apply again" }).click();
     await expect(page).toHaveURL(applyUrl(jobId));
     await waitForHydration(page.getByLabel("Cover note (optional)"));

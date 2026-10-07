@@ -8,6 +8,7 @@ import {
   consentOf,
   displayName,
   eventRows,
+  expectAccessibleAtBothWidths,
   newApplicant,
   NOT_ACCEPTING,
   pauseVacancies,
@@ -57,6 +58,7 @@ test.describe("apply to a vacancy", () => {
     await expect(timeline.getByRole("listitem")).toHaveCount(1);
     await expect(timeline.getByRole("listitem")).toContainText(`Applied ${today()}`);
     await expect(page.getByText(note)).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
 
     const [application] = applicationRows(candidate.id);
     expect(application).toMatchObject({ status: "applied", cover_note: note, job_id: jobId, organization_id: company.id });
@@ -72,12 +74,38 @@ test.describe("apply to a vacancy", () => {
     expect(auditCount("application.submitted", application.id)).toBe(1);
     expect(queuedForApplication(application.id).map(({ user_id }) => user_id).sort()).toEqual([company.owner.id, member.id].sort());
 
-    await page.goto(APPLICATIONS_URL);
+    await page.goto("/en/dashboard/worker");
+    await page.getByRole("link", { name: "My applications" }).click();
+    await expect(page).toHaveURL(APPLICATIONS_URL);
     await expect(page.getByRole("heading", { name: "My applications", level: 1 })).toBeVisible();
     const row = page.locator("ul > li").filter({ hasText: "Welder" });
     await expect(row).toContainText("Applied");
     await expect(row).toContainText(employer);
     await expect(row.getByRole("link", { name: "Welder" })).toHaveAttribute("href", applicationUrl(application.id));
+    await expectAccessibleAtBothWidths(page);
+  });
+
+  test("FR-D1 AC1: the list pages by twenty, and a long title wraps at 360 px", async ({ page }) => {
+    const company = await newCompany();
+    const candidate = await newApplicant();
+    const longTitle = `Senior ${"x".repeat(70)} welder`;
+    for (let n = 0; n < 21; n += 1) {
+      const jobId = seedJob(company, { title: n === 0 ? longTitle : `Listed welder ${n}`, status: "open" });
+      seedApplication(candidate.id, jobId, company.id, { createdAt: `now() - interval '${n + 1} minutes'` });
+    }
+
+    await logIn(page, candidate, APPLICATIONS_URL);
+    await expect(page.locator("ul > li")).toHaveCount(20);
+    await expect(page.locator("ul > li").first()).toContainText(longTitle);
+    await expectAccessibleAtBothWidths(page);
+    await page.getByRole("link", { name: "Next page" }).click();
+    await expect(page).toHaveURL(/\/en\/applications\?cursor=/);
+    await expect(page.locator("ul > li")).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Next page" })).toHaveCount(0);
+    await expectAccessibleAtBothWidths(page);
+    await page.getByRole("link", { name: "Back to the first page" }).click();
+    await expect(page).toHaveURL(APPLICATIONS_URL);
+    await expect(page.locator("ul > li")).toHaveCount(20);
   });
 
   test("FR-D1 AC7: a visitor who presses Apply logs in and lands on the apply form of that vacancy", async ({ page }) => {
@@ -222,10 +250,12 @@ test.describe("apply to a vacancy", () => {
     await expect(alert).toBeVisible();
     await expect(alert.getByRole("link", { name: "Find vacancies" })).toHaveAttribute("href", "/en/jobs");
     expect(applicationRows(candidate.id)).toEqual([]);
+    await expectAccessibleAtBothWidths(page);
 
     await page.goto(applyUrl(jobId));
     await expect(page.getByRole("alert").filter({ hasText: NOT_ACCEPTING })).toBeVisible();
     await expect(page.getByLabel("Cover note (optional)")).toHaveCount(0);
+    await expectAccessibleAtBothWidths(page);
   });
 
   test("FR-C2 AC6, FR-C7: the apply address shows the same message for a draft, closed, hidden, suspended and unknown vacancy", async ({
@@ -265,6 +295,7 @@ test.describe("apply to a vacancy", () => {
     await expect(page.getByRole("button", { name: "Submit application" })).toHaveCount(0);
     await expect(page.getByLabel("Cover note (optional)")).toHaveCount(0);
     expect(applicationRows(candidate.id)).toEqual([]);
+    await expectAccessibleAtBothWidths(page);
 
     await alert.getByRole("link", { name: "Occupation" }).click();
     await expect(page).toHaveURL("/en/passport#occupation");
