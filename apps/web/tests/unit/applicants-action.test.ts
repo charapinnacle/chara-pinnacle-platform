@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const setStatusMock = vi.hoisted(() => vi.fn());
+const getApplicantMock = vi.hoisted(() => vi.fn());
 const revalidateMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
-vi.mock("@/lib/dal/applicants", () => ({ setApplicationStatus: setStatusMock }));
+vi.mock("@/lib/dal/applicants", () => ({ setApplicationStatus: setStatusMock, getApplicant: getApplicantMock }));
 
 const { changeApplicantStage } = await import("@/lib/actions/applicants");
 
@@ -18,6 +19,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   requireOrgRoleMock.mockResolvedValue({ organization: { id: "o", slug: "acme" } });
   setStatusMock.mockResolvedValue(null);
+  getApplicantMock.mockResolvedValue({ organizationId: "o" });
 });
 
 describe("changeApplicantStage", () => {
@@ -39,6 +41,15 @@ describe("changeApplicantStage", () => {
     expect((await changeApplicantStage("Not A Slug", applicationId, input)).message).toBe("We could not complete this request. Try again.");
     expect((await changeApplicantStage("acme", "not-a-uuid", input)).message).toBe("We could not complete this request. Try again.");
     expect(setStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("does not change an application of another organization, whose slug is not the one of the address", async () => {
+    getApplicantMock.mockResolvedValue({ organizationId: "other" });
+    expect(await changeApplicantStage("acme", applicationId, input)).toEqual({ message: "This applicant could not be found." });
+    getApplicantMock.mockResolvedValue(null);
+    expect(await changeApplicantStage("acme", applicationId, input)).toEqual({ message: "This applicant could not be found." });
+    expect(setStatusMock).not.toHaveBeenCalled();
+    expect(revalidateMock).not.toHaveBeenCalled();
   });
 
   it("does not reach the database when the caller is no member: the guard sends them away first", async () => {

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
-import { setApplicationStatus, type StageRefusal } from "@/lib/dal/applicants";
+import { getApplicant, setApplicationStatus, type StageRefusal } from "@/lib/dal/applicants";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { applicantPath } from "@/lib/routes";
@@ -38,8 +38,8 @@ function refusalMessage(refusal: StageRefusal): StageActionResult {
 }
 
 // The organization comes from the slug and the caller's membership and role, looked up on every call (owners and admins
-// at aal2); the application, its organization and the stage rules are the database's. Only the target stage and the
-// note are read from the call.
+// at aal2), and the application must belong to it, so that the role and the two-step check are those of the organization
+// that owns the application; the stage rules are the database's. Only the target stage and the note are read from the call.
 export async function changeApplicantStage(
   slug: string,
   applicationId: string,
@@ -51,6 +51,9 @@ export async function changeApplicantStage(
   const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "member", { hideFromOutsiders: true });
   const parsed = stageChangeInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const applicant = await getApplicant(parsedId.data);
+  if (applicant?.organizationId !== organization.id) return refusalMessage({ kind: "not_found" });
 
   const refusal = await setApplicationStatus(parsedId.data, parsed.data.status, parsed.data.note);
   revalidatePath(applicantPath(defaultLocale, organization.slug, parsedId.data));
