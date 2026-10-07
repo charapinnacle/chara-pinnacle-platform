@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { FormButton } from "@/components/forms/form-button";
+import { WithdrawApplication } from "@/components/applications/withdraw-application";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { applicationNextSteps, applicationStatusLabels, eventActorLabels, eventNoteLabels } from "@/lib/applications/presentation";
@@ -61,14 +61,11 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
         </h2>
         <p className="leading-7">{applicationNextSteps[application.status]}</p>
         {allowedTargets(application.status, "candidate", { shortlisting: false }).includes("withdrawn") ? (
-          <>
-            <FormButton type="button" variant="secondary" disabled aria-describedby="withdraw-hint" className="w-auto justify-self-start">
-              Withdraw application
-            </FormButton>
-            <p id="withdraw-hint" className="text-sm text-muted-foreground">
-              Withdrawing will be available soon.
-            </p>
-          </>
+          <WithdrawApplication
+            applicationId={application.id}
+            jobTitle={application.jobTitle}
+            employerName={application.employerName}
+          />
         ) : null}
       </section>
 

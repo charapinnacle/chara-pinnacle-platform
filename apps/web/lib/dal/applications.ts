@@ -62,6 +62,8 @@ export type ApplyRefusal =
   | { kind: "forbidden" }
   | { kind: "failed" };
 
+export type WithdrawRefusal = { kind: "not_found" } | { kind: "not_withdrawable" } | { kind: "failed" };
+
 type ApplyResult = { kind: "created"; applicationId: string } | { kind: "existing"; applicationId: string } | ApplyRefusal;
 
 export const getApplyLimits = cache(async (): Promise<ApplyLimits> => {
@@ -215,4 +217,20 @@ export async function listTimeline(applicationId: string): Promise<TimelineEvent
     const event = timelineEvent.parse(row);
     return { toStatus: event.to_status, note: event.note, createdAt: event.created_at, actorRole: event.actor_role };
   });
+}
+
+// The function checks that the application is the caller's own and not final; the SQL error never leaves this function.
+export async function withdrawApplication(id: string): Promise<WithdrawRefusal | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("withdraw_application", { p_application_id: id });
+  if (!error) return null;
+  switch (error.message) {
+    case "CHARA_NOT_FOUND":
+      return { kind: "not_found" };
+    case "CHARA_INVALID_TRANSITION":
+      return { kind: "not_withdrawable" };
+    default:
+      console.error("Withdraw application failed", { code: error.code, message: error.message });
+      return { kind: "failed" };
+  }
 }

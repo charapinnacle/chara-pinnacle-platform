@@ -8,13 +8,22 @@ const redirectMock = vi.hoisted(() =>
 const requireUserMock = vi.hoisted(() => vi.fn());
 const applyMock = vi.hoisted(() => vi.fn());
 const limitsMock = vi.hoisted(() => vi.fn());
+const withdrawMock = vi.hoisted(() => vi.fn());
+const readMock = vi.hoisted(() => vi.fn());
+const revalidateMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
-vi.mock("@/lib/dal/applications", () => ({ applyToJob: applyMock, getApplyLimits: limitsMock }));
+vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
+vi.mock("@/lib/dal/applications", () => ({
+  applyToJob: applyMock,
+  getApplyLimits: limitsMock,
+  withdrawApplication: withdrawMock,
+  getMyApplication: readMock,
+}));
 
-const { applyToVacancy } = await import("@/lib/actions/applications");
+const { applyToVacancy, withdrawMyApplication } = await import("@/lib/actions/applications");
 
 const jobId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const applicationId = "0a1b2c3d-0000-4000-8000-000000000001";
@@ -83,5 +92,45 @@ describe("applyToVacancy", () => {
   ])("answers the refusal %j with a message and no database text", async (refusal, expected) => {
     applyMock.mockResolvedValue(refusal);
     expect(await applyToVacancy(jobId, valid)).toEqual(expected);
+  });
+});
+
+describe("withdrawMyApplication", () => {
+  it("withdraws the application of the session and refreshes the page and the list", async () => {
+    withdrawMock.mockResolvedValue(null);
+    expect(await withdrawMyApplication(applicationId)).toEqual({});
+    expect(withdrawMock).toHaveBeenCalledWith(applicationId);
+    expect(revalidateMock.mock.calls).toEqual([[`/en/applications/${applicationId}`], ["/en/applications"]]);
+  });
+
+  it("asks for the session before it reads anything", async () => {
+    requireUserMock.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(withdrawMyApplication(applicationId)).rejects.toThrow("NEXT_REDIRECT");
+    expect(withdrawMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call the database for an id that is not a uuid", async () => {
+    expect(await withdrawMyApplication("not-a-uuid")).toEqual({ message: "We could not complete this request. Try again." });
+    expect(withdrawMock).not.toHaveBeenCalled();
+  });
+
+  it("treats an application that is already withdrawn as done, so a second press is no error", async () => {
+    withdrawMock.mockResolvedValue({ kind: "not_withdrawable" });
+    readMock.mockResolvedValue({ status: "withdrawn" });
+    expect(await withdrawMyApplication(applicationId)).toEqual({});
+  });
+
+  it("tells a candidate whose application reached a final stage meanwhile that it cannot be withdrawn", async () => {
+    withdrawMock.mockResolvedValue({ kind: "not_withdrawable" });
+    readMock.mockResolvedValue({ status: "hired" });
+    expect(await withdrawMyApplication(applicationId)).toEqual({ message: "This application can no longer be withdrawn. Reload to see its stage." });
+  });
+
+  it.each([
+    [{ kind: "not_found" }, { message: "This application could not be found." }],
+    [{ kind: "failed" }, { message: "We could not complete this request. Try again." }],
+  ])("answers the refusal %j with a message and no database text", async (refusal, expected) => {
+    withdrawMock.mockResolvedValue(refusal);
+    expect(await withdrawMyApplication(applicationId)).toEqual(expected);
   });
 });
