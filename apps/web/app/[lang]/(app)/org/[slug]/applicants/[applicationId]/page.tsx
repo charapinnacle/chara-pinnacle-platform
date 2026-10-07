@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { StageChange } from "@/components/applicants/stage-change";
+import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { Notice } from "@/components/forms/notice";
-import { applicationStatusLabels } from "@/lib/applications/presentation";
+import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
 import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/dal/applicants";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -21,16 +22,7 @@ const actorText = { candidate: "Candidate", system: "System" } as const;
 export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[slug]/applicants/[applicationId]">) {
   const { lang, slug, applicationId } = await params;
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true });
-  if (organization.suspended) {
-    return (
-      <div className="mx-auto grid w-full max-w-3xl gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Applicants</h1>
-        <Notice tone="error" role="alert">
-          This organization is suspended, so its applicants are not available.
-        </Notice>
-      </div>
-    );
-  }
+  if (organization.suspended) return <SuspendedOrganization />;
   const id = z.uuid().safeParse(applicationId);
   if (!id.success) notFound();
   const first = await getApplicant(id.data);
@@ -40,7 +32,7 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
   const [reread, events] = await Promise.all([firstOpen ? getApplicant(id.data) : first, listApplicantEvents(id.data)]);
   const applicant = reread ?? first;
   const targets = allowedTargets(applicant.status, "employer", { shortlisting: applicant.shortlistingAvailable });
-  const name = applicant.applicantName ?? "Former candidate";
+  const name = applicant.applicantName ?? FORMER_CANDIDATE;
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">

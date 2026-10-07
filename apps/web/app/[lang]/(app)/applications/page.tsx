@@ -31,7 +31,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">My applications</h1>
         <p className="text-body text-muted-foreground">The vacancies you applied to, with the latest change first.</p>
       </header>
-      {firstUse ? null : <StageFilter lang={lang} stage={stage} />}
+      {firstUse ? null : <StageFilter basePath={applicationsPath(lang)} stage={stage} />}
       {applications.length === 0 ? (
         firstUse ? (
           <EmptyState

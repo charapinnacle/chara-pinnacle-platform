@@ -32,9 +32,7 @@ test.describe("who may open an application", () => {
     await expect(member.getByText("Ana Silva")).toHaveCount(0);
     await expectNotFound(member, applicantUrl(companyB.slug, applicationA));
     await expect(member.getByText("Ana Silva")).toHaveCount(0);
-    const listing = await member.goto(`/en/org/${companyB.slug}/applicants`);
-    expect(listing?.status()).toBe(404);
-    await expect(member.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expectNotFound(member, `/en/org/${companyB.slug}/applicants`);
     await expect(member.getByText("Visibility welder B")).toHaveCount(0);
     await context.close();
 

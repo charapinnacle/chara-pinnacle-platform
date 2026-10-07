@@ -25,6 +25,7 @@ export type StageChangeProps = {
   applicantName: string;
   targets: Database["public"]["Enums"]["application_status"][];
   noteMaxChars: number;
+  initialStatus?: Database["public"]["Enums"]["application_status"];
 };
 
 const ids = { status: "stage-change-status", note: "stage-change-note" } as const;
@@ -37,12 +38,13 @@ export function StageChangeForm({
   applicantName,
   targets,
   noteMaxChars,
+  initialStatus,
   onClose,
 }: StageChangeProps & { onClose: () => void }) {
   const schema = useMemo(() => stageChangeFormSchema(noteMaxChars), [noteMaxChars]);
   const form = useForm<StageChangeFormInput, undefined, StageChangeFormOutput>({
     resolver: zodResolver(schema),
-    defaultValues: { status: "", note: "" },
+    defaultValues: { status: initialStatus ?? "", note: "" },
     shouldFocusError: false,
   });
   const [review, setReview] = useState<StageChangeFormOutput | null>(null);

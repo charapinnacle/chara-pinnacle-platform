@@ -4,13 +4,15 @@ const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const setStatusMock = vi.hoisted(() => vi.fn());
 const getApplicantMock = vi.hoisted(() => vi.fn());
 const revalidateMock = vi.hoisted(() => vi.fn());
+const boardCountsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/applicants", () => ({ setApplicationStatus: setStatusMock, getApplicant: getApplicantMock }));
+vi.mock("@/lib/dal/applicant-list", () => ({ getBoardCounts: boardCountsMock }));
 
-const { changeApplicantStage } = await import("@/lib/actions/applicants");
+const { changeApplicantStage, readBoardCounts } = await import("@/lib/actions/applicants");
 
 const applicationId = "0a1b2c3d-0000-4000-8000-000000000001";
 const input = { status: "interview", note: "  Interviews in week 41  " };
@@ -69,5 +71,25 @@ describe("changeApplicantStage", () => {
   ])("answers the refusal %j with a message and no database text", async (refusal, expected) => {
     setStatusMock.mockResolvedValue(refusal);
     expect(await changeApplicantStage("acme", applicationId, input)).toEqual(expected);
+  });
+});
+
+describe("readBoardCounts", () => {
+  const counts = { applied: 2, viewed: 0, shortlisted: 3, interview: 1, offer: 0, hired: 0, rejected: 0, withdrawn: 0 };
+
+  it("answers the counts of the vacancy", async () => {
+    boardCountsMock.mockResolvedValue(counts);
+    expect(await readBoardCounts(applicationId)).toEqual(counts);
+    expect(boardCountsMock).toHaveBeenCalledWith(applicationId);
+  });
+
+  it("answers null, without a lookup, for an id that is not valid", async () => {
+    expect(await readBoardCounts("not-a-uuid")).toBeNull();
+    expect(boardCountsMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the refusal of the database on: a caller without a session gets an error, not counts", async () => {
+    boardCountsMock.mockRejectedValue(new Error("The board counts could not be loaded"));
+    await expect(readBoardCounts(applicationId)).rejects.toThrow("The board counts could not be loaded");
   });
 });

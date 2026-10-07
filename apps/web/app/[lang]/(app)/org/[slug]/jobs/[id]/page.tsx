@@ -7,7 +7,7 @@ import { VacancyView } from "@/components/jobs/vacancy-view";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { billingPath, jobPath, jobsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
 
@@ -32,6 +32,9 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
       )}
       <VacancyView job={job} />
       <div className="flex flex-wrap gap-x-6">
+        <TextLink standalone href={applicantsPath(lang, slug, { job: job.id })}>
+          Applicants
+        </TextLink>
         <TextLink standalone href={`${jobPath(lang, slug, job.id)}/preview`}>
           Preview as candidates see it
         </TextLink>

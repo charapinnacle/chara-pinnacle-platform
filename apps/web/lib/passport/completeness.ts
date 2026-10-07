@@ -12,7 +12,10 @@ type CompletenessItemKey =
 type CompletenessItem = { key: CompletenessItemKey; label: string; rule: string; weight: number; section: string };
 
 // The weights and rules are shown to the candidate as they are (FR-B4, "transparent weights"). The order is the order of
-// the suggested next item: by weight, descending, ties in this fixed order. The weights add up to 100.
+// the suggested next item: by weight, descending, ties in this fixed order. The weights add up to 100. The employer's
+// applicant list stores the same percentage when a candidate applies, computed by private.passport_completeness in
+// supabase/migrations/20261027100000_applicant_list.sql: change the weights and rules in both (pgTAP 069 and
+// completeness.test.ts compare them).
 const completenessItems: readonly CompletenessItem[] = [
   { key: "names", label: "Name and country", rule: "Your first name, last name and country", weight: 10, section: "basics" },
   { key: "occupation", label: "Occupation", rule: "An occupation chosen from the ISCO-08 list", weight: 15, section: "occupation" },

@@ -13,6 +13,16 @@ const StageChangeForm = dynamic(
   { ssr: false, loading: () => <LoadingSkeleton rows={2} /> },
 );
 
+type StageChangeDialogProps = StageChangeProps & { open: boolean; onClose: () => void; title?: string };
+
+export function StageChangeDialog({ open, onClose, title = "Change stage", ...props }: StageChangeDialogProps) {
+  return (
+    <ModalDialog open={open} onClose={onClose} title={title}>
+      <StageChangeForm {...props} onClose={onClose} />
+    </ModalDialog>
+  );
+}
+
 export function StageChange(props: StageChangeProps) {
   const [open, setOpen] = useState(false);
   return (
@@ -20,9 +30,7 @@ export function StageChange(props: StageChangeProps) {
       <FormButton type="button" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
         Change stage
       </FormButton>
-      <ModalDialog open={open} onClose={() => setOpen(false)} title="Change stage">
-        <StageChangeForm {...props} onClose={() => setOpen(false)} />
-      </ModalDialog>
+      <StageChangeDialog {...props} open={open} onClose={() => setOpen(false)} />
     </>
   );
 }
