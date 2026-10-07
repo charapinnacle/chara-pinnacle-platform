@@ -62,7 +62,7 @@ export type ApplyRefusal =
   | { kind: "forbidden" }
   | { kind: "failed" };
 
-export type WithdrawRefusal = { kind: "not_found" } | { kind: "not_withdrawable" } | { kind: "failed" };
+type WithdrawRefusal = { kind: "not_found" } | { kind: "not_withdrawable" } | { kind: "failed" };
 
 type ApplyResult = { kind: "created"; applicationId: string } | { kind: "existing"; applicationId: string } | ApplyRefusal;
 
