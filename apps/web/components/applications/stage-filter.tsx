@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useId } from "react";
 import { selectClassName } from "@/components/forms/select-class";
 import { applicationStageOptions, isApplicationStatus } from "@/lib/applications/presentation";
-import { applicationsPath } from "@/lib/routes";
 
-type StageFilterProps = { lang: string; stage: Database["public"]["Enums"]["application_status"] | null };
+// basePath is the address of the list with everything but the stage and the page (it may carry a query).
+type StageFilterProps = { basePath: string; stage: Database["public"]["Enums"]["application_status"] | null };
 
 // The address is the state of the list: choosing a stage writes it to the address and shows the first page of that stage.
-export function StageFilter({ lang, stage }: StageFilterProps) {
+export function StageFilter({ basePath, stage }: StageFilterProps) {
   const router = useRouter();
   const id = useId();
 
@@ -26,7 +26,7 @@ export function StageFilter({ lang, stage }: StageFilterProps) {
         className={selectClassName}
         onChange={(event) => {
           const value = event.currentTarget.value;
-          router.push(applicationsPath(lang, { stage: isApplicationStatus(value) ? value : null }));
+          router.push(isApplicationStatus(value) ? `${basePath}${basePath.includes("?") ? "&" : "?"}stage=${value}` : basePath);
         }}
       >
         <option value="">All stages</option>

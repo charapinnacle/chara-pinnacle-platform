@@ -14,6 +14,20 @@ export const applicationStatusLabels: Record<ApplicationStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
+// The order of the pipeline, which is the order of the enum and so the order a sort by stage gives.
+export const pipelineStages: readonly ApplicationStatus[] = [
+  "applied",
+  "viewed",
+  "shortlisted",
+  "interview",
+  "offer",
+  "hired",
+  "rejected",
+  "withdrawn",
+];
+
+export const FORMER_CANDIDATE = "Former candidate";
+
 export function isApplicationStatus(value: unknown): value is ApplicationStatus {
   return typeof value === "string" && Object.hasOwn(applicationStatusLabels, value);
 }
