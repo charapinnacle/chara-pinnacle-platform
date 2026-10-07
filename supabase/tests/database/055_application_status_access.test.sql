@@ -1,10 +1,10 @@
 begin;
-select plan(37);
+select plan(38);
 
 \ir status_fixture.inc
 
 -- FR-D2 AC3: only an accepted member of the job's organisation may change a status. A fresh application of Acme for each call.
-create function pg_temp.try_as(p_user uuid, p_role text default 'authenticated') returns text
+create function pg_temp.try_as(p_user uuid, p_role text default 'authenticated', p_aal text default 'aal1') returns text
 language plpgsql as $$
 declare
   v_app uuid := pg_temp.seed_app('applied');
@@ -12,7 +12,7 @@ declare
 begin
   v_result := case when p_role = 'anon'
     then pg_temp.call_as(null, 'anon', format($f$select public.set_application_status(%L, 'interview')$f$, v_app))
-    else pg_temp.set_as(p_user, v_app, 'interview') end;
+    else pg_temp.set_as(p_user, v_app, 'interview', null, p_aal) end;
   return v_result || '#' || pg_temp.status_of(v_app);
 end;
 $$;
@@ -22,9 +22,13 @@ select is(pg_temp.try_as(:'mem'), 'ok#interview', 'AC3: a member succeeds');
 select is(pg_temp.try_as(:'own2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: the owner of another organisation gets CHARA_NOT_FOUND');
 select is(pg_temp.try_as(:'adm2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: an admin of another organisation gets CHARA_NOT_FOUND');
 select is(pg_temp.try_as(:'pending'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: a member whose invitation is not accepted gets CHARA_NOT_FOUND');
-select is(pg_temp.try_as(:'st_admin'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: a platform administrator gets CHARA_NOT_FOUND');
-select is(pg_temp.try_as(:'st_trust'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: trust and safety gets CHARA_NOT_FOUND');
-select is(pg_temp.try_as(:'st_review'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: a verification reviewer gets CHARA_NOT_FOUND');
+select is(pg_temp.try_as(:'st_admin', 'authenticated', 'aal2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: a platform administrator at aal2 gets CHARA_NOT_FOUND');
+select is(pg_temp.try_as(:'st_trust', 'authenticated', 'aal2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: trust and safety at aal2 gets CHARA_NOT_FOUND');
+select is(pg_temp.try_as(:'st_review', 'authenticated', 'aal2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: a verification reviewer at aal2 gets CHARA_NOT_FOUND');
+select is(
+  pg_temp.viewed_as(:'st_admin', (select id from (select pg_temp.seed_app('applied') as id) x), 'aal2'),
+  'P0002|CHARA_NOT_FOUND|', 'AC3: a platform administrator at aal2 cannot open an application either'
+);
 select is(pg_temp.try_as(:'wa'), 'P0001|CHARA_FORBIDDEN|company_account_required#applied', 'AC3: the candidate who owns the application gets CHARA_FORBIDDEN');
 select is(pg_temp.try_as(:'wb'), 'P0001|CHARA_FORBIDDEN|company_account_required#applied', 'AC3: another candidate gets CHARA_FORBIDDEN');
 select is(pg_temp.try_as(:'nul'), 'P0001|CHARA_FORBIDDEN|company_account_required#applied', 'AC3: a user without an account kind gets CHARA_FORBIDDEN');

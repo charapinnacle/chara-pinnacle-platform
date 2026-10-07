@@ -75,9 +75,9 @@ language sql as $$
   select pg_temp.call_as(p_user, 'authenticated', format('select public.set_application_status(%L, %L, %L)', p_app, p_status, p_note), p_aal)
 $$;
 
-create function pg_temp.viewed_as(p_user uuid, p_app uuid) returns text
+create function pg_temp.viewed_as(p_user uuid, p_app uuid, p_aal text default 'aal1') returns text
 language sql as $$
-  select pg_temp.call_as(p_user, 'authenticated', format('select public.mark_application_viewed(%L)', p_app), 'aal1')
+  select pg_temp.call_as(p_user, 'authenticated', format('select public.mark_application_viewed(%L)', p_app), p_aal)
 $$;
 
 -- The rows of a query as one jsonb array, for the caller p_user; a refusal is the text 'sqlstate|message|detail'.
