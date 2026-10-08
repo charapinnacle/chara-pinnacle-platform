@@ -40,7 +40,7 @@ const toDate = (value: string | null) => (value ? new Date(value) : null);
 // what each read returns (FR-D5 for the applications, the vacancy policy for the vacancies).
 
 // The applications by stage (a stage with none is 0) and the number made in the last 7 x 24 hours.
-export async function getDashboardApplications(organizationId: string): Promise<DashboardApplications> {
+async function getDashboardApplications(organizationId: string): Promise<DashboardApplications> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_dashboard_applications", { p_organization_id: organizationId });
   if (error) throw new Error("The applications could not be counted", { cause: error });
@@ -54,7 +54,7 @@ export async function getDashboardApplications(organizationId: string): Promise<
 }
 
 // The vacancies that are open and not deleted, and whether the organisation has had any vacancy.
-export async function getVacancySummary(organizationId: string): Promise<VacancySummary> {
+async function getVacancySummary(organizationId: string): Promise<VacancySummary> {
   const supabase = await createClient();
   const [open, any] = await Promise.all([
     supabase
@@ -71,7 +71,7 @@ export async function getVacancySummary(organizationId: string): Promise<Vacancy
   return { open: open.count, any: any.data.length > 0 };
 }
 
-export async function getDashboardPlan(organizationId: string): Promise<DashboardPlan> {
+async function getDashboardPlan(organizationId: string): Promise<DashboardPlan> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_dashboard_plan", { p_organization_id: organizationId });
   if (error) throw new Error("The plan could not be loaded", { cause: error });
