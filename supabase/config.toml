@@ -424,6 +424,9 @@ verify_jwt = true
 [functions.scan-document]
 verify_jwt = false
 
+[functions.notify]
+verify_jwt = false
+
 [functions.document-url]
 verify_jwt = true
 
