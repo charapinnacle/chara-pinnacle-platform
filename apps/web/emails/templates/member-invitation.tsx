@@ -7,7 +7,7 @@ const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 function expiry(value: string | undefined): string {
   const date = value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString().slice(0, 10) : undefined;
-  return date ? `It is valid for 7 days, until ${date}, and can be used once.` : "It is valid for 7 days and can be used once.";
+  return date ? `It is valid until ${date} and can be used once.` : "It can be used once and expires.";
 }
 
 export const memberInvitation: Template = {

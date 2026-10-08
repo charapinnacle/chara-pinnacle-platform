@@ -33,7 +33,7 @@ test.describe("FR-I1: the invitation email", () => {
     const form = page.getByRole("dialog", { name: "Invite a team member" });
     await form.getByLabel("Email address").fill(invitee.email.toUpperCase());
     await form.getByRole("button", { name: "Create invitation" }).click();
-    await expect(page.getByRole("dialog", { name: "Invitation link" }).getByText(`Invitation emailed to ${invitee.email}`)).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Invitation link" }).getByText(`We are emailing the invitation to ${invitee.email}`)).toBeVisible();
     expect(invitationNotice(name)).toMatchObject([{ status: "queued", user_id: null, has_token: true }]);
 
     await runNotify();
@@ -41,7 +41,7 @@ test.describe("FR-I1: the invitation email", () => {
     expect(await messageCount(invitee.email)).toBe(1);
     expect(message.Subject).toBe(`You are invited to join ${name} on CHARA`);
     expect(message.Text).toContain(`${name} invited you to join its team on CHARA as a member.`);
-    expect(message.Text).toContain("valid for 7 days");
+    expect(message.Text).toContain("It is valid until");
     const links = extractLinks(message).filter((url) => url.includes("/invitations/"));
     expect(links).toHaveLength(1);
     const { pathname } = new URL(links[0]);

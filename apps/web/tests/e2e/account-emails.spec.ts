@@ -13,7 +13,7 @@ import {
   RESET_SUBJECT,
 } from "./support/login";
 import { extractLinks, messageCount, waitForMessage } from "./support/mailpit";
-import { fillSignup, newEmail, PASSWORD } from "./support/signup-page";
+import { fillSignup, newEmail, PASSWORD, summary } from "./support/signup-page";
 
 const NEW_PASSWORD = "Brand-New-Pw-14";
 const INVALID_LINK = "This link is invalid or has expired.";
@@ -169,8 +169,34 @@ test.describe("FR-I1: account emails through the mail catcher", () => {
     await waitForMessage(user.email, { subject: RESET_SUBJECT, timeoutMs: 60_000 });
 
     await requestReset(page, user.email);
-    await expect(page.getByRole("status")).toContainText("Wait a minute before asking for another.");
+    await expect(page.getByText("Wait a minute before asking for another.")).toBeVisible();
     await page.waitForTimeout(1_500);
     expect(await messageCount(user.email)).toBe(1);
+  });
+
+  test("FR-I1 AC11: when the confirmation email cannot be sent the form says so, keeps the address, clears the password and stays on sign-up", async ({
+    page,
+  }) => {
+    const email = newEmail();
+    const message = "We could not send the confirmation email. Your account was not created. Try again in a few minutes.";
+    await page.route("**/en/signup", (route) =>
+      route.request().method() === "POST"
+        ? route.fulfill({
+            status: 200,
+            contentType: "text/x-component",
+            body: `0:{"a":"$@1","f":"","b":"local"}\n1:${JSON.stringify({ message })}\n`,
+          })
+        : route.continue(),
+    );
+    await page.goto("/en/signup");
+    await fillSignup(page, { kind: "worker", email, password: PASSWORD });
+    await page.getByRole("button", { name: "Create account" }).click();
+
+    await expect(summary(page)).toContainText(message);
+    await expect(page.getByLabel("Email address")).toHaveValue(email);
+    await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
+    await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
+    await expect(page).toHaveURL(/\/en\/signup$/);
+    expect(userByEmail(email)).toEqual([]);
   });
 });

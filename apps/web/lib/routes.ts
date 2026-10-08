@@ -57,10 +57,6 @@ export function billingPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/billing`;
 }
 
-export function invitationPath(lang: string, token: string): string {
-  return `/${lang}/invitations/${token}`;
-}
-
 export function applyPath(lang: string, jobId: string): string {
   return `/${lang}/jobs/${jobId}/apply`;
 }

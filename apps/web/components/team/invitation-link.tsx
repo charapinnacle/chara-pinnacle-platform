@@ -33,7 +33,7 @@ export function InvitationLink({ path, email, role, expiresAt, onDone }: Invitat
   return (
     <div className="grid gap-4">
       <Notice tone="info" role="status">
-        Invitation emailed to {email}. If it does not arrive, copy the link now and send it to them yourself: it is shown only once.
+        We are emailing the invitation to {email}. If it does not arrive, copy the link now and send it to them yourself: it is shown only once.
       </Notice>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body">
         <dt className="text-muted-foreground">Role</dt>

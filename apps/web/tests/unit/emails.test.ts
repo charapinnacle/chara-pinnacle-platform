@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
-import { applicantPath, applicantsPath, applicationPath, billingPath, invitationPath, jobPath, settingsPath } from "@/lib/routes";
+import { applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
@@ -89,7 +89,7 @@ describe("notification templates", () => {
       legal_version: "/en/legal/worker-terms",
       mfa_reset: "/en/login",
       deletion_requested: settingsPath("en"),
-      member_invitation: invitationPath("en", TOKEN),
+      member_invitation: `/en/invitations/${TOKEN}`,
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -201,16 +201,16 @@ describe("notification templates", () => {
     expect(email.html).not.toContain("<img src=x");
     expect(email.html).toContain("&lt;img src=x");
   });
-  it("member_invitation shows the organisation, the role, the 7-day expiry and one link to the invitation page", async () => {
+  it("member_invitation shows the organisation, the role, the expiry date and one link to the invitation page", async () => {
     const email = await renderEmail("member_invitation", SAMPLES.member_invitation, SITE);
     expect(email.subject).toBe("You are invited to join Acme Bau on CHARA");
     expect(email.html).toContain('lang="en"');
     expect(email.text).toContain("CHARA");
     expect(email.text).toContain("Acme Bau invited you to join its team on CHARA as a member.");
-    expect(email.text).toContain("valid for 7 days, until 2026-10-15");
+    expect(email.text).toContain("valid until 2026-10-15 and can be used once.");
     expect(email.html.match(/href="/g)).toHaveLength(1);
-    expect(email.html).toContain(`href="${SITE}${invitationPath("en", TOKEN)}"`);
-    expect(email.text).toContain(`${SITE}${invitationPath("en", TOKEN)}`);
+    expect(email.html).toContain(`href="${SITE}/en/invitations/${TOKEN}"`);
+    expect(email.text).toContain(`${SITE}/en/invitations/${TOKEN}`);
     expect(email.text).toMatch(/if you were not expecting this invitation, ignore\s+this email/i);
     const admin = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, role: "admin" }, SITE);
     expect(admin.text).toContain("as an administrator.");
@@ -227,7 +227,7 @@ describe("notification templates", () => {
     expect(email.text).not.toContain(ACCOUNT);
     const open = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, expires_at: "soon", org_name: undefined }, SITE);
     expect(open.text).toContain("An organisation invited you");
-    expect(open.text).toContain("It is valid for 7 days and can be used once.");
+    expect(open.text).toContain("It can be used once and expires.");
   });
 
   it("mfa_reset says the factors were removed and must be enrolled again, with no code, secret or way around two-step verification", async () => {
