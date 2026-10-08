@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpcMock = vi.fn();
 const createClientMock = vi.fn();
-const headerValues = vi.hoisted(() => ({ requestId: null as string | null }));
+const headerValues = vi.hoisted(() => ({ values: {} as Record<string, string> }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/headers", () => ({ headers: async () => ({ get: () => headerValues.requestId }) }));
+vi.mock("@/lib/env.server", () => ({ serverEnv: () => ({ TRUSTED_PROXY_HOPS: 1 }) }));
+vi.mock("next/headers", () => ({ headers: async () => ({ get: (name: string) => headerValues.values[name] ?? null }) }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async (extra?: Record<string, string>) => {
     createClientMock(extra);
@@ -32,7 +33,7 @@ function userRow(n: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  headerValues.requestId = null;
+  headerValues.values = {};
 });
 
 describe("the paged searches", () => {
@@ -120,13 +121,33 @@ describe("the paged searches", () => {
   });
 });
 
-describe("the request id", () => {
-  it("travels with the calls of the console when the proxy gave one, and not otherwise", async () => {
+describe("the request id and the address", () => {
+  it("travel with the calls of the console when the proxy gave them, and not otherwise", async () => {
     rpcMock.mockResolvedValue({ data: [], error: null });
-    headerValues.requestId = "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11";
+    headerValues.values = { "x-request-id": "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11", "x-forwarded-for": "198.51.100.9" };
     await dal.searchUsers("user", null);
-    expect(createClientMock).toHaveBeenLastCalledWith({ "x-request-id": "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11" });
-    headerValues.requestId = null;
+    expect(createClientMock).toHaveBeenLastCalledWith({
+      "x-request-id": "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11",
+      "x-forwarded-for": "198.51.100.9",
+    });
+    headerValues.values = { "x-forwarded-for": "198.51.100.9" };
+    await dal.searchUsers("user", null);
+    expect(createClientMock).toHaveBeenLastCalledWith({ "x-forwarded-for": "198.51.100.9" });
+    headerValues.values = {};
+    await dal.searchUsers("user", null);
+    expect(createClientMock).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it("send the address our proxy wrote, not an entry the client put to its left", async () => {
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    headerValues.values = { "x-forwarded-for": "10.9.9.9, 198.51.100.9" };
+    await dal.searchUsers("user", null);
+    expect(createClientMock).toHaveBeenLastCalledWith({ "x-forwarded-for": "198.51.100.9" });
+  });
+
+  it("send no address when the entry is not one", async () => {
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    headerValues.values = { "x-forwarded-for": "not an address" };
     await dal.searchUsers("user", null);
     expect(createClientMock).toHaveBeenLastCalledWith(undefined);
   });
