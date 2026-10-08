@@ -1,7 +1,4 @@
-import { readFileSync } from "node:fs";
 import { formatDate } from "@/lib/i18n/format";
-import { accessLog } from "./support/privacy";
-import { userToken } from "./support/accounts";
 import { eventRows, expectAccessibleAtBothWidths, newApplicant, seedEvent } from "./support/applications";
 import {
   applicantUrl,
@@ -10,35 +7,18 @@ import {
   DETAIL,
   seedDetailedApplication,
   seedNamedApplication,
+  setupApplicant,
   stageDialog,
   stageValue,
   statusMessages,
 } from "./support/applicants";
 import { execute, literal, query } from "./support/db";
-import { BUCKET, seedDocument } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
 import { addCompanyUser, expectNotFound, newCompany, seedJob } from "./support/jobs";
 import { logIn } from "./support/login-page";
-import { enrollTotp, jwtClaims } from "./support/login";
-import { enterCode, staffUser } from "./support/mfa";
+import { staffUser } from "./support/mfa";
 import { signInBrowser } from "./support/session";
 import { expect, test } from "./support/test";
-
-async function setup(options: { documents?: boolean; pending?: boolean } = {}) {
-  const company = await newCompany();
-  const member = await addCompanyUser(company, "member");
-  const candidate = await newApplicant();
-  const jobId = seedJob(company, { title: "Detail welder", status: "open" });
-  const documents = options.documents
-    ? [
-        await seedDocument(candidate.id, { title: "Ana CV", fileName: "ana-cv.pdf", scanStatus: "skipped" }),
-        await seedDocument(candidate.id, { title: "Welding certificate", type: "certificate", fileName: "weld.pdf", scanStatus: "clean", expiresOn: "2030-01-01" }),
-        ...(options.pending ? [await seedDocument(candidate.id, { title: "Still scanning", scanStatus: "pending" })] : []),
-      ]
-    : [];
-  const applicationId = seedDetailedApplication(candidate, jobId, company, { documentIds: documents.map((document) => document.id) });
-  return { company, member, candidate, jobId, documents, applicationId };
-}
 
 const snapshotOf = (applicationId: string) =>
   query<{ profile_snapshot: unknown }>(`select profile_snapshot from public.job_applications where id = ${literal(applicationId)}`)[0].profile_snapshot;
@@ -47,7 +27,7 @@ const INDICATOR = "Profile changed since this application was submitted";
 
 test.describe("the applicant detail page", () => {
   test("FR-E2 AC1: the page shows the profile as it was submitted, not the live one, and none of the attributes the platform does not hold", async ({ page }) => {
-    const { company, member, applicationId } = await setup();
+    const { company, member, applicationId } = await setupApplicant();
     const candidateId = query<{ id: string }>(`select worker_user_id as id from public.job_applications where id = ${literal(applicationId)}`)[0].id;
     execute(`update public.worker_profiles set headline = 'Senior welder' where user_id = ${literal(candidateId)}`);
     const before = snapshotOf(applicationId);
@@ -110,184 +90,8 @@ test.describe("the applicant detail page", () => {
     await expect(page.getByText("This document is no longer available.", { exact: false })).toBeVisible();
   });
 
-  test("FR-E2 AC4: the documents of the share open through a 60-second link, and every opening is logged for the candidate", async ({ page }) => {
-    const { company, member, candidate, documents, applicationId } = await setup({ documents: true });
-    const [cv, certificate] = documents;
-    const later = await seedDocument(candidate.id, { title: "Uploaded after applying" });
-
-    await logIn(page, member, applicantUrl(company.slug, applicationId));
-    await expect(page.getByRole("heading", { name: "Ana Silva", level: 1 })).toBeVisible();
-    const html = await (await page.request.get(applicantUrl(company.slug, applicationId))).text();
-    expect(html).not.toContain(cv.storage_path);
-    expect(html).not.toContain("token=");
-    expect(html).not.toContain(BUCKET);
-    const section = page.getByRole("region", { name: "Documents" });
-    await expect(section.getByRole("listitem")).toHaveCount(2);
-    await expect(section.getByRole("listitem").first()).toContainText("Ana CV");
-    await expect(section.getByRole("listitem").first()).toContainText("CV · ana-cv.pdf · 1.2 MB");
-    await expect(section.getByRole("listitem").nth(1)).toContainText("Welding certificate");
-    await expect(section.getByRole("listitem").nth(1)).toContainText("Certificate · weld.pdf");
-    await expect(section.getByRole("listitem").nth(1)).toContainText("Expires January 1, 2030");
-    await expect(page.getByText(later.title)).toHaveCount(0);
-    expect(accessLog(cv.id)).toEqual([]);
-
-    await waitForHydration(section.getByRole("button", { name: "Open Ana CV" }));
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      section.getByRole("button", { name: "Open Ana CV" }).click(),
-    ]);
-    expect(download.suggestedFilename()).toBe("ana-cv.pdf");
-    const link = new URL(download.url());
-    expect(link.pathname).toBe(`/storage/v1/object/sign/${BUCKET}/${cv.storage_path}`);
-    const claims = jwtClaims(link.searchParams.get("token") as string) as { iat: number; exp: number };
-    expect(claims.exp - claims.iat).toBe(60);
-    expect(readFileSync((await download.path()) as string).subarray(0, 5).toString()).toBe("%PDF-");
-
-    const [second] = await Promise.all([
-      page.waitForEvent("download"),
-      section.getByRole("button", { name: "Open Ana CV" }).click(),
-    ]);
-    expect(second.suggestedFilename()).toBe("ana-cv.pdf");
-    const [third] = await Promise.all([
-      page.waitForEvent("download"),
-      section.getByRole("button", { name: "Open Welding certificate" }).click(),
-    ]);
-    expect(third.suggestedFilename()).toBe("weld.pdf");
-
-    expect(accessLog(cv.id)).toEqual([
-      { share_id: expect.any(String), organization_id: company.id, accessed_by: member.id, purpose: "application_review" },
-    ]);
-    expect(accessLog(certificate.id)).toHaveLength(1);
-    expect(accessLog(later.id)).toEqual([]);
-    const [entry] = query<{ worker_user_id: string }>(`select worker_user_id from audit.document_access_log where document_id = ${literal(cv.id)}`);
-    expect(entry.worker_user_id).toBe(candidate.id);
-  });
-
-  test("FR-E2 AC4: a refused opening is a toast and no link, and writes no log row", async ({ page }) => {
-    const { company, member, documents, applicationId } = await setup({ documents: true, pending: true });
-    const [cv] = documents;
-
-    await logIn(page, member, applicantUrl(company.slug, applicationId));
-    const section = page.getByRole("region", { name: "Documents" });
-    await expect(section.getByRole("listitem").filter({ hasText: "Still scanning" })).toContainText("The file is still being checked");
-    await expect(section.getByRole("button", { name: "Open Still scanning" })).toHaveCount(0);
-    await waitForHydration(section.getByRole("button", { name: "Open Ana CV" }));
-
-    execute(
-      `insert into private.rate_limit_hits (action, bucket, hits, expires_at)
-       values ('document_access', (hashtextextended(${literal(member.id)}, 0) & 2147483647) % 16384, 30, now() + interval '60 seconds')
-       on conflict (action, bucket) do update set hits = 30, expires_at = now() + interval '60 seconds'`,
-    );
-    await section.getByRole("button", { name: "Open Ana CV" }).click();
-    await expect(page.getByText("Too many documents were opened in a short time. Wait a minute and try again.", { exact: true })).toBeVisible();
-    execute(`delete from private.rate_limit_hits where action = 'document_access'`);
-
-    execute(`update public.passport_shares set revoked_at = now() where application_id = ${literal(applicationId)}`);
-    await section.getByRole("button", { name: "Open Ana CV" }).click();
-    await expect(page.getByText("This document is no longer available.", { exact: true })).toBeVisible();
-    expect(accessLog(cv.id)).toEqual([]);
-
-    await page.reload();
-    await expect(page.getByRole("region", { name: "Documents" }).getByRole("button")).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Documents" })).toContainText("This document is no longer available.");
-  });
-
-  test("FR-E2 AC4: a member of another organisation gets no link for the document, whatever the page", async () => {
-    const { documents } = await setup({ documents: true });
-    const other = await newCompany();
-    const outsider = await addCompanyUser(other, "member");
-    const refused = await fetch(process.env.DOCUMENT_URL_ENDPOINT as string, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${await userToken(outsider)}` },
-      body: JSON.stringify({ documentId: documents[0].id, purpose: "application_review" }),
-    });
-    expect([refused.status, await refused.json()]).toEqual([403, { error: "forbidden" }]);
-    expect(accessLog(documents[0].id)).toEqual([]);
-  });
-
-  test("FR-E2 AC7: a member adds internal notes, which are labelled, listed newest first and shown as plain text", async ({ page, browser }) => {
-    const { company, member, applicationId } = await setup();
-    const admin = await addCompanyUser(company, "admin");
-    const secret = await enrollTotp(admin);
-
-    await logIn(page, member, applicantUrl(company.slug, applicationId));
-    const notes = page.getByRole("region", { name: "Internal notes" });
-    await expect(notes.getByText("Visible to your organization only. The candidate never sees them.")).toBeVisible();
-    await expect(notes.getByText("No internal notes yet.")).toBeVisible();
-    const field = notes.getByLabel("Add an internal note");
-    await waitForHydration(field);
-    const add = notes.getByRole("button", { name: "Add note" });
-
-    await field.fill("Call on Monday");
-    await add.click();
-    await expect(page.getByText("Note added", { exact: true })).toBeVisible();
-    await expect(notes.getByRole("listitem")).toHaveCount(1);
-    await expect(field).toHaveValue("");
-
-    await field.fill("   ");
-    await add.click();
-    await expect(notes.getByRole("alert").first()).toContainText("Enter a note");
-    await field.fill("a".repeat(2001));
-    await expect(notes.getByText("2001/2000")).toBeVisible();
-    await add.click();
-    await expect(notes.getByRole("alert").first()).toContainText("Note must be at most 2000 characters");
-    await field.fill("b".repeat(2000));
-    await add.click();
-    await expect(notes.getByRole("listitem")).toHaveCount(2);
-    await field.fill("<b>x</b>");
-    await add.click();
-    await expect(notes.getByRole("listitem")).toHaveCount(3);
-
-    const items = notes.getByRole("listitem");
-    await expect(items.first()).toContainText("<b>x</b>");
-    await expect(items.first()).toContainText("Internal note");
-    await expect(items.first().locator("b")).toHaveCount(0);
-    await expect(items.last()).toContainText("Call on Monday");
-    const rows = query<{ organization_id: string; author_id: string; length: number }>(
-      `select organization_id, author_id, length(body)::int as length from public.application_notes where application_id = ${literal(applicationId)} order by id`,
-    );
-    expect(rows).toEqual([
-      { organization_id: company.id, author_id: member.id, length: 14 },
-      { organization_id: company.id, author_id: member.id, length: 2000 },
-      { organization_id: company.id, author_id: member.id, length: 8 },
-    ]);
-
-    const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.4.3.2" } });
-    const adminPage = await context.newPage();
-    await logIn(adminPage, admin, applicantUrl(company.slug, applicationId));
-    await enterCode(adminPage, secret);
-    await expect(adminPage.getByRole("region", { name: "Internal notes" }).getByText("Call on Monday")).toBeVisible();
-    await context.close();
-  });
-
-  test("FR-E2 AC7, AC9: the candidate never sees a note, and a lapsed organisation reads its notes but cannot add one", async ({ page, browser }) => {
-    const { company, member, candidate, applicationId } = await setup();
-    execute(
-      `insert into public.application_notes (application_id, organization_id, author_id, body)
-       values (${literal(applicationId)}, ${literal(company.id)}, ${literal(member.id)}, 'Secret opinion of the team')`,
-    );
-    execute(
-      `insert into billing.subscriptions (organization_id, plan_code, status, provider) values (${literal(company.id)}, 'employer_starter', 'canceled', 'null')`,
-    );
-
-    await logIn(page, member, applicantUrl(company.slug, applicationId));
-    const notes = page.getByRole("region", { name: "Internal notes" });
-    await expect(notes.getByText("Secret opinion of the team")).toBeVisible();
-    await expect(notes.getByText("Your organization has no active paid plan, so notes cannot be added.", { exact: false })).toBeVisible();
-    await expect(notes.getByLabel("Add an internal note")).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Profile as submitted" })).toBeVisible();
-
-    const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.4.3.3" } });
-    await signInBrowser(context, candidate);
-    const candidatePage = await context.newPage();
-    await candidatePage.goto(`/en/applications/${applicationId}`);
-    await expect(candidatePage.getByText("Secret opinion of the team")).toHaveCount(0);
-    await expect(candidatePage.getByText("Internal note")).toHaveCount(0);
-    await context.close();
-  });
-
   test("FR-E2 AC10, AC11: the history lists every event with its actor, and the stage changes and the decline are made from the page", async ({ page, browser }) => {
-    const { company, member, candidate, jobId } = await setup();
+    const { company, member, candidate, jobId } = await setupApplicant();
     const colleague = await addCompanyUser(company, "member");
     const applicationId = seedDetailedApplication(candidate, seedJob(company, { title: "History welder", status: "open" }), company, { status: "shortlisted" });
     seedEvent(applicationId, { from: "applied", to: "viewed", at: new Date(Date.now() - 3 * 3_600_000).toISOString() });
@@ -366,8 +170,23 @@ test.describe("the applicant detail page", () => {
     await context.close();
   });
 
+  test("FR-E2 AC10: a withdrawal by the candidate shows in the history in the same way, and the page offers no further stage", async ({ page }) => {
+    const { company, member, candidate } = await setupApplicant();
+    const applicationId = seedDetailedApplication(candidate, seedJob(company, { title: "Withdrawn welder", status: "open" }), company, { status: "withdrawn" });
+    seedEvent(applicationId, { from: "applied", to: "shortlisted", actorId: member.id, at: new Date(Date.now() - 2 * 3_600_000).toISOString() });
+    seedEvent(applicationId, { from: "shortlisted", to: "withdrawn", actorId: candidate.id, at: new Date(Date.now() - 3_600_000).toISOString() });
+
+    await logIn(page, member, applicantUrl(company.slug, applicationId));
+    const entries = page.getByRole("region", { name: "History" }).getByRole("listitem");
+    await expect(entries).toHaveCount(3);
+    await expect(entries.last()).toContainText("Shortlisted to Withdrawn");
+    await expect(entries.last()).toContainText("Candidate");
+    await expect(stageValue(page)).toHaveText("Withdrawn");
+    await expect(changeStageButton(page)).toHaveCount(0);
+  });
+
   test("FR-E2 AC12: a visitor, a member of another organisation, the applicant, a platform administrator and an owner without two-step verification move nothing", async ({ page, browser }) => {
-    const { company, candidate, applicationId } = await setup();
+    const { company, candidate, applicationId } = await setupApplicant();
     const other = await newCompany();
     const outsider = await addCompanyUser(other, "member");
     const staff = await staffUser("admin");
@@ -395,7 +214,7 @@ test.describe("the applicant detail page", () => {
   });
 
   test("FR-E2 NFR-U1, NFR-U2: the page has no serious accessibility violation at 1280 and 360 px", async ({ page }) => {
-    const { company, member, applicationId } = await setup({ documents: true });
+    const { company, member, applicationId } = await setupApplicant({ documents: true });
     execute(
       `insert into public.application_notes (application_id, organization_id, author_id, body)
        values (${literal(applicationId)}, ${literal(company.id)}, ${literal(member.id)}, 'A note for the check')`,

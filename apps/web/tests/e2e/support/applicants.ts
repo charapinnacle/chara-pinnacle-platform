@@ -1,8 +1,9 @@
 import type { Locator, Page } from "@playwright/test";
 import { execute, literal, query } from "./db";
-import { seedApplication } from "./applications";
+import { newApplicant, seedApplication } from "./applications";
+import { seedDocument } from "./documents";
+import { addCompanyUser, newCompany, seedJob, type Company } from "./jobs";
 import { expect } from "./test";
-import type { Company } from "./jobs";
 import type { TestUser } from "./test-user";
 
 export const applicantUrl = (slug: string, id: string) => `/en/org/${slug}/applicants/${id}`;
@@ -96,4 +97,22 @@ export async function chooseStage(page: Page, stage: string, note: string): Prom
     await dialog.getByLabel("Note (visible to the candidate)", { exact: true }).fill(note);
   }
   await dialog.getByRole("button", { name: "Review" }).click();
+}
+
+// A company with a member, a candidate with a filled passport and an application to one open vacancy; with documents, a CV
+// (skipped) and a certificate (clean), and with pending a third file that is still being checked.
+export async function setupApplicant(options: { documents?: boolean; pending?: boolean } = {}) {
+  const company = await newCompany();
+  const member = await addCompanyUser(company, "member");
+  const candidate = await newApplicant();
+  const jobId = seedJob(company, { title: "Detail welder", status: "open" });
+  const documents = options.documents
+    ? [
+        await seedDocument(candidate.id, { title: "Ana CV", fileName: "ana-cv.pdf", scanStatus: "skipped" }),
+        await seedDocument(candidate.id, { title: "Welding certificate", type: "certificate", fileName: "weld.pdf", scanStatus: "clean", expiresOn: "2030-01-01" }),
+        ...(options.pending ? [await seedDocument(candidate.id, { title: "Still scanning", scanStatus: "pending" })] : []),
+      ]
+    : [];
+  const applicationId = seedDetailedApplication(candidate, jobId, company, { documentIds: documents.map((document) => document.id) });
+  return { company, member, candidate, jobId, documents, applicationId };
 }
