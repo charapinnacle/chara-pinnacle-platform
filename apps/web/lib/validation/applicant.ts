@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
+export const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
 
 const stage = z.string({ error: "Choose a stage" }).pipe(z.enum(employerStages, { error: "Choose a stage" }));
 
@@ -25,58 +25,47 @@ export const stageChangeInputSchema = z
   .object({ status: stage, note: z.string().trim() })
   .refine((value) => value.status !== "rejected" || value.note !== "", { path: ["note"], error: DECLINE_REASON_REQUIRED });
 
-// The templates of the form turn into the note; the limit the form quotes is the database's. The note field is shown, and
-// its length checked, only when its text is what is sent: not for a decline by template.
-function checkReason(noteMaxChars: number) {
-  return (value: { status: string; reason: string; note: string }, context: z.RefinementCtx) => {
-    const template = value.status === "rejected" && value.reason !== "other";
-    if (template && !Object.hasOwn(declineReasonTexts, value.reason)) {
-      context.addIssue({ code: "custom", path: ["reason"], message: "Choose a reason" });
-    } else if (value.status === "rejected" && !template && value.note === "") {
-      context.addIssue({ code: "custom", path: ["note"], message: DECLINE_REASON_REQUIRED });
-    }
-    if (!template && value.note.length > noteMaxChars) {
-      context.addIssue({ code: "custom", path: ["note"], message: `Note must be at most ${noteMaxChars} characters` });
-    }
-  };
-}
-
-function reasonAsNote({ status, reason, note }: { status: string; reason: string; note: string }) {
-  return status === "rejected" && reason !== "other" ? declineReasonTexts[reason as keyof typeof declineReasonTexts] : note;
-}
-
+// The form offers the templates for a decline and turns the choice into the note; the limit it quotes is the database's.
+// The note field is shown, and its length checked, only when its text is what is sent: not for a decline by template.
 export function stageChangeFormSchema(noteMaxChars: number) {
   return z
     .object({ status: stage, reason: z.string(), note: z.string().trim() })
-    .superRefine(checkReason(noteMaxChars))
-    .transform((value) => ({ status: value.status, reason: value.reason, note: reasonAsNote(value) }));
+    .superRefine((value, context) => {
+      const template = value.status === "rejected" && value.reason !== "other";
+      if (template && !Object.hasOwn(declineReasonTexts, value.reason)) {
+        context.addIssue({ code: "custom", path: ["reason"], message: "Choose a reason" });
+      } else if (value.status === "rejected" && !template && value.note === "") {
+        context.addIssue({ code: "custom", path: ["note"], message: DECLINE_REASON_REQUIRED });
+      }
+      if (!template && value.note.length > noteMaxChars) {
+        context.addIssue({ code: "custom", path: ["note"], message: `Note must be at most ${noteMaxChars} characters` });
+      }
+    })
+    .transform(({ status, reason, note }) => ({
+      status,
+      reason,
+      note: status === "rejected" && reason !== "other" ? declineReasonTexts[reason as keyof typeof declineReasonTexts] : note,
+    }));
 }
 
-export const BULK_MAX = 100;
+const BULK_MAX = 100;
 
 const SELECTION_RANGE = `Select between 1 and ${BULK_MAX} applicants`;
 
-const applicationIds = z.array(z.uuid(), { error: SELECTION_RANGE }).min(1, { error: SELECTION_RANGE }).max(BULK_MAX, { error: SELECTION_RANGE });
+export const bulkSelectionSchema = z
+  .array(z.uuid(), { error: SELECTION_RANGE })
+  .min(1, { error: SELECTION_RANGE })
+  .max(BULK_MAX, { error: SELECTION_RANGE });
 
 // What the Server Action of a bulk change parses: the target and the reason of one change, for up to 100 applications.
 export const bulkActionInputSchema = z
-  .object({ applicationIds, status: stage, note: z.string().trim() })
+  .object({ applicationIds: bulkSelectionSchema, status: stage, note: z.string().trim() })
   .refine((value) => value.status !== "rejected" || value.note !== "", { path: ["note"], error: DECLINE_REASON_REQUIRED });
-
-// The toolbar of the bulk change: the form of one change plus the applicants selected on the page.
-export function bulkActionFormSchema(noteMaxChars: number) {
-  return z
-    .object({ applicationIds, status: stage, reason: z.string(), note: z.string().trim() })
-    .superRefine(checkReason(noteMaxChars))
-    .transform((value) => ({ applicationIds: value.applicationIds, status: value.status, reason: value.reason, note: reasonAsNote(value) }));
-}
 
 export type StageChangeInput = z.input<typeof stageChangeInputSchema>;
 export type StageChangeFormValues = z.input<ReturnType<typeof stageChangeFormSchema>>;
 export type StageChangeFormOutput = z.output<ReturnType<typeof stageChangeFormSchema>>;
 export type BulkActionInput = z.input<typeof bulkActionInputSchema>;
-export type BulkActionFormValues = z.input<ReturnType<typeof bulkActionFormSchema>>;
-export type BulkActionFormOutput = z.output<ReturnType<typeof bulkActionFormSchema>>;
 
 // Mirrors the check of application_notes.body. A note is plain text: it is stored and shown as typed.
 export const NOTE_MAX_CHARS = 2000;

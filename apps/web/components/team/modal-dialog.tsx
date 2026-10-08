@@ -7,12 +7,13 @@ type ModalDialogProps = {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  closeOnBackdrop?: boolean;
 };
 
 // The native dialog element gives a modal its focus trap, Escape to close and the return of focus to the control that
-// opened it; a click outside the box (on the backdrop) closes it too. The content is mounted only while open, so a form
-// starts empty each time.
-export function ModalDialog({ open, onClose, title, children }: ModalDialogProps) {
+// opened it. The content is mounted only while open, so a form starts empty each time. A click on the backdrop closes it
+// only when asked for, because a dialog that holds typed input must not lose it to a stray click.
+export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = false }: ModalDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -29,7 +30,7 @@ export function ModalDialog({ open, onClose, title, children }: ModalDialogProps
       aria-labelledby={titleId}
       onClose={onClose}
       onClick={(event) => {
-        if (event.target !== event.currentTarget) return;
+        if (!closeOnBackdrop || event.target !== event.currentTarget) return;
         const box = event.currentTarget.getBoundingClientRect();
         const outside =
           event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;

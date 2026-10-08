@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { BulkResultSummary, BulkReviewBody, type BulkResult, type BulkReview } from "@/components/applicants/bulk-review";
 import { useBulkSelection } from "@/components/applicants/bulk-selection";
@@ -14,24 +14,24 @@ import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ModalDialog } from "@/components/team/modal-dialog";
 import { bulkChangeApplicantStage } from "@/lib/actions/applicants";
+import { applicationStatusLabels } from "@/lib/applications/presentation";
 import {
-  bulkActionFormSchema,
+  bulkSelectionSchema,
   declineReasonOptions,
-  type BulkActionFormOutput,
-  type BulkActionFormValues,
+  employerStages,
+  stageChangeFormSchema,
+  type StageChangeFormOutput,
+  type StageChangeFormValues,
 } from "@/lib/validation/applicant";
 
 export type BulkToolbarProps = { slug: string; shortlisting: boolean; noteMaxChars: number };
 
-const ids = { status: "bulk-status", reason: "bulk-reason", note: "bulk-note", applicationIds: "bulk-selected" } as const;
+const ids = { status: "bulk-status", reason: "bulk-reason", note: "bulk-note", selection: "bulk-selected" } as const;
 
-const targets = [
-  { value: "shortlisted", label: "Move to Shortlisted" },
-  { value: "interview", label: "Move to Interview" },
-  { value: "offer", label: "Move to Offer" },
-  { value: "hired", label: "Move to Hired" },
-  { value: "rejected", label: "Decline (Not selected)" },
-] as const;
+const targets = employerStages.map((value) => ({
+  value,
+  label: value === "rejected" ? `Decline (${applicationStatusLabels[value]})` : `Move to ${applicationStatusLabels[value]}`,
+}));
 
 // Bulk change of stage or decline for the applicants ticked in the list or on the board. Review checks the form and opens
 // the confirmation; only Confirm sends anything. The database judges every applicant on its own, so the summary reports
@@ -40,13 +40,13 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
   const router = useRouter();
   const selection = useBulkSelection();
   const selected = selection?.selected ?? [];
-  const schema = useMemo(() => bulkActionFormSchema(noteMaxChars), [noteMaxChars]);
-  const form = useForm<BulkActionFormValues, undefined, BulkActionFormOutput>({
+  const schema = useMemo(() => stageChangeFormSchema(noteMaxChars), [noteMaxChars]);
+  const form = useForm<StageChangeFormValues, undefined, StageChangeFormOutput>({
     resolver: zodResolver(schema),
-    defaultValues: { applicationIds: [], status: "", reason: "", note: "" },
+    defaultValues: { status: "", reason: "", note: "" },
     shouldFocusError: false,
   });
-  const { control, formState, handleSubmit, setValue } = form;
+  const { control, formState, handleSubmit, setError } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The stage was not changed" });
   const [review, setReview] = useState<BulkReview | null>(null);
   const [result, setResult] = useState<BulkResult | null>(null);
@@ -55,23 +55,29 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
   const reason = useWatch({ control, name: "reason" });
   const noteLength = useWatch({ control, name: "note" }).length;
   const declining = status === "rejected";
-  const selectedKey = selected.map((row) => row.id).join(",");
 
-  useEffect(() => {
-    setValue("applicationIds", selectedKey === "" ? [] : selectedKey.split(","), { shouldValidate: formState.isSubmitted });
-  }, [selectedKey, setValue, formState.isSubmitted]);
+  const items: ErrorSummaryItem[] = [
+    ...(["status", "reason", "note"] as const).flatMap((name) => {
+      const error = formState.errors[name];
+      return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
+    }),
+    ...(formState.errors.root?.selection?.message
+      ? [{ key: "selection", message: formState.errors.root.selection.message, targetId: ids.selection }]
+      : []),
+  ];
 
-  const items: ErrorSummaryItem[] = (Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-    const error = formState.errors[name];
-    return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-  });
+  function startReview(values: StageChangeFormOutput) {
+    const check = bulkSelectionSchema.safeParse(selected.map((row) => row.id));
+    if (check.success) setReview({ values, rows: selected });
+    else setError("root.selection", { message: check.error.issues[0].message });
+  }
 
   async function confirm() {
     if (!review) return;
     const { values, rows } = review;
     setConfirming(true);
     await submit(
-      () => bulkChangeApplicantStage(slug, { applicationIds: values.applicationIds, status: values.status, note: values.note }),
+      () => bulkChangeApplicantStage(slug, { applicationIds: rows.map((row) => row.id), status: values.status, note: values.note }),
       (response) => {
         setReview(null);
         if (response.summary) {
@@ -79,7 +85,7 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
           selection?.deselect(response.summary.updated);
           setResult({
             updated: response.summary.updated.length,
-            refused: response.summary.refused.map((item) => ({ name: names.get(item.id) ?? "Applicant", message: item.message })),
+            refused: response.summary.refused.map((item) => ({ ...item, name: names.get(item.id) ?? "Applicant" })),
           });
           router.refresh();
         } else if (response.message) {
@@ -92,16 +98,16 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
 
   return (
     <section aria-label="Bulk actions" className="grid gap-4 rounded-xl border bg-card p-4">
-      <form noValidate className="grid gap-4" onSubmit={handleSubmit((values) => setReview({ values, rows: selected }))}>
+      <form noValidate className="grid gap-4" onSubmit={handleSubmit(startReview)}>
         <ErrorSummary
           ref={summaryRef}
           items={items}
           onSelect={(key) => {
-            if (key === "applicationIds") document.getElementById(ids.applicationIds)?.focus();
-            else form.setFocus(key as FieldPath<BulkActionFormValues>);
+            if (key === "selection") document.getElementById(ids.selection)?.focus();
+            else form.setFocus(key as FieldPath<StageChangeFormValues>);
           }}
         />
-        <p id={ids.applicationIds} tabIndex={-1} role="status" className="font-medium outline-none">
+        <p id={ids.selection} tabIndex={-1} role="status" className="font-medium outline-none">
           {selected.length} selected
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -138,7 +144,7 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
         </FormButton>
       </form>
       {result ? <BulkResultSummary result={result} onDismiss={() => setResult(null)} /> : null}
-      <ModalDialog open={review !== null} onClose={() => setReview(null)} title="Review the bulk action">
+      <ModalDialog open={review !== null} onClose={() => setReview(null)} title="Review the bulk action" closeOnBackdrop>
         {review ? (
           <BulkReviewBody review={review} busy={confirming} onCancel={() => setReview(null)} onConfirm={confirm} />
         ) : null}

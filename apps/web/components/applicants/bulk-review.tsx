@@ -2,9 +2,9 @@ import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import type { SelectableRow } from "@/components/applicants/bulk-selection";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
-import type { BulkActionFormOutput } from "@/lib/validation/applicant";
+import type { StageChangeFormOutput } from "@/lib/validation/applicant";
 
-export type BulkReview = { values: BulkActionFormOutput; rows: SelectableRow[] };
+export type BulkReview = { values: StageChangeFormOutput; rows: SelectableRow[] };
 
 type BulkReviewBodyProps = { review: BulkReview; busy: boolean; onCancel: () => void; onConfirm: () => void };
 
@@ -55,7 +55,7 @@ export function BulkReviewBody({ review, busy, onCancel, onConfirm }: BulkReview
   );
 }
 
-export type BulkResult = { updated: number; refused: { name: string; message: string }[] };
+export type BulkResult = { updated: number; refused: { id: string; name: string; message: string }[] };
 
 // The report: how many were changed and each refused applicant with the reason, until it is dismissed.
 export function BulkResultSummary({ result, onDismiss }: { result: BulkResult; onDismiss: () => void }) {
@@ -66,8 +66,8 @@ export function BulkResultSummary({ result, onDismiss }: { result: BulkResult; o
       </p>
       {result.refused.length > 0 ? (
         <ul className="grid list-disc gap-1 ps-5">
-          {result.refused.map((item, index) => (
-            <li key={index} className="wrap-anywhere">
+          {result.refused.map((item) => (
+            <li key={item.id} className="wrap-anywhere">
               {item.name}: {item.message}
             </li>
           ))}
