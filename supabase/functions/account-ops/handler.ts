@@ -18,20 +18,46 @@ const MAX_DEPTH = 3;
 // A suspension bans the account for a hundred years; a reinstatement lifts the ban.
 const BAN_DURATION = "876000h";
 
+// Who asked and for which request: the jobs queued by an administrator carry both, and every effect they have is
+// recorded against them (FR-F2). The other jobs carry neither.
+interface Audit {
+  actorId: string;
+  requestId: string;
+}
+
 type Job =
-  | { msgId: number; action: "sign_out_organization"; organizationId: string }
-  | { msgId: number; action: "fan_out_legal_version"; documentSlug: string; version: number }
-  | (
-    & { msgId: number; userId: string }
-    & (
-      | { action: "sign_out" | "reset_mfa" | "erase_user" | "suspend_user" | "reinstate_user" }
-      | { action: "delete_object"; bucketId: string; path: string }
+  & { msgId: number; audit: Audit | null }
+  & (
+    | { action: "sign_out_organization"; organizationId: string }
+    | { action: "fan_out_legal_version"; documentSlug: string; version: number }
+    | (
+      & { userId: string }
+      & (
+        | { action: "sign_out" | "reset_mfa" | "erase_user" | "suspend_user" | "reinstate_user" }
+        | { action: "delete_object"; bucketId: string; path: string }
+      )
     )
   );
+
+interface Step {
+  action: string;
+  entityType: string;
+  entityId: string;
+  data: Record<string, number>;
+}
 
 interface AccountOpsDeps {
   client: SupabaseClient;
   sharedSecret: string;
+}
+
+function parseAudit(actorId: unknown, requestId: unknown): Audit | null | undefined {
+  if (actorId === undefined && requestId === undefined) {
+    return null;
+  }
+  return typeof actorId === "string" && UUID.test(actorId) && typeof requestId === "string" && UUID.test(requestId)
+    ? { actorId, requestId }
+    : undefined;
 }
 
 function parseJob(row: unknown): Job | null {
@@ -50,6 +76,8 @@ function parseJob(row: unknown): Job | null {
     version,
     bucket_id: bucketId,
     path,
+    actor_id: actorId,
+    request_id: requestId,
   } = message as {
     action?: unknown;
     user_id?: unknown;
@@ -58,14 +86,22 @@ function parseJob(row: unknown): Job | null {
     version?: unknown;
     bucket_id?: unknown;
     path?: unknown;
+    actor_id?: unknown;
+    request_id?: unknown;
   };
+  const audit = parseAudit(actorId, requestId);
+  if (audit === undefined) {
+    return null;
+  }
   if (action === "sign_out_organization") {
-    return typeof organizationId === "string" && UUID.test(organizationId) ? { msgId, action, organizationId } : null;
+    return typeof organizationId === "string" && UUID.test(organizationId)
+      ? { msgId, audit, action, organizationId }
+      : null;
   }
   if (action === "fan_out_legal_version") {
     return typeof documentSlug === "string" && DOCUMENT_SLUG.test(documentSlug) && documentSlug.length <= 60 &&
         typeof version === "number" && Number.isInteger(version) && version > 0
-      ? { msgId, action, documentSlug, version }
+      ? { msgId, audit, action, documentSlug, version }
       : null;
   }
   if (typeof userId !== "string" || !UUID.test(userId)) {
@@ -75,7 +111,7 @@ function parseJob(row: unknown): Job | null {
     action === "sign_out" || action === "reset_mfa" || action === "erase_user" || action === "suspend_user" ||
     action === "reinstate_user"
   ) {
-    return { msgId, action, userId };
+    return { msgId, audit, action, userId };
   }
   // An object is only ever removed from the folder of the user the job names.
   if (
@@ -83,7 +119,7 @@ function parseJob(row: unknown): Job | null {
     typeof path === "string" &&
     OBJECT_PATH.test(path) && path.startsWith(`${userId}/`)
   ) {
-    return { msgId, action, userId, bucketId, path };
+    return { msgId, audit, action, userId, bucketId, path };
   }
   return null;
 }
@@ -254,6 +290,71 @@ async function run(client: SupabaseClient, job: Job): Promise<Record<string, num
   return { sessions_ended: sessionsEnded };
 }
 
+// What a job did, as the steps to record: the sessions it ended, the ban it set or lifted, the factors it deleted. A step
+// that has no effect to name (a user that is gone) is not recorded.
+function steps(job: Job, result: Record<string, number>): Step[] {
+  const profile = (action: string, userId: string, data: Record<string, number>): Step => ({
+    action,
+    entityType: "profile",
+    entityId: userId,
+    data,
+  });
+  switch (job.action) {
+    case "sign_out":
+      return [profile("account_ops.sign_out_global", job.userId, { sessions_ended: result.sessions_ended })];
+    case "reset_mfa":
+      return [
+        profile("account_ops.sign_out_global", job.userId, { sessions_ended: result.sessions_ended }),
+        profile("account_ops.delete_factors", job.userId, { factors_deleted: result.factors_deleted }),
+      ];
+    case "suspend_user":
+    case "reinstate_user":
+      if (result.banned === 1) {
+        return [
+          profile("account_ops.sign_out_global", job.userId, { sessions_ended: result.sessions_ended }),
+          profile("account_ops.ban_user", job.userId, {}),
+        ];
+      }
+      return result.banned === 0 ? [profile("account_ops.unban_user", job.userId, {})] : [];
+    case "sign_out_organization":
+      return [{
+        action: "account_ops.sign_out_organization",
+        entityType: "organization",
+        entityId: job.organizationId,
+        data: { sessions_ended: result.sessions_ended },
+      }];
+    case "fan_out_legal_version":
+      return [{
+        action: "account_ops.fan_out_legal_version",
+        entityType: "legal_document",
+        entityId: `${job.documentSlug}:${job.version}`,
+        data: { emails_queued: result.emails_queued },
+      }];
+    default:
+      return [];
+  }
+}
+
+// The database writes a row once per job and action, so a job that is read again after a crash (before its
+// acknowledgement) records nothing twice.
+async function record(client: SupabaseClient, job: Job, result: Record<string, number>): Promise<void> {
+  if (!job.audit) {
+    return;
+  }
+  for (const step of steps(job, result)) {
+    const { error } = await client.rpc("audit_record_external", {
+      p_action: step.action,
+      p_entity_type: step.entityType,
+      p_entity_id: step.entityId,
+      p_actor_id: job.audit.actorId,
+      p_metadata: { ...step.data, request_id: job.audit.requestId, job_id: String(job.msgId) },
+    });
+    if (error) {
+      throw error;
+    }
+  }
+}
+
 async function finish(client: SupabaseClient, job: Job, result: Record<string, number>): Promise<void> {
   const { error } = await client.rpc("account_ops_ack", { p_msg_id: job.msgId, p_result: result });
   if (error) {
@@ -278,7 +379,9 @@ async function runJob(deps: AccountOpsDeps, row: unknown): Promise<boolean> {
     return false;
   }
   try {
-    await finish(deps.client, job, await run(deps.client, job));
+    const result = await run(deps.client, job);
+    await record(deps.client, job, result);
+    await finish(deps.client, job, result);
     return true;
   } catch (e) {
     failure(job.msgId, job.action, e);
