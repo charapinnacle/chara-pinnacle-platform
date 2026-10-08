@@ -40,7 +40,8 @@ alter table public.moderation_actions enable always trigger moderation_actions_n
 alter table public.notifications drop constraint notifications_kind_check;
 alter table public.notifications add constraint notifications_kind_check check (kind in (
   'application_received', 'status_changed', 'vacancy_hidden', 'trial_ending', 'payment_failed', 'legal_version',
-  'mfa_reset', 'deletion_requested', 'deletion_completed', 'erasure_paused', 'account_suspended', 'account_reinstated'
+  'mfa_reset', 'deletion_requested', 'deletion_completed', 'erasure_paused', 'member_invitation', 'account_suspended',
+  'account_reinstated'
 )) not valid;
 alter table public.notifications validate constraint notifications_kind_check;
 
@@ -57,6 +58,9 @@ declare
   v_title text;
   v_slug text;
   v_org_name text;
+  v_invitation_id uuid;
+  v_role public.member_role;
+  v_expires timestamptz;
 begin
   if p_message ->> 'job_id' is not null then
     select j.id, j.title, o.slug, o.display_name into v_job_id, v_title, v_slug, v_org_name
@@ -66,6 +70,11 @@ begin
   if p_message ->> 'organization_id' is not null then
     select o.slug, o.display_name into v_slug, v_org_name
     from public.organizations o where o.id = (p_message ->> 'organization_id')::uuid;
+  end if;
+  if p_message ->> 'invitation_id' is not null then
+    select i.id, i.role, i.expires_at, o.display_name into v_invitation_id, v_role, v_expires, v_org_name
+    from public.organization_invitations i join public.organizations o on o.id = i.organization_id
+    where i.id = (p_message ->> 'invitation_id')::uuid;
   end if;
 
   return jsonb_strip_nulls(case p_kind
@@ -97,6 +106,8 @@ begin
       'change_summary', p_message -> 'change_summary')
     when 'account_suspended' then jsonb_build_object('reasons', p_message -> 'reasons', 'org_name', v_org_name, 'org_slug', v_slug)
     when 'account_reinstated' then jsonb_build_object('reasons', p_message -> 'reasons', 'org_name', v_org_name, 'org_slug', v_slug)
+    when 'member_invitation' then jsonb_build_object(
+      'invitation_id', v_invitation_id, 'org_name', v_org_name, 'role', v_role, 'expires_at', v_expires)
     when 'deletion_requested' then jsonb_build_object('erases_on', p_message -> 'erases_on')
     when 'erasure_paused' then jsonb_build_object('account_id', p_message -> 'user_id')
     else '{}'::jsonb
