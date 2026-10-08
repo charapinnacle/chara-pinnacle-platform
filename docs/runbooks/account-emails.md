@@ -60,6 +60,17 @@ group by kind;
 ```
 
   The delivery events arrive some seconds to hours after the send, so the rate of the last hours is not final. A bounce of an invitation does not mark an address undeliverable (the invitee has no user row); the inviter learns of it when the person does not answer, and invites again.
+- One address receiving invitations from several organisations (accepted risk, D65): the only limit on invitation emails is per organisation, so look for an invitee address that many organisations mail. A re-invitation by the same organisation replaces its earlier row, so repeats from one organisation show only in the per-recipient view of the Resend dashboard.
+
+```sql
+select email, count(distinct organization_id) as organisations, count(*) as invitations
+from public.organization_invitations
+where created_at > now() - interval '7 days'
+group by email
+having count(distinct organization_id) > 3
+order by organisations desc;
+```
+
 - Act on it: a bounce rate above 2 % or any complaint is looked at the same day (wrong sender address, domain reputation, a mistyped invitation address); a failing SMTP connection shows as `500 unexpected_failure` on sign-up in the Auth logs and as the form message "We could not send the confirmation email" (nobody is registered by such a call, so there is nothing to repair afterwards).
 
 ## 5. Rotate the provider credentials (SOP step Rotate; AC13)
