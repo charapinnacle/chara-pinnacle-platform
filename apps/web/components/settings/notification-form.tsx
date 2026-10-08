@@ -13,9 +13,13 @@ import { notificationSettingsSchema, type EmailDelivery, type NotificationSettin
 const GROUP_ID = "notification-delivery";
 
 const labels = {
-  immediate: { label: "Immediately", icon: Mail },
-  daily_summary: { label: "Daily summary", icon: CalendarClock },
-} satisfies Record<EmailDelivery, { label: string; icon: LucideIcon }>;
+  immediate: { label: "Immediately", icon: Mail, description: "One email for each new application, as it arrives." },
+  daily_summary: {
+    label: "Daily summary",
+    icon: CalendarClock,
+    description: "One email a day at 08:00 Central European time, only when there are new applications.",
+  },
+} satisfies Record<EmailDelivery, { label: string; icon: LucideIcon; description: string }>;
 
 const options = (Object.keys(labels) as EmailDelivery[]).map((value) => ({ value, ...labels[value] }));
 
@@ -49,7 +53,6 @@ export function NotificationForm({ delivery }: { delivery: NotificationSettings[
         name="delivery"
         id={GROUP_ID}
         legend="Emails about new applications"
-        description="Immediately: one email for each new application. Daily summary: one email a day at 08:00 Central European time, only when there are new applications."
         options={options}
       />
       <div>

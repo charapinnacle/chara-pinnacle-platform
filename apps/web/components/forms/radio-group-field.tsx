@@ -16,7 +16,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 
-type RadioOption = { value: string; label: string; icon: LucideIcon };
+type RadioOption = { value: string; label: string; icon: LucideIcon; description?: string };
 
 type RadioGroupFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   control: Control<T>;
@@ -66,6 +66,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
             <div className="mt-1 grid gap-3 sm:grid-cols-2">
               {options.map((option, index) => {
                 const optionId = index === 0 ? id : `${id}-${option.value}`;
+                const optionDescriptionId = `${optionId}-description`;
                 const Icon = option.icon;
                 return (
                   <div
@@ -84,6 +85,7 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                         onValueChange?.(option.value);
                       }}
                       onBlur={field.onBlur}
+                      aria-describedby={option.description ? optionDescriptionId : undefined}
                       className="absolute inset-0 size-full cursor-pointer appearance-none rounded-xl"
                     />
                     <span
@@ -98,6 +100,11 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                     >
                       {option.label}
                     </FieldLabel>
+                    {option.description ? (
+                      <FieldDescription id={optionDescriptionId} className="col-span-full sm:row-start-3">
+                        {option.description}
+                      </FieldDescription>
+                    ) : null}
                     <span
                       aria-hidden
                       className="size-5 rounded-full border-2 border-input bg-card transition-[border-width,border-color] group-has-checked/option:border-[6px] group-has-checked/option:border-primary sm:col-start-2 sm:row-start-1"
