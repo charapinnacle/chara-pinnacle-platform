@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(49);
 
 \ir status_fixture.inc
 
@@ -210,16 +210,91 @@ select is(
   '42501|permission denied for table job_applications|', 'control: no API role can write the status of an application directly'
 );
 
+-- AC12: outsiders cannot shortlist. The anonymous caller has no EXECUTE (default-deny grants), so the database answers
+-- 42501 before the function runs, not CHARA_UNAUTHENTICATED (D60 departure).
+create temp table t_ac12 as select pg_temp.seed_app('applied', (select org from t_paid where plan = 'employer_professional')) as app;
+create temp table t_ac12_before as select pg_temp.snap(app) as s from t_ac12;
+select is(
+  pg_temp.call_as(null, 'anon', format($$select public.set_application_status(%L, 'shortlisted')$$, (select app from t_ac12))),
+  '42501|permission denied for function set_application_status|', 'AC12: an anonymous caller is refused'
+);
+select is(
+  pg_temp.set_as(:'wa', (select app from t_ac12), 'shortlisted'), 'P0001|CHARA_FORBIDDEN|company_account_required',
+  'AC12: the candidate gets CHARA_FORBIDDEN'
+);
+select is(
+  pg_temp.set_as(pg_temp.member_of((select org from t_paid where plan = 'employer_enterprise')), (select app from t_ac12), 'shortlisted'),
+  'P0002|CHARA_NOT_FOUND|', 'AC12: a member of another organisation gets CHARA_NOT_FOUND'
+);
+select is(
+  pg_temp.set_as(:'st_admin', (select app from t_ac12), 'shortlisted', null, 'aal2'), 'P0002|CHARA_NOT_FOUND|',
+  'AC12: a platform administrator who is not a member gets CHARA_NOT_FOUND'
+);
+select is(pg_temp.snap((select app from t_ac12)), (select s from t_ac12_before), 'AC12: the application stays Applied with no event and no message');
+
+-- AC9: a plan change does not disturb a shortlisted applicant. The organisation moves from a plan with the feature to
+-- employer_starter, whose row was deleted above.
+create temp table t_ac9 as select pg_temp.org_on('employer_professional') as org;
+create temp table t_ac9_apps as
+  select pg_temp.seed_app('shortlisted', org) as kept, pg_temp.seed_app('applied', org) as fresh from t_ac9;
+update billing.subscriptions set plan_code = 'employer_starter' where organization_id = (select org from t_ac9);
+select is(
+  pg_temp.json_as(pg_temp.member_of((select org from t_ac9)), format('select status from public.v_job_applicants where id = %L', (select kept from t_ac9_apps))),
+  '[{"status": "shortlisted"}]'::jsonb, 'AC9: after the plan change the applicant is still Shortlisted and readable'
+);
+select is(
+  pg_temp.set_as(pg_temp.member_of((select org from t_ac9)), (select kept from t_ac9_apps), 'interview'), 'ok',
+  'AC9: the move to Interview succeeds'
+);
+select is(pg_temp.snap((select kept from t_ac9_apps)), 'interview/2/1', 'AC9: and writes its event and message');
+select is(
+  pg_temp.set_as(pg_temp.member_of((select org from t_ac9)), (select fresh from t_ac9_apps), 'shortlisted'),
+  'P0001|CHARA_FEATURE_NOT_IN_PLAN|shortlisting', 'AC9: a new shortlisting is refused with CHARA_FEATURE_NOT_IN_PLAN'
+);
+select is(pg_temp.status_of((select fresh from t_ac9_apps)), 'applied', 'AC9: and the other application stays Applied');
+
+-- AC8: bulk shortlisting on a plan without the feature, then with the row added and no deployment. Departure (D60): the
+-- bulk function answers per item (FR-D2 AC9, D53), so the first call returns three refused items instead of raising.
+create temp table t_ac8_apps as
+  select pg_temp.seed_app('applied', (select starter from t_lack)) as a1, pg_temp.seed_app('applied', (select starter from t_lack)) as a2,
+         pg_temp.seed_app('applied', (select starter from t_lack)) as a3;
+create temp table t_ac8_first as
+  select pg_temp.bulk_as(pg_temp.member_of((select starter from t_lack)), array[a1, a2, a3], 'shortlisted') as r from t_ac8_apps;
+select is(
+  (select jsonb_path_query_array(r, '$[*].error_code') from t_ac8_first),
+  '["CHARA_FEATURE_NOT_IN_PLAN", "CHARA_FEATURE_NOT_IN_PLAN", "CHARA_FEATURE_NOT_IN_PLAN"]'::jsonb,
+  'AC8: without the row all three items are refused with CHARA_FEATURE_NOT_IN_PLAN'
+);
+select is(
+  (select jsonb_agg(pg_temp.snap(a)) from t_ac8_apps, unnest(array[a1, a2, a3]) a), '["applied/1/0", "applied/1/0", "applied/1/0"]'::jsonb,
+  'AC8: and nothing changed: Applied, one event, no message each'
+);
+insert into billing.plan_features (plan_code, feature_key) values ('employer_starter', 'shortlisting');
+create temp table t_ac8_second as
+  select pg_temp.bulk_as(pg_temp.member_of((select starter from t_lack)), array[a1, a2, a3], 'shortlisted') as r from t_ac8_apps;
+select is(
+  (select jsonb_path_query_array(r, '$[*].ok') from t_ac8_second), '[true, true, true]'::jsonb,
+  'AC8: after the row is added the repeated call shortlists all three'
+);
+select is(
+  (select jsonb_agg(pg_temp.snap(a)) from t_ac8_apps, unnest(array[a1, a2, a3]) a), '["shortlisted/2/1", "shortlisted/2/1", "shortlisted/2/1"]'::jsonb,
+  'AC8: each has Shortlisted, one more event and one message'
+);
+
 -- KPI of the SOP: shortlist usage by plan, the statement of docs/runbooks/shortlisting.md as written.
 select is(
   (select jsonb_object_agg(plan, jsonb_build_array(moves, organizations)) from (
-    select private.org_plan_code(a.organization_id) as plan, count(*) as moves, count(distinct a.organization_id) as organizations
-    from public.application_events e
-    join public.job_applications a on a.id = e.application_id
-    where e.to_status = 'shortlisted' and e.created_at >= now() - interval '1 year'
-    group by 1
+    with per_org as (
+      select a.organization_id, count(*) as moves
+      from public.application_events e
+      join public.job_applications a on a.id = e.application_id
+      where e.to_status = 'shortlisted' and e.created_at >= now() - interval '1 year'
+      group by 1
+    )
+    select private.org_plan_code(organization_id) as plan, sum(moves) as moves, count(*) as organizations
+    from per_org group by 1 order by 1
   ) k),
-  '{"employer_enterprise": [3, 1], "employer_professional": [6, 1], "employer_starter": [3, 1], "free_employer": [1, 1]}'::jsonb,
+  '{"employer_enterprise": [3, 1], "employer_professional": [6, 1], "employer_starter": [6, 2], "free_employer": [1, 1]}'::jsonb,
   'KPI: the usage query counts the shortlisting moves and the organisations by plan'
 );
 
