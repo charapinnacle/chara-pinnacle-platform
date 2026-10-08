@@ -65,7 +65,7 @@ export async function readBoardCounts(jobId: string): Promise<BoardCounts | null
   return parsedId.success ? getBoardCounts(parsedId.data) : null;
 }
 
-export type BulkSummary = { updated: string[]; refused: { id: string; message: string }[] };
+type BulkSummary = { updated: string[]; refused: { id: string; message: string }[] };
 
 type BulkActionResult = StageActionResult & { summary?: BulkSummary };
 
@@ -84,9 +84,9 @@ function itemMessage({ errorCode, status }: BulkItem): string {
   }
 }
 
-// Several applications get the same target and note. The caller's role is checked for the organization of the address and
-// the database judges every item (its own organizations only, the transition table, the plan), so an id that is not valid
-// or not theirs is refused as that item, and the stage rules are not repeated here.
+// Several applications get the same target and note. The caller's role is checked for the organization of the address
+// (owners and admins at aal2) and the DAL sends on only the ids of that organization, as the single change does; the
+// database judges every item (the transition table, the plan), so the stage rules are not repeated here.
 export async function bulkChangeApplicantStage(slug: string, input: BulkActionInput): Promise<BulkActionResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   if (!parsedSlug.success) return refusalMessage({ kind: "not_found" });
@@ -95,7 +95,7 @@ export async function bulkChangeApplicantStage(slug: string, input: BulkActionIn
   const parsed = bulkActionInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
-  const outcome = await bulkSetApplicationStatus(parsed.data.applicationIds, parsed.data.status, parsed.data.note);
+  const outcome = await bulkSetApplicationStatus(organization.id, parsed.data.applicationIds, parsed.data.status, parsed.data.note);
   if ("refusal" in outcome) return refusalMessage(outcome.refusal);
   return {
     summary: {

@@ -112,7 +112,7 @@ describe("bulkChangeApplicantStage", () => {
     requireOrgRoleMock.mockResolvedValue({ organization: { id: "o", slug: "acme", suspended: false } });
   });
 
-  it("checks the membership of the address, sends the ids, the target and the trimmed note, and reports each item", async () => {
+  it("checks the membership of the address, sends its organization id with the ids, the target and the trimmed note, and reports each item", async () => {
     bulkMock.mockResolvedValue({
       items: [
         { applicationId, ok: true, errorCode: null, status: null },
@@ -123,7 +123,7 @@ describe("bulkChangeApplicantStage", () => {
       summary: { updated: [applicationId], refused: [{ id: second, message: "Not allowed from Applied" }] },
     });
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "member", { hideFromOutsiders: true });
-    expect(bulkMock).toHaveBeenCalledWith([applicationId, second], "rejected", "Position filled");
+    expect(bulkMock).toHaveBeenCalledWith("o", [applicationId, second], "rejected", "Position filled");
   });
 
   it.each([
@@ -154,7 +154,7 @@ describe("bulkChangeApplicantStage", () => {
     const hundred = Array.from({ length: 100 }, (_, index) => `0a1b2c3d-0000-4000-8000-${String(index).padStart(12, "0")}`);
     bulkMock.mockResolvedValue({ items: [] });
     expect((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: hundred })).summary).toEqual({ updated: [], refused: [] });
-    expect(bulkMock).toHaveBeenCalledWith(hundred, "rejected", "Position filled");
+    expect(bulkMock).toHaveBeenCalledWith("o", hundred, "rejected", "Position filled");
   });
 
   it("refuses an address that is not valid and a suspended organization before the database", async () => {

@@ -15,10 +15,12 @@ vi.mock("@/lib/supabase/server", () => ({
     },
     from: (table: string) => ({
       select: (columns: string) => ({
-        in: (column: string, values: string[]) => {
-          calls.push([table, columns, column, values]);
-          return Promise.resolve(rowsResult);
-        },
+        eq: (column: string, value: string) => ({
+          in: (inColumn: string, values: string[]) => {
+            calls.push([table, columns, column, value, inColumn, values]);
+            return Promise.resolve(rowsResult);
+          },
+        }),
       }),
     }),
   }),
@@ -124,8 +126,18 @@ describe("setApplicationStatus", () => {
 
 describe("bulkSetApplicationStatus", () => {
   const other = "0a1b2c3d-0000-4000-8000-000000000002";
+  const foreign = "0a1b2c3d-0000-4000-8000-000000000003";
+  const org = "0a1b2c3d-0000-4000-8000-0000000000a1";
+  const read = (ids: string[]) => ["v_job_applicants", "id, status", "organization_id", org, "id", ids];
 
-  it("sends the ids, the target and the note, and reads the stage of the refused items only", async () => {
+  it("sends only the ids of the organization, reports the others as not found and the stage of the refused items", async () => {
+    rowsResult = {
+      data: [
+        { id, status: "applied" },
+        { id: other, status: "applied" },
+      ],
+      error: null,
+    };
     rpcResult = {
       data: [
         { application_id: id, ok: true, error_code: null },
@@ -133,31 +145,37 @@ describe("bulkSetApplicationStatus", () => {
       ],
       error: null,
     };
-    rowsResult = { data: [{ id: other, status: "applied" }], error: null };
-    expect(await bulkSetApplicationStatus([id, other], "offer", "")).toEqual({
+    expect(await bulkSetApplicationStatus(org, [id, foreign, other, id], "offer", "")).toEqual({
       items: [
         { applicationId: id, ok: true, errorCode: null, status: null },
+        { applicationId: foreign, ok: false, errorCode: "CHARA_NOT_FOUND", status: null },
         { applicationId: other, ok: false, errorCode: "CHARA_INVALID_TRANSITION", status: "applied" },
       ],
     });
     expect(calls).toEqual([
+      read([id, foreign, other, id]),
       ["bulk_set_application_status", { p_application_ids: [id, other], p_status: "offer", p_note: undefined }],
-      ["v_job_applicants", "id, status", "id", [other]],
     ]);
   });
 
-  it("makes no second read when every item was applied", async () => {
-    rpcResult = { data: [{ application_id: id, ok: true, error_code: null }], error: null };
-    await bulkSetApplicationStatus([id], "rejected", "Position filled");
-    expect(calls).toEqual([["bulk_set_application_status", { p_application_ids: [id], p_status: "rejected", p_note: "Position filled" }]]);
+  it("does not call the function when no id is of the organization", async () => {
+    expect(await bulkSetApplicationStatus(org, [foreign], "interview", "")).toEqual({
+      items: [{ applicationId: foreign, ok: false, errorCode: "CHARA_NOT_FOUND", status: null }],
+    });
+    expect(calls).toEqual([read([foreign])]);
   });
 
-  it("keeps the item and leaves its stage unknown when the stage cannot be read", async () => {
-    rpcResult = { data: [{ application_id: id, ok: false, error_code: "CHARA_INVALID_TRANSITION" }], error: null };
+  it("sends the note", async () => {
+    rowsResult = { data: [{ id, status: "interview" }], error: null };
+    rpcResult = { data: [{ application_id: id, ok: true, error_code: null }], error: null };
+    await bulkSetApplicationStatus(org, [id], "rejected", "Position filled");
+    expect(calls[1]).toEqual(["bulk_set_application_status", { p_application_ids: [id], p_status: "rejected", p_note: "Position filled" }]);
+  });
+
+  it("answers failed, and does not call the function, when the ids cannot be read", async () => {
     rowsResult = { data: null, error: failure("boom") };
-    expect(await bulkSetApplicationStatus([id], "offer", "")).toEqual({
-      items: [{ applicationId: id, ok: false, errorCode: "CHARA_INVALID_TRANSITION", status: null }],
-    });
+    expect(await bulkSetApplicationStatus(org, [id], "offer", "")).toEqual({ refusal: { kind: "failed" } });
+    expect(calls).toEqual([read([id])]);
   });
 
   it.each([
@@ -167,8 +185,9 @@ describe("bulkSetApplicationStatus", () => {
     [failure("CHARA_INVALID_INPUT", "p_application_ids"), { kind: "failed" }],
     [{ code: "XX000", message: "internal error text", details: null }, { kind: "failed" }],
   ])("answers the refusal of the whole call %j as %j", async (error, expected) => {
+    rowsResult = { data: [{ id, status: "applied" }], error: null };
     rpcResult = { data: null, error };
-    expect(await bulkSetApplicationStatus([id], "interview", "")).toEqual({ refusal: expected });
-    expect(calls).toHaveLength(1);
+    expect(await bulkSetApplicationStatus(org, [id], "interview", "")).toEqual({ refusal: expected });
+    expect(calls).toHaveLength(2);
   });
 });
