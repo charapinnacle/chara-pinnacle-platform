@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const emailDeliveries = ["immediate", "daily_summary"] as const;
+const emailDeliveries = ["immediate", "daily_summary"] as const;
 
 export type EmailDelivery = (typeof emailDeliveries)[number];
 

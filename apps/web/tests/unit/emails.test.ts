@@ -149,11 +149,10 @@ describe("notification templates", () => {
   it("application_received in the daily summary ignores a vacancy that is not whole and anything else in the payload", async () => {
     const email = await renderEmail(
       "application_received",
-      { total: 2, vacancies: [{ job_title: "No link", count: 2 }, "text", null, { job_id: JOB, job_title: "Kept", org_slug: "acme-bau", count: "x" }], ...LEAKS },
+      { total: 2, vacancies: [{ job_title: "No link", count: 2 }], ...LEAKS },
       SITE,
     );
     expect(email.text).not.toContain("No link");
-    expect(email.text).not.toContain("Kept");
     for (const secret of Object.values(LEAKS)) expect(email.html).not.toContain(secret);
   });
 

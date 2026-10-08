@@ -1,5 +1,5 @@
 import { Action, Layout, Paragraph } from "../layout.tsx";
-import { field, items, url } from "../payload.ts";
+import { field, url } from "../payload.ts";
 import type { Payload } from "../payload.ts";
 import type { Template } from "../template.ts";
 
@@ -9,12 +9,12 @@ function plural(count: number): string {
 
 // The summary of a member who chose it: a total and, per vacancy, the title, the organisation and the count.
 function summary(payload: Payload) {
-  return items(payload, "vacancies").flatMap((vacancy) => {
-    const count = Number(field(vacancy, "count"));
+  const vacancies = Array.isArray(payload.vacancies) ? (payload.vacancies as Payload[]) : [];
+  return vacancies.flatMap((vacancy) => {
     const title = field(vacancy, "job_title");
     const slug = field(vacancy, "org_slug");
     const id = field(vacancy, "job_id");
-    return title && slug && id && Number.isInteger(count) ? [{ title, org: field(vacancy, "org_name"), slug, id, count }] : [];
+    return title && slug && id ? [{ title, org: field(vacancy, "org_name"), slug, id, count: Number(field(vacancy, "count")) }] : [];
   });
 }
 
@@ -31,8 +31,7 @@ export const applicationReceived: Template = {
       return (
         <Layout preview="New applications since the last summary" heading="Your daily summary of new applications">
           <Paragraph>
-            {Number.isInteger(total) ? `You received ${plural(total)}` : "You received new applications"} since the last
-            summary.
+            You received {plural(total)} since the last summary.
           </Paragraph>
           {lines.map((line) => (
             <Paragraph key={line.id}>
@@ -41,7 +40,7 @@ export const applicationReceived: Template = {
               <a href={url(siteUrl, `/org/${line.slug}/applicants?job=${encodeURIComponent(line.id)}`)}>Review applicants</a>
             </Paragraph>
           ))}
-          {Number.isInteger(total) && total > listed ? <Paragraph>And applications for other vacancies.</Paragraph> : null}
+          {total > listed ? <Paragraph>And applications for other vacancies.</Paragraph> : null}
         </Layout>
       );
     }

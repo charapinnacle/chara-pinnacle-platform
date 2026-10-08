@@ -71,11 +71,10 @@ describe("saveEmailDelivery", () => {
     ]);
   });
 
-  it("maps the refusal of a candidate and hides any other error", async () => {
-    rpcResult = { data: null, error: { code: "P0001", message: "CHARA_FORBIDDEN" } };
-    expect(await saveEmailDelivery("immediate")).toBe("forbidden");
-    rpcResult = { data: null, error: { code: "08006", message: "connection to 10.0.0.1 lost" } };
-    expect(await saveEmailDelivery("immediate")).toBe("failed");
+  it("hands the error of the database to the action", async () => {
+    const error = { code: "P0001", message: "CHARA_FORBIDDEN" };
+    rpcResult = { data: null, error };
+    expect(await saveEmailDelivery("immediate")).toBe(error);
   });
 });
 
@@ -105,12 +104,16 @@ describe("saveNotificationSettings", () => {
 
   it("answers a refusal with a sentence and no database text", async () => {
     const { saveNotificationSettings } = await import("@/lib/actions/notifications");
-    saveMock.mockResolvedValue("forbidden");
+    saveMock.mockResolvedValue({ code: "P0001", message: "CHARA_FORBIDDEN" });
     expect(await saveNotificationSettings({ delivery: "immediate" })).toEqual({
       message: "Only employer accounts can choose how new-application emails are sent.",
     });
-    saveMock.mockResolvedValue("failed");
+    saveMock.mockResolvedValue({ code: "08006", message: "connection to 10.0.0.1 lost" });
     expect((await saveNotificationSettings({ delivery: "immediate" })).message).toBe("We could not complete this request. Try again.");
+    expect(console.error).toHaveBeenCalledWith("Saving the notification settings failed", {
+      code: "08006",
+      message: "connection to 10.0.0.1 lost",
+    });
     expect(revalidateMock).not.toHaveBeenCalled();
   });
 });

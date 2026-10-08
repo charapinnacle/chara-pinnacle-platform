@@ -1,22 +1,23 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, Mail } from "lucide-react";
+import { CalendarClock, Mail, type LucideIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveNotificationSettings } from "@/lib/actions/notifications";
-import { notificationSettingsSchema, type NotificationSettings } from "@/lib/validation/notifications";
+import { notificationSettingsSchema, type EmailDelivery, type NotificationSettings } from "@/lib/validation/notifications";
 
 const GROUP_ID = "notification-delivery";
 
-const options = [
-  { value: "immediate", label: "Immediately", icon: Mail },
-  { value: "daily_summary", label: "Daily summary", icon: CalendarClock },
-] as const;
+const labels = {
+  immediate: { label: "Immediately", icon: Mail },
+  daily_summary: { label: "Daily summary", icon: CalendarClock },
+} satisfies Record<EmailDelivery, { label: string; icon: LucideIcon }>;
+
+const options = (Object.keys(labels) as EmailDelivery[]).map((value) => ({ value, ...labels[value] }));
 
 export function NotificationForm({ delivery }: { delivery: NotificationSettings["delivery"] }) {
   const form = useForm<NotificationSettings>({
@@ -25,8 +26,7 @@ export function NotificationForm({ delivery }: { delivery: NotificationSettings[
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit, reset } = form;
-  const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The settings were not saved", clearOnFailure: "delivery" });
-  const error = formState.errors.delivery?.message;
+  const { submit } = useServerFormSubmit(form, { failureTitle: "The settings were not saved", clearOnFailure: "delivery" });
 
   function save(values: NotificationSettings) {
     return submit(
@@ -44,11 +44,6 @@ export function NotificationForm({ delivery }: { delivery: NotificationSettings[
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(save)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={error ? [{ key: "delivery", message: error, targetId: GROUP_ID }] : []}
-        onSelect={() => form.setFocus("delivery")}
-      />
       <RadioGroupField
         control={control}
         name="delivery"
