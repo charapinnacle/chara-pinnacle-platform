@@ -1,0 +1,91 @@
+# Runbook: subscription checkout and customer portal
+
+FR-G2, design points D4, D36, D66 (OPEN_QUESTIONS.md). An owner or admin at the second step chooses Basic or Professional on `/[lang]/org/[slug]/billing`, reads the five disclosures on the confirmation page, enters the billing country and a VAT ID or a company registration number, accepts the Subscription and Billing Terms and is sent to the hosted checkout of the payment provider. CHARA never receives card data. Manage billing opens the hosted customer portal (card, plan change, cancellation, invoices). The webhook (FR-G3) activates the subscription.
+
+## 1. Configuration
+
+| Where | Name | Value |
+|---|---|---|
+| Function secrets of `billing-checkout` | `BILLING_PROVIDER` | `stripe` in production, `null` for the local stack and CI. There is no default: a deployment without it fails to start. |
+| | `STRIPE_SECRET_KEY` | The restricted or secret key of the Stripe account, only when the provider is `stripe`. Never in `apps/web`. |
+| | `SITE_URL` | The origin of the web application. The return addresses of Checkout and the portal are this origin plus `/en/org/<slug>/billing`; no address from a request is used. |
+| Web environment (optional) | `BILLING_CHECKOUT_ENDPOINT` | The address of the function when it is not the project's functions address plus `/billing-checkout`. |
+
+The function has `verify_jwt = true` and acts with the caller's own token; it holds no database key. The checks (role, second step, plan, tax input, terms, trial rule) are in `billing_checkout_start` and `billing_portal_start`.
+
+## 2. Stripe set-up (not verified against a live account)
+
+No Stripe account existed when this was built. The adapter was tested with response fixtures that follow the API reference, not with recordings, so everything below is to be checked in Stripe test mode before launch (acceptance criterion AC12 of FR-G2 is a manual check):
+
+1. Enable Stripe Tax, enter the tax registrations of the CHARA legal entity and a preset product tax code (the mirror script does not set one).
+2. Configure the Customer Portal: update payment method, view invoice history, cancel subscription, and switch plans between the Basic and Professional products.
+3. Run the mirror (section 3) so that every sold plan has a product and a monthly EUR price, exclusive of VAT.
+4. Check the full path in test mode: a customer in the home country without a VAT ID (VAT at the standard rate), a business in another EU country with a valid VAT ID (reverse charge), the trial (30 days, card required, automatic conversion) and a customer who already had a trial (charged at once).
+5. Confirm that the redirect to `checkout.stripe.com` and `billing.stripe.com` works in the production build (the content security policy has `form-action 'self'`; the redirect is made by the browser after a fetch, not by a form post, and the browser test checks that it is not blocked).
+
+## 3. Mirroring the plans and the go-live check
+
+Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (public, priced, not contact-sales) and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
+
+```sh
+DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs
+```
+
+A sold plan without a stored price makes the checkout answer `plan_not_synced`. Before go-live, export the facts and run the gate together with the settings export of `docs/runbooks/plan-limits.md`:
+
+```sh
+psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
+DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs --export > plans.json
+npm run go-live:check -- settings.json plans.json
+```
+
+It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true. Delete the two files afterwards.
+
+## 4. The free-trial rule
+
+One free trial per legal entity. At checkout the trial is refused (the plan starts without a trial and the first payment is due at once) when:
+
+- a `billing.trial_grants` row names the organisation, or one of the identifiers submitted (`vat:<VAT ID>`, `reg:<country>:<registration number>`, upper case, without spaces, dots, hyphens and slashes); the webhook writes that row when the first trialing subscription is applied;
+- a subscription of the organisation ever had a trial;
+- another organisation whose stored identifier equals the stored or a submitted identifier has a subscription that had a trial.
+
+The confirmation page shows the answer before the redirect, and the form sends the trial length it showed; when the answer changed in between (for example a second organisation of the same company finished its checkout first), the checkout is refused with a message to reload and nothing is written. Identifiers of one entity given in different forms by different organisations are not linked (C14). Two organisations of one entity that both open Checkout before either completes can both receive a trial; the second is applied and raises the operations alert of FR-G3.
+
+To lift a wrong block, delete the `billing.trial_grants` row in a reviewed migration; the audit row of the checkout start (`legal_entity_trial_used`) shows what was decided and when.
+
+## 5. KPIs
+
+Both read data this unit and the webhook store; run them quarterly in the SQL editor as the database owner.
+
+Checkout conversion: organisations that started a checkout, and those that have a subscription created at or after their first start.
+
+```sql
+with starts as (
+  select entity_id::uuid as organization_id, min(created_at) as first_start
+  from audit.log where action = 'billing.checkout_started' group by entity_id
+)
+select date_trunc('quarter', st.first_start)::date as quarter,
+       count(*) as organisations_started,
+       count(*) filter (where exists (
+         select 1 from billing.subscriptions s
+         where s.organization_id = st.organization_id and s.created_at >= st.first_start
+       )) as organisations_subscribed
+from starts st group by 1 order by 1 desc;
+```
+
+Trial-to-paid conversion: trials that have ended, and those whose subscription is paying (`active` or `past_due`) now. A subscription that converted and was cancelled later counts as not converted; the exact conversion needs the paid invoices of FR-G3.
+
+```sql
+select date_trunc('quarter', trial_ends_at)::date as quarter,
+       count(*) as trials_ended,
+       count(*) filter (where status in ('active', 'past_due')) as on_paid_plan
+from billing.subscriptions
+where trial_ends_at <= now()
+group by 1 order by 1 desc;
+```
+
+## 6. Audit and controls
+
+- `billing.checkout_started` (entity: the organisation; metadata: plan code, trial days, whether the legal entity had used its trial) and `billing.portal_opened` are written by the two RPCs, with the person as actor; neither holds a VAT ID, a registration number or card data. The tax data is in `billing.customers`, which no API role can read.
+- The acceptance of the Subscription and Billing Terms is a `granted` row in `public.consents` (purpose `subscription-and-billing-terms`, the version shown). A new version of the terms is published as a legal document; the page and the check use the current version at once.
+- Changing the trial length or a price is a reviewed migration of `billing.plans` (FR-G1); run the mirror afterwards for a price.
