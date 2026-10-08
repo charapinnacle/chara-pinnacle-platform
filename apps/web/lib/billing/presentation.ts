@@ -32,7 +32,7 @@ export function daysText(days: number): string {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
-export type Disclosure = { title: string; text: string };
+type Disclosure = { title: string; text: string };
 
 // The five things the person is told before the redirect (FR-G2): the trial period, the price after it, the billing
 // frequency, the automatic conversion and how to cancel. trialUsed says that the legal entity already had its trial,

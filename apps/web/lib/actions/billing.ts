@@ -12,7 +12,7 @@ import { BILLING_FAILURE, checkoutInputSchema, legalEntityFormSchema, type Check
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
-export type BillingResult = { errors?: FieldErrors; message?: string };
+type BillingResult = { errors?: FieldErrors; message?: string };
 
 const REASONS: Record<string, string> = {
   organization_suspended: "This organization is suspended, so it cannot start a subscription.",

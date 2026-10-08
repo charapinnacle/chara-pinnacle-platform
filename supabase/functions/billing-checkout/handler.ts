@@ -65,6 +65,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// null for a value that was left out, undefined for one that cannot be accepted.
 function text(value: unknown): string | null | undefined {
   if (value === undefined || value === null) {
     return null;

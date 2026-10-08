@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/billing/checkout-form";
 import { TextLink } from "@/components/forms/text-link";
 import { checkoutDisclosures, formatPrice, type SoldPlan } from "@/lib/billing/presentation";
-import { getBillingState, getSubscription, listSoldPlans } from "@/lib/dal/billing";
+import { getBillingState, getSubscription, listSoldPlans, type BillingState } from "@/lib/dal/billing";
 import { getLegalDocument } from "@/lib/dal/legal";
 import { getCountries } from "@/lib/dal/reference";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -13,7 +13,7 @@ import { planCodeSchema } from "@/lib/validation/billing";
 
 export const metadata: Metadata = { title: "Confirm your plan — CHARA", robots: { index: false } };
 
-function identifierDefaults(state: Awaited<ReturnType<typeof getBillingState>>) {
+function identifierDefaults(state: BillingState) {
   const fromKind = (kinds: readonly string[]) =>
     state.identifier && state.identifierKind && kinds.includes(state.identifierKind) ? state.identifier : "";
   return {

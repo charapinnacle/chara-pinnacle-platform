@@ -39,7 +39,7 @@ export type BillingState = {
   registrationNumber: string | null;
 };
 
-export type Subscription = {
+type Subscription = {
   planName: string | null;
   status: SubscriptionStatus;
   trialEndsAt: string | null;
