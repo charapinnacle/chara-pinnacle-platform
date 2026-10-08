@@ -60,7 +60,7 @@ jobs:
       - run: deno fmt --check
       - run: deno lint
       - run: deno check "*/index.ts"
-      - run: deno test --frozen
+      - run: deno test --frozen --allow-env=NODE_ENV
 
   e2e:
     needs: [web, db]
