@@ -10,7 +10,6 @@ import { logIn, SUSPENDED } from "./support/login-page";
 import { messageCount, waitForMessage } from "./support/mailpit";
 import { enterCode, factorRows, newOwner } from "./support/mfa";
 import { runNotify } from "./support/notify";
-import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
 // account-ops and notify take every job in their queues, so these tests run in a project of their own after the others
