@@ -72,11 +72,18 @@ describe("the paged searches", () => {
     expect((await dal.searchOrganizations("org", null)).next).toEqual({ name: "Org 24", id: ID });
   });
 
-  it("send the audit filter as the arguments of the function, leave out what is empty and show the reason of the row", async () => {
+  it("send the audit filter as the arguments of the function, leave out what is empty and show the reason, request and job of the row", async () => {
     rpcMock.mockResolvedValue({
       data: [
-        { id: 9, actor_id: ID, action: "user.suspend", entity_type: "profile", entity_id: ID, reason: "Fake profile.", created_at: "2026-10-02T10:00:00Z" },
-        { id: 8, actor_id: null, action: "job.created", entity_type: "job", entity_id: null, reason: null, created_at: "2026-10-02T09:00:00Z" },
+        {
+          id: 9, actor_id: ID, action: "user.suspend", entity_type: "profile", entity_id: ID, ip: "203.0.113.7",
+          metadata: { reason: "Fake profile.", request_id: "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11", email: "kept@example.test" }, created_at: "2026-10-02T10:00:00Z",
+        },
+        {
+          id: 8, actor_id: null, action: "account_ops.ban_user", entity_type: "profile", entity_id: null, ip: null,
+          metadata: { job_id: "41", reason: 7 }, created_at: "2026-10-02T09:00:00Z",
+        },
+        { id: 7, actor_id: null, action: "job.created", entity_type: "job", entity_id: null, ip: null, metadata: [], created_at: "2026-10-02T08:00:00Z" },
       ],
       error: null,
     });
@@ -93,7 +100,14 @@ describe("the paged searches", () => {
       p_after_at: "2026-10-03T00:00:00Z",
       p_after_id: 20,
     });
-    expect(page.rows.map((row) => [row.id, row.reason, row.actorId])).toEqual([[9, "Fake profile.", ID], [8, null, null]]);
+    expect(page.rows.map((row) => [row.id, row.reason, row.requestId, row.jobId, row.actorId])).toEqual([
+      [9, "Fake profile.", "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11", null, ID],
+      [8, null, null, "41", null],
+      [7, null, null, null, null],
+    ]);
+    expect(Object.keys(page.rows[0]).sort()).toEqual(
+      ["action", "actorId", "createdAt", "entityId", "entityType", "id", "jobId", "reason", "requestId"],
+    );
   });
 
   it("fail with a message that names the list and not the database, and keep the cause", async () => {

@@ -828,7 +828,7 @@ isOneToOne: false
                            },
 "admin_search_audit":
 { Args: { "p_action"?: string,"p_actor"?: string,"p_after_at"?: string,"p_after_id"?: number,"p_entity_id"?: string,"p_entity_type"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: {
-              "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"reason": string
+              "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"ip": unknown,"metadata": Json
             }[]
                            },
 "admin_search_organizations":
@@ -858,6 +858,15 @@ isOneToOne: false
 { Args: { "p_document_ids"?: (string)[],"p_job_id": string,"p_note"?: string }; Returns: {
               "application_id": string,"outcome": string
             }[]
+                           },
+"audit_export_count":
+{ Args: { "p_month": string }; Returns: number
+                           },
+"audit_export_month":
+{ Args: { "p_after_at"?: string,"p_after_id"?: number,"p_limit"?: number,"p_month": string }; Returns: Json
+                           },
+"audit_record_external":
+{ Args: { "p_action": string,"p_actor_id"?: string,"p_entity_id": string,"p_entity_type": string,"p_metadata"?: Json }; Returns: boolean
                            },
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {

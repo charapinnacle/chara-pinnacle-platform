@@ -200,19 +200,19 @@ select is(pg_temp.call_as(null, 'anon', $$select * from public.my_platform_roles
 
 -- AC8: reset_mfa
 select is(
-  (select count(*) from audit.log where action = 'mfa_reset') + (select count(*) from pgmq.q_account_ops where message ->> 'action' = 'reset_mfa')
+  (select count(*) from audit.log where action = 'mfa.reset') + (select count(*) from pgmq.q_account_ops where message ->> 'action' = 'reset_mfa')
   + (select count(*) from pgmq.q_notifications where message ->> 'kind' = 'mfa_reset'),
   0::bigint, 'nothing is queued or audited before the first reset'
 );
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, '  Identity checked by video call, ticket 4711  ')$$, :'tgt')),
   'ok', 'an administrator at aal2 resets another user');
 select is(
-  (select format('%s|%s|%s|%s', actor_id = :'sta', entity_type, entity_id = :'tgt', metadata)
-   from audit.log where action = 'mfa_reset'),
-  't|user|t|{"reason": "Identity checked by video call, ticket 4711"}',
+  (select format('%s|%s|%s|%s', actor_id = :'sta', entity_type, entity_id = :'tgt', metadata - 'request_id')
+   from audit.log where action = 'mfa.reset'),
+  't|profile|t|{"reason": "Identity checked by video call, ticket 4711"}',
   'one audit row names the administrator, the target and the trimmed reason'
 );
-select is((select count(*) from audit.log where action = 'mfa_reset'), 1::bigint, 'exactly one audit row is written');
+select is((select count(*) from audit.log where action = 'mfa.reset'), 1::bigint, 'exactly one audit row is written');
 select is(
   (select format('%s|%s', count(*), min(message ->> 'action')) from pgmq.q_account_ops where message ->> 'user_id' = :'tgt'),
   '1|reset_mfa', 'one account-ops job is queued for the target'
@@ -232,7 +232,7 @@ select ok(
 );
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, 'Identity checked by video call, ticket 4711')$$, :'tgt')),
   'ok', 'a repeated reset of the same user while the job waits is accepted');
-select is((select count(*) from audit.log where action = 'mfa_reset'), 2::bigint, 'the repeat is audited too');
+select is((select count(*) from audit.log where action = 'mfa.reset'), 2::bigint, 'the repeat is audited too');
 select is(
   (select format('%s|%s', (select count(*) from pgmq.q_account_ops where message ->> 'user_id' = :'tgt'),
      (select count(*) from pgmq.q_notifications where message ->> 'user_id' = :'tgt'))),
@@ -240,7 +240,7 @@ select is(
 
 -- AC9: refusals write nothing
 create temp table before_counts as
-select (select count(*) from audit.log where action = 'mfa_reset') as audits,
+select (select count(*) from audit.log where action = 'mfa.reset') as audits,
        (select count(*) from pgmq.q_account_ops) as jobs,
        (select count(*) from pgmq.q_notifications) as notes;
 
@@ -258,8 +258,8 @@ select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_
   'P0001|CHARA_FORBIDDEN|own_account', 'an administrator cannot reset their own factors');
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, 'too short')$$, :'tgt')),
   'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 9 characters is refused');
-select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, %L)$$, :'tgt', repeat('x', 501))),
-  'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 501 characters is refused');
+select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, %L)$$, :'tgt', repeat('x', 2001))),
+  'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 2001 characters is refused (FR-F2 AC3)');
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, '')$$, :'tgt')),
   'P0001|CHARA_INVALID_INPUT|reason', 'an empty reason is refused');
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, '            ')$$, :'tgt')),
@@ -273,7 +273,7 @@ select is(pg_temp.call_as(:'sta', 'authenticated', $$select public.reset_mfa(nul
 select is(pg_temp.call_as(null, 'anon', format($$select public.reset_mfa(%L, 'Identity checked by video call')$$, :'tgt')),
   '42501|permission denied for function reset_mfa|', 'the anonymous caller is refused at EXECUTE');
 select is(
-  (select format('%s|%s|%s', (select count(*) from audit.log where action = 'mfa_reset') - audits,
+  (select format('%s|%s|%s', (select count(*) from audit.log where action = 'mfa.reset') - audits,
      (select count(*) from pgmq.q_account_ops) - jobs, (select count(*) from pgmq.q_notifications) - notes)
    from before_counts),
   '0|0|0', 'no refusal writes an audit row, a job or a notification'

@@ -250,12 +250,12 @@ select is(
   'AC4: a start after the end is invalid input'
 );
 select is(
-  (select r ->> 'reason' from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.admin_search_audit(p_entity_id => 'entity-9')$$)) r),
+  (select r -> 'metadata' ->> 'reason' from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.admin_search_audit(p_entity_id => 'entity-9')$$)) r),
   'Reason number 9', 'AC4: the row carries its reason'
 );
 select is(
   pg_temp.names_of('public.admin_search_audit(uuid, text, text, text, date, date, integer, timestamptz, bigint)'::regprocedure),
-  'id,actor_id,action,entity_type,entity_id,reason,created_at', 'the audit search returns the reason and no address or other metadata'
+  'id,actor_id,action,entity_type,entity_id,metadata,ip,created_at', 'the audit search returns the columns of the criteria'
 );
 
 -- FR-A7 AC11: the staff list keeps revoked roles for ever, so it is paged and the newest rows are reachable

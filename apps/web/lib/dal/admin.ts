@@ -1,5 +1,5 @@
 import "server-only";
-import type { Database } from "@chara-pinnacle/db-types";
+import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -39,6 +39,8 @@ export type AuditRow = {
   entityType: string;
   entityId: string | null;
   reason: string | null;
+  requestId: string | null;
+  jobId: string | null;
   createdAt: string;
 };
 
@@ -158,6 +160,13 @@ export async function searchOrganizations(
   return paged(rows, (row) => ({ name: row.displayName, id: row.id }));
 }
 
+// The metadata can hold personal data of the entity; the console shows the three keys that tie a row to its action.
+function metadataText(metadata: Json, key: string): string | null {
+  if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return null;
+  const value = metadata[key];
+  return typeof value === "string" ? value : null;
+}
+
 export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promise<Page<AuditRow, NonNullable<TimeCursor>>> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_search_audit", {
@@ -179,7 +188,9 @@ export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promi
       action: row.action,
       entityType: row.entity_type,
       entityId: row.entity_id ?? null,
-      reason: row.reason ?? null,
+      reason: metadataText(row.metadata, "reason"),
+      requestId: metadataText(row.metadata, "request_id"),
+      jobId: metadataText(row.metadata, "job_id"),
       createdAt: row.created_at,
     }),
   );

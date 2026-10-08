@@ -87,7 +87,7 @@ select is(
   0::bigint, 'AC6: the hidden vacancy and the others get no other audit row'
 );
 select is(
-  (select count(*) from pgmq.q_account_ops where message = jsonb_build_object('action', 'sign_out_organization', 'organization_id', current_setting('t.a'))),
+  (select count(*) from pgmq.q_account_ops where message @> jsonb_build_object('action', 'sign_out_organization', 'organization_id', current_setting('t.a'))),
   1::bigint, 'AC6: exactly one account-ops message signs the members out'
 );
 select is((select count(*) from pgmq.q_account_ops), :accounts_before::bigint + 1, 'AC6: and queues no other job, no ban');
