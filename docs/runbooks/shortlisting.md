@@ -11,26 +11,30 @@ FR-E4, design point D60 (OPEN_QUESTIONS.md). The SOP is "Shortlisting E2E" (owne
 
 ## 2. The screens
 
-- `/[lang]/org/[slug]/applicants`: Shortlisted is an option of the stage filter of the list and a column of the board. `get_applicant_access` gives `shortlisting_available`; when it is false and the organisation is not frozen, the page shows the notice "Your plan does not include shortlisting" with a link to the plan page (`/[lang]/org/[slug]/billing`, built with FR-G2), the Shortlisted target is not offered by the move menu, the drag target or the bulk toolbar, and the board column stays visible.
-- `/[lang]/org/[slug]/applicants/[applicationId]`: the same notice appears while Shortlisted would otherwise be offered (Applied or Viewed). A move that the database refuses because the plan changed while the dialog was open ends in the message "Your plan does not include shortlisting."
+- `/[lang]/org/[slug]/applicants`: Shortlisted is an option of the stage filter of the list and a column of the board. `get_applicant_access` gives `shortlisting_available`; when it is false and the organisation is not frozen, the Shortlisted target is not offered by the move menu, the drag target or the bulk toolbar (the board column stays visible and takes no drop), and, while an Applied or Viewed applicant is on the screen, the page shows the prompt "Upgrade to shortlist applicants". An owner or admin gets the prompt as a link to the plan page (`/[lang]/org/[slug]/billing`, built with FR-G2); a member gets the same words followed by "Contact an owner or admin of your organization to upgrade the plan." and no link.
+- `/[lang]/org/[slug]/applicants/[applicationId]`: the same prompt appears, by role, while Shortlisted would otherwise be offered (Applied or Viewed). A move that the database refuses because the plan changed while the dialog was open ends in the message "Your plan does not include shortlisting."
 
 ## 3. KPI: shortlist usage by plan
 
 Shortlisting moves and the organisations that made them, by the plan the organisation is on when the query is run (a plan change in the year moves its earlier shortlists to the new plan; no plan is stored with the event):
 
 ```sql
-select private.org_plan_code(a.organization_id) as plan, count(*) as moves, count(distinct a.organization_id) as organizations
-from public.application_events e
-join public.job_applications a on a.id = e.application_id
-where e.to_status = 'shortlisted' and e.created_at >= now() - interval '1 year'
-group by 1 order by 1;
+with per_org as (
+  select a.organization_id, count(*) as moves
+  from public.application_events e
+  join public.job_applications a on a.id = e.application_id
+  where e.to_status = 'shortlisted' and e.created_at >= now() - interval '1 year'
+  group by 1
+)
+select private.org_plan_code(organization_id) as plan, sum(moves) as moves, count(*) as organizations
+from per_org group by 1 order by 1;
 ```
 
-Divide `organizations` by the organisations on the plan (`select plan_code, count(*) from billing.subscriptions where status in ('trialing', 'active', 'past_due') group by 1`) for the share of a plan that uses the feature. The query reads a year of events and is run annually by staff, not on a page. pgTAP `074_shortlisting.test.sql` runs it as written.
+Divide `organizations` by the organisations on the plan (`select plan_code, count(*) from billing.subscriptions where status in ('trialing', 'active', 'past_due') group by 1`) for the share of a plan that uses the feature. The plan is looked up once per organisation, not once per event. No index covers `application_events (to_status, created_at)`, so the query scans the events table; that is accepted for a statement that staff run once a year and that no page runs (if it is ever run more often, add a partial index on `application_events (created_at) where to_status = 'shortlisted'`). pgTAP `074_shortlisting.test.sql` runs it as written.
 
 ## 4. Controls and how to check them
 
-- Feature check in the database (SOP control, risk "feature leakage across plans"): pgTAP `074_shortlisting.test.sql` (a plan without the row, a plan code that is in no plan, the trigger against the database owner, the bulk path, the anonymous and the direct update); `055_application_status_access.test.sql` for the lapsed and unenforced cases. The browser test `shortlisting.spec.ts` shows that the refusal reaches the person.
+- Feature check in the database (SOP control, risk "feature leakage across plans"): pgTAP `074_shortlisting.test.sql` (a plan without the row, a plan code that is in no plan, the trigger against the database owner, the bulk path before and after the row is added (AC8), a plan change with a shortlisted applicant (AC9), outsiders (AC12), the anonymous and the direct update); `055_application_status_access.test.sql` for the lapsed and unenforced cases. The browser test `shortlisting.spec.ts` shows that the refusal reaches the person (AC10: filter, column and board menu; AC11: the prompt for an owner at aal2 and for a member, no drop on the column, no shortlist request).
 - Seeded plans: pgTAP `023_plans_as_data.test.sql` and `074` (AC3).
 - Transitions out of Shortlisted: pgTAP `054_application_status_transitions.test.sql` (all 64 pairs) and `074` (AC5, AC6).
 
