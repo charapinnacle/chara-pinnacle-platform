@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ArchiveError, s3Archive, signature } from "../audit-export/archive.ts";
+import { ArchiveError, archiveFromEnv, s3Archive, signature } from "../audit-export/archive.ts";
 import { handleAuditExport, previousMonth } from "../audit-export/handler.ts";
 import { type Call, harness, reply } from "./harness.ts";
 
@@ -198,15 +198,67 @@ Deno.test("a failing archive raises the alert, and the manifest is not written a
   assert.deepEqual(alerts, [["audit_export_failed", { month: "2026-02", status: 503, code: undefined }]]);
 });
 
-Deno.test("running a month again after a success archives nothing and says so; after a failure between the objects it writes the missing one", async () => {
-  const routes = {
+Deno.test("running a month again after a success archives nothing and says so", async () => {
+  const again = setup({
     "POST /rest/v1/rpc/audit_export_month": reply(200, [row(1)]),
     "POST /rest/v1/rpc/audit_export_count": reply(200, 1),
-  };
-  const again = setup(routes, [false, false]);
+  }, [false, false]);
   assert.equal((await (await handleAuditExport(request(), again.deps)).json()).status, "already_archived");
-  const finish = setup(routes, [false, true]);
+  assert.deepEqual(again.alerts, []);
+});
+
+Deno.test("after a failure between the objects the missing manifest is written, marked as resumed, and a person is asked to compare it", async () => {
+  const finish = setup({
+    "POST /rest/v1/rpc/audit_export_month": reply(200, [row(1)]),
+    "POST /rest/v1/rpc/audit_export_count": reply(200, 1),
+  }, [false, true]);
   assert.equal((await (await handleAuditExport(request(), finish.deps)).json()).status, "archived");
+  assert.equal(JSON.parse(finish.puts[1].body).resumed, true);
+  assert.deepEqual(finish.alerts, [["audit_export_resumed", { month: "2026-02" }]]);
+});
+
+Deno.test("a month of 60,000 rows is read in 60 pages and is one file whose bytes, count and SHA-256 are right", async () => {
+  const total = 60_000;
+  const { calls, deps, puts, alerts } = setup({
+    "POST /rest/v1/rpc/audit_export_month": (call) => {
+      const afterId = (call.body as { p_after_id?: number }).p_after_id ?? 0;
+      return reply(200, Array.from({ length: Math.min(1000, total - afterId) }, (_, i) => row(afterId + i + 1)));
+    },
+    "POST /rest/v1/rpc/audit_export_count": reply(200, total),
+  });
+  const response = await handleAuditExport(request(), deps);
+  assert.equal(response.status, 200);
+  assert.equal(calls.filter((c) => c.path.endsWith("audit_export_month")).length, 61);
+  const lines = puts[0].body.split("\n");
+  assert.equal(lines.length, total + 1);
+  assert.equal(lines[0], JSON.stringify(row(1)));
+  assert.equal(lines[total - 1], JSON.stringify(row(total)));
+  assert.equal(lines[total], "");
+  const manifest = JSON.parse(puts[1].body);
+  assert.equal(manifest.rows, total);
+  assert.equal(manifest.sha256, await sha256Hex(puts[0].body));
+  assert.deepEqual(alerts, []);
+});
+
+Deno.test("an archive that is not configured throws, and so does a lock shorter than the retention of the log", () => {
+  const complete: Record<string, string> = {
+    AUDIT_ARCHIVE_PROVIDER: "s3",
+    AUDIT_ARCHIVE_ENDPOINT: "https://s3.archive.test",
+    AUDIT_ARCHIVE_REGION: "eu-west-1",
+    AUDIT_ARCHIVE_BUCKET: "chara-audit",
+    AUDIT_ARCHIVE_ACCESS_KEY_ID: "key",
+    AUDIT_ARCHIVE_SECRET_ACCESS_KEY: "secret",
+    AUDIT_ARCHIVE_RETAIN_DAYS: "2191",
+  };
+  const env = (values: Record<string, string>) => ({ get: (name: string) => values[name] });
+  assert.equal(typeof archiveFromEnv(env(complete)).put, "function");
+  for (const name of Object.keys(complete)) {
+    const { [name]: _removed, ...rest } = complete;
+    assert.throws(() => archiveFromEnv(env(rest)), Error);
+  }
+  assert.throws(() => archiveFromEnv(env({ ...complete, AUDIT_ARCHIVE_PROVIDER: "local" })));
+  assert.throws(() => archiveFromEnv(env({ ...complete, AUDIT_ARCHIVE_RETAIN_DAYS: "2190" })));
+  assert.throws(() => archiveFromEnv(env({ ...complete, AUDIT_ARCHIVE_RETAIN_DAYS: "6y" })));
 });
 
 Deno.test("the signature is the one AWS documents for its GET object example", async () => {

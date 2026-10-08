@@ -23,6 +23,8 @@ export class ArchiveError extends Error {
 }
 
 const PUT_TIMEOUT_MS = 60_000;
+// Six years of 365 days and the leap days between: the retention of the audit log.
+const MIN_RETAIN_DAYS = 2191;
 const HOUR_MS = 3_600_000;
 
 const hex = (bytes: ArrayBuffer): string =>
@@ -117,4 +119,25 @@ export function s3Archive(
       return true;
     },
   };
+}
+
+// There is no default archive: a deployment that forgot a setting must fail, not quietly keep the log on the platform.
+// The lock must be at least the retention of the audit log (private.retention_policies, 2191 days): change both together.
+export function archiveFromEnv(env: { get(name: string): string | undefined }): Archive {
+  if (env.get("AUDIT_ARCHIVE_PROVIDER") !== "s3") {
+    throw new Error("AUDIT_ARCHIVE_PROVIDER must be s3");
+  }
+  const endpoint = env.get("AUDIT_ARCHIVE_ENDPOINT");
+  const region = env.get("AUDIT_ARCHIVE_REGION");
+  const bucket = env.get("AUDIT_ARCHIVE_BUCKET");
+  const accessKeyId = env.get("AUDIT_ARCHIVE_ACCESS_KEY_ID");
+  const secretAccessKey = env.get("AUDIT_ARCHIVE_SECRET_ACCESS_KEY");
+  const retainDays = Number(env.get("AUDIT_ARCHIVE_RETAIN_DAYS"));
+  if (
+    !endpoint || !region || !bucket || !accessKeyId || !secretAccessKey || !Number.isInteger(retainDays) ||
+    retainDays < MIN_RETAIN_DAYS
+  ) {
+    throw new Error(`The AUDIT_ARCHIVE_* settings are required, with a lock of at least ${MIN_RETAIN_DAYS} days`);
+  }
+  return s3Archive({ endpoint, region, bucket, accessKeyId, secretAccessKey, retainDays });
 }
