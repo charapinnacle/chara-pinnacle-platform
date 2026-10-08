@@ -22,6 +22,8 @@ export type SharedDocument = {
 
 export type ApplicantNote = { id: number; authorName: string | null; body: string; createdAt: string };
 
+type NotesPage = { notes: ApplicantNote[]; hasMore: boolean };
+
 export type NoteRefusal = "not_found" | "read_only_free_plan" | "organization_suspended" | "invalid" | "failed";
 
 type DocumentLink =
@@ -65,14 +67,16 @@ export async function isProfileChanged(id: string): Promise<boolean | null> {
   return data;
 }
 
-// list_application_notes returns the newest 100 (the Data API cuts a set at 100 rows); a full page may mean there are older ones.
-export const NOTES_LIMIT = 100;
-
-export async function listApplicationNotes(id: string): Promise<ApplicantNote[]> {
+// One page of notes, newest first; beforeId is the id of the last note of the page before. The database sets the page
+// size and says whether older notes exist.
+export async function listApplicationNotes(id: string, beforeId?: number): Promise<NotesPage> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_application_notes", { p_application_id: id });
+  const { data, error } = await supabase.rpc("list_application_notes", { p_application_id: id, p_before_id: beforeId });
   if (error) throw new Error("The notes could not be loaded", { cause: error });
-  return data.map((row) => ({ id: row.id, authorName: row.author_name, body: row.body, createdAt: row.created_at }));
+  return {
+    notes: data.map((row) => ({ id: row.id, authorName: row.author_name, body: row.body, createdAt: row.created_at })),
+    hasMore: data.some((row) => row.has_more),
+  };
 }
 
 // The insert is the member's own: the policy checks the membership and the author, the guard trigger the status and the
@@ -91,7 +95,7 @@ export async function addApplicationNote(applicationId: string, organizationId: 
   return "failed";
 }
 
-const linkSchema = z.object({ url: z.url() });
+const linkSchema = z.object({ url: z.url({ protocol: /^https?$/ }) });
 
 // A 60-second link to a shared document from the document-url function, which runs document_access_grant with the
 // member's own token: the share, the scan state, the allowance and the access log are the database's. The function is

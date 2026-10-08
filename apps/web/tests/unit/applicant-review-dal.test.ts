@@ -107,9 +107,23 @@ describe("isProfileChanged", () => {
 
 describe("listApplicationNotes", () => {
   it("maps the rows", async () => {
-    rpcResult = { data: [{ id: 3, author_name: "Mia", body: "Call", created_at: "2026-10-04T09:00:00Z" }], error: null };
-    expect(await listApplicationNotes(id)).toEqual([{ id: 3, authorName: "Mia", body: "Call", createdAt: "2026-10-04T09:00:00Z" }]);
-    expect(calls).toEqual([["rpc", "list_application_notes", { p_application_id: id }]]);
+    rpcResult = { data: [{ id: 3, author_name: "Mia", body: "Call", created_at: "2026-10-04T09:00:00Z", has_more: false }], error: null };
+    expect(await listApplicationNotes(id)).toEqual({
+      notes: [{ id: 3, authorName: "Mia", body: "Call", createdAt: "2026-10-04T09:00:00Z" }],
+      hasMore: false,
+    });
+    expect(calls).toEqual([["rpc", "list_application_notes", { p_application_id: id, p_before_id: undefined }]]);
+  });
+
+  it("passes the cursor on and reports that older notes exist", async () => {
+    rpcResult = { data: [{ id: 3, author_name: null, body: "Call", created_at: "2026-10-04T09:00:00Z", has_more: true }], error: null };
+    expect((await listApplicationNotes(id, 40)).hasMore).toBe(true);
+    expect(calls).toEqual([["rpc", "list_application_notes", { p_application_id: id, p_before_id: 40 }]]);
+  });
+
+  it("has no older notes and no notes for an empty page", async () => {
+    rpcResult = { data: [], error: null };
+    expect(await listApplicationNotes(id)).toEqual({ notes: [], hasMore: false });
   });
 });
 
@@ -161,6 +175,8 @@ describe("requestDocumentLink", () => {
     [502, { error: "unavailable" }, "failed"],
     [200, { nothing: true }, "failed"],
     [200, { url: "not a url" }, "failed"],
+    [200, { url: "javascript:alert(1)" }, "failed"],
+    [200, { url: "data:text/html,x" }, "failed"],
   ])("maps the answer %s %j to the refusal %s and gives no link", async (status, body, refusal) => {
     fetchMock.mockResolvedValue(answer(status, body));
     expect(await requestDocumentLink(documentId)).toEqual({ refusal });

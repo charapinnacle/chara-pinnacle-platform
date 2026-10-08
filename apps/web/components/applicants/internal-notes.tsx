@@ -1,5 +1,6 @@
-import { AddNote } from "@/components/applicants/add-note";
+import { NoteForm } from "@/components/applicants/note-form";
 import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
 import type { ApplicantNote } from "@/lib/dal/applicant-review";
 import { formatDateTime } from "@/lib/i18n/format";
 
@@ -8,11 +9,12 @@ type InternalNotesProps = {
   applicationId: string;
   notes: ApplicantNote[];
   blocked: boolean;
-  limit: number;
+  olderHref: string | null;
+  newestHref: string | null;
 };
 
 // Notes belong to the organization: the candidate has no way to read them. Text is shown as typed, never as markup.
-export function InternalNotes({ slug, applicationId, notes, blocked, limit }: InternalNotesProps) {
+export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, newestHref }: InternalNotesProps) {
   return (
     <section aria-labelledby="notes-heading" className="grid gap-3">
       <div className="grid gap-1">
@@ -26,7 +28,7 @@ export function InternalNotes({ slug, applicationId, notes, blocked, limit }: In
           Your organization has no active paid plan, so notes cannot be added. The notes written before stay readable.
         </Notice>
       ) : (
-        <AddNote slug={slug} applicationId={applicationId} />
+        <NoteForm slug={slug} applicationId={applicationId} />
       )}
       {notes.length === 0 ? (
         <p className="text-sm text-muted-foreground">No internal notes yet.</p>
@@ -43,9 +45,22 @@ export function InternalNotes({ slug, applicationId, notes, blocked, limit }: In
               </p>
             </li>
           ))}
-          {notes.length === limit ? <li className="text-sm text-muted-foreground">Only the latest {limit} notes are shown.</li> : null}
         </ul>
       )}
+      {olderHref || newestHref ? (
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {olderHref ? (
+            <TextLink standalone href={olderHref}>
+              Show older notes
+            </TextLink>
+          ) : null}
+          {newestHref ? (
+            <TextLink standalone href={newestHref}>
+              Back to the newest notes
+            </TextLink>
+          ) : null}
+        </p>
+      ) : null}
     </section>
   );
 }

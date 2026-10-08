@@ -11,7 +11,6 @@ import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/pr
 import { allowedTargets } from "@/lib/applications/stage-machine";
 import {
   getApplicantProfile,
-  NOTES_LIMIT,
   isProfileChanged,
   listApplicationNotes,
   listSharedDocuments,
@@ -20,12 +19,14 @@ import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/
 import { getCountries, getLanguages } from "@/lib/dal/reference";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
-import { homePath } from "@/lib/routes";
+import { applicantPath, homePath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
 
 const blockedText = "Your organization has no active paid plan, so the stage cannot be changed.";
+
+const notesCursorSchema = z.string().regex(/^[0-9]{1,15}$/).transform(Number);
 
 const actorText = { candidate: "Candidate", system: "System" } as const;
 
@@ -33,25 +34,26 @@ const actorText = { candidate: "Candidate", system: "System" } as const;
 // stage the candidate sees. An application of another organisation, or one that is not the organisation of the address,
 // is not found, and a candidate is sent to their own home (FR-E2). A suspended organisation's applicants are not shown at
 // all (FR-D5).
-export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[slug]/applicants/[applicationId]">) {
-  const { lang, slug, applicationId } = await params;
+export default async function ApplicantPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/applicants/[applicationId]">) {
+  const [{ lang, slug, applicationId }, { notesBefore }] = await Promise.all([params, searchParams]);
   const user = await requireUser(lang);
   if (user.accountKind === "worker") redirect(homePath(lang, user.accountKind));
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true });
   if (organization.suspended) return <SuspendedOrganization />;
   const id = z.uuid().safeParse(applicationId);
   if (!id.success) notFound();
+  const before = notesCursorSchema.safeParse(notesBefore);
   const first = await getApplicant(id.data);
   if (!first || first.organizationId !== organization.id) notFound();
   const firstOpen = first.status === "applied";
   if (firstOpen) await markApplicationViewed(id.data);
-  const [reread, events, profile, documents, changed, notes, countries, languages] = await Promise.all([
+  const [reread, events, profile, documents, changed, notesPage, countries, languages] = await Promise.all([
     firstOpen ? getApplicant(id.data) : first,
     listApplicantEvents(id.data),
     getApplicantProfile(id.data),
     listSharedDocuments(id.data),
     isProfileChanged(id.data),
-    listApplicationNotes(id.data),
+    listApplicationNotes(id.data, before.success ? before.data : undefined),
     getCountries(),
     getLanguages(),
   ]);
@@ -120,9 +122,10 @@ export default async function ApplicantPage({ params }: PageProps<"/[lang]/org/[
       <InternalNotes
         slug={slug}
         applicationId={applicant.id}
-        notes={notes}
+        notes={notesPage.notes}
         blocked={applicant.stageChangeBlocked !== null}
-        limit={NOTES_LIMIT}
+        olderHref={notesPage.hasMore ? `${applicantPath(lang, slug, applicant.id)}?notesBefore=${notesPage.notes.at(-1)?.id}` : null}
+        newestHref={before.success ? applicantPath(lang, slug, applicant.id) : null}
       />
 
       <section aria-labelledby="history-heading" className="grid gap-2">
