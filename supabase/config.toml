@@ -110,8 +110,9 @@ port = 54424
 # Uncomment to expose additional ports for testing user applications that send emails.
 # smtp_port = 54425
 # pop3_port = 54426
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# The sender of the Auth emails on the local stack; on the hosted project it is the sender of the custom SMTP settings.
+admin_email = "no-reply@chara.test"
+sender_name = "CHARA"
 
 [storage]
 enabled = true
@@ -263,15 +264,11 @@ enabled = true
 subject = "A sign-in method was added to your CHARA account"
 content_path = "./supabase/templates/identity_linked.html"
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Auth emails on the hosted project go through the custom SMTP of the transactional email provider (Resend, EU region;
+# docs/runbooks/account-emails.md). The hosted project does not read this file for them: the settings live under
+# Authentication, Emails, SMTP Settings (host smtp.resend.com, port 465, user resend, password a Resend API key limited
+# to sending, sender no-reply@ an address of the verified domain, sender name CHARA). They stay out of this file so
+# that the local stack and CI keep sending to the mail catcher.
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
