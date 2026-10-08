@@ -13,6 +13,8 @@ FR-G2, design points D4, D36, D66 (OPEN_QUESTIONS.md). An owner or admin at the 
 
 The function has `verify_jwt = true` and acts with the caller's own token; it holds no database key. The checks (role, second step, plan, tax input, terms, trial rule) are in `billing_checkout_start` and `billing_portal_start`.
 
+Deploy with `npx supabase functions deploy billing-checkout --use-api` (`verify_jwt = true` from `config.toml`) and set the secrets with `npx supabase secrets set --env-file <file>` (names in `supabase/functions/.env.example`). Verify on each environment: a request without `Authorization` answers 401; a request with the project's publishable key as the bearer answers 401; an owner at the second step who posts `{"action":"portal","orgId":"<id>"}` for an organisation the webhook has not linked answers 403 with the reason `no_customer`.
+
 ## 2. Stripe set-up (not verified against a live account)
 
 No Stripe account existed when this was built. The adapter was tested with response fixtures that follow the API reference, not with recordings, so everything below is to be checked in Stripe test mode before launch (acceptance criterion AC12 of FR-G2 is a manual check):
@@ -49,7 +51,7 @@ One free trial per legal entity. At checkout the trial is refused (the plan star
 - a subscription of the organisation ever had a trial;
 - another organisation whose stored identifier equals the stored or a submitted identifier has a subscription that had a trial.
 
-The confirmation page shows the answer before the redirect, and the form sends the trial length it showed; when the answer changed in between (for example a second organisation of the same company finished its checkout first), the checkout is refused with a message to reload and nothing is written. Identifiers of one entity given in different forms by different organisations are not linked (C14). Two organisations of one entity that both open Checkout before either completes can both receive a trial; the second is applied and raises the operations alert of FR-G3.
+The confirmation page shows the answer before the redirect, and the form sends the trial length it showed. When the answer changed in between, because the VAT ID or registration number typed into the form belongs to a company that had its trial, or a second organisation of the same company finished its checkout first, the start saves the submitted tax data (no consent, no audit row) and is answered with `trial_changed` (HTTP 409): the page reloads its disclosures from the saved data, clears the acceptance of the terms and asks for a new acceptance of the corrected terms before the next submit. Identifiers of one entity given in different forms by different organisations are not linked (C14). Two organisations of one entity that both open Checkout before either completes can both receive a trial; the second is applied and raises the operations alert of FR-G3.
 
 To lift a wrong block, delete the `billing.trial_grants` row in a reviewed migration; the audit row of the checkout start (`legal_entity_trial_used`) shows what was decided and when.
 
@@ -85,6 +87,10 @@ group by 1 order by 1 desc;
 ```
 
 ## 6. Audit and controls
+
+- A start is committed (customer row with the tax data, consent, audit row) before the provider is called. When the provider fails, the person is told that nothing was charged and the customer row stays; it holds no provider reference and does not lock the identifier of the organisation (only a customer the provider has linked does). The next attempt replaces the row.
+- Stripe sessions: a Checkout request carries an idempotency key of its parameters and the current five minutes, so a double submit creates one session and a later attempt creates a new one; a portal request carries none.
+- A caller cannot change the provider of a customer the provider has linked (`provider_mismatch`).
 
 - `billing.checkout_started` (entity: the organisation; metadata: plan code, trial days, whether the legal entity had used its trial) and `billing.portal_opened` are written by the two RPCs, with the person as actor; neither holds a VAT ID, a registration number or card data. The tax data is in `billing.customers`, which no API role can read.
 - The acceptance of the Subscription and Billing Terms is a `granted` row in `public.consents` (purpose `subscription-and-billing-terms`, the version shown). A new version of the terms is published as a legal document; the page and the check use the current version at once.

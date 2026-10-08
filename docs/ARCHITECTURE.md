@@ -716,7 +716,7 @@ export interface BillingProvider {
   readonly name: 'null' | 'stripe';
   verifyWebhook(req: Request, rawBody: string): Promise<{ ok: boolean; eventId: string; type: string; payload: unknown }>;
   normalize(payload: unknown): NormalizedEvent[];
-  createCheckout(input: CheckoutInput): Promise<{ url: string; providerRef: string }>;
+  createCheckout(input: CheckoutInput): Promise<{ url: string }>;
   createPortal(input: { customerRef: string; returnUrl: string }): Promise<{ url: string }>;
 }
 ```
