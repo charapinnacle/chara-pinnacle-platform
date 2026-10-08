@@ -12,12 +12,17 @@ const PASSPORT_BUCKET = "passport-documents";
 const LIST_PAGE = 100;
 // Objects sit at {user}/{document}/{file}; the walk goes a level deeper than that and no further.
 const MAX_DEPTH = 3;
+// A suspension bans the account for a hundred years; a reinstatement lifts the ban.
+const BAN_DURATION = "876000h";
 
 type Job =
-  & { msgId: number; userId: string }
-  & (
-    | { action: "sign_out" | "reset_mfa" | "erase_user" }
-    | { action: "delete_object"; bucketId: string; path: string }
+  | { msgId: number; action: "sign_out_organization"; organizationId: string }
+  | (
+    & { msgId: number; userId: string }
+    & (
+      | { action: "sign_out" | "reset_mfa" | "erase_user" | "suspend_user" | "reinstate_user" }
+      | { action: "delete_object"; bucketId: string; path: string }
+    )
   );
 
 interface AccountOpsDeps {
@@ -36,13 +41,26 @@ function parseJob(row: unknown): Job | null {
   const {
     action,
     user_id: userId,
+    organization_id: organizationId,
     bucket_id: bucketId,
     path,
-  } = message as { action?: unknown; user_id?: unknown; bucket_id?: unknown; path?: unknown };
+  } = message as {
+    action?: unknown;
+    user_id?: unknown;
+    organization_id?: unknown;
+    bucket_id?: unknown;
+    path?: unknown;
+  };
+  if (action === "sign_out_organization") {
+    return typeof organizationId === "string" && UUID.test(organizationId) ? { msgId, action, organizationId } : null;
+  }
   if (typeof userId !== "string" || !UUID.test(userId)) {
     return null;
   }
-  if (action === "sign_out" || action === "reset_mfa" || action === "erase_user") {
+  if (
+    action === "sign_out" || action === "reset_mfa" || action === "erase_user" || action === "suspend_user" ||
+    action === "reinstate_user"
+  ) {
     return { msgId, action, userId };
   }
   // An object is only ever removed from the folder of the user the job names.
@@ -62,6 +80,38 @@ async function endSessions(client: SupabaseClient, userId: string): Promise<numb
     throw error;
   }
   return Number(data);
+}
+
+// The ban follows the status the profile has when the job runs, so a suspension and a reinstatement that were queued
+// together end as the profile says in whatever order they are taken. A banned user cannot refresh a session, and the
+// sessions that exist are ended with the ban.
+async function syncBan(client: SupabaseClient, userId: string): Promise<Record<string, number>> {
+  const { data, error } = await client.rpc("account_ops_user_status", { p_user_id: userId });
+  if (error) {
+    throw error;
+  }
+  if (data === null) {
+    return {};
+  }
+  const suspended = data === "suspended";
+  const sessionsEnded = suspended ? await endSessions(client, userId) : 0;
+  const result = await client.auth.admin.updateUserById(userId, { ban_duration: suspended ? BAN_DURATION : "none" });
+  if (result.error && result.error.status !== 404) {
+    throw result.error;
+  }
+  return { banned: suspended ? 1 : 0, sessions_ended: sessionsEnded };
+}
+
+async function endOrganizationSessions(client: SupabaseClient, organizationId: string): Promise<number> {
+  const { data, error } = await client.rpc("account_ops_organization_members", { p_org: organizationId });
+  if (error) {
+    throw error;
+  }
+  let ended = 0;
+  for (const userId of data as string[]) {
+    ended += await endSessions(client, userId);
+  }
+  return ended;
 }
 
 // A factor that is already gone (a second run, or a user who removed it) is not an error.
@@ -143,6 +193,12 @@ async function eraseUser(client: SupabaseClient, userId: string): Promise<Record
 }
 
 async function run(client: SupabaseClient, job: Job): Promise<Record<string, number>> {
+  if (job.action === "sign_out_organization") {
+    return { sessions_ended: await endOrganizationSessions(client, job.organizationId) };
+  }
+  if (job.action === "suspend_user" || job.action === "reinstate_user") {
+    return await syncBan(client, job.userId);
+  }
   if (job.action === "delete_object") {
     return { objects_removed: await removeObjects(client, job.bucketId, [job.path]) };
   }
