@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { startDashboardLoad } from "@/lib/dal/dashboard";
-import { applicantsPath, billingPath, jobsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, jobsPath, notificationSettingsPath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
@@ -49,6 +49,9 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
       <header className="grid gap-1">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Dashboard</h1>
         <p className="text-body text-muted-foreground wrap-anywhere">{organization.displayName}</p>
+        <TextLink standalone href={notificationSettingsPath(lang)}>
+          Notification settings
+        </TextLink>
       </header>
 
       <Panel promise={plan} errorTitle="The plan could not be loaded" quiet>

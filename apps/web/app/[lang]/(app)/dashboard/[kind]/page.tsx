@@ -10,7 +10,7 @@ import { getPassport } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
 import { savedPath } from "@/lib/jobs/saved";
 import { computeCompleteness } from "@/lib/passport/completeness";
-import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, settingsPath } from "@/lib/routes";
+import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, notificationSettingsPath, settingsPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Dashboard — CHARA" };
@@ -39,6 +39,9 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
           </TextLink>
           <TextLink standalone href={savedPath(lang)}>
             Saved vacancies
+          </TextLink>
+          <TextLink standalone href={notificationSettingsPath(lang)}>
+            Notification settings
           </TextLink>
           <TextLink standalone href={settingsPath(lang)}>
             Account settings
