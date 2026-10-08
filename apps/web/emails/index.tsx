@@ -1,6 +1,8 @@
 import { render } from "@react-email/components";
 import type { Payload } from "./payload.ts";
 import type { Template } from "./template.ts";
+import { accountReinstated } from "./templates/account-reinstated.tsx";
+import { accountSuspended } from "./templates/account-suspended.tsx";
 import { applicationReceived } from "./templates/application-received.tsx";
 import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
@@ -23,6 +25,8 @@ const TEMPLATES = {
   deletion_requested: deletionRequested,
   deletion_completed: deletionCompleted,
   erasure_paused: erasurePaused,
+  account_suspended: accountSuspended,
+  account_reinstated: accountReinstated,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;
