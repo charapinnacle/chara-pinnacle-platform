@@ -10,6 +10,14 @@ export const metadata: Metadata = { title: "Organization — CHARA", robots: { i
 export default async function OrganizationPage({ params }: PageProps<"/[lang]/org/[slug]">) {
   const { lang, slug } = await params;
   const { organization } = await requireOrgRole(lang, slug, "member");
+  if (organization.suspended) {
+    return (
+      <AuthCard
+        title="This organisation is suspended"
+        description="Its vacancies, applicants and billing are not available. See the email we sent the owner and administrators for the reasons and how to respond."
+      />
+    );
+  }
   return (
     <AuthCard title={organization.displayName} description={`Your role: ${roleLabels[organization.role]}`}>
       <TextLink standalone href={jobsPath(lang, slug)}>

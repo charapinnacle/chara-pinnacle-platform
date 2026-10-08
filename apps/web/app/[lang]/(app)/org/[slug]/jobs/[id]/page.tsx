@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
@@ -16,6 +17,7 @@ export const metadata: Metadata = { title: "Vacancy — CHARA", robots: { index:
 export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/[id]">) {
   const { lang, slug, id } = await params;
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
+  if (organization.suspended) return <SuspendedOrganization title="Vacancy" subject="vacancies" />;
   const parsedId = jobIdSchema.safeParse(id);
   const job = parsedId.success ? await getJob(organization.id, parsedId.data) : null;
   if (!job) notFound();

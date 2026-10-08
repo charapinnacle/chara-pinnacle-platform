@@ -243,6 +243,19 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"moderation_actions": {
+                  Row: {
+                    "action": string,"actor_id": string | null,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_type": string
+                  }
+                  Insert: {
+                    "action": string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"statement_of_reasons": string,"target_id": string,"target_type": string
+                  }
+                  Update: {
+                    "action"?: string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"statement_of_reasons"?: string,"target_id"?: string,"target_type"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"notification_preferences": {
                   Row: {
                     "digest": boolean,"email_undeliverable_at": string | null,"user_id": string
@@ -777,6 +790,57 @@ isOneToOne: false
 "account_ops_end_sessions":
 { Args: { "p_user_id": string }; Returns: number
                            },
+"account_ops_fan_out_legal_version":
+{ Args: { "p_after"?: string,"p_limit"?: number,"p_slug": string,"p_version": number }; Returns: {
+              "last_id": string,"queued": number
+            }[]
+                           },
+"account_ops_organization_members":
+{ Args: { "p_org": string }; Returns: string[]
+                           },
+"account_ops_user_status":
+{ Args: { "p_user_id": string }; Returns: string
+                           },
+"admin_application_counts":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "count": number,"status": Database["public"]['Enums']["application_status"]
+            }[]
+                           },
+"admin_get_organization":
+{ Args: { "p_org": string }; Returns: {
+              "display_name": string,"id": string,"legal_name": string,"members": Json,"slug": string,"status": Database["public"]['Enums']["organization_status"],"vacancies": Json
+            }[]
+                           },
+"admin_get_user":
+{ Args: { "p_user_id": string }; Returns: {
+              "account_kind": Database["public"]['Enums']["account_kind"],"applications_submitted": number,"created_at": string,"display_name": string,"email": string,"id": string,"memberships": Json,"status": Database["public"]['Enums']["profile_status"],"vacancies_created": number
+            }[]
+                           },
+"admin_list_legal_documents":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
+"admin_list_moderation_actions":
+{ Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
+              "action": string,"actor_id": string,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_name": string,"target_type": string
+            }[]
+                           },
+"admin_search_audit":
+{ Args: { "p_action"?: string,"p_actor"?: string,"p_after_at"?: string,"p_after_id"?: number,"p_entity_id"?: string,"p_entity_type"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: {
+              "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"reason": string
+            }[]
+                           },
+"admin_search_organizations":
+{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number,"p_term": string }; Returns: {
+              "display_name": string,"id": string,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"]
+            }[]
+                           },
+"admin_search_users":
+{ Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number,"p_term": string }; Returns: {
+              "account_kind": Database["public"]['Enums']["account_kind"],"created_at": string,"display_name": string,"email": string,"id": string,"status": Database["public"]['Enums']["profile_status"]
+            }[]
+                           },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
               "available": boolean,"expires_on": string,"file_name": string,"id": string,"size_bytes": number,"title": string,"type": Database["public"]['Enums']["worker_document_type"]
@@ -905,7 +969,7 @@ isOneToOne: false
                            },
 "list_platform_staff":
 { Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
-              "granted_at": string,"id": number,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["platform_role"],"user_id": string
+              "display_name": string,"email": string,"granted_at": string,"granted_by": string,"granted_by_email": string,"id": number,"last_sign_in_at": string,"mfa_enrolled": boolean,"revoked_at": string,"role": Database["public"]['Enums']["platform_role"],"user_id": string
             }[]
                            },
 "list_saved_jobs":
@@ -940,6 +1004,9 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
+"publish_legal_document":
+{ Args: { "p_body": string,"p_change_summary": string,"p_expected_version": number,"p_slug": string,"p_title": string }; Returns: number
+                           },
 "rate_limit_attempt":
 { Args: { "p_action": string,"p_key": string }; Returns: {
               "allowed": boolean,"retry_after_seconds": number
@@ -953,6 +1020,12 @@ isOneToOne: false
                            },
 "recovery_link_is_fresh":
 { Args: { "p_token_hash": string }; Returns: boolean
+                           },
+"reinstate_organization":
+{ Args: { "p_org": string,"p_reason": string }; Returns: undefined
+                           },
+"reinstate_user":
+{ Args: { "p_reason": string,"p_user_id": string }; Returns: undefined
                            },
 "remove_member":
 { Args: { "p_org": string,"p_user": string }; Returns: undefined
@@ -987,6 +1060,12 @@ isOneToOne: false
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"] }; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
+                           },
+"suspend_organization":
+{ Args: { "p_org": string,"p_reason": string }; Returns: undefined
+                           },
+"suspend_user":
+{ Args: { "p_reason": string,"p_user_id": string }; Returns: undefined
                            },
 "team_member_allowance":
 { Args: { "p_org": string }; Returns: {

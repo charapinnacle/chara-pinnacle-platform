@@ -15,11 +15,13 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   vacancy_hidden: { job_id: JOB, job_title: "Welder MIG/MAG", org_slug: "acme-bau", reasons: "The salary claim is misleading." },
   trial_ending: { org_slug: "acme-bau", trial_ends_at: "2026-11-01", plan_code: "employer_starter", amount_minor: 3900, currency: "EUR" },
   payment_failed: { org_slug: "acme-bau" },
-  legal_version: { document_slug: "worker-terms", version: 3 },
+  legal_version: { document_slug: "worker-terms", version: 3, change_summary: "Adds retention periods for application data." },
   mfa_reset: {},
   deletion_requested: { erases_on: "2026-11-02T08:00:00+00:00" },
   deletion_completed: {},
   erasure_paused: { account_id: ACCOUNT },
+  account_suspended: { reasons: "Repeated fake profile reports." },
+  account_reinstated: { reasons: "Identity confirmed after the complaint." },
   member_invitation: { org_name: "Acme Bau", role: "member", expires_at: "2026-10-15T09:30:00+00:00", token: TOKEN, invitation_id: ACCOUNT },
 };
 
@@ -88,6 +90,8 @@ describe("notification templates", () => {
       payment_failed: billingPath("en", "acme-bau"),
       legal_version: "/en/legal/worker-terms",
       mfa_reset: "/en/login",
+      account_suspended: "/en/legal/complaints-and-dispute-process",
+      account_reinstated: "/en/login",
       deletion_requested: settingsPath("en"),
       member_invitation: `/en/invitations/${TOKEN}`,
     };
@@ -189,6 +193,27 @@ describe("notification templates", () => {
     expect(email.text).toContain("erased on 2026-11-02");
     const none = await renderEmail("deletion_requested", { erases_on: "soon" }, SITE);
     expect(none.text).not.toContain("erased on");
+  });
+
+  it("account_suspended and account_reinstated quote the reasons and say whether a person or an organisation is meant", async () => {
+    const person = await renderEmail("account_suspended", SAMPLES.account_suspended, SITE);
+    expect(person.subject).toBe("Your CHARA account was suspended");
+    expect(person.text).toContain("Repeated fake profile reports.");
+    expect(person.text).toContain("cannot sign in until it is reinstated");
+    const org = await renderEmail("account_suspended", { ...SAMPLES.account_suspended, org_name: "Acme Bau", org_slug: "acme-bau" }, SITE);
+    expect(org.subject).toBe("Your organisation Acme Bau was suspended");
+    expect(org.text).toContain("suspended the organisation Acme Bau");
+    const back = await renderEmail("account_reinstated", SAMPLES.account_reinstated, SITE);
+    expect(back.subject).toBe("Your CHARA account was reinstated");
+    expect(back.text).toContain("Identity confirmed after the complaint.");
+    const backOrg = await renderEmail("account_reinstated", { ...SAMPLES.account_reinstated, org_name: "Acme Bau" }, SITE);
+    expect(backOrg.subject).toBe("Your organisation Acme Bau was reinstated");
+    expect(backOrg.text).toContain("except any that moderators hid on their own");
+  });
+
+  it("legal_version quotes the change summary", async () => {
+    const email = await renderEmail("legal_version", SAMPLES.legal_version, SITE);
+    expect(email.text).toContain("Adds retention periods for application data.");
   });
 
   it("keep the subject on one line when a value holds a line break", async () => {

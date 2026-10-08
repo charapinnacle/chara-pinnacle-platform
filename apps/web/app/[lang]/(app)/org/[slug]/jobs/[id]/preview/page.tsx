@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { PreviewActions } from "@/components/jobs/vacancy-actions";
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Preview — CHARA", robots: { index:
 export default async function JobPreviewPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/[id]/preview">) {
   const { lang, slug, id } = await params;
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
+  if (organization.suspended) return <SuspendedOrganization title="Preview" subject="vacancies" />;
   const parsedId = jobIdSchema.safeParse(id);
   const [job, employer] = await Promise.all([
     parsedId.success ? getJob(organization.id, parsedId.data) : null,

@@ -71,6 +71,8 @@ export default defineConfig({
         "**/applicant-list-failure.spec.ts",
         "**/dashboard-failure.spec.ts",
         "**/notify-emails.spec.ts",
+        "**/admin-console-jobs.spec.ts",
+        "**/admin-console-staff-database.spec.ts",
         "**/member-invitation-email.spec.ts",
       ],
     },
@@ -164,6 +166,21 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/notify-emails.spec.ts",
       dependencies: ["dashboard-failure"],
+    },
+    // These run account-ops and notify as well, so they follow notify.
+    {
+      name: "admin-jobs",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/admin-console-jobs.spec.ts",
+      dependencies: ["notify-invitation"],
+    },
+    // The staff function is withdrawn from the API role, a table of Auth is locked and the staff list is filled up while
+    // this spec runs.
+    {
+      name: "staff-database",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/admin-console-staff-database.spec.ts",
+      dependencies: ["admin-jobs"],
     },
     // The same reason: the file after the other, not beside it.
     {

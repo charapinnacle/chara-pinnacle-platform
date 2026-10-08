@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { TextLink } from "@/components/forms/text-link";
 import { listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { inde
 export default async function JobsPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/jobs">) {
   const [{ lang, slug }, { after, status: statusParam }] = await Promise.all([params, searchParams]);
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
+  if (organization.suspended) return <SuspendedOrganization title="Vacancies" subject="vacancies" />;
   const cursor = parseJobCursor(after);
   const status = isJobStatus(statusParam) ? statusParam : null;
   const page = await listJobs(organization.id, cursor, status);

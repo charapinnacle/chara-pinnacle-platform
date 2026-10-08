@@ -80,13 +80,14 @@ type InputFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   FormFieldProps<T, N>,
   "children"
 > &
-  Pick<React.ComponentProps<"input">, "type" | "autoComplete" | "inputMode" | "readOnly">;
+  Pick<React.ComponentProps<"input">, "type" | "autoComplete" | "inputMode" | "readOnly" | "maxLength">;
 
 export function InputField<T extends FieldValues, N extends FieldPath<T>>({
   type,
   autoComplete,
   inputMode,
   readOnly,
+  maxLength,
   ...fieldProps
 }: InputFieldProps<T, N>) {
   return (
@@ -97,6 +98,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
           autoComplete={autoComplete}
           inputMode={inputMode}
           readOnly={readOnly}
+          maxLength={maxLength}
           className={cn("h-11", controlClassName)}
           {...controlProps}
         />
