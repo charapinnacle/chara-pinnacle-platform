@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { InternalNotes } from "@/components/applicants/internal-notes";
 import { ProfileSnapshot } from "@/components/applicants/profile-snapshot";
+import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
@@ -19,7 +20,7 @@ import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/
 import { getCountries, getLanguages } from "@/lib/dal/reference";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
-import { applicantPath, homePath } from "@/lib/routes";
+import { applicantPath, billingPath, homePath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
@@ -61,6 +62,10 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
   const applicant = reread ?? first;
   const targets = allowedTargets(applicant.status, "employer", { shortlisting: applicant.shortlistingAvailable });
   const name = applicant.applicantName ?? FORMER_CANDIDATE;
+  const upgradeForShortlisting =
+    !applicant.stageChangeBlocked &&
+    !applicant.shortlistingAvailable &&
+    allowedTargets(applicant.status, "employer", { shortlisting: true }).includes("shortlisted");
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
@@ -101,6 +106,8 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
           {applicationStatusLabels[applicant.status]} is a final stage. No further stage can be chosen.
         </Notice>
       )}
+
+      {upgradeForShortlisting ? <ShortlistingUpgrade role={organization.role} billingHref={billingPath(lang, slug)} /> : null}
 
       <ProfileSnapshot
         snapshot={profile.snapshot}

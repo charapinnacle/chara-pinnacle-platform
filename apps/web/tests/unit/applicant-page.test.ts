@@ -219,6 +219,25 @@ describe("the applicant page of FR-D5", () => {
     expect(stageChangeMock.mock.lastCall?.[0].targets).toEqual(["interview", "rejected"]);
   });
 
+  it("shows the upgrade prompt only where Shortlisted would be offered and the plan lacks it, with the link for an owner or admin and without it for a member", async () => {
+    const prompt = "Upgrade to shortlist applicants";
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: false });
+    const member = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(member).toContain(prompt);
+    expect(member).toContain("Contact an owner or admin of your organization to upgrade the plan.");
+    expect(member).not.toContain("/billing");
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, role: "owner" } });
+    const owner = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(owner).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/billing"[^>]*>Upgrade to shortlist applicants<\/a>/);
+    expect(owner).not.toContain("Contact an owner or admin");
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: true });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain(prompt);
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "interview", shortlistingAvailable: false });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain(prompt);
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: false, stageChangeBlocked: "read_only_free_plan" });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain(prompt);
+  });
+
   it("answers an application whose profile cannot be read as not found", async () => {
     getProfileMock.mockResolvedValue(null);
     await expect(ApplicantPage(props())).rejects.toThrow("NOT_FOUND");

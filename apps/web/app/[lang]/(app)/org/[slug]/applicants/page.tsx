@@ -6,6 +6,7 @@ import { Board } from "@/components/applicants/board";
 import { BulkSelection } from "@/components/applicants/bulk-selection";
 import { BulkToolbar } from "@/components/applicants/bulk-toolbar";
 import { ExportButton } from "@/components/applicants/export-button";
+import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { StageFilter } from "@/components/applications/stage-filter";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -21,7 +22,7 @@ import {
 import { FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
-import { applicantsExportPath, applicantsPath, homePath, jobPath, jobsPath } from "@/lib/routes";
+import { applicantsExportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { parseApplicantListParams } from "@/lib/validation/applicant-list";
 
 export const metadata: Metadata = { title: "Applicants — CHARA", robots: { index: false } };
@@ -57,6 +58,7 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
   const withoutStage = { ...parsed, stage: null, page: 1 };
   const kept = Object.fromEntries(new URL(applicantsPath(lang, slug, withoutStage), "http://localhost").searchParams);
   const visibleRows = board ? board.columns.flatMap((column) => column.rows) : (list?.rows ?? []);
+  const shortlistable = visibleRows.some((row) => row.status === "applied" || row.status === "viewed");
   const bulkRows = frozen || empty ? null : visibleRows.map((row) => ({ id: row.id, name: row.candidateName ?? FORMER_CANDIDATE, status: row.status }));
   const lastPage = list ? Math.max(1, Math.ceil(list.total / APPLICANTS_PAGE_SIZE)) : 1;
 
@@ -77,6 +79,10 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         <Notice tone="info" role="status">
           {frozenText}
         </Notice>
+      ) : null}
+
+      {!frozen && shortlistable && !access.shortlistingAvailable ? (
+        <ShortlistingUpgrade role={organization.role} billingHref={billingPath(lang, slug)} />
       ) : null}
 
       {parsed.job ? (
