@@ -100,15 +100,15 @@ export function RadioGroupField<T extends FieldValues, N extends FieldPath<T>>({
                     >
                       {option.label}
                     </FieldLabel>
+                    <span
+                      aria-hidden
+                      className="size-5 rounded-full border-2 border-input bg-card transition-[border-width,border-color] group-has-checked/option:border-[6px] group-has-checked/option:border-primary sm:col-start-2 sm:row-start-1"
+                    />
                     {option.description ? (
                       <FieldDescription id={optionDescriptionId} className="col-span-full sm:row-start-3">
                         {option.description}
                       </FieldDescription>
                     ) : null}
-                    <span
-                      aria-hidden
-                      className="size-5 rounded-full border-2 border-input bg-card transition-[border-width,border-color] group-has-checked/option:border-[6px] group-has-checked/option:border-primary sm:col-start-2 sm:row-start-1"
-                    />
                   </div>
                 );
               })}
