@@ -219,6 +219,20 @@ describe("the applicant page of FR-D5", () => {
     expect(stageChangeMock.mock.lastCall?.[0].targets).toEqual(["interview", "rejected"]);
   });
 
+  it("shows the upgrade prompt only where Shortlisted would be offered and the plan lacks it", async () => {
+    const prompt = "Your plan does not include shortlisting";
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: false });
+    const without = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(without).toContain(prompt);
+    expect(without).toContain('href="/en/org/acme-bau/billing"');
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: true });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain(prompt);
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "interview", shortlistingAvailable: false });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain(prompt);
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: false, stageChangeBlocked: "read_only_free_plan" });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain(prompt);
+  });
+
   it("answers an application whose profile cannot be read as not found", async () => {
     getProfileMock.mockResolvedValue(null);
     await expect(ApplicantPage(props())).rejects.toThrow("NOT_FOUND");

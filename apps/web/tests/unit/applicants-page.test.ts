@@ -137,6 +137,24 @@ describe("the list", () => {
     expect(html).not.toContain("disabled until a plan is chosen");
   });
 
+  it("tells a plan without shortlisting so, with the link to the plan page, and says nothing on a plan that has it", async () => {
+    getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false });
+    const html = await render({ job });
+    expect(html).toContain("Your plan does not include shortlisting, so applicants cannot be moved to Shortlisted.");
+    expect(html).toContain('href="/en/org/acme-bau/billing"');
+    expect(html).toContain("TOOLBAR acme-bau shortlisting=false");
+    getAccessMock.mockResolvedValue(access);
+    expect(await render({ job })).not.toContain("does not include shortlisting");
+  });
+
+  it("gives a lapsed organization the notice of the frozen plan and not the shortlisting prompt, and an empty list neither", async () => {
+    getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false, stageChangeBlocked: "read_only_free_plan" });
+    expect(await render({ job })).not.toContain("does not include shortlisting");
+    getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false });
+    listApplicantsMock.mockResolvedValue({ rows: [], total: 0, page: 1 });
+    expect(await render({ job })).not.toContain("does not include shortlisting");
+  });
+
   it("shows no reason next to an export that is available", async () => {
     const html = await render({ job });
     expect(html).not.toContain("does not include the CSV export");
