@@ -1,9 +1,10 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page } from "@playwright/test";
 import { seedListApplicant } from "./applicant-list";
 import { execute, literal } from "./db";
-import type { Company } from "./jobs";
+import { addCompanyUser, type Company } from "./jobs";
 import { logIn } from "./login-page";
 import { enterCode } from "./mfa";
+import { signInBrowser } from "./session";
 import type { Team } from "./team";
 import { expect } from "./test";
 
@@ -59,4 +60,12 @@ export async function openDashboardAtAal2(page: Page, team: Team): Promise<void>
   await enterCode(page, team.ownerSecret);
   await expect(page).toHaveURL(dashboardUrl(team.slug));
   await expect(page.getByRole("link", { name: /^Open vacancies/ })).toBeVisible();
+}
+
+// A plain member of the organization in a browser of its own.
+export async function memberPage(browser: Browser, company: Company) {
+  const member = await addCompanyUser(company, "member");
+  const context = await browser.newContext();
+  await signInBrowser(context, member);
+  return { member, context, page: await context.newPage() };
 }

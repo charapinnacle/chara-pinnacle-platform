@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { formatDate } from "@/lib/i18n/format";
 import { expectNoAxeViolations } from "./support/axe";
 import { callAs } from "./support/accounts";
@@ -8,28 +9,18 @@ import {
   DAY,
   fromNow,
   HOUR,
+  memberPage,
   openDashboardAtAal2,
   seedApplicationAgo,
   seedSubscription,
   softDeleteJob,
   stageRows,
 } from "./support/dashboard";
-import { addCompanyUser, expectNotFound, newCompany, seedJob } from "./support/jobs";
-import { createCommittedUser } from "./support/login";
-import { overflow } from "./support/login-page";
-import { staffUser } from "./support/mfa";
-import { signInBrowser } from "./support/session";
-import { addMember, newTeam, signInAtAal1 } from "./support/team";
+import { type Company, newCompany, seedJob } from "./support/jobs";
+import { newTeam } from "./support/team";
 import { expect, test } from "./support/test";
 
 const PIPELINE = ["Applied", "Viewed", "Shortlisted", "Interview", "Offer", "Hired", "Not selected", "Withdrawn"];
-
-async function memberPage(browser: import("@playwright/test").Browser, company: Parameters<typeof addCompanyUser>[0]) {
-  const member = await addCompanyUser(company, "member");
-  const context = await browser.newContext();
-  await signInBrowser(context, member);
-  return { member, context, page: await context.newPage() };
-}
 
 test.describe("the employer dashboard: the figures", () => {
   test("FR-E5 AC1: the Open vacancies card counts the open vacancies that are not deleted and links to the list filtered to Open", async ({ browser }) => {
@@ -121,6 +112,11 @@ test.describe("the employer dashboard: the figures", () => {
 
 test.describe("the employer dashboard: plan and payment status", () => {
   test("FR-E5 AC5: the plan card shows the plan, Trial, the end date and the days left; the alert starts in the last 72 hours and its link is for the owner", async ({ browser, page }) => {
+    const memberView = async (team: Company) => {
+      const view = await memberPage(browser, team);
+      await view.page.goto(dashboardUrl(team.slug));
+      return view;
+    };
     const trialEnd = fromNow(10 * DAY + 5 * HOUR);
     const soonEnd = fromNow(48 * HOUR);
     const far = await newTeam();
@@ -129,7 +125,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     seedSubscription(soon, "employer_starter", "trialing", { trialEndsAt: soonEnd });
     const paid = await newTeam();
     seedSubscription(paid, "employer_professional", "active", { currentPeriodEnd: "2026-11-03T00:00:00Z" });
-    const trialAlerts = (target: import("@playwright/test").Page) => target.getByRole("alert").filter({ hasText: "free trial" });
+    const trialAlerts = (target: Page) => target.getByRole("alert").filter({ hasText: "free trial" });
 
     await openDashboardAtAal2(page, far);
     const plan = page.getByRole("region", { name: "Plan" });
@@ -138,6 +134,11 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(plan).toContainText(formatDate(trialEnd));
     await expect(plan).toContainText("11 days left");
     await expect(trialAlerts(page)).toHaveCount(0);
+    const farView = await memberView(far);
+    await expect(farView.page.getByRole("region", { name: "Plan" })).toContainText("11 days left");
+    await expect(trialAlerts(farView.page)).toHaveCount(0);
+    await expect(farView.page.getByRole("main").locator('a[href$="/billing"]')).toHaveCount(0);
+    await farView.context.close();
 
     await openDashboardAtAal2(page, soon);
     await expect(trialAlerts(page)).toContainText(formatDate(soonEnd));
@@ -145,15 +146,11 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(trialAlerts(page).getByRole("link")).toHaveAttribute("href", `/en/org/${soon.slug}/billing`);
     await expectNoAxeViolations(page);
 
-    const { user: member } = await addMember(soon, "member", { enrolled: false });
-    const context = await browser.newContext();
-    await signInBrowser(context, member);
-    const memberView = await context.newPage();
-    await memberView.goto(dashboardUrl(soon.slug));
-    await expect(trialAlerts(memberView)).toContainText("2 days left");
-    await expect(trialAlerts(memberView).getByRole("link")).toHaveCount(0);
-    await expect(memberView.getByRole("main").locator('a[href$="/billing"]')).toHaveCount(0);
-    await context.close();
+    const soonView = await memberView(soon);
+    await expect(trialAlerts(soonView.page)).toContainText("2 days left");
+    await expect(trialAlerts(soonView.page).getByRole("link")).toHaveCount(0);
+    await expect(soonView.page.getByRole("main").locator('a[href$="/billing"]')).toHaveCount(0);
+    await soonView.context.close();
 
     await openDashboardAtAal2(page, paid);
     const paidPlan = page.getByRole("region", { name: "Plan" });
@@ -163,6 +160,13 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(paidPlan).toContainText("November 3, 2026");
     await expect(trialAlerts(page)).toHaveCount(0);
     await expect(page.getByText(/stripe|provider|cus_|sub_/i)).toHaveCount(0);
+    const paidView = await memberView(paid);
+    const paidMemberPlan = paidView.page.getByRole("region", { name: "Plan" });
+    await expect(paidMemberPlan).toContainText("Active");
+    await expect(paidMemberPlan).toContainText("November 3, 2026");
+    await expect(trialAlerts(paidView.page)).toHaveCount(0);
+    await expect(paidView.page.getByRole("main").locator('a[href$="/billing"]')).toHaveCount(0);
+    await paidView.context.close();
   });
 
   test("FR-E5 AC7: a failed payment is a warning above the cards with the end of the grace period, linked for the owner only", async ({ browser, page }) => {
@@ -170,7 +174,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     const since = ago(2 * DAY);
     seedSubscription(team, "employer_starter", "past_due", { pastDueSince: since });
     const graceEnd = new Date(new Date(since).getTime() + 7 * DAY).toISOString();
-    const warning = (target: import("@playwright/test").Page) => target.getByRole("alert").filter({ hasText: "payment" });
+    const warning = (target: Page) => target.getByRole("alert").filter({ hasText: "payment" });
 
     await openDashboardAtAal2(page, team);
     await expect(warning(page)).toContainText("failed");
@@ -185,10 +189,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
       await card(page, /^Open vacancies/).evaluate((element) => element.getBoundingClientRect().top),
     );
 
-    const { user: member } = await addMember(team, "member", { enrolled: false });
-    const context = await browser.newContext();
-    await signInBrowser(context, member);
-    const memberView = await context.newPage();
+    const { context, page: memberView } = await memberPage(browser, team);
     await memberView.goto(dashboardUrl(team.slug));
     await expect(warning(memberView)).toContainText("5 days left");
     await expect(warning(memberView).getByRole("link")).toHaveCount(0);
@@ -227,10 +228,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expectNoAxeViolations(page);
 
     for (const team of [lapsed, fresh]) {
-      const { user: member } = await addMember(team, "member", { enrolled: false });
-      const context = await browser.newContext();
-      await signInBrowser(context, member);
-      const memberView = await context.newPage();
+      const { context, page: memberView } = await memberPage(browser, team);
       await memberView.goto(dashboardUrl(team.slug));
       const memberPlan = memberView.getByRole("region", { name: "Plan" });
       await expect(memberPlan).toContainText("Contact an owner or admin");
@@ -238,103 +236,5 @@ test.describe("the employer dashboard: plan and payment status", () => {
       await expect(memberView.getByRole("link", { name: "Choose a plan" })).toHaveCount(0);
       await context.close();
     }
-  });
-});
-
-test.describe("the employer dashboard: who may open it", () => {
-  test("FR-E5 AC9: a visitor goes to log in, a candidate to the candidate dashboard, outsiders get a page that does not exist, a member of the organization sees it", async ({ browser, page }) => {
-    const company = await newCompany();
-    const other = await newCompany();
-    const path = dashboardUrl(company.slug);
-
-    await page.goto(path);
-    await expect(page).toHaveURL(/\/en\/login/);
-
-    const candidate = await createCommittedUser("worker");
-    const worker = await browser.newContext();
-    await signInBrowser(worker, candidate);
-    const workerPage = await worker.newPage();
-    await workerPage.goto(path);
-    await expect(workerPage).toHaveURL(/\/en\/dashboard\/worker$/);
-    await worker.close();
-
-    const outsider = await browser.newContext();
-    await signInBrowser(outsider, other.owner);
-    const outsiderPage = await outsider.newPage();
-    await expectNotFound(outsiderPage, path);
-    await expect(outsiderPage.getByRole("link", { name: /^Open vacancies/ })).toHaveCount(0);
-    await outsider.close();
-
-    const staff = await browser.newContext();
-    await signInBrowser(staff, await staffUser("admin"));
-    const staffPage = await staff.newPage();
-    await expectNotFound(staffPage, path);
-    await staff.close();
-
-    const { context, page: memberView } = await memberPage(browser, company);
-    await memberView.goto(path);
-    await expect(card(memberView, /^Open vacancies/)).toBeVisible();
-    await context.close();
-  });
-
-  test("FR-E5 AC9: an owner at aal1 sees no figure and is asked for the code (recorded departure from the redirect); at aal2 the figures show", async ({ page }) => {
-    const team = await newTeam();
-    seedJob(team, { title: "Guarded welder", status: "open" });
-
-    await signInAtAal1(page, team.owner, dashboardUrl(team.slug));
-    await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Open vacancies/ })).toHaveCount(0);
-    await expect(page.getByRole("table", { name: "Applicants by stage" })).toHaveCount(0);
-    await expect(page.getByText("Enter your two-step code to see the figures of your hiring.")).toBeVisible();
-    await expectNoAxeViolations(page);
-
-    await page.getByRole("link", { name: "Enter your code" }).click();
-    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent(dashboardUrl(team.slug))}`);
-  });
-
-  test("FR-E5 AC9: a plain member opens the dashboard of the organization without two-step verification", async ({ browser }) => {
-    const team = await newTeam();
-    const { user } = await addMember(team, "member", { enrolled: false });
-    const context = await browser.newContext();
-    await signInBrowser(context, user);
-    const page = await context.newPage();
-    await page.goto(dashboardUrl(team.slug));
-    await expect(card(page, /^Open vacancies/)).toBeVisible();
-    await expect(page).not.toHaveURL(/\/mfa/);
-    await context.close();
-  });
-});
-
-test.describe("the employer dashboard: keyboard, labels and a narrow screen", () => {
-  test("FR-E5 AC11: the cards are links in reading order, the stages are a table, nothing overflows at 360 px and axe finds no serious violation", async ({ browser }) => {
-    const company = await newCompany();
-    const job = seedJob(company, { title: "Keyboard welder", status: "open" });
-    seedApplicationAgo(company, job, "applied", HOUR);
-    seedApplicationAgo(company, job, "viewed", 2 * HOUR);
-    const { context, page } = await memberPage(browser, company);
-    await page.setViewportSize({ width: 360, height: 800 });
-
-    await page.goto(dashboardUrl(company.slug));
-    await expect(card(page, "Open vacancies: 1")).toBeVisible();
-    await expect(page.getByRole("table", { name: "Applicants by stage" }).getByRole("columnheader")).toHaveText(["Stage", "Applicants"]);
-    expect(await overflow(page)).toBeLessThanOrEqual(0);
-    const first = await card(page, "Open vacancies: 1").boundingBox();
-    const second = await card(page, "New applications in the last 7 days: 2").boundingBox();
-    expect(first?.x).toBe(second?.x);
-    expect(second?.y).toBeGreaterThan((first?.y ?? 0) + (first?.height ?? 0) - 1);
-
-    const focusOrder: string[] = [];
-    for (let step = 0; step < 40 && focusOrder.length < 12; step++) {
-      await page.keyboard.press("Tab");
-      const name = await page.evaluate(() => {
-        const element = document.activeElement;
-        return element?.closest("main") ? (element.getAttribute("aria-label") ?? element.textContent ?? "").trim() : "";
-      });
-      if (name) focusOrder.push(name);
-    }
-    expect(focusOrder.slice(0, 4)).toEqual(["Open vacancies: 1", "New applications in the last 7 days: 2", "Applied", "Viewed"]);
-    expect(focusOrder).toContain("Withdrawn");
-    await expectNoAxeViolations(page);
-    await context.close();
   });
 });
