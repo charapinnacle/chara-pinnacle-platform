@@ -180,8 +180,23 @@ Deno.test("a provider that keeps failing for a reason that can pass is called 4 
     assert.deepEqual(sleeps, [2000, 6000, 18000]);
     assert.ok(sleeps.every((ms, i) => i === 0 || ms > sleeps[i - 1]), "the delays strictly grow");
     assert.deepEqual(acks(calls), [], `${code}: nothing is closed, the message returns after the visibility timeout`);
-    assert.deepEqual(alerts, [], `${code}: the alert comes when the database ends the message`);
+    assert.deepEqual(
+      alerts,
+      [["notify_retries_exhausted", { notification_id: ID_1, kind: "status_changed", attempts: 4, error: code }]],
+      `${code}: operations are alerted once, after the third retry of the first read`,
+    );
   }
+});
+
+Deno.test("the read again of a message that keeps failing raises no second retry alert", async () => {
+  const provider = failing("resend_http_503", true);
+  const { deps, alerts } = setup(
+    { "POST /rest/v1/rpc/notify_dequeue": dequeues(batch([statusRow(ID_1, { attempt: 2 })])) },
+    provider,
+  );
+  await silenced(() => handleNotify(request(), deps));
+  assert.equal(provider.sent.length, 4);
+  assert.deepEqual(alerts, []);
 });
 
 Deno.test("a message that the database ended as failed raises the alert with its id, kind and error and nothing else", async () => {
