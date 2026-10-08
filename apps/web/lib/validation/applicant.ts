@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
+export const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
 
 const stage = z.string({ error: "Choose a stage" }).pipe(z.enum(employerStages, { error: "Choose a stage" }));
 
@@ -48,9 +48,24 @@ export function stageChangeFormSchema(noteMaxChars: number) {
     }));
 }
 
+const BULK_MAX = 100;
+
+const SELECTION_RANGE = `Select between 1 and ${BULK_MAX} applicants`;
+
+export const bulkSelectionSchema = z
+  .array(z.uuid(), { error: SELECTION_RANGE })
+  .min(1, { error: SELECTION_RANGE })
+  .max(BULK_MAX, { error: SELECTION_RANGE });
+
+// What the Server Action of a bulk change parses: the target and the reason of one change, for up to 100 applications.
+export const bulkActionInputSchema = z
+  .object({ applicationIds: bulkSelectionSchema, status: stage, note: z.string().trim() })
+  .refine((value) => value.status !== "rejected" || value.note !== "", { path: ["note"], error: DECLINE_REASON_REQUIRED });
+
 export type StageChangeInput = z.input<typeof stageChangeInputSchema>;
 export type StageChangeFormValues = z.input<ReturnType<typeof stageChangeFormSchema>>;
 export type StageChangeFormOutput = z.output<ReturnType<typeof stageChangeFormSchema>>;
+export type BulkActionInput = z.input<typeof bulkActionInputSchema>;
 
 // Mirrors the check of application_notes.body. A note is plain text: it is stored and shown as typed.
 export const NOTE_MAX_CHARS = 2000;

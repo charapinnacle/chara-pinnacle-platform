@@ -113,3 +113,47 @@ export async function setApplicationStatus(
   });
   return error ? refusal(error) : null;
 }
+
+export type BulkItem = { applicationId: string; ok: boolean; errorCode: string | null; status: ApplicationStatus | null };
+
+// One call for up to 100 applications of one organization. The ids are first matched to that organization in one bounded
+// read, so that the role the caller was checked for is the one of the organization that owns every application sent; an
+// id that is not there is answered as the database answers an unknown id. The database judges the rest, item by item, and
+// the stage read here is the one a refused item is in. A refusal of the whole call (a lapsed plan, a suspended
+// organization, a note that is too long) is a StageRefusal.
+export async function bulkSetApplicationStatus(
+  organizationId: string,
+  ids: string[],
+  status: ApplicationStatus,
+  note: string,
+): Promise<{ items: BulkItem[] } | { refusal: StageRefusal }> {
+  const supabase = await createClient();
+  const { data: rows, error: readError } = await supabase
+    .from("v_job_applicants")
+    .select("id, status")
+    .eq("organization_id", organizationId)
+    .in("id", ids);
+  if (readError) return { refusal: refusal(readError) };
+  const current = new Map<string, ApplicationStatus>();
+  for (const row of rows) if (row.id && row.status) current.set(row.id, row.status);
+
+  const distinct = [...new Set(ids)];
+  const own = distinct.filter((id) => current.has(id));
+  const judged = new Map<string, { ok: boolean; error_code: string | null }>();
+  if (own.length > 0) {
+    const { data, error } = await supabase.rpc("bulk_set_application_status", {
+      p_application_ids: own,
+      p_status: status,
+      p_note: note === "" ? undefined : note,
+    });
+    if (error) return { refusal: refusal(error) };
+    for (const item of data) judged.set(item.application_id, item);
+  }
+  return {
+    items: distinct.map((id) => {
+      const item = judged.get(id);
+      if (!item) return { applicationId: id, ok: false, errorCode: "CHARA_NOT_FOUND", status: null };
+      return { applicationId: id, ok: item.ok, errorCode: item.ok ? null : item.error_code, status: item.ok ? null : (current.get(id) ?? null) };
+    }),
+  };
+}

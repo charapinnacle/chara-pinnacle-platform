@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  bulkActionInputSchema,
+  bulkSelectionSchema,
   declineReasonOptions,
   noteInputSchema,
   stageChangeFormSchema,
@@ -108,5 +110,26 @@ describe("noteInputSchema", () => {
   it("accepts 2000 characters and blocks 2001", () => {
     expect(noteInputSchema.safeParse({ body: "a".repeat(2000) }).success).toBe(true);
     expect(noteInputSchema.safeParse({ body: "a".repeat(2001) }).error?.issues[0].message).toBe("Note must be at most 2000 characters");
+  });
+});
+
+const idList = (count: number) => Array.from({ length: count }, (_, index) => `0a1b2c3d-0000-4000-8000-${String(index).padStart(12, "0")}`);
+
+describe("bulkSelectionSchema", () => {
+  it("allows 1 to 100 ids and refuses 0, 101 and an id that is not valid", () => {
+    for (const count of [1, 3, 100]) expect(bulkSelectionSchema.safeParse(idList(count)).success).toBe(true);
+    for (const count of [0, 101]) {
+      expect(bulkSelectionSchema.safeParse(idList(count)).error?.issues[0].message).toBe("Select between 1 and 100 applicants");
+    }
+    expect(bulkSelectionSchema.safeParse(["nope"]).success).toBe(false);
+  });
+});
+
+describe("bulkActionInputSchema", () => {
+  it("takes 1 to 100 ids, a stage an employer can choose and a trimmed note, and needs a reason for a decline", () => {
+    expect(bulkActionInputSchema.parse({ applicationIds: idList(100), status: "offer", note: " Week 41 " }).note).toBe("Week 41");
+    expect(bulkActionInputSchema.safeParse({ applicationIds: idList(101), status: "offer", note: "" }).success).toBe(false);
+    expect(bulkActionInputSchema.safeParse({ applicationIds: [], status: "offer", note: "" }).success).toBe(false);
+    expect(bulkActionInputSchema.safeParse({ applicationIds: idList(1), status: "rejected", note: " " }).error?.issues[0].message).toBe("Enter a reason");
   });
 });

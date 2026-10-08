@@ -48,6 +48,8 @@ test.describe("moving an application to another stage", () => {
     await expect(dialog.getByText("Position filled", { exact: true })).toBeVisible();
     await expect(dialog.getByText("A decision of Not selected is final. The candidate is told by email.")).toBeVisible();
     expect(eventRows(applicationId)).toHaveLength(1);
+    await page.mouse.click(4, 4);
+    await expect(dialog.getByRole("button", { name: "Confirm" })).toBeVisible();
 
     await page.route(`**${applicantUrl(company.slug, applicationId)}`, async (route) => {
       if (route.request().method() === "POST") await new Promise((resolve) => setTimeout(resolve, 800));

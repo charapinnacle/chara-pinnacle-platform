@@ -30,6 +30,10 @@ vi.mock("@/lib/dal/applicant-list", async (importOriginal) => ({
   listBoard: listBoardMock,
 }));
 vi.mock("@/components/applicants/board", () => ({ Board: (props: { frozen: boolean }) => `BOARD frozen=${props.frozen}` }));
+vi.mock("@/components/applicants/bulk-toolbar", () => ({
+  BulkToolbar: (props: { slug: string; shortlisting: boolean; noteMaxChars: number }) =>
+    `TOOLBAR ${props.slug} shortlisting=${props.shortlisting} note=${props.noteMaxChars}`,
+}));
 vi.mock("@/components/applications/stage-filter", () => ({ StageFilter: (props: { basePath: string }) => `FILTER ${props.basePath}` }));
 
 const { default: ApplicantsPage } = await import("@/app/[lang]/(app)/org/[slug]/applicants/page");
@@ -217,5 +221,39 @@ describe("the board", () => {
   it("shows the empty state for a vacancy with no application", async () => {
     listBoardMock.mockResolvedValue([{ status: "applied", total: 0, rows: [] }]);
     expect(await render({ job, view: "board" })).toContain("No applications yet");
+  });
+});
+
+describe("the bulk actions of the applicants page", () => {
+  it("offers a box per applicant and the toolbar, with the plan's shortlisting and the note limit", async () => {
+    getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false, noteMaxChars: 900 });
+    const html = await render({ job });
+    expect(html).toContain("TOOLBAR acme-bau shortlisting=false note=900");
+    expect(html).toContain('aria-label="Select Ana Silva"');
+    expect(html).toContain('aria-label="Select Ben Okoro"');
+    expect(html).toContain('type="checkbox"');
+  });
+
+  it("names a former candidate's box as such", async () => {
+    listApplicantsMock.mockResolvedValue({ rows: [row("a1", null)], total: 1, page: 1 });
+    expect(await render({ job })).toContain('aria-label="Select Former candidate"');
+  });
+
+  it("offers the toolbar on the board", async () => {
+    listBoardMock.mockResolvedValue([{ status: "applied", total: 1, rows: [row("a1", "Ana Silva")] }]);
+    expect(await render({ job, view: "board" })).toContain("TOOLBAR acme-bau");
+  });
+
+  it("offers neither boxes nor toolbar to a lapsed organization", async () => {
+    getAccessMock.mockResolvedValue({ ...access, stageChangeBlocked: "read_only_free_plan" });
+    const html = await render({ job });
+    expect(html).not.toContain("TOOLBAR");
+    expect(html).not.toContain('type="checkbox"');
+    expect(html).not.toContain(">Select<");
+  });
+
+  it("offers neither boxes nor toolbar when there is no application", async () => {
+    listApplicantsMock.mockResolvedValue({ rows: [], total: 0, page: 1 });
+    expect(await render({ job })).not.toContain("TOOLBAR");
   });
 });

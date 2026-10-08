@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SelectApplicant } from "@/components/applicants/bulk-selection";
 import { NewBadge } from "@/components/applicants/new-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
@@ -62,6 +63,7 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
       className={cn("grid gap-2 rounded-xl border bg-card p-3", draggable && "cursor-grab")}
     >
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium wrap-anywhere">
+        <SelectApplicant id={row.id} name={name} />
         <TextLink href={href}>{name}</TextLink>
         {row.status === "applied" ? <NewBadge /> : null}
       </p>

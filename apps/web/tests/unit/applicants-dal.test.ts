@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Result = { data: unknown; error: unknown };
 
 let rpcResult: Result = { data: null, error: null };
+let rowsResult: Result = { data: [], error: null };
 const calls: unknown[][] = [];
 
 vi.mock("server-only", () => ({}));
@@ -12,10 +13,20 @@ vi.mock("@/lib/supabase/server", () => ({
       calls.push([name, args]);
       return Promise.resolve(rpcResult);
     },
+    from: (table: string) => ({
+      select: (columns: string) => ({
+        eq: (column: string, value: string) => ({
+          in: (inColumn: string, values: string[]) => {
+            calls.push([table, columns, column, value, inColumn, values]);
+            return Promise.resolve(rowsResult);
+          },
+        }),
+      }),
+    }),
   }),
 }));
 
-const { getApplicant, listApplicantEvents, markApplicationViewed, setApplicationStatus } = await import("@/lib/dal/applicants");
+const { bulkSetApplicationStatus, getApplicant, listApplicantEvents, markApplicationViewed, setApplicationStatus } = await import("@/lib/dal/applicants");
 
 const id = "0a1b2c3d-0000-4000-8000-000000000001";
 const failure = (message: string, details: string | null = null) => ({ code: "P0001", message, details });
@@ -23,6 +34,7 @@ const failure = (message: string, details: string | null = null) => ({ code: "P0
 beforeEach(() => {
   calls.length = 0;
   rpcResult = { data: null, error: null };
+  rowsResult = { data: [], error: null };
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -109,5 +121,73 @@ describe("setApplicationStatus", () => {
   ])("maps the error %j to %j", async (error, expected) => {
     rpcResult = { data: null, error };
     expect(await setApplicationStatus(id, "interview", "")).toEqual(expected);
+  });
+});
+
+describe("bulkSetApplicationStatus", () => {
+  const other = "0a1b2c3d-0000-4000-8000-000000000002";
+  const foreign = "0a1b2c3d-0000-4000-8000-000000000003";
+  const org = "0a1b2c3d-0000-4000-8000-0000000000a1";
+  const read = (ids: string[]) => ["v_job_applicants", "id, status", "organization_id", org, "id", ids];
+
+  it("sends only the ids of the organization, reports the others as not found and the stage of the refused items", async () => {
+    rowsResult = {
+      data: [
+        { id, status: "applied" },
+        { id: other, status: "applied" },
+      ],
+      error: null,
+    };
+    rpcResult = {
+      data: [
+        { application_id: id, ok: true, error_code: null },
+        { application_id: other, ok: false, error_code: "CHARA_INVALID_TRANSITION" },
+      ],
+      error: null,
+    };
+    expect(await bulkSetApplicationStatus(org, [id, foreign, other, id], "offer", "")).toEqual({
+      items: [
+        { applicationId: id, ok: true, errorCode: null, status: null },
+        { applicationId: foreign, ok: false, errorCode: "CHARA_NOT_FOUND", status: null },
+        { applicationId: other, ok: false, errorCode: "CHARA_INVALID_TRANSITION", status: "applied" },
+      ],
+    });
+    expect(calls).toEqual([
+      read([id, foreign, other, id]),
+      ["bulk_set_application_status", { p_application_ids: [id, other], p_status: "offer", p_note: undefined }],
+    ]);
+  });
+
+  it("does not call the function when no id is of the organization", async () => {
+    expect(await bulkSetApplicationStatus(org, [foreign], "interview", "")).toEqual({
+      items: [{ applicationId: foreign, ok: false, errorCode: "CHARA_NOT_FOUND", status: null }],
+    });
+    expect(calls).toEqual([read([foreign])]);
+  });
+
+  it("sends the note", async () => {
+    rowsResult = { data: [{ id, status: "interview" }], error: null };
+    rpcResult = { data: [{ application_id: id, ok: true, error_code: null }], error: null };
+    await bulkSetApplicationStatus(org, [id], "rejected", "Position filled");
+    expect(calls[1]).toEqual(["bulk_set_application_status", { p_application_ids: [id], p_status: "rejected", p_note: "Position filled" }]);
+  });
+
+  it("answers failed, and does not call the function, when the ids cannot be read", async () => {
+    rowsResult = { data: null, error: failure("boom") };
+    expect(await bulkSetApplicationStatus(org, [id], "offer", "")).toEqual({ refusal: { kind: "failed" } });
+    expect(calls).toEqual([read([id])]);
+  });
+
+  it.each([
+    [failure("CHARA_FEATURE_NOT_IN_PLAN", "read_only_free_plan"), { kind: "blocked", reason: "read_only_free_plan" }],
+    [failure("CHARA_FORBIDDEN", "organization_suspended"), { kind: "blocked", reason: "organization_suspended" }],
+    [failure("CHARA_INVALID_INPUT", "p_note"), { kind: "note_too_long" }],
+    [failure("CHARA_INVALID_INPUT", "p_application_ids"), { kind: "failed" }],
+    [{ code: "XX000", message: "internal error text", details: null }, { kind: "failed" }],
+  ])("answers the refusal of the whole call %j as %j", async (error, expected) => {
+    rowsResult = { data: [{ id, status: "applied" }], error: null };
+    rpcResult = { data: null, error };
+    expect(await bulkSetApplicationStatus(org, [id], "interview", "")).toEqual({ refusal: expected });
+    expect(calls).toHaveLength(2);
   });
 });
