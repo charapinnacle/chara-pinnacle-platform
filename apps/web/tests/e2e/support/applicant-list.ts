@@ -103,10 +103,10 @@ export function eventCount(applicationId: string): number {
 
 export const listRows = (page: Page): Locator => page.getByRole("table").locator("tbody tr");
 
-// The text of each cell of each row, in the order of the table. The abbreviation of September depends on the ICU version.
+// The text of each cell of each row, in the order of the table, without the cell of the selection box. The abbreviation of September depends on the ICU version.
 export async function cellTexts(page: Page): Promise<string[][]> {
   return listRows(page).evaluateAll((rows) =>
-    rows.map((row) => Array.from(row.querySelectorAll("td")).map((cell) => (cell.textContent ?? "").replace(/\s+/g, " ").replace("Sept", "Sep").trim())),
+    rows.map((row) => Array.from(row.querySelectorAll("td")).filter((cell) => !cell.querySelector("input[type=checkbox]")).map((cell) => (cell.textContent ?? "").replace(/\s+/g, " ").replace("Sept", "Sep").trim())),
   );
 }
 

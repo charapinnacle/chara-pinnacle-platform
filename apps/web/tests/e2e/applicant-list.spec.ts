@@ -40,7 +40,7 @@ test.describe("the applicant list", () => {
 
     await page.goto(applicantsUrl(company.slug, `?job=${job}`));
     await expect(page.getByRole("heading", { name: "Applicants", level: 1 })).toBeVisible();
-    await expect(page.getByRole("columnheader")).toHaveText(["Candidate", "Stage", "Applied", "Completeness (%)", "Documents"]);
+    await expect(page.getByRole("columnheader")).toHaveText(["Select", "Candidate", "Stage", "Applied", "Completeness (%)", "Documents"]);
     expect(await cellTexts(page)).toEqual([
       ["Ana Silva New", "Applied", "4 Sep 2026", "80 %", "2"],
       ["Ben Okoro", "Shortlisted", "3 Sep 2026", "55 %", "0"],
@@ -150,7 +150,7 @@ test.describe("the applicant list", () => {
 
     await page.goto(applicantsUrl(company.slug));
     await expect(listRows(page)).toHaveCount(50);
-    await expect(page.getByRole("columnheader")).toHaveText(["Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
+    await expect(page.getByRole("columnheader")).toHaveText(["Select", "Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
     await expect(page.getByText("Page 1 of 2")).toBeVisible();
     await expect(page.getByRole("link", { name: "Board" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Export CSV" })).toHaveCount(0);
@@ -185,7 +185,7 @@ test.describe("the applicant list", () => {
     await page.goto(`/en/org/${company.slug}`);
     await page.getByRole("link", { name: "Applicants" }).click();
     await expect(page).toHaveURL(new RegExp(`/applicants$`));
-    await expect(page.getByRole("columnheader")).toHaveText(["Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
+    await expect(page.getByRole("columnheader")).toHaveText(["Select", "Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
     await context.close();
   });
 
