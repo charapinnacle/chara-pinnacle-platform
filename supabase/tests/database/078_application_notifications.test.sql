@@ -1,5 +1,5 @@
 begin;
-select plan(77);
+select plan(98);
 
 \ir status_fixture.inc
 
@@ -120,6 +120,22 @@ select is(
   (select schedule from cron.job where jobname = 'notify-daily-summary'), '0 * * * *', 'AC3: the job runs at every full hour in UTC'
 );
 
+-- AC3 and P15: the hour, the time zone and the length of the list are settings (private.settings), not constants of the function.
+update private.settings set value = '9' where key = 'daily_summary_hour';
+select is(pg_temp.run_at('2026-01-15 07:00:00+00'), 0, 'P15: with the hour 9 the run at 08:00 in Berlin sends nothing');
+select is(pg_temp.run_at('2026-01-15 08:00:00+00'), 1, 'P15: and the run at 09:00 in Berlin sends');
+update private.settings set value = '"America/New_York"' where key = 'daily_summary_timezone';
+update private.settings set value = '8' where key = 'daily_summary_hour';
+select is(pg_temp.run_at('2026-01-15 07:00:00+00'), 0, 'P15: with New York as the time zone 07:00 UTC is not the hour');
+select is(pg_temp.run_at('2026-01-15 13:00:00+00'), 1, 'P15: 13:00 UTC is 08:00 in New York in winter');
+update private.settings set value = '"Europe/Berlin"' where key = 'daily_summary_timezone';
+delete from private.settings where key = 'daily_summary_hour';
+select throws_ok(
+  $$select private.enqueue_daily_summaries('2026-01-15 07:00:00+00')$$, 'P0001', 'CHARA_SETTING_MISSING', 'P15: a missing setting is an error, not a default'
+);
+insert into private.settings (key, value) values ('daily_summary_hour', '8');
+select is(pg_temp.run_at('2026-01-15 07:00:00+00'), 1, 'P15: with the settings back the run at 08:00 in Berlin sends');
+
 -- Held applications of an organisation the member has left are not sent; a member of two organisations gets one summary.
 delete from public.notifications where user_id = :'mem' and msg_id is null and status = 'queued';
 insert into public.organization_members (organization_id, user_id, role, accepted_at) values (current_setting('t.a')::uuid, :'adm2', 'member', now());
@@ -162,6 +178,61 @@ select is(private.enqueue_daily_summaries('2026-02-04 07:00:00+00'), 1, 'a summa
 select is(
   (select row(payload ->> 'total', jsonb_array_length(payload -> 'vacancies'))::text from public.notifications where user_id = :'adm2' and payload ? 'vacancies'),
   '(22,20)', 'it lists 20 vacancies and states the total of 22'
+);
+
+update private.settings set value = '1' where key = 'daily_summary_max_vacancies';
+delete from public.notifications where user_id = :'adm2';
+insert into public.notifications (user_id, kind, payload)
+select :'adm2', 'application_received', jsonb_build_object('application_id', pg_temp.seed_app('applied')::text) from generate_series(1, 2);
+select is(private.enqueue_daily_summaries('2026-02-04 07:30:00+00'), 1, 'P15: a summary of 2 vacancies is queued with the list length 1');
+select is(
+  (select row(payload ->> 'total', jsonb_array_length(payload -> 'vacancies'))::text from public.notifications where user_id = :'adm2' and payload ? 'vacancies' order by id desc limit 1),
+  '(2,1)', 'P15: it lists 1 vacancy and states the total of 2'
+);
+update private.settings set value = '20' where key = 'daily_summary_max_vacancies';
+
+-- A member who accepted and was then removed from the organisation: the held row is marked and nothing is sent.
+create temp table t_gone as select pg_temp.org_on() as org;
+create temp table t_gone_member as select pg_temp.member_of((select org from t_gone)) as u;
+insert into public.notification_preferences (user_id, digest) values ((select u from t_gone_member), true);
+select is(
+  pg_temp.apply_as(:'wa', pg_temp.open_job('Leaver vacancy', (select org from t_gone))), 'ok', 'a candidate applies to a vacancy of an organisation with a digest member'
+);
+select is(pg_temp.held((select u from t_gone_member)), 1::bigint, 'the application is held for the member');
+delete from public.organization_members where organization_id = (select org from t_gone) and user_id = (select u from t_gone_member);
+create temp table t_gone_before as select count(*) as n from pgmq.q_notifications where message ->> 'user_id' = (select u::text from t_gone_member);
+select private.enqueue_daily_summaries('2026-02-05 07:00:00+00');
+select is(
+  (select count(*) - (select n from t_gone_before) from pgmq.q_notifications where message ->> 'user_id' = (select u::text from t_gone_member)),
+  0::bigint, 'a member who has left gets no summary message'
+);
+select is(pg_temp.summaries((select u from t_gone_member)), 0::bigint, 'and no summary row');
+select is(
+  (select status from public.notifications where user_id = (select u from t_gone_member)), 'summarised', 'and the held row is marked, not kept for ever'
+);
+
+-- A member who switches back to Immediately keeps the held items for the next summary; a new application is immediate.
+create temp table t_back as select pg_temp.org_on() as org;
+create temp table t_back_member as select pg_temp.member_of((select org from t_back)) as u;
+create temp table t_back_job as select pg_temp.open_job('Switch vacancy', (select org from t_back)) as v;
+insert into public.notification_preferences (user_id, digest) values ((select u from t_back_member), true);
+select is(pg_temp.apply_as(:'wa', (select v from t_back_job)), 'ok', 'AC12: a candidate applies while the member is on the daily summary');
+select is(pg_temp.held((select u from t_back_member)), 1::bigint, 'AC12: the application is held');
+select is(
+  pg_temp.call_as((select u from t_back_member), 'authenticated', 'select public.set_notification_preferences(false)', 'aal1'), 'ok',
+  'AC12: the member switches back to Immediately'
+);
+select is(pg_temp.apply_as(:'wb', (select v from t_back_job)), 'ok', 'AC12: another candidate applies');
+select is(pg_temp.immediate((select u from t_back_member)), 1::bigint, 'AC12: the new application is an immediate email with a message');
+select is(pg_temp.held((select u from t_back_member)), 1::bigint, 'AC12: and the held one is still waiting');
+select private.enqueue_daily_summaries('2026-02-06 07:00:00+00');
+select is(
+  (select row(count(*), min(payload ->> 'total'))::text from public.notifications where user_id = (select u from t_back_member) and payload ? 'vacancies'),
+  '(1,1)', 'AC12: the next summary holds only the held application, not the immediate one'
+);
+select is(
+  (select row(pg_temp.held((select u from t_back_member)), pg_temp.immediate((select u from t_back_member)))::text), '(0,1)',
+  'AC12: nothing is left held and the immediate email is untouched'
 );
 
 -- AC4: a candidate gets a status email whatever a preference row says; Viewed and employers get none.

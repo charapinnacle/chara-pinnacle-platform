@@ -6,12 +6,20 @@
 -- A held application_received (digest member, no message) is the item of the summary: the summary job turns all of a
 -- member's held rows into one message and marks them summarised, so each application is summarised once.
 
+-- Added not valid and validated after, so the check of the existing rows does not hold the table locked.
 alter table public.notifications drop constraint notifications_status_check;
 alter table public.notifications add constraint notifications_status_check
-  check (status in ('queued', 'sent', 'failed', 'suppressed', 'summarised'));
+  check (status in ('queued', 'sent', 'failed', 'suppressed', 'summarised')) not valid;
+alter table public.notifications validate constraint notifications_status_check;
 
-create index notifications_held_idx on public.notifications (user_id, created_at)
-  where status = 'queued' and msg_id is null;
+create index notifications_held_idx on public.notifications (user_id) where status = 'queued' and msg_id is null;
+
+-- The time of the daily summary and the length of its list are owner points (OPEN_QUESTIONS.md P15): the hour in the
+-- time zone, and the number of vacancies listed.
+insert into private.settings (key, value) values
+  ('daily_summary_hour', '8'),
+  ('daily_summary_timezone', '"Europe/Berlin"'),
+  ('daily_summary_max_vacancies', '20');
 
 -- The function of 20261030100000 with these changes: application_received and status_changed carry the organisation's
 -- display name and no vacancy id, and an application_received that holds a list of vacancies is the daily summary
@@ -91,20 +99,35 @@ begin
 end;
 $$;
 
--- Turns the held applications of every member into one summary message each. It acts only when the hour in Berlin is 8
--- (the job runs at every full UTC hour, so that is 06:00 UTC in summer time and 07:00 in winter time, on the days the
--- clocks change as well), and a second call in the same hour finds nothing held. Held applications of an organisation the
--- member has left are marked and not sent. The summary lists the 20 vacancies with the most applications; the total
--- counts all of them. Answers the number of summaries queued. p_now exists for the tests.
+-- Turns the held applications of every member into one summary message each. It acts only when the hour in the time
+-- zone of the settings is the hour of the settings (8 in Europe/Berlin: the job runs at every full UTC hour, so that is
+-- 06:00 UTC in summer time and 07:00 in winter time, on the days the clocks change as well), and a second call in the
+-- same hour finds nothing held. Held applications of an organisation the member has left are marked and not sent. The
+-- summary lists the daily_summary_max_vacancies vacancies with the most applications; the total counts all of them.
+-- Answers the number of summaries queued. p_now exists for the tests.
+--   CHARA_SETTING_MISSING (detail daily_summary)
 create function private.enqueue_daily_summaries(p_now timestamptz default now()) returns integer
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
+  v_hour integer;
+  v_zone text;
+  v_max integer;
   v_queued integer;
 begin
-  if extract(hour from (p_now at time zone 'Europe/Berlin')) <> 8 then
+  select
+    max(s.value #>> '{}') filter (where s.key = 'daily_summary_hour')::integer,
+    max(s.value #>> '{}') filter (where s.key = 'daily_summary_timezone'),
+    max(s.value #>> '{}') filter (where s.key = 'daily_summary_max_vacancies')::integer
+  into v_hour, v_zone, v_max
+  from private.settings s
+  where s.key in ('daily_summary_hour', 'daily_summary_timezone', 'daily_summary_max_vacancies');
+  if v_hour is null or v_zone is null or v_max is null then
+    raise exception 'CHARA_SETTING_MISSING' using detail = 'daily_summary';
+  end if;
+  if extract(hour from (p_now at time zone v_zone)) <> v_hour then
     return 0;
   end if;
 
@@ -132,7 +155,7 @@ begin
       'kind', 'application_received', 'user_id', r.user_id, 'mandatory', false,
       'total', sum(r.applications),
       'vacancies', jsonb_agg(jsonb_build_object('job_id', r.job_id, 'count', r.applications) order by r.position)
-        filter (where r.position <= 20)
+        filter (where r.position <= v_max)
     ))
     from ranked r group by r.user_id
   ) sent;
