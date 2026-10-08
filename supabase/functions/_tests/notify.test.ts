@@ -6,6 +6,7 @@ import { type Call, harness, reply, type Route } from "./harness.ts";
 const SECRET = "scheduler-secret";
 const ID_1 = "00000000-0000-4000-8000-0000000000a1";
 const ID_2 = "00000000-0000-4000-8000-0000000000a2";
+const ID_3 = "00000000-0000-4000-8000-0000000000a3";
 const APP = "00000000-0000-4000-8000-0000000000b1";
 const DELAYS = [2, 6, 18];
 
@@ -394,10 +395,16 @@ Deno.test("every kind renders in the runtime of the function", async () => {
       kind: "trial_ending",
       payload: { trial_ends_at: "2026-11-01", amount_minor: 3900, currency: "EUR" },
     }),
+    statusRow(ID_3, {
+      kind: "application_received",
+      payload: { total: 2, vacancies: [{ job_id: APP, job_title: "Welder", org_name: "Acme", org_slug: "acme", count: 2 }] },
+    }),
   ];
   const { deps } = setup({ "POST /rest/v1/rpc/notify_dequeue": dequeues(batch(rows)) }, provider);
   const response = await handleNotify(request(), deps);
-  assert.deepEqual(await response.json(), { sent: 2, failed: 0 });
+  assert.deepEqual(await response.json(), { sent: 3, failed: 0 });
   assert.match(provider.outbox[0].text, new RegExp(`https://chara.example/en/org/acme/applicants/${APP}`));
   assert.match(provider.outbox[1].text, /€39\.00/);
+  assert.equal(provider.outbox[2].subject, "Your daily summary of new applications");
+  assert.match(provider.outbox[2].text, new RegExp(`https://chara.example/en/org/acme/applicants\\?job=${APP}`));
 });
