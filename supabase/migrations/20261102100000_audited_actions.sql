@@ -27,30 +27,51 @@ $$;
 
 revoke all on function audit.record_as(uuid, text, text, text, jsonb, inet) from public, anon, authenticated, service_role;
 
+-- The address of the caller: the leftmost x-forwarded-for entry, which the client supplies, so it is context and not
+-- evidence. A value that is not an address is dropped.
+create function private.request_ip() returns inet
+language plpgsql
+stable
+set search_path = ''
+as $$
+begin
+  return nullif(btrim(split_part(
+    nullif(current_setting('request.headers', true), '')::jsonb ->> 'x-forwarded-for', ',', 1
+  )), '')::inet;
+exception when invalid_text_representation then
+  return null;
+end;
+$$;
+
+revoke all on function private.request_ip() from public, anon, authenticated, service_role;
+
 create or replace function audit.record(
   p_action text,
   p_entity_type text,
   p_entity_id text default null,
   p_metadata jsonb default '{}'
 ) returns bigint
-language plpgsql
+language sql
 security definer
 set search_path = ''
 as $$
-declare
-  v_ip inet;
-begin
-  -- The leftmost x-forwarded-for entry is client-supplied: ip is context, not evidence.
-  begin
-    v_ip := nullif(btrim(split_part(
-      nullif(current_setting('request.headers', true), '')::jsonb ->> 'x-forwarded-for', ',', 1
-    )), '')::inet;
-  exception when invalid_text_representation then
-    v_ip := null;
-  end;
+  select audit.record_as((select auth.uid()), p_action, p_entity_type, p_entity_id, p_metadata, private.request_ip())
+$$;
 
-  return audit.record_as((select auth.uid()), p_action, p_entity_type, p_entity_id, p_metadata, v_ip);
-end;
+-- Actor-aware audit rows from code that runs without the user's JWT (an Auth hook, a trigger on auth.users), as in
+-- 20261004110000: the actor is the argument of audit.record_as, so no claim is set and put back.
+create or replace function private.record_as(
+  p_actor uuid,
+  p_action text,
+  p_entity_type text,
+  p_entity_id text,
+  p_metadata jsonb default '{}'
+) returns bigint
+language sql
+security definer
+set search_path = ''
+as $$
+  select audit.record_as(p_actor, p_action, p_entity_type, p_entity_id, p_metadata, private.request_ip())
 $$;
 
 -- 20261016100000 with one more case: the retention job deletes rows past their period and says so with a setting that
@@ -117,6 +138,26 @@ as $$
 $$;
 
 revoke all on function private.audit_admin(text, text, text, text, jsonb) from public, anon, authenticated, service_role;
+
+-- The same row for many entities of one action (the vacancies of an organisation): the actor, the address, the request
+-- id and the metadata are worked out once, not for each entity, and the rows are one statement.
+create function private.audit_admin_each(
+  p_action text, p_entity_type text, p_entity_ids text[], p_reason text, p_extra jsonb default '{}'
+) returns bigint
+language sql
+set search_path = ''
+as $$
+  with call as materialized (
+    select
+      (select auth.uid()) as actor,
+      private.request_ip() as ip,
+      jsonb_strip_nulls(p_extra || jsonb_build_object('reason', p_reason, 'request_id', private.request_id())) as metadata
+  )
+  select count(audit.record_as(call.actor, p_action, p_entity_type, e.id, call.metadata, call.ip))
+  from call cross join unnest(p_entity_ids) as e (id)
+$$;
+
+revoke all on function private.audit_admin_each(text, text, text[], text, jsonb) from public, anon, authenticated, service_role;
 
 -- An account-ops job queued by an administrator carries who asked and for which request, so that account-ops can record
 -- what it did against both.
@@ -360,7 +401,7 @@ as $$
 declare
   v_reason text;
   v_status public.organization_status;
-  v_job uuid;
+  v_jobs text[];
 begin
   perform private.assert_staff(array['trust_safety']::public.platform_role[]);
   v_reason := private.statement_of_reasons(p_reason);
@@ -378,13 +419,14 @@ begin
 
   update public.organizations set status = 'suspended' where id = p_org;
   perform private.record_moderation('organization', p_org, 'organization_suspended', 'organization.suspend', v_reason);
-  for v_job in
+  -- One statement for all vacancies: an organisation can have thousands.
+  with moved as (
     update public.jobs set moderation_state = 'org_suspended'
     where organization_id = p_org and moderation_state = 'visible' and deleted_at is null
     returning id
-  loop
-    perform private.audit_admin('job.org_suspend', 'job', v_job::text, v_reason, jsonb_build_object('organization_id', p_org));
-  end loop;
+  )
+  select array_agg(moved.id::text) into v_jobs from moved;
+  perform private.audit_admin_each('job.org_suspend', 'job', v_jobs, v_reason, jsonb_build_object('organization_id', p_org));
   perform private.queue_account_op(jsonb_build_object('action', 'sign_out_organization', 'organization_id', p_org));
   perform private.queue_organization_notice('account_suspended', p_org, v_reason);
 end;
@@ -398,7 +440,7 @@ as $$
 declare
   v_reason text;
   v_status public.organization_status;
-  v_job uuid;
+  v_jobs text[];
 begin
   perform private.assert_staff(array['trust_safety']::public.platform_role[]);
   v_reason := private.statement_of_reasons(p_reason);
@@ -416,13 +458,13 @@ begin
 
   update public.organizations set status = 'active' where id = p_org;
   perform private.record_moderation('organization', p_org, 'organization_reinstated', 'organization.reinstate', v_reason);
-  for v_job in
+  with moved as (
     update public.jobs set moderation_state = 'visible'
     where organization_id = p_org and moderation_state = 'org_suspended'
     returning id
-  loop
-    perform private.audit_admin('job.org_reinstate', 'job', v_job::text, v_reason, jsonb_build_object('organization_id', p_org));
-  end loop;
+  )
+  select array_agg(moved.id::text) into v_jobs from moved;
+  perform private.audit_admin_each('job.org_reinstate', 'job', v_jobs, v_reason, jsonb_build_object('organization_id', p_org));
   perform private.queue_organization_notice('account_reinstated', p_org, v_reason);
 end;
 $$;
@@ -512,8 +554,10 @@ revoke all on function public.admin_search_audit(uuid, text, text, text, date, d
 grant execute on function public.admin_search_audit(uuid, text, text, text, date, date, integer, timestamptz, bigint) to authenticated;
 
 -- An action that happened outside the database, appended by an Edge Function. The actor is the person the job carries,
--- kept only while their profile exists. A row with a job id is written once per action and job: a job that is read
--- again after a crash finds its row and adds none (false).
+-- kept only while their profile exists. The names the database writes for administrative acts (user.suspend,
+-- mfa.reset, platform_role.grant and the like) are reserved: a caller with the service role cannot write a row that
+-- looks like one. A step of an account-ops job carries its job id and is written once per action and job: a job that is
+-- read again after a crash finds its row and adds none (false).
 create function public.audit_record_external(
   p_action text, p_entity_type text, p_entity_id text, p_actor_id uuid default null, p_metadata jsonb default '{}'
 ) returns boolean
@@ -522,7 +566,8 @@ security definer
 set search_path = ''
 as $$
 begin
-  if p_action is null or char_length(p_action) > 100 or p_action !~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$' then
+  if p_action is null or char_length(p_action) > 100 or p_action !~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
+     or p_action ~ '^(user|organization|job|mfa|platform_role|legal_document)\.' then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'action';
   end if;
   if p_entity_type is null or char_length(p_entity_type) not between 1 and 100 or char_length(p_entity_id) > 200 then
@@ -530,6 +575,9 @@ begin
   end if;
   if p_metadata is null or jsonb_typeof(p_metadata) <> 'object' then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'metadata';
+  end if;
+  if p_action like 'account\_ops.%' and p_metadata ->> 'job_id' is null then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'job_id';
   end if;
 
   perform audit.record_as(
@@ -545,7 +593,9 @@ revoke all on function public.audit_record_external(text, text, text, uuid, json
 grant execute on function public.audit_record_external(text, text, text, uuid, jsonb) to service_role;
 
 -- The monthly export: the rows of one finished calendar month (UTC) in pages of (created_at, id), as one jsonb so that
--- the API row limit does not cut a page. The count lets the export check its file against the table.
+-- the API row limit does not cut a page. The count lets the export check its file against the table. The archive cannot
+-- be altered for six years, so the address of anybody who is not platform staff (past or present) is left out of it:
+-- the erasure of FR-B6 removes it from the log and could not reach the copy.
 create function private.export_month(p_month text) returns tstzrange
 language plpgsql
 stable
@@ -581,8 +631,10 @@ declare
 begin
   select coalesce(jsonb_agg(to_jsonb(r) order by r.created_at, r.id), '[]'::jsonb) into v_rows
   from (
-    select l.id, l.actor_id, l.action, l.entity_type, l.entity_id, l.metadata, l.ip, l.created_at
+    select l.id, l.actor_id, l.action, l.entity_type, l.entity_id, l.metadata,
+      case when s.user_id is not null then l.ip end as ip, l.created_at
     from audit.log l
+    left join (select distinct f.user_id from public.platform_staff f) s on s.user_id = l.actor_id
     where l.created_at >= lower(v_range) and l.created_at < upper(v_range)
       and (p_after_id is null or (l.created_at, l.id) > (p_after_at, p_after_id))
     order by l.created_at, l.id
@@ -611,8 +663,11 @@ $$;
 revoke all on function public.audit_export_count(text) from public, anon, authenticated, service_role;
 grant execute on function public.audit_export_count(text) to service_role;
 
--- The first of each month at 03:00 UTC, as the criteria say; nothing is called while the Vault secrets are not set.
+-- The first of each month at 03:00 UTC, as the criteria say, and again at 15:00 the same day: the export is idempotent, so
+-- the second call is the retry of a month that failed (it reads the month again and finds the objects there otherwise).
+-- Nothing is called while the Vault secrets are not set. The answer of the function is not used: its alert is the signal.
 select cron.schedule('audit-export-monthly', '0 3 1 * *', $$select private.call_edge_function('audit-export')$$);
+select cron.schedule('audit-export-monthly-retry', '0 15 1 * *', $$select private.call_edge_function('audit-export')$$);
 
 -- Six years of 365 days and the leap days between (2191), kept as data like every retention period (OPEN_QUESTIONS.md L6):
 -- the owner changes it by migration. private.apply_retention is the function of 20261030100000 with the audit log added.

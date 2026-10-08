@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 
 -- FR-F2 AC1 to AC4 and AC8: the audit row of every administrative function. moderate_job is FR-C7 (U44); the guard of AC8
 -- covers it from the day it exists.
@@ -286,7 +286,10 @@ select is(
 drop trigger audit_test_fail on audit.log;
 drop function public.audit_test_fail();
 
--- AC8: the coverage guard
+-- AC8: the coverage guard. It reads the source of the functions, so a comment or an audit call on one branch would
+-- satisfy it; the proof that each of the eight writes its row is the matrix of AC1 above, and the guard is the tripwire
+-- for the function that comes next. A function that only writes platform_staff counts as audited when it is one of the two
+-- whose change the always-on trigger records (an insert, or a revocation); any other function must call the audit itself.
 create function pg_temp.unaudited() returns setof name
 language sql as $$
   select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -295,14 +298,16 @@ language sql as $$
     and p.proname not in ('admin_search_users', 'admin_search_organizations', 'admin_get_user', 'admin_get_organization',
       'admin_application_counts', 'admin_search_audit', 'admin_list_moderation_actions', 'admin_list_legal_documents',
       'list_platform_staff')
-    and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation|(insert into|update) public\.platform_staff'
+    and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation'
+    and not (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
   order by p.proname
 $$;
 create function pg_temp.audited() returns name[]
 language sql as $$
   select array_agg(p.proname order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosrc ~ 'has_platform_role|assert_staff|assert_platform_admin'
-    and p.prosrc ~ 'audit\.record|private\.audit_admin|private\.record_moderation|(insert into|update) public\.platform_staff'
+    and (p.prosrc ~ 'audit\.record|private\.audit_admin|private\.record_moderation'
+      or (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff'))
 $$;
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: every staff-gated function that is not read-only calls the audit function');
 select is(
@@ -319,6 +324,14 @@ select is(
 );
 drop function public.unaudited_admin_function();
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: and the guard passes again without it');
+create function public.change_staff_role() returns void
+language plpgsql security definer set search_path = ''
+as $$ begin perform private.assert_platform_admin(); update public.platform_staff set role = 'admin'; end; $$;
+select is(
+  (select array_agg(x) from pg_temp.unaudited() x), array['change_staff_role']::name[],
+  'AC8: a staff-gated function that updates platform_staff in a way the trigger does not record fails the guard'
+);
+drop function public.change_staff_role();
 
 -- KPI: administrative actions without an audit row, reconciled with the tables that hold the change
 select is(

@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(38);
 
 -- FR-F2 AC10 (retention is a configuration value and deletion is narrow) and the database part of AC11 (the monthly export).
 \ir status_fixture.inc
@@ -130,6 +130,27 @@ select throws_ok(
 select is(
   (select count(*) from cron.job where jobname = 'audit-export-monthly' and schedule = '0 3 1 * *' and command like '%call_edge_function(''audit-export'')%'),
   1::bigint, 'AC11: the job runs at 03:00 UTC on the first day of the month'
+);
+select is(
+  (select count(*) from cron.job where jobname = 'audit-export-monthly-retry' and schedule = '0 15 1 * *' and command like '%call_edge_function(''audit-export'')%'),
+  1::bigint, 'AC11: and again at 15:00 UTC the same day, which is the retry of a month that failed'
+);
+insert into audit.log (actor_id, action, entity_type, entity_id, ip, created_at) values
+  (:'st_admin', 'export.ip', 'test', 'staff', '203.0.113.5', timestamptz '2020-04-10 12:00:00+00'),
+  (:'pending', 'export.ip', 'test', 'candidate', '198.51.100.9', timestamptz '2020-04-11 12:00:00+00'),
+  (null, 'export.ip', 'test', 'system', '192.0.2.1', timestamptz '2020-04-12 12:00:00+00');
+select is(
+  (select string_agg((r ->> 'entity_id') || '=' || coalesce(r ->> 'ip', '-'), ',' order by r ->> 'entity_id')
+   from jsonb_array_elements(public.audit_export_month('2020-04')) r where r ->> 'action' = 'export.ip'),
+  'candidate=-,staff=203.0.113.5,system=-', 'AC11: the archive keeps the address of platform staff and leaves out that of everybody else'
+);
+select is(
+  (select ip::text from audit.log where entity_id = 'candidate' and action = 'export.ip'), '198.51.100.9/32',
+  'AC11: the log itself keeps it (erase_user removes it there)'
+);
+select is(
+  (select r ->> 'actor_id' from jsonb_array_elements(public.audit_export_month('2020-04')) r where r ->> 'entity_id' = 'candidate'), :'pending',
+  'AC11: the actor stays in the export, so the act can still be attributed'
 );
 select is(public.audit_export_count('1999-01'), 0::bigint, 'AC11: a month without rows has the count 0');
 select is(jsonb_array_length(public.audit_export_month('1999-01')), 0, 'AC11: and an empty page');

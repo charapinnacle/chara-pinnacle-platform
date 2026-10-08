@@ -1,5 +1,5 @@
 begin;
-select plan(48);
+select plan(52);
 
 -- FR-F2 AC5, AC6 and AC9: nobody changes the log, rows are added only through the audit functions, and only the Platform
 -- Administrator at aal2 reads it.
@@ -129,7 +129,7 @@ select is(
   'AC6: the actor is the person the job carries'
 );
 select is(
-  (select public.audit_record_external('account_ops.erase', 'profile', 'target-2', gen_random_uuid(), '{}')), true,
+  (select public.audit_record_external('account_ops.erase', 'profile', 'target-2', gen_random_uuid(), '{"job_id": "78"}')), true,
   'AC6: an actor without a profile is not stored'
 );
 select is(
@@ -137,8 +137,24 @@ select is(
   'AC6: the row has no actor'
 );
 select throws_ok($$select public.audit_record_external('User.Suspend', 'profile', 'x')$$, 'P0001', 'CHARA_INVALID_INPUT', 'AC6: an action that is not <entity>.<verb> in lower case is refused');
-select throws_ok($$select public.audit_record_external('a.b', '', 'x')$$, 'P0001', 'CHARA_INVALID_INPUT', 'AC6: an empty entity type is refused');
-select throws_ok($$select public.audit_record_external('a.b', 'profile', 'x', null, '[]')$$, 'P0001', 'CHARA_INVALID_INPUT', 'AC6: metadata that is not an object is refused');
+select throws_ok($$select public.audit_record_external('billing.ping', '', 'x')$$, 'P0001', 'CHARA_INVALID_INPUT', 'AC6: an empty entity type is refused');
+select throws_ok($$select public.audit_record_external('billing.ping', 'profile', 'x', null, '[]')$$, 'P0001', 'CHARA_INVALID_INPUT', 'AC6: metadata that is not an object is refused');
+select throws_ok(
+  $$select public.audit_record_external('account_ops.ban_user', 'profile', 'x', null, '{}')$$, 'P0001', 'CHARA_INVALID_INPUT',
+  'AC6: a step of an account-ops job without its job id is refused (the once-per-job guard needs it)'
+);
+select is(
+  (select count(*) from (values ('user.suspend'), ('user.reinstate'), ('organization.suspend'), ('organization.reinstate'), ('job.org_suspend'), ('mfa.reset'), ('platform_role.grant'), ('legal_document.publish')) a (name)
+   where pg_temp.call_as(null, 'service_role', format($$select public.audit_record_external(%L, 'profile', 'x', null, '{"job_id": "79"}')$$, a.name)) = 'P0001|CHARA_INVALID_INPUT|action'),
+  8::bigint, 'AC6: the names of administrative rows are reserved: the service role cannot write a row that looks like one'
+);
+select is(
+  (select count(*) from audit.log where metadata ->> 'job_id' = '79'), 0::bigint, 'AC6: and none of those calls left a row'
+);
+select is(
+  (select public.audit_record_external('billing.webhook_rejected', 'billing_event', 'x', null, '{"reason": "signature"}')), true,
+  'AC6: other dotted names, without a job id, are accepted (the billing webhook of a later unit writes its own)'
+);
 select is_empty(
   $$select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where p.prosrc ~ 'audit\.record_as|insert into audit\.log'
@@ -148,7 +164,7 @@ select is_empty(
 select is(
   (select array_agg(p.proname::text order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where p.prosrc ~ 'audit\.record_as'),
-  array['audit_record_external', 'record']::text[], 'AC6: audit.record_as is called by audit.record (the caller) and audit_record_external (the job) only'
+  array['audit_admin_each', 'audit_record_external', 'record', 'record_as']::text[], 'AC6: audit.record_as is called by audit.record (the caller), private.record_as, private.audit_admin_each (the caller, for many entities) and audit_record_external (the job) only'
 );
 
 -- AC9: only the Platform Administrator at aal2 reads, with filters
