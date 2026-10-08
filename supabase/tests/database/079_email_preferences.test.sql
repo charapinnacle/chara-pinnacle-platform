@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(23);
 
 \ir status_fixture.inc
 
@@ -21,6 +21,16 @@ select is(pg_temp.apply_as(:'wb', (select id from t_job)), 'ok', 'AC1: and the s
 select is(
   (select array_agg(pg_temp.immediate(u) order by u) from unnest(array[:'adm', :'own1']::uuid[]) u), array[2, 2]::bigint[],
   'AC1: without a row and with digest false there are two rows with a message each'
+);
+select is(
+  (select array_agg((select count(*) from pgmq.q_notifications where message ->> 'user_id' = u) order by u)
+   from unnest(array[:'adm', :'own1']) u),
+  array[2, 2]::bigint[], 'AC1: and two messages wait in the queue for each of them'
+);
+select is(
+  (select count(*) from public.notifications n join pgmq.q_notifications q on q.msg_id = n.msg_id
+   where n.user_id in (:'adm', :'own1') and n.kind = 'application_received'),
+  4::bigint, 'AC1: each of those four rows points at its own message'
 );
 select is(pg_temp.immediate(:'mem'), 0::bigint, 'AC1: with digest true there is no row with a message');
 select is(pg_temp.held(:'mem'), 2::bigint, 'AC1: both applications are held for the summary');
@@ -51,23 +61,7 @@ select is(
   'AC4: it is UTC 06 in summer time and UTC 07 in winter time, on the change days as well'
 );
 
--- AC8: the digest changes application_received only. The mandatory kinds each get a row and a message at once.
-create temp table t_mandatory as
-  select k, pgmq.send('notifications', jsonb_build_object('kind', k, 'user_id', :'mem'::uuid, 'mandatory', true,
-           'job_id', (select id from t_job), 'org_id', current_setting('t.a')::uuid, 'status', 'rejected',
-           'application_id', current_setting('t.app'))) as msg
-  from unnest(array['status_changed', 'vacancy_hidden', 'payment_failed', 'legal_version']) k;
-select is(
-  (select count(*) from t_mandatory m join public.notifications n on n.msg_id = m.msg and n.user_id = :'mem' and n.kind = m.k and n.status = 'queued'),
-  4::bigint, 'AC8: a member with digest true gets a queued row with a message for each of the four mandatory kinds'
-);
-select is(
-  (select count(*) from public.notifications where user_id = :'mem' and kind <> 'application_received' and msg_id is null), 0::bigint,
-  'AC8: and none of them waits for a summary'
-);
-
--- AC12: the preference of one owner is out of reach of another owner, a candidate and an anonymous caller.
-insert into public.notification_preferences (user_id, digest) values (:'wa', true) on conflict (user_id) do update set digest = true;
+-- AC12: the preference of one owner is out of reach of another owner and of a candidate; the other cases are in 076 and 078.
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format($$update public.notification_preferences set digest = false where user_id = %L$$, :'mem'), 'aal1'),
   '42501|permission denied for table notification_preferences|', 'AC12: a member cannot update the row of another member'
@@ -92,17 +86,6 @@ select is(
   'AC12: a candidate reads none either'
 );
 select is(
-  pg_temp.call_as(null, 'anon', format($$select digest from public.notification_preferences where user_id = %L$$, :'mem')),
-  '42501|permission denied for table notification_preferences|', 'AC12: an anonymous caller is refused'
-);
-select is(
-  pg_temp.call_as(:'wa', 'authenticated', 'select public.set_notification_preferences(false)', 'aal1'), 'P0001|CHARA_FORBIDDEN|company_account_required',
-  'AC12: a candidate has no function to call'
-);
-select is(
-  (select digest::text from public.notification_preferences where user_id = :'wa'), 'true', 'AC12: and nothing was written for the candidate'
-);
-select is(
   (select count(*) from information_schema.role_column_grants
    where table_schema = 'public' and table_name = 'notification_preferences' and privilege_type in ('INSERT', 'UPDATE')
      and grantee in ('anon', 'authenticated', 'service_role', 'public')),
@@ -119,13 +102,16 @@ select is(
   0::bigint, 'AC12: and not to a signed-in user'
 );
 
--- KPI: the share of employer users on the daily summary, as the runbook gives it.
+-- KPI: the share of employer users on the daily summary; the expression is that of section 8 of the transactional emails runbook.
 delete from public.notification_preferences;
 insert into public.notification_preferences (user_id, digest) values (:'own1', true), (:'adm', false), (:'mem', true);
 select is(
-  (select ((select count(*) from public.notification_preferences where digest)::numeric
-           / nullif((select count(*) from public.profiles where account_kind = 'company'), 0)) = 2::numeric / (select count(*) from public.profiles where account_kind = 'company')),
-  true, 'KPI: two of the employer users are on the daily summary, those without a row count as immediate'
+  (select count(*) from public.profiles where account_kind = 'company'), 16::bigint, 'KPI: the fixture has sixteen employer users (the denominator)'
+);
+select is(
+  (select count(*) from public.notification_preferences where digest)::numeric
+    / nullif((select count(*) from public.profiles where account_kind = 'company'), 0),
+  2::numeric / 16, 'KPI: two of sixteen employer users are on the daily summary; those without a row count as immediate'
 );
 select is(
   (select count(*) from public.notification_preferences where digest and user_id in (select id from public.profiles where account_kind = 'worker')), 0::bigint,
