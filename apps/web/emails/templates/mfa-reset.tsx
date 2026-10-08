@@ -7,8 +7,9 @@ export const mfaReset: Template = {
   Body: ({ siteUrl }) => (
     <Layout preview="Two-step verification was reset" heading="Two-step verification was reset">
       <Paragraph>
-        Our support team reset two-step verification on your account and signed you out everywhere. Sign in again and set it up
-        again. If you did not ask for this, reply to this email or contact support at once.
+        Our support team removed the two-step verification factors from your CHARA account and signed you out everywhere. The
+        next time you sign in you must enrol again before you can use the account. If you did not ask for this, reply to this
+        email or contact support at once.
       </Paragraph>
       <Action href={url(siteUrl, "/login")}>Sign in</Action>
     </Layout>
