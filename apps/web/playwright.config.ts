@@ -37,10 +37,12 @@ process.env.ACCOUNT_OPS_PORT ||= "54430";
 process.env.SCAN_DOCUMENT_PORT ||= "54431";
 process.env.DOCUMENT_URL_PORT ||= "54432";
 process.env.NOTIFY_PORT ||= "54433";
+process.env.BILLING_CHECKOUT_PORT ||= "54434";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
 // Signs the delivery events that tests send to notify, as Resend would (whsec_ and the base64 of the key).
 process.env.RESEND_WEBHOOK_SECRET ||= "whsec_bG9jYWwtcmVzZW5kLXdlYmhvb2stc2VjcmV0LTAxMjM0NQ==";
 process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_URL_PORT}/`;
+process.env.BILLING_CHECKOUT_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_CHECKOUT_PORT}/`;
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -72,6 +74,7 @@ export default defineConfig({
         "**/dashboard-failure.spec.ts",
         "**/notify-emails.spec.ts",
         "**/member-invitation-email.spec.ts",
+        "**/checkout-disclosure.spec.ts",
       ],
     },
     {
@@ -172,6 +175,14 @@ export default defineConfig({
       testMatch: "**/member-invitation-email.spec.ts",
       dependencies: ["notify"],
     },
+    // The trial length of the Basic plan is changed for the whole database while this spec runs, so it follows every
+    // other project.
+    {
+      name: "billing-plans",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/checkout-disclosure.spec.ts",
+      dependencies: ["notify-invitation"],
+    },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
   webServer: [
@@ -196,6 +207,12 @@ export default defineConfig({
     {
       command: `../../supabase/functions/serve-local.sh notify ${process.env.NOTIFY_PORT}`,
       port: Number(process.env.NOTIFY_PORT),
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: `../../supabase/functions/serve-local.sh billing-checkout ${process.env.BILLING_CHECKOUT_PORT}`,
+      port: Number(process.env.BILLING_CHECKOUT_PORT),
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,
     },
