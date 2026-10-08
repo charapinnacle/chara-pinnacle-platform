@@ -78,6 +78,12 @@ describe("stageChangeFormSchema", () => {
     expect(over.error?.issues[0].message).toBe("Note must be at most 1000 characters");
   });
 
+  it("does not check the length of a note that is not sent: a template decline ignores the hidden text", () => {
+    const hidden = schema.safeParse({ status: "rejected", reason: "position_filled", note: "a".repeat(1001) });
+    expect(hidden.success).toBe(true);
+    expect(hidden.data?.note).toBe("Position filled");
+  });
+
   it("blocks a decline with no reason, an unknown reason, or Other with blank text", () => {
     for (const reason of ["", "bogus"]) {
       const result = schema.safeParse({ status: "rejected", reason, note: "typed text is not enough" });

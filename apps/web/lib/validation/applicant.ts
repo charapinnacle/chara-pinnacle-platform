@@ -26,19 +26,19 @@ export const stageChangeInputSchema = z
   .refine((value) => value.status !== "rejected" || value.note !== "", { path: ["note"], error: DECLINE_REASON_REQUIRED });
 
 // The form offers the templates for a decline and turns the choice into the note; the limit it quotes is the database's.
+// The note field is shown, and its length checked, only when its text is what is sent: not for a decline by template.
 export function stageChangeFormSchema(noteMaxChars: number) {
   return z
-    .object({
-      status: stage,
-      reason: z.string(),
-      note: z.string().trim().max(noteMaxChars, { error: `Note must be at most ${noteMaxChars} characters` }),
-    })
+    .object({ status: stage, reason: z.string(), note: z.string().trim() })
     .superRefine((value, context) => {
-      if (value.status !== "rejected") return;
-      if (value.reason !== "other" && !Object.hasOwn(declineReasonTexts, value.reason)) {
+      const template = value.status === "rejected" && value.reason !== "other";
+      if (template && !Object.hasOwn(declineReasonTexts, value.reason)) {
         context.addIssue({ code: "custom", path: ["reason"], message: "Choose a reason" });
-      } else if (value.reason === "other" && value.note === "") {
+      } else if (value.status === "rejected" && !template && value.note === "") {
         context.addIssue({ code: "custom", path: ["note"], message: DECLINE_REASON_REQUIRED });
+      }
+      if (!template && value.note.length > noteMaxChars) {
+        context.addIssue({ code: "custom", path: ["note"], message: `Note must be at most ${noteMaxChars} characters` });
       }
     })
     .transform(({ status, reason, note }) => ({

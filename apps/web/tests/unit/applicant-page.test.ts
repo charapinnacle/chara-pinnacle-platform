@@ -30,7 +30,6 @@ vi.mock("@/lib/dal/applicants", () => ({
   markApplicationViewed: markApplicationViewedMock,
 }));
 vi.mock("@/lib/dal/applicant-review", () => ({
-  NOTES_LIMIT: 100,
   getApplicantProfile: getProfileMock,
   listSharedDocuments: listDocumentsMock,
   isProfileChanged: profileChangedMock,
@@ -40,17 +39,21 @@ vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [{ code: "PT", name: "Portugal" }],
   getLanguages: async () => [{ code: "en", name: "English" }],
 }));
-vi.mock("@/components/applicants/stage-change", () => ({ StageChange: () => null }));
+const stageChangeMock = vi.hoisted(() => vi.fn<(props: { targets: string[] }) => null>(() => null));
+vi.mock("@/components/applicants/stage-change", () => ({ StageChange: stageChangeMock }));
 vi.mock("@/components/applicants/open-document-button", () => ({
   OpenDocumentButton: ({ title }: { title: string }) => `[open ${title}]`,
 }));
-vi.mock("@/components/applicants/add-note", () => ({ AddNote: () => "[note form]" }));
+vi.mock("@/components/applicants/note-form", () => ({ NoteForm: () => "[note form]" }));
 
 const { default: ApplicantPage } = await import("@/app/[lang]/(app)/org/[slug]/applicants/[applicationId]/page");
 
 const applicationId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
-const props = () =>
-  ({ params: Promise.resolve({ lang: "en", slug: "acme-bau", applicationId }) }) as Parameters<typeof ApplicantPage>[0];
+const props = (query: Record<string, string> = {}) =>
+  ({
+    params: Promise.resolve({ lang: "en", slug: "acme-bau", applicationId }),
+    searchParams: Promise.resolve(query),
+  }) as Parameters<typeof ApplicantPage>[0];
 
 const organization = { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", role: "member", suspended: false };
 const applicant = {
@@ -89,7 +92,7 @@ beforeEach(() => {
   getProfileMock.mockResolvedValue({ snapshot, coverNote: "I weld every day." });
   listDocumentsMock.mockResolvedValue([]);
   profileChangedMock.mockResolvedValue(false);
-  listNotesMock.mockResolvedValue([]);
+  listNotesMock.mockResolvedValue({ notes: [], hasMore: false });
 });
 
 describe("the applicant page of FR-D5", () => {
@@ -168,7 +171,7 @@ describe("the applicant page of FR-D5", () => {
   });
 
   it("lists the internal notes with the author and the label, and the form", async () => {
-    listNotesMock.mockResolvedValue([{ id: 1, authorName: "Mia Member", body: "<b>x</b>", createdAt: "2026-10-04T09:00:00Z" }]);
+    listNotesMock.mockResolvedValue({ notes: [{ id: 1, authorName: "Mia Member", body: "<b>x</b>", createdAt: "2026-10-04T09:00:00Z" }], hasMore: false });
     const html = renderToStaticMarkup(await ApplicantPage(props()));
     expect(html).toContain("Visible to your organization only");
     expect(html).toContain("Internal note");
@@ -180,12 +183,40 @@ describe("the applicant page of FR-D5", () => {
 
   it("offers no note form to an organization that has no active paid plan, and still lists its notes", async () => {
     getApplicantMock.mockResolvedValue({ ...applicant, stageChangeBlocked: "read_only_free_plan" });
-    listNotesMock.mockResolvedValue([{ id: 1, authorName: null, body: "Earlier note", createdAt: "2026-10-04T09:00:00Z" }]);
+    listNotesMock.mockResolvedValue({ notes: [{ id: 1, authorName: null, body: "Earlier note", createdAt: "2026-10-04T09:00:00Z" }], hasMore: false });
     const html = renderToStaticMarkup(await ApplicantPage(props()));
     expect(html).not.toContain("[note form]");
     expect(html).toContain("so notes cannot be added");
     expect(html).toContain("Earlier note");
     expect(html).toContain("Team member");
+  });
+
+  it("links to older notes from the last note of the page, and to the newest notes from an older page", async () => {
+    const page = { notes: [{ id: 41, authorName: null, body: "Note 41", createdAt: "2026-10-04T09:00:00Z" }], hasMore: true };
+    listNotesMock.mockResolvedValue(page);
+    let html = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(listNotesMock).toHaveBeenLastCalledWith(applicationId, undefined);
+    expect(html).toContain(`/en/org/acme-bau/applicants/${applicationId}?notesBefore=41`);
+    expect(html).not.toContain("Back to the newest notes");
+    listNotesMock.mockResolvedValue({ ...page, hasMore: false });
+    html = renderToStaticMarkup(await ApplicantPage(props({ notesBefore: "60" })));
+    expect(listNotesMock).toHaveBeenLastCalledWith(applicationId, 60);
+    expect(html).toContain("Back to the newest notes");
+    expect(html).not.toContain("Show older notes");
+  });
+
+  it("ignores a cursor that is not a number", async () => {
+    await ApplicantPage(props({ notesBefore: "1; drop table" }));
+    expect(listNotesMock).toHaveBeenLastCalledWith(applicationId, undefined);
+  });
+
+  it("offers Shortlisted only when the plan includes shortlisting", async () => {
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: true });
+    renderToStaticMarkup(await ApplicantPage(props()));
+    expect(stageChangeMock.mock.lastCall?.[0].targets).toEqual(["shortlisted", "interview", "rejected"]);
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: false });
+    renderToStaticMarkup(await ApplicantPage(props()));
+    expect(stageChangeMock.mock.lastCall?.[0].targets).toEqual(["interview", "rejected"]);
   });
 
   it("answers an application whose profile cannot be read as not found", async () => {
