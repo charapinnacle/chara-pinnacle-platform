@@ -6,6 +6,14 @@ export function field(payload: Payload, key: string): string | undefined {
   return typeof value === "string" && value !== "" ? value : typeof value === "number" ? String(value) : undefined;
 }
 
+// A list of objects under a key, such as the vacancies of a summary; anything else in that place is ignored.
+export function items(payload: Payload, key: string): Payload[] {
+  const value = payload[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is Payload => typeof item === "object" && item !== null && !Array.isArray(item))
+    : [];
+}
+
 export function url(siteUrl: string, path: string): string {
   return `${siteUrl.replace(/\/+$/, "")}/en${path}`;
 }

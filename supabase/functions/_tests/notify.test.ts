@@ -154,7 +154,7 @@ Deno.test("a message is rendered, sent with the notification id as idempotency k
   assert.equal(email.idempotencyKey, ID_1);
   assert.equal(email.to, "amina@example.test");
   assert.equal(email.from, "CHARA <noreply@chara.example>");
-  assert.equal(email.subject, "Your application for Welder MIG/MAG: update");
+  assert.equal(email.subject, "Update on your application for Welder MIG/MAG");
   assert.match(email.html, /Your application for Welder MIG\/MAG is now: Interview\./);
   assert.match(email.text, new RegExp(`https://chara.example/en/applications/${APP}`));
   assert.deepEqual(acks(calls), [{
@@ -371,7 +371,10 @@ Deno.test("a malformed message is skipped and the others are sent", async () => 
 Deno.test("every kind renders in the runtime of the function", async () => {
   const provider = nullProvider();
   const rows = [
-    statusRow(ID_1, { kind: "application_received", payload: { job_title: "Welder", org_slug: "acme" } }),
+    statusRow(ID_1, {
+      kind: "application_received",
+      payload: { application_id: APP, job_title: "Welder", org_slug: "acme" },
+    }),
     statusRow(ID_2, {
       kind: "trial_ending",
       payload: { trial_ends_at: "2026-11-01", amount_minor: 3900, currency: "EUR" },
@@ -380,6 +383,6 @@ Deno.test("every kind renders in the runtime of the function", async () => {
   const { deps } = setup({ "POST /rest/v1/rpc/notify_dequeue": dequeues(batch(rows)) }, provider);
   const response = await handleNotify(request(), deps);
   assert.deepEqual(await response.json(), { sent: 2, failed: 0 });
-  assert.match(provider.outbox[0].text, /https:\/\/chara.example\/en\/org\/acme\/applicants/);
+  assert.match(provider.outbox[0].text, new RegExp(`https://chara.example/en/org/acme/applicants/${APP}`));
   assert.match(provider.outbox[1].text, /€39\.00/);
 });

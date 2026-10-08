@@ -16,19 +16,21 @@ function title(payload: Payload): string {
 }
 
 export const statusChanged: Template = {
-  subject: (payload) => `Your application for ${title(payload)}: update`,
+  subject: (payload) => `Update on your application for ${title(payload)}`,
   Body: ({ payload, siteUrl }) => {
     const status = field(payload, "status");
     const label = status ? LABELS[status] : undefined;
+    const org = field(payload, "org_name");
+    const position = org ? `${title(payload)} at ${org}` : title(payload);
     const id = field(payload, "application_id");
     return (
       <Layout preview={label ? `Your application is now ${label}` : "Your application was updated"} heading="Your application was updated">
         <Paragraph>
           {status === "withdrawn"
-            ? `You withdrew your application for ${title(payload)}.`
+            ? `You withdrew your application for ${position}.`
             : label
-              ? `Your application for ${title(payload)} is now: ${label}.`
-              : `There is an update on your application for ${title(payload)}.`}
+              ? `Your application for ${position} is now: ${label}.`
+              : `There is an update on your application for ${position}.`}
         </Paragraph>
         <Paragraph>The details are in your journey tracker.</Paragraph>
         {id ? <Action href={url(siteUrl, `/applications/${id}`)}>View your application</Action> : null}
