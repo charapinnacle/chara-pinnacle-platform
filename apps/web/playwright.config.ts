@@ -71,6 +71,7 @@ export default defineConfig({
         "**/applicant-list-failure.spec.ts",
         "**/dashboard-failure.spec.ts",
         "**/notify-emails.spec.ts",
+        "**/admin-console-jobs.spec.ts",
       ],
     },
     {
@@ -163,6 +164,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/notify-emails.spec.ts",
       dependencies: ["dashboard-failure"],
+    },
+    // These run account-ops and notify as well, so they follow notify.
+    {
+      name: "admin-jobs",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/admin-console-jobs.spec.ts",
+      dependencies: ["notify"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

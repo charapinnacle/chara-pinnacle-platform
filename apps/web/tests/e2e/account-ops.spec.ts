@@ -105,14 +105,15 @@ test.describe("account-ops: sessions after a role change, a removal and a two-st
     expect(revoke.status).toBe(204);
     expect(jobs(staff.user.id, "platform_role_revoked")).toBe(1);
     expect(sessionRows(staff.user.id).length).toBeGreaterThan(0);
-    await page.reload();
-    await expect(page).toHaveURL(/\/en\/forbidden$/);
+    const refused = await page.reload();
+    expect(refused?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
 
     await runAccountOps();
     expect(sessionRows(staff.user.id)).toEqual([]);
     await signedOutAtNextRefresh(page, "/en/admin");
     await logIn(page, staff.user, "/en/admin");
-    await expect(page).toHaveURL(/\/en\/forbidden$/);
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     expect(activeRoles(staff.user.id)).toEqual([]);
   });
 
