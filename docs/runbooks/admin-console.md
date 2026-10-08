@@ -1,6 +1,6 @@
 # Runbook: administration console
 
-FR-F1, design point D65 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 3 and 11. The console is `/[lang]/admin`; the staff roles and the account-ops function it relies on are in `platform-staff.md`.
+FR-F1, design point D66 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 3 and 11. The console is `/[lang]/admin`; the staff roles and the account-ops function it relies on are in `platform-staff.md`.
 
 ## 1. Who sees what
 
@@ -40,7 +40,7 @@ where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'orga
 ## 5. What the hosted project needs
 
 - The same Vault secrets and the same cron job as for `account-ops` and `notify` (`platform-staff.md`, `transactional-emails.md`); the console adds no secret and no job.
-- The console needs the migrations `20261101100000` to `20261101100200`. Not verified against the hosted project: the trigram indexes on `public.profiles` and `public.organizations`.
+- The console needs the migrations `20261101110000` to `20261101110200`. Not verified against the hosted project: the trigram indexes on `public.profiles` and `public.organizations`.
 
 ## 6. Measured
 

@@ -2,6 +2,8 @@ const MAILPIT_API = "http://127.0.0.1:54424/api/v1";
 
 interface MailpitMessage {
   ID: string;
+  From: { Name: string; Address: string };
+  To: { Name: string; Address: string }[];
   Subject: string;
   Text: string;
   HTML: string;

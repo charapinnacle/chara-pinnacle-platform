@@ -1,4 +1,4 @@
--- Suspension and reinstatement (FR-F1; ARCHITECTURE.md sections 4, 8, 11; OPEN_QUESTIONS.md D45, D65). Only a Trust & Safety
+-- Suspension and reinstatement (FR-F1; ARCHITECTURE.md sections 4, 8, 11; OPEN_QUESTIONS.md D45, D66). Only a Trust & Safety
 -- Administrator at aal2 suspends or reinstates a user or an organisation, with a statement of reasons of 10 to 2000
 -- characters. Each action writes one moderation_actions row and one audit row in the transaction of the change, queues the
 -- mandatory email and, where a session must end, an account-ops job. Vacancy moderation (moderate_job) is FR-C7.

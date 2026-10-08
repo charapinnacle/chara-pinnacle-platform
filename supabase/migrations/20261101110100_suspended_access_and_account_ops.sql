@@ -1,4 +1,4 @@
--- What a suspension changes for the people and the organisation it names (FR-F1; OPEN_QUESTIONS.md D45, D65). The token of
+-- What a suspension changes for the people and the organisation it names (FR-F1; OPEN_QUESTIONS.md D45, D66). The token of
 -- a suspended user stays valid for up to 30 minutes, so the database refuses the user on its own: a suspended user is a
 -- member of no organisation, and the vacancies of a suspended organisation take no insert or update. The account-ops
 -- jobs of the suspension (the sign-in ban, the sign-out of every member) read what they need through the two service

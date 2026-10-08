@@ -198,6 +198,34 @@ describe("signUp action", () => {
     expect(JSON.stringify(logged.mock.calls)).not.toContain("example.com");
     logged.mockRestore();
   });
+
+  it("FR-I1 AC11: says in plain words that the confirmation email could not be sent, without redirecting, naming the provider or logging the password", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    signUpMock.mockResolvedValue({
+      data: {},
+      error: new AuthApiError("Error sending confirmation email", 500, "unexpected_failure"),
+    });
+    const result = await signUp(input);
+    expect(result).toEqual({
+      message: "We could not send the confirmation email. Your account was not created. Try again in a few minutes.",
+    });
+    expect(redirectMock).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toMatch(/resend|smtp|unexpected_failure|stack/i);
+    expect(logged).toHaveBeenCalledWith("Sign-up failed", { code: "unexpected_failure", status: 500 });
+    expect(JSON.stringify(logged.mock.calls)).not.toContain(input.password);
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("example.com");
+    logged.mockRestore();
+  });
+
+  it("FR-I1 AC11: another internal error of Auth keeps the generic message", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    signUpMock.mockResolvedValue({
+      data: {},
+      error: new AuthApiError("Error sending confirmation email", 502, "unexpected_failure"),
+    });
+    expect(await signUp(input)).toEqual({ message: "We could not complete this request. Try again." });
+    logged.mockRestore();
+  });
 });
 
 describe("resendConfirmation action", () => {

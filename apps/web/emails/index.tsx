@@ -8,6 +8,7 @@ import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
 import { erasurePaused } from "./templates/erasure-paused.tsx";
 import { legalVersion } from "./templates/legal-version.tsx";
+import { memberInvitation } from "./templates/member-invitation.tsx";
 import { mfaReset } from "./templates/mfa-reset.tsx";
 import { paymentFailed } from "./templates/payment-failed.tsx";
 import { statusChanged } from "./templates/status-changed.tsx";
@@ -27,6 +28,7 @@ const TEMPLATES = {
   erasure_paused: erasurePaused,
   account_suspended: accountSuspended,
   account_reinstated: accountReinstated,
+  member_invitation: memberInvitation,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

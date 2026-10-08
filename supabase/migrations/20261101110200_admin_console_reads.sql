@@ -1,5 +1,5 @@
 -- The reads and the publication of the administration console (FR-F1; ARCHITECTURE.md sections 4, 8, 12; OPEN_QUESTIONS.md
--- D65). Every function re-checks the role of the caller and aal2 (private.assert_staff) and returns only the columns
+-- D66). Every function re-checks the role of the caller and aal2 (private.assert_staff) and returns only the columns
 -- the console shows: no cover note, snapshot, document or applicant identity. Lists are keyset pages of at most 100 rows.
 -- The platform administrator and the Trust & Safety Administrator search and view; the rest is per function.
 

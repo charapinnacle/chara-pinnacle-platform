@@ -86,9 +86,9 @@ test.describe("team membership: member limit", () => {
       pages.map((person) => person.getByRole("dialog").getByRole("button", { name: "Create invitation" }).click()),
     );
     for (const person of pages) {
-      await expect(person.getByRole("dialog").getByText(/Invitation created for|Your plan allows 5 team members/)).toBeVisible();
+      await expect(person.getByRole("dialog").getByText(/We are emailing the invitation to|Your plan allows 5 team members/)).toBeVisible();
     }
-    const created = await Promise.all(pages.map((person) => person.getByText(/Invitation created for/).count()));
+    const created = await Promise.all(pages.map((person) => person.getByText(/We are emailing the invitation to/).count()));
     const refused = await Promise.all(pages.map((person) => person.getByText(PRO_PROMPT).count()));
     expect([created.reduce((a, b) => a + b), refused.reduce((a, b) => a + b)]).toEqual([1, 1]);
     expect(invitationRows(team)).toHaveLength(1);

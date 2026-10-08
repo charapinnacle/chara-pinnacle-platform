@@ -200,7 +200,8 @@ select is(pg_temp.call_as(null, 'anon', $$select * from public.my_platform_roles
 
 -- AC8: reset_mfa
 select is(
-  (select count(*) from audit.log where action = 'mfa_reset') + (select count(*) from pgmq.q_account_ops where message ->> 'action' = 'reset_mfa') + (select count(*) from pgmq.q_notifications),
+  (select count(*) from audit.log where action = 'mfa_reset') + (select count(*) from pgmq.q_account_ops where message ->> 'action' = 'reset_mfa')
+  + (select count(*) from pgmq.q_notifications where message ->> 'kind' = 'mfa_reset'),
   0::bigint, 'nothing is queued or audited before the first reset'
 );
 select is(pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, '  Identity checked by video call, ticket 4711  ')$$, :'tgt')),

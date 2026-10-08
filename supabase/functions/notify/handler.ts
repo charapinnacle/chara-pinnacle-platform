@@ -3,7 +3,7 @@ import { isNotificationKind, renderEmail } from "../../../apps/web/emails/index.
 import { hasSharedSecret } from "../_shared/auth.ts";
 import { json } from "../_shared/http.ts";
 import { type Provider, ProviderError } from "./providers.ts";
-import { deliveryEvent, verifySignature } from "./webhook.ts";
+import { deliveryEvent, senderAddress, verifySignature } from "./webhook.ts";
 
 // Resend allows about two requests a second by default, hence two at a time. No message is started after the time
 // budget, so the last one to start ends within the budget plus its longest send (the retry delays and four timed-out
@@ -264,6 +264,11 @@ async function recordDeliveryEvent(req: Request, deps: NotifyDeps): Promise<Resp
     return json(400, { error: "bad_request" });
   }
   if (event === "ignored") {
+    return json(200, { recorded: false });
+  }
+  // The Auth emails go through the same provider account, hence the same webhook; they are not in the table, so an
+  // event for a message from another sender is not asked for (it would be a 404 for ever).
+  if (event.from !== undefined && senderAddress(event.from) !== senderAddress(deps.from)) {
     return json(200, { recorded: false });
   }
   const { data, error } = await deps.client.rpc("notify_ack", {

@@ -163,6 +163,27 @@ Deno.test("events that change nothing recorded are acknowledged and ignored", as
   }
 });
 
+Deno.test("an event for an email of another sender, such as an Auth email sent through the same account, is acknowledged and not looked up", async () => {
+  for (const from of ["CHARA <no-reply@chara.example>", "no-reply@chara.example"]) {
+    const { calls, deps } = setup();
+    const response = await handleNotify(await webhook(event("email.bounced", { email_id: "re_auth", from })), deps);
+    assert.equal(response.status, 200, from);
+    assert.deepEqual(await response.json(), { recorded: false }, from);
+    assert.equal(calls.length, 0, from);
+  }
+  for (
+    const from of ["CHARA <noreply@chara.example>", "Notifications <NoReply@Chara.Example>", "noreply@chara.example"]
+  ) {
+    const { calls, deps } = setup();
+    assert.equal(
+      (await handleNotify(await webhook(event("email.delivered", { email_id: "re_1", from })), deps)).status,
+      200,
+      from,
+    );
+    assert.deepEqual(acks(calls), [{ p_outcome: "delivered", p_provider_message_id: "re_1" }], from);
+  }
+});
+
 Deno.test("a signed event that is not an event, or has no message id, is a 400", async () => {
   for (
     const body of ["not json", "[]", "{}", event("email.delivered", {}), event("email.delivered", { email_id: 7 })]

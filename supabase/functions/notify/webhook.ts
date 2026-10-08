@@ -63,11 +63,14 @@ const EVENTS: Record<string, DeliveryOutcome | undefined> = {
 // event of the provider at all.
 export function deliveryEvent(
   body: unknown,
-): { outcome: DeliveryOutcome; providerMessageId: string } | "ignored" | null {
+): { outcome: DeliveryOutcome; providerMessageId: string; from?: string } | "ignored" | null {
   if (typeof body !== "object" || body === null) {
     return null;
   }
-  const { type, data } = body as { type?: unknown; data?: { email_id?: unknown; bounce?: { type?: unknown } } };
+  const { type, data } = body as {
+    type?: unknown;
+    data?: { email_id?: unknown; from?: unknown; bounce?: { type?: unknown } };
+  };
   if (typeof type !== "string") {
     return null;
   }
@@ -82,5 +85,11 @@ export function deliveryEvent(
   return {
     outcome: outcome === "bounced_transient" && data?.bounce?.type === "Permanent" ? "bounced_permanent" : outcome,
     providerMessageId,
+    from: typeof data?.from === "string" ? data.from : undefined,
   };
+}
+
+// "CHARA <noreply@chara.example>" and "noreply@chara.example" are the same sender.
+export function senderAddress(from: string): string {
+  return (/<([^>]*)>/.exec(from)?.[1] ?? from).trim().toLowerCase();
 }
