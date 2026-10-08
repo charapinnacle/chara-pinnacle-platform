@@ -250,6 +250,7 @@ test.describe("vacancy lifecycle", () => {
     );
     await memberPage.goto(`/en/org/${acme.slug}`);
     await prefetched;
+    await memberPage.waitForLoadState("networkidle");
     await memberPage.getByRole("link", { name: "Vacancies" }).click();
     await expect(memberPage.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
     release();

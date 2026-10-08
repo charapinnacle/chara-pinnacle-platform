@@ -29,6 +29,7 @@ test.describe("create vacancy", () => {
 
     await fillJob(page, { title: "Welder MIG/MAG" });
     await page.getByRole("button", { name: "Save vacancy" }).click();
+    await expect(page).toHaveURL(/\/jobs\/[0-9a-f-]{36}$/);
 
     const [job, ...rest] = jobRows(company.id);
     expect(rest).toEqual([]);
