@@ -137,22 +137,39 @@ describe("the list", () => {
     expect(html).not.toContain("disabled until a plan is chosen");
   });
 
-  it("tells a plan without shortlisting so, with the link to the plan page, and says nothing on a plan that has it", async () => {
+  it("replaces the shortlist actions by Upgrade to shortlist applicants: a link to the plan page for an owner or admin, a request to contact one, without a link, for a member", async () => {
     getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false });
+    listApplicantsMock.mockResolvedValue({ rows: [row("a1", "Ana Silva")], total: 1, page: 1 });
+    for (const role of ["owner", "admin"]) {
+      requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, role } });
+      const html = await render({ job });
+      expect(html).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/billing"[^>]*>Upgrade to shortlist applicants<\/a>/);
+      expect(html).not.toContain("Contact an owner or admin");
+    }
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization });
     const html = await render({ job });
-    expect(html).toContain("Your plan does not include shortlisting, so applicants cannot be moved to Shortlisted.");
-    expect(html).toContain('href="/en/org/acme-bau/billing"');
+    expect(html).toContain("Upgrade to shortlist applicants. Your plan does not include shortlisting");
+    expect(html).toContain("Contact an owner or admin of your organization to upgrade the plan.");
+    expect(html).not.toContain("/billing");
     expect(html).toContain("TOOLBAR acme-bau shortlisting=false");
     getAccessMock.mockResolvedValue(access);
-    expect(await render({ job })).not.toContain("does not include shortlisting");
+    expect(await render({ job })).not.toContain("Upgrade to shortlist applicants");
+  });
+
+  it("shows the upgrade prompt only where an Applied or Viewed applicant could have been shortlisted", async () => {
+    getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false });
+    listApplicantsMock.mockResolvedValue({ rows: [row("a1", "Ana Silva", "hired"), row("a2", "Ben Okoro", "rejected"), row("a3", "Chi Wei", "interview")], total: 3, page: 1 });
+    expect(await render({ job })).not.toContain("Upgrade to shortlist applicants");
+    listApplicantsMock.mockResolvedValue({ rows: [row("a1", "Ana Silva", "hired"), row("a2", "Ben Okoro", "viewed")], total: 2, page: 1 });
+    expect(await render({ job })).toContain("Upgrade to shortlist applicants");
   });
 
   it("gives a lapsed organization the notice of the frozen plan and not the shortlisting prompt, and an empty list neither", async () => {
     getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false, stageChangeBlocked: "read_only_free_plan" });
-    expect(await render({ job })).not.toContain("does not include shortlisting");
+    expect(await render({ job })).not.toContain("Upgrade to shortlist applicants");
     getAccessMock.mockResolvedValue({ ...access, shortlistingAvailable: false });
     listApplicantsMock.mockResolvedValue({ rows: [], total: 0, page: 1 });
-    expect(await render({ job })).not.toContain("does not include shortlisting");
+    expect(await render({ job })).not.toContain("Upgrade to shortlist applicants");
   });
 
   it("shows no reason next to an export that is available", async () => {

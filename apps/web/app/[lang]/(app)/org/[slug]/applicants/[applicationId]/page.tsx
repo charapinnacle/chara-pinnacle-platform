@@ -107,7 +107,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
         </Notice>
       )}
 
-      {upgradeForShortlisting ? <ShortlistingUpgrade billingHref={billingPath(lang, slug)} /> : null}
+      {upgradeForShortlisting ? <ShortlistingUpgrade role={organization.role} billingHref={billingPath(lang, slug)} /> : null}
 
       <ProfileSnapshot
         snapshot={profile.snapshot}

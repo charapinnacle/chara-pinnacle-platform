@@ -1,11 +1,23 @@
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import type { MemberRole } from "@/lib/validation/team";
 
-export function ShortlistingUpgrade({ billingHref }: { billingHref: string }) {
+const UPGRADE = "Upgrade to shortlist applicants";
+
+export function ShortlistingUpgrade({ role, billingHref }: { role: MemberRole; billingHref: string }) {
   return (
     <Notice tone="info" role="status">
-      Your plan does not include shortlisting, so applicants cannot be moved to Shortlisted.{" "}
-      <TextLink href={billingHref}>Upgrade your plan</TextLink>
+      {role === "member" ? (
+        <>
+          {UPGRADE}. Your plan does not include shortlisting, so applicants cannot be moved to Shortlisted. Contact an owner
+          or admin of your organization to upgrade the plan.
+        </>
+      ) : (
+        <>
+          <TextLink href={billingHref}>{UPGRADE}</TextLink>. Your plan does not include shortlisting, so applicants cannot be
+          moved to Shortlisted.
+        </>
+      )}
     </Notice>
   );
 }

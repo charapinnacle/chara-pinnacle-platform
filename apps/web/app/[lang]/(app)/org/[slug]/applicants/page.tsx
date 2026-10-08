@@ -58,6 +58,7 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
   const withoutStage = { ...parsed, stage: null, page: 1 };
   const kept = Object.fromEntries(new URL(applicantsPath(lang, slug, withoutStage), "http://localhost").searchParams);
   const visibleRows = board ? board.columns.flatMap((column) => column.rows) : (list?.rows ?? []);
+  const shortlistable = visibleRows.some((row) => row.status === "applied" || row.status === "viewed");
   const bulkRows = frozen || empty ? null : visibleRows.map((row) => ({ id: row.id, name: row.candidateName ?? FORMER_CANDIDATE, status: row.status }));
   const lastPage = list ? Math.max(1, Math.ceil(list.total / APPLICANTS_PAGE_SIZE)) : 1;
 
@@ -80,7 +81,9 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         </Notice>
       ) : null}
 
-      {!frozen && !empty && !access.shortlistingAvailable ? <ShortlistingUpgrade billingHref={billingPath(lang, slug)} /> : null}
+      {!frozen && shortlistable && !access.shortlistingAvailable ? (
+        <ShortlistingUpgrade role={organization.role} billingHref={billingPath(lang, slug)} />
+      ) : null}
 
       {parsed.job ? (
         <nav aria-label="View" className="flex flex-wrap gap-x-6">
