@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(36);
 
 \ir status_fixture.inc
 
@@ -113,6 +113,18 @@ select is(
   'AC3: after a move the next read gives Applied 2 and Interview 2, nothing is stored or cached by the function'
 );
 
+-- Applications of a deleted vacancy are counted, like the applicant list the stages link to (D61 departure 3). deleted_at has
+-- no writer yet; a change of this rule has to change this test and the list together.
+create temp table t_d as select pg_temp.org_on('employer_starter') as org;
+select (select org from t_d) as org_d, pg_temp.member_of((select org from t_d)) as md \gset
+select pg_temp.seed_job('{"title": "Deleted D", "status": "closed", "deleted_at": "2026-01-01T00:00:00Z"}', :'org_d') as dj \gset
+select pg_temp.seed_app('applied', :'org_d', '00000000-0000-0000-0000-00000000a101', :'dj') as d1 \gset
+select is(
+  pg_temp.json_as(:'md', format('select status, total, recent from public.get_dashboard_applications(%L)', :'org_d')),
+  '[{"status": "applied", "total": 1, "recent": 1}]'::jsonb,
+  'the application of a deleted vacancy is counted in the stages and in the last 7 days'
+);
+
 -- A suspended organisation shows no figure.
 create temp table t_x as select pg_temp.org_on('employer_starter') as org;
 select pg_temp.seed_app('applied', (select org from t_x)) as x1 \gset
@@ -219,6 +231,10 @@ create temp table t_z as select pg_temp.org_on('employer_starter', 'paused') as 
 select is(
   pg_temp.plan_of(pg_temp.member_of((select org from t_z)), (select org from t_z), 'aal1')::jsonb -> 0 ->> 'plan_name', 'Free',
   'a paused subscription resolves to the free plan, as the entitlements do'
+);
+select is(
+  pg_temp.plan_of(pg_temp.member_of((select org from t_z)), (select org from t_z), 'aal1')::jsonb -> 0 ->> 'status', 'free',
+  'and its status is free, so the status list of the function stays tied to private.org_plan_code'
 );
 
 select * from finish();

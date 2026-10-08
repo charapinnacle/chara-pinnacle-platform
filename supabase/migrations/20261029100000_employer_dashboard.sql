@@ -63,8 +63,9 @@ begin
     (select coalesce(bool_and(e.status = 'canceled'), false) from billing.subscriptions e where e.organization_id = o.id)
   from public.organizations o
   join billing.plans p on p.code = private.org_plan_code(o.id)
+  -- The live statuses and the order are those of private.org_plan_code, so that the name and the status agree.
   left join lateral (
-    select x.id, x.status, x.trial_ends_at, x.current_period_end, x.past_due_since
+    select x.status, x.trial_ends_at, x.current_period_end, x.past_due_since
     from billing.subscriptions x
     where x.organization_id = o.id and x.status in ('trialing', 'active', 'past_due')
     order by x.created_at desc
