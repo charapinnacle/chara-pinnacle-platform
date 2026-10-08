@@ -1,4 +1,4 @@
--- Audited actions (FR-F2; ARCHITECTURE.md sections 8, 12; OPEN_QUESTIONS.md D67). Every administrative function writes
+-- Audited actions (FR-F2; ARCHITECTURE.md sections 8, 12; OPEN_QUESTIONS.md D68). Every administrative function writes
 -- one complete audit row in the transaction of its change: actor, action, entity, the reason of 10 to 2000 characters
 -- and a request id that is never empty. Work done outside the database is recorded against the same request through
 -- audit_record_external; the log is kept for the period of retention_policies and exported every month.

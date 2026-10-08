@@ -868,6 +868,21 @@ isOneToOne: false
 "audit_record_external":
 { Args: { "p_action": string,"p_actor_id"?: string,"p_entity_id": string,"p_entity_type": string,"p_metadata"?: Json }; Returns: boolean
                            },
+"billing_checkout_start":
+{ Args: { "p_billing_country": string,"p_disclosed_trial_days"?: number,"p_org": string,"p_plan_code": string,"p_provider"?: string,"p_registration_number": string,"p_terms_version": number,"p_vat_id": string }; Returns: {
+              "customer_ref": string,"price_ref": string,"slug": string,"trial_days": number
+            }[]
+                           },
+"billing_checkout_state":
+{ Args: { "p_org": string }; Returns: {
+              "billing_country": string,"has_customer": boolean,"identifier": string,"identifier_kind": string,"identifier_locked": boolean,"registration_number": string,"trial_used": boolean,"vat_id": string
+            }[]
+                           },
+"billing_portal_start":
+{ Args: { "p_org": string }; Returns: {
+              "customer_ref": string,"slug": string
+            }[]
+                           },
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {
               "application_id": string,"error_code": string,"ok": boolean

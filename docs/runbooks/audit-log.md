@@ -1,6 +1,6 @@
 # Runbook: audited administrative actions
 
-FR-F2, design point D67 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 8 and 12. The audit log is `audit.log`; the page to search it is `/[lang]/admin/audit` (Platform Administrator at aal2); the staff roles and account-ops are in `platform-staff.md`, the console in `admin-console.md`.
+FR-F2, design point D68 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 8 and 12. The audit log is `audit.log`; the page to search it is `/[lang]/admin/audit` (Platform Administrator at aal2); the staff roles and account-ops are in `platform-staff.md`, the console in `admin-console.md`.
 
 ## 1. What is recorded
 
@@ -64,7 +64,7 @@ The pg_cron jobs `audit-export-monthly` (03:00 UTC on the first day of each mont
 - `audit-log/<year>/<YYYY-MM>.ndjson`, one JSON object per row, in the order of time and id;
 - `audit-log/<year>/<YYYY-MM>.manifest.json`: `{"month", "rows", "sha256", "file"}`, and `"resumed": true` when the file already existed at the time the manifest was written.
 
-The file holds the actor, the entity and the metadata of every row as they are, and the address only of platform staff (past or present): the lock lasts six years and the erasure of FR-B6 cannot reach it, so the address of a candidate or an employer is left out. Their ids stay (the archive is the evidence of the administrative acts of the period); this is recorded in OPEN_QUESTIONS.md D67 for the privacy contact.
+The file holds the actor, the entity and the metadata of every row as they are, and the address only of platform staff (past or present): the lock lasts six years and the erasure of FR-B6 cannot reach it, so the address of a candidate or an employer is left out. Their ids stay (the archive is the evidence of the administrative acts of the period); this is recorded in OPEN_QUESTIONS.md D68 for the privacy contact.
 
 The archive is an S3-compatible bucket outside the platform (default: a second EU region, OPEN_QUESTIONS.md O5; target and budget are not decided) with Object Lock enabled and versioning on. Each object is put in compliance mode with a retention of `AUDIT_ARCHIVE_RETAIN_DAYS` (at least 2191), with `If-None-Match: *` (an existing key is never overwritten) and the SHA-256 checksum of the body, which the store verifies. The access key may put objects and may neither read nor delete them (a restore uses another key).
 
@@ -81,7 +81,7 @@ curl -X POST https://<project-ref>.supabase.co/functions/v1/audit-export \
   -H "Authorization: Bearer <anon key>" -H "x-edge-secret: <shared secret>" -d '{"month":"2026-09"}'
 ```
 
-Restore test (each quarter, with the review): download the file and the manifest of one month with the restore key, check `sha256sum` against the manifest, count the lines against the rows, and compare with `select count(*) from audit.log where created_at >= '<month>-01' and created_at < '<next month>-01'` while the month is inside the retention period. Rows of an erased candidate carry the pseudonym and no address in the table from the moment of the erasure; an export made before it keeps the id, the entity and the metadata as they were, without the address (see above and D67). Compare the rows of a month with the file only for the fields the file holds, and expect the ids of erased candidates to differ.
+Restore test (each quarter, with the review): download the file and the manifest of one month with the restore key, check `sha256sum` against the manifest, count the lines against the rows, and compare with `select count(*) from audit.log where created_at >= '<month>-01' and created_at < '<next month>-01'` while the month is inside the retention period. Rows of an erased candidate carry the pseudonym and no address in the table from the moment of the erasure; an export made before it keeps the id, the entity and the metadata as they were, without the address (see above and D68). Compare the rows of a month with the file only for the fields the file holds, and expect the ids of erased candidates to differ.
 
 Limits: the month is one object built in memory (the pages and the file together, about twice its size). Measured with 513-byte rows: 50,000 rows make a 26 MB file and 156 MB of process memory, 200,000 rows a 103 MB file and 410 MB, over the 256 MB of an Edge Function. When a month approaches 50,000 rows, split the file by day (`audit-log/<year>/<YYYY-MM>/<DD>.ndjson`, one manifest listing the parts and their SHA-256) or stream a multipart upload before it does. The `rows` of each manifest show how the months grow. A transaction that started in the previous month and commits after the export (hours, not days) would be missing from the file; the count check is made at the time of the run, so the 03:00 start leaves that window closed in practice.
 

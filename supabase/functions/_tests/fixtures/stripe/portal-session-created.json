@@ -1,0 +1,7 @@
+{
+  "id": "bps_1PxYzAbCdEfGhIjKlMnOpQrS",
+  "object": "billing_portal.session",
+  "customer": "cus_Qa1B2c3D4e5F6g",
+  "return_url": "https://app.chara.example/en/org/acme/billing",
+  "url": "https://billing.stripe.com/p/session/test_YWNjdF8xUHh5ekFiQ2RFZkdo"
+}
