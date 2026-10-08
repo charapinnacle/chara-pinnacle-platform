@@ -97,22 +97,23 @@ select pg_temp.bulk_as(:'st_admin', array[(select a from t_guard)], 'interview')
 select pg_temp.bulk_as(:'wa', array[(select a from t_guard)], 'interview') as candidate_try \gset
 select pg_temp.bulk_as(:'own2', array[(select a from t_guard)], 'interview') as other_org_try \gset
 select is(
-  regexp_replace(pg_temp.status_counts(), '^\d+,\d+,\d+', '') , regexp_replace((select c from t_guard), '^\d+,\d+,\d+', ''),
-  'AC9: platform staff, a candidate and a member of another organisation changed no status'
+  regexp_replace(pg_temp.status_counts(), '^(\d+),\d+,', '\1,'), regexp_replace((select c from t_guard), '^(\d+),\d+,', '\1,'),
+  'AC9: platform staff, a candidate and a member of another organisation changed no status, event, notification or share expiry'
 );
 select is(
   (select pg_temp.event_count(a) from t_guard), 1::bigint, 'AC9: and wrote no event'
 );
 
 -- The SOP KPI "bulk actions per month": the query of docs/runbooks/bulk-actions.md, on the audit rows written above. Six
--- calls got past the whole-call refusals (N moved 3, P moved 3, P declined 2, the retry on the declined two applied 0, the
--- platform administrator and the member of another organisation applied 0); the refused ones before any item wrote none.
+-- calls got past the whole-call refusals, three of which applied something (N moved 3, P moved 3, P declined 2); the retry on
+-- the declined two, the platform administrator and the member of another organisation applied 0 and are not counted.
 select results_eq(
   $$select count(*) as bulk_actions, coalesce(sum((l.metadata ->> 'applied')::integer), 0) as applications_changed
     from audit.log l
-    where l.action = 'application.bulk_status_changed' and l.created_at >= date_trunc('month', now())$$,
-  $$values (6::bigint, 8::bigint)$$,
-  'KPI: 6 audited calls this month that changed 8 applications'
+    where l.action = 'application.bulk_status_changed' and (l.metadata ->> 'applied')::integer > 0
+      and l.created_at >= date_trunc('month', now())$$,
+  $$values (3::bigint, 8::bigint)$$,
+  'KPI: 3 audited calls this month that changed 8 applications'
 );
 
 select * from finish();

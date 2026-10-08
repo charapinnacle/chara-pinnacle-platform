@@ -7,7 +7,7 @@ FR-E3, design point D59 (OPEN_QUESTIONS.md). The SOP is "Bulk Applicant Actions 
 - Nothing new is stored. A bulk change is `public.bulk_set_application_status(ids, target, note)` (FR-D2, migration `20261023100100`): every application goes through the same guard as one change, in its own subtransaction, so each has its own event (`application_events`: from, to, actor, note), its own audit row `application.status_changed` and its own `status_changed` queue message (ids and the new stage only, never the note). A refused item leaves no row.
 - `audit.log`, action `application.bulk_status_changed`: one row per call and per organisation of the applied items, with `organization_id`, `to`, `requested` (distinct ids sent), `applied` and `ids`; never the note. A call refused as a whole (lapsed or restricted organisation, bad input) writes none.
 - The reason of a decline is the note of its event, which the candidate reads in the journey tracker under "Message from the employer". The wording of the two templates (`position_filled`, `qualifications_not_matching`) is a constant of the application, `declineReasonOptions` in `apps/web/lib/validation/applicant.ts`, shared with the single change; it is reviewed with legal like all text the candidate reads.
-- The page: `/[lang]/org/[slug]/applicants` (list and board). The boxes and the toolbar appear for a member of an organisation whose stage changes are not blocked; the choice is held in the browser only until the page is left. Review opens the confirmation (every applicant with the stage they are in, the target, the text under "Visible to the candidate", the warning that a decline is final); only Confirm calls the Server Action `bulkChangeApplicantStage`, which checks the role of the address (owners and admins at aal2), parses 1 to 100 ids, a target an employer may choose and the reason, and returns the summary. A refused applicant is reported with the stage they are in now ("Not allowed from Applied") and stays selected.
+- The page: `/[lang]/org/[slug]/applicants` (list and board). The boxes and the toolbar appear for a member of an organisation whose stage changes are not blocked; the choice is held in the browser only until the page is left. Review opens the confirmation (every applicant with the stage they are in, the target, the text under "Visible to the candidate", the warning that a decline is final); only Confirm calls the Server Action `bulkChangeApplicantStage`, which checks the role of the address (owners and admins at aal2), parses 1 to 100 ids, sends on only the ids of that organization (any other id is reported as not found), a target an employer may choose and the reason, and returns the summary. A refused applicant is reported with the stage they are in now ("Not allowed from Applied") and stays selected.
 
 ## 2. Settings and the open owner points
 
@@ -26,11 +26,11 @@ select to_char(date_trunc('month', l.created_at), 'YYYY-MM') as month,
        count(*) as bulk_actions,
        sum((l.metadata ->> 'applied')::integer) as applications_changed
 from audit.log l
-where l.action = 'application.bulk_status_changed'
+where l.action = 'application.bulk_status_changed' and (l.metadata ->> 'applied')::integer > 0
 group by 1 order by 1 desc;
 ```
 
-A call that applied nothing counts as an action (its `applied` is 0). By organisation: add `l.metadata ->> 'organization_id'` to the grouping. The query reads the index `log_action_created_at_idx`; it is run by hand, monthly. pgTAP `073_bulk_actions.test.sql` runs it on written audit rows.
+A call that applied nothing is not counted (its `applied` is 0): that keeps out a stale retry, a call by a platform administrator or a member of another organisation, and any probing, which write an audit row with a null `organization_id`. By organisation: add `l.metadata ->> 'organization_id'` to the grouping. The query reads the index `log_action_created_at_idx`; it is run by hand, monthly. pgTAP `073_bulk_actions.test.sql` runs it on written audit rows.
 
 ## 4. Controls and how to check them
 
@@ -41,4 +41,4 @@ A call that applied nothing counts as an action (its `applied` is 0). By organis
 
 ## 5. Reads added by the page
 
-The summary reads `id, status` of the refused items only, from `v_job_applicants` with `id = any(...)` (at most 100): a bitmap scan on `job_applications_pkey`, 0.9 ms on 50,000 applications (rolled-back transaction, `EXPLAIN ANALYZE`, as the database owner; the member policy adds the organisation lookup that the list reads already use).
+Before the call, the Server Action matches the ids to the organization of the address and reads their stage: `select id, status from v_job_applicants where organization_id = ? and id = any(...)` (at most 100 ids, so at most 100 rows). Measured as an authenticated member with the row-level policies applied, on 6,000 applications of one organization (rolled-back transaction, `EXPLAIN ANALYZE`): a bitmap index scan on `job_applications_pkey`, 0.7 ms. An id of another organization or an unknown id is not in the result and is reported as not found without reaching the function. The stage read here is the one the summary shows for a refused item.

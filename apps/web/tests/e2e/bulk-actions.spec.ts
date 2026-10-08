@@ -5,12 +5,12 @@ import {
   bulkToolbar,
   chooseBulk,
   expectModal,
-  messagesOf,
   openApplicants,
   reviewButton,
   selectBox,
   setupBulk,
 } from "./support/bulk";
+import { statusMessages } from "./support/applicants";
 import { signInBrowser } from "./support/session";
 import { expect, test } from "./support/test";
 
@@ -53,7 +53,7 @@ test.describe("bulk actions on applicants", () => {
     for (const name of ["Ana", "Ben", "Chi"]) {
       expect(statusOf(people[name].id)).toBe("applied");
       expect(eventCount(people[name].id)).toBe(1);
-      expect(messagesOf(people[name].id)).toEqual([]);
+      expect(statusMessages(people[name].id)).toEqual([]);
     }
     await expectModal(dialog);
 
@@ -76,7 +76,7 @@ test.describe("bulk actions on applicants", () => {
     for (const name of ["Ana", "Ben", "Chi"]) {
       expect(statusOf(people[name].id)).toBe("applied");
       expect(eventCount(people[name].id)).toBe(1);
-      expect(messagesOf(people[name].id)).toEqual([]);
+      expect(statusMessages(people[name].id)).toEqual([]);
     }
   });
 
@@ -109,7 +109,7 @@ test.describe("bulk actions on applicants", () => {
       const { id, user } = people[name];
       expect(statusOf(id)).toBe("interview");
       expect(eventRows(id).slice(1)).toMatchObject([{ from_status: "applied", to_status: "interview", actor_id: member.id, note: "Interviews in week 41" }]);
-      expect(messagesOf(id)).toEqual([{ user_id: user.id, status: "interview", note: null }]);
+      expect(statusMessages(id)).toEqual([{ user_id: user.id, status: "interview", note: null }]);
     }
 
     await page.unroute("**/applicants?*");
@@ -133,7 +133,7 @@ test.describe("bulk actions on applicants", () => {
       const { id, user } = people[name];
       expect(statusOf(id)).toBe("rejected");
       expect(eventRows(id)[1]).toMatchObject({ to_status: "rejected", actor_id: member.id, note: NOT_MATCHING });
-      expect(messagesOf(id)).toEqual([{ user_id: user.id, status: "rejected", note: null }]);
+      expect(statusMessages(id)).toEqual([{ user_id: user.id, status: "rejected", note: null }]);
     }
 
     for (const name of ["Dev Rao", "Eli Cohen"]) await selectBox(page, name).check();
@@ -143,14 +143,16 @@ test.describe("bulk actions on applicants", () => {
     await expect(bulkToolbar(page).getByText("0 updated, 2 refused", { exact: true })).toBeVisible();
     await expect(bulkToolbar(page).getByText("Dev Rao: Not allowed from Not selected")).toBeVisible();
     expect(statusOf(people.Dev.id)).toBe("rejected");
-    expect(messagesOf(people.Dev.id)).toHaveLength(1);
+    expect(statusMessages(people.Dev.id)).toHaveLength(1);
 
-    const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.8.7.5" } });
-    await signInBrowser(context, people.Dev.user);
-    const candidate = await context.newPage();
-    await candidate.goto(applicationUrl(people.Dev.id));
-    await expect(candidate.getByRole("listitem").filter({ hasText: "Message from the employer" })).toContainText(NOT_MATCHING);
-    await context.close();
+    for (const [index, name] of ["Dev", "Eli"].entries()) {
+      const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `10.8.7.${index + 5}` } });
+      await signInBrowser(context, people[name].user);
+      const candidate = await context.newPage();
+      await candidate.goto(applicationUrl(people[name].id));
+      await expect(candidate.getByRole("listitem").filter({ hasText: "Message from the employer" })).toContainText(NOT_MATCHING);
+      await context.close();
+    }
   });
 
   test("FR-E3 AC5: the summary reports a refused item, which stays selected, and the moved one is deselected", async ({ browser }) => {
@@ -173,8 +175,8 @@ test.describe("bulk actions on applicants", () => {
     expect(statusOf(people.Ana.id)).toBe("applied");
     expect(statusOf(people.Ben.id)).toBe("offer");
     expect(eventCount(people.Ana.id) + eventCount(people.Ben.id)).toBe(3);
-    expect(messagesOf(people.Ana.id)).toHaveLength(0);
-    expect(messagesOf(people.Ben.id)).toHaveLength(1);
+    expect(statusMessages(people.Ana.id)).toHaveLength(0);
+    expect(statusMessages(people.Ben.id)).toHaveLength(1);
     await expect(page.getByText("Something went wrong")).toHaveCount(0);
 
     await toolbar.getByRole("button", { name: "Dismiss" }).click();

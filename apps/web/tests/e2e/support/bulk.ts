@@ -1,7 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { newApplicant, seedApplication } from "./applications";
 import { renameCandidate, subscribe } from "./applicant-list";
-import { statusMessages } from "./applicants";
 import { addCompanyUser, newCompany, seedJob } from "./jobs";
 import { waitForHydration } from "./hydration";
 import { signInBrowser } from "./session";
@@ -39,8 +38,6 @@ export async function openApplicants(browser: Browser, member: TestUser, url: st
   await waitForHydration(typeof ready === "function" ? ready(page) : ready);
   return page;
 }
-
-export const messagesOf = (id: string) => statusMessages(id);
 
 export async function chooseBulk(page: Page, action: string, reason?: string, note?: string): Promise<void> {
   const toolbar = bulkToolbar(page);
