@@ -1,7 +1,10 @@
 import type { Page } from "@playwright/test";
 import { seedAudit, seedOrganizations, seedUsers, signInStaff, uniqueTag } from "./support/admin";
+import { newApplicant, seedApplication } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
+import { query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
+import { newCompany, seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { expect, test } from "./support/test";
 
@@ -18,6 +21,10 @@ async function search(page: Page, label: string, term: string): Promise<void> {
 
 async function names(page: Page, table: string): Promise<string[]> {
   return rows(page, table).evaluateAll((elements) => elements.map((row) => row.querySelector("td")?.textContent ?? ""));
+}
+
+function value(page: Page, label: string) {
+  return page.locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]");
 }
 
 async function delaySearch(page: Page, path: string, ms: number): Promise<void> {
@@ -192,5 +199,51 @@ test.describe("the search of users, organisations and the audit log", () => {
     await action.fill(`e2e.nothing-${tag}`);
     await action.press("Enter");
     await expect(page.getByRole("heading", { name: "No audit entries match", level: 2 })).toBeVisible();
+  });
+
+  test("FR-F1 AC3: the user page shows the counts and the memberships, and the organisation page the members and the vacancies, to both roles and with no applicant data", async ({
+    page,
+    browser,
+  }) => {
+    const company = await newCompany();
+    const jobs = [1, 2, 3, 4].map((n) => seedJob(company, { title: `Detail vacancy ${n}`, status: "open" }));
+    const candidate = await newApplicant();
+    for (const job of jobs.slice(0, 3)) seedApplication(candidate.id, job, company.id, { coverNote: "PRIVATE-COVER-NOTE" });
+    const [{ display_name: organizationName }] = query<{ display_name: string }>(
+      `select display_name from public.organizations where id = '${company.id}'`,
+    );
+
+    await signInStaff(page, "admin", `/en/admin/users/${candidate.id}`);
+    await expect(value(page, "Applications submitted")).toHaveText("3");
+    await expect(value(page, "Vacancies created")).toHaveText("0");
+    await expect(value(page, "Email")).toHaveText(candidate.email);
+    await expect(page.getByText("This user belongs to no organisation.")).toBeVisible();
+    await expect(page.getByText("PRIVATE-COVER-NOTE")).toHaveCount(0);
+
+    await page.goto(`/en/admin/users/${company.owner.id}`);
+    await expect(value(page, "Vacancies created")).toHaveText("4");
+    await expect(value(page, "Applications submitted")).toHaveText("0");
+    const membership = page.locator("#organisations li");
+    await expect(membership).toHaveCount(1);
+    await expect(membership.getByRole("link", { name: organizationName })).toHaveAttribute("href", `/en/admin/organizations/${company.id}`);
+    await expect(membership).toContainText("Owner");
+
+    const second = await browser.newContext();
+    const reviewer = await second.newPage();
+    await signInStaff(reviewer, "trust_safety", `/en/admin/users/${company.owner.id}`);
+    await expect(value(reviewer, "Vacancies created")).toHaveText("4");
+    for (const tab of [page, reviewer]) {
+      await tab.goto(`/en/admin/organizations/${company.id}`);
+      await expect(tab.getByRole("heading", { name: organizationName, level: 1 })).toBeVisible();
+      const members = tab.getByRole("table", { name: "Members" }).getByRole("row").filter({ has: tab.getByRole("cell") });
+      await expect(members).toHaveCount(1);
+      await expect(members.first()).toContainText(company.owner.id);
+      await expect(members.first()).toContainText("Owner");
+      await expect(tab.getByRole("table", { name: "Vacancies" }).getByRole("row").filter({ has: tab.getByRole("cell") })).toHaveCount(4);
+      await expect(tab.getByRole("table", { name: "Vacancies" })).toContainText("Detail vacancy 3");
+      await expect(tab.getByText(/Applications submitted|PRIVATE-COVER-NOTE/)).toHaveCount(0);
+      await expect(tab.getByText(candidate.email)).toHaveCount(0);
+    }
+    await second.close();
   });
 });

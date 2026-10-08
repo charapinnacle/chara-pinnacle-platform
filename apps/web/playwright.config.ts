@@ -72,6 +72,7 @@ export default defineConfig({
         "**/dashboard-failure.spec.ts",
         "**/notify-emails.spec.ts",
         "**/admin-console-jobs.spec.ts",
+        "**/admin-console-staff-database.spec.ts",
       ],
     },
     {
@@ -171,6 +172,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/admin-console-jobs.spec.ts",
       dependencies: ["notify"],
+    },
+    // The staff function is withdrawn from the API role, a table of Auth is locked and the staff list is filled up while
+    // this spec runs.
+    {
+      name: "staff-database",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/admin-console-staff-database.spec.ts",
+      dependencies: ["admin-jobs"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

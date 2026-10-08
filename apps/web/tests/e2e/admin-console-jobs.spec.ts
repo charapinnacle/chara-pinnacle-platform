@@ -1,15 +1,17 @@
 import type { Page } from "@playwright/test";
 import { runAccountOps } from "./support/account-ops";
-import { signInStaff } from "./support/admin";
+import { signInStaff, uniqueTag } from "./support/admin";
 import { newApplicant, seedApplication } from "./support/applications";
-import { literal, query } from "./support/db";
+import { execute, literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
-import { addCompanyUser, newCompany, seedJob } from "./support/jobs";
-import { enrollTotp, expireAccessToken, sessionRows } from "./support/login";
+import { addCompanyUser, jobUrl, jobsUrl, newCompany, newJobUrl, previewUrl, seedJob } from "./support/jobs";
+import { createCommittedUser, enrollTotp, expireAccessToken, sessionRows } from "./support/login";
 import { logIn, SUSPENDED } from "./support/login-page";
 import { messageCount, waitForMessage } from "./support/mailpit";
 import { enterCode, factorRows, newOwner } from "./support/mfa";
 import { runNotify } from "./support/notify";
+import { organizationRows } from "./support/organizations";
+import { membersPath } from "./support/team";
 import { expect, test } from "./support/test";
 
 // account-ops and notify take every job in their queues, so these tests run in a project of their own after the others
@@ -95,6 +97,7 @@ test.describe("the console with account-ops and notify running", () => {
     const company = await newCompany();
     const admin = await addCompanyUser(company, "admin");
     const member = await addCompanyUser(company, "member");
+    const vacancy = seedJob(company, { title: "Suspended welder", status: "open" });
     const own = await browser.newContext();
     const memberPage = await own.newPage();
     await logIn(memberPage, member);
@@ -109,6 +112,26 @@ test.describe("the console with account-ops and notify running", () => {
     await signedOutAtNextRefresh(memberPage, `/en/org/${company.slug}`);
     await logIn(memberPage, member, `/en/org/${company.slug}`);
     await expect(memberPage.getByRole("heading", { name: "This organisation is suspended" })).toBeVisible();
+
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    await logIn(adminPage, admin);
+    await expect(adminPage).toHaveURL(/\/en\/dashboard\/employer$/);
+    const pages = [
+      { tab: memberPage, path: jobsUrl(company.slug) },
+      { tab: memberPage, path: jobUrl(company.slug, vacancy) },
+      { tab: memberPage, path: previewUrl(company.slug, vacancy) },
+      { tab: memberPage, path: membersPath(company.slug) },
+      { tab: adminPage, path: newJobUrl(company.slug) },
+    ];
+    for (const { tab, path } of pages) {
+      await tab.goto(path);
+      await expect(tab.getByRole("alert").filter({ hasText: "This organization is suspended, so its" })).toBeVisible();
+      await expect(tab.getByText("Suspended welder")).toHaveCount(0);
+      await expect(tab.getByText(company.owner.email)).toHaveCount(0);
+      await expect(tab.getByRole("button", { name: /Create|Save|Invite/ })).toHaveCount(0);
+    }
+    await adminContext.close();
 
     await runNotify();
     for (const person of [company.owner, admin]) {
@@ -132,7 +155,7 @@ test.describe("the console with account-ops and notify running", () => {
     await own.close();
   });
 
-  test("FR-F1 AC10: a reset from the form deletes the factors and signs the user out, and the user is emailed with no code and no secret", async ({
+  test("FR-F1 AC10: a reset from the form deletes the factors and signs the user out in both browsers, the user is emailed with no code and no secret, and signs in at aal1 and is sent to enrol again", async ({
     page,
     browser,
   }) => {
@@ -142,7 +165,12 @@ test.describe("the console with account-ops and notify running", () => {
     const ownPage = await own.newPage();
     await logIn(ownPage, owner);
     await expect(ownPage).toHaveURL(/\/en\/dashboard\/employer$/);
+    const other = await browser.newContext();
+    const otherPage = await other.newPage();
+    await logIn(otherPage, owner);
+    await expect(otherPage).toHaveURL(/\/en\/dashboard\/employer$/);
     expect(factorRows(owner.id)).toHaveLength(1);
+    expect(sessionRows(owner.id).length).toBeGreaterThanOrEqual(2);
 
     await signInStaff(page, "admin", `/en/admin/mfa-reset?user=${owner.id}`);
     await waitForHydration(page.getByLabel("User id"));
@@ -153,13 +181,23 @@ test.describe("the console with account-ops and notify running", () => {
 
     await runAccountOps();
     expect(factorRows(owner.id)).toEqual([]);
+    expect(sessionRows(owner.id)).toEqual([]);
     await signedOutAtNextRefresh(ownPage, "/en/dashboard/employer");
+    await signedOutAtNextRefresh(otherPage, "/en/dashboard/employer");
     await runNotify();
     const mail = await waitForMessage(owner.email, { subject: "Two-step verification was reset" });
     expect(`${mail.Text}${mail.HTML}`).not.toContain(secret);
     expect(mail.Text).not.toMatch(/\b\d{6}\b/);
     expect(await messageCount(owner.email)).toBe(1);
+
+    await logIn(ownPage, owner);
+    await expect(ownPage).toHaveURL(/\/en\/dashboard\/employer$/);
+    const [organization] = organizationRows(owner.id);
+    await ownPage.goto(membersPath(organization.slug));
+    await expect(ownPage).toHaveURL(`/en/mfa?next=${encodeURIComponent(membersPath(organization.slug))}`);
+    await expect(ownPage.getByRole("heading", { name: "Set up two-step verification" })).toBeVisible();
     await own.close();
+    await other.close();
   });
 
   test("FR-F1 AC12: a granted role signs the user out, the navigation appears after two-step verification, and a revoked role is refused at once", async ({
@@ -204,5 +242,59 @@ test.describe("the console with account-ops and notify running", () => {
     await runAccountOps();
     await signedOutAtNextRefresh(ownPage, "/en/admin");
     await own.close();
+  });
+
+  // The document is added to the ones a candidate has to accept for the length of the test and taken out again: a
+  // required document that is published for good would ask every later test to accept it at sign-in.
+  test("FR-F1 AC11: publishing a document that candidates must accept returns at once, and account-ops then queues one email for each active candidate, once", async ({
+    page,
+  }) => {
+    const name = `e2e-accept-${uniqueTag()}`;
+    const original = query<{ value: unknown }>(`select value from private.settings where key = 'required_consents'`)[0].value;
+    const worker = await createCommittedUser("worker");
+    execute(
+      `update private.settings set value = jsonb_set(value, '{worker}', (value -> 'worker') || to_jsonb(${literal(name)}::text)) where key = 'required_consents'`,
+    );
+    try {
+      await signInStaff(page, "admin", "/en/admin/legal");
+      const slug = page.getByLabel("Document name");
+      await waitForHydration(slug);
+      await slug.fill(name);
+      await page.getByLabel("Title").fill("Terms everyone accepts");
+      await page.getByLabel("Text of the document").fill("The text of the terms.");
+      await page.getByLabel("Change summary").fill("Adds retention periods for application data.");
+      await page.getByRole("button", { name: "Publish new version" }).click();
+      await expect(page.getByText(`Version 1 of ${name} is published`, { exact: true })).toBeVisible();
+
+      const emails = () =>
+        query<{ n: number }>(
+          `select count(*)::int as n from public.notifications where kind = 'legal_version' and payload ->> 'document_slug' = ${literal(name)}`,
+        )[0].n;
+      const candidates = query<{ n: number }>(
+        `select count(*)::int as n from public.profiles where account_kind = 'worker' and status = 'active' and deleted_at is null`,
+      )[0].n;
+      expect(emails()).toBe(0);
+      expect(query(`select 1 from pgmq.q_account_ops where message ->> 'document_slug' = ${literal(name)}`)).toHaveLength(1);
+
+      await runAccountOps();
+      expect(candidates).toBeGreaterThan(0);
+      expect(emails()).toBe(candidates);
+      expect(
+        query<{ payload: { version: number; change_summary: string } }>(
+          `select payload from public.notifications where kind = 'legal_version' and user_id = ${literal(worker.id)} and payload ->> 'document_slug' = ${literal(name)}`,
+        ),
+      ).toEqual([{ payload: expect.objectContaining({ version: 1, change_summary: "Adds retention periods for application data." }) }]);
+      expect(
+        query<{ entity_type: string; emails: number }>(
+          `select entity_type, (metadata ->> 'emails_queued')::int as emails from audit.log where action = 'account_ops_done' and entity_id = ${literal(`${name}:1`)}`,
+        ),
+      ).toEqual([{ entity_type: "legal_document", emails: candidates }]);
+
+      execute(`select pgmq.send('account_ops', jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', ${literal(name)}, 'version', 1))`);
+      await runAccountOps();
+      expect(emails()).toBe(candidates);
+    } finally {
+      execute(`update private.settings set value = ${literal(JSON.stringify(original))}::jsonb where key = 'required_consents'`);
+    }
   });
 });

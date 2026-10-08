@@ -122,6 +122,31 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await expect(table.getByRole("row", { name: new RegExp(name) })).toContainText("1");
   });
 
+  test("FR-F1 AC11: the same form submitted from a second tab publishes nothing more, and the person is told why", async ({ page }) => {
+    const name = `e2e-${uniqueTag()}`;
+    execute(
+      `insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+       values (${literal(name)}, 1, 'Document for the tabs', 'The first text.', 'The first approved text.', now())`,
+    );
+    await signInStaff(page, "admin", `/en/admin/legal?slug=${name}`);
+    const second = await page.context().newPage();
+    await second.goto(`/en/admin/legal?slug=${name}`);
+    for (const tab of [page, second]) {
+      await waitForHydration(tab.getByLabel("Document name"));
+      await expect(tab.getByLabel("Document name")).toHaveValue(name);
+      await tab.getByLabel("Text of the document").fill("The second text.");
+      await tab.getByLabel("Change summary").fill("Adds retention periods for application data.");
+    }
+
+    await page.getByRole("button", { name: "Publish new version" }).click();
+    await expect(page.getByText(`Version 2 of ${name} is published`, { exact: true })).toBeVisible();
+    await second.getByRole("button", { name: "Publish new version" }).click();
+    await expect(second.getByText("This document has a different current version than the form showed.").first()).toBeVisible();
+    expect(query(`select version from public.legal_documents where slug = ${literal(name)} order by version`)).toEqual([{ version: 1 }, { version: 2 }]);
+    expect(query(`select 1 from audit.log where action = 'legal_document.publish' and entity_id like ${literal(`${name}:%`)}`)).toHaveLength(1);
+    expect(query(`select 1 from pgmq.q_account_ops where message ->> 'document_slug' = ${literal(name)}`)).toHaveLength(1);
+  });
+
   test("FR-F1: the statistics show eight stages for a range, name a wrong range and show no applicant", async ({ page }) => {
     await signInStaff(page, "admin", "/en/admin/statistics");
     const table = page.getByRole("table", { name: /Applications created from/ });
@@ -184,6 +209,49 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await page.getByRole("link", { name: "Reset two-step verification of this user" }).click();
     await expect(page).toHaveURL(`/en/admin/mfa-reset?user=${target.id}`);
     await expect(page.getByLabel("User id")).toHaveValue(target.id);
-    execute("select 1");
+  });
+
+  test("FR-A7 AC10: a grant that fails shows an error toast and keeps the dialog and what was typed, and a retry then succeeds", async ({ page }) => {
+    await signInStaff(page, "admin", "/en/admin/staff");
+    const person = await createCommittedUser("company");
+    const open = page.getByRole("button", { name: "Grant a role" });
+    await waitForHydration(open);
+    await open.click();
+    const dialog = page.getByRole("dialog", { name: "Grant a platform role" });
+    await dialog.getByLabel("Email address of the person").fill(person.email);
+    await dialog.getByLabel("Role").selectOption("trust_safety");
+    await dialog.getByLabel("Reason").fill(REASON);
+
+    await page.route("**/en/admin/staff", (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
+    await dialog.getByRole("button", { name: "Grant role" }).click();
+    await expect(page.getByText("The role was not granted", { exact: true })).toBeVisible();
+    await expect(page.getByText("Check your connection and try again.").first()).toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("Email address of the person")).toHaveValue(person.email);
+    expect(roles(person.id)).toEqual([]);
+
+    await page.unroute("**/en/admin/staff");
+    await dialog.getByRole("button", { name: "Grant role" }).click();
+    await expect(dialog).toBeHidden();
+    expect(roles(person.id)).toHaveLength(1);
+  });
+
+  test("FR-A7 AC10: a revocation that fails shows an error toast and keeps the dialog, and the role stays active", async ({ page }) => {
+    const person = await createCommittedUser("company");
+    await signInStaff(page, "admin", "/en/admin/staff");
+    execute(`insert into public.platform_staff (user_id, role) values (${literal(person.id)}, 'verification_reviewer')`);
+    await page.reload();
+    const row = page.getByRole("table", { name: "Platform staff roles" }).getByRole("row", { name: new RegExp(person.email) });
+    const revokeButton = row.getByRole("button", { name: /Revoke/ });
+    await waitForHydration(revokeButton);
+    await revokeButton.click();
+    const revoke = page.getByRole("dialog", { name: "Revoke a platform role" });
+    await revoke.getByLabel("Reason").fill("Left the support team, ticket 4813");
+
+    await page.route("**/en/admin/staff", (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
+    await revoke.getByRole("button", { name: "Revoke role" }).click();
+    await expect(page.getByText("The role was not revoked", { exact: true })).toBeVisible();
+    await expect(revoke).toBeVisible();
+    expect(roles(person.id)).toEqual([{ role: "verification_reviewer", revoked: false, granted_by: null }]);
   });
 });
