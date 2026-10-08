@@ -9,14 +9,16 @@
 -- else than in the payload of the row while the row is queued: invite_member adds it after the queue message is
 -- written, so it is never in the queue, and a trigger removes it from the payload when the row leaves the queued state.
 
+-- Both checks are added not valid and validated in 20261101100100, so the scan of a large table does not hold the lock
+-- that every producer of notifications waits for.
 alter table public.notifications drop constraint notifications_kind_check;
 alter table public.notifications add constraint notifications_kind_check check (kind in (
   'application_received', 'status_changed', 'vacancy_hidden', 'trial_ending', 'payment_failed', 'legal_version',
   'mfa_reset', 'deletion_requested', 'deletion_completed', 'erasure_paused', 'member_invitation'
-));
+)) not valid;
 alter table public.notifications drop constraint notifications_check;
 alter table public.notifications add constraint notifications_check
-  check (user_id is not null or kind in ('deletion_completed', 'member_invitation'));
+  check (user_id is not null or kind in ('deletion_completed', 'member_invitation')) not valid;
 
 comment on column public.notifications.payload is
   'What the email may show, built from the queue message by private.notification_payload. A member_invitation holds the link token while the row is queued and loses it when the row is sent, failed or suppressed. A suppressed member_invitation was replaced by a newer invitation to the same address.';
