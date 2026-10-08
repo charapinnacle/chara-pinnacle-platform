@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(55);
 
 \ir organizations_fixture.inc
 
@@ -139,6 +139,22 @@ select is(
 select is(
   pg_temp.call_as(null, 'anon', 'select count(*) from public.notifications'), '42501|permission denied for table notifications|',
   'AC6: an anonymous visitor may not read any notification row'
+);
+select is(
+  pg_temp.val_as(:'mem', 'aal2', $$select count(*) from public.notifications where kind = 'member_invitation'$$), '0',
+  'AC6: a plain member of the same organization cannot read the row with the token'
+);
+select is(
+  pg_temp.val_as(:'own2', 'aal2', $$select count(*) from public.notifications where kind = 'member_invitation'$$), '0',
+  'AC6: an owner of another organization cannot read the row with the token'
+);
+select is(
+  pg_temp.val_as(:'wkr', 'aal2', $$select count(*) from public.notifications where kind = 'member_invitation'$$), '0',
+  'AC6: a worker cannot read the row with the token'
+);
+select is(
+  pg_temp.call_as(null, 'service_role', 'select count(*) from public.notifications'), '42501|permission denied for table notifications|',
+  'AC6: the service role reads the row only through notify_dequeue'
 );
 
 create temp table t_batch as select pg_temp.dequeue() as r;
