@@ -50,7 +50,7 @@ export const checkoutInputSchema = z.object({
   billingCountry: checkoutFormSchema.shape.billingCountry,
   vatId: z.string().trim().max(MAX_FIELD),
   registrationNumber: z.string().trim().max(MAX_FIELD),
-  termsVersion: z.number().int().min(0),
+  termsVersion: z.number().int().min(0).max(1_000_000),
   disclosedTrialDays: z.number().int().min(0).max(365),
 });
 

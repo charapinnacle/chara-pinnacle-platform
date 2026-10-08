@@ -73,6 +73,7 @@ describe("the input of the checkout action", () => {
     ["a slug with capitals", { slug: "Acme" }],
     ["a plan code that is not snake case", { planCode: "Employer Starter" }],
     ["a negative terms version", { termsVersion: -1 }],
+    ["a terms version above a million", { termsVersion: 1_000_001 }],
     ["a trial length of 366 days", { disclosedTrialDays: 366 }],
     ["a fractional trial length", { disclosedTrialDays: 1.5 }],
     ["an identifier of 65 characters", { vatId: "D".repeat(65) }],

@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(33);
 
 \ir organizations_fixture.inc
 
@@ -125,7 +125,16 @@ select is(
 select is(pg_temp.trial_days(:'own1', :'x', 'DE', 'DE123456788', null), '30', 'checkout then starts with a trial');
 select is(
   pg_temp.call_as(:'own1', 'authenticated', format($$select public.set_legal_entity_identifier(%L, 'FR 999 999 998', 'vat_number')$$, :'x')),
-  'P0001|CHARA_FORBIDDEN|legal_entity_identifier_locked', 'FR-A2 AC7: once the billing customer exists the identifier is locked'
+  'ok', 'a customer row the provider has not linked (a start whose session was never created) does not lock the identifier'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format($$select public.set_legal_entity_identifier(%L, 'DE 123 456 788', 'vat_number')$$, :'x')),
+  'ok', 'and the owner can put the first value back'
+);
+update billing.customers set customer_ref = 'cus_x' where organization_id = :'x';
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format($$select public.set_legal_entity_identifier(%L, 'FR 999 999 998', 'vat_number')$$, :'x')),
+  'P0001|CHARA_FORBIDDEN|legal_entity_identifier_locked', 'FR-A2 AC7: once the provider has linked the billing customer the identifier is locked'
 );
 select is(
   (select legal_entity_identifier from public.organizations where id = :'x'), 'DE123456788', 'FR-A2 AC7: the value is unchanged'

@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
@@ -48,8 +49,12 @@ export function CheckoutForm({
     defaultValues: { ...defaults, termsAccepted: false },
     shouldFocusError: false,
   });
-  const { control, formState, handleSubmit } = form;
+  const { control, formState, handleSubmit, setValue } = form;
   const accepted = useWatch({ control, name: "termsAccepted" });
+  // New disclosures need a new acceptance: the page shows corrected terms after a trial that changed.
+  useEffect(() => {
+    setValue("termsAccepted", false);
+  }, [disclosedTrialDays, setValue]);
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not start the checkout" });
 
   const items: ErrorSummaryItem[] = [

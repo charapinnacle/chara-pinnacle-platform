@@ -20,7 +20,7 @@ const REASONS: Record<string, string> = {
   plan_not_sold: "This plan cannot be bought online.",
   terms_not_published: "The Subscription and Billing Terms are not available yet. Try again later.",
   terms_version_mismatch: "The Subscription and Billing Terms changed. Reload this page to read the current version.",
-  trial_changed: "The free trial offered to your company changed. Reload this page to see the terms before you continue.",
+  trial_changed: "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue.",
   already_subscribed: "Your organization already has a subscription. Use Manage billing to change it.",
   no_customer: "There is no billing account to manage yet.",
 };
@@ -63,6 +63,8 @@ export async function startCheckout(input: CheckoutInput): Promise<BillingResult
     disclosedTrialDays: fields.disclosedTrialDays,
   });
   if ("url" in session) redirect(session.url);
+  // The function has saved the submitted tax data, so the page now shows the disclosures that apply to it.
+  if (session.refusal.reason === "trial_changed") revalidatePath(`${billingPath(defaultLocale, slug)}/checkout`);
   return refusalResult(session, slug);
 }
 

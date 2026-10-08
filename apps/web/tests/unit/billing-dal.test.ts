@@ -45,7 +45,7 @@ describe("requestHostedSession", () => {
   });
 
   it.each([
-    [Response.json({ error: "forbidden", reason: "trial_changed" }, { status: 403 }), { status: 403, reason: "trial_changed", field: null }],
+    [Response.json({ error: "trial_changed", reason: "trial_changed" }, { status: 409 }), { status: 409, reason: "trial_changed", field: null }],
     [Response.json({ error: "bad_request", field: "vat_id" }, { status: 400 }), { status: 400, reason: null, field: "vat_id" }],
     [Response.json({ error: "unavailable" }, { status: 502 }), { status: 502, reason: null, field: null }],
     [new Response("not json", { status: 500 }), { status: 500, reason: null, field: null }],

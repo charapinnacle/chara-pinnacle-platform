@@ -1,11 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { defaultLocale } from "../../../apps/web/lib/i18n/locale.ts";
 import { json } from "../_shared/http.ts";
 import { type BillingProvider, BillingProviderError } from "../_shared/billing/provider.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BEARER = /^Bearer ([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.[A-Za-z0-9_-]+$/;
 const MAX_FIELD = 64;
+const MAX_TERMS_VERSION = 1_000_000;
+const MAX_TRIAL_DAYS = 365;
+// The return addresses are fixed by FR-G2 AC8: the billing page of the organization in the default locale.
+const RETURN_LOCALE = "en";
 
 // The refusals of the database that the page explains to the person; anything else is "forbidden" without a reason.
 const REASONS = new Set([
@@ -17,7 +20,6 @@ const REASONS = new Set([
   "terms_not_published",
   "terms_version_mismatch",
   "already_subscribed",
-  "trial_changed",
   "no_customer",
 ]);
 const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration_number"]);
@@ -65,6 +67,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isBoundedInteger(value: unknown, max: number): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
+}
+
 // null for a value that was left out, undefined for one that cannot be accepted.
 function text(value: unknown): string | null | undefined {
   if (value === undefined || value === null) {
@@ -88,9 +94,9 @@ function parse(body: unknown): Checkout | Portal | null {
   if (
     body.action !== "checkout" || typeof planCode !== "string" || planCode.length > MAX_FIELD ||
     typeof billingCountry !== "string" || billingCountry.length > MAX_FIELD || vatId === undefined ||
-    registrationNumber === undefined || !Number.isInteger(termsVersion) || (termsVersion as number) < 0 ||
+    registrationNumber === undefined || !isBoundedInteger(termsVersion, MAX_TERMS_VERSION) ||
     (disclosedTrialDays !== undefined && disclosedTrialDays !== null &&
-      (!Number.isInteger(disclosedTrialDays) || (disclosedTrialDays as number) < 0))
+      !isBoundedInteger(disclosedTrialDays, MAX_TRIAL_DAYS))
   ) {
     return null;
   }
@@ -143,12 +149,16 @@ async function startCheckout(client: SupabaseClient, request: Checkout, deps: Bi
   if (error || !row) {
     return error ? refusal(error) : json(502, { error: "unavailable" });
   }
+  const trialDays = row.trial_days as number;
+  if (request.disclosedTrialDays !== null && request.disclosedTrialDays !== trialDays) {
+    return json(409, { error: "trial_changed", reason: "trial_changed" });
+  }
   const billingUrl = returnUrl(deps.siteUrl, String(row.slug));
   const { url } = await deps.provider.createCheckout({
     orgId: request.orgId,
     planCode: request.planCode,
     priceRef: row.price_ref as string | null,
-    trialDays: row.trial_days as number,
+    trialDays,
     successUrl: billingUrl,
     cancelUrl: billingUrl,
     customerRef: (row.customer_ref as string | null) ?? undefined,
@@ -170,7 +180,7 @@ async function startPortal(client: SupabaseClient, request: Portal, deps: Billin
 }
 
 function returnUrl(siteUrl: string, slug: string): string {
-  return `${new URL(siteUrl).origin}/${defaultLocale}/org/${slug}/billing`;
+  return `${new URL(siteUrl).origin}/${RETURN_LOCALE}/org/${slug}/billing`;
 }
 
 export async function handleBillingCheckout(req: Request, deps: BillingCheckoutDeps): Promise<Response> {

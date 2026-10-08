@@ -66,7 +66,7 @@ describe("startCheckout", () => {
 
   it.each([
     [refusal(403, "terms_version_mismatch"), "The Subscription and Billing Terms changed. Reload this page to read the current version."],
-    [refusal(403, "trial_changed"), "The free trial offered to your company changed. Reload this page to see the terms before you continue."],
+    [refusal(409, "trial_changed"), "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue."],
     [refusal(403, "already_subscribed"), "Your organization already has a subscription. Use Manage billing to change it."],
     [refusal(403, "plan_not_sold"), "This plan cannot be bought online."],
     [refusal(403, "organization_suspended"), "This organization is suspended, so it cannot start a subscription."],
@@ -76,6 +76,17 @@ describe("startCheckout", () => {
   ])("says in words what the function refused (%j)", async (answer, message) => {
     requestMock.mockResolvedValue(answer);
     await expect(startCheckout(input)).resolves.toEqual({ message });
+  });
+
+  it("refreshes the confirmation page after a trial that changed, and after no other refusal", async () => {
+    revalidateMock.mockClear();
+    requestMock.mockResolvedValue(refusal(409, "trial_changed"));
+    await startCheckout(input);
+    expect(revalidateMock).toHaveBeenCalledExactlyOnceWith("/en/org/acme/billing/checkout");
+    revalidateMock.mockClear();
+    requestMock.mockResolvedValue(refusal(403, "already_subscribed"));
+    await startCheckout(input);
+    expect(revalidateMock).not.toHaveBeenCalled();
   });
 
   it.each([

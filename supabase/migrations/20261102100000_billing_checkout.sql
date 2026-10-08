@@ -3,8 +3,9 @@
 -- identifiers that already had a free trial; the provider references of the plans are written by the Stripe mirror
 -- script (FR-G1). Checkout and portal start through RPCs that the billing-checkout Edge Function calls with the
 -- caller's own token: the role, the second step, the terms, the tax input and the trial rule are checked here, in one
--- transaction, and a refused call leaves no row. The webhook (FR-G3) links the customer reference and writes the
--- trial ledger and the subscription.
+-- transaction, and a refused call leaves no row, except that a start whose disclosed trial no longer matches saves the
+-- submitted tax data so that the page can show the corrected terms. The webhook (FR-G3) links the customer reference
+-- and writes the trial ledger and the subscription.
 
 -- Upper case, with spaces, dots, hyphens and slashes removed; null for an empty value.
 create function private.normalize_legal_identifier(p_value text) returns text
@@ -79,15 +80,17 @@ create trigger plan_provider_refs_audit
   after insert or update or delete on billing.plan_provider_refs
   for each row execute function private.billing_plan_audit();
 
--- A billing customer also locks the identifier of the organization: the identifier a trial was granted for cannot be
--- swapped for another one once checkout has started (replaces the version of the plans migration).
+-- A billing customer that the provider has linked also locks the identifier of the organization: the identifier a trial
+-- was granted for cannot be swapped for another one once a payment has started. A customer row that only holds the tax
+-- data of a start whose session was never created (the provider failed, or the person left) does not lock it (replaces
+-- the version of the plans migration).
 create or replace function private.legal_entity_locked(p_org uuid) returns boolean
 language sql
 stable
 set search_path = ''
 as $$
   select exists (select 1 from billing.subscriptions s where s.organization_id = p_org)
-    or exists (select 1 from billing.customers c where c.organization_id = p_org)
+    or exists (select 1 from billing.customers c where c.organization_id = p_org and c.customer_ref is not null)
 $$;
 
 -- Whether a free trial was already used, by the organization itself or by the legal entity: a trial grant of the
@@ -136,8 +139,10 @@ revoke all on function private.assert_billing_manager(uuid) from public, anon, a
 -- the slug of the document) and the audit row are written together. Returns what the function needs to create the
 -- hosted session: the price at the provider, the customer reference if the webhook has linked one, the trial length
 -- (0 for a legal entity that already had a trial) and the slug of the organization for the return address. The caller
--- states the trial length they were shown (p_disclosed_trial_days), so that an identifier that changes the answer
--- cannot start a trial, or a charge, that was not disclosed.
+-- states the trial length they were shown (p_disclosed_trial_days). When the identifiers submitted change the answer,
+-- the tax data is saved, nothing else is written and the row returned carries the trial length that applies, which
+-- differs from the disclosed one: the caller shows the corrected terms (the page reads them from the saved data) and
+-- starts again, so a trial, or a charge, that was not disclosed is never started.
 create function public.billing_checkout_start(
   p_org uuid,
   p_plan_code text,
@@ -164,6 +169,7 @@ declare
   v_customer_ref text;
   v_used boolean;
   v_trial integer;
+  v_linked_provider text;
 begin
   perform private.assert_org_manager(p_org, 'admin');
   select * into v_org from public.organizations o where o.id = p_org;
@@ -213,21 +219,28 @@ begin
     raise exception 'CHARA_UNAVAILABLE' using detail = 'plan_not_synced';
   end if;
 
+  select c.provider into v_linked_provider
+  from billing.customers c where c.organization_id = p_org and c.customer_ref is not null;
+  if v_linked_provider is distinct from p_provider and v_linked_provider is not null then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'provider_mismatch';
+  end if;
+
   v_used := private.billing_trial_used(p_org, v_country, v_vat, v_reg);
   v_trial := case when v_used then 0 else v_plan.trial_days end;
-  if p_disclosed_trial_days is not null and p_disclosed_trial_days <> v_trial then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'trial_changed';
-  end if;
 
   insert into billing.customers as c (organization_id, provider, billing_country, vat_id, registration_number)
   values (p_org, p_provider, v_country, v_vat, v_reg)
   on conflict (organization_id) do update
-    set customer_ref = case when c.provider = excluded.provider then c.customer_ref end,
-        provider = excluded.provider,
+    set provider = excluded.provider,
         billing_country = excluded.billing_country,
         vat_id = excluded.vat_id,
         registration_number = excluded.registration_number
   returning c.customer_ref into v_customer_ref;
+
+  if p_disclosed_trial_days is not null and p_disclosed_trial_days <> v_trial then
+    return query select v_price_ref, v_customer_ref, v_trial, v_org.slug;
+    return;
+  end if;
 
   if not exists (
     select 1 from (

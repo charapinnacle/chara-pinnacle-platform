@@ -32,7 +32,7 @@ function providerSpy(options: { fail?: boolean } = {}) {
       checkouts.push(input);
       return options.fail
         ? Promise.reject(new BillingProviderError("stripe_http_400"))
-        : Promise.resolve({ url: "https://checkout.stripe.com/c/pay/cs_1", providerRef: "cs_1" });
+        : Promise.resolve({ url: "https://checkout.stripe.com/c/pay/cs_1" });
     },
     createPortal(input) {
       portals.push(input);
@@ -138,18 +138,47 @@ Deno.test("FR-G2 AC9: a valid request runs the start with the caller's token, ig
 });
 
 Deno.test("an organisation without a linked customer starts a checkout with no customer reference", async () => {
-  const { spy, response } = run(checkoutBody, { [START]: reply(200, [{ ...row, customer_ref: null, trial_days: 0 }]) });
+  const { spy, response } = run({ ...checkoutBody, disclosedTrialDays: 0 }, {
+    [START]: reply(200, [{ ...row, customer_ref: null, trial_days: 0 }]),
+  });
   assert.equal((await response).status, 200);
   assert.equal(spy.checkouts[0].customerRef, undefined);
   assert.equal(spy.checkouts[0].trialDays, 0);
 });
 
 Deno.test("FR-G2 AC9: when the provider fails the answer is 502 with a generic message", async () => {
-  const { spy, response } = run(checkoutBody, { [START]: started }, bearer(SIGNED_IN), providerSpy({ fail: true }));
+  const { database, spy, response } = run(
+    checkoutBody,
+    { [START]: started },
+    bearer(SIGNED_IN),
+    providerSpy({ fail: true }),
+  );
   const result = await response;
   assert.equal(result.status, 502);
   assert.deepEqual(await result.json(), { error: "unavailable" });
   assert.equal(spy.checkouts.length, 1);
+  // Departure D66: the start (customer, consent, audit row) is committed before the provider is called, so a failed
+  // session leaves them; the customer row holds no reference and does not lock the identifier (pgTAP 082).
+  assert.equal(database.calls.length, 1);
+});
+
+Deno.test("FR-G2 AC2: when the trial that applies differs from the one shown, the answer is 409 and no session is created", async () => {
+  for (const [disclosed, applies] of [[30, 0], [0, 30], [14, 30]]) {
+    const { spy, response } = run(
+      { ...checkoutBody, disclosedTrialDays: disclosed },
+      { [START]: reply(200, [{ ...row, trial_days: applies }]) },
+    );
+    const result = await response;
+    assert.equal(result.status, 409);
+    assert.deepEqual(await result.json(), { error: "trial_changed", reason: "trial_changed" });
+    assert.equal(spy.checkouts.length, 0);
+  }
+  const { spy, response } = run(
+    { ...checkoutBody, disclosedTrialDays: 0 },
+    { [START]: reply(200, [{ ...row, trial_days: 0 }]) },
+  );
+  assert.equal((await response).status, 200);
+  assert.equal(spy.checkouts[0].trialDays, 0);
 });
 
 Deno.test("refusals of the database are told apart, with a reason only from the known list", async () => {
@@ -159,7 +188,7 @@ Deno.test("refusals of the database are told apart, with a reason only from the 
       error: "forbidden",
       reason: "terms_version_mismatch",
     }],
-    [database("CHARA_FORBIDDEN", "P0001", "trial_changed"), 403, { error: "forbidden", reason: "trial_changed" }],
+    [database("CHARA_FORBIDDEN", "P0001", "provider_mismatch"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001", "something internal"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_INVALID_INPUT", "22023", "vat_id"), 400, { error: "bad_request", field: "vat_id" }],
@@ -192,6 +221,9 @@ Deno.test("a malformed request is refused before the database is asked", async (
     { ...checkoutBody, vatId: "D".repeat(65) },
     { ...checkoutBody, termsVersion: "2" },
     { ...checkoutBody, termsVersion: -1 },
+    { ...checkoutBody, termsVersion: 1_000_001 },
+    { ...checkoutBody, termsVersion: 2_147_483_648 },
+    { ...checkoutBody, disclosedTrialDays: 366 },
     { ...checkoutBody, disclosedTrialDays: 1.5 },
     [checkoutBody],
   ];

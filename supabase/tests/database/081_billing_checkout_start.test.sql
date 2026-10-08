@@ -1,5 +1,5 @@
 begin;
-select plan(57);
+select plan(67);
 
 \ir organizations_fixture.inc
 
@@ -141,10 +141,18 @@ select is(
   current_setting('t.result')::jsonb ->> 'customer_ref', 'cus_linked', 'the linked customer reference is returned'
 );
 update billing.customers set provider = 'stripe', customer_ref = 'cus_stripe' where organization_id = :'o';
-select pg_temp.checkout(:'own1', :'o', 'employer_starter', 'DE', 'DE123456789', null, 2) as again \gset
 select is(
-  (select format('%s|%s', provider, customer_ref is null) from billing.customers where organization_id = :'o'),
-  'null|t', 'a customer reference of another provider is dropped when the provider changes'
+  pg_temp.checkout(:'own1', :'o', 'employer_starter', 'DE', 'DE123456789', null, 2),
+  'P0001|CHARA_FORBIDDEN|provider_mismatch', 'a caller cannot name another provider for a customer the provider has linked'
+);
+select is(
+  (select format('%s|%s', provider, customer_ref) from billing.customers where organization_id = :'o'),
+  'stripe|cus_stripe', 'and the provider and the customer reference stay as they were'
+);
+update billing.customers set customer_ref = null where organization_id = :'o';
+select is(
+  pg_temp.checkout(:'own1', :'o', 'employer_starter', 'DE', 'DE123456789', null, 2), 'ok',
+  'a customer the provider has not linked may change provider'
 );
 
 -- AC5: who may start a checkout. Each refusal leaves the three tables as they were.
@@ -223,17 +231,61 @@ select is(
   (select provider from billing.customers where organization_id = :'strp'), 'stripe', 'and records the provider on the customer'
 );
 
--- The trial length the caller was shown must still be the one that applies.
+-- The trial length the caller was shown must still be the one that applies. A start whose disclosure no longer matches
+-- saves the submitted tax data and nothing else, and returns the length that applies, so that the page can show it.
 select pg_temp.new_org(:'own1') as shown \gset
 select set_config('t.written', pg_temp.written(), true) as base \gset
 select is(
   pg_temp.checkout(:'own1', :'shown', 'employer_starter', 'DE', 'DE123456789', null, 2, 'aal2', ', ''null'', 0'),
-  'P0001|CHARA_FORBIDDEN|trial_changed', 'a trial length that differs from the disclosed one is refused'
+  'ok', 'a disclosed trial length that differs from the one that applies is answered, not started'
 );
-select is(pg_temp.written(), current_setting('t.written'), 'and writes nothing');
+select is(
+  (current_setting('t.result')::jsonb ->> 'trial_days')::integer, 30, 'the answer carries the trial length that applies'
+);
+select is(
+  (select count(*) from billing.customers) || '|'
+    || (select count(*) from public.consents where purpose = 'subscription-and-billing-terms') || '|'
+    || (select count(*) from audit.log where action = 'billing.checkout_started'),
+  (split_part(current_setting('t.written'), '|', 1)::integer + 1) || '|' || split_part(current_setting('t.written'), '|', 2)
+    || '|' || split_part(current_setting('t.written'), '|', 3),
+  'it saved the tax data of the organisation and wrote no consent and no audit row'
+);
 select is(
   pg_temp.checkout(:'own1', :'shown', 'employer_starter', 'DE', 'DE123456789', null, 2, 'aal2', ', ''null'', 30'),
   'ok', 'the disclosed trial length is accepted'
+);
+select is(
+  (select count(*) from public.consents where purpose = 'subscription-and-billing-terms')
+    || '|' || (select count(*) from audit.log where action = 'billing.checkout_started' and entity_id = :'shown'),
+  split_part(current_setting('t.written'), '|', 2) || '|1',
+  'and then the audit row is written (the caller had accepted this version already, so no second consent row)'
+);
+
+-- A repeat legal entity typed into the form of an organisation that has no stored identifier: the first start is
+-- answered with no trial, the page then reads no trial from the saved data, and the second start goes through.
+select pg_temp.new_org(:'own2', null) as repeat \gset
+insert into billing.trial_grants (identifier_key, organization_id) values ('vat:DE555555555', :'shown');
+select is(
+  pg_temp.val_as(:'own2', 'aal2', format($$select trial_used from public.billing_checkout_state(%L)$$, :'repeat')), 'false',
+  'before the first start the page cannot know that the typed VAT ID had a trial'
+);
+select is(
+  pg_temp.checkout(:'own2', :'repeat', 'employer_starter', 'DE', 'DE 555 555 555', null, 2, 'aal2', ', ''null'', 30'),
+  'ok', 'the start with the trial that was shown is answered'
+);
+select is((current_setting('t.result')::jsonb ->> 'trial_days')::integer, 0, 'with no trial');
+select is(
+  pg_temp.val_as(:'own2', 'aal2', format($$select trial_used from public.billing_checkout_state(%L)$$, :'repeat')), 'true',
+  'the page now reads from the saved data that the company had its trial'
+);
+select is(
+  pg_temp.checkout(:'own2', :'repeat', 'employer_starter', 'DE', 'DE 555 555 555', null, 2, 'aal2', ', ''null'', 0'),
+  'ok', 'the second start with the no-trial disclosure is accepted'
+);
+select is(
+  (select metadata from audit.log where action = 'billing.checkout_started' and entity_id = :'repeat'),
+  '{"plan_code": "employer_starter", "trial_days": 0, "legal_entity_trial_used": true}'::jsonb,
+  'and is audited with no trial'
 );
 
 select * from finish();
