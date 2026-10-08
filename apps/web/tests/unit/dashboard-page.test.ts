@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { MemberRole } from "@/lib/validation/team";
 
 const requireUserMock = vi.hoisted(() => vi.fn());
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
@@ -30,8 +31,8 @@ vi.mock("@/components/dashboard/employer-dashboard", () => ({
 
 const { default: DashboardPage } = await import("@/app/[lang]/(app)/dashboard/[kind]/page");
 
-const acme = { id: "org-a", slug: "acme-bau", displayName: "Acme Bau", role: "owner" as const };
-const beta = { id: "org-b", slug: "beta-works", displayName: "Beta Works", role: "member" as const };
+const acme = { id: "org-a", slug: "acme-bau", displayName: "Acme Bau", role: "owner" as MemberRole };
+const beta = { id: "org-b", slug: "beta-works", displayName: "Beta Works", role: "member" as MemberRole };
 const props = (kind: string, query: Record<string, string> = {}) =>
   ({ params: Promise.resolve({ lang: "en", kind }), searchParams: Promise.resolve(query) }) as Parameters<typeof DashboardPage>[0];
 const render = async (kind = "employer", query?: Record<string, string>) => renderToStaticMarkup(await DashboardPage(props(kind, query)));

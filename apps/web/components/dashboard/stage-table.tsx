@@ -12,7 +12,7 @@ export function StageTable({ lang, slug, applications }: StageTableProps) {
       <h2 id="stage-heading" className="text-lg font-semibold">
         Applicants by stage
       </h2>
-      <table className="w-full text-body">
+      <table aria-labelledby="stage-heading" className="w-full text-body">
         <thead>
           <tr className="border-b">
             <th scope="col" className="py-2 text-start font-medium">
