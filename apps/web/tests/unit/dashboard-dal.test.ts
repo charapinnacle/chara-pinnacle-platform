@@ -8,6 +8,7 @@ let rpcResults: Record<string, Result> = {};
 const calls: [string, unknown[]][] = [];
 const rpcCalls: unknown[][] = [];
 const logMock = vi.hoisted(() => vi.fn());
+const errorLog = vi.hoisted(() => vi.fn());
 
 function builder(): unknown {
   const self: unknown = new Proxy(
@@ -63,6 +64,8 @@ beforeEach(() => {
   tableResults = [];
   rpcResults = {};
   logMock.mockClear();
+  errorLog.mockClear();
+  vi.spyOn(console, "error").mockImplementation(errorLog);
 });
 
 describe("getDashboardApplications", () => {
@@ -93,8 +96,10 @@ describe("getDashboardApplications", () => {
   });
 
   it("fails with a message that holds no detail when the read fails", async () => {
-    rpcResults.get_dashboard_applications = { data: null, error: { message: "secret detail" } };
+    rpcResults.get_dashboard_applications = { data: null, error: { code: "42501", message: "secret detail" } };
     await expect(applicationsOf(org)).rejects.toThrow("The applications could not be counted");
+    expect(errorLog).toHaveBeenCalledWith("Dashboard applications read failed", { code: "42501", message: "secret detail" });
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain(org);
   });
 });
 
@@ -115,8 +120,9 @@ describe("getVacancySummary", () => {
   });
 
   it("fails when either read fails or the count is missing", async () => {
-    tableResults = [{ data: null, error: { message: "x" }, count: null }, { data: [], error: null }];
+    tableResults = [{ data: null, error: { code: "57014", message: "x" }, count: null }, { data: [], error: null }];
     await expect(vacanciesOf(org)).rejects.toThrow("The vacancies could not be counted");
+    expect(errorLog).toHaveBeenCalledWith("Dashboard vacancies read failed", { code: "57014", message: "x" });
     tableResults = [{ data: null, error: null, count: 1 }, { data: null, error: { message: "x" } }];
     await expect(vacanciesOf(org)).rejects.toThrow("The vacancies could not be counted");
     tableResults = [{ data: null, error: null, count: null }, { data: [], error: null }];
@@ -143,8 +149,9 @@ describe("getDashboardPlan", () => {
     await expect(planOf(org)).rejects.toThrow();
     rpcResults.get_dashboard_plan = { data: [], error: null };
     await expect(planOf(org)).rejects.toThrow();
-    rpcResults.get_dashboard_plan = { data: null, error: { message: "CHARA_FORBIDDEN" } };
+    rpcResults.get_dashboard_plan = { data: null, error: { code: "P0001", message: "CHARA_FORBIDDEN" } };
     await expect(planOf(org)).rejects.toThrow("The plan could not be loaded");
+    expect(errorLog).toHaveBeenCalledWith("Dashboard plan read failed", { code: "P0001", message: "CHARA_FORBIDDEN" });
   });
 });
 

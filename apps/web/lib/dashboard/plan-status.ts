@@ -7,7 +7,8 @@ const TRIAL_ALERT_HOURS = 72;
 // The payment grace period starts at past_due_since (ARCHITECTURE.md section 10.1).
 const GRACE_DAYS = 7;
 
-export type PlanStatus = "trialing" | "active" | "past_due" | "free";
+export const planStatuses = ["trialing", "active", "past_due", "free"] as const;
+export type PlanStatus = (typeof planStatuses)[number];
 
 export const planStatusLabels: Record<PlanStatus, string> = {
   trialing: "Trial",
@@ -21,7 +22,8 @@ export function daysLeft(end: Date, now: Date): number {
   return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / DAY_MS));
 }
 
-export function trialAlert(status: PlanStatus, trialEndsAt: Date | null, now: Date): { alert: boolean; daysLeft: number } {
+// A subscription the provider cancelled reads as free on the dashboard, so "canceled" is a status the rule is also asked about.
+export function trialAlert(status: PlanStatus | "canceled", trialEndsAt: Date | null, now: Date): { alert: boolean; daysLeft: number } {
   if (status !== "trialing" || !trialEndsAt) return { alert: false, daysLeft: 0 };
   const remaining = trialEndsAt.getTime() - now.getTime();
   return { alert: remaining > 0 && remaining <= TRIAL_ALERT_HOURS * HOUR_MS, daysLeft: daysLeft(trialEndsAt, now) };

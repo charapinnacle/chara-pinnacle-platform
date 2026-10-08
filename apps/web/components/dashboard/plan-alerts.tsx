@@ -35,7 +35,13 @@ export function PlanAlerts({ plan, now, billingHref }: PlanAlertsProps) {
               {grace ? (
                 <>
                   {" "}
-                  Your plan stays active until <DateText date={grace} /> ({daysLeftText(daysLeft(grace, now))}).
+                  {grace <= now ? (
+                    "The grace period has ended. Update your payment method now."
+                  ) : (
+                    <>
+                      Your plan stays active until <DateText date={grace} /> ({daysLeftText(daysLeft(grace, now))}).
+                    </>
+                  )}
                 </>
               ) : null}
             </p>

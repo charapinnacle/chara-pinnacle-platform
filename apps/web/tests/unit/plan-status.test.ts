@@ -29,7 +29,7 @@ describe("trialAlert (FR-E5 AC6)", () => {
   });
 
   it("does not alert for any other status, whatever the date", () => {
-    for (const status of ["active", "past_due", "free"] as const) {
+    for (const status of ["active", "canceled", "past_due", "free"] as const) {
       expect(trialAlert(status, after(HOUR), now), status).toEqual({ alert: false, daysLeft: 0 });
     }
   });

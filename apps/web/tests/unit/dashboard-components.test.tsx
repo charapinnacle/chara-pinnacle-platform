@@ -74,6 +74,14 @@ describe("an active plan and a failed payment (FR-E5 AC5, AC7)", () => {
     expect(html).toContain("Past due");
     expect(html).toContain("Basic");
   });
+
+  it("says the grace period has ended instead of a date in the past once 7 days have passed", () => {
+    const owner = alerts({ status: "past_due", pastDueSince: new Date(now.getTime() - 8 * DAY) });
+    expect(owner).toContain("payment for your plan failed");
+    expect(owner).toContain("The grace period has ended");
+    expect(owner).not.toContain("stays active");
+    expect(owner).not.toContain("0 days left");
+  });
 });
 
 describe("an organization without a paid plan (FR-E5 AC8)", () => {
