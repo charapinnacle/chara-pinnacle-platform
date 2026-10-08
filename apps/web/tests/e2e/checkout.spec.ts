@@ -1,36 +1,29 @@
-import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import {
   billingPath,
   checkoutPath,
   currentTermsVersion,
   customerRows,
+  fillCheckout,
   grantTrial,
-  linkCustomer,
+  HOSTED_ORIGIN,
+  NO_PAYMENT,
+  proceed,
   setIdentifier,
   startTrial,
   stubHostedPages,
-  subscriptionCount,
+  terms,
   termsConsents,
-  trialGrantCount,
-  HOSTED_ORIGIN,
 } from "./support/billing";
-import { literal, query } from "./support/db";
-import { logIn } from "./support/login-page";
+import { captureActionRequests } from "./support/server-action";
 import { uniqueName } from "./support/organizations";
-import { addMember, newTeam, signInAtAal2, teamAudit } from "./support/team";
+import { newTeam, signInAtAal2, teamAudit } from "./support/team";
+import { expect, test } from "./support/test";
 import { formatDate } from "@/lib/i18n/format";
 
-const NO_PAYMENT = "You have no active subscription, and no payment was taken.";
-
-async function fillCheckout(page: import("@playwright/test").Page, { country = "DE", vat = "DE123456789", registration = "HRB 12345" } = {}) {
-  await page.getByLabel("Billing country", { exact: true }).selectOption(country);
-  await page.getByLabel("VAT ID", { exact: true }).fill(vat);
-  await page.getByLabel("Company registration number", { exact: true }).fill(registration);
-}
-
-const terms = (page: import("@playwright/test").Page) => page.getByRole("checkbox", { name: /Subscription and Billing Terms/ });
-const proceed = (page: import("@playwright/test").Page) => page.getByRole("button", { name: /Continue to payment/ });
+const TRIAL_TEXT = "30 days free, starting when you confirm your payment details.";
+const NO_TRIAL_TEXT = "There is no free trial: a free trial has already been used for this company, so the first payment is due at once.";
+const CHANGED = "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue.";
 
 test.describe("checkout: the owner starts a trial through the hosted page (FR-G2)", () => {
   test("AC1: choosing Basic, the terms and the tax data lead to the hosted page, with no card field on any CHARA page", async ({ page }) => {
@@ -137,75 +130,22 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
   test("AC3: activating Continue to payment twice in quick succession creates one session and one audit row", async ({ page }) => {
     const team = await newTeam(uniqueName("Twice Bau"));
     const hosted = await stubHostedPages(page);
+    const actions = captureActionRequests(page);
     await signInAtAal2(page, team.owner, team.ownerSecret, checkoutPath(team.slug));
     await fillCheckout(page);
     await terms(page).check();
 
     await proceed(page).dblclick();
     await expect(page).toHaveURL(new RegExp(`^${HOSTED_ORIGIN}/checkout/`));
+    // Every call of the function that reaches the provider writes one audit row, so the rows count its sessions.
+    expect(actions.filter((call) => call.body.includes('"planCode"'))).toHaveLength(1);
     expect(hosted.visits).toHaveLength(1);
     expect(teamAudit(team, "billing.checkout_started")).toHaveLength(1);
     expect(customerRows(team)).toHaveLength(1);
   });
-
-  test("the identifier on file fills the form, and the owner can record it on the billing page until a payment starts", async ({ page }) => {
-    const team = await newTeam(uniqueName("Ident Bau"));
-    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
-
-    await expect(page.getByRole("heading", { name: "Company identifier" })).toBeVisible();
-    await page.getByLabel("Company registration number or VAT number").fill("de 123 456 788");
-    await page.getByLabel("Type of identifier").selectOption("vat_number");
-    await page.getByRole("button", { name: "Save identifier" }).click();
-    await expect(page.getByText("Recorded: VAT number DE123456788.")).toBeVisible();
-    await expect(page.getByText("Identifier saved", { exact: true })).toBeVisible();
-    expect(query(`select legal_entity_identifier from public.organizations where id = ${literal(team.id)}`)).toEqual([
-      { legal_entity_identifier: "DE123456788" },
-    ]);
-    expect(teamAudit(team, "legal_entity_identifier_set")).toHaveLength(1);
-
-    await page.getByRole("link", { name: "Choose Basic" }).click();
-    await expect(page.getByLabel("VAT ID", { exact: true })).toHaveValue("DE123456788");
-    await expect(page.getByLabel("Company registration number", { exact: true })).toHaveValue("");
-    await expect(page.getByLabel("Billing country", { exact: true })).toHaveValue("DE");
-  });
-
-  test("the identifier is refused when it is too short, and the control is gone once a payment has started", async ({ page }) => {
-    const team = await newTeam(uniqueName("Lock Bau"));
-    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
-
-    await page.getByLabel("Company registration number or VAT number").fill("x1");
-    await page.getByLabel("Type of identifier").selectOption("vat_number");
-    await page.getByRole("button", { name: "Save identifier" }).click();
-    await expect(page.locator("#legal-entity-identifier-error")).toHaveText(
-      "Enter 4 to 32 letters or digits; spaces, dots, hyphens and slashes are ignored.",
-    );
-    expect(teamAudit(team, "legal_entity_identifier_set")).toEqual([]);
-
-    linkCustomer(team, "cus_locked");
-    await page.goto(billingPath(team.slug));
-    await expect(page.getByRole("button", { name: "Save identifier" })).toHaveCount(0);
-    await expect(page.getByText("It cannot be changed once a payment has been started for the company.")).toBeVisible();
-  });
 });
 
-test.describe("checkout: who may use it, and what the page says when the state changed", () => {
-  test("a member and a candidate do not reach the billing page, an admin at the second step does", async ({ page, browser }) => {
-    const team = await newTeam(uniqueName("Roles Bau"));
-    const member = await addMember(team, "member");
-    const admin = await addMember(team, "admin");
-    if (!admin.secret) throw new Error("The admin has no factor");
-
-    await signInAtAal2(page, admin.user, admin.secret, billingPath(team.slug));
-    await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Company identifier" })).toHaveCount(0);
-
-    const other = await browser.newContext();
-    const memberPage = await other.newPage();
-    await logIn(memberPage, member.user, billingPath(team.slug));
-    await expect(memberPage).toHaveURL(/\/en\/forbidden$/);
-    await other.close();
-  });
-
+test.describe("checkout: when the state changed since the page was shown", () => {
   test("a company that gets a subscription while the page is open is told, and nothing is started", async ({ page }) => {
     const team = await newTeam(uniqueName("Late Bau"));
     await stubHostedPages(page);
@@ -223,93 +163,60 @@ test.describe("checkout: who may use it, and what the page says when the state c
     expect(teamAudit(team, "billing.checkout_started")).toEqual([]);
   });
 
+
   test("a trial that is no longer available since the page was shown is not started without the person seeing it", async ({ page }) => {
     const team = await newTeam(uniqueName("Taken Bau"));
     setIdentifier(team, "HRB77777");
-    await stubHostedPages(page);
+    const hosted = await stubHostedPages(page);
     await signInAtAal2(page, team.owner, team.ownerSecret, checkoutPath(team.slug));
-    await expect(page.getByText("30 days free, starting when you confirm your payment details.")).toBeVisible();
+    await expect(page.getByText(TRIAL_TEXT)).toBeVisible();
     await fillCheckout(page, { vat: "DE777777777", registration: "HRB 77777" });
     await terms(page).check();
 
     grantTrial(team, "reg:DE:HRB77777");
     await proceed(page).click();
-    await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(
-      "The free trial offered to your company changed. Reload this page to see the terms before you continue.",
-    );
-    expect(customerRows(team)).toEqual([]);
-    expect(termsConsents(team.owner)).toEqual([]);
-
-    await page.reload();
-    await expect(page.getByText("There is no free trial: a free trial has already been used for this company, so the first payment is due at once.")).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(CHANGED);
+    await expect(page.getByText(NO_TRIAL_TEXT)).toBeVisible();
     await expect(page.getByText("30 days free")).toHaveCount(0);
-  });
+    await expect(terms(page)).not.toBeChecked();
+    expect(hosted.visits).toEqual([]);
+    expect(termsConsents(team.owner)).toEqual([]);
+    expect(teamAudit(team, "billing.checkout_started")).toEqual([]);
 
-  test("a plan that is not sold, and a page without a plan, are not found", async ({ page }) => {
-    const team = await newTeam(uniqueName("Plan Bau"));
-    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
-    for (const target of ["employer_enterprise", "free_employer", "no_such_plan"]) {
-      await page.goto(checkoutPath(team.slug, target));
-      await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Continue to payment/ })).toHaveCount(0);
-    }
-    await page.goto(`${billingPath(team.slug)}/checkout`);
-    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
-  });
-
-  test("the pages fit a 360 px screen", async ({ page }) => {
-    const team = await newTeam(uniqueName("Small Bau"));
-    await page.setViewportSize({ width: 360, height: 800 });
-    await signInAtAal2(page, team.owner, team.ownerSecret, checkoutPath(team.slug));
-    await expect(page.getByRole("button", { name: /Continue to payment/ })).toBeVisible();
-    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(await overflow()).toBeLessThanOrEqual(0);
-    await page.goto(billingPath(team.slug));
-    await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
-    expect(await overflow()).toBeLessThanOrEqual(0);
-  });
-});
-
-test.describe("checkout: returning from the hosted pages (AC11)", () => {
-  test("cancelling at the hosted checkout leaves the plan choice and records no subscription and no trial", async ({ page }) => {
-    const team = await newTeam(uniqueName("Back Bau"));
-    const hosted = await stubHostedPages(page);
-    await signInAtAal2(page, team.owner, team.ownerSecret, checkoutPath(team.slug));
-    await fillCheckout(page);
     await terms(page).check();
     await proceed(page).click();
     await expect(page).toHaveURL(new RegExp(`^${HOSTED_ORIGIN}/checkout/`));
-
-    await page.getByRole("link", { name: "cancel_url" }).click();
-    await expect(page).toHaveURL(billingPath(team.slug));
-    await expect(page.getByText(NO_PAYMENT)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Choose Basic" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Manage billing" })).toHaveCount(0);
-    expect(hosted.visits).toHaveLength(1);
-    expect(subscriptionCount(team)).toBe(0);
-    expect(trialGrantCount(team)).toBe(0);
   });
 
-  test("Manage billing sends the owner to the portal of the organization's own customer and back", async ({ page }) => {
-    const team = await newTeam(uniqueName("Portal Bau"));
-    const other = await newTeam(uniqueName("Other Bau"));
-    linkCustomer(team, "cus_portal_one");
-    linkCustomer(other, "cus_portal_two");
-    startTrial(team);
+  test("a company typed into the form that already had its trial is shown the no-trial terms without a stored identifier, and then goes through", async ({ page }) => {
+    const team = await newTeam(uniqueName("Repeat Bau"));
+    const other = await newTeam(uniqueName("First Bau"));
+    grantTrial(other, "vat:DE888888888");
     const hosted = await stubHostedPages(page);
-    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
-    await expectNoAxeViolations(page);
+    await signInAtAal2(page, team.owner, team.ownerSecret, checkoutPath(team.slug));
+    await expect(page.getByText(TRIAL_TEXT)).toBeVisible();
+    await fillCheckout(page, { vat: "DE 888 888 888", registration: "" });
+    await terms(page).check();
 
-    await page.getByRole("button", { name: "Manage billing" }).click();
-    await expect(page).toHaveURL(new RegExp(`^${HOSTED_ORIGIN}/portal/cus_portal_one`));
+    await proceed(page).click();
+    await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(CHANGED);
+    await expect(page.getByText(NO_TRIAL_TEXT)).toBeVisible();
+    await expect(page.getByText("30 days free")).toHaveCount(0);
+    await expect(terms(page)).not.toBeChecked();
+    await expect(page.getByLabel("VAT ID", { exact: true })).toHaveValue("DE 888 888 888");
+    expect(customerRows(team)).toEqual([
+      { provider: "null", customer_ref: null, billing_country: "DE", vat_id: "DE888888888", registration_number: null },
+    ]);
+    expect(teamAudit(team, "billing.checkout_started")).toEqual([]);
+    expect(termsConsents(team.owner)).toEqual([]);
+    expect(hosted.visits).toEqual([]);
+
+    await terms(page).check();
+    await proceed(page).click();
+    await expect(page).toHaveURL(new RegExp(`^${HOSTED_ORIGIN}/checkout/`));
     expect(hosted.visits).toHaveLength(1);
-    expect(hosted.visits[0].searchParams.get("return_url")).toBe(`http://localhost:3100${billingPath(team.slug)}`);
-    expect(teamAudit(team, "billing.portal_opened").map((row) => row.actor_id)).toEqual([team.owner.id]);
-    expect(teamAudit(other, "billing.portal_opened")).toEqual([]);
-
-    await page.getByRole("link", { name: "return_url" }).click();
-    await expect(page).toHaveURL(billingPath(team.slug));
-    await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
-    await expect(page.getByText("Basic · Status: Trial")).toBeVisible();
+    const [started] = teamAudit(team, "billing.checkout_started");
+    expect(started.metadata).toMatchObject({ trial_days: 0, legal_entity_trial_used: true });
+    expect(termsConsents(team.owner)).toEqual([{ version: currentTermsVersion(), action: "granted" }]);
   });
 });

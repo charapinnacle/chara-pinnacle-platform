@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { execute, literal, query } from "./db";
 import type { Team } from "./team";
 import type { TestUser } from "./test-user";
@@ -96,3 +96,14 @@ export function setTrialDays(days: number): void {
 export function grantTrial(team: Pick<Team, "id">, key: string): void {
   execute(`insert into billing.trial_grants (identifier_key, organization_id) values (${literal(key)}, ${literal(team.id)})`);
 }
+
+export const NO_PAYMENT = "You have no active subscription, and no payment was taken.";
+
+export async function fillCheckout(page: Page, { country = "DE", vat = "DE123456789", registration = "HRB 12345" } = {}) {
+  await page.getByLabel("Billing country", { exact: true }).selectOption(country);
+  await page.getByLabel("VAT ID", { exact: true }).fill(vat);
+  await page.getByLabel("Company registration number", { exact: true }).fill(registration);
+}
+
+export const terms = (page: Page): Locator => page.getByRole("checkbox", { name: /Subscription and Billing Terms/ });
+export const proceed = (page: Page): Locator => page.getByRole("button", { name: /Continue to payment/ });
