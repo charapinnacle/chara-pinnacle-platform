@@ -8,7 +8,7 @@ import { getAllowance } from "@/lib/dal/team";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { forgetInvitation } from "@/lib/invitation-cookie";
-import { homePath, mfaPath } from "@/lib/routes";
+import { homePath, invitationPath, mfaPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import {
@@ -100,7 +100,7 @@ export async function inviteMember(input: InviteFormInput & { slug: string }): P
   });
   if (error) return inviteRefusal(error, slug, organization.id);
   const [{ token, expires_at }] = data;
-  return { invitation: { path: `/${defaultLocale}/invitations/${token}`, expiresAt: expires_at } };
+  return { invitation: { path: invitationPath(defaultLocale, token), expiresAt: expires_at } };
 }
 
 export async function changeMemberRole(input: { slug: string; userId: string; role: string }): Promise<TeamResult> {

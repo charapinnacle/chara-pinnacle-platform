@@ -1,12 +1,13 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
-import { applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
+import { applicantPath, applicantsPath, applicationPath, billingPath, invitationPath, jobPath, settingsPath } from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
 const ACCOUNT = "33333333-3333-4333-8333-333333333333";
+const TOKEN = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AbCdE";
 
 const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   application_received: { application_id: APP, job_title: "Welder MIG/MAG", org_name: "Acme Bau", org_slug: "acme-bau" },
@@ -19,6 +20,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   deletion_requested: { erases_on: "2026-11-02T08:00:00+00:00" },
   deletion_completed: {},
   erasure_paused: { account_id: ACCOUNT },
+  member_invitation: { org_name: "Acme Bau", role: "member", expires_at: "2026-10-15T09:30:00+00:00", token: TOKEN, invitation_id: ACCOUNT },
 };
 
 const LEAKS = {
@@ -35,8 +37,13 @@ const KINDS = Object.keys(SAMPLES) as NotificationKind[];
 
 describe("notification templates", () => {
   it("cover every kind the database accepts, and only those", () => {
-    const sql = readFileSync(new URL("../../../../supabase/migrations/20261030100000_transactional_emails.sql", import.meta.url), "utf8");
-    const list = /kind text not null check \(kind in \(([^)]*)\)\)/.exec(sql)?.[1] ?? "";
+    const migrations = new URL("../../../../supabase/migrations/", import.meta.url);
+    const declared = readdirSync(migrations)
+      .sort()
+      .map((file) => readFileSync(new URL(file, migrations), "utf8"))
+      .flatMap((sql) => [...sql.matchAll(/check \(kind in \(([^)]*)\)\)/g)])
+      .filter((match) => match[1].includes("application_received"));
+    const list = declared.at(-1)?.[1] ?? "";
     const accepted = [...list.matchAll(/'([a-z_]+)'/g)].map((match) => match[1]).sort();
     expect(accepted).toEqual([...KINDS].sort());
     for (const kind of KINDS) {
@@ -82,6 +89,7 @@ describe("notification templates", () => {
       legal_version: "/en/legal/worker-terms",
       mfa_reset: "/en/login",
       deletion_requested: settingsPath("en"),
+      member_invitation: invitationPath("en", TOKEN),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -192,5 +200,45 @@ describe("notification templates", () => {
     const email = await renderEmail("vacancy_hidden", { ...SAMPLES.vacancy_hidden, reasons: "<img src=x onerror=alert(1)>" }, SITE);
     expect(email.html).not.toContain("<img src=x");
     expect(email.html).toContain("&lt;img src=x");
+  });
+  it("member_invitation shows the organisation, the role, the 7-day expiry and one link to the invitation page", async () => {
+    const email = await renderEmail("member_invitation", SAMPLES.member_invitation, SITE);
+    expect(email.subject).toBe("You are invited to join Acme Bau on CHARA");
+    expect(email.html).toContain('lang="en"');
+    expect(email.text).toContain("CHARA");
+    expect(email.text).toContain("Acme Bau invited you to join its team on CHARA as a member.");
+    expect(email.text).toContain("valid for 7 days, until 2026-10-15");
+    expect(email.html.match(/href="/g)).toHaveLength(1);
+    expect(email.html).toContain(`href="${SITE}${invitationPath("en", TOKEN)}"`);
+    expect(email.text).toContain(`${SITE}${invitationPath("en", TOKEN)}`);
+    expect(email.text).toMatch(/if you were not expecting this invitation, ignore\s+this email/i);
+    const admin = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, role: "admin" }, SITE);
+    expect(admin.text).toContain("as an administrator.");
+  });
+
+  it("member_invitation has no link when the token is missing or is not a token, and never shows the invitation id", async () => {
+    for (const token of [undefined, "short", "SECRET-TOKEN", `${TOKEN}x`, "../../logout"]) {
+      const email = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, token }, SITE);
+      expect(email.html).not.toContain("href=");
+      expect(email.text).not.toContain("/invitations/");
+    }
+    const email = await renderEmail("member_invitation", SAMPLES.member_invitation, SITE);
+    expect(email.html).not.toContain(ACCOUNT);
+    expect(email.text).not.toContain(ACCOUNT);
+    const open = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, expires_at: "soon", org_name: undefined }, SITE);
+    expect(open.text).toContain("An organisation invited you");
+    expect(open.text).toContain("It is valid for 7 days and can be used once.");
+  });
+
+  it("mfa_reset says the factors were removed and must be enrolled again, with no code, secret or way around two-step verification", async () => {
+    const email = await renderEmail("mfa_reset", {}, SITE);
+    expect(email.subject).toBe("Two-step verification was reset on your CHARA account");
+    expect(email.text).toContain("CHARA");
+    expect(email.text).toContain("removed the two-step verification factors");
+    expect(email.text).toContain("you must enrol again");
+    expect(email.text).toMatch(/if you did not ask for this, reply to this\s+email or contact support at once/i);
+    expect(email.html.match(/href="/g)).toHaveLength(1);
+    expect(email.html).toContain(`href="${SITE}/en/login"`);
+    expect(email.text).not.toMatch(/\b\d{6,}\b|secret|token|otp|recovery code|backup code|skip/i);
   });
 });
