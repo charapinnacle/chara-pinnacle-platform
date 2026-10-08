@@ -10,9 +10,8 @@ export function nullProvider(siteUrl: string): BillingProvider {
     createCheckout(input) {
       return Promise.resolve().then(() => {
         assertAppOrigin(siteUrl, input.successUrl, input.cancelUrl);
-        const providerRef = `null_cs_${crypto.randomUUID()}`;
         const query = new URLSearchParams({ success_url: input.successUrl, cancel_url: input.cancelUrl });
-        return { url: `${HOSTED}/checkout/${providerRef}?${query}`, providerRef };
+        return { url: `${HOSTED}/checkout/null_cs_${crypto.randomUUID()}?${query}` };
       });
     },
     createPortal(input) {

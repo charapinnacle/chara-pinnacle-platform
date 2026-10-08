@@ -47,7 +47,7 @@ const failureOf = async (run: () => Promise<unknown>) =>
 Deno.test("FR-G2 AC8: a checkout session is a subscription with the plan's price, a trial, card required, tax and the organisation", async () => {
   const { fetchFn, seen } = fetching(Response.json(checkoutSession));
   const result = await stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn).createCheckout(input);
-  assert.deepEqual(result, { url: checkoutSession.url, providerRef: checkoutSession.id });
+  assert.deepEqual(result, { url: checkoutSession.url });
   assert.equal(seen.length, 1);
   assert.equal(seen[0].url, "https://api.stripe.com/v1/checkout/sessions");
   assert.equal(seen[0].headers.authorization, "Bearer sk_test_x");
@@ -108,15 +108,31 @@ Deno.test("FR-G2 AC8: a return address on another origin throws and no session i
   assert.equal(seen.length, 0);
 });
 
-Deno.test("a request sent twice carries one idempotency key, and different parameters carry another", async () => {
+Deno.test("a checkout sent twice in the same five minutes carries one idempotency key, and another attempt or other parameters another", async () => {
   const { fetchFn, seen } = fetching(Response.json(checkoutSession));
-  const provider = stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn);
+  let clock = Date.UTC(2026, 10, 2, 10, 0, 30);
+  const provider = stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn, () => clock);
   await provider.createCheckout(input);
+  clock += 60_000;
   await provider.createCheckout(input);
   await provider.createCheckout({ ...input, trialDays: 0 });
-  assert.equal(seen[0].headers["idempotency-key"], seen[1].headers["idempotency-key"]);
-  assert.notEqual(seen[0].headers["idempotency-key"], seen[2].headers["idempotency-key"]);
-  assert.match(seen[0].headers["idempotency-key"], /^[0-9a-f]{64}$/);
+  clock += 5 * 60_000;
+  await provider.createCheckout(input);
+  const keys = seen.map((request) => request.headers["idempotency-key"]);
+  assert.equal(keys[0], keys[1]);
+  assert.notEqual(keys[0], keys[2]);
+  assert.notEqual(keys[0], keys[3], "an identical request after the window is a new attempt, not the earlier session");
+  assert.match(keys[0], /^[0-9a-f]{64}$/);
+});
+
+Deno.test("a portal request carries no idempotency key, so every click opens a fresh session", async () => {
+  const { fetchFn, seen } = fetching(Response.json(portalSession));
+  const provider = stripeProvider({ secretKey: "sk_test_x", siteUrl: SITE }, fetchFn);
+  await provider.createPortal({ customerRef: "cus_1", returnUrl: BILLING });
+  await provider.createPortal({ customerRef: "cus_1", returnUrl: BILLING });
+  assert.equal(seen.length, 2);
+  assert.equal("idempotency-key" in seen[0].headers, false);
+  assert.equal("idempotency-key" in seen[1].headers, false);
 });
 
 Deno.test("a checkout without a price reference at the provider is refused before any call", async () => {
@@ -169,10 +185,10 @@ Deno.test("the null provider answers with hosted addresses that cannot exist, an
   const second = await provider.createCheckout(input);
   const url = new URL(first.url);
   assert.equal(url.origin, "https://null-provider.invalid");
-  assert.equal(url.pathname, `/checkout/${first.providerRef}`);
+  assert.match(url.pathname, /^\/checkout\/null_cs_[0-9a-f-]{36}$/);
   assert.equal(url.searchParams.get("cancel_url"), BILLING);
   assert.equal(url.searchParams.get("success_url"), BILLING);
-  assert.notEqual(first.providerRef, second.providerRef);
+  assert.notEqual(first.url, second.url);
 
   const portal = new URL((await provider.createPortal({ customerRef: "cus_1", returnUrl: BILLING })).url);
   assert.equal(portal.pathname, "/portal/cus_1");

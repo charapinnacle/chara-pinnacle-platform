@@ -2,6 +2,7 @@ import { assertAppOrigin, type BillingProvider, BillingProviderError, type Check
 
 const API = "https://api.stripe.com/v1";
 const TIMEOUT_MS = 15_000;
+const IDEMPOTENCY_WINDOW_MS = 5 * 60_000;
 
 function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchParams {
   const params = new URLSearchParams({
@@ -38,19 +39,26 @@ async function sha256Hex(text: string): Promise<string> {
 export function stripeProvider(
   config: { secretKey: string; siteUrl: string },
   fetchFn: typeof fetch = fetch,
+  now: () => number = Date.now,
 ): BillingProvider {
-  // The same parameters give the same idempotency key, so a request sent twice creates one session.
-  async function post(path: string, params: URLSearchParams): Promise<{ id: string; url: string }> {
+  // A checkout carries a key made of its parameters and the current five minutes, so a double submit creates one
+  // session while a later attempt is never answered with an earlier session that has since been completed or has
+  // expired (Stripe keeps a key for 24 hours). A portal session is short-lived and has no side effect worth
+  // deduplicating, so it carries no key.
+  async function post(path: string, params: URLSearchParams, idempotent: boolean): Promise<{ url: string }> {
     const body = params.toString();
+    const headers: Record<string, string> = {
+      authorization: `Bearer ${config.secretKey}`,
+      "content-type": "application/x-www-form-urlencoded",
+    };
+    if (idempotent) {
+      headers["idempotency-key"] = await sha256Hex(`${path}?${body}#${Math.floor(now() / IDEMPOTENCY_WINDOW_MS)}`);
+    }
     let response: Response;
     try {
       response = await fetchFn(`${API}${path}`, {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${config.secretKey}`,
-          "content-type": "application/x-www-form-urlencoded",
-          "idempotency-key": await sha256Hex(`${path}?${body}`),
-        },
+        headers,
         body,
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
@@ -61,11 +69,11 @@ export function stripeProvider(
       await response.body?.cancel();
       throw new BillingProviderError(`stripe_http_${response.status}`);
     }
-    const { id, url } = (await response.json().catch(() => ({}))) as { id?: unknown; url?: unknown };
-    if (typeof id !== "string" || typeof url !== "string" || !url.startsWith("https://")) {
+    const { url } = (await response.json().catch(() => ({}))) as { url?: unknown };
+    if (typeof url !== "string" || !url.startsWith("https://")) {
       throw new BillingProviderError("stripe_bad_response");
     }
-    return { id, url };
+    return { url };
   }
 
   return {
@@ -75,16 +83,15 @@ export function stripeProvider(
         throw new BillingProviderError("stripe_price_missing");
       }
       assertAppOrigin(config.siteUrl, input.successUrl, input.cancelUrl);
-      const session = await post("/checkout/sessions", checkoutParams({ ...input, priceRef: input.priceRef }));
-      return { url: session.url, providerRef: session.id };
+      return await post("/checkout/sessions", checkoutParams({ ...input, priceRef: input.priceRef }), true);
     },
     async createPortal(input) {
       assertAppOrigin(config.siteUrl, input.returnUrl);
-      const session = await post(
+      return await post(
         "/billing_portal/sessions",
         new URLSearchParams({ customer: input.customerRef, return_url: input.returnUrl }),
+        false,
       );
-      return { url: session.url };
     },
   };
 }

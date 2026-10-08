@@ -12,7 +12,7 @@ export interface CheckoutInput {
 
 export interface BillingProvider {
   readonly name: "null" | "stripe";
-  createCheckout(input: CheckoutInput): Promise<{ url: string; providerRef: string }>;
+  createCheckout(input: CheckoutInput): Promise<{ url: string }>;
   createPortal(input: { customerRef: string; returnUrl: string }): Promise<{ url: string }>;
 }
 
