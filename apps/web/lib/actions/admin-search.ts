@@ -23,12 +23,14 @@ import {
 
 type Answer<Row, Cursor> = { ok: true; page: Page<Row, Cursor> } | { ok: false };
 
-// A search the database refuses or cannot answer is a failure the page shows with a retry: the cause is logged, never sent.
+// A search the database refuses or cannot answer is a failure the page shows with a retry: only the code of the cause is
+// logged, since its message and details can carry what was searched for, and nothing of it is sent.
 async function answer<Row, Cursor>(what: string, read: () => Promise<Page<Row, Cursor>>): Promise<Answer<Row, Cursor>> {
   try {
     return { ok: true, page: await read() };
   } catch (error) {
-    console.error(`${what} failed`, { cause: error instanceof Error ? error.cause : undefined });
+    const cause = error instanceof Error ? error.cause : undefined;
+    console.error(`${what} failed`, { code: typeof cause === "object" && cause !== null && "code" in cause ? cause.code : undefined });
     return { ok: false };
   }
 }

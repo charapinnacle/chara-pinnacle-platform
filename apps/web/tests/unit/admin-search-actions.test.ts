@@ -57,14 +57,14 @@ describe("the search actions", () => {
     expect(searchAuditMock).not.toHaveBeenCalled();
   });
 
-  it("answer a failure of the database as not ok, log only the cause and send nothing of it", async () => {
-    const cause = { message: "secret internals" };
+  it("answer a failure of the database as not ok, log only the code of the cause and send nothing of it", async () => {
+    const cause = { message: "secret internals", details: "the term was ada", code: "57014" };
     searchAuditMock.mockRejectedValue(new Error("The audit log could not be loaded", { cause }));
     const answer = await actions.searchAuditAction(filter, null);
 
     expect(answer).toEqual({ ok: false });
     expect(JSON.stringify(answer)).not.toContain("secret");
-    expect(console.error).toHaveBeenCalledWith("The audit search failed", { cause });
+    expect(console.error).toHaveBeenCalledWith("The audit search failed", { code: "57014" });
   });
 
   it("let the refusal of the role guard through", async () => {
