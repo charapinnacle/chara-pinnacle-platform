@@ -5,9 +5,13 @@ import { json } from "../_shared/http.ts";
 import { type Provider, ProviderError } from "./providers.ts";
 import { deliveryEvent, verifySignature } from "./webhook.ts";
 
-const BATCH_SIZE = 25;
-const CONCURRENCY = 5;
-const TIME_BUDGET_MS = 90_000;
+// Resend allows about two requests a second by default, hence two at a time. No message is started after the time
+// budget, so the last one to start ends within the budget plus its longest send (the retry delays and four timed-out
+// attempts, 66 seconds with the defaults): under notify_visibility_seconds (180) and the wall clock of the platform
+// (150 seconds). A message not started stays invisible and comes back after that timeout.
+const BATCH_SIZE = 10;
+const CONCURRENCY = 2;
+const TIME_BUDGET_MS = 60_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface NotifyDeps {
@@ -18,6 +22,7 @@ export interface NotifyDeps {
   sharedSecret: string;
   webhookSecret: string;
   sleep: (ms: number) => Promise<void>;
+  now: () => number;
   alert: (alert: string, detail: Record<string, unknown>) => void;
 }
 
@@ -29,11 +34,18 @@ interface Message {
   attempt: number;
 }
 
+interface Closed {
+  id: string;
+  kind: string;
+  error: string;
+}
+
 interface Batch {
   depth: number;
   threshold: number;
   delays: number[];
   messages: Message[];
+  closed: Closed[];
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -41,7 +53,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function parseBatch(data: unknown): Batch | null {
-  if (!isObject(data) || !Array.isArray(data.messages) || !Array.isArray(data.retry_delays)) {
+  if (
+    !isObject(data) || !Array.isArray(data.messages) || !Array.isArray(data.retry_delays) ||
+    !Array.isArray(data.failed_closed)
+  ) {
     return null;
   }
   const { queue_depth: depth, backlog_threshold: threshold } = data;
@@ -67,7 +82,16 @@ function parseBatch(data: unknown): Batch | null {
       console.error("notify skipped a malformed message");
     }
   }
-  return { depth, threshold, delays, messages };
+  const closed: Closed[] = [];
+  for (const row of data.failed_closed) {
+    if (
+      isObject(row) && typeof row.notification_id === "string" && typeof row.kind === "string" &&
+      typeof row.error === "string"
+    ) {
+      closed.push({ id: row.notification_id, kind: row.kind, error: row.error });
+    }
+  }
+  return { depth, threshold, delays, messages, closed };
 }
 
 async function ack(client: SupabaseClient, args: Record<string, unknown>): Promise<boolean> {
@@ -86,8 +110,9 @@ async function sendWithRetries(
   message: Message,
   delays: number[],
   email: { subject: string; html: string; text: string },
-): Promise<{ id: string; attempts: number } | { code: string; attempts: number }> {
+): Promise<{ id: string; attempts: number } | { code: string; attempts: number; retryable: boolean }> {
   let code = "unknown";
+  let retryable = true;
   for (let attempts = 1; attempts <= delays.length + 1; attempts++) {
     try {
       const { id } = await deps.provider.send({
@@ -100,13 +125,14 @@ async function sendWithRetries(
     } catch (e) {
       const error = e instanceof ProviderError ? e : new ProviderError("send_failed", true);
       code = error.code;
-      if (!error.retryable || attempts > delays.length) {
-        return { code, attempts };
+      retryable = error.retryable;
+      if (!retryable || attempts > delays.length) {
+        return { code, attempts, retryable };
       }
       await deps.sleep(delays[attempts - 1] * 1000);
     }
   }
-  return { code, attempts: delays.length + 1 };
+  return { code, attempts: delays.length + 1, retryable };
 }
 
 async function deliver(deps: NotifyDeps, delays: number[], message: Message): Promise<boolean> {
@@ -142,6 +168,12 @@ async function deliver(deps: NotifyDeps, delays: number[], message: Message): Pr
       p_attempts: result.attempts,
     });
   }
+  if (result.retryable) {
+    // A rate limit or an outage can pass: the message stays invisible and comes back after the visibility timeout. If it
+    // never passes, notify_dequeue ends it as failed (abandoned) after notify_max_reads and the alert is raised then.
+    console.warn("notify will try again later", { notification_id: message.id, error: result.code });
+    return false;
+  }
   await ack(deps.client, {
     p_outcome: "failed",
     p_notification_id: message.id,
@@ -157,11 +189,11 @@ async function deliver(deps: NotifyDeps, delays: number[], message: Message): Pr
   return false;
 }
 
-async function runBatch(deps: NotifyDeps, batch: Batch): Promise<{ sent: number; failed: number }> {
+async function runBatch(deps: NotifyDeps, batch: Batch, deadline: number): Promise<{ sent: number; failed: number }> {
   let next = 0;
   let sent = 0;
   const worker = async () => {
-    while (next < batch.messages.length) {
+    while (next < batch.messages.length && deps.now() < deadline) {
       if (await deliver(deps, batch.delays, batch.messages[next++])) {
         sent++;
       }
@@ -171,11 +203,11 @@ async function runBatch(deps: NotifyDeps, batch: Batch): Promise<{ sent: number;
   return { sent, failed: batch.messages.length - sent };
 }
 
-// One call drains the queue in batches until it is empty or the time budget (under the platform's wall clock) is spent.
-// A message that is not acknowledged (a crash, a failing acknowledgement) stays invisible and is read again after the
-// visibility timeout of the database.
+// One call drains the queue in batches until it is empty or the time budget is spent. A message that is not
+// acknowledged (a crash, a failing acknowledgement, a send that failed for a reason that can pass, a message not
+// started because the budget ended) stays invisible and is read again after the visibility timeout of the database.
 async function runQueue(deps: NotifyDeps): Promise<Response> {
-  const deadline = Date.now() + TIME_BUDGET_MS;
+  const deadline = deps.now() + TIME_BUDGET_MS;
   let sent = 0;
   let failed = 0;
   let first = true;
@@ -193,13 +225,16 @@ async function runQueue(deps: NotifyDeps): Promise<Response> {
       deps.alert("notify_backlog", { depth: batch.depth, threshold: batch.threshold });
     }
     first = false;
+    for (const closed of batch.closed) {
+      deps.alert("notify_delivery_failed", { notification_id: closed.id, kind: closed.kind, error: closed.error });
+    }
     if (batch.messages.length === 0) {
       break;
     }
-    const result = await runBatch(deps, batch);
+    const result = await runBatch(deps, batch, deadline);
     sent += result.sent;
     failed += result.failed;
-  } while (Date.now() < deadline);
+  } while (deps.now() < deadline);
   return json(200, { sent, failed });
 }
 

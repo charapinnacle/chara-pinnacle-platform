@@ -106,3 +106,23 @@ Deno.test("a catcher that is down is a failure that can be tried again", async (
   );
   assert.deepEqual([down?.code, down?.retryable], ["catcher_network", true]);
 });
+
+Deno.test("both providers give up on a connection that never answers, as a network failure that is retried", async () => {
+  const original = AbortSignal.timeout;
+  const requested: number[] = [];
+  AbortSignal.timeout = (ms) => {
+    requested.push(ms);
+    return original.call(AbortSignal, 20);
+  };
+  const hanging: typeof fetch = (_input, init) =>
+    new Promise((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal?.reason)));
+  try {
+    const resend = await failureOf(() => resendProvider("re_key", hanging).send(EMAIL));
+    assert.deepEqual([resend?.code, resend?.retryable], ["resend_network", true]);
+    const catcher = await failureOf(() => nullProvider("http://catcher.test", hanging).send(EMAIL));
+    assert.deepEqual([catcher?.code, catcher?.retryable], ["catcher_network", true]);
+    assert.deepEqual(requested, [10_000, 10_000]);
+  } finally {
+    AbortSignal.timeout = original;
+  }
+});

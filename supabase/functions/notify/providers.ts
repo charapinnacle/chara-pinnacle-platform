@@ -21,6 +21,8 @@ export class ProviderError extends Error {
 }
 
 const RESEND_URL = "https://api.resend.com/emails";
+// A hung connection must not hold a worker: the abort is a network failure, which is retried.
+const SEND_TIMEOUT_MS = 10_000;
 
 // Server errors, rate limits, an idempotent request still in flight (409) and a network failure are tried again; any
 // other refusal (a bad address, a bad key) would fail the same way.
@@ -47,6 +49,7 @@ export function resendProvider(apiKey: string, fetchFn: typeof fetch = fetch): P
             html: email.html,
             text: email.text,
           }),
+          signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
       } catch {
         throw new ProviderError("resend_network", true);
@@ -96,6 +99,7 @@ export function nullProvider(
             Text: email.text,
             Headers: { "X-Notification-Id": email.idempotencyKey },
           }),
+          signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
       } catch {
         throw new ProviderError("catcher_network", true);

@@ -35,7 +35,7 @@ const statusRow = (id: string, over: Partial<Row> = {}): Row => ({
 });
 
 function batch(messages: Row[], over: Record<string, unknown> = {}) {
-  return { queue_depth: 0, backlog_threshold: 500, retry_delays: DELAYS, messages, ...over };
+  return { queue_depth: 0, backlog_threshold: 500, retry_delays: DELAYS, messages, failed_closed: [], ...over };
 }
 
 // The queue hands out each batch once: later reads are empty, as the visibility timeout makes them for the database.
@@ -49,6 +49,7 @@ const acks = (calls: Call[]) => calls.filter((c) => c.path.endsWith("notify_ack"
 function setup(routes: Record<string, Route | Response>, provider: Provider = nullProvider()) {
   const { calls, client } = harness({ "POST /rest/v1/rpc/notify_ack": reply(200, true), ...routes });
   const sleeps: number[] = [];
+  let clock = 0;
   const alerts: [string, Record<string, unknown>][] = [];
   const deps: NotifyDeps = {
     client,
@@ -59,8 +60,10 @@ function setup(routes: Record<string, Route | Response>, provider: Provider = nu
     webhookSecret: "",
     sleep: (ms) => {
       sleeps.push(ms);
+      clock += ms;
       return Promise.resolve();
     },
+    now: () => clock,
     alert: (alert, detail) => alerts.push([alert, detail]),
   };
   return { calls, deps, sleeps, alerts };
@@ -134,7 +137,7 @@ Deno.test("an empty queue is a successful run that does nothing", async () => {
   const response = await handleNotify(request(), deps);
   assert.deepEqual(await response.json(), { sent: 0, failed: 0 });
   assert.deepEqual(calls.map((c) => c.path), ["/rest/v1/rpc/notify_dequeue"]);
-  assert.deepEqual(calls[0].body, { p_limit: 25 });
+  assert.deepEqual(calls[0].body, { p_limit: 10 });
   assert.deepEqual(alerts, []);
 });
 
@@ -163,30 +166,59 @@ Deno.test("a message is rendered, sent with the notification id as idempotency k
   assert.deepEqual(sleeps, []);
 });
 
-Deno.test("a failing provider is called 4 times with growing delays and the same idempotency key, then the failure is recorded and alerted", async () => {
-  const provider = failing("resend_http_500", true);
-  const { calls, deps, sleeps, alerts } = setup(
-    { "POST /rest/v1/rpc/notify_dequeue": dequeues(batch([statusRow(ID_1)])) },
+Deno.test("a provider that keeps failing for a reason that can pass is called 4 times with growing delays, then the message is left in the queue", async () => {
+  for (const code of ["resend_http_429", "resend_http_503", "resend_network"]) {
+    const provider = failing(code, true);
+    const { calls, deps, sleeps, alerts } = setup(
+      { "POST /rest/v1/rpc/notify_dequeue": dequeues(batch([statusRow(ID_1)])) },
+      provider,
+    );
+    const response = await silenced(() => handleNotify(request(), deps));
+    assert.deepEqual(await response.json(), { sent: 0, failed: 1 });
+    assert.equal(provider.sent.length, 4);
+    assert.deepEqual(provider.sent.map((e) => e.idempotencyKey), [ID_1, ID_1, ID_1, ID_1]);
+    assert.deepEqual(sleeps, [2000, 6000, 18000]);
+    assert.ok(sleeps.every((ms, i) => i === 0 || ms > sleeps[i - 1]), "the delays strictly grow");
+    assert.deepEqual(acks(calls), [], `${code}: nothing is closed, the message returns after the visibility timeout`);
+    assert.deepEqual(alerts, [], `${code}: the alert comes when the database ends the message`);
+  }
+});
+
+Deno.test("a message that the database ended as failed raises the alert with its id, kind and error and nothing else", async () => {
+  const { deps, alerts } = setup({
+    "POST /rest/v1/rpc/notify_dequeue": dequeues(batch([], {
+      failed_closed: [
+        { notification_id: ID_1, kind: "status_changed", error: "abandoned" },
+        { notification_id: ID_2, kind: "mfa_reset", error: "no_recipient" },
+      ],
+    })),
+  });
+  await handleNotify(request(), deps);
+  assert.deepEqual(alerts, [
+    ["notify_delivery_failed", { notification_id: ID_1, kind: "status_changed", error: "abandoned" }],
+    ["notify_delivery_failed", { notification_id: ID_2, kind: "mfa_reset", error: "no_recipient" }],
+  ]);
+});
+
+Deno.test("no message is started after the time budget; the others stay in the queue", async () => {
+  const sent: string[] = [];
+  let clock = 0;
+  const provider: Provider = {
+    send(email) {
+      sent.push(email.idempotencyKey);
+      clock += 40_000;
+      return Promise.resolve({ id: `re_${sent.length}` });
+    },
+  };
+  const ids = [1, 2, 3, 4, 5].map((n) => `00000000-0000-4000-8000-0000000000c${n}`);
+  const { deps } = setup(
+    { "POST /rest/v1/rpc/notify_dequeue": dequeues(batch(ids.map((id) => statusRow(id)))) },
     provider,
   );
+  deps.now = () => clock;
   const response = await handleNotify(request(), deps);
-  assert.deepEqual(await response.json(), { sent: 0, failed: 1 });
-  assert.equal(provider.sent.length, 4);
-  assert.deepEqual(provider.sent.map((e) => e.idempotencyKey), [ID_1, ID_1, ID_1, ID_1]);
-  assert.deepEqual(sleeps, [2000, 6000, 18000]);
-  assert.ok(sleeps.every((ms, i) => i === 0 || ms > sleeps[i - 1]), "the delays strictly grow");
-  assert.deepEqual(acks(calls), [{
-    p_outcome: "failed",
-    p_notification_id: ID_1,
-    p_attempts: 4,
-    p_error: "resend_http_500",
-  }]);
-  assert.deepEqual(alerts, [["notify_delivery_failed", {
-    notification_id: ID_1,
-    kind: "status_changed",
-    attempts: 4,
-    error: "resend_http_500",
-  }]]);
+  assert.equal(sent.length, 2, "two sends of 40 s use the 60 s budget; a worker takes no third message");
+  assert.deepEqual(await response.json(), { sent: 2, failed: 3 });
 });
 
 Deno.test("a send that works on a retry is recorded with the number of attempts", async () => {

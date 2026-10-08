@@ -32,6 +32,7 @@ const deps = {
   sharedSecret: Deno.env.get("EDGE_SHARED_SECRET") ?? "",
   webhookSecret: Deno.env.get("RESEND_WEBHOOK_SECRET") ?? "",
   sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  now: Date.now,
   // Operations watch the function logs for the key "alert"; the rule is configured in the log platform.
   alert: (alert: string, detail: Record<string, unknown>) => console.error(JSON.stringify({ alert, ...detail })),
 };

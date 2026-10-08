@@ -41,6 +41,7 @@ function setup(routes: Record<string, Route | Response> = {}, webhookSecret = WE
     sharedSecret: "scheduler-secret",
     webhookSecret,
     sleep: () => Promise.resolve(),
+    now: Date.now,
     alert: () => {},
   };
   return { calls, deps };
@@ -71,12 +72,12 @@ Deno.test("an event with an invalid or missing signature is refused, changes not
     "no id": { "svix-id": null },
     "no timestamp": { "svix-timestamp": null },
     "stale timestamp": {
-      "svix-timestamp": String(timestamp - 301),
-      "svix-signature": await sign("msg_1", timestamp - 301, body),
+      "svix-timestamp": String(timestamp - 310),
+      "svix-signature": await sign("msg_1", timestamp - 310, body),
     },
     "future timestamp": {
-      "svix-timestamp": String(timestamp + 301),
-      "svix-signature": await sign("msg_1", timestamp + 301, body),
+      "svix-timestamp": String(timestamp + 310),
+      "svix-signature": await sign("msg_1", timestamp + 310, body),
     },
     "signature of another id": { "svix-id": "msg_2" },
   };
