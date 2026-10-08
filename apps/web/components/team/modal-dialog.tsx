@@ -29,6 +29,7 @@ export function ModalDialog({ open, onClose, title, children }: ModalDialogProps
       aria-labelledby={titleId}
       onClose={onClose}
       onClick={(event) => {
+        if (event.target !== event.currentTarget) return;
         const box = event.currentTarget.getBoundingClientRect();
         const outside =
           event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
