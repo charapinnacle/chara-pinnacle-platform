@@ -44,6 +44,7 @@ test.describe("moving an application to another stage", () => {
     await chooseStage(page, "Not selected", "  Position filled  ");
     await expect(dialog.getByText("Ana Silva", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Not selected", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Reason (visible to the candidate)", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Position filled", { exact: true })).toBeVisible();
     await expect(dialog.getByText("A decision of Not selected is final. The candidate is told by email.")).toBeVisible();
     expect(eventRows(applicationId)).toHaveLength(1);

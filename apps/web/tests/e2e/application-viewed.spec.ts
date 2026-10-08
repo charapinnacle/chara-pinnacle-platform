@@ -59,14 +59,19 @@ test.describe("the first open of an application", () => {
     const other = await newCompany();
     const outsider = await addCompanyUser(other, "member");
 
-    for (const [index, user] of [outsider, candidate].entries()) {
-      const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `10.5.4.${index + 1}` } });
-      await signInBrowser(context, user);
-      const visit = await context.newPage();
-      await expectNotFound(visit, applicantUrl(company.slug, applicationId));
-      await expect(visit.getByText("Ana Silva")).toHaveCount(0);
-      await context.close();
-    }
+    const outsiderContext = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.5.4.1" } });
+    await signInBrowser(outsiderContext, outsider);
+    const outsiderVisit = await outsiderContext.newPage();
+    await expectNotFound(outsiderVisit, applicantUrl(company.slug, applicationId));
+    await expect(outsiderVisit.getByText("Ana Silva")).toHaveCount(0);
+    await outsiderContext.close();
+    const candidateContext = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.5.4.2" } });
+    await signInBrowser(candidateContext, candidate);
+    const candidateVisit = await candidateContext.newPage();
+    await candidateVisit.goto(applicantUrl(company.slug, applicationId));
+    await expect(candidateVisit).toHaveURL(/\/en\/dashboard\/worker$/);
+    await expect(candidateVisit.getByText("Ana Silva")).toHaveCount(0);
+    await candidateContext.close();
     const otherSlugContext = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.5.4.9" } });
     const memberOfBoth = await addCompanyUser(other, "member");
     execute(

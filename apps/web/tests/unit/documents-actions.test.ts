@@ -213,6 +213,14 @@ describe("getDocumentDownload", () => {
     expect(signMock).not.toHaveBeenCalled();
   });
 
+  it("tells the owner who hit the allowance to wait, without logging an error", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { code: "P0001", message: "CHARA_RATE_LIMITED" } });
+    expect(await actions.getDocumentDownload(documentId)).toEqual({
+      message: "Too many documents were opened in a short time. Wait a minute and try again.",
+    });
+    expect(signMock).not.toHaveBeenCalled();
+  });
+
   it("finds no document of someone else or a deleted one", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { code: "P0002", message: "CHARA_NOT_FOUND" } });
     expect(await actions.getDocumentDownload(documentId)).toEqual({ message: "This document no longer exists." });

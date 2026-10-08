@@ -751,6 +751,14 @@ isOneToOne: false
 "account_ops_end_sessions":
 { Args: { "p_user_id": string }; Returns: number
                            },
+"application_documents":
+{ Args: { "p_application_id": string }; Returns: {
+              "available": boolean,"expires_on": string,"file_name": string,"id": string,"size_bytes": number,"title": string,"type": Database["public"]['Enums']["worker_document_type"]
+            }[]
+                           },
+"application_profile_changed":
+{ Args: { "p_application_id": string }; Returns: boolean
+                           },
 "apply_limits":
 { Args: Record<PropertyKey, never>; Returns: {
               "cover_note_max_chars": number,"documents_max": number
@@ -842,6 +850,11 @@ isOneToOne: false
 "list_applicant_events":
 { Args: { "p_application_id": string }; Returns: {
               "actor_kind": string,"actor_name": string,"created_at": string,"from_status": Database["public"]['Enums']["application_status"],"id": number,"note": string,"to_status": Database["public"]['Enums']["application_status"]
+            }[]
+                           },
+"list_application_notes":
+{ Args: { "p_application_id": string,"p_before_id"?: number }; Returns: {
+              "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
             }[]
                            },
 "list_organization_invitations":

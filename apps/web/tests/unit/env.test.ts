@@ -60,6 +60,12 @@ describe("parseServerEnv", () => {
     expect(parseServerEnv(server)).toEqual({ ...server, TRUSTED_PROXY_HOPS: 1 });
   });
 
+  it("reads the address of the document-url function when one is given, and only a web address", () => {
+    expect(parseServerEnv({ ...server, DOCUMENT_URL_ENDPOINT: "http://127.0.0.1:54432/" }).DOCUMENT_URL_ENDPOINT).toBe("http://127.0.0.1:54432/");
+    expect(parseServerEnv(server).DOCUMENT_URL_ENDPOINT).toBeUndefined();
+    expect(() => parseServerEnv({ ...server, DOCUMENT_URL_ENDPOINT: "ftp://example.com/" })).toThrowError("DOCUMENT_URL_ENDPOINT");
+  });
+
   it("names a missing secret and a missing hop count", () => {
     expect(() => parseServerEnv({})).toThrowError(
       "Invalid environment variables: VISITOR_HASH_SECRET, TRUSTED_PROXY_HOPS",

@@ -27,6 +27,9 @@ function refusal(error: { code?: string; message?: string }): Response {
   if (message === "CHARA_DOCUMENT_NOT_SCANNED") {
     return json(409, { error: "not_scanned" });
   }
+  if (message === "CHARA_RATE_LIMITED") {
+    return json(429, { error: "rate_limited" });
+  }
   // The anon key as a bearer, a role without the grant, a user id missing from the token, an expired or invalid token.
   if (
     message === "CHARA_UNAUTHENTICATED" || message.startsWith("permission denied") || code.startsWith("PGRST30")
