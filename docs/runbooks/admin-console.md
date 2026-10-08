@@ -37,3 +37,7 @@ where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'orga
 
 - The same Vault secrets and the same cron job as for `account-ops` and `notify` (`platform-staff.md`, `transactional-emails.md`); the console adds no secret and no job.
 - The console needs the migrations `20261101100000` to `20261101100200`. Not verified against the hosted project: the trigram indexes on `public.profiles` and `public.organizations`.
+
+## 5. Measured
+
+EXPLAIN ANALYZE in a rolled-back transaction with 100,000 users, 20,000 organisations and 500,000 audit rows: part of a display name 13 ms through the trigram index (a page of 25 sorts the hits), an email address 0.05 ms through the unique index of Auth, the first page of the audit log 0.13 ms, a filter on the action 0.3 ms and on the entity 0.07 ms through `log_entity_created_idx`. The organisation search scanned the table (8 ms at 20,000 rows) because the planner prefers it at that size. First-load script of the console pages (uncompressed): 516 KB for the landing, statistics and suspensions pages, 966 to 971 KB for the pages with a form (the forms library and its schema checks).
