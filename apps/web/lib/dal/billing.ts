@@ -28,16 +28,7 @@ const subscriptionSchema = z.object({
   current_period_end: z.string().nullable(),
 });
 
-export type BillingState = {
-  trialUsed: boolean;
-  hasCustomer: boolean;
-  identifierLocked: boolean;
-  identifier: string | null;
-  identifierKind: string | null;
-  billingCountry: string | null;
-  vatId: string | null;
-  registrationNumber: string | null;
-};
+export type BillingState = z.infer<typeof stateSchema>;
 
 type Subscription = {
   planName: string | null;
@@ -70,17 +61,7 @@ export async function getBillingState(organizationId: string): Promise<BillingSt
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("billing_checkout_state", { p_org: organizationId });
   if (error) throw new Error("The billing state could not be loaded", { cause: error });
-  const row = stateSchema.parse(data[0]);
-  return {
-    trialUsed: row.trial_used,
-    hasCustomer: row.has_customer,
-    identifierLocked: row.identifier_locked,
-    identifier: row.identifier,
-    identifierKind: row.identifier_kind,
-    billingCountry: row.billing_country,
-    vatId: row.vat_id,
-    registrationNumber: row.registration_number,
-  };
+  return stateSchema.parse(data[0]);
 }
 
 // The live subscription of the organization, else its newest cancelled one.

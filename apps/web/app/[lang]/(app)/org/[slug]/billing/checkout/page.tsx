@@ -15,11 +15,11 @@ export const metadata: Metadata = { title: "Confirm your plan — CHARA", robots
 
 function identifierDefaults(state: BillingState) {
   const fromKind = (kinds: readonly string[]) =>
-    state.identifier && state.identifierKind && kinds.includes(state.identifierKind) ? state.identifier : "";
+    state.identifier && state.identifier_kind && kinds.includes(state.identifier_kind) ? state.identifier : "";
   return {
-    billingCountry: state.billingCountry ?? "",
-    vatId: state.vatId ?? fromKind(["vat_number"]),
-    registrationNumber: state.registrationNumber ?? fromKind(["registration_number", "other"]),
+    billingCountry: state.billing_country ?? "",
+    vatId: state.vat_id ?? fromKind(["vat_number"]),
+    registrationNumber: state.registration_number ?? fromKind(["registration_number", "other"]),
   };
 }
 
@@ -40,7 +40,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
   if (!plan || !terms) notFound();
   if (subscription && subscription.status !== "canceled") redirect(billingPath(lang, slug));
 
-  const trialDays = state.trialUsed ? 0 : plan.trialDays;
+  const trialDays = state.trial_used ? 0 : plan.trialDays;
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-8">
       <header className="grid gap-1">
@@ -55,7 +55,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
           Before you continue
         </h2>
         <dl className="grid gap-3">
-          {checkoutDisclosures(plan, state.trialUsed).map((item) => (
+          {checkoutDisclosures(plan, state.trial_used).map((item) => (
             <div key={item.title} className="grid gap-0.5">
               <dt className="font-medium">{item.title}</dt>
               <dd className="text-body text-muted-foreground">{item.text}</dd>

@@ -49,7 +49,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
         </section>
       ) : null}
 
-      {state.hasCustomer ? (
+      {state.has_customer ? (
         <section aria-labelledby="portal-heading" className="grid gap-3">
           <h2 id="portal-heading" className="text-lg font-semibold">
             Payment method, plan changes and invoices
@@ -71,7 +71,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
           </Notice>
           <ul className="grid gap-3">
             {plans.map((plan) => {
-              const trialDays = state.trialUsed ? 0 : plan.trialDays;
+              const trialDays = state.trial_used ? 0 : plan.trialDays;
               return (
                 <li key={plan.code} className="grid gap-1 rounded-xl border bg-card p-4">
                   <h3 className="font-medium">{plan.name}</h3>
@@ -94,23 +94,23 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
           <h2 id="identifier-heading" className="text-lg font-semibold">
             Company identifier
           </h2>
-          {state.identifierLocked ? (
+          {state.identifier_locked ? (
             <p className="text-body text-muted-foreground">
               {state.identifier
-                ? `${kindLabels[state.identifierKind ?? ""] ?? "Identifier"}: ${state.identifier}. `
+                ? `${kindLabels[state.identifier_kind ?? ""] ?? "Identifier"}: ${state.identifier}. `
                 : null}
               It cannot be changed once a payment has been started for the company.
             </p>
           ) : (
             <>
               <p className="text-body text-muted-foreground">
-                {state.identifier ? `Recorded: ${kindLabels[state.identifierKind ?? ""] ?? "Identifier"} ${state.identifier}. ` : null}
+                {state.identifier ? `Recorded: ${kindLabels[state.identifier_kind ?? ""] ?? "Identifier"} ${state.identifier}. ` : null}
                 The identifier of your company decides whether it can have a free trial. Record it here, or enter it
                 when you choose a plan.
               </p>
               <LegalEntityForm
                 slug={slug}
-                defaults={{ identifier: state.identifier ?? "", identifierKind: state.identifierKind ?? "" }}
+                defaults={{ identifier: state.identifier ?? "", identifierKind: state.identifier_kind ?? "" }}
               />
             </>
           )}

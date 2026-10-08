@@ -17,7 +17,6 @@ export const subscriptionStatusLabels = {
 
 export type SubscriptionStatus = keyof typeof subscriptionStatusLabels;
 
-
 export function formatPrice(minor: number, currency: string): string {
   const format = new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "code" });
   const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
