@@ -2,15 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { resolveApplicantTarget } from "@/lib/actions/applicant-target";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { type BoardCounts, getBoardCounts } from "@/lib/dal/applicant-list";
-import { getApplicant, setApplicationStatus, type StageRefusal } from "@/lib/dal/applicants";
-import { requireOrgRole } from "@/lib/dal/session";
+import { setApplicationStatus, type StageRefusal } from "@/lib/dal/applicants";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { applicantPath } from "@/lib/routes";
 import { stageChangeInputSchema, type StageChangeInput } from "@/lib/validation/applicant";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
-import { slugSchema } from "@/lib/validation/team";
 
 type StageActionResult = { errors?: FieldErrors; message?: string; done?: true };
 
@@ -38,26 +37,19 @@ function refusalMessage(refusal: StageRefusal): StageActionResult {
   }
 }
 
-// The organization comes from the slug and the caller's membership and role, looked up on every call (owners and admins
-// at aal2), and the application must belong to it, so that the role and the two-step check are those of the organization
-// that owns the application; the stage rules are the database's. Only the target stage and the note are read from the call.
+// Only the target stage and the note are read from the call; the stage rules are the database's.
 export async function changeApplicantStage(
   slug: string,
   applicationId: string,
   input: StageChangeInput,
 ): Promise<StageActionResult> {
-  const parsedSlug = slugSchema.safeParse(slug);
-  const parsedId = z.uuid().safeParse(applicationId);
-  if (!parsedSlug.success || !parsedId.success) return { message: GENERIC_FAILURE };
-  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "member", { hideFromOutsiders: true });
+  const target = await resolveApplicantTarget(slug, applicationId);
+  if (!target) return refusalMessage({ kind: "not_found" });
   const parsed = stageChangeInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
-  const applicant = await getApplicant(parsedId.data);
-  if (applicant?.organizationId !== organization.id) return refusalMessage({ kind: "not_found" });
-
-  const refusal = await setApplicationStatus(parsedId.data, parsed.data.status, parsed.data.note);
-  revalidatePath(applicantPath(defaultLocale, organization.slug, parsedId.data));
+  const refusal = await setApplicationStatus(target.applicationId, parsed.data.status, parsed.data.note);
+  revalidatePath(applicantPath(defaultLocale, target.organization.slug, target.applicationId));
   return refusal ? refusalMessage(refusal) : { done: true };
 }
 

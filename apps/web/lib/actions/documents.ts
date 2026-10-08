@@ -9,6 +9,7 @@ import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
   DOCUMENT_BUCKET,
+  DOCUMENT_RATE_LIMITED,
   documentIdSchema,
   renameFormSchema,
   sanitiseFileName,
@@ -111,6 +112,7 @@ export async function getDocumentDownload(documentId: string): Promise<DownloadR
   if (error) {
     if (error.code === "P0002") return { message: "This document no longer exists." };
     if (error.message === "CHARA_DOCUMENT_NOT_SCANNED") return { message: "This file cannot be downloaded." };
+    if (error.message === "CHARA_RATE_LIMITED") return { message: DOCUMENT_RATE_LIMITED };
     return refusal(error);
   }
   const grant = data[0];

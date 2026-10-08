@@ -6,6 +6,7 @@ type DocumentType = Database["public"]["Enums"]["worker_document_type"];
 
 // The same limits as the table constraints, the bucket and its policies; the database stays the authority.
 export const DOCUMENT_BUCKET = "passport-documents";
+export const DOCUMENT_RATE_LIMITED = "Too many documents were opened in a short time. Wait a minute and try again.";
 const MAX_FILE_BYTES = 15_728_640;
 const MAX_TITLE_LENGTH = 120;
 const MAX_FILE_NAME_LENGTH = 100;

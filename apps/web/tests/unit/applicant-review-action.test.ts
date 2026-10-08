@@ -4,13 +4,18 @@ const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const getApplicantMock = vi.hoisted(() => vi.fn());
 const addNoteMock = vi.hoisted(() => vi.fn());
 const requestLinkMock = vi.hoisted(() => vi.fn());
+const listDocumentsMock = vi.hoisted(() => vi.fn());
 const revalidateMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/applicants", () => ({ getApplicant: getApplicantMock }));
-vi.mock("@/lib/dal/applicant-review", () => ({ addApplicationNote: addNoteMock, requestDocumentLink: requestLinkMock }));
+vi.mock("@/lib/dal/applicant-review", () => ({
+  addApplicationNote: addNoteMock,
+  requestDocumentLink: requestLinkMock,
+  listSharedDocuments: listDocumentsMock,
+}));
 
 const { addInternalNote, openApplicantDocument } = await import("@/lib/actions/applicant-review");
 
@@ -22,6 +27,7 @@ beforeEach(() => {
   requireOrgRoleMock.mockResolvedValue({ organization: { id: "o", slug: "acme" } });
   getApplicantMock.mockResolvedValue({ organizationId: "o" });
   addNoteMock.mockResolvedValue(null);
+  listDocumentsMock.mockResolvedValue([{ id: documentId }]);
   requestLinkMock.mockResolvedValue({ url: "http://storage.example/link" });
 });
 
@@ -83,6 +89,13 @@ describe("openApplicantDocument", () => {
     getApplicantMock.mockResolvedValue({ organizationId: "o" });
     expect((await openApplicantDocument("acme", applicationId, "not-a-uuid")).message).toBe("This document is no longer available.");
     expect((await openApplicantDocument("acme", "not-a-uuid", documentId)).message).toBe("This document is no longer available.");
+    expect(requestLinkMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for no link for a document the application does not share, even when the member could open it elsewhere", async () => {
+    listDocumentsMock.mockResolvedValue([{ id: "0a1b2c3d-0000-4000-8000-0000000000d2" }]);
+    expect(await openApplicantDocument("acme", applicationId, documentId)).toEqual({ message: "This document is no longer available." });
+    expect(listDocumentsMock).toHaveBeenCalledWith(applicationId);
     expect(requestLinkMock).not.toHaveBeenCalled();
   });
 
