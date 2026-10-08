@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSalary, jobStatusText, publicWebsite } from "@/lib/jobs/presentation";
+import { formatSalary, isJobStatus, jobStatusText, publicWebsite } from "@/lib/jobs/presentation";
 
 const none = { salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null };
 
@@ -40,6 +40,13 @@ describe("jobStatusText", () => {
   it("says hidden for a vacancy hidden by moderation whatever its status", () => {
     expect(jobStatusText("open", "hidden")).toBe("Hidden - not public");
     expect(jobStatusText("open", "org_suspended")).toBe("Hidden - not public");
+  });
+});
+
+describe("isJobStatus", () => {
+  it("accepts the five statuses and nothing else", () => {
+    for (const value of ["draft", "open", "paused", "closed", "filled"]) expect(isJobStatus(value), value).toBe(true);
+    for (const value of ["Open", "deleted", "", "toString", null, undefined, ["open"]]) expect(isJobStatus(value), String(value)).toBe(false);
   });
 });
 

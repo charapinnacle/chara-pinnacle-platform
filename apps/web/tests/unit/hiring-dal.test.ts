@@ -223,6 +223,16 @@ describe("listJobs", () => {
     ]);
   });
 
+  it("filters by status only when one is asked for", async () => {
+    result = { data: rows(1), error: null };
+    await listJobs("org-1", null);
+    expect(calls.filter(([method, column]) => method === "jobs.eq" && column === "status")).toEqual([]);
+    calls.length = 0;
+    await listJobs("org-1", null, "open");
+    expect(calls).toContainEqual(["jobs.eq", "organization_id", "org-1"]);
+    expect(calls).toContainEqual(["jobs.eq", "status", "open"]);
+  });
+
   it("returns an empty page for an organization without vacancies", async () => {
     result = { data: [], error: null };
     await expect(listJobs("org-1", null)).resolves.toEqual({ jobs: [], nextCursor: null });

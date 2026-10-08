@@ -15,6 +15,10 @@ export const statusLabels: Record<JobStatus, string> = {
   filled: "Filled",
 };
 
+export function isJobStatus(value: unknown): value is JobStatus {
+  return typeof value === "string" && Object.hasOwn(statusLabels, value);
+}
+
 // A vacancy hidden by moderation is not public whatever its status.
 export function jobStatusText(status: JobStatus, moderationState: JobModerationState): string {
   if (moderationState !== "visible") return "Hidden - not public";

@@ -29,8 +29,15 @@ export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }
 
-export function jobsPath(lang: string, slug: string): string {
-  return `/${lang}/org/${slug}/jobs`;
+type JobStatus = Database["public"]["Enums"]["job_status"];
+
+// The list of the vacancies of an organisation, optionally of one status, optionally from a keyset cursor on.
+export function jobsPath(lang: string, slug: string, { status, after }: { status?: JobStatus | null; after?: string } = {}): string {
+  const query = new URLSearchParams();
+  if (status) query.set("status", status);
+  if (after) query.set("after", after);
+  const text = query.toString();
+  return text ? `/${lang}/org/${slug}/jobs?${text}` : `/${lang}/org/${slug}/jobs`;
 }
 
 export function jobPath(lang: string, slug: string, id: string): string {

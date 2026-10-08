@@ -160,7 +160,11 @@ export const getPublicJob = cache(async (id: string): Promise<PublicJob | null> 
 // Newest first, in keyset pages of JOBS_PAGE_SIZE; one row more is read to know whether a next page exists. PostgREST
 // has no row comparison, so the cursor is an OR filter: the planner reads the organization's index range and filters it,
 // a cost that grows with the page depth but is bounded by the vacancies of one organization.
-export async function listJobs(organizationId: string, cursor: JobCursor | null): Promise<JobPage> {
+export async function listJobs(
+  organizationId: string,
+  cursor: JobCursor | null,
+  status: Enums["job_status"] | null = null,
+): Promise<JobPage> {
   const supabase = await createClient();
   let query = supabase
     .from("jobs")
@@ -170,6 +174,7 @@ export async function listJobs(organizationId: string, cursor: JobCursor | null)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(JOBS_PAGE_SIZE + 1);
+  if (status) query = query.eq("status", status);
   if (cursor) {
     query = query.or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
   }
