@@ -4,7 +4,7 @@
 -- The platform administrator and the Trust & Safety Administrator search and view; the rest is per function.
 
 -- Search matches part of a name, so each searched expression has a trigram index. An email address must be given in full:
--- the Auth schema is not ours to index, and its own index on the lower-case address serves the lookup.
+-- the Auth schema is not ours to index, and its unique index on the address (Auth stores it in lower case) serves the lookup.
 create index profiles_display_name_trgm_idx on public.profiles using gin (lower(display_name) extensions.gin_trgm_ops);
 create index organizations_display_name_trgm_idx on public.organizations using gin (lower(display_name) extensions.gin_trgm_ops);
 create index organizations_legal_name_trgm_idx on public.organizations using gin (lower(legal_name) extensions.gin_trgm_ops);
@@ -61,7 +61,7 @@ begin
   with hits as (
     select p.id from public.profiles p where lower(p.display_name) like v_like
     union
-    select u.id from auth.users u where lower(u.email::text) = lower(btrim(p_term))
+    select u.id from auth.users u where u.email = lower(btrim(p_term)) and not u.is_sso_user
     union
     select v_id where v_id is not null
   )
