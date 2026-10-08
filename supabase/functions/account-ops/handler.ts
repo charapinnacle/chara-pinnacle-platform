@@ -4,8 +4,11 @@ import { json } from "../_shared/http.ts";
 
 const BATCH_SIZE = 100;
 const CONCURRENCY = 5;
+// Members whose sessions are ended at the same time.
+const MEMBER_CHUNK = 10;
 const TIME_BUDGET_MS = 100_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DOCUMENT_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const BUCKET_ID = /^[a-z0-9-]{1,63}$/;
 const OBJECT_PATH = /^[A-Za-z0-9._/-]{1,300}$/;
 const PASSPORT_BUCKET = "passport-documents";
@@ -17,6 +20,7 @@ const BAN_DURATION = "876000h";
 
 type Job =
   | { msgId: number; action: "sign_out_organization"; organizationId: string }
+  | { msgId: number; action: "fan_out_legal_version"; documentSlug: string; version: number }
   | (
     & { msgId: number; userId: string }
     & (
@@ -42,17 +46,27 @@ function parseJob(row: unknown): Job | null {
     action,
     user_id: userId,
     organization_id: organizationId,
+    document_slug: documentSlug,
+    version,
     bucket_id: bucketId,
     path,
   } = message as {
     action?: unknown;
     user_id?: unknown;
     organization_id?: unknown;
+    document_slug?: unknown;
+    version?: unknown;
     bucket_id?: unknown;
     path?: unknown;
   };
   if (action === "sign_out_organization") {
     return typeof organizationId === "string" && UUID.test(organizationId) ? { msgId, action, organizationId } : null;
+  }
+  if (action === "fan_out_legal_version") {
+    return typeof documentSlug === "string" && DOCUMENT_SLUG.test(documentSlug) && documentSlug.length <= 60 &&
+        typeof version === "number" && Number.isInteger(version) && version > 0
+      ? { msgId, action, documentSlug, version }
+      : null;
   }
   if (typeof userId !== "string" || !UUID.test(userId)) {
     return null;
@@ -107,11 +121,36 @@ async function endOrganizationSessions(client: SupabaseClient, organizationId: s
   if (error) {
     throw error;
   }
+  const members = data as string[];
   let ended = 0;
-  for (const userId of data as string[]) {
-    ended += await endSessions(client, userId);
+  for (let i = 0; i < members.length; i += MEMBER_CHUNK) {
+    const counts = await Promise.all(members.slice(i, i + MEMBER_CHUNK).map((userId) => endSessions(client, userId)));
+    ended += counts.reduce((sum, count) => sum + count, 0);
   }
   return ended;
+}
+
+// The emails of a new legal version, one page of users at a time, each page its own transaction. The database skips a
+// user who already has the email, so a job that is read again after a failure or a timeout queues nothing twice.
+async function fanOutLegalVersion(client: SupabaseClient, slug: string, version: number): Promise<number> {
+  let queued = 0;
+  let after: string | null = null;
+  for (;;) {
+    const { data, error } = await client.rpc("account_ops_fan_out_legal_version", {
+      p_slug: slug,
+      p_version: version,
+      p_after: after,
+    });
+    if (error) {
+      throw error;
+    }
+    const [page] = data as { last_id: string; queued: number }[];
+    if (!page) {
+      return queued;
+    }
+    queued += page.queued;
+    after = page.last_id;
+  }
 }
 
 // A factor that is already gone (a second run, or a user who removed it) is not an error.
@@ -195,6 +234,9 @@ async function eraseUser(client: SupabaseClient, userId: string): Promise<Record
 async function run(client: SupabaseClient, job: Job): Promise<Record<string, number>> {
   if (job.action === "sign_out_organization") {
     return { sessions_ended: await endOrganizationSessions(client, job.organizationId) };
+  }
+  if (job.action === "fan_out_legal_version") {
+    return { emails_queued: await fanOutLegalVersion(client, job.documentSlug, job.version) };
   }
   if (job.action === "suspend_user" || job.action === "reinstate_user") {
     return await syncBan(client, job.userId);

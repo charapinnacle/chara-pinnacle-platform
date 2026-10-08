@@ -87,13 +87,14 @@ export async function publishLegalDocument(input: LegalDocumentForm): Promise<Ad
   const parsed = legalDocumentSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   await requirePlatformRole(defaultLocale, ["admin"]);
-  const { slug, title, body, changeSummary } = parsed.data;
+  const { slug, title, body, changeSummary, expectedVersion } = parsed.data;
   const path = adminPath(defaultLocale, "legal");
   const { data, error } = await (await adminClient()).rpc("publish_legal_document", {
     p_slug: slug,
     p_title: title,
     p_body: body,
     p_change_summary: changeSummary,
+    p_expected_version: expectedVersion,
   });
   if (error) {
     return adminRefusal(error, path, {
@@ -101,6 +102,9 @@ export async function publishLegalDocument(input: LegalDocumentForm): Promise<Ad
       "CHARA_INVALID_INPUT:title": { errors: { title: "Enter a title of 3 to 200 characters" } },
       "CHARA_INVALID_INPUT:body": { errors: { body: "Enter the text of the document" } },
       "CHARA_INVALID_INPUT:change_summary": { errors: { changeSummary: "Describe the change in 10 to 1000 characters" } },
+      CHARA_CONFLICT: {
+        message: "This document has a different current version than the form showed. Open it from the list and try again.",
+      },
     });
   }
   revalidatePath(path);

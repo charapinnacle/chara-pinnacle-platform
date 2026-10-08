@@ -163,15 +163,46 @@ describe("revokeRole, resetMfa and publishLegalDocument", () => {
 
   it("publish a document and answer the version the database gave", async () => {
     rpcMock.mockResolvedValue({ data: 3, error: null });
-    const input = { slug: "privacy-policy", title: " Privacy policy ", body: "The text.", changeSummary: " Adds retention periods. " };
+    const input = {
+      expectedVersion: 2,
+      slug: "privacy-policy",
+      title: " Privacy policy ",
+      body: "The text.",
+      changeSummary: " Adds retention periods. ",
+    };
     expect(await publishLegalDocument(input)).toEqual({ done: true, version: 3 });
     expect(rpcMock).toHaveBeenCalledWith("publish_legal_document", {
       p_slug: "privacy-policy",
       p_title: "Privacy policy",
       p_body: "The text.",
       p_change_summary: "Adds retention periods.",
+      p_expected_version: 2,
     });
     expect(revalidateMock).toHaveBeenCalledWith("/en/admin/legal");
     expect((await publishLegalDocument({ ...input, slug: "Bad_Slug" })).errors?.slug).toBeDefined();
+    expect((await publishLegalDocument({ ...input, expectedVersion: -1 })).errors).toBeDefined();
+  });
+
+  it("refuse a form that was submitted before, telling the person to open the document again", async () => {
+    rpcMock.mockResolvedValue(failure("CHARA_CONFLICT", "version"));
+    const input = { expectedVersion: 2, slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods." };
+    expect(await publishLegalDocument(input)).toEqual({
+      message: "This document has a different current version than the form showed. Open it from the list and try again.",
+    });
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("an unlisted refusal", () => {
+  beforeEach(() => requireRoleMock.mockResolvedValue({ user: { id: "staff" }, roles: ["admin"] }));
+
+  it("is logged with its code, and with its message only when the message is one of ours", async () => {
+    const input = { userId: ID, role: "admin", reason: "Left the team, ticket 4813" };
+    rpcMock.mockResolvedValue(failure("CHARA_UNLISTED"));
+    expect(await revokeRole(input)).toEqual({ message: GENERIC });
+    expect(console.error).toHaveBeenLastCalledWith("Administration action failed", { code: "P0001", message: "CHARA_UNLISTED" });
+    rpcMock.mockResolvedValue(failure(`insert or update violates the key (user_id)=(${ID})`));
+    expect(await revokeRole(input)).toEqual({ message: GENERIC });
+    expect(console.error).toHaveBeenLastCalledWith("Administration action failed", { code: "P0001", message: undefined });
   });
 });

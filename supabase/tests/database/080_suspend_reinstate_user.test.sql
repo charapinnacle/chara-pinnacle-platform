@@ -1,5 +1,5 @@
 begin;
-select plan(47);
+select plan(51);
 
 \ir status_fixture.inc
 
@@ -181,5 +181,27 @@ select is(
   0::bigint, 'KPI: every audit row of a suspension or reinstatement has a reason'
 );
 
+-- the record outlives the account of the staff member who made it and that of the person it concerns
+select pg_temp.new_user('00000000-0000-0000-0000-00000000b401');
+select pg_temp.new_user('00000000-0000-0000-0000-00000000b402');
+update public.profiles set account_kind = intended_account_kind where id in ('00000000-0000-0000-0000-00000000b401', '00000000-0000-0000-0000-00000000b402');
+insert into public.platform_staff (user_id, role) values ('00000000-0000-0000-0000-00000000b401', 'trust_safety');
+select is(
+  pg_temp.suspend_as('00000000-0000-0000-0000-00000000b401', '00000000-0000-0000-0000-00000000b402', :'why'), 'ok',
+  'a second Trust & Safety Administrator suspends a user'
+);
+select lives_ok(
+  $$delete from public.profiles where id = '00000000-0000-0000-0000-00000000b401'$$,
+  'the account of the staff member who suspended a user can be deleted'
+);
+select lives_ok(
+  $$delete from public.profiles where id = '00000000-0000-0000-0000-00000000b402'$$,
+  'and so can the account of the user who was suspended'
+);
+select is(
+  (select format('%s|%s', count(*), min(statement_of_reasons)) from public.moderation_actions
+   where target_id = '00000000-0000-0000-0000-00000000b402' and actor_id = '00000000-0000-0000-0000-00000000b401'),
+  format('1|%s', :'why'), 'and the record is kept as it was'
+);
 select * from finish();
 rollback;

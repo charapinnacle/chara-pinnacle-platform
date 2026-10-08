@@ -51,7 +51,7 @@ export const moderationFormSchema = z.object({ reason: statementSchema });
 
 export type ModerationForm = z.input<typeof moderationFormSchema>;
 
-export const moderationTargetSchema = z.enum(["user", "organization"]);
+const moderationTargetSchema = z.enum(["user", "organization"]);
 
 export const moderationInputSchema = moderationFormSchema.extend({
   target: moderationTargetSchema,
@@ -87,7 +87,7 @@ export const auditFilterSchema = z
 export type AuditFilterForm = z.input<typeof auditFilterSchema>;
 export type AuditFilter = z.output<typeof auditFilterSchema>;
 
-export const MAX_RANGE_DAYS = 366;
+const MAX_RANGE_DAYS = 366;
 
 export const rangeSchema = z
   .object({ from: z.string().refine(isDay, "Enter a date as year-month-day"), to: z.string().refine(isDay, "Enter a date as year-month-day") })
@@ -97,7 +97,10 @@ export const rangeSchema = z
     else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days` });
   });
 
+// expectedVersion is the current version the form showed (0 for a new name): a form submitted twice finds the first
+// publication and is refused.
 export const legalDocumentSchema = z.object({
+  expectedVersion: z.number().int().min(0),
   slug: z
     .string()
     .trim()

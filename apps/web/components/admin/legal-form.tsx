@@ -16,11 +16,11 @@ import { legalDocumentSchema, type LegalDocumentForm } from "@/lib/validation/ad
 
 const ids = { slug: "legal-slug", title: "legal-title", body: "legal-body", changeSummary: "legal-summary" } as const;
 
-export function LegalForm({ slug, title }: { slug: string; title: string }) {
+export function LegalForm({ slug, title, expectedVersion }: { slug: string; title: string; expectedVersion: number }) {
   const router = useRouter();
   const form = useForm<LegalDocumentForm>({
     resolver: zodResolver(legalDocumentSchema),
-    defaultValues: { slug, title, body: "", changeSummary: "" },
+    defaultValues: { expectedVersion, slug, title, body: "", changeSummary: "" },
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit, reset } = form;
@@ -31,7 +31,7 @@ export function LegalForm({ slug, title }: { slug: string; title: string }) {
       () => publishLegalDocument(values),
       (result) => {
         if (!result.done) return;
-        reset({ slug: "", title: "", body: "", changeSummary: "" });
+        reset({ expectedVersion: 0, slug: "", title: "", body: "", changeSummary: "" });
         toast({ title: `Version ${result.version} of ${values.slug} is published` });
         router.replace(adminPath(defaultLocale, "legal"));
         router.refresh();

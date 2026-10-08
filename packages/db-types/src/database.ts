@@ -254,13 +254,7 @@ isOneToOne: false
                     "action"?: string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"statement_of_reasons"?: string,"target_id"?: string,"target_type"?: string
                   }
                   Relationships: [
-                    {
-      foreignKeyName: "moderation_actions_actor_id_fkey"
-      columns: ["actor_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
+                    
                   ]
                 },"notification_preferences": {
                   Row: {
@@ -796,6 +790,11 @@ isOneToOne: false
 "account_ops_end_sessions":
 { Args: { "p_user_id": string }; Returns: number
                            },
+"account_ops_fan_out_legal_version":
+{ Args: { "p_after"?: string,"p_limit"?: number,"p_slug": string,"p_version": number }; Returns: {
+              "last_id": string,"queued": number
+            }[]
+                           },
 "account_ops_organization_members":
 { Args: { "p_org": string }; Returns: string[]
                            },
@@ -817,6 +816,11 @@ isOneToOne: false
               "account_kind": Database["public"]['Enums']["account_kind"],"applications_submitted": number,"created_at": string,"display_name": string,"email": string,"id": string,"memberships": Json,"status": Database["public"]['Enums']["profile_status"],"vacancies_created": number
             }[]
                            },
+"admin_list_legal_documents":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
 "admin_list_moderation_actions":
 { Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
               "action": string,"actor_id": string,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_name": string,"target_type": string
@@ -824,7 +828,7 @@ isOneToOne: false
                            },
 "admin_search_audit":
 { Args: { "p_action"?: string,"p_actor"?: string,"p_after_at"?: string,"p_after_id"?: number,"p_entity_id"?: string,"p_entity_type"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: {
-              "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"metadata": Json
+              "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"reason": string
             }[]
                            },
 "admin_search_organizations":
@@ -1001,7 +1005,7 @@ isOneToOne: false
             }[]
                            },
 "publish_legal_document":
-{ Args: { "p_body": string,"p_change_summary": string,"p_slug": string,"p_title": string }; Returns: number
+{ Args: { "p_body": string,"p_change_summary": string,"p_expected_version": number,"p_slug": string,"p_title": string }; Returns: number
                            },
 "rate_limit_attempt":
 { Args: { "p_action": string,"p_key": string }; Returns: {

@@ -9,13 +9,13 @@ create table public.moderation_actions (
   target_id uuid not null,
   action text not null check (action in ('account_suspended', 'account_reinstated', 'organization_suspended', 'organization_reinstated')),
   statement_of_reasons text not null check (char_length(statement_of_reasons) between 10 and 2000),
-  actor_id uuid references public.profiles (id) on delete set null,
+  actor_id uuid,
   created_at timestamptz not null default now(),
   check ((target_type = 'profile') = (action in ('account_suspended', 'account_reinstated')))
 );
 
 comment on table public.moderation_actions is
-  'Append-only record of the suspensions and reinstatements of users and organisations. target_id has no foreign key: the record outlives an erased account.';
+  'Append-only record of the suspensions and reinstatements of users and organisations. actor_id and target_id have no foreign key: the record outlives an erased account, and a deleted profile would otherwise update it.';
 
 create index moderation_actions_target_idx on public.moderation_actions (target_type, target_id, id desc);
 create index moderation_actions_actor_idx on public.moderation_actions (actor_id) where actor_id is not null;
@@ -158,7 +158,6 @@ as $$
 $$;
 
 revoke all on function private.request_id() from public, anon, authenticated, service_role;
-grant execute on function private.request_id() to authenticated;
 
 create function private.record_moderation(
   p_target_type text, p_target_id uuid, p_action text, p_audit_action text, p_reason text

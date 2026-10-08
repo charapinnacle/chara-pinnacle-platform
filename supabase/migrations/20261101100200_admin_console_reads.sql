@@ -10,9 +10,11 @@ create index organizations_display_name_trgm_idx on public.organizations using g
 create index organizations_legal_name_trgm_idx on public.organizations using gin (lower(legal_name) extensions.gin_trgm_ops);
 create index organizations_slug_trgm_idx on public.organizations using gin (slug extensions.gin_trgm_ops);
 
--- The audit search filters on the actor and on the entity, newest first; log_actor_idx and log_entity_idx (account
--- closure) are not ordered by time.
+-- The audit search filters on the actor and on the entity, newest first; log_entity_idx (account closure) is not ordered
+-- by time. log_actor_created_idx also serves the lookup by actor of the account closure, so log_actor_idx, which it
+-- covers, goes: audit.log takes an insert for every sensitive change and carries no index it can do without.
 create index log_actor_created_idx on audit.log (actor_id, created_at desc, id desc) where actor_id is not null;
+drop index audit.log_actor_idx;
 create index log_entity_created_idx on audit.log (entity_type, entity_id, created_at desc, id desc);
 
 -- Application statistics read the applications of a range of days, whatever their stage.
@@ -238,13 +240,14 @@ revoke all on function public.admin_application_counts(date, date) from public, 
 grant execute on function public.admin_application_counts(date, date) to authenticated;
 
 -- Newest first, in keyset pages of (created_at, id): pass the time and id of the last row for the next page. The filters
--- are exact matches combined with AND; the dates are days in UTC, both inclusive.
+-- are exact matches combined with AND; the dates are days in UTC, both inclusive. The rest of the metadata, which can
+-- hold personal data, stays in the table: the console shows the reason.
 create function public.admin_search_audit(
   p_actor uuid default null, p_action text default null, p_entity_type text default null, p_entity_id text default null,
   p_from date default null, p_to date default null,
   p_limit integer default 25, p_after_at timestamptz default null, p_after_id bigint default null
 ) returns table (
-  id bigint, actor_id uuid, action text, entity_type text, entity_id text, metadata jsonb, created_at timestamptz
+  id bigint, actor_id uuid, action text, entity_type text, entity_id text, reason text, created_at timestamptz
 )
 language plpgsql
 stable
@@ -260,7 +263,7 @@ begin
   end if;
 
   return query
-  select l.id, l.actor_id, l.action, l.entity_type, l.entity_id, l.metadata, l.created_at
+  select l.id, l.actor_id, l.action, l.entity_type, l.entity_id, l.metadata ->> 'reason', l.created_at
   from audit.log l
   where (p_actor is null or l.actor_id = p_actor)
     and (p_action is null or l.action = p_action)
@@ -312,6 +315,7 @@ grant execute on function public.admin_list_moderation_actions(integer, bigint) 
 
 -- 20261007100000 extended for the staff page: the rows of revoked roles stay in the list, with who granted the role and
 -- when it was revoked, and each row has the name, the email address and the last sign-in. mfa_enrolled is a boolean only.
+-- The list only grows, so it is newest first and p_after_id is the id of the last row of the page before.
 drop function public.list_platform_staff(integer, bigint);
 
 create function public.list_platform_staff(p_limit integer default 50, p_after_id bigint default null)
@@ -325,12 +329,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if (select auth.uid()) is null or not private.has_platform_role('admin') then
-    raise exception 'CHARA_FORBIDDEN';
-  end if;
-  if not private.is_aal2() then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
-  end if;
+  perform private.assert_staff(array['admin']::public.platform_role[]);
 
   return query
   select
@@ -352,8 +351,8 @@ begin
   join public.profiles p on p.id = s.user_id
   join auth.users u on u.id = s.user_id
   left join auth.users g on g.id = s.granted_by
-  where p_after_id is null or s.id > p_after_id
-  order by s.id
+  where p_after_id is null or s.id < p_after_id
+  order by s.id desc
   limit least(greatest(coalesce(p_limit, 50), 1), 100);
 end;
 $$;
@@ -361,10 +360,41 @@ $$;
 revoke all on function public.list_platform_staff(integer, bigint) from public, anon, authenticated, service_role;
 grant execute on function public.list_platform_staff(integer, bigint) to authenticated;
 
--- A new version of a legal document: the next version number of the slug (1 for a new slug), published now. The change
--- summary is the reason of the audit row. Every active user who has to accept the document gets a mandatory email; a user
--- re-consents at the next sign-in because the version is now ahead of the consent. The age attestation is never asked again.
-create function public.publish_legal_document(p_slug text, p_title text, p_body text, p_change_summary text) returns integer
+-- The current version of every document: the highest published version of each slug.
+create function public.admin_list_legal_documents() returns table (slug text, version integer, title text, published_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+#variable_conflict use_column
+begin
+  perform private.assert_staff(array['admin']::public.platform_role[]);
+
+  return query
+  select d.slug, d.version, d.title, d.published_at
+  from (
+    select distinct on (x.slug) x.slug, x.version, x.title, x.published_at
+    from public.legal_documents x
+    where x.published_at <= now()
+    order by x.slug, x.version desc
+  ) d
+  order by d.slug
+  limit 100;
+end;
+$$;
+
+revoke all on function public.admin_list_legal_documents() from public, anon, authenticated, service_role;
+grant execute on function public.admin_list_legal_documents() to authenticated;
+
+-- A new version of a legal document: the next version number of the slug (1 for a new slug), published now. The caller
+-- names the current version the form showed (0 for a new slug or a draft), so a second submit of the same form, from
+-- another tab or a retry after a timeout, finds a newer version and is refused (CHARA_CONFLICT) instead of publishing the
+-- text again. The change summary is the reason of the audit row. The email to every user who has to accept the document is
+-- the job of account-ops (account_ops_fan_out_legal_version), queued here: a user re-consents at the next sign-in because
+-- the version is now ahead of the consent. The age attestation is never asked again.
+create function public.publish_legal_document(p_slug text, p_title text, p_body text, p_change_summary text, p_expected_version integer)
+returns integer
 language plpgsql
 security definer
 set search_path = ''
@@ -373,8 +403,6 @@ declare
   v_title text := btrim(p_title, E' \t\r\n');
   v_summary text := btrim(p_change_summary, E' \t\r\n');
   v_version integer;
-  v_kinds public.account_kind[];
-  v_messages jsonb[];
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   if p_slug is null or char_length(p_slug) not between 3 and 60 or p_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$' then
@@ -389,35 +417,90 @@ begin
   if v_summary is null or char_length(v_summary) not between 10 and 1000 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'change_summary';
   end if;
+  if p_expected_version is null or p_expected_version < 0 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'expected_version';
+  end if;
 
   perform pg_advisory_xact_lock(hashtextextended('legal_document:' || p_slug, 0));
-  select coalesce(max(d.version), 0) + 1 into v_version from public.legal_documents d where d.slug = p_slug;
+  select coalesce(max(d.version), 0) into v_version from public.legal_documents d where d.slug = p_slug;
+  if v_version <> p_expected_version then
+    raise exception 'CHARA_CONFLICT' using detail = 'version';
+  end if;
+  v_version := v_version + 1;
   insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
   values (p_slug, v_version, v_title, p_body, v_summary, now());
   perform audit.record(
     'legal_document.publish', 'legal_document', p_slug || ':' || v_version,
     jsonb_strip_nulls(jsonb_build_object('reason', v_summary, 'request_id', private.request_id()))
   );
-
-  if p_slug <> 'age-18-plus' then
-    select array_agg(k) into v_kinds
-    from unnest(enum_range(null::public.account_kind)) k
-    where p_slug = any (private.required_consents(k));
-  end if;
-  if v_kinds is not null then
-    select array_agg(jsonb_build_object(
-      'kind', 'legal_version', 'user_id', p.id, 'mandatory', true,
-      'document_slug', p_slug, 'version', v_version, 'change_summary', v_summary
-    )) into v_messages
-    from public.profiles p
-    where p.account_kind = any (v_kinds) and p.status = 'active' and p.deleted_at is null;
-    if v_messages is not null then
-      perform pgmq.send_batch('notifications', v_messages);
-    end if;
-  end if;
+  perform pgmq.send('account_ops', jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', p_slug, 'version', v_version));
   return v_version;
 end;
 $$;
 
-revoke all on function public.publish_legal_document(text, text, text, text) from public, anon, authenticated, service_role;
-grant execute on function public.publish_legal_document(text, text, text, text) to authenticated;
+revoke all on function public.publish_legal_document(text, text, text, text, integer) from public, anon, authenticated, service_role;
+grant execute on function public.publish_legal_document(text, text, text, text, integer) to authenticated;
+
+-- One page of the fan-out of a legal version: the mandatory email to the active users, after p_after in the order of
+-- their id, whose account kind has to accept the slug (none for the age attestation or a document nobody has to accept).
+-- It returns the last id of the page and the emails queued, and no row once the users are used up, so the job calls it
+-- until then. A user who already has the email of this version is skipped, so a job that runs again (a crash, a timeout)
+-- queues nothing twice; the lock makes two runs of the same version take their pages one after the other.
+create function public.account_ops_fan_out_legal_version(
+  p_slug text, p_version integer, p_after uuid default null, p_limit integer default 1000
+) returns table (last_id uuid, queued integer)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_kinds public.account_kind[];
+  v_summary text;
+  v_ids uuid[];
+  v_messages jsonb[];
+begin
+  if p_slug = 'age-18-plus' then
+    return;
+  end if;
+  select array_agg(k) into v_kinds
+  from unnest(enum_range(null::public.account_kind)) k
+  where p_slug = any (private.required_consents(k));
+  select d.change_summary into v_summary from public.legal_documents d where d.slug = p_slug and d.version = p_version;
+  if v_kinds is null or v_summary is null then
+    return;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('legal_version_fan_out:' || p_slug || ':' || p_version, 0));
+  select array_agg(p.id order by p.id) into v_ids
+  from (
+    select x.id from public.profiles x
+    where x.account_kind = any (v_kinds) and x.status = 'active' and x.deleted_at is null
+      and (p_after is null or x.id > p_after)
+    order by x.id
+    limit least(greatest(coalesce(p_limit, 1000), 1), 1000)
+  ) p;
+  if v_ids is null then
+    return;
+  end if;
+
+  select array_agg(jsonb_build_object(
+    'kind', 'legal_version', 'user_id', u.id, 'mandatory', true,
+    'document_slug', p_slug, 'version', p_version, 'change_summary', v_summary
+  ) order by u.id) into v_messages
+  from unnest(v_ids) u (id)
+  where not exists (
+    select 1 from public.notifications n
+    where n.user_id = u.id and n.kind = 'legal_version'
+      and n.payload ->> 'document_slug' = p_slug and n.payload -> 'version' = to_jsonb(p_version)
+  );
+  if v_messages is not null then
+    perform pgmq.send_batch('notifications', v_messages);
+  end if;
+  last_id := v_ids[cardinality(v_ids)];
+  queued := coalesce(cardinality(v_messages), 0);
+  return next;
+end;
+$$;
+
+revoke all on function public.account_ops_fan_out_legal_version(text, integer, uuid, integer) from public, anon, authenticated, service_role;
+grant execute on function public.account_ops_fan_out_legal_version(text, integer, uuid, integer) to service_role;

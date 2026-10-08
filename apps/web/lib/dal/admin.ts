@@ -172,18 +172,17 @@ export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promi
     p_after_id: after?.id,
   });
   if (error) throw failure("The audit log", error);
-  const rows = data.map((row): AuditRow => {
-    const reason = z.object({ reason: z.string() }).safeParse(row.metadata);
-    return {
+  const rows = data.map(
+    (row): AuditRow => ({
       id: row.id,
       actorId: row.actor_id ?? null,
       action: row.action,
       entityType: row.entity_type,
       entityId: row.entity_id ?? null,
-      reason: reason.success ? reason.data.reason : null,
+      reason: row.reason ?? null,
       createdAt: row.created_at,
-    };
-  });
+    }),
+  );
   return paged(rows, (row) => ({ at: row.createdAt, id: row.id }));
 }
 
@@ -262,11 +261,14 @@ export async function listModerationActions(after: number | null): Promise<Page<
   return paged(rows, (row) => row.id);
 }
 
-export async function listStaff(): Promise<StaffRow[]> {
+export async function listStaff(after: number | null): Promise<Page<StaffRow, number>> {
   const supabase = await adminClient();
-  const { data, error } = await supabase.rpc("list_platform_staff", { p_limit: 100 });
+  const { data, error } = await supabase.rpc("list_platform_staff", {
+    p_limit: ADMIN_PAGE_SIZE + 1,
+    p_after_id: after ?? undefined,
+  });
   if (error) throw failure("The staff", error);
-  return data.map(
+  const rows = data.map(
     (row): StaffRow => ({
       id: row.id,
       userId: row.user_id,
@@ -281,24 +283,12 @@ export async function listStaff(): Promise<StaffRow[]> {
       lastSignInAt: row.last_sign_in_at ?? null,
     }),
   );
+  return paged(rows, (row) => row.id);
 }
 
-// The current version of every document: legal_documents is public, so the table is read as the caller. A document is
-// listed once, with the highest version published.
 export async function listLegalDocuments(): Promise<LegalDocumentRow[]> {
   const supabase = await adminClient();
-  const { data, error } = await supabase
-    .from("legal_documents")
-    .select("slug, version, title, published_at")
-    .order("slug")
-    .order("version", { ascending: false })
-    .limit(500);
+  const { data, error } = await supabase.rpc("admin_list_legal_documents");
   if (error) throw failure("The legal documents", error);
-  const current = new Map<string, LegalDocumentRow>();
-  for (const row of data) {
-    if (!current.has(row.slug) && row.published_at) {
-      current.set(row.slug, { slug: row.slug, version: row.version, title: row.title, publishedAt: row.published_at });
-    }
-  }
-  return [...current.values()];
+  return data.map((row): LegalDocumentRow => ({ slug: row.slug, version: row.version, title: row.title, publishedAt: row.published_at }));
 }

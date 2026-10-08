@@ -131,8 +131,26 @@ begin
 end;
 $$;
 
--- 20261016100000 with one change: a job may name an organisation (the sign-out of its members), and then the audit row
--- names the organisation.
+-- What the audit row of a job names: the organisation (the sign-out of its members), the legal document version (the
+-- fan-out of its email) or the user, as long as the profile exists, so a job after an erasure writes the old id nowhere.
+create function private.account_ops_entity(p_message jsonb, out entity_type text, out entity_id text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    case when p_message ? 'organization_id' then 'organization' when p_message ? 'document_slug' then 'legal_document' else 'user' end,
+    case
+      when p_message ? 'organization_id' then p_message ->> 'organization_id'
+      when p_message ? 'document_slug' then (p_message ->> 'document_slug') || ':' || (p_message ->> 'version')
+      else (select p.id::text from public.profiles p where p.id::text = p_message ->> 'user_id')
+    end
+$$;
+
+revoke all on function private.account_ops_entity(jsonb) from public, anon, authenticated, service_role;
+
+-- 20261016100000 with one change: the audit row names what the job acts on (private.account_ops_entity).
 create or replace function public.account_ops_ack(p_msg_id bigint, p_result jsonb default '{}') returns boolean
 language plpgsql
 security definer
@@ -140,6 +158,8 @@ set search_path = ''
 as $$
 declare
   v_message jsonb;
+  v_type text;
+  v_entity text;
 begin
   if p_result is null or jsonb_typeof(p_result) <> 'object' then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'result';
@@ -148,17 +168,16 @@ begin
   if v_message is null or not pgmq.delete('account_ops', p_msg_id) then
     return false;
   end if;
+  select e.entity_type, e.entity_id into v_type, v_entity from private.account_ops_entity(v_message) e;
   perform audit.record(
-    'account_ops_done',
-    case when v_message ? 'organization_id' then 'organization' else 'user' end,
-    case when v_message ? 'organization_id' then v_message ->> 'organization_id'
-      else (select p.id::text from public.profiles p where p.id::text = v_message ->> 'user_id') end,
+    'account_ops_done', v_type, v_entity,
     jsonb_build_object('action', v_message ->> 'action', 'msg_id', p_msg_id) || p_result
   );
   return true;
 end;
 $$;
 
+-- 20261016100000 with the same change.
 create or replace function public.account_ops_dequeue(p_limit integer default 25) returns table (msg_id bigint, message jsonb)
 language plpgsql
 security definer
@@ -167,15 +186,15 @@ as $$
 declare
   v_max integer := (select (value #>> '{}')::integer from private.settings where key = 'account_ops_max_attempts');
   v_job pgmq.message_record;
+  v_type text;
+  v_entity text;
 begin
   for v_job in select * from pgmq.read('account_ops', 60, least(greatest(coalesce(p_limit, 25), 1), 100)) loop
     if v_job.read_ct > v_max then
       perform pgmq.delete('account_ops', v_job.msg_id);
+      select e.entity_type, e.entity_id into v_type, v_entity from private.account_ops_entity(v_job.message) e;
       perform audit.record(
-        'account_ops_abandoned',
-        case when v_job.message ? 'organization_id' then 'organization' else 'user' end,
-        case when v_job.message ? 'organization_id' then v_job.message ->> 'organization_id'
-          else (select p.id::text from public.profiles p where p.id::text = v_job.message ->> 'user_id') end,
+        'account_ops_abandoned', v_type, v_entity,
         jsonb_build_object('action', v_job.message ->> 'action', 'msg_id', v_job.msg_id)
       );
     else

@@ -8,9 +8,10 @@ import { requirePlatformRole } from "@/lib/dal/session";
 
 export const metadata: Metadata = { title: "Staff — CHARA", robots: { index: false } };
 
-export default async function StaffPage({ params }: PageProps<"/[lang]/admin/staff">) {
-  const { lang } = await params;
+export default async function StaffPage({ params, searchParams }: PageProps<"/[lang]/admin/staff">) {
+  const [{ lang }, { after }] = await Promise.all([params, searchParams]);
   await requirePlatformRole(lang, ["admin"]);
+  const cursor = typeof after === "string" && /^\d{1,15}$/.test(after) ? Number(after) : null;
   return (
     <div className="grid gap-6">
       <PageHeading title="Staff">
@@ -21,8 +22,8 @@ export default async function StaffPage({ params }: PageProps<"/[lang]/admin/sta
       <div>
         <GrantRoleDialog />
       </div>
-      <Suspense fallback={<LoadingSkeleton rows={4} />}>
-        <StaffList />
+      <Suspense key={cursor ?? "first"} fallback={<LoadingSkeleton rows={4} />}>
+        <StaffList lang={lang} after={cursor} />
       </Suspense>
     </div>
   );

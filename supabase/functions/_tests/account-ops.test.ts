@@ -573,3 +573,85 @@ Deno.test("an organisation job without a valid organisation id is never executed
   assert.deepEqual(await response.json(), { processed: 0, failed: 2 });
   assert.deepEqual(calls.map((c) => c.path), Array(2).fill("/rest/v1/rpc/account_ops_dequeue"));
 });
+
+Deno.test("an organisation of 25 members is signed out in chunks of 10 at the same time, and the counts are totalled", async () => {
+  const members = Array.from({ length: 25 }, (_, i) => `00000000-0000-0000-0000-0000000d${String(i).padStart(4, "0")}`);
+  let running = 0;
+  let peak = 0;
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 89,
+      message: { action: "sign_out_organization", organization_id: ORG },
+    }),
+    "POST /rest/v1/rpc/account_ops_organization_members": reply(200, members),
+    "POST /rest/v1/rpc/account_ops_end_sessions": async () => {
+      peak = Math.max(peak, ++running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running--;
+      return reply(200, 1);
+    },
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(
+    calls.filter((c) => c.path.endsWith("end_sessions")).map((c) => (c.body as { p_user_id: string }).p_user_id),
+    members,
+  );
+  assert.equal(peak, 10);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 89, p_result: { sessions_ended: 25 } }]);
+});
+
+Deno.test("a fan_out_legal_version job asks for pages until none is left, passing the last id on, and totals the emails", async () => {
+  const pages = [
+    [{ last_id: USER, queued: 1000 }],
+    [{ last_id: OTHER, queued: 640 }],
+    [],
+  ];
+  let next = 0;
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 90,
+      message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 4 },
+    }),
+    "POST /rest/v1/rpc/account_ops_fan_out_legal_version": () => reply(200, pages[next++]),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.path.endsWith("fan_out_legal_version")).map((c) => c.body), [
+    { p_slug: "privacy-policy", p_version: 4, p_after: null },
+    { p_slug: "privacy-policy", p_version: 4, p_after: USER },
+    { p_slug: "privacy-policy", p_version: 4, p_after: OTHER },
+  ]);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 90, p_result: { emails_queued: 1640 } }]);
+});
+
+Deno.test("a fan-out that fails on a page is not acknowledged, so the job is read again", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 91,
+      message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 4 },
+    }),
+    "POST /rest/v1/rpc/account_ops_fan_out_legal_version": (call) =>
+      (call.body as { p_after: string | null }).p_after === null
+        ? reply(200, [{ last_id: USER, queued: 1000 }])
+        : reply(500, { code: "57014", message: "canceling statement due to statement timeout" }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("a fan-out job with a bad slug or version is never executed or acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 92, message: { action: "fan_out_legal_version", document_slug: "Bad_Slug", version: 1 } },
+      { msg_id: 93, message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: "2" } },
+      { msg_id: 94, message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 0 } },
+    ),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 3 });
+  assert.deepEqual(calls.map((c) => c.path), Array(2).fill("/rest/v1/rpc/account_ops_dequeue"));
+});

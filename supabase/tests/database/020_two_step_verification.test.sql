@@ -177,15 +177,15 @@ select is(pg_temp.call_as(null, 'anon', $$select * from public.list_platform_sta
 select is(
   (select proargnames::text from pg_proc where oid = 'public.list_platform_staff(integer, bigint)'::regprocedure),
   '{p_limit,p_after_id,id,user_id,display_name,email,role,granted_by,granted_by_email,granted_at,revoked_at,mfa_enrolled,last_sign_in_at}',
-  'the staff list returns no factor id, secret or name'
+  'the staff list returns no factor id or secret, only the name, the email address, the dates and a boolean for two-step verification'
 );
 select is(
   pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2)$$), '2', 'the staff list honours the limit');
 select is(
-  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2, (select max(id) from public.list_platform_staff(2)))$$),
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2, (select min(id) from public.list_platform_staff(2)))$$),
   '2', 'the second page of the staff list holds the other two active staff members');
 select is(
-  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(100, (select max(id) from public.list_platform_staff(100)))$$),
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(100, (select min(id) from public.list_platform_staff(100)))$$),
   '0', 'a page after the last row is empty');
 
 -- my_platform_roles: what the page guard asks, at any aal

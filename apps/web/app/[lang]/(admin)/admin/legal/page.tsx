@@ -42,7 +42,7 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
         title="Publish a new version"
         description="The new version is public at once. Everyone who has to accept the document gets an email and is asked to accept it at the next sign-in."
       >
-        <LegalForm key={chosen?.slug ?? "new"} slug={chosen?.slug ?? ""} title={chosen?.title ?? ""} />
+        <LegalForm key={chosen?.slug ?? "new"} slug={chosen?.slug ?? ""} title={chosen?.title ?? ""} expectedVersion={chosen?.version ?? 0} />
       </PassportSection>
     </div>
   );

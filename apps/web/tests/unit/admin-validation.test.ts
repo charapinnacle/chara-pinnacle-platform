@@ -93,10 +93,15 @@ describe("the statistics range", () => {
 });
 
 describe("the legal document form", () => {
-  const valid = { slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods." };
+  const valid = { expectedVersion: 2, slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods." };
 
   it("accepts a document", () => {
     expect(legalDocumentSchema.safeParse(valid).success).toBe(true);
+    expect(legalDocumentSchema.safeParse({ ...valid, expectedVersion: 0 }).success).toBe(true);
+  });
+
+  it.each([-1, 1.5, "2"])("refuses %s as the version the form showed", (expectedVersion) => {
+    expect(legalDocumentSchema.safeParse({ ...valid, expectedVersion }).success).toBe(false);
   });
 
   it.each([

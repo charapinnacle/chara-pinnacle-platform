@@ -1,5 +1,5 @@
 begin;
-select plan(54);
+select plan(61);
 
 \ir status_fixture.inc
 
@@ -250,12 +250,51 @@ select is(
   'AC4: a start after the end is invalid input'
 );
 select is(
-  (select (r -> 'metadata' ->> 'reason') from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.admin_search_audit(p_entity_id => 'entity-9')$$)) r),
-  'Reason number 9', 'AC4: the reason is in the metadata of the row'
+  (select r ->> 'reason' from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.admin_search_audit(p_entity_id => 'entity-9')$$)) r),
+  'Reason number 9', 'AC4: the row carries its reason'
 );
 select is(
   pg_temp.names_of('public.admin_search_audit(uuid, text, text, text, date, date, integer, timestamptz, bigint)'::regprocedure),
-  'id,actor_id,action,entity_type,entity_id,metadata,created_at', 'the audit search returns no address'
+  'id,actor_id,action,entity_type,entity_id,reason,created_at', 'the audit search returns the reason and no address or other metadata'
+);
+
+-- FR-A7 AC11: the staff list keeps revoked roles for ever, so it is paged and the newest rows are reachable
+select pg_temp.new_user('00000000-0000-0000-0000-0000000c0001');
+insert into public.platform_staff (user_id, role, granted_at, revoked_at)
+select '00000000-0000-0000-0000-0000000c0001', 'verification_reviewer', now() - interval '2 days', now() - interval '1 day'
+from generate_series(1, 130);
+select is(jsonb_array_length(pg_temp.rows_as(:'st_admin', $$select * from public.list_platform_staff(100)$$)), 100, 'the staff list returns at most 100 rows');
+select is(
+  jsonb_array_length(pg_temp.rows_as(:'st_admin', $$select * from public.list_platform_staff(100, (select min(id) from public.list_platform_staff(100)))$$)),
+  (select count(*)::integer - 100 from public.platform_staff), 'the next page holds the rest of the table'
+);
+select is(
+  (select max((r ->> 'id')::bigint) from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.list_platform_staff(100)$$)) r),
+  (select max(id) from public.platform_staff), 'the newest grant is on the first page'
+);
+select is(
+  (select min((r ->> 'id')::bigint) from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.list_platform_staff(100, (select min(id) from public.list_platform_staff(100)))$$)) r),
+  (select min(id) from public.platform_staff), 'the oldest grant is on the last page'
+);
+
+-- the current version of every legal document, whatever the number of versions
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+select 'versioned-doc', n, 'Versioned document ' || n, 'Text.', 'Change number ' || n || '.', now() - interval '1 day'
+from generate_series(1, 600) n;
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+values ('versioned-doc', 601, 'Not yet published', 'Text.', 'A version for the future.', now() + interval '1 day');
+select is(
+  (select format('%s|%s', r ->> 'version', r ->> 'title') from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.admin_list_legal_documents()$$)) r
+   where r ->> 'slug' = 'versioned-doc'),
+  '600|Versioned document 600', 'the current version is the highest published one, among 600 versions'
+);
+select is(
+  (select count(*) - count(distinct r ->> 'slug') from jsonb_array_elements(pg_temp.rows_as(:'st_admin', $$select * from public.admin_list_legal_documents()$$)) r),
+  0::bigint, 'each document is listed once'
+);
+select is(
+  pg_temp.rows_as(:'st_trust', $$select * from public.admin_list_legal_documents()$$), '"P0001|CHARA_FORBIDDEN|"'::jsonb,
+  'only the Platform Administrator lists the documents'
 );
 
 select * from finish();

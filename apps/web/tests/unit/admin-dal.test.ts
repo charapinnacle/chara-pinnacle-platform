@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const rpcMock = vi.fn();
 const createClientMock = vi.fn();
 const headerValues = vi.hoisted(() => ({ requestId: null as string | null }));
-let tableOutcome: { data: unknown; error: unknown } = { data: [], error: null };
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: async () => ({ get: () => headerValues.requestId }) }));
@@ -12,10 +11,6 @@ vi.mock("@/lib/supabase/server", () => ({
     createClientMock(extra);
     return {
       rpc: rpcMock,
-      from: () => {
-        const chain = { select: () => chain, order: () => chain, limit: () => Promise.resolve(tableOutcome) };
-        return chain;
-      },
     };
   },
 }));
@@ -38,7 +33,6 @@ function userRow(n: number) {
 beforeEach(() => {
   vi.clearAllMocks();
   headerValues.requestId = null;
-  tableOutcome = { data: [], error: null };
 });
 
 describe("the paged searches", () => {
@@ -81,8 +75,8 @@ describe("the paged searches", () => {
   it("send the audit filter as the arguments of the function, leave out what is empty and show the reason of the row", async () => {
     rpcMock.mockResolvedValue({
       data: [
-        { id: 9, actor_id: ID, action: "user.suspend", entity_type: "profile", entity_id: ID, metadata: { reason: "Fake profile." }, created_at: "2026-10-02T10:00:00Z" },
-        { id: 8, actor_id: null, action: "job.created", entity_type: "job", entity_id: null, metadata: {}, created_at: "2026-10-02T09:00:00Z" },
+        { id: 9, actor_id: ID, action: "user.suspend", entity_type: "profile", entity_id: ID, reason: "Fake profile.", created_at: "2026-10-02T10:00:00Z" },
+        { id: 8, actor_id: null, action: "job.created", entity_type: "job", entity_id: null, reason: null, created_at: "2026-10-02T09:00:00Z" },
       ],
       error: null,
     });
@@ -194,30 +188,56 @@ describe("the log of suspensions and the staff", () => {
     expect(page.rows[0]).toMatchObject({ targetType: "profile", targetName: null, reasons: "Fake profile." });
   });
 
-  it("list at most 100 staff rows with the status of two-step verification", async () => {
-    rpcMock.mockResolvedValue({
-      data: [{ id: 1, user_id: ID, display_name: null, email: "a@example.test", role: "admin", granted_by: null, granted_by_email: null, granted_at: "2026-10-01T00:00:00Z", revoked_at: null, mfa_enrolled: true, last_sign_in_at: null }],
-      error: null,
+  it("page the staff by id, one row more than a page, with the status of two-step verification", async () => {
+    const row = (id: number) => ({
+      id,
+      user_id: ID,
+      display_name: null,
+      email: "a@example.test",
+      role: "admin",
+      granted_by: null,
+      granted_by_email: null,
+      granted_at: "2026-10-01T00:00:00Z",
+      revoked_at: null,
+      mfa_enrolled: true,
+      last_sign_in_at: null,
     });
-    expect(await dal.listStaff()).toEqual([
-      { id: 1, userId: ID, displayName: null, email: "a@example.test", role: "admin", grantedBy: null, grantedByEmail: null, grantedAt: "2026-10-01T00:00:00Z", revokedAt: null, mfaEnrolled: true, lastSignInAt: null },
-    ]);
-    expect(rpcMock).toHaveBeenCalledWith("list_platform_staff", { p_limit: 100 });
+    rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(30 - n)), error: null });
+    const page = await dal.listStaff(31);
+
+    expect(rpcMock).toHaveBeenCalledWith("list_platform_staff", { p_limit: 26, p_after_id: 31 });
+    expect(page.rows).toHaveLength(25);
+    expect(page.next).toBe(6);
+    expect(page.rows[0]).toEqual({
+      id: 30,
+      userId: ID,
+      displayName: null,
+      email: "a@example.test",
+      role: "admin",
+      grantedBy: null,
+      grantedByEmail: null,
+      grantedAt: "2026-10-01T00:00:00Z",
+      revokedAt: null,
+      mfaEnrolled: true,
+      lastSignInAt: null,
+    });
+    rpcMock.mockResolvedValue({ data: [row(1)], error: null });
+    expect((await dal.listStaff(null)).next).toBeNull();
+    expect(rpcMock).toHaveBeenLastCalledWith("list_platform_staff", { p_limit: 26, p_after_id: undefined });
   });
 
-  it("list each legal document once with its highest published version", async () => {
-    tableOutcome = {
+  it("list the current version of each legal document as the database gives it", async () => {
+    rpcMock.mockResolvedValue({
       data: [
         { slug: "privacy-policy", version: 3, title: "Privacy policy", published_at: "2026-10-03T00:00:00Z" },
-        { slug: "privacy-policy", version: 2, title: "Privacy policy", published_at: "2026-09-03T00:00:00Z" },
-        { slug: "worker-terms", version: 1, title: "Worker terms", published_at: null },
         { slug: "worker-terms", version: 0, title: "Worker terms draft", published_at: "2026-01-01T00:00:00Z" },
       ],
       error: null,
-    };
+    });
     expect(await dal.listLegalDocuments()).toEqual([
       { slug: "privacy-policy", version: 3, title: "Privacy policy", publishedAt: "2026-10-03T00:00:00Z" },
       { slug: "worker-terms", version: 0, title: "Worker terms draft", publishedAt: "2026-01-01T00:00:00Z" },
     ]);
+    expect(rpcMock).toHaveBeenCalledWith("admin_list_legal_documents");
   });
 });

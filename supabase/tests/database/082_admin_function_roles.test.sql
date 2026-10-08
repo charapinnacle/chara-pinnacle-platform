@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(25);
 
 \ir status_fixture.inc
 
@@ -31,7 +31,7 @@ insert into fns values
   ('grant_platform_role', format($$select public.grant_platform_role(%L, 'trust_safety', 'New T&S hire, ticket 4812')$$, :'grantee'), '{admin}'),
   ('revoke_platform_role', format($$select public.revoke_platform_role(%L, 'verification_reviewer', 'Left the team, ticket 4813')$$, :'revokee'), '{admin}'),
   ('reset_mfa', format($$select public.reset_mfa(%L, 'Lost the phone, identity checked')$$, :'resetee'), '{admin}'),
-  ('publish_legal_document', $$select public.publish_legal_document('matrix-terms', 'Matrix terms', 'The text of the terms.', 'Adds the matrix of roles.')$$, '{admin}'),
+  ('publish_legal_document', $$select public.publish_legal_document('matrix-terms', 'Matrix terms', 'The text of the terms.', 'Adds the matrix of roles.', 0)$$, '{admin}'),
   ('admin_application_counts', $$select * from public.admin_application_counts(current_date - 30, current_date)$$, '{admin}'),
   ('admin_search_audit', $$select * from public.admin_search_audit()$$, '{admin}'),
   ('list_platform_staff', $$select * from public.list_platform_staff()$$, '{admin}'),
@@ -158,6 +158,12 @@ select is(
   (select count(*) from audit.log where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate', 'legal_document.publish', 'mfa_reset', 'platform_role_granted', 'platform_role_revoked')
      and created_at > now() - interval '1 minute' and actor_id in (:'st_admin', :'st_trust')),
   8::bigint, 'every state-changing call wrote its own audit row'
+);
+select is_empty(
+  format($$select id, action from audit.log
+    where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate', 'legal_document.publish', 'mfa_reset', 'platform_role_granted', 'platform_role_revoked')
+      and created_at > now() - interval '1 minute' and actor_id in (%L, %L) and coalesce(metadata ->> 'reason', '') = ''$$, :'st_admin', :'st_trust'),
+  'KPI: the query of the runbook finds no action of these calls without a reason'
 );
 
 -- the helpers hide behind the schema
