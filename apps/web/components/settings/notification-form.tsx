@@ -8,7 +8,7 @@ import { FormButton } from "@/components/forms/form-button";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveNotificationSettings } from "@/lib/actions/notifications";
-import { notificationSettingsSchema, type EmailDelivery, type NotificationSettings } from "@/lib/validation/notifications";
+import { DAILY_SUMMARY_TIME_TEXT, notificationSettingsSchema, type EmailDelivery, type NotificationSettings } from "@/lib/validation/notifications";
 
 const GROUP_ID = "notification-delivery";
 
@@ -17,7 +17,7 @@ const labels = {
   daily_summary: {
     label: "Daily summary",
     icon: CalendarClock,
-    description: "One email a day at 08:00 Central European time, only when there are new applications.",
+    description: `One email a day at ${DAILY_SUMMARY_TIME_TEXT}, only when there are new applications.`,
   },
 } satisfies Record<EmailDelivery, { label: string; icon: LucideIcon; description: string }>;
 
