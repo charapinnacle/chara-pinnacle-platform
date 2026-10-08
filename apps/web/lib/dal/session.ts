@@ -7,6 +7,7 @@ import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
 import { homePath, mfaPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
+import type { PlatformRole } from "@/lib/validation/admin";
 import type { MemberRole } from "@/lib/validation/team";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
@@ -77,20 +78,27 @@ async function requireAal2(lang: string, user: CurrentUser): Promise<void> {
   if (user.aal !== "aal2") redirect(mfaPath(lang, await requestedPath()));
 }
 
-async function hasPlatformRole(): Promise<boolean> {
+export const getPlatformRoles = cache(async (): Promise<PlatformRole[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("my_platform_roles");
   if (error) throw new Error("The platform roles could not be loaded", { cause: error });
-  return data.length > 0;
-}
+  return data;
+});
 
-// The platform roles are looked up, never read from the token. A user who holds no active role gets the forbidden page
-// without an MFA prompt; staff must be at aal2 for every administration page (FR-A4).
-export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
+// The platform roles are looked up on every request, never read from the token. A user who holds no active role gets
+// the not-found page, so the console does not show that it exists, and not an MFA prompt; staff must be at aal2 for
+// every administration page (FR-A4), and a page outside the roles of the staff member is not found either (FR-F1). The
+// answer is given before the page streams anything, so the status is 404.
+export async function requirePlatformRole(
+  lang: string,
+  allowed?: readonly PlatformRole[],
+): Promise<{ user: CurrentUser; roles: PlatformRole[] }> {
   const user = await requireUser(lang);
-  if (!(await hasPlatformRole())) redirect(`/${lang}/forbidden`);
+  const roles = await getPlatformRoles();
+  if (roles.length === 0) notFound();
   await requireAal2(lang, user);
-  return user;
+  if (allowed && !roles.some((role) => allowed.includes(role))) notFound();
+  return { user, roles };
 }
 
 // The pages of a candidate: a visitor goes to log in (requireUser), platform staff to the administration, any other
@@ -98,7 +106,7 @@ export async function requirePlatformStaff(lang: string): Promise<CurrentUser> {
 export async function requireCandidate(lang: string): Promise<CurrentUser> {
   const user = await requireUser(lang);
   if (user.accountKind !== "worker") {
-    redirect((await hasPlatformRole()) ? `/${lang}/admin` : homePath(lang, user.accountKind));
+    redirect((await getPlatformRoles()).length > 0 ? `/${lang}/admin` : homePath(lang, user.accountKind));
   }
   return user;
 }

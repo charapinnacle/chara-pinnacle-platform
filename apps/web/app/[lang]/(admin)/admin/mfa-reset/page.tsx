@@ -1,0 +1,27 @@
+import type { Metadata } from "next";
+import { z } from "zod";
+import { MfaResetForm } from "@/components/admin/mfa-reset-form";
+import { PageHeading } from "@/components/admin/page-heading";
+import { PassportSection } from "@/components/passport/section";
+import { requirePlatformRole } from "@/lib/dal/session";
+
+export const metadata: Metadata = { title: "MFA reset — CHARA", robots: { index: false } };
+
+export default async function MfaResetPage({ params, searchParams }: PageProps<"/[lang]/admin/mfa-reset">) {
+  const [{ lang }, { user }] = await Promise.all([params, searchParams]);
+  await requirePlatformRole(lang, ["admin"]);
+  const userId = z.uuid().safeParse(user);
+
+  return (
+    <div className="grid gap-6">
+      <PageHeading title="MFA reset" />
+      <PassportSection
+        id="reset"
+        title="Reset two-step verification"
+        description="Only after you have checked the identity of the person. Their authenticator is removed, they are signed out on every device and told by email, and they set it up again at the next sign-in."
+      >
+        <MfaResetForm userId={userId.success ? userId.data : ""} />
+      </PassportSection>
+    </div>
+  );
+}
