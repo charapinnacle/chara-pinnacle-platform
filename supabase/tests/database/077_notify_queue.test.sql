@@ -1,5 +1,5 @@
 begin;
-select plan(93);
+select plan(101);
 
 \ir passport_fixture.inc
 
@@ -94,11 +94,12 @@ select is(
 );
 select is(
   (select r - 'messages' from t_first),
-  '{"queue_depth": 0, "backlog_threshold": 500, "retry_delays": [2, 6, 18]}'::jsonb, 'AC9: with the queue depth and the settings of the function'
+  '{"queue_depth": 0, "backlog_threshold": 500, "retry_delays": [2, 6, 18], "failed_closed": []}'::jsonb,
+  'AC9: with the queue depth, the settings of the function and no message closed as failed'
 );
 select is(pg_temp.msgs(), '[]'::jsonb, 'AC9: the second call returns nothing until the timeout ends');
 select is(
-  (select extract(epoch from q.vt - now())::integer between 110 and 120 from pgmq.q_notifications q), true, 'AC9: the timeout is the setting of 120 seconds'
+  (select extract(epoch from q.vt - now())::integer between 170 and 180 from pgmq.q_notifications q), true, 'AC9: the timeout is the setting of 180 seconds'
 );
 select pg_temp.make_visible();
 select is((pg_temp.msgs() -> 0 ->> 'attempt')::integer, 2, 'AC9: after the timeout the message returns, read a second time');
@@ -160,15 +161,27 @@ select is(jsonb_array_length(pg_temp.msgs()), 1, 'read 1');
 select pg_temp.make_visible();
 select is(jsonb_array_length(pg_temp.msgs()), 1, 'read 2 at a limit of 2');
 select pg_temp.make_visible();
-select is(jsonb_array_length(pg_temp.msgs()), 0, 'read 3 is not returned');
+create temp table t_abandoned as select pg_temp.dequeue() as r;
+select is(jsonb_array_length((select r -> 'messages' from t_abandoned)), 0, 'read 3 is not returned');
 select is(pg_temp.row_of((select id from t_n4)), '(failed,0,,abandoned,,f)', 'it is recorded as failed (abandoned)');
+select is(
+  (select r -> 'failed_closed' from t_abandoned),
+  jsonb_build_array(jsonb_build_object('notification_id', (select id from t_n4), 'kind', 'mfa_reset', 'error', 'abandoned')),
+  'the call lists it, so that the function raises the alert'
+);
 update private.settings set value = '8' where key = 'notify_max_reads';
 
 -- A recipient without an address is recorded as failed.
 create temp table t_n5 as select pg_temp.queue(:'u3') as id;
 update auth.users set email = null where id = :'u3';
-select is(pg_temp.msgs(), '[]'::jsonb, 'a recipient without an address is not returned');
+create temp table t_noaddress as select pg_temp.dequeue() as r;
+select is((select r -> 'messages' from t_noaddress), '[]'::jsonb, 'a recipient without an address is not returned');
 select is(pg_temp.row_of((select id from t_n5)), '(failed,0,,no_recipient,,f)', 'it is recorded as failed (no_recipient)');
+select is(
+  (select r -> 'failed_closed' from t_noaddress),
+  jsonb_build_array(jsonb_build_object('notification_id', (select id from t_n5), 'kind', 'mfa_reset', 'error', 'no_recipient')),
+  'and is listed too'
+);
 update auth.users set email = :'u3' || '@example.test' where id = :'u3';
 
 -- The limit and the settings.
@@ -244,6 +257,26 @@ select is((select count(*) from pgmq.q_notifications), 0::bigint, 'and leaves th
 create temp table t_n7 as select pg_temp.queue(:'u3') as id;
 select is(jsonb_array_length(pg_temp.msgs()), 1, 'U3 had a transient bounce only, so its next email is sent');
 select pg_temp.ack('failed', (select id from t_n7), null, 1, 'x') as closed_n7 \gset
+
+-- The notice of a paused erasure goes to the privacy contact: its bounce says nothing about the address of the user it names.
+create temp table t_paused as
+  select pgmq.send('notifications', jsonb_build_object('kind', 'erasure_paused', 'user_id', :'u3'::uuid, 'email', 'privacy@example.test')) as msg;
+select is(pg_temp.msgs() -> 0 ->> 'recipient', 'privacy@example.test', 'erasure_paused: the recipient is the address of the message');
+select is(
+  pg_temp.ack('sent', (select id from public.notifications where msg_id = (select msg from t_paused)), 'p-paused', 1), 'true', 'erasure_paused: the send is recorded'
+);
+select is(pg_temp.ack('bounced_permanent', null, 'p-paused'), 'true', 'erasure_paused: a hard bounce of the contact is recorded on the row');
+select is(
+  (select count(*) from public.notification_preferences where user_id = :'u3'), 0::bigint,
+  'erasure_paused: and marks no address of the user as undeliverable'
+);
+select is(
+  (select count(*) from audit.log where action = 'notification.address_undeliverable' and entity_id = :'u3'), 0::bigint,
+  'erasure_paused: and writes no audit row for the user'
+);
+create temp table t_n9 as select pg_temp.queue(:'u3') as id;
+select is(pg_temp.msgs() -> 0 ->> 'recipient', :'u3' || '@example.test', 'erasure_paused: the next email of the user is still sent to their own address');
+select pg_temp.ack('failed', (select id from t_n9), null, 1, 'x') as closed_n9 \gset
 update auth.users set email = 'new-one@example.test' where id = :'u1';
 select is(
   (select email_undeliverable_at is null from public.notification_preferences where user_id = :'u1'), true, 'a change of the address clears the mark'

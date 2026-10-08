@@ -258,13 +258,13 @@ isOneToOne: false
                   ]
                 },"notifications": {
                   Row: {
-                    "attempts": number,"channel": string,"created_at": string,"delivery": string | null,"id": string,"kind": string,"last_error": string | null,"msg_id": number | null,"payload": NonNullable<Json>,"provider_message_id": string | null,"sent_at": string | null,"status": string,"user_id": string | null
+                    "attempts": number,"created_at": string,"delivery": string | null,"id": string,"kind": string,"last_error": string | null,"msg_id": number | null,"payload": NonNullable<Json>,"provider_message_id": string | null,"sent_at": string | null,"status": string,"user_id": string | null
                   }
                   Insert: {
-                    "attempts"?: number,"channel"?: string,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind": string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
+                    "attempts"?: number,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind": string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
                   }
                   Update: {
-                    "attempts"?: number,"channel"?: string,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind"?: string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
+                    "attempts"?: number,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind"?: string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
                   }
                   Relationships: [
                     

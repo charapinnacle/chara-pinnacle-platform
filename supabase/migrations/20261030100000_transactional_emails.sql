@@ -7,7 +7,7 @@
 -- minimal payload built from it (private.notification_payload), never a document, note, address or token.
 
 insert into private.settings (key, value) values
-  ('notify_visibility_seconds', '120'),
+  ('notify_visibility_seconds', '180'),
   ('notify_max_reads', '8'),
   ('notify_retry_delays_seconds', '"2,6,18"'),
   ('notify_backlog_threshold', '500');
@@ -39,7 +39,6 @@ create table public.notifications (
     'application_received', 'status_changed', 'vacancy_hidden', 'trial_ending', 'payment_failed', 'legal_version',
     'mfa_reset', 'deletion_requested', 'deletion_completed', 'erasure_paused'
   )),
-  channel text not null default 'email' check (channel = 'email'),
   status text not null default 'queued' check (status in ('queued', 'sent', 'failed', 'suppressed')),
   payload jsonb not null default '{}' check (jsonb_typeof(payload) = 'object'),
   msg_id bigint,
@@ -65,10 +64,11 @@ create index notifications_created_idx on public.notifications (created_at);
 alter table public.notifications enable row level security;
 alter table public.notifications force row level security;
 revoke all on table public.notifications from public, anon, authenticated, service_role;
-grant select (id, user_id, kind, payload, channel, status, sent_at, created_at) on public.notifications to authenticated;
+grant select (id, user_id, kind, payload, status, sent_at, created_at) on public.notifications to authenticated;
 
+-- The notice of a paused erasure names the account on legal hold, which only staff may know: the held user never reads it.
 create policy notifications_select_own on public.notifications
-  for select to authenticated using (user_id = (select auth.uid()));
+  for select to authenticated using (user_id = (select auth.uid()) and kind <> 'erasure_paused');
 
 -- What an email may carry, per kind, built from the queue message. Titles and slugs are looked up here so the producers
 -- send ids only; anything else in the message is dropped.
@@ -189,7 +189,8 @@ revoke all on function private.close_notification_message(bigint) from public, a
 -- document: the messages to send, the queue depth and the two settings the function needs (backlog threshold and the
 -- seconds between the attempts). A message whose row is no longer queued is archived and not returned; a recipient
 -- marked undeliverable is recorded as suppressed; a message read more than notify_max_reads times (a crash loop) or
--- without an address is recorded as failed. Each of these leaves the queue.
+-- without an address is recorded as failed and listed in failed_closed, so the function can raise the alert. Each of
+-- these leaves the queue.
 create function public.notify_dequeue(p_limit integer default 25) returns jsonb
 language plpgsql
 security definer
@@ -204,6 +205,7 @@ declare
   v_row public.notifications;
   v_to text;
   v_out jsonb := '[]'::jsonb;
+  v_closed jsonb := '[]'::jsonb;
 begin
   select
     max(s.value #>> '{}') filter (where s.key = 'notify_visibility_seconds')::integer,
@@ -245,6 +247,9 @@ begin
       set status = 'failed', last_error = case when v_to is null then 'no_recipient' else 'abandoned' end
       where id = v_row.id;
       perform private.close_notification_message(v_msg.msg_id);
+      v_closed := v_closed || jsonb_build_object(
+        'notification_id', v_row.id, 'kind', v_row.kind, 'error', case when v_to is null then 'no_recipient' else 'abandoned' end
+      );
       continue;
     end if;
 
@@ -257,7 +262,8 @@ begin
     'queue_depth', (select count(*) from pgmq.q_notifications q where q.vt <= clock_timestamp()),
     'backlog_threshold', v_threshold,
     'retry_delays', to_jsonb(string_to_array(v_delays, ',')::integer[]),
-    'messages', v_out
+    'messages', v_out,
+    'failed_closed', v_closed
   );
 end;
 $$;
@@ -330,7 +336,8 @@ begin
     return false;
   end if;
   update public.notifications set delivery = p_outcome where id = v_row.id;
-  if p_outcome in ('bounced_permanent', 'complained') and v_row.user_id is not null then
+  -- The notice of a paused erasure goes to the privacy contact, not to the address of the user it names.
+  if p_outcome in ('bounced_permanent', 'complained') and v_row.user_id is not null and v_row.kind <> 'erasure_paused' then
     insert into public.notification_preferences (user_id, email_undeliverable_at) values (v_row.user_id, now())
     on conflict (user_id) do update set email_undeliverable_at = coalesce(public.notification_preferences.email_undeliverable_at, now());
     perform audit.record(

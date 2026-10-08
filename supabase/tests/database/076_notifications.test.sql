@@ -1,5 +1,5 @@
 begin;
-select plan(63);
+select plan(67);
 
 \ir status_fixture.inc
 
@@ -28,8 +28,8 @@ select is(
   'AC1: the invitee who has not accepted, the members of another organisation and the candidate have none'
 );
 select is(
-  (select count(*) from public.notifications where status = 'queued' and channel = 'email' and msg_id is not null and sent_at is null and attempts = 0),
-  3::bigint, 'AC1: each row is queued on the email channel, with its message and nothing sent'
+  (select count(*) from public.notifications where status = 'queued' and msg_id is not null and sent_at is null and attempts = 0),
+  3::bigint, 'AC1: each row is queued with its message and nothing sent'
 );
 select is(
   (select count(*) from public.notifications n join pgmq.q_notifications q on q.msg_id = n.msg_id and q.message ->> 'user_id' = n.user_id::text),
@@ -189,6 +189,14 @@ select is(
   (select row(user_id, payload)::text from public.notifications where msg_id = (select paused from t_msgs)), format('(%s,"{""account_id"": ""%s""}")', :'wb', :'wb'),
   'erasure_paused: the account concerned, as the user and in the payload'
 );
+select is(
+  pg_temp.val_as(:'wb', 'aal1', $$select count(*)::text from public.notifications where kind = 'erasure_paused'$$), '0',
+  'erasure_paused: the account on hold never reads the notice, which tells staff that a legal hold exists'
+);
+select is(
+  pg_temp.val_as(:'wb', 'aal1', $$select count(*)::text from public.notifications$$),
+  (select count(*)::text from public.notifications where user_id = :'wb' and kind <> 'erasure_paused'), 'and still reads all their other rows'
+);
 select is((select count(*) from public.notifications where kind in ('vacancy_hidden', 'trial_ending', 'payment_failed', 'legal_version') and status = 'queued'), 4::bigint, 'every message made a queued row');
 
 -- The row and the message are one transaction.
@@ -207,6 +215,20 @@ select throws_ok(
 );
 select throws_ok(
   $$select pgmq.send('notifications', '{"kind": "mfa_reset"}')$$, '23514', null, 'a message without a recipient is refused, except the completion of an erasure'
+);
+
+-- The preference applies to application_received only: every other kind reaches a member of the daily summary.
+create temp table t_mandatory as
+  select k, pgmq.send('notifications', jsonb_build_object('kind', k, 'user_id', :'adm'::uuid)) as msg
+  from unnest(array['mfa_reset', 'vacancy_hidden', 'status_changed', 'payment_failed', 'legal_version', 'trial_ending', 'deletion_requested']) k;
+select is(
+  (select count(*) from t_mandatory m join public.notifications n on n.msg_id = m.msg and n.user_id = :'adm' and n.kind = m.k
+   join pgmq.q_notifications q on q.msg_id = m.msg and q.message ->> 'user_id' = :'adm'),
+  7::bigint, 'digest: a member of the daily summary gets a row and a message of their own for each of the seven mandatory kinds'
+);
+select is(
+  (select count(*) from public.notifications where user_id = :'adm' and kind <> 'application_received' and msg_id is null), 0::bigint,
+  'digest: and no mandatory row waits for the summary'
 );
 
 -- FR-I2 AC15: the rows are private.
