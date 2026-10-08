@@ -171,7 +171,16 @@ async function deliver(deps: NotifyDeps, delays: number[], message: Message): Pr
   if (result.retryable) {
     // A rate limit or an outage can pass: the message stays invisible and comes back after the visibility timeout. If it
     // never passes, notify_dequeue ends it as failed (abandoned) after notify_max_reads and the alert is raised then.
+    // Operations hear of it once, when the first read has used its retries (SOP FR-D6 step Monitor).
     console.warn("notify will try again later", { notification_id: message.id, error: result.code });
+    if (message.attempt === 1) {
+      deps.alert("notify_retries_exhausted", {
+        notification_id: message.id,
+        kind: message.kind,
+        attempts: result.attempts,
+        error: result.code,
+      });
+    }
     return false;
   }
   await ack(deps.client, {

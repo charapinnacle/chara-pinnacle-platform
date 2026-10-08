@@ -34,6 +34,10 @@ export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }
 
+export function notificationSettingsPath(lang: string): string {
+  return `${settingsPath(lang)}/notifications`;
+}
+
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
 // The list of the vacancies of an organisation, optionally of one status, optionally from a keyset cursor on.

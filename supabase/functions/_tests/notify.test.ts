@@ -6,6 +6,7 @@ import { type Call, harness, reply, type Route } from "./harness.ts";
 const SECRET = "scheduler-secret";
 const ID_1 = "00000000-0000-4000-8000-0000000000a1";
 const ID_2 = "00000000-0000-4000-8000-0000000000a2";
+const ID_3 = "00000000-0000-4000-8000-0000000000a3";
 const APP = "00000000-0000-4000-8000-0000000000b1";
 const DELAYS = [2, 6, 18];
 
@@ -154,7 +155,7 @@ Deno.test("a message is rendered, sent with the notification id as idempotency k
   assert.equal(email.idempotencyKey, ID_1);
   assert.equal(email.to, "amina@example.test");
   assert.equal(email.from, "CHARA <noreply@chara.example>");
-  assert.equal(email.subject, "Your application for Welder MIG/MAG: update");
+  assert.equal(email.subject, "Update on your application for Welder MIG/MAG");
   assert.match(email.html, /Your application for Welder MIG\/MAG is now: Interview\./);
   assert.match(email.text, new RegExp(`https://chara.example/en/applications/${APP}`));
   assert.deepEqual(acks(calls), [{
@@ -180,8 +181,23 @@ Deno.test("a provider that keeps failing for a reason that can pass is called 4 
     assert.deepEqual(sleeps, [2000, 6000, 18000]);
     assert.ok(sleeps.every((ms, i) => i === 0 || ms > sleeps[i - 1]), "the delays strictly grow");
     assert.deepEqual(acks(calls), [], `${code}: nothing is closed, the message returns after the visibility timeout`);
-    assert.deepEqual(alerts, [], `${code}: the alert comes when the database ends the message`);
+    assert.deepEqual(
+      alerts,
+      [["notify_retries_exhausted", { notification_id: ID_1, kind: "status_changed", attempts: 4, error: code }]],
+      `${code}: operations are alerted once, after the third retry of the first read`,
+    );
   }
+});
+
+Deno.test("the read again of a message that keeps failing raises no second retry alert", async () => {
+  const provider = failing("resend_http_503", true);
+  const { deps, alerts } = setup(
+    { "POST /rest/v1/rpc/notify_dequeue": dequeues(batch([statusRow(ID_1, { attempt: 2 })])) },
+    provider,
+  );
+  await silenced(() => handleNotify(request(), deps));
+  assert.equal(provider.sent.length, 4);
+  assert.deepEqual(alerts, []);
 });
 
 Deno.test("a message that the database ended as failed raises the alert with its id, kind and error and nothing else", async () => {
@@ -371,15 +387,27 @@ Deno.test("a malformed message is skipped and the others are sent", async () => 
 Deno.test("every kind renders in the runtime of the function", async () => {
   const provider = nullProvider();
   const rows = [
-    statusRow(ID_1, { kind: "application_received", payload: { job_title: "Welder", org_slug: "acme" } }),
+    statusRow(ID_1, {
+      kind: "application_received",
+      payload: { application_id: APP, job_title: "Welder", org_slug: "acme" },
+    }),
     statusRow(ID_2, {
       kind: "trial_ending",
       payload: { trial_ends_at: "2026-11-01", amount_minor: 3900, currency: "EUR" },
     }),
+    statusRow(ID_3, {
+      kind: "application_received",
+      payload: {
+        total: 2,
+        vacancies: [{ job_id: APP, job_title: "Welder", org_name: "Acme", org_slug: "acme", count: 2 }],
+      },
+    }),
   ];
   const { deps } = setup({ "POST /rest/v1/rpc/notify_dequeue": dequeues(batch(rows)) }, provider);
   const response = await handleNotify(request(), deps);
-  assert.deepEqual(await response.json(), { sent: 2, failed: 0 });
-  assert.match(provider.outbox[0].text, /https:\/\/chara.example\/en\/org\/acme\/applicants/);
+  assert.deepEqual(await response.json(), { sent: 3, failed: 0 });
+  assert.match(provider.outbox[0].text, new RegExp(`https://chara.example/en/org/acme/applicants/${APP}`));
   assert.match(provider.outbox[1].text, /€39\.00/);
+  assert.equal(provider.outbox[2].subject, "Your daily summary of new applications");
+  assert.match(provider.outbox[2].text, new RegExp(`https://chara.example/en/org/acme/applicants\\?job=${APP}`));
 });

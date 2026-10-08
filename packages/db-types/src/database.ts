@@ -980,6 +980,9 @@ isOneToOne: false
 "set_legal_entity_identifier":
 { Args: { "p_identifier": string,"p_kind": string,"p_org": string }; Returns: undefined
                            },
+"set_notification_preferences":
+{ Args: { "p_digest": boolean }; Returns: undefined
+                           },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"] }; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
-import { applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
+import { applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
@@ -9,8 +9,8 @@ const JOB = "22222222-2222-4222-8222-222222222222";
 const ACCOUNT = "33333333-3333-4333-8333-333333333333";
 
 const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
-  application_received: { application_id: APP, job_id: JOB, job_title: "Welder MIG/MAG", org_slug: "acme-bau" },
-  status_changed: { application_id: APP, job_id: JOB, job_title: "Welder MIG/MAG", status: "interview" },
+  application_received: { application_id: APP, job_title: "Welder MIG/MAG", org_name: "Acme Bau", org_slug: "acme-bau" },
+  status_changed: { application_id: APP, job_title: "Welder MIG/MAG", org_name: "Acme Bau", status: "interview" },
   vacancy_hidden: { job_id: JOB, job_title: "Welder MIG/MAG", org_slug: "acme-bau", reasons: "The salary claim is misleading." },
   trial_ending: { org_slug: "acme-bau", trial_ends_at: "2026-11-01", plan_code: "employer_starter", amount_minor: 3900, currency: "EUR" },
   payment_failed: { org_slug: "acme-bau" },
@@ -74,7 +74,7 @@ describe("notification templates", () => {
 
   it("link to the page concerned, with the paths of the web application", async () => {
     const links: Record<string, string> = {
-      application_received: applicantsPath("en", "acme-bau"),
+      application_received: applicantPath("en", "acme-bau", APP),
       status_changed: applicationPath("en", APP),
       vacancy_hidden: jobPath("en", "acme-bau", JOB),
       trial_ending: billingPath("en", "acme-bau"),
@@ -105,14 +105,55 @@ describe("notification templates", () => {
     };
     for (const [status, label] of Object.entries(expected)) {
       const email = await renderEmail("status_changed", { ...SAMPLES.status_changed, status }, SITE);
-      expect(email.text).toContain(`is now: ${label}.`);
+      expect(email.text).toContain(`Acme Bau is now: ${label}.`);
       expect(email.text).toContain("Welder MIG/MAG");
     }
     const withdrawn = await renderEmail("status_changed", { ...SAMPLES.status_changed, status: "withdrawn" }, SITE);
-    expect(withdrawn.text).toContain("You withdrew your application for Welder MIG/MAG.");
+    expect(withdrawn.text).toContain("You withdrew your application for Welder MIG/MAG at Acme Bau.");
     const unknown = await renderEmail("status_changed", { ...SAMPLES.status_changed, status: "<script>" }, SITE);
     expect(unknown.html).not.toContain("<script>");
     expect(unknown.text).toContain("There is an update on your application");
+  });
+
+  it("application_received and status_changed carry the subjects of the application emails and name the organisation", async () => {
+    const received = await renderEmail("application_received", SAMPLES.application_received, SITE);
+    expect(received.subject).toBe("New application for Welder MIG/MAG");
+    expect(received.text).toContain("Welder MIG/MAG at Acme Bau");
+    const changed = await renderEmail("status_changed", SAMPLES.status_changed, SITE);
+    expect(changed.subject).toBe("Update on your application for Welder MIG/MAG");
+    expect(changed.text).toContain("Welder MIG/MAG at Acme Bau is now: Interview.");
+    expect(changed.text).toContain("journey tracker");
+  });
+
+  it("application_received in the daily summary lists each vacancy with its count and one link", async () => {
+    const summary = {
+      total: 3,
+      vacancies: [
+        { job_id: JOB, job_title: "Welder MIG/MAG", org_name: "Acme Bau", org_slug: "acme-bau", count: 2 },
+        { job_id: APP, job_title: "Pipe fitter", org_name: "Beta GmbH", org_slug: "beta", count: 1 },
+      ],
+    };
+    const email = await renderEmail("application_received", summary, SITE);
+    expect(email.subject).toBe("Your daily summary of new applications");
+    expect(email.text).toContain("You received 3 applications since the last summary.");
+    expect(email.text).toContain("Welder MIG/MAG (Acme Bau): 2 applications.");
+    expect(email.text).toContain("Pipe fitter (Beta GmbH): 1 application.");
+    expect(email.html).toContain(`href="${SITE}${applicantsPath("en", "acme-bau", { job: JOB })}"`);
+    expect(email.html).toContain(`href="${SITE}${applicantsPath("en", "beta", { job: APP })}"`);
+    expect(email.text).not.toContain("And applications for other vacancies");
+    const capped = await renderEmail("application_received", { ...summary, total: 25 }, SITE);
+    expect(capped.text).toContain("You received 25 applications");
+    expect(capped.text).toContain("And applications for other vacancies.");
+  });
+
+  it("application_received in the daily summary ignores a vacancy that is not whole and anything else in the payload", async () => {
+    const email = await renderEmail(
+      "application_received",
+      { total: 2, vacancies: [{ job_title: "No link", count: 2 }], ...LEAKS },
+      SITE,
+    );
+    expect(email.text).not.toContain("No link");
+    for (const secret of Object.values(LEAKS)) expect(email.html).not.toContain(secret);
   });
 
   it("vacancy_hidden shows the title, the statement of reasons and the appeal route, and no applicant", async () => {

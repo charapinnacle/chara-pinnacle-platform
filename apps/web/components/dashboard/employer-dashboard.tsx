@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { startDashboardLoad } from "@/lib/dal/dashboard";
-import { applicantsPath, billingPath, jobsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, jobsPath, notificationSettingsPath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
@@ -81,6 +81,10 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
       <Suspense fallback={null}>
         <FirstSteps empty={empty} lang={lang} slug={slug} role={role} twoStepDone={twoStepDone} />
       </Suspense>
+
+      <TextLink standalone href={notificationSettingsPath(lang)}>
+        Notification settings
+      </TextLink>
     </div>
   );
 }

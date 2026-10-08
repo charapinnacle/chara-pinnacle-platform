@@ -17,6 +17,20 @@ test.setTimeout(120_000);
 
 const SITE = "http://localhost:3100";
 
+// apply_to_job as the candidate, through the database function the form calls.
+function applyAs(candidate: { id: string }, jobId: string): void {
+  execute(
+    `set role authenticated;
+     select set_config('request.jwt.claims', '{"sub": "${candidate.id}", "role": "authenticated", "aal": "aal1"}', false);
+     select public.apply_to_job(${literal(jobId)}, null, null)`,
+  );
+}
+
+// The hourly job at a chosen moment; answers the number of summaries it queued.
+function summariesAt(moment: string): number {
+  return Number(execute(`select private.enqueue_daily_summaries(${literal(moment)}::timestamptz)`).trim());
+}
+
 test.describe("notify: transactional emails through the mail catcher", () => {
   test("FR-I2 AC2: after an application each member of the organisation has one email with the vacancy and a link, and none holds private data", async ({
     page,
@@ -54,8 +68,8 @@ test.describe("notify: transactional emails through the mail catcher", () => {
     for (const user of members) {
       const mail = await waitForMessage(user.email, { subject: "New application for Notify welder" });
       expect(await messageCount(user.email)).toBe(1);
-      expect(mail.Text).toContain("Notify welder");
-      expect(extractLinks(mail)).toContain(`${SITE}/en/org/${company.slug}/applicants`);
+      expect(mail.Text).toContain(`Notify welder at ${displayName(company.id)}`);
+      expect(extractLinks(mail)).toContain(`${SITE}/en/org/${company.slug}/applicants/${application.id}`);
       for (const private_ of [note, "Confidential CV", candidate.email]) {
         expect(mail.Text).not.toContain(private_);
         expect(mail.HTML).not.toContain(private_);
@@ -87,13 +101,45 @@ test.describe("notify: transactional emails through the mail catcher", () => {
 
     await runNotify();
     const mail = await waitForMessage(candidate.email, { subject: "Notify stage welder" });
-    expect(mail.Subject).toBe("Your application for Notify stage welder: update");
-    expect(mail.Text).toContain("is now: Interview.");
+    expect(mail.Subject).toBe("Update on your application for Notify stage welder");
+    expect(mail.Text).toContain(`Notify stage welder at ${displayName(company.id)} is now: Interview.`);
     expect(extractLinks(mail)).toContain(`${SITE}/en/applications/${applicationId}`);
     expect(mail.Text).not.toContain(note);
     expect(mail.HTML).not.toContain(note);
     expect(await messageCount(candidate.email)).toBe(1);
     expect(notificationsOf(candidate.id).map(({ kind, status }) => `${kind}:${status}`)).toEqual(["status_changed:sent"]);
+  });
+
+  test("FR-D6 AC2 and AC4: a member of the daily summary gets one summary email with a link per vacancy and none per application", async () => {
+    const company = await newCompany();
+    const member = await addCompanyUser(company, "member");
+    execute(`insert into public.notification_preferences (user_id, digest) values (${literal(member.id)}, true)`);
+    const [first, second] = [seedJob(company, { title: "Summary welder", status: "open" }), seedJob(company, { title: "Summary fitter", status: "open" })];
+    const [amina, bruno] = [await newApplicant(), await newApplicant()];
+    for (const [candidate, job] of [[amina, first], [bruno, first], [amina, second]] as const) applyAs(candidate, job);
+
+    await runNotify();
+    await waitForMessage(company.owner.email, { subject: "New application for Summary fitter" });
+    expect(await messageCount(company.owner.email)).toBe(3);
+    expect(await messageCount(member.email)).toBe(0);
+    expect(notificationsOf(member.id).map(({ status }) => status)).toEqual(["queued", "queued", "queued"]);
+
+    expect(summariesAt("2026-01-15 06:00:00+00")).toBe(0);
+    expect(summariesAt("2026-01-15 07:00:00+00")).toBeGreaterThanOrEqual(1);
+    expect(summariesAt("2026-01-15 07:30:00+00")).toBe(0);
+    await runNotify();
+    const mail = await waitForMessage(member.email, { subject: "Your daily summary of new applications" });
+    expect(await messageCount(member.email)).toBe(1);
+    expect(mail.Text).toContain("You received 3 applications since the last summary.");
+    expect(mail.Text).toContain(`Summary welder (${displayName(company.id)}): 2 applications.`);
+    expect(mail.Text).toContain(`Summary fitter (${displayName(company.id)}): 1 application.`);
+    expect(extractLinks(mail)).toEqual(expect.arrayContaining([`${SITE}/en/org/${company.slug}/applicants?job=${first}`, `${SITE}/en/org/${company.slug}/applicants?job=${second}`]));
+    for (const private_ of [amina.email, bruno.email]) expect(mail.Text).not.toContain(private_);
+    expect(notificationsOf(member.id).map(({ status }) => status).sort()).toEqual(["sent", "summarised", "summarised", "summarised"]);
+
+    await runNotify();
+    expect(await messageCount(member.email)).toBe(1);
+    expect(await messageCount(company.owner.email)).toBe(3);
   });
 
   test("FR-I2 AC11 and AC12: a signed bounce marks the address undeliverable and later email is suppressed, a forged event changes nothing", async () => {
