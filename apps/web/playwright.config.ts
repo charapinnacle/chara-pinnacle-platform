@@ -71,6 +71,7 @@ export default defineConfig({
         "**/applicant-list-failure.spec.ts",
         "**/dashboard-failure.spec.ts",
         "**/notify-emails.spec.ts",
+        "**/member-invitation-email.spec.ts",
       ],
     },
     {
@@ -163,6 +164,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/notify-emails.spec.ts",
       dependencies: ["dashboard-failure"],
+    },
+    // The same reason: the file after the other, not beside it.
+    {
+      name: "notify-invitation",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/member-invitation-email.spec.ts",
+      dependencies: ["notify"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
