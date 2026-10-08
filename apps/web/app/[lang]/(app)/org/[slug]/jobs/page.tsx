@@ -6,16 +6,17 @@ import { listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
+import { isJobStatus, jobDateText, jobStatusText, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { index: false } };
 
 export default async function JobsPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/jobs">) {
-  const [{ lang, slug }, { after }] = await Promise.all([params, searchParams]);
+  const [{ lang, slug }, { after, status: statusParam }] = await Promise.all([params, searchParams]);
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
   const cursor = parseJobCursor(after);
-  const page = await listJobs(organization.id, cursor);
+  const status = isJobStatus(statusParam) ? statusParam : null;
+  const page = await listJobs(organization.id, cursor, status);
   const canCreate = organization.role !== "member";
   const newJob = canCreate ? (
     <TextLink standalone href={`${jobsPath(lang, slug)}/new`}>
@@ -33,7 +34,13 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
         {page.jobs.length > 0 ? newJob : null}
       </header>
 
-      {page.jobs.length === 0 ? (
+      {page.jobs.length === 0 && status ? (
+        <EmptyState icon={Briefcase} title={`No ${statusLabels[status].toLowerCase()} vacancies`}>
+          <TextLink standalone href={jobsPath(lang, slug)}>
+            Show all vacancies
+          </TextLink>
+        </EmptyState>
+      ) : page.jobs.length === 0 ? (
         <EmptyState
           icon={Briefcase}
           title="No vacancies yet"
@@ -63,12 +70,12 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
       )}
 
       {page.nextCursor ? (
-        <TextLink standalone href={`${jobsPath(lang, slug)}?after=${encodeURIComponent(page.nextCursor)}`}>
+        <TextLink standalone href={jobsPath(lang, slug, { status, after: page.nextCursor })}>
           Show more vacancies
         </TextLink>
       ) : null}
       {cursor ? (
-        <TextLink standalone href={jobsPath(lang, slug)}>
+        <TextLink standalone href={jobsPath(lang, slug, { status })}>
           Back to the newest vacancies
         </TextLink>
       ) : null}

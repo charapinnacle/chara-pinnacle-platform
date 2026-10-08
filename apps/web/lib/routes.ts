@@ -21,6 +21,11 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
   return segment ? `/${lang}/dashboard/${segment}` : `/${lang}/onboarding`;
 }
 
+// The dashboard of an employer; without a slug it is the one of the first organization of the user.
+export function employerDashboardPath(lang: string, slug?: string): string {
+  return slug ? `/${lang}/dashboard/employer?org=${encodeURIComponent(slug)}` : `/${lang}/dashboard/employer`;
+}
+
 export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }
@@ -29,8 +34,15 @@ export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }
 
-export function jobsPath(lang: string, slug: string): string {
-  return `/${lang}/org/${slug}/jobs`;
+type JobStatus = Database["public"]["Enums"]["job_status"];
+
+// The list of the vacancies of an organisation, optionally of one status, optionally from a keyset cursor on.
+export function jobsPath(lang: string, slug: string, { status, after }: { status?: JobStatus | null; after?: string } = {}): string {
+  const query = new URLSearchParams();
+  if (status) query.set("status", status);
+  if (after) query.set("after", after);
+  const text = query.toString();
+  return text ? `/${lang}/org/${slug}/jobs?${text}` : `/${lang}/org/${slug}/jobs`;
 }
 
 export function jobPath(lang: string, slug: string, id: string): string {

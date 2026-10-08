@@ -66,6 +66,7 @@ export default defineConfig({
         "**/saved-vacancies-failure.spec.ts",
         "**/apply-failure.spec.ts",
         "**/applicant-list-failure.spec.ts",
+        "**/dashboard-failure.spec.ts",
       ],
     },
     {
@@ -143,6 +144,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/applicant-list-failure.spec.ts",
       dependencies: ["apply-failure"],
+    },
+    // The applications table is locked, and the dashboard function withdrawn from the API role, while this spec runs.
+    {
+      name: "dashboard-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/dashboard-failure.spec.ts",
+      dependencies: ["applicants-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
