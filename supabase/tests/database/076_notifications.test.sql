@@ -1,5 +1,5 @@
 begin;
-select plan(62);
+select plan(63);
 
 \ir status_fixture.inc
 
@@ -107,6 +107,11 @@ select is(pg_temp.set_as(:'mem', (select a1 from t_apps), 'interview'), 'P0001|C
 select is(
   pg_temp.set_as(pg_temp.member_of(pg_temp.org_on('employer_starter', 'canceled')), (select a1 from t_apps), 'interview'),
   'P0002|CHARA_NOT_FOUND|', 'AC3: and so is a move by another organisation'
+);
+create temp table t_lapsed as select pg_temp.org_on('employer_starter', 'canceled') as org;
+select is(
+  pg_temp.set_as(pg_temp.member_of((select org from t_lapsed)), pg_temp.seed_app('applied', (select org from t_lapsed)), 'interview'),
+  'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC3: and so is a move in a lapsed organisation'
 );
 select is(pg_temp.sent_mail_counts(), (select c from t_before), 'AC3: the refused moves created no row and no message');
 
