@@ -87,9 +87,16 @@ test.describe("notification settings", () => {
   test("FR-D6 AC5: a skeleton shows while the page loads", async ({ context, page }) => {
     const company = await newCompany();
     await signInBrowser(context, await addCompanyUser(company, "member"));
+    let prefetched = false;
+    page.on("request", (request) => {
+      if (request.url().includes("/settings/notifications")) prefetched = true;
+    });
     await page.goto(`/en/dashboard/employer?org=${company.slug}`);
     const link = page.getByRole("link", { name: "Notification settings" });
     await waitForHydration(link);
+    // The loading screen of a route is fetched when its link comes into view; only then can it show at once.
+    await link.scrollIntoViewIfNeeded();
+    await expect.poll(() => prefetched).toBe(true);
     await page.route("**/en/settings/notifications*", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       await route.continue();
