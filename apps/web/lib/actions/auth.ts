@@ -3,8 +3,10 @@
 import { isAuthWeakPasswordError, type AuthError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import {
+  EMAIL_NOT_SENT,
   GENERIC_FAILURE,
   isAddressThrottle,
+  isEmailSendFailure,
   isRateLimit,
   logAuthFailure,
   RATE_LIMITED,
@@ -93,7 +95,7 @@ function refusal(error: AuthError): AuthActionResult {
     return { errors: { email: "Enter a valid email address." } };
   }
   logAuthFailure("Sign-up", error);
-  return { message: GENERIC_FAILURE };
+  return { message: isEmailSendFailure(error) ? EMAIL_NOT_SENT : GENERIC_FAILURE };
 }
 
 export async function resendConfirmation(input: {

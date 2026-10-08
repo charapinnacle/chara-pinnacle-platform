@@ -7,7 +7,7 @@ import { adminRequest, createTestUser, type TestUser } from "./test-user";
 import { totpCode } from "./totp";
 
 export const LOGIN_FAILED = "Email or password is incorrect.";
-export const RESET_SENT = "If an account exists for this email, we have sent a reset link.";
+export const RESET_SENT = "If an account exists for this email, we have sent a reset link. Wait a minute before asking for another.";
 export const LINK_EXPIRED = "This link has expired or was already used";
 export const RESET_SUBJECT = "Reset your CHARA password";
 export const CHANGED_SUBJECT = "Your CHARA password was changed";

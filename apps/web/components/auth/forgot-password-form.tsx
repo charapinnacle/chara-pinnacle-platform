@@ -37,7 +37,7 @@ export function ForgotPasswordForm() {
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
       {formState.isSubmitSuccessful && !failed ? (
         <Notice tone="info" role="status">
-          If an account exists for this email, we have sent a reset link.
+          If an account exists for this email, we have sent a reset link. Wait a minute before asking for another.
         </Notice>
       ) : null}
       {formState.errors.root?.server ? (
