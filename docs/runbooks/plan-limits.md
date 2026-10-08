@@ -39,9 +39,10 @@ Limit enforcement (`private.settings.entitlements_enforced`) is `false` until th
 
 ```sh
 psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
-npm run go-live:check -- settings.json
+DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs --export > plans.json
+npm run go-live:check -- settings.json plans.json
 ```
 
-Run it in the release checklist, with the checks of later units that join this script (the Stripe mirror of FR-G1, U45). Delete `settings.json` afterwards: the export holds no secret, but it is configuration of the production database.
+The second file is the export of the sold plans with their limits, stored price and the amount Stripe holds (docs/runbooks/checkout.md, section 3); the same check fails when a sold plan is not mirrored. Run it in the release checklist. Delete both files afterwards: they hold no secret, but they are configuration of the production database.
 
 Switching enforcement on is one reviewed migration: `update private.settings set value = 'true' where key = 'entitlements_enforced'`. Before it, every organisation on `free_employer` can publish; after it, one without a subscription cannot (limit 0), which is the intended restriction and the reason the plans must be sellable (FR-G2) first.

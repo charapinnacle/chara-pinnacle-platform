@@ -1,0 +1,14 @@
+{
+  "id": "cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ",
+  "object": "checkout.session",
+  "mode": "subscription",
+  "status": "open",
+  "payment_status": "unpaid",
+  "payment_method_collection": "always",
+  "client_reference_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11",
+  "customer": null,
+  "automatic_tax": { "enabled": true, "status": null },
+  "success_url": "https://app.chara.example/en/org/acme/billing",
+  "cancel_url": "https://app.chara.example/en/org/acme/billing",
+  "url": "https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ#fidkdWxOYHwnPyd1blpxYHZxWjA0"
+}

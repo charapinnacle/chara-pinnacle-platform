@@ -10,7 +10,7 @@ const identifierKindValues: readonly string[] = identifierKindOptions.map((optio
 
 const MAX_WEBSITE_LENGTH = 2048;
 
-function normalizeIdentifier(value: string): string {
+export function normalizeIdentifier(value: string): string {
   return value.replace(/[\s.\-/]/g, "").toUpperCase();
 }
 
