@@ -8,14 +8,18 @@ import { FormButton } from "@/components/forms/form-button";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveNotificationSettings } from "@/lib/actions/notifications";
-import { notificationSettingsSchema, type EmailDelivery, type NotificationSettings } from "@/lib/validation/notifications";
+import { DAILY_SUMMARY_TIME_TEXT, notificationSettingsSchema, type EmailDelivery, type NotificationSettings } from "@/lib/validation/notifications";
 
 const GROUP_ID = "notification-delivery";
 
 const labels = {
-  immediate: { label: "Immediately", icon: Mail },
-  daily_summary: { label: "Daily summary", icon: CalendarClock },
-} satisfies Record<EmailDelivery, { label: string; icon: LucideIcon }>;
+  immediate: { label: "Immediately", icon: Mail, description: "One email for each new application, as it arrives." },
+  daily_summary: {
+    label: "Daily summary",
+    icon: CalendarClock,
+    description: `One email a day at ${DAILY_SUMMARY_TIME_TEXT}, only when there are new applications.`,
+  },
+} satisfies Record<EmailDelivery, { label: string; icon: LucideIcon; description: string }>;
 
 const options = (Object.keys(labels) as EmailDelivery[]).map((value) => ({ value, ...labels[value] }));
 
@@ -49,7 +53,6 @@ export function NotificationForm({ delivery }: { delivery: NotificationSettings[
         name="delivery"
         id={GROUP_ID}
         legend="Emails about new applications"
-        description="Immediately: one email for each new application. Daily summary: one email a day at 08:00 Central European time, only when there are new applications."
         options={options}
       />
       <div>
