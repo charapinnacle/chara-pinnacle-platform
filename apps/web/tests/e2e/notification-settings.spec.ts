@@ -72,6 +72,42 @@ test.describe("notification settings", () => {
     expect(digestOf(company.owner.id)).toBeUndefined();
   });
 
+  test("FR-I3 AC2: the choice is a labelled radio group with a description for each option, operated by keyboard alone, and is kept after a reload", async ({
+    context,
+    page,
+  }) => {
+    const company = await newCompany();
+    await signInBrowser(context, company.owner);
+
+    await page.goto(SETTINGS);
+    const immediately = page.getByRole("radio", { name: "Immediately" });
+    const summary = page.getByRole("radio", { name: "Daily summary" });
+    await expect(page.getByRole("radiogroup", { name: "Emails about new applications" })).toBeVisible();
+    await expect(immediately).toBeChecked();
+    await expect(immediately).toHaveAccessibleDescription("One email for each new application, as it arrives.");
+    await expect(summary).toHaveAccessibleDescription(
+      "One email a day at 08:00 Central European time, only when there are new applications.",
+    );
+
+    await waitForHydration(immediately);
+    await page.getByRole("link", { name: "Back to the dashboard" }).focus();
+    await page.keyboard.press("Tab");
+    await expect(immediately).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Space");
+    await expect(summary).toBeFocused();
+    await expect(summary).toBeChecked();
+    await expect(summary.locator("xpath=..")).not.toHaveCSS("box-shadow", "none");
+
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Notification settings saved", { exact: true })).toBeVisible();
+    expect(digestOf(company.owner.id)).toBe(true);
+
+    await page.reload();
+    await expect(page.getByRole("radio", { name: "Daily summary" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Immediately" })).not.toBeChecked();
+  });
+
   test("FR-D6 AC5: a visitor goes to log in and the page of an employer is reached from the dashboard", async ({ context, page }) => {
     await page.goto(SETTINGS);
     await expect(page).toHaveURL(/\/en\/login\?next=%2Fen%2Fsettings%2Fnotifications$/);
@@ -108,19 +144,26 @@ test.describe("notification settings", () => {
     await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
   });
 
-  test("FR-D6 AC5: a save that fails shows a toast, keeps the last saved choice and saves nothing", async ({ context, page }) => {
+  test("FR-I3 AC13: a save that fails shows a toast, keeps the last saved choice and saves nothing; while it runs the button is busy", async ({
+    context,
+    page,
+  }) => {
     const company = await newCompany();
     await signInBrowser(context, company.owner);
     await page.goto(SETTINGS);
     const summary = page.getByRole("radio", { name: "Daily summary" });
     await waitForHydration(summary);
     await page.route(`**${SETTINGS}`, async (route) => {
-      if (route.request().headers()["next-action"]) await route.abort();
-      else await route.continue();
+      if (!route.request().headers()["next-action"]) return route.continue();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return route.abort();
     });
 
     await summary.check();
-    await page.getByRole("button", { name: "Save" }).click();
+    const save = page.getByRole("button", { name: "Save" });
+    await save.click();
+    await expect(save).toBeDisabled();
+    await expect(save).toHaveAttribute("aria-busy", "true");
     await expect(page.getByText("The settings were not saved", { exact: true })).toBeVisible();
     await expect(page.getByText("Check your connection and try again.", { exact: true })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
