@@ -20,9 +20,13 @@ Nothing. Every number is read again on each load of `/[lang]/dashboard/employer?
 
 ## 3. KPI: dashboard load time
 
-Each load writes one line to the web server log (`apps/web/lib/dashboard/load-log.ts`): `{"event":"dashboard_load","durationMs":123,"outcome":"ok"}`. The duration runs from the start of the first read to the end of the last, so it is the server time of the data (NFR-P1 target: 95 % within 500 ms); a load in which a read failed is logged as `error` so that it is not missing from the percentile. The line names no organisation, user or number. The 95th percentile of a period is computed from these lines in the log store, for example `jq -s '[.[] | select(.event=="dashboard_load") | .durationMs] | sort | .[(length*0.95|floor)]'` over the lines of the period.
+Each load writes one line to the web server log (`apps/web/lib/dashboard/load-log.ts`): `{"event":"dashboard_load","durationMs":123,"outcome":"ok"}`. The duration runs from the start of the first read to the end of the last, so it is the time of the data reads, not of the whole render of the page (NFR-P1 target: 95 % within 500 ms; the render itself adds little, as the cards are plain markup); a load in which a read failed is logged as `error` so that it is not missing from the percentile. The line names no organisation, user or number. The 95th percentile of a period is computed from these lines in the log store of the web host (where the other web server logs go), for example `jq -s '[.[] | select(.event=="dashboard_load") | .durationMs] | sort | .[(length*0.95|floor)]'` over the lines of the period.
 
 Measured at 10,000 vacancies and 50,000 applications, all applications of one organisation (the worst case, local stack, `EXPLAIN (ANALYZE)` as a member): applications by stage 6 ms for an organisation of 250 applications among the 50,000 (bitmap scan) and 21 ms for one that holds all 50,000 (sequential scan), open vacancies 0.1 ms (bitmap scan on `jobs_organization_open_idx`), any vacancy 0.04 ms, plan 1.8 ms. AC12 (the load test before launch) stays a manual check.
+
+Ceiling: the count by stage reads every application of the organisation, so its cost grows with the applications of one organisation (21 ms for 50,000, about 0.4 s extrapolated for 1,000,000, close to the 500 ms target). Up to roughly 1,000,000 applications in one organisation nothing needs to change. Next step when the 95th percentile of the log lines approaches 500 ms or an organisation nears that size: a per-organisation counter table kept by `set_application_status` and `apply_to_job`, or a cached count. Nothing of that is built, as the SOP control asks for direct queries.
+
+A failed read is written to the web server log as `Dashboard <applications|vacancies|plan> read failed` with the error code and message (no organisation, no figure), next to the `dashboard_load` line with outcome `error`.
 
 ## 4. Controls and how to check them
 
