@@ -143,6 +143,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(trialAlerts(page)).toContainText(formatDate(soonEnd));
     await expect(trialAlerts(page)).toContainText("2 days left");
     await expect(trialAlerts(page).getByRole("link")).toHaveAttribute("href", `/en/org/${soon.slug}/billing`);
+    await expectNoAxeViolations(page);
 
     const { user: member } = await addMember(soon, "member", { enrolled: false });
     const context = await browser.newContext();
@@ -176,6 +177,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(warning(page)).toContainText(formatDate(graceEnd));
     await expect(warning(page)).toContainText("5 days left");
     await expect(warning(page).getByRole("link")).toHaveAttribute("href", `/en/org/${team.slug}/billing`);
+    await expectNoAxeViolations(page);
     const plan = page.getByRole("region", { name: "Plan" });
     await expect(plan).toContainText("Past due");
     await expect(plan).toContainText("Basic");
@@ -212,6 +214,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(page.getByRole("table", { name: "Applicants by stage" }).locator("tfoot")).toHaveText("Total7");
     await expect(plan.getByRole("link", { name: "Choose a plan" })).toHaveAttribute("href", `/en/org/${lapsed.slug}/billing`);
     await expect(page.getByRole("heading", { name: "Nothing here yet" })).toHaveCount(0);
+    await expectNoAxeViolations(page);
 
     await openDashboardAtAal2(page, fresh);
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
@@ -221,6 +224,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(page.getByRole("heading", { name: "Nothing here yet" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Create your first vacancy" })).toHaveAttribute("href", `/en/org/${fresh.slug}/jobs/new`);
     await expect(page.getByRole("region", { name: "Plan" }).getByRole("link", { name: "Choose a plan" })).toBeVisible();
+    await expectNoAxeViolations(page);
 
     for (const team of [lapsed, fresh]) {
       const { user: member } = await addMember(team, "member", { enrolled: false });
@@ -282,6 +286,7 @@ test.describe("the employer dashboard: who may open it", () => {
     await expect(page.getByRole("link", { name: /^Open vacancies/ })).toHaveCount(0);
     await expect(page.getByRole("table", { name: "Applicants by stage" })).toHaveCount(0);
     await expect(page.getByText("Enter your two-step code to see the figures of your hiring.")).toBeVisible();
+    await expectNoAxeViolations(page);
 
     await page.getByRole("link", { name: "Enter your code" }).click();
     await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent(dashboardUrl(team.slug))}`);
