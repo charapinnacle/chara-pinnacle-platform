@@ -243,6 +243,32 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"notification_preferences": {
+                  Row: {
+                    "digest": boolean,"email_undeliverable_at": string | null,"user_id": string
+                  }
+                  Insert: {
+                    "digest"?: boolean,"email_undeliverable_at"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "digest"?: boolean,"email_undeliverable_at"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"notifications": {
+                  Row: {
+                    "attempts": number,"channel": string,"created_at": string,"delivery": string | null,"id": string,"kind": string,"last_error": string | null,"msg_id": number | null,"payload": NonNullable<Json>,"provider_message_id": string | null,"sent_at": string | null,"status": string,"user_id": string | null
+                  }
+                  Insert: {
+                    "attempts"?: number,"channel"?: string,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind": string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
+                  }
+                  Update: {
+                    "attempts"?: number,"channel"?: string,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind"?: string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"occupations": {
                   Row: {
                     "code": string,"label": string,"synonyms": (string)[]
@@ -897,6 +923,12 @@ isOneToOne: false
                            },
 "my_platform_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]
+                           },
+"notify_ack":
+{ Args: { "p_attempts"?: number,"p_error"?: string,"p_notification_id"?: string,"p_outcome": string,"p_provider_message_id"?: string }; Returns: boolean
+                           },
+"notify_dequeue":
+{ Args: { "p_limit"?: number }; Returns: Json
                            },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {

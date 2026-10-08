@@ -1,5 +1,5 @@
 begin;
-select plan(72);
+select plan(78);
 
 \ir privacy_fixture.inc
 
@@ -57,6 +57,13 @@ values (:'wa', 'probe.own', 'probe', :'wa', jsonb_build_object('who', :'wa'::uui
 insert into audit.log (actor_id, action, entity_type, entity_id, metadata, ip)
 values (:'mem', 'probe.about', 'probe', :'wa', '{}', '10.9.9.9');
 select pg_temp.must(pg_temp.call_as(:'wa', 'authenticated', 'select public.request_account_deletion()', 'aal1'));
+
+-- Notifications (FR-I2): A has one queued, one sent and archived, and a preference row; B has the same and keeps them.
+select pgmq.send('notifications', jsonb_build_object('kind', 'mfa_reset', 'user_id', u)) from unnest(array[:'wa', :'wb']::uuid[]) u;
+select pgmq.archive('notifications', n.msg_id) from public.notifications n where n.kind = 'mfa_reset';
+update public.notifications set status = 'sent', sent_at = now(), provider_message_id = 'prov-' || user_id where kind = 'mfa_reset';
+select pgmq.send('notifications', jsonb_build_object('kind', 'mfa_reset', 'user_id', u)) from unnest(array[:'wa', :'wb']::uuid[]) u;
+insert into public.notification_preferences (user_id, digest, email_undeliverable_at) values (:'wa', true, now()), (:'wb', false, null);
 
 -- Candidate B shares the organisation and must not change.
 select pg_temp.doc(:'dc', :'wb');
@@ -204,6 +211,26 @@ select is(
 select is(
   (select count(*) from pgmq.q_notifications where message ->> 'user_id' = :'wa'), 0::bigint,
   'AC11: the earlier messages of the user are removed from the notification queue'
+);
+
+select is(
+  (select count(*) from public.notifications where user_id = :'wa' or msg_id in (select msg_id from pgmq.a_notifications where message ->> 'user_id' = :'wa')),
+  0::bigint, 'AC11: the notifications of the user are deleted'
+);
+select is((select count(*) from pgmq.a_notifications where message ->> 'user_id' = :'wa'), 0::bigint, 'AC11: with their archived messages');
+select is((select count(*) from public.notification_preferences where user_id = :'wa'), 0::bigint, 'AC11: and the delivery marks of the address');
+select is(
+  (select row(count(*), count(*) filter (where status = 'sent'))::text from public.notifications where user_id = :'wb' and kind = 'mfa_reset'), '(2,1)',
+  'AC11: the notifications of the other candidate stay'
+);
+select is(
+  (select row((select count(*) from pgmq.q_notifications where message ->> 'user_id' = :'wb'), (select count(*) from pgmq.a_notifications where message ->> 'user_id' = :'wb'),
+              (select count(*) from public.notification_preferences where user_id = :'wb'))::text), '(1,1,1)',
+  'AC11: and so do their messages and preference row'
+);
+select is(
+  (select row(user_id is null, payload)::text from public.notifications where kind = 'deletion_completed'), '(t,{})',
+  'AC11: the completion notice has a row with no user and no payload, the address stays in the message'
 );
 
 -- A job acknowledged after the erasure does not write the old user id back into the audit log; one for a user who still

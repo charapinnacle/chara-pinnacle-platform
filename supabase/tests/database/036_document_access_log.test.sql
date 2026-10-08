@@ -157,7 +157,7 @@ select is((select count(*) from audit.document_access_log where id in (select id
 select is((select count(*) from audit.document_access_log where id in (select id from old_rows where age = 729)), 1::bigint, 'AC9: the 729-day entry is kept');
 select is((select count(*) from audit.document_access_log), 6::bigint, 'AC9: current entries are kept');
 select is(
-  (select metadata::text || '|' || (actor_id is null)::text from audit.log where action = 'retention.run' order by id desc limit 1),
+  (select metadata::text || '|' || (actor_id is null)::text from audit.log where action = 'retention.run' and entity_id = 'document_access_log' order by id desc limit 1),
   '{"days": 730, "removed": 1}|true', 'AC9: the run is audited with the period and the count, without an actor'
 );
 
@@ -165,13 +165,13 @@ update private.retention_policies set days = 365 where entity = 'document_access
 select private.apply_retention();
 select is((select count(*) from audit.document_access_log where id in (select id from old_rows)), 0::bigint, 'AC9: with 365 days the 729-day entry is removed too');
 select is(
-  (select metadata::text from audit.log where action = 'retention.run' order by id desc limit 1), '{"days": 365, "removed": 1}',
+  (select metadata::text from audit.log where action = 'retention.run' and entity_id = 'document_access_log' order by id desc limit 1), '{"days": 365, "removed": 1}',
   'AC9: the second run is audited with the new period'
 );
-select is((select count(*) from audit.log where action = 'retention.run'), 2::bigint, 'AC9: each run wrote one audit row');
+select is((select count(*) from audit.log where action = 'retention.run' and entity_id = 'document_access_log'), 2::bigint, 'AC9: each run wrote one audit row');
 select private.apply_retention();
 select is(
-  (select metadata::text from audit.log where action = 'retention.run' order by id desc limit 1), '{"days": 365, "removed": 0}',
+  (select metadata::text from audit.log where action = 'retention.run' and entity_id = 'document_access_log' order by id desc limit 1), '{"days": 365, "removed": 0}',
   'AC9: a run with nothing due removes nothing'
 );
 select is(current_setting('chara.retention_run'), 'off', 'AC9: the deletion exception ends with the run');
