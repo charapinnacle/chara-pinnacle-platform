@@ -397,7 +397,10 @@ Deno.test("every kind renders in the runtime of the function", async () => {
     }),
     statusRow(ID_3, {
       kind: "application_received",
-      payload: { total: 2, vacancies: [{ job_id: APP, job_title: "Welder", org_name: "Acme", org_slug: "acme", count: 2 }] },
+      payload: {
+        total: 2,
+        vacancies: [{ job_id: APP, job_title: "Welder", org_name: "Acme", org_slug: "acme", count: 2 }],
+      },
     }),
   ];
   const { deps } = setup({ "POST /rest/v1/rpc/notify_dequeue": dequeues(batch(rows)) }, provider);
