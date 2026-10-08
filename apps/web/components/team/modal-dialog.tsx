@@ -10,7 +10,8 @@ type ModalDialogProps = {
 };
 
 // The native dialog element gives a modal its focus trap, Escape to close and the return of focus to the control that
-// opened it. The content is mounted only while open, so a form starts empty each time.
+// opened it; a click outside the box (on the backdrop) closes it too. The content is mounted only while open, so a form
+// starts empty each time.
 export function ModalDialog({ open, onClose, title, children }: ModalDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -27,6 +28,12 @@ export function ModalDialog({ open, onClose, title, children }: ModalDialogProps
       ref={ref}
       aria-labelledby={titleId}
       onClose={onClose}
+      onClick={(event) => {
+        const box = event.currentTarget.getBoundingClientRect();
+        const outside =
+          event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+        if (outside) event.currentTarget.close();
+      }}
       className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border bg-card p-6 text-foreground shadow-card backdrop:bg-black/50 sm:p-8"
     >
       {open ? (

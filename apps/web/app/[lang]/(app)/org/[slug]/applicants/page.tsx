@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ApplicantTable } from "@/components/applicants/applicant-table";
 import { Board } from "@/components/applicants/board";
+import { BulkSelection } from "@/components/applicants/bulk-selection";
+import { BulkToolbar } from "@/components/applicants/bulk-toolbar";
 import { ExportButton } from "@/components/applicants/export-button";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { StageFilter } from "@/components/applications/stage-filter";
@@ -16,6 +18,7 @@ import {
   listApplicants,
   listBoard,
 } from "@/lib/dal/applicant-list";
+import { FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { applicantsExportPath, applicantsPath, homePath, jobPath, jobsPath } from "@/lib/routes";
@@ -53,6 +56,8 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
   const frozen = access.stageChangeBlocked !== null;
   const withoutStage = { ...parsed, stage: null, page: 1 };
   const kept = Object.fromEntries(new URL(applicantsPath(lang, slug, withoutStage), "http://localhost").searchParams);
+  const visibleRows = board ? board.columns.flatMap((column) => column.rows) : (list?.rows ?? []);
+  const bulkRows = frozen || empty ? null : visibleRows.map((row) => ({ id: row.id, name: row.candidateName ?? FORMER_CANDIDATE, status: row.status }));
   const lastPage = list ? Math.max(1, Math.ceil(list.total / APPLICANTS_PAGE_SIZE)) : 1;
 
   return (
@@ -90,69 +95,72 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         </nav>
       ) : null}
 
-      {empty ? (
-        <EmptyState icon={Users} title="No applications yet" description="Applications appear here as candidates apply.">
-          <TextLink standalone href={job ? jobPath(lang, slug, job.id) : jobsPath(lang, slug)}>
-            {job ? "Back to the vacancy" : "Back to vacancies"}
-          </TextLink>
-        </EmptyState>
-      ) : board ? (
-        <Board
-          lang={lang}
-          slug={slug}
-          jobId={board.jobId}
-          columns={board.columns}
-          frozen={frozen}
-          shortlisting={access.shortlistingAvailable}
-          noteMaxChars={access.noteMaxChars}
-        />
-      ) : list ? (
-        <div className="grid gap-4">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <StageFilter basePath={applicantsPath(lang, slug, withoutStage)} stage={parsed.stage} />
-            {parsed.job ? (
-              <ExportButton
-                action={applicantsExportPath(lang, slug)}
-                jobId={parsed.job}
-                stage={parsed.stage}
-                disabled={!access.csvExportAvailable}
-                hint={access.csvExportAvailable || frozen ? null : csvNotInPlanText}
-              />
+      <BulkSelection key={JSON.stringify(parsed)} rows={bulkRows}>
+        {bulkRows ? <BulkToolbar slug={slug} shortlisting={access.shortlistingAvailable} noteMaxChars={access.noteMaxChars} /> : null}
+        {empty ? (
+          <EmptyState icon={Users} title="No applications yet" description="Applications appear here as candidates apply.">
+            <TextLink standalone href={job ? jobPath(lang, slug, job.id) : jobsPath(lang, slug)}>
+              {job ? "Back to the vacancy" : "Back to vacancies"}
+            </TextLink>
+          </EmptyState>
+        ) : board ? (
+          <Board
+            lang={lang}
+            slug={slug}
+            jobId={board.jobId}
+            columns={board.columns}
+            frozen={frozen}
+            shortlisting={access.shortlistingAvailable}
+            noteMaxChars={access.noteMaxChars}
+          />
+        ) : list ? (
+          <div className="grid gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <StageFilter basePath={applicantsPath(lang, slug, withoutStage)} stage={parsed.stage} />
+              {parsed.job ? (
+                <ExportButton
+                  action={applicantsExportPath(lang, slug)}
+                  jobId={parsed.job}
+                  stage={parsed.stage}
+                  disabled={!access.csvExportAvailable}
+                  hint={access.csvExportAvailable || frozen ? null : csvNotInPlanText}
+                />
+              ) : null}
+            </div>
+            {list.rows.length === 0 ? (
+              <EmptyState icon={Users} title="No applicants match this filter">
+                <form action={applicantsPath(lang, slug)}>
+                  {Object.entries(kept).map(([name, value]) => (
+                    <input key={name} type="hidden" name={name} value={value} />
+                  ))}
+                  <FormButton type="submit" variant="secondary" className="w-auto">
+                    Clear filter
+                  </FormButton>
+                </form>
+              </EmptyState>
+            ) : (
+              <ApplicantTable lang={lang} slug={slug} rows={list.rows} params={parsed} selectable={bulkRows !== null} />
+            )}
+            {lastPage > 1 ? (
+              <nav aria-label="Pagination" className="flex flex-wrap items-center gap-x-6">
+                {list.page > 1 ? (
+                  <TextLink standalone rel="prev" href={applicantsPath(lang, slug, { ...parsed, page: list.page - 1 })}>
+                    Previous page
+                  </TextLink>
+                ) : null}
+                <span className="text-body text-muted-foreground">
+                  Page {list.page} of {lastPage}
+                </span>
+                {list.page < lastPage ? (
+                  <TextLink standalone rel="next" href={applicantsPath(lang, slug, { ...parsed, page: list.page + 1 })}>
+                    Next page
+                  </TextLink>
+                ) : null}
+              </nav>
             ) : null}
           </div>
-          {list.rows.length === 0 ? (
-            <EmptyState icon={Users} title="No applicants match this filter">
-              <form action={applicantsPath(lang, slug)}>
-                {Object.entries(kept).map(([name, value]) => (
-                  <input key={name} type="hidden" name={name} value={value} />
-                ))}
-                <FormButton type="submit" variant="secondary" className="w-auto">
-                  Clear filter
-                </FormButton>
-              </form>
-            </EmptyState>
-          ) : (
-            <ApplicantTable lang={lang} slug={slug} rows={list.rows} params={parsed} />
-          )}
-          {lastPage > 1 ? (
-            <nav aria-label="Pagination" className="flex flex-wrap items-center gap-x-6">
-              {list.page > 1 ? (
-                <TextLink standalone rel="prev" href={applicantsPath(lang, slug, { ...parsed, page: list.page - 1 })}>
-                  Previous page
-                </TextLink>
-              ) : null}
-              <span className="text-body text-muted-foreground">
-                Page {list.page} of {lastPage}
-              </span>
-              {list.page < lastPage ? (
-                <TextLink standalone rel="next" href={applicantsPath(lang, slug, { ...parsed, page: list.page + 1 })}>
-                  Next page
-                </TextLink>
-              ) : null}
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+      </BulkSelection>
     </div>
   );
 }
