@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { TextLink } from "@/components/forms/text-link";
 import { JobForm } from "@/components/jobs/job-form";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
@@ -10,6 +11,7 @@ export const metadata: Metadata = { title: "New vacancy — CHARA", robots: { in
 export default async function NewJobPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/new">) {
   const { lang, slug } = await params;
   const { organization } = await requireOrgRole(lang, slug, "admin", { mfa: false, hideFromOutsiders: true });
+  if (organization.suspended) return <SuspendedOrganization title="New vacancy" subject="vacancies" />;
   const [occupations, industries, countries, currencies] = await Promise.all([
     getOccupations(),
     getIndustries(),
