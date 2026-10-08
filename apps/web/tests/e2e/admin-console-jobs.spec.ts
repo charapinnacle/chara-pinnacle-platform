@@ -29,6 +29,24 @@ async function submit(page: Page, button: string, reason: string): Promise<void>
   await page.getByRole("button", { name: button, exact: true }).click();
 }
 
+function auditRows(entityId: string) {
+  return query<{ action: string; actor_id: string | null; metadata: Record<string, string> }>(
+    `select action, actor_id, metadata from audit.log
+     where entity_id = ${literal(entityId)} and (action like 'user.%' or action like 'mfa.%' or action like 'account_ops%') order by id`,
+  );
+}
+
+function auditTable(page: Page) {
+  return page.getByRole("table", { name: "Audit log, newest first" }).getByRole("row").filter({ has: page.getByRole("cell") });
+}
+
+async function findAudit(page: Page, entityId: string): Promise<void> {
+  const field = page.getByLabel("Entity id");
+  await waitForHydration(field);
+  await field.fill(entityId);
+  await field.press("Enter");
+}
+
 async function signedOutAtNextRefresh(page: Page, path: string): Promise<void> {
   await expireAccessToken(page.context());
   await page.goto(path);
@@ -296,5 +314,84 @@ test.describe("the console with account-ops and notify running", () => {
     } finally {
       execute(`update private.settings set value = ${literal(JSON.stringify(original))}::jsonb where key = 'required_consents'`);
     }
+  });
+
+  test("FR-F2 AC7: the audit search lists what account-ops did for a suspension and for a reset, against the request and the administrator, and a job delivered twice adds no row", async ({
+    page,
+    browser,
+  }) => {
+    const user = await newApplicant();
+    const owner = await newOwner();
+    await enrollTotp(owner);
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    const trust = await signInStaff(page, "trust_safety", `/en/admin/users/${user.id}`);
+    const admin = await signInStaff(adminPage, "admin", `/en/admin/mfa-reset?user=${owner.id}`);
+
+    const field = page.getByLabel("Statement of reasons");
+    await waitForHydration(field);
+    await field.fill(REASON);
+    const suspension = page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes(`/admin/users/${user.id}`));
+    await page.getByRole("button", { name: "Suspend user", exact: true }).click();
+    const request = (await suspension).headers()["x-request-id"];
+    await expect(page.getByText("The account is suspended", { exact: true })).toBeVisible();
+    expect(request).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+
+    await waitForHydration(adminPage.getByLabel("User id"));
+    await adminPage.getByLabel("I have verified this person's identity").check();
+    await adminPage.getByLabel("Reason").fill("Lost the phone, identity checked");
+    const reset = adminPage.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/admin/mfa-reset"));
+    await adminPage.getByRole("button", { name: "Reset two-step verification" }).click();
+    const resetRequest = (await reset).headers()["x-request-id"];
+    await expect(adminPage.getByText("The reset is queued. The person is signed out and told by email.", { exact: true })).toBeVisible();
+
+    const suspendJob = query<{ msg_id: number; message: object }>(
+      `select msg_id, message from pgmq.q_account_ops where message ->> 'user_id' = ${literal(user.id)}`,
+    );
+    expect(suspendJob).toHaveLength(1);
+    expect(suspendJob[0].message).toMatchObject({ action: "suspend_user", actor_id: trust.user.id, request_id: request });
+    expect(auditRows(user.id).map((row) => [row.action, row.actor_id, row.metadata.request_id])).toEqual([["user.suspend", trust.user.id, request]]);
+
+    await runAccountOps();
+    const jobId = String(suspendJob[0].msg_id);
+    const steps = auditRows(user.id).slice(1);
+    expect(steps.map((row) => row.action)).toEqual(["account_ops.sign_out_global", "account_ops.ban_user", "account_ops_done"]);
+    for (const step of steps.slice(0, 2)) {
+      expect(step.actor_id).toBe(trust.user.id);
+      expect(step.metadata).toMatchObject({ request_id: request, job_id: jobId });
+    }
+    expect(auditRows(owner.id).map((row) => [row.action, row.actor_id, row.metadata.request_id])).toEqual([
+      ["mfa.reset", admin.user.id, resetRequest],
+      ["account_ops.sign_out_global", admin.user.id, resetRequest],
+      ["account_ops.delete_factors", admin.user.id, resetRequest],
+      ["account_ops_done", null, undefined],
+    ]);
+    expect(auditRows(owner.id)[2].metadata).toMatchObject({ factors_deleted: 1 });
+
+    execute(
+      `insert into pgmq.q_account_ops (msg_id, vt, message) overriding system value
+       values (${suspendJob[0].msg_id}, now(), ${literal(JSON.stringify(suspendJob[0].message))}::jsonb)`,
+    );
+    expect(await runAccountOps()).toMatchObject({ processed: 1, failed: 0 });
+    expect(auditRows(user.id).filter((row) => row.action.startsWith("account_ops.")).map((row) => row.action)).toEqual([
+      "account_ops.sign_out_global",
+      "account_ops.ban_user",
+    ]);
+
+    await adminPage.goto("/en/admin/audit");
+    await findAudit(adminPage, user.id);
+    const listed = auditTable(adminPage);
+    await expect(listed.filter({ hasText: "user.suspend" })).toHaveCount(1);
+    await expect(listed.filter({ hasText: "account_ops.sign_out_global" })).toHaveCount(1);
+    await expect(listed.filter({ hasText: "account_ops.ban_user" })).toHaveCount(1);
+    await expect(listed.filter({ hasText: `${request} (job ${jobId})` })).toHaveCount(2);
+    await expect(listed.filter({ hasText: trust.user.id }).filter({ hasText: "account_ops.ban_user" })).toHaveCount(1);
+    await expect(listed.filter({ hasText: "user.suspend" })).toContainText(request);
+    await expect(listed.filter({ hasText: "user.suspend" })).toContainText(REASON);
+
+    await findAudit(adminPage, owner.id);
+    await expect(auditTable(adminPage).filter({ hasText: "account_ops.delete_factors" })).toHaveCount(1);
+    await expect(auditTable(adminPage).filter({ hasText: `${resetRequest} (job ` })).toHaveCount(2);
+    await adminContext.close();
   });
 });
