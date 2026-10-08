@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Result = { data: unknown; error: unknown };
 
 let rpcResult: Result = { data: null, error: null };
+let rowsResult: Result = { data: [], error: null };
 const calls: unknown[][] = [];
 
 vi.mock("server-only", () => ({}));
@@ -12,10 +13,18 @@ vi.mock("@/lib/supabase/server", () => ({
       calls.push([name, args]);
       return Promise.resolve(rpcResult);
     },
+    from: (table: string) => ({
+      select: (columns: string) => ({
+        in: (column: string, values: string[]) => {
+          calls.push([table, columns, column, values]);
+          return Promise.resolve(rowsResult);
+        },
+      }),
+    }),
   }),
 }));
 
-const { getApplicant, listApplicantEvents, markApplicationViewed, setApplicationStatus } = await import("@/lib/dal/applicants");
+const { bulkSetApplicationStatus, getApplicant, listApplicantEvents, markApplicationViewed, setApplicationStatus } = await import("@/lib/dal/applicants");
 
 const id = "0a1b2c3d-0000-4000-8000-000000000001";
 const failure = (message: string, details: string | null = null) => ({ code: "P0001", message, details });
@@ -23,6 +32,7 @@ const failure = (message: string, details: string | null = null) => ({ code: "P0
 beforeEach(() => {
   calls.length = 0;
   rpcResult = { data: null, error: null };
+  rowsResult = { data: [], error: null };
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -109,5 +119,56 @@ describe("setApplicationStatus", () => {
   ])("maps the error %j to %j", async (error, expected) => {
     rpcResult = { data: null, error };
     expect(await setApplicationStatus(id, "interview", "")).toEqual(expected);
+  });
+});
+
+describe("bulkSetApplicationStatus", () => {
+  const other = "0a1b2c3d-0000-4000-8000-000000000002";
+
+  it("sends the ids, the target and the note, and reads the stage of the refused items only", async () => {
+    rpcResult = {
+      data: [
+        { application_id: id, ok: true, error_code: null },
+        { application_id: other, ok: false, error_code: "CHARA_INVALID_TRANSITION" },
+      ],
+      error: null,
+    };
+    rowsResult = { data: [{ id: other, status: "applied" }], error: null };
+    expect(await bulkSetApplicationStatus([id, other], "offer", "")).toEqual({
+      items: [
+        { applicationId: id, ok: true, errorCode: null, status: null },
+        { applicationId: other, ok: false, errorCode: "CHARA_INVALID_TRANSITION", status: "applied" },
+      ],
+    });
+    expect(calls).toEqual([
+      ["bulk_set_application_status", { p_application_ids: [id, other], p_status: "offer", p_note: undefined }],
+      ["v_job_applicants", "id, status", "id", [other]],
+    ]);
+  });
+
+  it("makes no second read when every item was applied", async () => {
+    rpcResult = { data: [{ application_id: id, ok: true, error_code: null }], error: null };
+    await bulkSetApplicationStatus([id], "rejected", "Position filled");
+    expect(calls).toEqual([["bulk_set_application_status", { p_application_ids: [id], p_status: "rejected", p_note: "Position filled" }]]);
+  });
+
+  it("keeps the item and leaves its stage unknown when the stage cannot be read", async () => {
+    rpcResult = { data: [{ application_id: id, ok: false, error_code: "CHARA_INVALID_TRANSITION" }], error: null };
+    rowsResult = { data: null, error: failure("boom") };
+    expect(await bulkSetApplicationStatus([id], "offer", "")).toEqual({
+      items: [{ applicationId: id, ok: false, errorCode: "CHARA_INVALID_TRANSITION", status: null }],
+    });
+  });
+
+  it.each([
+    [failure("CHARA_FEATURE_NOT_IN_PLAN", "read_only_free_plan"), { kind: "blocked", reason: "read_only_free_plan" }],
+    [failure("CHARA_FORBIDDEN", "organization_suspended"), { kind: "blocked", reason: "organization_suspended" }],
+    [failure("CHARA_INVALID_INPUT", "p_note"), { kind: "note_too_long" }],
+    [failure("CHARA_INVALID_INPUT", "p_application_ids"), { kind: "failed" }],
+    [{ code: "XX000", message: "internal error text", details: null }, { kind: "failed" }],
+  ])("answers the refusal of the whole call %j as %j", async (error, expected) => {
+    rpcResult = { data: null, error };
+    expect(await bulkSetApplicationStatus([id], "interview", "")).toEqual({ refusal: expected });
+    expect(calls).toHaveLength(1);
   });
 });

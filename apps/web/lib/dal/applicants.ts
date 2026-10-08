@@ -113,3 +113,36 @@ export async function setApplicationStatus(
   });
   return error ? refusal(error) : null;
 }
+
+export type BulkItem = { applicationId: string; ok: boolean; errorCode: string | null; status: ApplicationStatus | null };
+
+// One call for up to 100 applications; the database judges every item and answers a row for each. A refusal of the whole
+// call (a lapsed plan, a suspended organization, a note that is too long) is a StageRefusal. The stage an item is in
+// now is read for the refused ones, so that the summary can say where it stands, in one bounded read.
+export async function bulkSetApplicationStatus(
+  ids: string[],
+  status: ApplicationStatus,
+  note: string,
+): Promise<{ items: BulkItem[] } | { refusal: StageRefusal }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("bulk_set_application_status", {
+    p_application_ids: ids,
+    p_status: status,
+    p_note: note === "" ? undefined : note,
+  });
+  if (error) return { refusal: refusal(error) };
+  const refused = data.filter((item) => !item.ok).map((item) => item.application_id);
+  const current = new Map<string, ApplicationStatus>();
+  if (refused.length > 0) {
+    const { data: rows } = await supabase.from("v_job_applicants").select("id, status").in("id", refused);
+    for (const row of rows ?? []) if (row.id && row.status) current.set(row.id, row.status);
+  }
+  return {
+    items: data.map((item) => ({
+      applicationId: item.application_id,
+      ok: item.ok,
+      errorCode: item.ok ? null : item.error_code,
+      status: current.get(item.application_id) ?? null,
+    })),
+  };
+}

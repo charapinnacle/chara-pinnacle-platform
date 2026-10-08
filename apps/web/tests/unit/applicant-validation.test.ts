@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  BULK_MAX,
+  bulkActionFormSchema,
+  bulkActionInputSchema,
   declineReasonOptions,
   noteInputSchema,
   stageChangeFormSchema,
@@ -108,5 +111,62 @@ describe("noteInputSchema", () => {
   it("accepts 2000 characters and blocks 2001", () => {
     expect(noteInputSchema.safeParse({ body: "a".repeat(2000) }).success).toBe(true);
     expect(noteInputSchema.safeParse({ body: "a".repeat(2001) }).error?.issues[0].message).toBe("Note must be at most 2000 characters");
+  });
+});
+
+const idList = (count: number) => Array.from({ length: count }, (_, index) => `0a1b2c3d-0000-4000-8000-${String(index).padStart(12, "0")}`);
+
+describe("bulkActionFormSchema", () => {
+  const schema = bulkActionFormSchema(1000);
+  const valid = { applicationIds: idList(3), status: "interview", reason: "", note: "" };
+
+  it("allows 1 to 100 selected applicants and refuses 0 and 101", () => {
+    expect(BULK_MAX).toBe(100);
+    for (const count of [1, 3, 100]) expect(schema.safeParse({ ...valid, applicationIds: idList(count) }).success).toBe(true);
+    for (const count of [0, 101]) {
+      const result = schema.safeParse({ ...valid, applicationIds: idList(count) });
+      expect(result.error?.issues[0]).toMatchObject({ path: ["applicationIds"], message: "Select between 1 and 100 applicants" });
+    }
+  });
+
+  it("refuses a decline with no template and Other with no text or blank text", () => {
+    expect(schema.safeParse({ ...valid, status: "rejected" }).error?.issues[0]).toMatchObject({ path: ["reason"], message: "Choose a reason" });
+    for (const note of ["", "   "]) {
+      expect(schema.safeParse({ ...valid, status: "rejected", reason: "other", note }).error?.issues[0]).toMatchObject({
+        path: ["note"],
+        message: "Enter a reason",
+      });
+    }
+  });
+
+  it("accepts Other with 1000 characters and refuses 1001", () => {
+    expect(schema.safeParse({ ...valid, status: "rejected", reason: "other", note: "a".repeat(1000) }).success).toBe(true);
+    expect(schema.safeParse({ ...valid, status: "rejected", reason: "other", note: "a".repeat(1001) }).error?.issues[0].message).toBe(
+      "Note must be at most 1000 characters",
+    );
+  });
+
+  it("accepts a stage move with no note and refuses one with 1001 characters", () => {
+    expect(schema.safeParse(valid).success).toBe(true);
+    expect(schema.safeParse({ ...valid, note: "a".repeat(1001) }).error?.issues[0].message).toBe("Note must be at most 1000 characters");
+  });
+
+  it("turns a template into the text the candidate reads", () => {
+    expect(schema.parse({ ...valid, status: "rejected", reason: "position_filled" })).toMatchObject({ status: "rejected", note: "Position filled" });
+  });
+
+  it("refuses a stage an employer cannot choose", () => {
+    for (const status of ["", "applied", "viewed", "withdrawn"]) {
+      expect(schema.safeParse({ ...valid, status }).error?.issues[0].message).toBe("Choose a stage");
+    }
+  });
+});
+
+describe("bulkActionInputSchema", () => {
+  it("takes 1 to 100 ids, a stage an employer can choose and a trimmed note, and needs a reason for a decline", () => {
+    expect(bulkActionInputSchema.parse({ applicationIds: idList(100), status: "offer", note: " Week 41 " }).note).toBe("Week 41");
+    expect(bulkActionInputSchema.safeParse({ applicationIds: idList(101), status: "offer", note: "" }).success).toBe(false);
+    expect(bulkActionInputSchema.safeParse({ applicationIds: [], status: "offer", note: "" }).success).toBe(false);
+    expect(bulkActionInputSchema.safeParse({ applicationIds: idList(1), status: "rejected", note: " " }).error?.issues[0].message).toBe("Enter a reason");
   });
 });
