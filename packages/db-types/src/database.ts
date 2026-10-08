@@ -824,6 +824,16 @@ isOneToOne: false
               "status": Database["public"]['Enums']["application_status"],"total": number
             }[]
                            },
+"get_dashboard_applications":
+{ Args: { "p_organization_id": string }; Returns: {
+              "recent": number,"status": Database["public"]['Enums']["application_status"],"total": number
+            }[]
+                           },
+"get_dashboard_plan":
+{ Args: { "p_organization_id": string }; Returns: {
+              "current_period_end": string,"past_due_since": string,"plan_name": string,"status": string,"subscription_ended": boolean,"trial_ends_at": string
+            }[]
+                           },
 "get_my_application":
 { Args: { "p_id": string }; Returns: {
               "applied_at": string,"cover_note": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"status": Database["public"]['Enums']["application_status"],"vacancy_is_open": boolean
