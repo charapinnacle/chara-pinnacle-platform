@@ -1,6 +1,6 @@
 # Runbook: subscription checkout and customer portal
 
-FR-G2, design points D4, D36, D66 (OPEN_QUESTIONS.md). An owner or admin at the second step chooses Basic or Professional on `/[lang]/org/[slug]/billing`, reads the five disclosures on the confirmation page, enters the billing country and a VAT ID or a company registration number, accepts the Subscription and Billing Terms and is sent to the hosted checkout of the payment provider. CHARA never receives card data. Manage billing opens the hosted customer portal (card, plan change, cancellation, invoices). The webhook (FR-G3) activates the subscription.
+FR-G2, design points D4, D36, D67 (OPEN_QUESTIONS.md). An owner or admin at the second step chooses Basic or Professional on `/[lang]/org/[slug]/billing`, reads the five disclosures on the confirmation page, enters the billing country and a VAT ID or a company registration number, accepts the Subscription and Billing Terms and is sent to the hosted checkout of the payment provider. CHARA never receives card data. Manage billing opens the hosted customer portal (card, plan change, cancellation, invoices). The webhook (FR-G3) activates the subscription.
 
 ## 1. Configuration
 

@@ -159,8 +159,8 @@ select is(
   pg_temp.val_as(:'sta', 'aal2', $$
     select string_agg(role || ':' || mfa_enrolled::text, ',' order by role, mfa_enrolled)
     from (select role::text as role, mfa_enrolled from public.list_platform_staff()) t$$),
-  'admin:false,admin:true,trust_safety:false,verification_reviewer:false',
-  'the administrator at aal2 gets mfa_enrolled for each active staff row; an unverified factor does not count and a revoked row is left out'
+  'admin:false,admin:false,admin:true,trust_safety:false,verification_reviewer:false',
+  'the administrator at aal2 gets mfa_enrolled for each staff row, a revoked one included; an unverified factor does not count'
 );
 select is(pg_temp.call_as(:'sta', 'authenticated', $$select * from public.list_platform_staff()$$, 'aal1'),
   'P0001|CHARA_FORBIDDEN|aal2_required', 'the administrator at aal1 gets aal2_required');
@@ -176,15 +176,16 @@ select is(pg_temp.call_as(null, 'anon', $$select * from public.list_platform_sta
   '42501|permission denied for function list_platform_staff|', 'the anonymous caller is refused at EXECUTE');
 select is(
   (select proargnames::text from pg_proc where oid = 'public.list_platform_staff(integer, bigint)'::regprocedure),
-  '{p_limit,p_after_id,id,user_id,role,granted_at,mfa_enrolled}', 'the staff list returns no factor id, secret or name'
+  '{p_limit,p_after_id,id,user_id,display_name,email,role,granted_by,granted_by_email,granted_at,revoked_at,mfa_enrolled,last_sign_in_at}',
+  'the staff list returns no factor id or secret, only the name, the email address, the dates and a boolean for two-step verification'
 );
 select is(
   pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2)$$), '2', 'the staff list honours the limit');
 select is(
-  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2, (select max(id) from public.list_platform_staff(2)))$$),
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(2, (select min(id) from public.list_platform_staff(2)))$$),
   '2', 'the second page of the staff list holds the other two active staff members');
 select is(
-  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(100, (select max(id) from public.list_platform_staff(100)))$$),
+  pg_temp.val_as(:'sta', 'aal2', $$select count(*) from public.list_platform_staff(100, (select min(id) from public.list_platform_staff(100)))$$),
   '0', 'a page after the last row is empty');
 
 -- my_platform_roles: what the page guard asks, at any aal

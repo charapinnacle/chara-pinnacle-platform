@@ -157,7 +157,7 @@ Deno.test("FR-G2 AC9: when the provider fails the answer is 502 with a generic m
   assert.equal(result.status, 502);
   assert.deepEqual(await result.json(), { error: "unavailable" });
   assert.equal(spy.checkouts.length, 1);
-  // Departure D66: the start (customer, consent, audit row) is committed before the provider is called, so a failed
+  // Departure D67: the start (customer, consent, audit row) is committed before the provider is called, so a failed
   // session leaves them; the customer row holds no reference and does not lock the identifier (pgTAP 082).
   assert.equal(database.calls.length, 1);
 });

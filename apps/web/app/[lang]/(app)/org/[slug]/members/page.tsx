@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { z } from "zod";
+import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -28,6 +29,7 @@ function mfaStatus(member: TeamMember): string {
 export default async function MembersPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/members">) {
   const [{ lang, slug }, { after }] = await Promise.all([params, searchParams]);
   const { user, organization } = await requireOrgRole(lang, slug, "member");
+  if (organization.suspended) return <SuspendedOrganization title="Team" subject="team members" />;
   const manager = organization.role !== "member";
   const cursor = z.uuid().safeParse(after);
 

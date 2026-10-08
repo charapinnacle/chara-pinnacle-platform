@@ -1,0 +1,82 @@
+import { notFound } from "next/navigation";
+import { DetailList } from "@/components/admin/detail-list";
+import { ModerationForm } from "@/components/admin/moderation-form";
+import { PageHeading } from "@/components/admin/page-heading";
+import { cell, ResultsTable } from "@/components/admin/results-table";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { TextLink } from "@/components/forms/text-link";
+import { PassportSection } from "@/components/passport/section";
+import { getOrganization } from "@/lib/dal/admin";
+import { formatShortDate } from "@/lib/i18n/format";
+import { isJobStatus, statusLabels } from "@/lib/jobs/presentation";
+import { adminPath } from "@/lib/routes";
+import type { PlatformRole } from "@/lib/validation/admin";
+import { roleLabels } from "@/lib/validation/team";
+
+const moderationLabels = { visible: "Visible", hidden: "Hidden by moderation", org_suspended: "Hidden with the suspension" } as const;
+
+export async function OrganizationView({ lang, id, roles }: { lang: string; id: string; roles: readonly PlatformRole[] }) {
+  const organization = await getOrganization(id);
+  if (!organization) notFound();
+
+  return (
+    <div className="grid gap-6">
+      <PageHeading title={organization.displayName}>
+        <TextLink standalone href={adminPath(lang, "organizations")}>
+          Back to the organisation search
+        </TextLink>
+      </PageHeading>
+      <PassportSection id="organisation" title="Organisation">
+        <DetailList
+          items={[
+            { label: "Legal name", value: organization.legalName },
+            { label: "Address name", value: organization.slug },
+            { label: "Organisation id", value: organization.id },
+            { label: "Status", value: <StatusBadge status={organization.status} /> },
+          ]}
+        />
+      </PassportSection>
+      <PassportSection id="members" title="Members">
+        <ResultsTable caption="Members" columns={["Member", "Role", "Joined"]}>
+          {organization.members.map((member) => (
+            <tr key={member.userId}>
+              <td className={`${cell} break-all`}>
+                <TextLink href={adminPath(lang, `users/${member.userId}`)}>{member.displayName ?? member.userId}</TextLink>
+              </td>
+              <td className={cell}>{roleLabels[member.role]}</td>
+              <td className={cell}>{member.acceptedAt ? formatShortDate(member.acceptedAt) : "Not accepted yet"}</td>
+            </tr>
+          ))}
+        </ResultsTable>
+      </PassportSection>
+      <PassportSection id="vacancies" title="Vacancies" description="The latest 100. Applicants are not shown here.">
+        {organization.vacancies.length === 0 ? (
+          <p className="text-body">This organisation has no vacancies.</p>
+        ) : (
+          <ResultsTable caption="Vacancies" columns={["Vacancy", "Status", "Visibility"]}>
+            {organization.vacancies.map((vacancy) => (
+              <tr key={vacancy.id}>
+                <td className={`${cell} break-words`}>{vacancy.title}</td>
+                <td className={cell}>{isJobStatus(vacancy.status) ? statusLabels[vacancy.status] : vacancy.status}</td>
+                <td className={cell}>{moderationLabels[vacancy.moderationState]}</td>
+              </tr>
+            ))}
+          </ResultsTable>
+        )}
+      </PassportSection>
+      {roles.includes("trust_safety") ? (
+        <PassportSection
+          id="standing"
+          title={organization.status === "suspended" ? "Reinstate this organisation" : "Suspend this organisation"}
+          description={
+            organization.status === "suspended"
+              ? "Its vacancies come back, except any that were hidden on their own. The owner and administrators are emailed."
+              : "Its visible vacancies leave the public, its members are signed out and its owner and administrators are emailed the reasons. The subscription is left as it is."
+          }
+        >
+          <ModerationForm target="organization" id={organization.id} standing={organization.status} />
+        </PassportSection>
+      ) : null}
+    </div>
+  );
+}

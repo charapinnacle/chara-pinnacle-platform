@@ -472,3 +472,186 @@ Deno.test("a failing purge or user deletion leaves the job queued, with the data
     assert.equal(calls.filter((c) => c.path.startsWith("/auth/")).length, failing === "auth" ? 1 : 0, failing);
   }
 });
+
+const ORG = "00000000-0000-0000-0000-00000000c001";
+const banBodies = (calls: Call[]) => calls.filter((c) => c.method === "PUT").map((c) => c.body);
+
+Deno.test("a suspend_user job on a suspended profile ends the sessions, sets the ban and is acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 80, message: { action: "suspend_user", user_id: USER } }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "suspended"),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 2),
+    "PUT /auth/v1/admin/users/{id}": reply(200, { id: USER }),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(banBodies(calls), [{ ban_duration: "876000h" }]);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 80, p_result: { banned: 1, sessions_ended: 2 } }]);
+});
+
+Deno.test("a reinstate_user job lifts the ban and ends no session", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 81, message: { action: "reinstate_user", user_id: USER } }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "active"),
+    "PUT /auth/v1/admin/users/{id}": reply(200, { id: USER }),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(banBodies(calls), [{ ban_duration: "none" }]);
+  assert.equal(calls.filter((c) => c.path.endsWith("end_sessions")).length, 0);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 81, p_result: { banned: 0, sessions_ended: 0 } }]);
+});
+
+Deno.test("a suspension that is taken after the reinstatement queued behind it leaves the user as the profile says", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 82, message: { action: "reinstate_user", user_id: USER } },
+      { msg_id: 83, message: { action: "suspend_user", user_id: USER } },
+    ),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "active"),
+    "PUT /auth/v1/admin/users/{id}": reply(200, { id: USER }),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 2, failed: 0 });
+  assert.deepEqual(banBodies(calls), [{ ban_duration: "none" }, { ban_duration: "none" }]);
+});
+
+Deno.test("a ban job for an account that is gone is a success that touches nothing", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 84, message: { action: "suspend_user", user_id: USER } }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, null),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.equal(calls.filter((c) => c.path.startsWith("/auth/")).length, 0);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 84, p_result: {} }]);
+});
+
+Deno.test("a failing ban leaves the job queued", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 85, message: { action: "suspend_user", user_id: USER } }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "suspended"),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "PUT /auth/v1/admin/users/{id}": reply(500, { code: 500, error_code: "unexpected_failure", msg: "boom" }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("a sign_out_organization job ends the sessions of every member and totals them", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 86,
+      message: { action: "sign_out_organization", organization_id: ORG },
+    }),
+    "POST /rest/v1/rpc/account_ops_organization_members": reply(200, [USER, OTHER]),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 2),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.path.endsWith("end_sessions")).map((c) => c.body), [{ p_user_id: USER }, {
+    p_user_id: OTHER,
+  }]);
+  assert.equal(calls.filter((c) => c.path.startsWith("/auth/")).length, 0);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 86, p_result: { sessions_ended: 4 } }]);
+});
+
+Deno.test("an organisation job without a valid organisation id is never executed or acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 87, message: { action: "sign_out_organization", organization_id: "not-a-uuid" } },
+      { msg_id: 88, message: { action: "sign_out_organization", user_id: USER } },
+    ),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 2 });
+  assert.deepEqual(calls.map((c) => c.path), Array(2).fill("/rest/v1/rpc/account_ops_dequeue"));
+});
+
+Deno.test("an organisation of 25 members is signed out in chunks of 10 at the same time, and the counts are totalled", async () => {
+  const members = Array.from({ length: 25 }, (_, i) => `00000000-0000-0000-0000-0000000d${String(i).padStart(4, "0")}`);
+  let running = 0;
+  let peak = 0;
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 89,
+      message: { action: "sign_out_organization", organization_id: ORG },
+    }),
+    "POST /rest/v1/rpc/account_ops_organization_members": reply(200, members),
+    "POST /rest/v1/rpc/account_ops_end_sessions": async () => {
+      peak = Math.max(peak, ++running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running--;
+      return reply(200, 1);
+    },
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(
+    calls.filter((c) => c.path.endsWith("end_sessions")).map((c) => (c.body as { p_user_id: string }).p_user_id),
+    members,
+  );
+  assert.equal(peak, 10);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 89, p_result: { sessions_ended: 25 } }]);
+});
+
+Deno.test("a fan_out_legal_version job asks for pages until none is left, passing the last id on, and totals the emails", async () => {
+  const pages = [
+    [{ last_id: USER, queued: 1000 }],
+    [{ last_id: OTHER, queued: 640 }],
+    [],
+  ];
+  let next = 0;
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 90,
+      message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 4 },
+    }),
+    "POST /rest/v1/rpc/account_ops_fan_out_legal_version": () => reply(200, pages[next++]),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.path.endsWith("fan_out_legal_version")).map((c) => c.body), [
+    { p_slug: "privacy-policy", p_version: 4, p_after: null },
+    { p_slug: "privacy-policy", p_version: 4, p_after: USER },
+    { p_slug: "privacy-policy", p_version: 4, p_after: OTHER },
+  ]);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 90, p_result: { emails_queued: 1640 } }]);
+});
+
+Deno.test("a fan-out that fails on a page is not acknowledged, so the job is read again", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 91,
+      message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 4 },
+    }),
+    "POST /rest/v1/rpc/account_ops_fan_out_legal_version": (call) =>
+      (call.body as { p_after: string | null }).p_after === null
+        ? reply(200, [{ last_id: USER, queued: 1000 }])
+        : reply(500, { code: "57014", message: "canceling statement due to statement timeout" }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("a fan-out job with a bad slug or version is never executed or acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 92, message: { action: "fan_out_legal_version", document_slug: "Bad_Slug", version: 1 } },
+      { msg_id: 93, message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: "2" } },
+      { msg_id: 94, message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 0 } },
+    ),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 3 });
+  assert.deepEqual(calls.map((c) => c.path), Array(2).fill("/rest/v1/rpc/account_ops_dequeue"));
+});

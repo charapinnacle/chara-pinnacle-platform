@@ -21,15 +21,16 @@ test.describe("two-step verification: platform staff", () => {
     });
   }
 
-  test("FR-A4 AC4: a revoked staff member and an ordinary employer get the forbidden page without an MFA prompt", async ({
+  test("FR-A4 AC4: a revoked staff member and an ordinary employer get the not-found page of FR-F1 AC1 without an MFA prompt", async ({
     page,
   }) => {
     for (const user of [await staffUser("admin", true), await newOwner()]) {
       await logIn(page, user);
       await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
-      await page.goto("/en/admin");
-      await expect(page).toHaveURL(/\/en\/forbidden$/);
-      await expect(page.getByRole("heading", { name: "You do not have access to this page" })).toBeVisible();
+      const response = await page.goto("/en/admin");
+      expect(response?.status()).toBe(404);
+      await expect(page).toHaveURL(/\/en\/admin$/);
+      await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
       expect(factorRows(user.id)).toEqual([]);
     }
   });

@@ -5,12 +5,15 @@ import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 import { sessionCookieOptions } from "@/lib/supabase/cookie-options";
 
-export async function createClient() {
+// extraHeaders travel with every request of the client; the console passes the request id so that an audit row can be
+// matched to the request that caused it.
+export async function createClient(extraHeaders?: Record<string, string>) {
   const cookieStore = await cookies();
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      global: extraHeaders ? { headers: extraHeaders } : undefined,
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll(cookiesToSet) {

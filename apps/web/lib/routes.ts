@@ -96,3 +96,7 @@ export function applicantsPath(lang: string, slug: string, params: Partial<Appli
 export function applicantsExportPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/applicants/export`;
 }
+
+export function adminPath(lang: string, segment = ""): string {
+  return segment ? `/${lang}/admin/${segment}` : `/${lang}/admin`;
+}
