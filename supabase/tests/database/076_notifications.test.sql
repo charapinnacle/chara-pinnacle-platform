@@ -37,7 +37,7 @@ select is(
 );
 select is(
   (select pg_temp.keys(payload) from public.notifications where user_id = :'own1'),
-  array['application_id', 'job_id', 'job_title', 'org_slug'], 'AC1: the payload holds the application, the vacancy and its title and nothing else'
+  array['application_id', 'job_title', 'org_name', 'org_slug'], 'AC1: the payload holds the application, the vacancy title and the organisation and nothing else'
 );
 select is(
   (select payload ->> 'job_title' from public.notifications where user_id = :'own1'), 'Welder MIG/MAG', 'AC1: the title is the vacancy title'
@@ -94,7 +94,7 @@ select is(
 );
 select is(
   (select count(*) from public.notifications where kind = 'status_changed'
-     and (pg_temp.keys(payload) <> array['application_id', 'job_id', 'job_title', 'status']::text[]
+     and (pg_temp.keys(payload) <> array['application_id', 'job_title', 'org_name', 'status']::text[]
           or payload::text ~* 'remark|licence|someone')),
   0::bigint, 'AC3: no payload carries a note or a decline reason'
 );
