@@ -21,6 +21,11 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
   return segment ? `/${lang}/dashboard/${segment}` : `/${lang}/onboarding`;
 }
 
+// The dashboard of an employer; without a slug it is the one of the first organization of the user.
+export function employerDashboardPath(lang: string, slug?: string): string {
+  return slug ? `/${lang}/dashboard/employer?org=${encodeURIComponent(slug)}` : `/${lang}/dashboard/employer`;
+}
+
 export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }

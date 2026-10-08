@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { EmployerDashboard } from "@/components/dashboard/employer-dashboard";
 import { DocumentReminders } from "@/components/documents/document-reminders";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { GuidedSteps } from "@/components/organization/guided-steps";
@@ -10,16 +12,27 @@ import { getDocumentReminders, hasUsableCv } from "@/lib/dal/documents";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getPassport } from "@/lib/dal/passport";
-import { requireUser } from "@/lib/dal/session";
+import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { savedPath } from "@/lib/jobs/saved";
 import { computeCompleteness } from "@/lib/passport/completeness";
-import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, settingsPath } from "@/lib/routes";
+import {
+  applicationsPath,
+  dashboardSegments,
+  employerDashboardPath,
+  homePath,
+  isDashboardSegment,
+  mfaPath,
+  settingsPath,
+} from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Dashboard — CHARA" };
 
-export default async function DashboardPage({ params }: PageProps<"/[lang]/dashboard/[kind]">) {
-  const { lang, kind } = await params;
+// The dashboard of an employer shows one organization: the one named by ?org=<slug>, which must be one the user belongs to
+// (anything else is a page that does not exist), or the first of the user. An owner or an admin sees the figures at aal2
+// only (FR-A4), so at aal1 the page keeps to the guided steps and says what unlocks the rest.
+export default async function DashboardPage({ params, searchParams }: PageProps<"/[lang]/dashboard/[kind]">) {
+  const [{ lang, kind }, { org }] = await Promise.all([params, searchParams]);
   if (!isDashboardSegment(kind)) notFound();
   const user = await requireUser(lang);
   if (user.accountKind !== dashboardSegments[kind]) {
@@ -56,8 +69,8 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
     getMyOrganizations(user.id),
     hasVerifiedTotpFactor(lang),
   ]);
-  const [organization, ...others] = organizations;
-  if (!organization) {
+  const slug = typeof org === "string" ? org : organizations[0]?.slug;
+  if (!slug) {
     return (
       <AuthCard title="Dashboard">
         <EmptyState title="Your company is not set up yet" description="Add your company to get started.">
@@ -68,21 +81,46 @@ export default async function DashboardPage({ params }: PageProps<"/[lang]/dashb
       </AuthCard>
     );
   }
+  const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
+  const others = organizations.filter((other) => other.slug !== organization.slug);
+  const needsCode = organization.role !== "member" && user.aal !== "aal2";
   return (
-    <AuthCard title="Dashboard" description={organization.displayName}>
-      <EmptyState title="Nothing here yet" description="Follow these steps to get started.">
-        <GuidedSteps lang={lang} organizationSlug={organization.slug} twoStepDone={twoStepDone} />
-      </EmptyState>
+    <>
+      {needsCode ? (
+        <AuthCard title="Dashboard" description={organization.displayName}>
+          <EmptyState title="Nothing here yet" description="Follow these steps to get started.">
+            <GuidedSteps lang={lang} organizationSlug={organization.slug} twoStepDone={twoStepDone} />
+          </EmptyState>
+          <Notice tone="info">
+            {twoStepDone ? (
+              <>
+                Enter your two-step code to see the figures of your hiring.{" "}
+                <TextLink href={mfaPath(lang, employerDashboardPath(lang, organization.slug))}>Enter your code</TextLink>
+              </>
+            ) : (
+              "Owners and admins see the figures of their hiring once two-step verification is set up."
+            )}
+          </Notice>
+        </AuthCard>
+      ) : organization.suspended ? (
+        <AuthCard title="Dashboard" description={organization.displayName}>
+          <Notice tone="error" role="alert">
+            This organization is suspended, so its figures are not available.
+          </Notice>
+        </AuthCard>
+      ) : (
+        <EmployerDashboard lang={lang} organization={organization} twoStepDone={twoStepDone} />
+      )}
       {others.length > 0 ? (
-        <nav aria-label="Your organizations" className="grid gap-1">
+        <nav aria-label="Your organizations" className="mx-auto grid w-full max-w-5xl gap-1">
           <p className="text-sm text-muted-foreground">You also belong to</p>
           {others.map((other) => (
-            <TextLink key={other.id} href={`/${lang}/org/${other.slug}`}>
+            <TextLink key={other.id} href={employerDashboardPath(lang, other.slug)}>
               {other.displayName}
             </TextLink>
           ))}
         </nav>
       ) : null}
-    </AuthCard>
+    </>
   );
 }

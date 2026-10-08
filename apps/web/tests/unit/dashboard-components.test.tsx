@@ -1,0 +1,129 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { PlanAlerts } from "@/components/dashboard/plan-alerts";
+import { PlanCard } from "@/components/dashboard/plan-card";
+import { StageTable } from "@/components/dashboard/stage-table";
+import { SummaryCard } from "@/components/dashboard/summary-card";
+import type { DashboardPlan } from "@/lib/dal/dashboard";
+
+vi.mock("server-only", () => ({}));
+
+const now = new Date("2026-10-08T12:00:00.000Z");
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+const billing = "/en/org/acme/billing";
+const plan = (over: Partial<DashboardPlan>): DashboardPlan => ({
+  planName: "Basic",
+  status: "active",
+  trialEndsAt: null,
+  currentPeriodEnd: null,
+  pastDueSince: null,
+  subscriptionEnded: false,
+  ...over,
+});
+const alerts = (over: Partial<DashboardPlan>, billingHref: string | null = billing) =>
+  renderToStaticMarkup(<PlanAlerts plan={plan(over)} now={now} billingHref={billingHref} />);
+const card = (over: Partial<DashboardPlan>, billingHref: string | null = billing) =>
+  renderToStaticMarkup(<PlanCard plan={plan(over)} now={now} billingHref={billingHref} />);
+const trial = (ms: number) => ({ status: "trialing" as const, trialEndsAt: new Date(now.getTime() + ms) });
+
+describe("the trial on the plan card and in the alert (FR-E5 AC5)", () => {
+  it("shows the plan name, Trial, the end date and 11 days left, and no alert, 10 days 5 hours before the end", () => {
+    const html = card(trial(10 * DAY + 5 * HOUR));
+    expect(html).toContain("Basic");
+    expect(html).toContain("Trial");
+    expect(html).toContain("October 18, 2026");
+    expect(html).toContain("11 days left");
+    expect(alerts(trial(10 * DAY + 5 * HOUR))).toBe("");
+  });
+
+  it("raises an alert with the end date and 2 days left, and a billing link for an owner or an admin only", () => {
+    const owner = alerts(trial(2 * DAY));
+    expect(owner).toContain('role="alert"');
+    expect(owner).toContain("October 10, 2026");
+    expect(owner).toContain("2 days left");
+    expect(owner).toContain(`href="${billing}"`);
+    const member = alerts(trial(2 * DAY), null);
+    expect(member).toContain('role="alert"');
+    expect(member).toContain("2 days left");
+    expect(member).not.toContain("href=");
+  });
+});
+
+describe("an active plan and a failed payment (FR-E5 AC5, AC7)", () => {
+  it("shows the plan name, Active and the next billing date, with no reference", () => {
+    const html = card({ planName: "Professional", currentPeriodEnd: new Date("2026-11-03T00:00:00Z") });
+    expect(html).toContain("Professional");
+    expect(html).toContain("Active");
+    expect(html).toContain("Next billing date");
+    expect(html).toContain("November 3, 2026");
+    expect(html).not.toMatch(/stripe|provider|cus_|sub_/i);
+    expect(alerts({ currentPeriodEnd: new Date("2026-11-03T00:00:00Z") })).toBe("");
+  });
+
+  it("warns above the cards that the payment failed, with the end of the grace period 5 days after two days", () => {
+    const past = { status: "past_due" as const, pastDueSince: new Date(now.getTime() - 2 * DAY) };
+    const owner = alerts(past);
+    expect(owner).toContain('role="alert"');
+    expect(owner).toContain("payment for your plan failed");
+    expect(owner).toContain("October 13, 2026");
+    expect(owner).toContain("5 days left");
+    expect(owner).toContain(`href="${billing}"`);
+    expect(alerts(past, null)).not.toContain("href=");
+    const html = card(past);
+    expect(html).toContain("Past due");
+    expect(html).toContain("Basic");
+  });
+});
+
+describe("an organization without a paid plan (FR-E5 AC8)", () => {
+  const free = { planName: "Free", status: "free" as const };
+
+  it("shows the Free plan and no trial date, and a banner only when a subscription has ended", () => {
+    const html = card(free);
+    expect(html).toContain("Free");
+    expect(html).toContain("Free plan");
+    expect(html).not.toContain("Trial ends");
+    expect(alerts(free)).toBe("");
+    const ended = alerts({ ...free, subscriptionEnded: true });
+    expect(ended).toContain("Your subscription has ended");
+    expect(ended).toContain("vacancies are paused");
+    expect(ended).toContain("applicant changes are disabled");
+  });
+
+  it("offers Choose a plan to an owner or an admin and tells a member whom to ask, with no billing link", () => {
+    expect(card(free)).toContain(`href="${billing}"`);
+    expect(card(free)).toContain("Choose a plan");
+    const member = card(free, null);
+    expect(member).toContain("Contact an owner or admin");
+    expect(member).not.toContain("href=");
+  });
+});
+
+describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
+  it("makes the whole card a link whose name carries the number", () => {
+    const html = renderToStaticMarkup(<SummaryCard label="Open vacancies" value={2} href="/en/org/acme/jobs?status=open" />);
+    expect(html).toContain('href="/en/org/acme/jobs?status=open"');
+    expect(html).toContain('aria-label="Open vacancies: 2"');
+    const hinted = renderToStaticMarkup(<SummaryCard label="New applications" hint="in the last 7 days" value={3} href="/x" />);
+    expect(hinted).toContain('aria-label="New applications in the last 7 days: 3"');
+  });
+
+  it("lists the eight stages in pipeline order, zeros included, with column headers, a total and a link per stage", () => {
+    const byStage = { applied: 3, viewed: 2, shortlisted: 1, interview: 1, offer: 0, hired: 1, rejected: 1, withdrawn: 1 };
+    const html = renderToStaticMarkup(<StageTable lang="en" slug="acme" applications={{ byStage, total: 10, recent: 0 }} />);
+    expect(html.match(/<th scope="col"/g)).toHaveLength(2);
+    const rows = [...html.matchAll(/<th scope="row"[^>]*>(?:<a [^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>)?<\/th><td[^>]*>(\d+)<\/td>/g)].map((m) => [m[2], m[3], m[1]]);
+    expect(rows).toEqual([
+      ["Applied", "3", "/en/org/acme/applicants?stage=applied"],
+      ["Viewed", "2", "/en/org/acme/applicants?stage=viewed"],
+      ["Shortlisted", "1", "/en/org/acme/applicants?stage=shortlisted"],
+      ["Interview", "1", "/en/org/acme/applicants?stage=interview"],
+      ["Offer", "0", "/en/org/acme/applicants?stage=offer"],
+      ["Hired", "1", "/en/org/acme/applicants?stage=hired"],
+      ["Not selected", "1", "/en/org/acme/applicants?stage=rejected"],
+      ["Withdrawn", "1", "/en/org/acme/applicants?stage=withdrawn"],
+      ["Total", "10", undefined],
+    ]);
+  });
+});
