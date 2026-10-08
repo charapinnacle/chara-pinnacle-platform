@@ -60,6 +60,7 @@ export default defineConfig({
         "**/account-erasure.spec.ts",
         "**/team-limits.spec.ts",
         "**/vacancy-limits.spec.ts",
+        "**/shortlisting.spec.ts",
         "**/public-search-failure.spec.ts",
         "**/vacancy-page-failure.spec.ts",
         "**/saved-vacancies-failure.spec.ts",
@@ -102,13 +103,19 @@ export default defineConfig({
       testMatch: "**/vacancy-limits.spec.ts",
       dependencies: ["limits-team"],
     },
+    {
+      name: "limits-shortlisting",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/shortlisting.spec.ts",
+      dependencies: ["limits-vacancies"],
+    },
     // The search and vacancy page functions are withdrawn from the API roles while these specs run, so they follow every
     // other project (one file after the other: the files of a project run side by side).
     {
       name: "search-failure",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/public-search-failure.spec.ts",
-      dependencies: ["limits-vacancies"],
+      dependencies: ["limits-shortlisting"],
     },
     {
       name: "vacancy-page-failure",
