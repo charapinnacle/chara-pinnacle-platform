@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
-import { enrolledStaff, signInStaff, type StaffRole } from "./support/admin";
+import { enrolledStaff, seedAudit, signInStaff, uniqueTag, type StaffRole } from "./support/admin";
 import { userToken } from "./support/accounts";
 import { newApplicant, seedApplication } from "./support/applications";
 import { query } from "./support/db";
+import { waitForHydration } from "./support/hydration";
 import { seedDocument } from "./support/documents";
 import { addCompanyUser, newCompany, seedJob } from "./support/jobs";
 import { accessLog, requestDocumentUrl } from "./support/privacy";
@@ -77,11 +78,20 @@ test.describe("no platform staff role has a way to documents", () => {
 
   test("FR-F3 AC8: the audit search lists no event of the documents of the candidate", async ({ page }) => {
     const world = await seedWorld();
+    const tag = uniqueTag();
+    seedAudit(tag, 3);
     const [{ n }] = query<{ n: number }>(`select count(*)::int as n from audit.log where entity_type = 'worker_documents' and entity_id = '${world.passport.id}'`);
     expect(n).toBeGreaterThan(0);
 
     await signInStaff(page, "admin", "/en/admin/audit");
     await expect(page.getByRole("heading", { name: "Audit log", level: 1 })).toBeVisible();
+    const rows = page.getByRole("table", { name: "Audit log, newest first" }).getByRole("row").filter({ has: page.getByRole("cell") });
+    const action = page.getByLabel("Action", { exact: true });
+    await waitForHydration(action);
+    await action.fill(`e2e.${tag}`);
+    await action.press("Enter");
+    await expect(rows, "the search lists events of other entities").toHaveCount(3);
+    await action.fill("");
     const entity = page.getByLabel("Entity id");
     await entity.fill(world.passport.id);
     await entity.press("Enter");
