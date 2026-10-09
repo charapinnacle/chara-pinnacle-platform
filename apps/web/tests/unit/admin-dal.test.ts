@@ -17,6 +17,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 const dal = await import("@/lib/dal/admin");
+const jobs = await import("@/lib/dal/admin-jobs");
 
 const ID = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 
@@ -83,7 +84,7 @@ describe("the paged searches", () => {
       created_at: `2026-10-01T10:00:${String(60 - n).padStart(2, "0")}.123456+00:00`,
     });
     rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
-    const page = await dal.searchJobs("welder", { at: "2026-10-02T00:00:00+00:00", id: ID });
+    const page = await jobs.searchJobs("welder", { at: "2026-10-02T00:00:00+00:00", id: ID });
 
     expect(rpcMock).toHaveBeenCalledWith("admin_search_jobs", { p_term: "welder", p_limit: 26, p_after_at: "2026-10-02T00:00:00+00:00", p_after_id: ID });
     expect(page.rows).toHaveLength(25);
@@ -244,7 +245,7 @@ describe("the vacancy to moderate", () => {
 
   it("maps the vacancy with its text, its organisation and its history", async () => {
     rpcMock.mockResolvedValue({ data: [detail], error: null });
-    expect(await dal.getModerationJob(ID)).toEqual({
+    expect(await jobs.getModerationJob(ID)).toEqual({
       id: ID,
       title: "Welder",
       description: "Weld steel frames.",
@@ -262,11 +263,11 @@ describe("the vacancy to moderate", () => {
 
   it("answers null for an unknown vacancy, fails for anything else and refuses a history that is not what the database promises", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_NOT_FOUND" } });
-    expect(await dal.getModerationJob(ID)).toBeNull();
+    expect(await jobs.getModerationJob(ID)).toBeNull();
     rpcMock.mockResolvedValue({ data: null, error: { message: "boom" } });
-    await expect(dal.getModerationJob(ID)).rejects.toThrow("The vacancy could not be loaded");
+    await expect(jobs.getModerationJob(ID)).rejects.toThrow("The vacancy could not be loaded");
     rpcMock.mockResolvedValue({ data: [{ ...detail, history: [{ action: "job_deleted", reasons: "x", at: "y" }] }], error: null });
-    await expect(dal.getModerationJob(ID)).rejects.toThrow();
+    await expect(jobs.getModerationJob(ID)).rejects.toThrow();
   });
 });
 

@@ -2,15 +2,14 @@
 
 import {
   searchAudit,
-  searchJobs,
   searchOrganizations,
   searchUsers,
   type AuditRow,
-  type JobRow,
   type OrganizationRow,
   type Page,
   type UserRow,
 } from "@/lib/dal/admin";
+import { searchJobs, type JobRow } from "@/lib/dal/admin-jobs";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import {

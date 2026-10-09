@@ -7,7 +7,7 @@ import { SearchBox } from "@/components/admin/search-box";
 import { usePagedSearch } from "@/components/admin/use-paged-search";
 import { TextLink } from "@/components/forms/text-link";
 import { searchJobsAction } from "@/lib/actions/admin-search";
-import type { JobRow } from "@/lib/dal/admin";
+import type { JobRow } from "@/lib/dal/admin-jobs";
 import { formatShortDate } from "@/lib/i18n/format";
 import { statusLabels } from "@/lib/jobs/presentation";
 import { adminPath } from "@/lib/routes";

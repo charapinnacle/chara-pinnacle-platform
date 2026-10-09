@@ -8,7 +8,6 @@ import { clientAddress } from "@/lib/visitor-address";
 import {
   ADMIN_PAGE_SIZE,
   type AuditFilter,
-  type JobCursor,
   type NameCursor,
   type PlatformRole,
   type TimeCursor,
@@ -35,15 +34,6 @@ export type OrganizationRow = {
   status: Enums["organization_status"];
 };
 
-export type JobRow = {
-  id: string;
-  title: string;
-  organizationName: string;
-  status: Enums["job_status"];
-  moderationState: Enums["job_moderation_state"];
-  createdAt: string;
-};
-
 export type AuditRow = {
   id: number;
   actorId: string | null;
@@ -65,14 +55,6 @@ export type ModerationRow = {
   reasons: string;
   actorId: string | null;
   createdAt: string;
-};
-
-export type JobDetail = JobRow & {
-  description: string;
-  organizationId: string;
-  countryCode: string;
-  city: string;
-  history: { action: "job_hidden" | "job_unhidden"; reasons: string; at: string }[];
 };
 
 export type StaffRow = {
@@ -116,8 +98,6 @@ export type OrganizationDetail = OrganizationRow & {
   vacancies: { id: string; title: string; status: string; moderationState: z.infer<typeof vacanciesSchema>[number]["moderation_state"] }[];
 };
 
-const historySchema = z.array(z.object({ action: z.enum(["job_hidden", "job_unhidden"]), reasons: z.string(), at: z.string() }));
-
 export type StageCount = { status: Enums["application_status"]; count: number };
 
 // The id of the request and the address of the caller go to the database with every call of the console, so that the
@@ -135,12 +115,12 @@ export async function adminClient() {
   return createClient(Object.keys(forwarded).length > 0 ? forwarded : undefined);
 }
 
-function failure(what: string, cause: unknown): Error {
+export function failure(what: string, cause: unknown): Error {
   return new Error(`${what} could not be loaded`, { cause });
 }
 
 // One row more than a page is read: its presence says there is a next page, and the last row shown is its cursor.
-function paged<Row, Cursor>(rows: Row[], cursorOf: (row: Row) => Cursor): Page<Row, Cursor> {
+export function paged<Row, Cursor>(rows: Row[], cursorOf: (row: Row) => Cursor): Page<Row, Cursor> {
   const shown = rows.slice(0, ADMIN_PAGE_SIZE);
   return { rows: shown, next: rows.length > ADMIN_PAGE_SIZE ? cursorOf(shown[shown.length - 1]) : null };
 }
@@ -189,51 +169,6 @@ export async function searchOrganizations(
     }),
   );
   return paged(rows, (row) => ({ name: row.displayName, id: row.id }));
-}
-
-export async function searchJobs(term: string, after: JobCursor): Promise<Page<JobRow, NonNullable<JobCursor>>> {
-  const supabase = await adminClient();
-  const { data, error } = await supabase.rpc("admin_search_jobs", {
-    p_term: term,
-    p_limit: ADMIN_PAGE_SIZE + 1,
-    p_after_at: after?.at,
-    p_after_id: after?.id,
-  });
-  if (error) throw failure("The vacancies", error);
-  const rows = data.map(
-    (row): JobRow => ({
-      id: row.id,
-      title: row.title,
-      organizationName: row.organization_name,
-      status: row.status,
-      moderationState: row.moderation_state,
-      createdAt: row.created_at,
-    }),
-  );
-  return paged(rows, (row) => ({ at: row.createdAt, id: row.id }));
-}
-
-export async function getModerationJob(id: string): Promise<JobDetail | null> {
-  const supabase = await adminClient();
-  const { data, error } = await supabase.rpc("admin_get_job", { p_job: id });
-  if (error) {
-    if (error.message === "CHARA_NOT_FOUND") return null;
-    throw failure("The vacancy", error);
-  }
-  const [row] = data;
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    organizationId: row.organization_id,
-    organizationName: row.organization_name,
-    countryCode: row.country_code,
-    city: row.city,
-    status: row.status,
-    moderationState: row.moderation_state,
-    createdAt: row.created_at,
-    history: historySchema.parse(row.history),
-  };
 }
 
 // The metadata can hold personal data of the entity; the console shows the three keys that tie a row to its action.

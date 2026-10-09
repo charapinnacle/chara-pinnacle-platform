@@ -6,7 +6,7 @@ import { PageHeading } from "@/components/admin/page-heading";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { TextLink } from "@/components/forms/text-link";
 import { PassportSection } from "@/components/passport/section";
-import { getModerationJob } from "@/lib/dal/admin";
+import { getModerationJob } from "@/lib/dal/admin-jobs";
 import { formatDateTime } from "@/lib/i18n/format";
 import { statusLabels } from "@/lib/jobs/presentation";
 import { adminPath } from "@/lib/routes";

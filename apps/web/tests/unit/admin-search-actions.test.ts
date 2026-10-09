@@ -12,8 +12,8 @@ vi.mock("@/lib/dal/admin", () => ({
   searchUsers: searchUsersMock,
   searchOrganizations: searchOrganizationsMock,
   searchAudit: searchAuditMock,
-  searchJobs: searchJobsMock,
 }));
+vi.mock("@/lib/dal/admin-jobs", () => ({ searchJobs: searchJobsMock }));
 
 const actions = await import("@/lib/actions/admin-search");
 
