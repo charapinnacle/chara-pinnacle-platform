@@ -11,7 +11,7 @@ FR-G2, design points D4, D36, D67 (OPEN_QUESTIONS.md). An owner or admin at the 
 | | `SITE_URL` | The origin of the web application. The return addresses of Checkout and the portal are this origin plus `/en/org/<slug>/billing`; no address from a request is used. |
 | Web environment (optional) | `BILLING_CHECKOUT_ENDPOINT` | The address of the function when it is not the project's functions address plus `/billing-checkout`. |
 
-The function has `verify_jwt = true` and acts with the caller's own token; it holds no database key. The checks (role, second step, plan, tax input, terms, trial rule) are in `billing_checkout_start` and `billing_portal_start`.
+The function has `verify_jwt = true` and acts with the caller's own token. It also holds the service key that the platform provides to every function, used only to record a refused worker attempt (section 7). The checks (role, second step, plan, tax input, terms, trial rule) are in `billing_checkout_start` and `billing_portal_start`.
 
 Deploy with `npx supabase functions deploy billing-checkout --use-api` (`verify_jwt = true` from `config.toml`) and set the secrets with `npx supabase secrets set --env-file <file>` (names in `supabase/functions/.env.example`). Verify on each environment: a request without `Authorization` answers 401; a request with the project's publishable key as the bearer answers 401; an owner at the second step who posts `{"action":"portal","orgId":"<id>"}` for an organisation the webhook has not linked answers 403 with the reason `no_customer`.
 
@@ -95,3 +95,25 @@ group by 1 order by 1 desc;
 - `billing.checkout_started` (entity: the organisation; metadata: plan code, trial days, whether the legal entity had used its trial) and `billing.portal_opened` are written by the two RPCs, with the person as actor; neither holds a VAT ID, a registration number or card data. The tax data is in `billing.customers`, which no API role can read.
 - The acceptance of the Subscription and Billing Terms is a `granted` row in `public.consents` (purpose `subscription-and-billing-terms`, the version shown). A new version of the terms is published as a legal document; the page and the check use the current version at once.
 - Changing the trial length or a price is a reviewed migration of `billing.plans` (FR-G1); run the mirror afterwards for a price.
+
+## 7. Workers never pay (FR-G6)
+
+A candidate account cannot start a checkout or hold a subscription. The guarantee has four layers, each tested:
+
+- `private.assert_company_account()` is the first statement of `billing_checkout_start` and of `private.assert_billing_manager` (the portal and `billing_checkout_state`): an account of kind worker raises `CHARA_FORBIDDEN` with the detail `worker_account`, an account whose kind is not committed yet `account_kind_unset`. The answer does not depend on the organisation id.
+- No billing table has a column or a foreign key for a person, `organization_members` refuses a worker, and the account kind is committed once (pgTAP `089_workers_never_pay`).
+- The billing pages answer a candidate with the page of an unknown address, and no page of the candidate area links to pricing, billing or checkout or loads a payment script (Playwright `workers-never-pay`).
+- The refusal rolls the call back, so `billing-checkout` writes the audit row `billing.worker_checkout_refused` (entity: the profile, actor: the person, no metadata) through `audit_record_external`, once per attempt. A company user refused for another reason is not recorded.
+
+KPI "worker checkout attempts refused (100 %)": the first column counts the recorded refusals, the second the starts of a checkout or portal by a worker account that got through. The target is a second column of 0 for every period; run it quarterly as the database owner. A worker whose account has been erased has no actor and is not counted in the second column; the refusal itself does not depend on the audit row.
+
+```sql
+select date_trunc('quarter', l.created_at)::date as quarter,
+       count(*) filter (where l.action = 'billing.worker_checkout_refused') as worker_attempts_refused,
+       count(*) filter (where l.action in ('billing.checkout_started', 'billing.portal_opened') and p.account_kind = 'worker') as worker_attempts_admitted
+from audit.log l left join public.profiles p on p.id = l.actor_id
+where l.action in ('billing.worker_checkout_refused', 'billing.checkout_started', 'billing.portal_opened')
+group by 1 order by 1 desc;
+```
+
+Launch gate (not a build check): legal counsel approves the Platform Rules text. It must state that a worker never pays CHARA or anyone else a fee for finding work, applying or using CHARA, and must tell users to report a request for a fee to the Trust & Safety Administrator. The contact address for such reports belongs to the legal-entity settings of the public pages (FR-H1), not to this requirement.
