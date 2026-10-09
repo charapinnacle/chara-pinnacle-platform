@@ -1,5 +1,5 @@
 begin;
-select plan(84);
+select plan(94);
 
 \ir organizations_fixture.inc
 \ir billing_events_fixture.inc
@@ -49,12 +49,15 @@ select is(
 );
 select is(pg_temp.sub_count(:'b'), 1::bigint, 'AC3: there is still one row');
 select is(pg_temp.errors(), 0::bigint, 'AC3: no event is in error');
-select pg_temp.ingest('b_checkout2', 'checkout.completed', pg_temp.checkout_event(:'b', 'cus_other', 'sub_x')) as conflicting \gset
-select throws_ok(
-  format($f$select public.billing_apply_event(%L)$f$, :'conflicting'), 'P0001', 'CHARA_CONFLICT', 'a second customer for an organisation is not accepted'
+select pg_temp.alerts('billing_event_error') as conflict_alerts \gset
+select is(
+  pg_temp.deliver('b_checkout2', 'checkout.completed', pg_temp.checkout_event(:'b', 'cus_other', 'sub_x')), 'error',
+  'a second customer for an organisation is not accepted'
 );
-select is(pg_temp.event_status('b_checkout2'), 'received', 'and the event waits for the retry job, which raises the alert');
+select is(pg_temp.event_status('b_checkout2'), 'error/customer_conflict', 'it is an error with the reason customer_conflict, which no retry can cure');
+select is(pg_temp.alerts('billing_event_error'), :'conflict_alerts'::bigint + 1, 'and it raises one alert at once');
 select is(pg_temp.customer_ref(:'b'), 'cus_1b', 'the customer is unchanged');
+select is(pg_temp.applied_audit(:'b'), 2::bigint, 'AC9: and the conflict wrote no audit row');
 
 -- AC4: status, plan and dates are upserted; the trial grants are written once.
 select pg_temp.new_org(:'own1', 'DE123456789', 'HRB99001') as o \gset
@@ -120,6 +123,28 @@ select is(
   'applied', 'an event created in the same second as the stored state is applied'
 );
 
+-- The provider does not order invoice.payment_failed against customer.subscription.updated: when the update (Past due)
+-- is applied first, the older payment failure still sets the start of the dunning period and queues the email once.
+select pg_temp.new_org(:'own2', null, 'HRB99006') as w \gset
+select pg_temp.deliver('w_active', 'subscription.activated', pg_temp.sub_event(:'w', 'employer_starter', 'active', 'sub_w'), '2026-11-08T10:00:00Z') as ignored \gset
+select pg_temp.deliver('w_past_due', 'subscription.updated', pg_temp.sub_event(:'w', 'employer_starter', 'past_due', 'sub_w'), '2026-11-08T10:01:00Z') as ignored \gset
+select pg_temp.mails(:'own2', 'payment_failed') as failed_mails \gset
+select is(pg_temp.sub(:'w'), 'employer_starter|past_due||sub_w||||2026-11-08T10:01', 'the update came first: past due, and the dunning period has no start');
+select is(
+  pg_temp.deliver('w_failed', 'payment.failed', jsonb_build_object('orgId', :'w'::uuid, 'providerSubscriptionRef', 'sub_w'), '2026-11-08T10:00:30Z'),
+  'applied', 'the older payment failure is applied'
+);
+select is(
+  (select to_char(past_due_since at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') from billing.subscriptions where organization_id = :'w'),
+  '2026-11-08T10:00:30', 'and sets the start of the dunning period to its own time'
+);
+select is(pg_temp.mails(:'own2', 'payment_failed'), :'failed_mails'::bigint + 1, 'and queues the payment_failed email once');
+select is(
+  pg_temp.deliver('w_failed2', 'payment.failed', jsonb_build_object('orgId', :'w'::uuid, 'providerSubscriptionRef', 'sub_w'), '2026-11-08T10:00:40Z'),
+  'stale', 'a second older failure is stale once the dunning period has its start'
+);
+select is(pg_temp.mails(:'own2', 'payment_failed'), :'failed_mails'::bigint + 1, 'and queues no second email');
+
 -- AC7: a plan that is unknown is an error and changes nothing.
 select pg_temp.new_org(:'own1', null, 'HRB99003') as u \gset
 select pg_temp.alerts('billing_event_error') as alerted \gset
@@ -149,6 +174,7 @@ select is(
   pg_temp.deliver('u_type', 'subscription.activated', pg_temp.sub_event(:'u', 'recruitment_probe', 'trialing', 'sub_u')), 'error',
   'a plan of another organisation type is refused as well'
 );
+select is(pg_temp.applied_audit(:'u'), 0::bigint, 'AC9: an event in error writes no audit row');
 
 -- AC9: every applied event writes one audit row; the trial reminder queues one email for the owner.
 select pg_temp.new_org(:'own1', null, 'HRB99004') as m \gset
@@ -283,6 +309,13 @@ select ok(
 select throws_ok(
   $$select private.billing_notify_owner(gen_random_uuid(), 'legal_version', '{}')$$, 'P0001', 'CHARA_INVALID_INPUT', 'and queues the two billing emails only'
 );
+
+-- A deadlock between the retry job (many events in one transaction) and a webhook is avoided by one order of locks: the
+-- organisation first, the event row second. Two sessions cannot be driven from here, so the order in the body is pinned.
+select ok(
+  position('pg_advisory_xact_lock' in prosrc) between 1 and position('for update' in prosrc) - 1,
+  'the organisation lock is taken before the lock of the event row'
+) from pg_proc where oid = 'public.billing_apply_event(uuid)'::regprocedure;
 
 select * from finish();
 rollback;

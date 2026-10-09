@@ -903,7 +903,10 @@ isOneToOne: false
 { Args: { "p_after"?: string,"p_limit"?: number,"p_provider": string }; Returns: Json
                            },
 "billing_reconcile_report":
-{ Args: { "p_checked": number,"p_differences": Json,"p_provider": string }; Returns: number
+{ Args: { "p_checked": number,"p_difference_count": number,"p_differences": Json,"p_provider": string }; Returns: number
+                           },
+"billing_webhook_rejected":
+{ Args: { "p_provider": string,"p_reason": string }; Returns: boolean
                            },
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {

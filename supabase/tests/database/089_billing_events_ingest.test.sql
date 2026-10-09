@@ -1,5 +1,5 @@
 begin;
-select plan(44);
+select plan(56);
 
 \ir organizations_fixture.inc
 \ir billing_events_fixture.inc
@@ -166,6 +166,49 @@ select is(
 
 create function pg_temp.as_role(p_user uuid, p_role text, p_aal text, p_sql text) returns text
 language sql as $$ select pg_temp.call_as(p_user, p_role, p_sql, p_aal) $$;
+
+select ok(
+  (select bool_and(pg_get_userbyid(p.proowner) = 'billing_owner' and p.prosecdef and p.proconfig = array['search_path=""'])
+   from pg_proc p where p.oid in (
+     'billing.retry_failed_events()'::regprocedure, 'public.billing_webhook_rejected(text, text)'::regprocedure,
+     'public.billing_reconcile_records(text, uuid, integer)'::regprocedure,
+     'public.billing_reconcile_report(text, integer, integer, jsonb)'::regprocedure)),
+  'AC10: the retry job and the other service functions of this unit are owned by billing_owner as well'
+);
+select ok(
+  not has_table_privilege('billing_owner', 'private.settings', 'insert, update, delete, truncate')
+  and (select count(*) from pg_policy p where p.polrelid = 'private.settings'::regclass) = 1,
+  'AC10: billing_owner may read one setting of private.settings and write none'
+);
+select ok(
+  not exists (
+    select 1 from unnest(array['anon', 'authenticated', 'service_role']) r
+    where has_table_privilege(r, 'private.security_events', 'select, insert, update, delete, truncate, references, trigger')
+      or has_any_column_privilege(r, 'private.security_events', 'select, insert, update, references')
+  )
+  and (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'private.security_events'::regclass)
+  and not exists (select 1 from pg_policy p where p.polrelid = 'private.security_events'::regclass),
+  'AC10: the operations alerts are unreachable for the API roles, with RLS enabled and forced and no policy'
+);
+
+-- A request with an invalid signature is audited at most once an hour for each provider and reason.
+select is(public.billing_webhook_rejected('stripe', 'signature_mismatch'), true, 'the first rejection of a reason is audited');
+select is(public.billing_webhook_rejected('stripe', 'signature_mismatch'), false, 'the next ones of the same provider and reason are not');
+select is(public.billing_webhook_rejected('stripe', 'missing_signature'), true, 'another reason is audited');
+select is(public.billing_webhook_rejected('null', 'signature_mismatch'), true, 'and another provider');
+select is(
+  (select string_agg(entity_id || ':' || (metadata ->> 'reason'), ',' order by id) from audit.log where action = 'billing.webhook_rejected'),
+  'stripe:signature_mismatch,stripe:missing_signature,null:signature_mismatch', 'three rows were written for the four attempts, with no payload'
+);
+select throws_ok($$select public.billing_webhook_rejected('paypal', 'signature_mismatch')$$, 'P0001', 'CHARA_INVALID_INPUT', 'an unknown provider is refused');
+select throws_ok($$select public.billing_webhook_rejected('stripe', 'Bad Reason!')$$, 'P0001', 'CHARA_INVALID_INPUT', 'and a reason that is not a fixed word');
+select is(
+  pg_temp.as_role(null, 'anon', 'aal1', $$select public.billing_webhook_rejected('stripe', 'signature_mismatch')$$),
+  '42501|permission denied for function billing_webhook_rejected|', 'an anonymous caller cannot write the audit row'
+);
+select is(
+  pg_temp.as_role(null, 'service_role', 'aal1', $$select public.billing_webhook_rejected('stripe', 'invalid_payload')$$), 'ok', 'service_role can'
+);
 
 select is(
   pg_temp.as_role(:'own1', 'authenticated', 'aal2', $$select count(*) from billing.provider_events$$),

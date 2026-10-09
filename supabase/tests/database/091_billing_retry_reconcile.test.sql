@@ -1,5 +1,5 @@
 begin;
-select plan(50);
+select plan(62);
 
 \ir organizations_fixture.inc
 \ir billing_events_fixture.inc
@@ -75,17 +75,25 @@ select is(
 select is(billing.retry_failed_events(), 0, 'AC8: an event in error is not taken again');
 select is(pg_temp.alerts(), :'alerts0'::bigint + 1, 'AC8: and raises no second alert');
 
--- A failure of the application itself (an organisation with another customer already) follows the same rule.
+-- A failure of the application itself (a date the application cannot read) follows the same rule.
 select pg_temp.new_org(:'own1', null, 'HRB98002') as o3 \gset
-select pg_temp.deliver('r3_checkout', 'checkout.completed', pg_temp.checkout_event(:'o3', 'cus_r3')) as ignored \gset
-select pg_temp.ingest('r3_conflict', 'checkout.completed', pg_temp.checkout_event(:'o3', 'cus_r3_other')) as e3 \gset
-select pg_temp.age('r3_conflict', 59);
+select pg_temp.ingest('r3_bad', 'subscription.activated', pg_temp.sub_event(:'o3', 'employer_starter', 'trialing', 'sub_r3', 'not-a-date')) as e3 \gset
+select pg_temp.age('r3_bad', 59);
 select billing.retry_failed_events();
-select is(pg_temp.event_status('r3_conflict'), 'received', 'AC8: a transient failure is retried while it is younger than an hour');
-select pg_temp.age('r3_conflict', 61);
+select is(pg_temp.event_status('r3_bad'), 'received', 'AC8: a transient failure is retried while it is younger than an hour');
+select pg_temp.age('r3_bad', 61);
 select billing.retry_failed_events();
-select is(pg_temp.event_status('r3_conflict'), 'error/transient', 'AC8: and becomes an error with the reason transient after it');
+select is(pg_temp.event_status('r3_bad'), 'error/transient', 'AC8: and becomes an error with the reason transient after it');
 select is(pg_temp.alerts(), :'alerts0'::bigint + 2, 'AC8: with one alert');
+
+-- A customer that differs from the one of the organisation is a permanent error: no run of the job takes it.
+select pg_temp.deliver('r3_checkout', 'checkout.completed', pg_temp.checkout_event(:'o3', 'cus_r3')) as ignored \gset
+select is(
+  pg_temp.deliver('r3_conflict', 'checkout.completed', pg_temp.checkout_event(:'o3', 'cus_r3_other')), 'error', 'a second customer is an error at once'
+);
+select is(billing.retry_failed_events(), 0, 'and the job does not take it');
+select is(pg_temp.event_status('r3_conflict'), 'error/customer_conflict', 'with the reason customer_conflict, not transient');
+select is(pg_temp.alerts(), :'alerts0'::bigint + 3, 'and one alert');
 
 -- AC7: the unknown plan is not retried.
 select pg_temp.new_org(:'own1', null, 'HRB98003') as o4 \gset
@@ -118,6 +126,8 @@ insert into private.settings (key, value) values ('billing_retry_alert_minutes',
 select is((select days from private.retention_policies where entity = 'billing_provider_events'), 396, 'the payloads are kept 13 months by default');
 update billing.provider_events set received_at = now() - interval '397 days' where provider_event_id in ('r1_paid', 'r2_paid');
 update billing.provider_events set received_at = now() - interval '395 days' where provider_event_id = 'r3_conflict';
+insert into private.security_events (kind, detail, created_at) values
+  ('billing_retention_old', '{}', now() - interval '397 days'), ('billing_retention_young', '{}', now() - interval '395 days');
 select private.apply_retention();
 select is(
   (select string_agg(provider_event_id, ',' order by provider_event_id) from billing.provider_events where provider_event_id in ('r1_paid', 'r2_paid', 'r3_conflict', 'r1_checkout')),
@@ -128,6 +138,15 @@ select is(
   'and the run is audited'
 );
 select is((select count(*) from billing.orders where organization_id = :'o1'), 1::bigint, 'orders are not deleted with the payloads');
+select is((select days from private.retention_policies where entity = 'security_events'), 396, 'the operations alerts are kept 13 months by default');
+select is(
+  (select string_agg(kind, ',') from private.security_events where kind like 'billing_retention_%'),
+  'billing_retention_young', 'alerts older than the period are deleted, younger ones are kept'
+);
+select is(
+  (select metadata ->> 'days' from audit.log where action = 'retention.run' and entity_id = 'security_events' order by id desc limit 1), '396',
+  'and the run is audited'
+);
 
 -- Reconciliation: the records, and the report of the differences (AC12 is tested on the function in Deno).
 insert into billing.subscriptions (organization_id, plan_code, status, provider, provider_subscription_ref)
@@ -154,7 +173,7 @@ select is(
 
 select pg_temp.alerts() as before_report \gset
 select is(
-  public.billing_reconcile_report('stripe', 10, jsonb_build_array(
+  public.billing_reconcile_report('stripe', 10, 4, jsonb_build_array(
     jsonb_build_object('kind', 'missing_record', 'subscription_ref', 'sub_a'), jsonb_build_object('kind', 'extra_record', 'subscription_ref', 'sub_b'),
     jsonb_build_object('kind', 'status_mismatch', 'subscription_ref', 'sub_c'), jsonb_build_object('kind', 'plan_mismatch', 'subscription_ref', 'sub_d'))),
   4, 'the report counts the differences'
@@ -167,16 +186,20 @@ select is(
 select is(
   (select metadata from audit.log where action = 'billing.reconciled' order by id desc limit 1), '{"checked": 10, "differences": 4}'::jsonb, 'and writes one audit row for the run'
 );
-select is(public.billing_reconcile_report('stripe', 10, '[]'), 0, 'a run without differences raises no alert');
+select is(public.billing_reconcile_report('stripe', 10, 0, '[]'), 0, 'a run without differences raises no alert');
 select is(pg_temp.alerts(), :'before_report'::bigint + 4, 'AC12: none');
 select throws_ok(
-  $$select public.billing_reconcile_report('stripe', 1, '[{"kind": "bogus", "subscription_ref": "sub_x"}]')$$, 'P0001', 'CHARA_INVALID_INPUT', 'a difference of an unknown kind is refused'
+  $$select public.billing_reconcile_report('stripe', 1, 1, '[{"kind": "bogus", "subscription_ref": "sub_x"}]')$$, 'P0001', 'CHARA_INVALID_INPUT', 'a difference of an unknown kind is refused'
+);
+select throws_ok(
+  $$select public.billing_reconcile_report('stripe', 1, 0, '[{"kind": "missing_record", "subscription_ref": "sub_x"}]')$$, 'P0001', 'CHARA_INVALID_INPUT',
+  'a total below the number of differences listed is refused'
 );
 select ok(
   has_function_privilege('service_role', 'public.billing_reconcile_records(text, uuid, integer)', 'execute')
-  and has_function_privilege('service_role', 'public.billing_reconcile_report(text, integer, jsonb)', 'execute')
+  and has_function_privilege('service_role', 'public.billing_reconcile_report(text, integer, integer, jsonb)', 'execute')
   and not has_function_privilege('authenticated', 'public.billing_reconcile_records(text, uuid, integer)', 'execute')
-  and not has_function_privilege('anon', 'public.billing_reconcile_report(text, integer, jsonb)', 'execute'),
+  and not has_function_privilege('anon', 'public.billing_reconcile_report(text, integer, integer, jsonb)', 'execute'),
   'only service_role executes the two reconciliation functions'
 );
 
@@ -195,8 +218,26 @@ select is(
   25.0, 'KPI: the share of events applied within a minute counts errors and waiting events, not stale ones'
 );
 select is(
-  (select count(*) from private.security_events where kind = 'billing_reconciliation_difference' and date_trunc('week', created_at)::date = date_trunc('week', now())::date),
-  4::bigint, 'KPI: the differences of the week are read from the alerts'
+  (select sum((metadata ->> 'differences')::int) from audit.log where action = 'billing.reconciled' and date_trunc('week', created_at)::date = date_trunc('week', now())::date),
+  4::bigint, 'KPI: the differences of the week are the sum of the totals of the runs'
+);
+
+-- A large run is never refused (after an outage of the webhook it matters most): the total is audited, a sample of 200
+-- is raised as alerts, and one more alert says that the sample is smaller than the total.
+select pg_temp.alerts('billing_reconciliation_difference') as sample_before \gset
+select is(
+  public.billing_reconcile_report('stripe', 6000, 5000, (
+    select jsonb_agg(jsonb_build_object('kind', 'missing_record', 'subscription_ref', 'sub_big_' || n)) from generate_series(1, 300) n)),
+  5000, 'a report with thousands of differences is accepted'
+);
+select is(pg_temp.alerts('billing_reconciliation_difference'), :'sample_before'::bigint + 200, 'it raises the alerts of a sample of 200');
+select is(
+  (select detail from private.security_events where kind = 'billing_reconciliation_truncated' order by id desc limit 1),
+  '{"provider": "stripe", "differences": 5000, "listed": 200}'::jsonb, 'and one alert with the total and the size of the sample'
+);
+select is(
+  (select metadata from audit.log where action = 'billing.reconciled' order by id desc limit 1), '{"checked": 6000, "differences": 5000}'::jsonb,
+  'the audit row of the run holds the total'
 );
 
 select * from finish();

@@ -7,8 +7,9 @@
 
 insert into private.settings (key, value) values ('billing_retry_alert_minutes', '60');
 
--- 13 months, as days (OPEN_QUESTIONS.md L6): the payloads of the provider are deleted, the audit rows stay.
-insert into private.retention_policies (entity, days) values ('billing_provider_events', 396);
+-- 13 months, as days (OPEN_QUESTIONS.md L6): the payloads of the provider and the operations alerts are deleted, the
+-- audit rows stay.
+insert into private.retention_policies (entity, days) values ('billing_provider_events', 396), ('security_events', 396);
 
 -- Operations alerts that must outlive a log line: a failed event, a repeated trial, a difference found by the weekly
 -- reconciliation. Written only by private.raise_alert; nobody reads the table through the API.
@@ -23,6 +24,7 @@ comment on table private.security_events is
   'Operations alerts (ids and codes only, never a payload). The same alert is a server log line with the key "alert", which the log platform watches.';
 
 create index security_events_kind_created_idx on private.security_events (kind, created_at desc);
+create index security_events_created_at_idx on private.security_events (created_at);
 
 alter table private.security_events enable row level security;
 alter table private.security_events force row level security;
@@ -55,7 +57,7 @@ create table billing.provider_events (
   received_at timestamptz not null default now(),
   status text not null default 'received' check (status in ('received', 'applied', 'stale', 'error')),
   applied_at timestamptz,
-  error text check (error in ('unknown_plan', 'org_not_linked', 'transient')),
+  error text check (error in ('unknown_plan', 'customer_conflict', 'org_not_linked', 'transient')),
   unique (provider, provider_event_id),
   check ((status = 'applied') = (applied_at is not null)),
   check ((status = 'error') = (error is not null))
@@ -236,7 +238,8 @@ begin
     return;
   end if;
   if v_current is not null and v_current <> v_customer then
-    raise exception 'CHARA_CONFLICT' using detail = 'customer_ref';
+    outcome := 'customer_conflict';
+    return;
   end if;
   update billing.customers set customer_ref = v_customer where organization_id = p_org;
   update billing.subscriptions
@@ -332,7 +335,10 @@ begin
   if v_row.status in ('canceled', 'paused') then
     return;
   end if;
-  if v_row.last_provider_event_at > p_ev.provider_created_at then
+  -- The provider does not order this event against customer.subscription.updated: when that one came first and set
+  -- Past due, this older event still owns the start of the dunning period and its email.
+  if v_row.last_provider_event_at > p_ev.provider_created_at
+     and not (v_row.status = 'past_due' and v_row.past_due_since is null) then
     outcome := 'stale';
     return;
   end if;
@@ -473,10 +479,11 @@ end;
 $$;
 
 -- Applies a stored event and answers its status: applied; stale (older than the stored state: the caller fetches the
--- current state from the provider); error (a plan that is unknown; the event stays in error until an operator resets
--- it); received (the organisation or its subscription is not known yet: the retry job tries again). Applying an event
+-- current state from the provider); error (a plan that is unknown, or a customer that differs from the one of the
+-- organisation; the event stays in error until an operator resets it); received (the organisation or its subscription is not known yet: the retry job tries again). Applying an event
 -- that is no longer 'received' changes nothing and answers its status. Everything happens in one transaction, and the
--- events of one organisation are applied one at a time.
+-- events of one organisation are applied one at a time. The lock of the organisation is taken before the lock of the
+-- event row, always: the retry job applies many events in one transaction and holds both kinds of lock until it ends.
 create function public.billing_apply_event(p_event_id uuid) returns text
 language plpgsql
 security definer
@@ -487,7 +494,7 @@ declare
   v_org uuid;
   v_out record;
 begin
-  select * into v_ev from billing.provider_events e where e.id = p_event_id for update;
+  select * into v_ev from billing.provider_events e where e.id = p_event_id;
   if not found then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
@@ -500,6 +507,13 @@ begin
     return 'received';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('billing:' || v_org::text, 0));
+  select * into v_ev from billing.provider_events e where e.id = p_event_id for update;
+  if not found then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if v_ev.status <> 'received' then
+    return v_ev.status;
+  end if;
 
   if v_ev.kind = 'checkout.completed' then
     select * into v_out from billing.apply_checkout(v_ev, v_org);
@@ -518,10 +532,10 @@ begin
   elsif v_out.outcome = 'stale' then
     update billing.provider_events set status = 'stale' where id = v_ev.id;
     return 'stale';
-  elsif v_out.outcome = 'unknown_plan' then
-    update billing.provider_events set status = 'error', error = 'unknown_plan' where id = v_ev.id;
+  elsif v_out.outcome in ('unknown_plan', 'customer_conflict') then
+    update billing.provider_events set status = 'error', error = v_out.outcome where id = v_ev.id;
     perform private.raise_alert('billing_event_error', jsonb_build_object(
-      'event_id', v_ev.id, 'kind', v_ev.kind, 'error', 'unknown_plan', 'organization_id', v_org
+      'event_id', v_ev.id, 'kind', v_ev.kind, 'error', v_out.outcome, 'organization_id', v_org
     ));
     return 'error';
   end if;
@@ -588,6 +602,11 @@ begin
 end;
 $$;
 
+-- Like the other functions of this unit it runs as billing_owner, which reads one setting and nothing else of private.
+grant select on private.settings to billing_owner;
+create policy settings_select_billing_retry on private.settings
+  for select to billing_owner using (key = 'billing_retry_alert_minutes');
+alter function billing.retry_failed_events() owner to billing_owner;
 revoke all on function billing.retry_failed_events() from public, anon, authenticated, service_role;
 
 select cron.schedule('billing-retry-events', '*/5 * * * *', 'select billing.retry_failed_events()');
@@ -614,21 +633,27 @@ as $$
   ) r
 $$;
 
--- The result of one comparison: one operations alert per difference and one audit row for the run. Returns the number
--- of differences.
-create function public.billing_reconcile_report(p_provider text, p_checked integer, p_differences jsonb) returns integer
+-- The result of one comparison: the total of differences, a sample of at most 200 of them as operations alerts, and one
+-- audit row for the run. A run is never refused for being large: after an outage of the webhook it is the run that
+-- matters most. When the sample is smaller than the total, one more alert says so. Returns the total.
+create function public.billing_reconcile_report(
+  p_provider text, p_checked integer, p_difference_count integer, p_differences jsonb
+) returns integer
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
+  v_sample jsonb;
   v_difference jsonb;
 begin
   if p_provider not in ('null', 'stripe') or p_checked is null or p_checked < 0
-     or p_differences is null or jsonb_typeof(p_differences) <> 'array' or jsonb_array_length(p_differences) > 1000 then
+     or p_differences is null or jsonb_typeof(p_differences) <> 'array'
+     or p_difference_count is null or p_difference_count < jsonb_array_length(p_differences) then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'report';
   end if;
-  for v_difference in select d from jsonb_array_elements(p_differences) d loop
+  select coalesce(jsonb_agg(d), '[]') into v_sample from (select d from jsonb_array_elements(p_differences) d limit 200) s;
+  for v_difference in select d from jsonb_array_elements(v_sample) d loop
     if jsonb_typeof(v_difference) <> 'object'
        or v_difference ->> 'kind' not in ('missing_record', 'extra_record', 'status_mismatch', 'plan_mismatch')
        or coalesce(v_difference ->> 'subscription_ref', '') = '' then
@@ -636,30 +661,77 @@ begin
     end if;
   end loop;
 
-  for v_difference in select d from jsonb_array_elements(p_differences) d loop
+  for v_difference in select d from jsonb_array_elements(v_sample) d loop
     perform private.raise_alert('billing_reconciliation_difference', jsonb_build_object(
       'provider', p_provider, 'difference', v_difference ->> 'kind', 'subscription_ref', v_difference ->> 'subscription_ref'
     ));
   end loop;
+  if p_difference_count > jsonb_array_length(v_sample) then
+    perform private.raise_alert('billing_reconciliation_truncated', jsonb_build_object(
+      'provider', p_provider, 'differences', p_difference_count, 'listed', jsonb_array_length(v_sample)
+    ));
+  end if;
   perform private.billing_audit('billing.reconciled', 'billing', p_provider, jsonb_build_object(
-    'checked', p_checked, 'differences', jsonb_array_length(p_differences)
+    'checked', p_checked, 'differences', p_difference_count
   ));
-  return jsonb_array_length(p_differences);
+  return p_difference_count;
 end;
+$$;
+
+-- A request with an invalid signature is logged by the function on every attempt, and is audited at most once an hour
+-- for each provider and reason: the endpoint is public, and the audit log is permanent.
+create function private.billing_audit_rejected(p_provider text, p_reason text) returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_provider not in ('null', 'stripe') or p_reason is null or p_reason !~ '^[a-z_]{1,40}$' then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'rejection';
+  end if;
+  if not pg_try_advisory_xact_lock(hashtextextended('billing_rejected:' || p_provider || ':' || p_reason, 0)) then
+    return false;
+  end if;
+  if exists (
+    select 1 from audit.log l
+    where l.action = 'billing.webhook_rejected' and l.created_at > now() - interval '1 hour'
+      and l.entity_id = p_provider and l.metadata ->> 'reason' = p_reason
+  ) then
+    return false;
+  end if;
+  perform audit.record(
+    'billing.webhook_rejected', 'billing_webhook', p_provider, jsonb_build_object('reason', p_reason, 'provider', p_provider)
+  );
+  return true;
+end;
+$$;
+
+revoke all on function private.billing_audit_rejected(text, text) from public, anon, authenticated, service_role;
+grant execute on function private.billing_audit_rejected(text, text) to billing_owner;
+
+create function public.billing_webhook_rejected(p_provider text, p_reason text) returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select private.billing_audit_rejected(p_provider, p_reason)
 $$;
 
 grant create on schema public to billing_owner;
 alter function public.billing_reconcile_records(text, uuid, integer) owner to billing_owner;
-alter function public.billing_reconcile_report(text, integer, jsonb) owner to billing_owner;
+alter function public.billing_reconcile_report(text, integer, integer, jsonb) owner to billing_owner;
+alter function public.billing_webhook_rejected(text, text) owner to billing_owner;
 revoke create on schema public from billing_owner;
 
 revoke all on function public.billing_reconcile_records(text, uuid, integer) from public, anon, authenticated;
-revoke all on function public.billing_reconcile_report(text, integer, jsonb) from public, anon, authenticated;
+revoke all on function public.billing_reconcile_report(text, integer, integer, jsonb) from public, anon, authenticated;
+revoke all on function public.billing_webhook_rejected(text, text) from public, anon, authenticated;
 grant execute on function public.billing_reconcile_records(text, uuid, integer) to service_role;
-grant execute on function public.billing_reconcile_report(text, integer, jsonb) to service_role;
+grant execute on function public.billing_reconcile_report(text, integer, integer, jsonb) to service_role;
+grant execute on function public.billing_webhook_rejected(text, text) to service_role;
 
 -- apply_retention keeps its rules for the document access log, the notifications and the audit log, and adds the
--- payloads of the provider (private.apply_retention of 20261102110000 with the events added).
+-- payloads of the provider and the operations alerts (private.apply_retention of 20261102110000 with both added).
 create or replace function private.apply_retention() returns void
 language plpgsql
 security definer
@@ -698,6 +770,16 @@ begin
     get diagnostics v_removed = row_count;
     perform audit.record(
       'retention.run', 'retention_policies', 'billing_provider_events',
+      jsonb_build_object('days', v_days, 'removed', v_removed)
+    );
+  end if;
+
+  select p.days into v_days from private.retention_policies p where p.entity = 'security_events';
+  if found then
+    delete from private.security_events where created_at < now() - make_interval(days => v_days);
+    get diagnostics v_removed = row_count;
+    perform audit.record(
+      'retention.run', 'retention_policies', 'security_events',
       jsonb_build_object('days', v_days, 'removed', v_removed)
     );
   end if;
