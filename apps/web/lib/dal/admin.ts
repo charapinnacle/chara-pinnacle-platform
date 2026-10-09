@@ -1,8 +1,10 @@
 import "server-only";
-import type { Database } from "@chara-pinnacle/db-types";
+import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
+import { clientAddress } from "@/lib/visitor-address";
 import {
   ADMIN_PAGE_SIZE,
   type AuditFilter,
@@ -39,6 +41,8 @@ export type AuditRow = {
   entityType: string;
   entityId: string | null;
   reason: string | null;
+  requestId: string | null;
+  jobId: string | null;
   createdAt: string;
 };
 
@@ -96,10 +100,19 @@ export type OrganizationDetail = OrganizationRow & {
 
 export type StageCount = { status: Enums["application_status"]; count: number };
 
-// The id of the request goes to the database with every call of the console, so that the audit row of an action names it.
+// The id of the request and the address of the caller go to the database with every call of the console, so that the
+// audit row of an action names both. The address is the one our own proxies wrote (TRUSTED_PROXY_HOPS, as for the
+// visitor key), sent as the only entry of x-forwarded-for: the database takes the leftmost entry, which a client can
+// forge, and without this header it would be the address of the web tier.
 export async function adminClient() {
-  const requestId = (await headers()).get("x-request-id");
-  return createClient(requestId ? { "x-request-id": requestId } : undefined);
+  const incoming = await headers();
+  const requestId = incoming.get("x-request-id");
+  const address = clientAddress(incoming.get("x-forwarded-for"), serverEnv().TRUSTED_PROXY_HOPS);
+  const forwarded = {
+    ...(requestId ? { "x-request-id": requestId } : {}),
+    ...(address ? { "x-forwarded-for": address } : {}),
+  };
+  return createClient(Object.keys(forwarded).length > 0 ? forwarded : undefined);
 }
 
 function failure(what: string, cause: unknown): Error {
@@ -158,6 +171,13 @@ export async function searchOrganizations(
   return paged(rows, (row) => ({ name: row.displayName, id: row.id }));
 }
 
+// The metadata can hold personal data of the entity; the console shows the three keys that tie a row to its action.
+function metadataText(metadata: Json, key: string): string | null {
+  if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return null;
+  const value = metadata[key];
+  return typeof value === "string" ? value : null;
+}
+
 export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promise<Page<AuditRow, NonNullable<TimeCursor>>> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_search_audit", {
@@ -179,7 +199,9 @@ export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promi
       action: row.action,
       entityType: row.entity_type,
       entityId: row.entity_id ?? null,
-      reason: row.reason ?? null,
+      reason: metadataText(row.metadata, "reason"),
+      requestId: metadataText(row.metadata, "request_id"),
+      jobId: metadataText(row.metadata, "job_id"),
       createdAt: row.created_at,
     }),
   );

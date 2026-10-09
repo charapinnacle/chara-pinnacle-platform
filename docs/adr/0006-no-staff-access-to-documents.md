@@ -7,7 +7,7 @@
 
 FR-F3 says that no platform staff role (Platform Administrator, Verification Reviewer, Trust and Safety Administrator) has a function to open or download candidate documents in Phase 1, and that reports are handled without document access. The risk in the SOP is insider access: a person with an administrative account reading CVs and certificates.
 
-Whether Trust and Safety must inspect reported documents at launch is to be confirmed by CHARA (OPEN_QUESTIONS.md P10; the design point of the tests is D68). Phase 1 has no reports, so the default is that nobody inspects them.
+Whether Trust and Safety must inspect reported documents at launch is to be confirmed by CHARA (OPEN_QUESTIONS.md P10; the design point of the tests is D69). Phase 1 has no reports, so the default is that nobody inspects them.
 
 ## Decision
 

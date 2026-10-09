@@ -155,13 +155,13 @@ select is(
 select is((select revoked_at is not null from public.platform_staff where user_id = :'revokee'), true, 'and revoked one');
 select is((select max(version) from public.legal_documents where slug = 'matrix-terms'), 1, 'and published a document');
 select is(
-  (select count(*) from audit.log where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate', 'legal_document.publish', 'mfa_reset', 'platform_role_granted', 'platform_role_revoked')
+  (select count(*) from audit.log where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate', 'legal_document.publish', 'mfa.reset', 'platform_role.grant', 'platform_role.revoke')
      and created_at > now() - interval '1 minute' and actor_id in (:'st_admin', :'st_trust')),
   8::bigint, 'every state-changing call wrote its own audit row'
 );
 select is_empty(
   format($$select id, action from audit.log
-    where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate', 'legal_document.publish', 'mfa_reset', 'platform_role_granted', 'platform_role_revoked')
+    where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate', 'legal_document.publish', 'mfa.reset', 'platform_role.grant', 'platform_role.revoke')
       and created_at > now() - interval '1 minute' and actor_id in (%L, %L) and coalesce(metadata ->> 'reason', '') = ''$$, :'st_admin', :'st_trust'),
   'KPI: the query of the runbook finds no action of these calls without a reason'
 );

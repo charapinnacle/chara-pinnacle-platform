@@ -1,6 +1,6 @@
 # Runbook: no document access for platform staff
 
-FR-F3, ADR-0006 (the rule, the layers and the exception process), design point D68 (OPEN_QUESTIONS.md). The restriction is tested by pgTAP 085 to 088, the Vitest file `admin-no-document-access` and the Playwright spec `staff-document-denial`. Nothing to deploy beyond the migration `20261103100000_audit_search_without_documents.sql`; the rest of the restriction was built with FR-B2, FR-B3, FR-B5 and FR-F1.
+FR-F3, ADR-0006 (the rule, the layers and the exception process), design point D69 (OPEN_QUESTIONS.md). The restriction is tested by pgTAP 085 to 088, the Vitest file `admin-no-document-access` and the Playwright spec `staff-document-denial`. Nothing to deploy beyond the migration `20261103100000_audit_search_without_documents.sql`; the rest of the restriction was built with FR-B2, FR-B3, FR-B5 and FR-F1.
 
 ## 1. KPI: policy tests passing (100 %)
 

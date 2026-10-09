@@ -25,15 +25,7 @@ The form names the current version it showed; a second submit of the same form (
 
 ## 4. KPIs and the quarterly review
 
-- Actions with a reason recorded (100 %): the query below returns 0.
-
-```sql
-select count(*) from audit.log
-where action in ('user.suspend', 'user.reinstate', 'organization.suspend', 'organization.reinstate',
-                 'legal_document.publish', 'mfa_reset', 'platform_role_granted', 'platform_role_revoked')
-  and coalesce(metadata ->> 'reason', '') = '';
-```
-
+- Actions with a reason recorded (100 %): the query in `audit-log.md` section 3 returns 0.
 - Time to resolve reports: Phase 1 has no reports (the report and appeal flow is a later phase), so this KPI starts with it. Until then the time between a suspension and its reinstatement is `moderation_actions` (`account_suspended` against `account_reinstated`, same `target_id`).
 - Quarterly access review (operational, not built): the Platform Administrator opens Staff, which lists every active and revoked role with who granted it, the two-step status and the last sign-in, and signs off the list with CHARA; roles of accounts that have not signed in for 90 days are revoked or kept with a reason.
 

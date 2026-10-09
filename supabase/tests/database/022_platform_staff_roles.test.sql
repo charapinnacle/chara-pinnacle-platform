@@ -33,7 +33,7 @@ create function pg_temp.snapshot() returns text
 language sql as $$
   select format('%s|%s|%s|%s',
     (select count(*) from public.platform_staff),
-    (select count(*) from audit.log where action in ('platform_role_granted', 'platform_role_revoked')),
+    (select count(*) from audit.log where action in ('platform_role.grant', 'platform_role.revoke')),
     (select count(*) from pgmq.q_account_ops),
     (select count(*) from pgmq.q_notifications))
 $$;
@@ -46,7 +46,7 @@ select u.id, 'admin' from auth.users u where u.id = :'adm' and u.email_confirmed
 select set_config('chara.audit_reason', '', true);
 select is(
   (select format('%s|%s|%s|%s', count(*), min(actor_id::text), min(metadata ->> 'role'), min(metadata ->> 'reason'))
-   from audit.log where action = 'platform_role_granted' and metadata ->> 'user_id' = :'adm'),
+   from audit.log where action = 'platform_role.grant' and metadata ->> 'user_id' = :'adm'),
   '1||admin|Bootstrap of the first administrator, ticket 4800',
   'the bootstrap insert writes one audit row with no actor, the role and its ticket'
 );
@@ -78,16 +78,16 @@ select is(
   4::bigint, 'each grant leaves a row with the grantor, granted_at now and no revocation'
 );
 select is(
-  (select count(*) from audit.log where action = 'platform_role_granted' and actor_id = :'adm'), 4::bigint,
+  (select count(*) from audit.log where action = 'platform_role.grant' and actor_id = :'adm'), 4::bigint,
   'each grant writes exactly one audit row'
 );
 select is(
-  (select metadata from audit.log where action = 'platform_role_granted' and metadata ->> 'user_id' = :'u1' and metadata ->> 'role' = 'trust_safety'),
+  (select metadata - 'staff_id' - 'request_id' from audit.log where action = 'platform_role.grant' and metadata ->> 'user_id' = :'u1' and metadata ->> 'role' = 'trust_safety'),
   format('{"user_id":"%s","role":"trust_safety","granted_by":"%s","reason":"New T&S hire, ticket 4812"}', :'u1', :'adm')::jsonb,
   'the audit row holds grantee, role, grantor and the reason'
 );
 select is(
-  (select metadata ->> 'reason' from audit.log where action = 'platform_role_granted' and metadata ->> 'role' = 'verification_reviewer' and metadata ->> 'user_id' = :'u1'),
+  (select metadata ->> 'reason' from audit.log where action = 'platform_role.grant' and metadata ->> 'role' = 'verification_reviewer' and metadata ->> 'user_id' = :'u1'),
   'Second role for U1, ticket 4814', 'the reason is trimmed'
 );
 select is(
@@ -126,8 +126,8 @@ select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.grant_
   'P0001|CHARA_INVALID_INPUT|user', 'a suspended user is refused');
 select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.grant_platform_role(%L, 'trust_safety', 'too short')$$, :'u3')),
   'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 9 characters is refused');
-select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.grant_platform_role(%L, 'trust_safety', %L)$$, :'u3', repeat('x', 501))),
-  'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 501 characters is refused');
+select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.grant_platform_role(%L, 'trust_safety', %L)$$, :'u3', repeat('x', 2001))),
+  'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 2001 characters is refused (FR-F2 AC3)');
 select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.grant_platform_role(%L, 'trust_safety', '')$$, :'u3')),
   'P0001|CHARA_INVALID_INPUT|reason', 'an empty reason is refused');
 select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.grant_platform_role(%L, 'trust_safety', '            ')$$, :'u3')),
@@ -155,7 +155,7 @@ select is(
 );
 select is(
   (select format('%s|%s|%s', count(*), min(actor_id::text), min(metadata ->> 'reason')) from audit.log
-   where action = 'platform_role_revoked' and metadata ->> 'user_id' = :'u1'),
+   where action = 'platform_role.revoke' and metadata ->> 'user_id' = :'u1'),
   format('1|%s|Moved to another team, ticket 4816', :'adm'), 'one audit row holds the actor and the trimmed reason'
 );
 select is(
@@ -220,8 +220,8 @@ select is(pg_temp.call_as(null, 'anon', format($$select public.revoke_platform_r
   '42501|permission denied for function revoke_platform_role|', 'the anonymous caller is refused at EXECUTE');
 select is(pg_temp.call_as(:'u2', 'authenticated', format($$select public.revoke_platform_role(%L, 'trust_safety', 'too short')$$, :'u1')),
   'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 9 characters is refused');
-select is(pg_temp.call_as(:'u2', 'authenticated', format($$select public.revoke_platform_role(%L, 'trust_safety', %L)$$, :'u1', repeat('x', 501))),
-  'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 501 characters is refused');
+select is(pg_temp.call_as(:'u2', 'authenticated', format($$select public.revoke_platform_role(%L, 'trust_safety', %L)$$, :'u1', repeat('x', 2001))),
+  'P0001|CHARA_INVALID_INPUT|reason', 'a reason of 2001 characters is refused (FR-F2 AC3)');
 select is(pg_temp.call_as(:'u2', 'authenticated', format($$select public.revoke_platform_role(%L, 'admin', 'Reason with enough length')$$, :'own')),
   'P0001|CHARA_INVALID_INPUT|role', 'a user without that role is refused');
 select is(pg_temp.call_as(:'u2', 'authenticated', format($$select public.revoke_platform_role(%L, 'trust_safety', 'Reason with enough length')$$, :'nobody')),
@@ -234,7 +234,7 @@ select is((select pg_temp.snapshot() = snap from before_revokes), true, 'no refu
 
 -- AC6: the roles are technically separated. The other six actions of the criterion belong to later units.
 create temp table before_separation as select pg_temp.snapshot() as snap,
-  (select count(*) from audit.log where action = 'mfa_reset') as resets;
+  (select count(*) from audit.log where action = 'mfa.reset') as resets;
 
 select is(pg_temp.call_as(:'tss', 'authenticated', format($$select public.grant_platform_role(%L, 'trust_safety', 'Reason with enough length')$$, :'u3')),
   'P0001|CHARA_FORBIDDEN|', 'trust_safety is refused grant_platform_role');
@@ -249,7 +249,7 @@ select is(pg_temp.call_as(:'vrv', 'authenticated', format($$select public.revoke
 select is(pg_temp.call_as(:'vrv', 'authenticated', format($$select public.reset_mfa(%L, 'Identity checked by video call')$$, :'tgt')),
   'P0001|CHARA_FORBIDDEN|', 'a verification_reviewer is refused reset_mfa');
 select is(
-  (select pg_temp.snapshot() = snap and resets = (select count(*) from audit.log where action = 'mfa_reset') from before_separation),
+  (select pg_temp.snapshot() = snap and resets = (select count(*) from audit.log where action = 'mfa.reset') from before_separation),
   true, 'the refusals of the other two roles write no audit row for the action'
 );
 select is(pg_temp.call_as(:'u2', 'authenticated', format($$select public.grant_platform_role(%L, 'verification_reviewer', 'Reason with enough length')$$, :'u3')),
@@ -307,7 +307,7 @@ select ok(
   not exists (
     select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prosecdef and has_function_privilege('service_role', p.oid, 'execute')
-      and p.proname not in ('account_ops_dequeue', 'account_ops_ack', 'account_ops_end_sessions', 'account_ops_user_status', 'account_ops_organization_members', 'account_ops_fan_out_legal_version', 'document_set_scan_status', 'erase_user', 'notify_dequeue', 'notify_ack')
+      and p.proname not in ('account_ops_dequeue', 'account_ops_ack', 'account_ops_end_sessions', 'account_ops_user_status', 'account_ops_organization_members', 'account_ops_fan_out_legal_version', 'document_set_scan_status', 'erase_user', 'notify_dequeue', 'notify_ack', 'audit_record_external', 'audit_export_month', 'audit_export_count')
   ),
   'service_role executes no other function of public'
 );

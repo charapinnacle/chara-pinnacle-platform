@@ -49,7 +49,7 @@ export function AuditSearch({ lang }: { lang: string }) {
         onPrevious={previous}
         onRetry={retry}
       >
-        <ResultsTable caption="Audit log, newest first" columns={["Time", "Actor", "Action", "Entity", "Reason"]}>
+        <ResultsTable caption="Audit log, newest first" columns={["Time", "Actor", "Action", "Entity", "Reason", "Request"]}>
           {state.rows.map((row) => (
             <tr key={row.id}>
               <td className={cell}>{formatDateTime(row.createdAt)}</td>
@@ -62,6 +62,10 @@ export function AuditSearch({ lang }: { lang: string }) {
                 {row.entityId ? `: ${row.entityId}` : ""}
               </td>
               <td className={`${cell} break-words`}>{row.reason ?? ""}</td>
+              <td className={`${cell} break-all`}>
+                {row.requestId}
+                {row.jobId ? ` (job ${row.jobId})` : ""}
+              </td>
             </tr>
           ))}
         </ResultsTable>
