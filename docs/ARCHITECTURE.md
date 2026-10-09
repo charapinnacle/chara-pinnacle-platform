@@ -686,7 +686,7 @@ Plans, limits and features are rows, not code.
 - Trial (decided — OPEN_QUESTIONS.md, D4, C6): the card is collected at checkout before the trial starts (card timing to be confirmed — OPEN_QUESTIONS.md, C15); the trial lasts `plans.trial_days` (30, administrator-editable) and converts automatically to the selected paid plan. One trial per legal entity: the billing customer carries a unique legal-entity identifier (company registration number, VAT number or another unique legal-entity identifier; C14), and `billing_checkout_start` grants no trial when that identifier has already had one. Which identifier is mandatory per country and how it is validated is open (C14). Before the trial starts the checkout confirmation page states the trial period, the price after the trial, the billing frequency, the automatic conversion and how to cancel.
 - `customers(organization_id, provider, customer_ref, billing_country, vat_id, registration_number)`, written by `billing_checkout_start` (the webhook sets `customer_ref`); the billing address is collected by the provider and not stored. `trial_grants(identifier_key, organization_id, granted_at)` holds one row per legal-entity identifier that had a trial (`vat:<VAT ID>` or `reg:<country>:<registration number>`, normalised), written by the webhook; `plan_provider_refs(plan_code, provider, provider_product_ref, provider_price_ref)` holds the provider's product and price of a sold plan, written only by `scripts/sync-stripe-plans.mjs` and never exposed through a view. `billing_checkout_start(p_org, p_plan_code, p_billing_country, p_vat_id, p_registration_number, p_terms_version, p_provider, p_disclosed_trial_days)` returns the price reference, the customer reference, the trial length and the slug for the return address; `billing_portal_start(p_org)` returns the customer reference and the slug; both are for an owner or admin at aal2 and write an audit row (`billing.checkout_started`, `billing.portal_opened`). The runbook is `docs/runbooks/checkout.md`.
 - Currency and VAT (decided — OPEN_QUESTIONS.md, C7): prices are stored and displayed in EUR, exclusive of VAT; VAT is calculated by the payment provider from the customer's location and the applicable tax rules. EUR is the only billing currency in the first release; every price row has a `currency` column so further currencies can be added as rows. Tax treatment for customers outside the EU follows the payment provider and accounting setup agreed with the owner's advisers.
-- `orders(id, organization_id, kind, sku_or_plan, amount_minor, tax_minor, currency, status, provider_ref, invoice_ref, details jsonb)` — the tax amount and invoice reference come from the provider (Stripe Tax).
+- `orders(id, organization_id, kind, sku_or_plan, amount_minor, tax_minor, currency, provider, provider_ref, invoice_ref, created_at)` — one row per paid invoice with an amount above zero, written by the webhook, unique on `(provider, provider_ref)`; the tax amount and invoice reference come from the provider (Stripe Tax). Differences from this sketch: OPEN_QUESTIONS.md, D70.
 - `provider_events(id, provider, provider_event_id, kind, payload jsonb, signature_valid, provider_created_at, received_at, status received | applied | stale | error, applied_at, error, unique(provider, provider_event_id))` — inserted only by `billing_ingest_event`; `status`, `applied_at` and `error` are set by `billing_apply_event` (§10.3).
 - (later phase) `boost_products(sku, target_type job | organization, org_type, days, price_minor, currency)` seeded from the pricing doc: job 2500/7d, 3900/14d, 5900/30d; recruitment 5900/10900/19900; staffing 4900/8900/13900. `boosts(id, organization_id, sku, target_type, target_id, starts_at, ends_at, provider_payment_ref unique)`; `public.v_active_boosts` is the only reader (BoostedRail). Decided (OPEN_QUESTIONS.md, R29): boosts are sold to hiring, recruitment and staffing companies for job postings, workforce requirements, company profiles and partner profiles, and can be bought on any plan, without a higher plan. Possible functions: top search placement, featured profile, job or requirement, priority visibility, regional or country visibility, homepage or category placement. The reply asks for the boost system in the production architecture from the start; it is designed here and built in the boosts phase (to confirm — OPEN_QUESTIONS.md, P9). Boost products are administrator-editable rows; administrators control price, duration, placement, country or region, category, availability and promotional discounts. The catalogue prices are open (C8), and the columns for the attributes not listed above are designed with that phase.
 - (later phase) `verification_products(sku verification_basic | professional | enterprise, price_minor 4900 | 9900 | 19900 (Enterprise is a starting price), interval 'year', eligible_levels text[])`; `verification_fees(id, organization_id, sku, paid_at, expires_at, provider_payment_ref unique)` — a paid fee only allows `verification_submit` for a paid level; it never touches `verifications.status`.
@@ -697,17 +697,18 @@ Plans, limits and features are rows, not code.
 ### 10.2 Adapter interface (`supabase/functions/_shared/billing/provider.ts`)
 
 ```ts
-// Every event also carries providerCreatedAt (ISO time the provider created it), used for the stale check (§10.3).
+// Every event also carries providerCreatedAt (ISO time the provider created it), used for the stale check (§10.3). Outside the
+// checkout orgId is optional: an event without it is resolved through providerCustomerRef or providerSubscriptionRef.
 export type NormalizedEvent = { providerCreatedAt: string } & (
   | { kind: 'checkout.completed'; orgId: string; providerCustomerRef: string; providerSubscriptionRef?: string }
-  | { kind: 'subscription.activated' | 'subscription.updated' | 'subscription.canceled' | 'subscription.past_due';
-      orgId: string; planCode: string; status: 'trialing'|'active'|'past_due'|'canceled'|'paused';
-      providerSubscriptionRef: string; currentPeriodEnd?: string; trialEndsAt?: string }
-  | { kind: 'subscription.trial_will_end'; orgId: string; providerSubscriptionRef: string; trialEndsAt: string }
-  | { kind: 'payment.succeeded'; orgId: string; purpose: 'subscription'|'boost'|'verification_fee';
-      sku?: string; targetId?: string; amountMinor: number; currency: string; providerPaymentRef: string }
-  | { kind: 'payment.failed'; orgId: string; providerPaymentRef: string; reason?: string }
-  | { kind: 'refund.issued'; orgId: string; providerPaymentRef: string; amountMinor: number });
+  | { kind: 'subscription.activated' | 'subscription.updated' | 'subscription.canceled';
+      orgId?: string; providerCustomerRef?: string; planCode?: string; status: 'trialing'|'active'|'past_due'|'canceled'|'paused';
+      providerSubscriptionRef: string; currentPeriodStart?: string; currentPeriodEnd?: string; trialEndsAt?: string; cancelAt?: string }
+  | { kind: 'subscription.trial_will_end'; orgId?: string; providerCustomerRef?: string; providerSubscriptionRef: string; trialEndsAt: string }
+  | { kind: 'payment.succeeded'; purpose: 'subscription'; orgId?: string; providerCustomerRef?: string; providerSubscriptionRef: string;
+      subscriptionStatus: 'active'|'trialing'; amountMinor: number; taxMinor: number; currency: string; invoiceRef: string; providerPaymentRef: string }
+  | { kind: 'payment.failed'; orgId?: string; providerCustomerRef?: string; providerSubscriptionRef: string; providerPaymentRef: string });
+  // later phase: refund.issued and the boost and verification_fee purposes of payment.succeeded
 
 export interface CheckoutInput {
   orgId: string; planCode: string; priceRef: string | null; trialDays: number;
@@ -716,14 +717,16 @@ export interface CheckoutInput {
 
 export interface BillingProvider {
   readonly name: 'null' | 'stripe';
-  verifyWebhook(req: Request, rawBody: string): Promise<{ ok: boolean; eventId: string; type: string; payload: unknown }>;
-  normalize(payload: unknown): NormalizedEvent[];
   createCheckout(input: CheckoutInput): Promise<{ url: string }>;
   createPortal(input: { customerRef: string; returnUrl: string }): Promise<{ url: string }>;
+  verifyWebhook(req: Request, rawBody: string): Promise<{ ok: true; eventId: string; type: string; payload: unknown } | { ok: false; reason: string }>;
+  normalize(payload: unknown): NormalizedEvent[];            // [] for a type CHARA does not use
+  fetchSubscription(providerSubscriptionRef: string, fetchedAt: Date): Promise<NormalizedEvent | null>;  // the re-fetch of a stale event
+  listSubscriptions(startingAfter?: string): Promise<{ subscriptions: SubscriptionState[]; next: string | null }>;  // the weekly comparison
 }
 ```
 
-`providers/null.ts` verifies `x-chara-signature` = HMAC-SHA256(rawBody, `BILLING_WEBHOOK_SECRET`) and parses already-normalized JSON; it is the provider in dev, CI and E2E. `providers/stripe.ts` is the production provider: Stripe Checkout, Customer Portal, Stripe Tax and webhook signature verification. The `boost` and `verification_fee` kinds in the interface are later phase. `billing_checkout_start` passes the organization id, which `providers/stripe.ts` sets as the Checkout session `client_reference_id` and in `subscription_data.metadata`; `normalize` takes `orgId` from that subscription metadata (from `client_reference_id` for `checkout.session.completed`), so subscription and invoice events resolve to the organization even when they arrive before `checkout.session.completed`. The interface is built in two steps: `createCheckout` and `createPortal` with the checkout function (FR-G2; the null provider answers with addresses on `null-provider.invalid`, which a test intercepts), `verifyWebhook` and `normalize` with the webhook (FR-G3).
+`providers/null.ts` verifies `x-chara-signature` = HMAC-SHA256(rawBody, `BILLING_WEBHOOK_SECRET`) (hex) and takes a body `{id, event}` whose event is already normalized; it is the provider in dev, CI and E2E. `providers/stripe.ts` is the production provider: Stripe Checkout, Customer Portal, Stripe Tax and webhook signature verification. The `boost` and `verification_fee` kinds in the interface are later phase. `billing_checkout_start` passes the organization id, which `providers/stripe.ts` sets as the Checkout session `client_reference_id` and in `subscription_data.metadata`; `normalize` takes `orgId` from that subscription metadata (from `client_reference_id` for `checkout.session.completed`), so subscription and invoice events resolve to the organization even when they arrive before `checkout.session.completed`. The interface is built in two steps: `createCheckout` and `createPortal` with the checkout function (FR-G2; the null provider answers with addresses on `null-provider.invalid`, which a test intercepts), `verifyWebhook` and `normalize` with the webhook (FR-G3).
 
 ### 10.3 Webhook ingestion and application
 
@@ -744,11 +747,11 @@ create policy provider_events_all_billing_owner on billing.provider_events
   for all to billing_owner using (true) with check (true);
 
 create or replace function public.billing_ingest_event(
-  p_provider text, p_provider_event_id text, p_kind text, p_payload jsonb, p_signature_valid boolean)
+  p_provider text, p_provider_event_id text, p_kind text, p_payload jsonb, p_signature_valid boolean, p_provider_created_at timestamptz)
 returns uuid
 language plpgsql security definer set search_path = '' as $$ /* insert into billing.provider_events … on conflict (provider, provider_event_id) do nothing; returns the event id */ $$;
 
-create or replace function public.billing_apply_event(p_event_id uuid) returns void
+create or replace function public.billing_apply_event(p_event_id uuid) returns text   -- the status of the event
 language plpgsql security definer set search_path = '' as $$ /* maps NormalizedEvent kinds to subscriptions, customers, orders (later phase: boosts, verification_fees) per the table below; skips stale events; an unknown plan code or organization sets status 'error'; sets applied_at; audit.record('billing.event_applied') */ $$;
 
 -- for both functions:

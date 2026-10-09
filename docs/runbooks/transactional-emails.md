@@ -68,7 +68,7 @@ A unit that sends a new kind:
 
 ## 6. Templates
 
-The source is `apps/web/emails` (React Email). The Deno function imports it by relative path, so there is one copy. Preview or change a template with the Vitest test `apps/web/tests/unit/emails.test.ts`; run the Deno tests with `deno test --frozen --allow-env=NODE_ENV` in `supabase/functions`. `trial_ending` and `payment_failed` link to `/org/<slug>/billing`, which does not exist before the billing unit (U46): check that the route exists when U46 lands, until then those two links are a 404. The wording is to be reviewed with legal for tone and content (SOP FR-D6 step Review; quarterly, external).
+The source is `apps/web/emails` (React Email). The Deno function imports it by relative path, so there is one copy. Preview or change a template with the Vitest test `apps/web/tests/unit/emails.test.ts`; run the Deno tests with `deno test --frozen --allow-env=NODE_ENV` in `supabase/functions`. `trial_ending` and `payment_failed` link to the billing page `/[lang]/org/[slug]/billing`, which exists (U45) and is the target the webhook (U46, `webhook-processing.md`) queues those two emails for. The wording is to be reviewed with legal for tone and content (SOP FR-D6 step Review; quarterly, external).
 
 ## 7. Local and CI
 
