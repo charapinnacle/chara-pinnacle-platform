@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// Go-live gate: fails when plan limits are not enforced (FR-C6) or when a plan that is sold cannot be bought as stated
-// (FR-G1 AC11) in the environment that is about to go live.
+// Go-live gate: fails when plan limits are not enforced (FR-C6), when a plan that is sold cannot be bought as stated
+// (FR-G1 AC11) or when the legal-entity name, its address or one of the two privacy contacts that the public pages show
+// is empty (FR-H1 AC12), in the environment that is about to go live.
 // Usage: node scripts/check-go-live.mjs <settings.json> <plans.json>, where the first file is the production export of
 // private.settings as one JSON object and the second is the output of `node scripts/sync-stripe-plans.mjs --export`
 // (docs/runbooks/plan-limits.md section 3, docs/runbooks/checkout.md). The database reads the value as text and casts
 // it to a boolean, so every form Postgres reads as true means on: jsonb true, and the text true, t, yes, y, on or 1 in
-// any case.
+// any case. A legal-entity value is empty when it is missing, null or only white space.
 import { readFileSync } from "node:fs";
 import { isSold } from "./sync-stripe-plans.mjs";
 
 const LIMIT_KEYS = ["active_jobs", "members"];
+const LEGAL_ENTITY_KEYS = ["legal_entity_name", "legal_entity_address", "privacy_contact", "data_protection_contact"];
 
 function readJson(file) {
   try {
@@ -58,6 +60,12 @@ if (!isOn) {
     `entitlements_enforced must be true (found: ${enforced === undefined ? "missing" : JSON.stringify(enforced)})`,
   );
 }
+for (const key of LEGAL_ENTITY_KEYS) {
+  const value = settings?.[key];
+  if (value === undefined || value === null || String(value).trim() === "") {
+    failures.push(`${key} must not be empty: the Imprint, Contact and Privacy Policy pages show it`);
+  }
+}
 for (const plan of plans.filter(isSold)) {
   failures.push(...planFailures(plan));
 }
@@ -66,4 +74,6 @@ if (failures.length > 0) {
   process.stderr.write(failures.map((failure) => `Go-live check failed: ${failure}\n`).join(""));
   process.exit(1);
 }
-process.stdout.write("Go-live check passed: entitlements_enforced is on and every sold plan is mirrored at Stripe\n");
+process.stdout.write(
+  "Go-live check passed: entitlements_enforced is on, every sold plan is mirrored at Stripe and the legal-entity details are set\n",
+);
