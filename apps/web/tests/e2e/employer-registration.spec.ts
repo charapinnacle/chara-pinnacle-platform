@@ -1,6 +1,7 @@
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { accountRows, confirmFromLink, currentDocuments, userByEmail } from "./support/accounts";
+import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { extractLinks, waitForMessage } from "./support/mailpit";
 import {
@@ -295,6 +296,7 @@ test.describe("employer registration", () => {
     const legalName = uniqueName("Limit Bau GmbH");
     await signInAsEmployer(page, user);
     await page.goto("/en/onboarding");
+    await waitForHydration(page.getByRole("button", { name: "Create company" }));
     await fillCompany(page, {
       legalName,
       country: "Germany",
