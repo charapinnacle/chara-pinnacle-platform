@@ -1,5 +1,5 @@
 begin;
-select plan(70);
+select plan(76);
 
 \ir status_fixture.inc
 
@@ -60,11 +60,19 @@ select is(
   (select format('%s|%s|%s|%s', body, change_summary, is_draft, published_at is not null) from public.v_legal_current where slug = 'h3-terms'),
   E'## Scope\n\nBody three.|The third approved text.|t|t', 'AC2: the row holds the body, the change summary and the draft mark of that version'
 );
+select is(
+  (select is_draft from public.v_legal_current where slug = 'platform-rules'), true,
+  'AC3: the working text of the platform rules (version 1) that counsel has not approved is marked as a draft'
+);
 select is_empty($$select 1 from public.v_legal_current where slug in ('h3-unpublished', 'no-such-document')$$, 'AC2: a slug with no published row returns nothing');
 select is(
   (select count(*) from public.v_legal_current where slug = 'privacy-policy'), 1::bigint, 'the seeded placeholder is the current version of a document nobody published yet'
 );
 reset role;
+select is(
+  (select count(*) from public.v_legal_current c where private.current_legal_version(c.slug) is distinct from c.version), 0::bigint,
+  'AC2: the consent gate and the legal page agree on the current version of every document'
+);
 select is(
   (select array_to_string(reloptions, ',') from pg_class where oid = 'public.v_legal_current'::regclass), 'security_invoker=true',
   'the view runs with the rights of the caller'
@@ -101,6 +109,10 @@ select is(
    from audit.log where action = 'legal_document.publish' and entity_id = 'h3-privacy:2'),
   format('%s|legal_document|h3-privacy|2|false|%s|203.0.113.7', :'st_admin', repeat('c', 40)),
   'AC4: it names the actor, the slug, the version, the draft mark and the change summary'
+);
+select is(
+  (select metadata ->> 'change_summary' from audit.log where action = 'legal_document.publish' and entity_id = 'h3-privacy:2'),
+  repeat('c', 40), 'AC4: the metadata holds the change summary under its own key'
 );
 select is(
   (select count(*) from pgmq.q_account_ops where message @> '{"action": "fan_out_legal_version", "document_slug": "h3-privacy", "version": 2}'),
@@ -191,6 +203,19 @@ select throws_ok(
   '23505', null, 'AC7: a duplicate (slug, version) fails on the unique constraint'
 );
 select is(
+  split_part(pg_temp.call_as(null, 'postgres', $$update public.legal_documents set body = 'tampered' where slug = 'h3-terms' and version = 2$$), '|', 1),
+  '42501', 'AC7: the table owner cannot edit the text of a published version either'
+);
+select is(
+  (select string_agg(split_part(pg_temp.call_as(null, 'postgres', format($$update public.legal_documents set %s where slug = 'h3-terms' and version = 2$$, c)), '|', 1), ',' order by n)
+   from (values (1, $$title = 'Another title'$$), (2, $$change_summary = 'Another change summary.'$$), (3, 'is_draft = not is_draft'), (4, $$published_at = now() - interval '1 year'$$), (5, 'published_at = null')) v (n, c)),
+  '42501,42501,42501,42501,42501', 'AC7: nor the title, the change summary, the draft mark or the date'
+);
+select is(
+  (select format('%s|%s|%s', title, is_draft, body) from public.legal_documents where slug = 'h3-terms' and version = 2),
+  'Terms|f|Body two.', 'AC7: and the version is unchanged'
+);
+select is(
   (select count(*) from (select slug, version from public.legal_documents group by 1, 2 having count(*) > 1) d), 0::bigint,
   'AC7: no slug and version pair exists twice'
 );
@@ -229,6 +254,7 @@ select is(
    where kind = 'legal_version' and payload ->> 'document_slug' = 'privacy-policy'),
   '{}', 'AC10: the payload holds the slug, the version and the change summary and nothing else, so never the body'
 );
+
 select is(
   (select count(*) from public.notifications where kind = 'legal_version' and payload ->> 'version' = '2' and payload ->> 'change_summary' = :'summary'), 5::bigint,
   'AC10: each names the version and the change summary'

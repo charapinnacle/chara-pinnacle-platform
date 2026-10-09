@@ -3,11 +3,13 @@
 -- email about a new version.
 
 -- A text that legal counsel has not approved is published as a draft and shown with a banner (L5). A change, including
--- the approval of a draft, is always a new version. Version 0 is the placeholder every Phase 1 document starts with.
+-- the approval of a draft, is always a new version. Version 0 is the placeholder every Phase 1 document starts with, and
+-- version 1 of the platform rules (20261104110000) is a working text that counsel has not approved either.
 alter table public.legal_documents add column is_draft boolean not null default false;
-update public.legal_documents set is_draft = true where version = 0;
+update public.legal_documents set is_draft = true where version = 0 or (slug = 'platform-rules' and version = 1);
 
--- One row per slug: the highest published version. The invoker's own policy decides which rows are published.
+-- One row per slug: the highest published version. The invoker's own policy decides which rows are published. This is
+-- the one place that defines the current version: private.current_legal_version reads it.
 create view public.v_legal_current with (security_invoker = true) as
 select distinct on (d.slug) d.slug, d.version, d.title, d.body, d.change_summary, d.published_at, d.is_draft
 from public.legal_documents d
@@ -17,11 +19,20 @@ order by d.slug, d.version desc;
 revoke all on public.v_legal_current from public, anon, authenticated, service_role;
 grant select on public.v_legal_current to anon, authenticated;
 
+create or replace function private.current_legal_version(p_slug text) returns integer
+language sql
+stable
+set search_path = ''
+as $$
+  select c.version from public.v_legal_current c where c.slug = p_slug
+$$;
+
 -- The next version number of the slug (1 for a new slug), published now, as a draft or as approved. The number is taken
 -- under a lock of the slug, so two administrators who publish at the same moment get two consecutive versions and
 -- neither fails. A repeat of the version that is already current, word for word (a second click, a retry after a
--- timeout), is refused with CHARA_CONFLICT and publishes nothing. The change summary is the reason of the audit row,
--- which also names the slug, the version and the draft mark. The emails to the users who accepted the document are the
+-- timeout), is refused with CHARA_CONFLICT and publishes nothing. The audit row names the slug, the version, the draft
+-- mark and the change summary (also its reason). A draft is current at once like any version, so it also queues the
+-- emails and the re-consent of everyone who accepted the document: drafts are for documents nobody has accepted yet. The emails to the users who accepted the document are the
 -- job of account-ops (account_ops_fan_out_legal_version), queued here; a user is asked to accept the version at the
 -- next sign-in because the version is ahead of the consent. The age attestation is never asked again.
 drop function public.publish_legal_document(text, text, text, text, integer);
@@ -69,7 +80,7 @@ begin
   values (p_slug, v_version, v_title, p_body, v_summary, now(), p_is_draft);
   perform private.audit_admin(
     'legal_document.publish', 'legal_document', p_slug || ':' || v_version, v_summary,
-    jsonb_build_object('slug', p_slug, 'version', v_version, 'is_draft', p_is_draft)
+    jsonb_build_object('slug', p_slug, 'version', v_version, 'is_draft', p_is_draft, 'change_summary', v_summary)
   );
   perform private.queue_account_op(jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', p_slug, 'version', v_version));
   return v_version;
@@ -201,3 +212,30 @@ begin
   return next;
 end;
 $$;
+
+-- The fan-out looks a user's earlier email of this version up by user, kind and slug.
+create index notifications_legal_version_idx on public.notifications (user_id, (payload ->> 'document_slug'))
+  where kind = 'legal_version';
+
+-- A published version is never edited (FR-H3 AC7): the API roles have no privilege to write the table, and this trigger
+-- stops the table owner too, so a correction is always a new version. A version that is not published yet may still be
+-- given its date. ENABLE ALWAYS so session_replication_role = replica cannot bypass it.
+create function private.legal_documents_immutable() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.published_at is not null then
+    raise exception 'a published version of a legal document cannot be changed; publish a new version' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.legal_documents_immutable() from public, anon, authenticated, service_role;
+
+create trigger legal_documents_immutable
+  before update of title, body, change_summary, is_draft, published_at on public.legal_documents
+  for each row execute function private.legal_documents_immutable();
+
+alter table public.legal_documents enable always trigger legal_documents_immutable;
