@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(23);
 
 \ir organizations_fixture.inc
 
@@ -63,13 +63,10 @@ begin
 end;
 $$;
 
--- O: Professional, active, with 7 open, 2 paused, 1 closed and 1 deleted vacancy and three members (owner, admin, member)
--- and a pending invitation that the member limit counts but the page does not.
+-- O: Professional, active, with 7 open, 2 paused, 1 closed and 1 deleted vacancy and three members (owner, admin, member).
 select pg_temp.new_org(:'own1') as o \gset
 insert into public.organization_members (organization_id, user_id, role, accepted_at)
 values (:'o', :'adm', 'admin', now()), (:'o', :'mem', 'member', now());
-insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by)
-values (:'o', 'pending@example.test', 'member', repeat('a', 64), :'own1');
 select pg_temp.subscribe(:'o', 'employer_professional', 'active');
 select pg_temp.seed_jobs(:'o', 'open', 7);
 select pg_temp.seed_jobs(:'o', 'paused', 2);
@@ -84,6 +81,12 @@ select pg_temp.new_org(:'own2') as d \gset
 select pg_temp.subscribe(:'d', 'employer_starter', 'active');
 select pg_temp.seed_jobs(:'d', 'open', 5);
 
+-- P: Professional with the owner and one pending invitation, which the member limit counts as a seat.
+select pg_temp.new_org(:'own2') as p \gset
+insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by)
+values (:'p', 'pending@example.test', 'member', repeat('a', 64), :'own2');
+select pg_temp.subscribe(:'p', 'employer_professional', 'active');
+
 -- F: never subscribed. L: lapsed. E: Enterprise with a limit that is null (unlimited) and one raised by an override.
 select pg_temp.new_org(:'own2') as f \gset
 select pg_temp.new_org(:'own2') as l \gset
@@ -91,7 +94,8 @@ select pg_temp.subscribe(:'l', 'employer_starter', 'canceled');
 select pg_temp.new_org(:'adm2') as e \gset
 select pg_temp.subscribe(:'e', 'employer_enterprise', 'active');
 
-select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=7/15;members=3/5', 'AC7: the owner at aal2 reads 7 of 15 open vacancies and 3 of 5 members; paused, closed, deleted and pending are not counted');
+select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=7/15;members=3/5', 'AC7: the owner at aal2 reads 7 of 15 open vacancies and 3 of 5 members; paused, closed and deleted vacancies are not counted');
+select is(pg_temp.usage(:'own2', :'p'), 'active_jobs=0/15;members=2/5', 'AC7: a pending invitation holds a seat, as the member limit counts it');
 select is(pg_temp.usage(:'adm', :'o'), 'active_jobs=7/15;members=3/5', 'AC7: the admin at aal2 reads the same');
 select is(pg_temp.usage(:'own2', :'b'), 'active_jobs=3/3;members=1/1', 'AC7: a Basic organisation reads 3 of 3 vacancies and 1 of 1 members (the owner counts, C12)');
 select is(pg_temp.usage(:'own2', :'d'), 'active_jobs=5/3;members=1/1', 'AC7: an organisation downgraded to Basic reads 5 of 3: the limit is not applied to the data');
