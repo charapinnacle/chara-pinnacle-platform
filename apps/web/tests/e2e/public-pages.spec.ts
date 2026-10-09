@@ -27,6 +27,16 @@ test.describe("the public pages without JavaScript", () => {
       expect((await page.locator("main").innerText()).trim().length, path).toBeGreaterThanOrEqual(100);
     }
   });
+
+  test("FR-H1 AC1: at 360 px without JavaScript the eight header links are visible and the Menu button is not", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto("/en");
+    const nav = page.getByRole("navigation", { name: "Main" });
+    for (const label of HEADER_LABELS) await expect(nav.getByRole("link", { name: label, exact: true }), label).toBeVisible();
+    await expect(page.getByRole("button", { name: "Menu" })).toBeHidden();
+  });
 });
 
 test.describe("the public pages", () => {

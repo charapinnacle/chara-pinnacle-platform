@@ -28,7 +28,6 @@ as $$
     'legal_entity_name', 'legal_entity_address', 'legal_entity_registration_number', 'legal_entity_vat_id',
     'legal_entity_email', 'privacy_contact', 'data_protection_contact'
   ])
-  order by s.key
 $$;
 
 revoke all on function public.get_public_settings() from public, anon, authenticated, service_role;

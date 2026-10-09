@@ -1,4 +1,4 @@
-import { DetailList } from "@/components/admin/detail-list";
+import { DetailList } from "@/components/layout/detail-list";
 import type { SettingRow } from "@/lib/public/setting-rows";
 
 export function SettingDetails({ rows }: { rows: readonly SettingRow[] }) {

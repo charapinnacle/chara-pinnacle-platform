@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { DetailList } from "@/components/admin/detail-list";
+import { DetailList } from "@/components/layout/detail-list";
 import { ModerationForm } from "@/components/admin/moderation-form";
 import { PageHeading } from "@/components/admin/page-heading";
 import { StatusBadge } from "@/components/admin/status-badge";

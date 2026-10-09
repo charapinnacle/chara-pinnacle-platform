@@ -1,12 +1,15 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
-// Below the md breakpoint the navigation sits behind a button; from md on it is always shown and the button is hidden.
-// Escape closes the menu from anywhere inside it and puts focus back on the button.
+const subscribe = () => () => {};
+
+// The server render and the hydration pass see false, so without JavaScript the links stay visible and the button,
+// which would do nothing, stays hidden.
 export function HeaderMenu({ children }: { children: React.ReactNode }) {
+  const interactive = useSyncExternalStore(subscribe, () => true, () => false);
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -30,7 +33,10 @@ export function HeaderMenu({ children }: { children: React.ReactNode }) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="-me-2 ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-accent md:hidden"
+        className={cn(
+          "-me-2 ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-accent md:hidden",
+          !interactive && "hidden",
+        )}
       >
         <Icon aria-hidden className="size-5" />
         Menu
@@ -38,7 +44,7 @@ export function HeaderMenu({ children }: { children: React.ReactNode }) {
       <div
         id={panelId}
         onClick={onPanelClick}
-        className={cn("order-last basis-full pb-3 md:order-none md:block md:basis-auto md:pb-0", !open && "hidden")}
+        className={cn("order-last basis-full pb-3 md:order-none md:block md:basis-auto md:pb-0", interactive && !open && "hidden")}
       >
         {children}
       </div>

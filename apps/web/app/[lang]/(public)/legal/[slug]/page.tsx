@@ -5,9 +5,7 @@ import { SettingDetails } from "@/components/public/setting-details";
 import { getLegalDocument } from "@/lib/dal/legal";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { formatDate } from "@/lib/i18n/format";
-import { PRIVACY_FIELDS, settingRows } from "@/lib/public/setting-rows";
-
-const PRIVACY_POLICY_SLUG = "privacy-policy";
+import { PRIVACY_FIELDS, PRIVACY_POLICY_SLUG, settingRows } from "@/lib/public/setting-rows";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/legal/[slug]">): Promise<Metadata> {
   const document = await getLegalDocument((await params).slug);

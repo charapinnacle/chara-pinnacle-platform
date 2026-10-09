@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
-import { DetailList } from "@/components/admin/detail-list";
+import { DetailList } from "@/components/layout/detail-list";
 import { summaryItems } from "@/components/admin/summary-items";
 import { toast } from "@/components/feedback/toast-store";
 import { ErrorSummary } from "@/components/forms/error-summary";

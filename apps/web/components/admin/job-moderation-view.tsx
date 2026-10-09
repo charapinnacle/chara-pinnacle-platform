@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { DetailList } from "@/components/admin/detail-list";
+import { DetailList } from "@/components/layout/detail-list";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { ModerateJobDialog } from "@/components/admin/moderate-job-dialog";
 import { PageHeading } from "@/components/admin/page-heading";
