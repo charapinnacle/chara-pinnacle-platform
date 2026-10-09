@@ -179,7 +179,8 @@ export function normalizeStripeEvent(payload: unknown): NormalizedEvent[] {
     case "checkout.session.completed": {
       const id = orgId(object.client_reference_id);
       const providerCustomerRef = ref(object.customer);
-      if (object.mode === "subscription" && id && providerCustomerRef) {
+      // A Payment Link takes client_reference_id from the payer; only our own checkout sessions name an organisation we trust.
+      if (object.mode === "subscription" && !object.payment_link && id && providerCustomerRef) {
         event = {
           kind: "checkout.completed",
           providerCreatedAt,

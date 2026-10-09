@@ -15,6 +15,8 @@ const TIMEOUT_MS = 15_000;
 const IDEMPOTENCY_WINDOW_MS = 5 * 60_000;
 // Stripe's own tolerance for the age of a signed delivery, which also bounds a replay.
 const SIGNATURE_TOLERANCE_SECONDS = 300;
+// Stripe signs with the current and, while a secret is rotated, the previous secret; more values are an attempt to make us hash the body again and again.
+const MAX_SIGNATURES = 3;
 const PAGE_SIZE = 100;
 const SUBSCRIPTION_REF = /^sub_[A-Za-z0-9]+$/;
 
@@ -67,7 +69,7 @@ async function verifyStripeSignature(
   const entries = header.split(",").map((part) => part.trim().split("=", 2));
   const timestamp = entries.find(([key]) => key === "t")?.[1] ?? "";
   const signatures = entries.filter(([key, value]) => key === "v1" && value).map(([, value]) => value);
-  if (!/^[0-9]{1,12}$/.test(timestamp) || signatures.length === 0) {
+  if (!/^[0-9]{1,12}$/.test(timestamp) || signatures.length === 0 || signatures.length > MAX_SIGNATURES) {
     return { ok: false, reason: "malformed_signature" };
   }
   if (Math.abs(nowSeconds - Number(timestamp)) > SIGNATURE_TOLERANCE_SECONDS) {

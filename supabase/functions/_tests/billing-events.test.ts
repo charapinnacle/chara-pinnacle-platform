@@ -164,6 +164,7 @@ Deno.test("a checkout session of another mode, or without our organisation id, g
   assert.deepEqual(provider.normalize(session({ mode: "payment" })), []);
   assert.deepEqual(provider.normalize(session({ client_reference_id: "not-a-uuid" })), []);
   assert.deepEqual(provider.normalize(session({ client_reference_id: null })), []);
+  assert.deepEqual(provider.normalize(session({ payment_link: "plink_1ABC" })), []);
 });
 
 Deno.test("no normalised event holds a name, an address or an email of the payer", () => {
@@ -193,6 +194,9 @@ Deno.test("FR-G3 AC1: a Stripe delivery is verified on the raw body with every r
     otherSecret: await verify(stripeRequest(body, `t=${t},v1=${await hmacHex("whsec_other", `${t}.${body}`)}`)),
     missing: await verify(stripeRequest(body, "")),
     noV1: await verify(stripeRequest(body, `t=${t}`)),
+    tooManyV1: await verify(
+      stripeRequest(body, `t=${t},${Array.from({ length: 4 }, () => `v1=${"a".repeat(64)}`).join(",")}`),
+    ),
     notHex: await verify(stripeRequest(body, `t=${t},v1=zz`)),
     noTimestamp: await verify(stripeRequest(body, `v1=${await hmacHex(SECRET, `${t}.${body}`)}`)),
     tooOld: await verify(stripeRequest(body, `t=${t - 301},v1=${await hmacHex(SECRET, `${t - 301}.${body}`)}`)),
@@ -206,6 +210,7 @@ Deno.test("FR-G3 AC1: a Stripe delivery is verified on the raw body with every r
       otherSecret: "signature_mismatch",
       missing: "missing_signature",
       noV1: "malformed_signature",
+      tooManyV1: "malformed_signature",
       notHex: "signature_mismatch",
       noTimestamp: "malformed_signature",
       tooOld: "timestamp_outside_tolerance",
