@@ -4,20 +4,20 @@ FR-H2, design point D72 (OPEN_QUESTIONS.md). The SOP (Pricing Page from Configur
 
 ## 1. What the page shows and where it comes from
 
-`/[lang]/pricing` reads `public.v_plans` on every request (the `(public)` group renders per request, ADR-0004), so a changed record is on the page at the next request without a release. The query keeps the public employer plans (`is_public`), in `sort` order, at most 20. The `is_public` filter is in the query and not left to the row policy, because a member also reads the plan of the own organisation when it is not public (the fallback plan, Enterprise before its price is stated).
+`/[lang]/pricing` reads `public.v_plans` on every request (the `(public)` group renders per request, ADR-0004), so a changed record is on the page at the next request without a release. The query (`listPublicPlans`, also the source of the plans the billing pages sell) keeps the public employer plans (`is_public`), in `sort` order, at most 20. The `is_public` filter is in the query and not left to the row policy, because a member also reads the plan of the own organisation when it is not public (the fallback plan, Enterprise before its price is stated).
 
 | Shown | Record |
 |---|---|
 | Card heading | `billing.plans.name` |
 | Price, in the currency code and with the label `excl. VAT`, and `per <interval>` | `price_minor`, `currency`, `interval` (the same `formatPrice` as the checkout page, so the two agree character for character) |
-| Trial text: `<n>-day free trial`, the price after it, the automatic conversion, one trial per legal entity | `trial_days`; no trial text at 0 |
+| Trial text: `<n> days free trial`, the price after it, the automatic conversion, one trial for each legal entity (`daysText`, `trialConversion` and `oneTrialRule` of `lib/billing/presentation.ts`, the same text as the checkout) | `trial_days`; no trial text at 0 |
 | A plan sold by contact: no price, no trial, a link `Contact sales about <name>` to the contact page | `contact_sales` |
 | Limits: active vacancies, team members | `billing.plan_limits` (`active_jobs`, `members`); a null value shows no line |
 | Features | `billing.plan_features`, only keys that have a label |
 
 A plan lists only what this release delivers: the labels in `apps/web/lib/billing/pricing.ts` (`limitLabels`, `featureLabels`) are the list. Today the features are `shortlisting` and `csv_export`; `analytics_advanced` is a record of the plans but has no label because no page of Phase 1 uses it. The release that delivers a feature adds its label there. Nothing else on the page names a feature, and the page states that a paid plan does not make an organisation verified or move its vacancies up in search results.
 
-The link of a card depends on who reads the page: a visitor is led to the sign-up, an owner or admin to the billing page of the first organisation they own or administer, and a worker, a plain member and a person who has not finished setting up see a note and no link to buy.
+The link of a card depends on who reads the page: a visitor is led to the generic sign-up (the account type is chosen after it, D72 point 8), an owner or admin to the billing page of the first organisation they own or administer, and a worker, a plain member and a person who has not finished setting up see a note and no link to buy. If the organisations of the person cannot be read, the plans still show with neither note nor link.
 
 ## 2. Changing a price, a name, a trial or a limit (SOP FR-G1)
 
