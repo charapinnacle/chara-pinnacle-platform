@@ -1,4 +1,4 @@
-import { userClient } from "../_shared/supabase.ts";
+import { serviceClient, userClient } from "../_shared/supabase.ts";
 import { billingProviderFromEnv } from "../_shared/billing/env.ts";
 import { handleBillingCheckout } from "./handler.ts";
 
@@ -9,6 +9,7 @@ if (!siteUrl) {
 
 const deps = {
   userClient: (authorization: string) => userClient(Deno.env, authorization),
+  serviceClient: serviceClient(Deno.env),
   provider: billingProviderFromEnv(Deno.env),
   siteUrl,
 };

@@ -60,7 +60,7 @@ test.describe("billing page: the company identifier and who may use the page (FR
     await expect(page.getByText("It cannot be changed once a payment has been started for the company.")).toBeVisible();
   });
 
-  test("a member and a candidate do not reach the billing page, an admin at the second step does", async ({ page, browser }) => {
+  test("a member is sent to the no-access page and a candidate finds no billing page, an admin at the second step does", async ({ page, browser }) => {
     const team = await newTeam(uniqueName("Roles Bau"));
     const member = await addMember(team, "member");
     const admin = await addMember(team, "admin");
@@ -71,15 +71,21 @@ test.describe("billing page: the company identifier and who may use the page (FR
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Company identifier" })).toHaveCount(0);
 
-    for (const person of [member.user, candidate]) {
-      const other = await browser.newContext();
-      const otherPage = await other.newPage();
-      await logIn(otherPage, person, billingPath(team.slug));
-      await expect(otherPage).toHaveURL(/\/en\/forbidden$/);
-      await otherPage.goto(checkoutPath(team.slug));
-      await expect(otherPage).toHaveURL(/\/en\/forbidden$/);
-      await other.close();
-    }
+    const memberContext = await browser.newContext();
+    const memberPage = await memberContext.newPage();
+    await logIn(memberPage, member.user, billingPath(team.slug));
+    await expect(memberPage).toHaveURL(/\/en\/forbidden$/);
+    await memberPage.goto(checkoutPath(team.slug));
+    await expect(memberPage).toHaveURL(/\/en\/forbidden$/);
+    await memberContext.close();
+
+    const outsider = await browser.newContext();
+    const outsiderPage = await outsider.newPage();
+    await logIn(outsiderPage, candidate, billingPath(team.slug));
+    await expect(outsiderPage.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await outsiderPage.goto(checkoutPath(team.slug));
+    await expect(outsiderPage.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await outsider.close();
   });
 
   test("a plan that is not sold, and a page without a plan, are not found", async ({ page }) => {

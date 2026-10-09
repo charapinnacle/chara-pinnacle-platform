@@ -25,7 +25,7 @@ function identifierDefaults(state: BillingState) {
 
 export default async function CheckoutPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/billing/checkout">) {
   const [{ lang, slug }, { plan: planParam }] = await Promise.all([params, searchParams]);
-  const { organization } = await requireOrgRole(lang, slug, "admin");
+  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true });
   const code = planCodeSchema.safeParse(typeof planParam === "string" ? planParam : "");
   if (!code.success) notFound();
 

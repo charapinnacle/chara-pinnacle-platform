@@ -905,6 +905,9 @@ isOneToOne: false
 "billing_reconcile_report":
 { Args: { "p_checked": number,"p_difference_count": number,"p_differences": Json,"p_provider": string }; Returns: number
                            },
+"billing_record_worker_attempt":
+{ Args: { "p_user": string }; Returns: boolean
+                           },
 "billing_webhook_rejected":
 { Args: { "p_provider": string,"p_reason": string }; Returns: boolean
                            },

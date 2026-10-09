@@ -67,7 +67,7 @@ select set_config('t.opened', pg_temp.opened()::text, true) as base \gset
 select is(pg_temp.portal(:'mem', :'o'), 'P0001|CHARA_FORBIDDEN|', 'AC10: a member is refused');
 select is(pg_temp.portal(:'own1', :'o', 'aal1'), 'P0001|CHARA_FORBIDDEN|aal2_required', 'AC10: an owner at aal1 is refused');
 select is(pg_temp.portal(:'own2', :'o'), 'P0001|CHARA_FORBIDDEN|', 'AC10: the owner of another organisation is refused');
-select is(pg_temp.portal(:'wkr', :'o'), 'P0001|CHARA_FORBIDDEN|', 'a candidate is refused');
+select is(pg_temp.portal(:'wkr', :'o'), 'P0001|CHARA_FORBIDDEN|worker_account', 'a candidate is refused with the worker detail (FR-G6)');
 select is(pg_temp.portal(:'own1', :'p'), 'P0001|CHARA_FORBIDDEN|no_customer', 'AC10: an organisation that never checked out has no portal');
 select is(pg_temp.portal(:'own1', :'unlinked'), 'P0001|CHARA_FORBIDDEN|no_customer', 'an organisation whose customer the webhook has not linked yet has no portal');
 select is(

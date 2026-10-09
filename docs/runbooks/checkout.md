@@ -11,7 +11,7 @@ FR-G2, design points D4, D36, D67 (OPEN_QUESTIONS.md). An owner or admin at the 
 | | `SITE_URL` | The origin of the web application. The return addresses of Checkout and the portal are this origin plus `/en/org/<slug>/billing`; no address from a request is used. |
 | Web environment (optional) | `BILLING_CHECKOUT_ENDPOINT` | The address of the function when it is not the project's functions address plus `/billing-checkout`. |
 
-The function has `verify_jwt = true` and acts with the caller's own token; it holds no database key. The checks (role, second step, plan, tax input, terms, trial rule) are in `billing_checkout_start` and `billing_portal_start`.
+The function has `verify_jwt = true` and acts with the caller's own token. It also holds the service key that the platform provides to every function, used only to record a refused worker attempt (section 7). The checks (role, second step, plan, tax input, terms, trial rule) are in `billing_checkout_start` and `billing_portal_start`.
 
 Deploy with `npx supabase functions deploy billing-checkout --use-api` (`verify_jwt = true` from `config.toml`) and set the secrets with `npx supabase secrets set --env-file <file>` (names in `supabase/functions/.env.example`). Verify on each environment: a request without `Authorization` answers 401; a request with the project's publishable key as the bearer answers 401; an owner at the second step who posts `{"action":"portal","orgId":"<id>"}` for an organisation the webhook has not linked answers 403 with the reason `no_customer`.
 
@@ -95,3 +95,28 @@ group by 1 order by 1 desc;
 - `billing.checkout_started` (entity: the organisation; metadata: plan code, trial days, whether the legal entity had used its trial) and `billing.portal_opened` are written by the two RPCs, with the person as actor; neither holds a VAT ID, a registration number or card data. The tax data is in `billing.customers`, which no API role can read.
 - The acceptance of the Subscription and Billing Terms is a `granted` row in `public.consents` (purpose `subscription-and-billing-terms`, the version shown). A new version of the terms is published as a legal document; the page and the check use the current version at once.
 - Changing the trial length or a price is a reviewed migration of `billing.plans` (FR-G1); run the mirror afterwards for a price.
+
+## 7. Workers never pay (FR-G6)
+
+A candidate account cannot start a checkout or hold a subscription. The guarantee has four layers, each tested:
+
+- `private.assert_company_account()` is the first statement of `billing_checkout_start` and of `private.assert_billing_manager` (the portal and `billing_checkout_state`): an account of kind worker raises `CHARA_FORBIDDEN` with the detail `worker_account`, an account whose kind is not committed yet `account_kind_unset`. The answer does not depend on the organisation id.
+- No billing table has a column or a foreign key for a person, `organization_members` refuses a worker, and the account kind is committed once (pgTAP `089_workers_never_pay`).
+- The billing pages answer a candidate with the page of an unknown address, and no page of the candidate area links to pricing, billing or checkout or loads a payment script (Playwright `workers-never-pay`).
+- The refusal rolls the call back, so `billing-checkout` records it through `billing_record_worker_attempt` (service role only), which writes the audit row `billing.worker_checkout_refused` (entity: the profile, actor: the person, no metadata). A company user refused for another reason is not recorded. The allowance is 60 rows per person and hour (settings `worker_checkout_refused_audit_max` and `worker_checkout_refused_audit_seconds`), so a loop on the endpoint cannot grow the append-only log without bound; the refusal itself is unconditional.
+
+KPI "worker checkout attempts refused (100 %)": the first column counts the recorded refusals, the second the starts of a checkout or portal by a worker account that got through. The target is a second column of 0 for every period; run it quarterly as the database owner, with `:from` and `:to` the start and end of the quarter (the range is served by `log_created_at_id_idx`). The first column is a lower bound: attempts beyond the allowance, and a refusal whose audit write failed (the function logs `billing-checkout could not record a worker attempt` and the refusal stands), are not counted, so a first column below the number of `403` answers with the log line `worker_account` points to a failed write. The guarantee is the database refusal, not this count. A worker whose account has been erased has no actor and is not counted in the second column.
+
+```sql
+select date_trunc('quarter', l.created_at)::date as quarter,
+       count(*) filter (where l.action = 'billing.worker_checkout_refused') as worker_attempts_refused,
+       count(*) filter (where l.action in ('billing.checkout_started', 'billing.portal_opened') and p.account_kind = 'worker') as worker_attempts_admitted
+from audit.log l left join public.profiles p on p.id = l.actor_id
+where l.action in ('billing.worker_checkout_refused', 'billing.checkout_started', 'billing.portal_opened')
+  and l.created_at >= :from and l.created_at < :to
+group by 1 order by 1 desc;
+```
+
+Hosted check after each deploy of `billing-checkout`: post a checkout with the token of a candidate, expect `403` with `{"error":"forbidden","reason":null}` and one new `billing.worker_checkout_refused` row for that person. No row means the function's service-role key or the RPC is missing on the project.
+
+Policy text (AC8): migration `20261104110000_platform_rules_worker_statement.sql` publishes a DRAFT version 1 of `platform-rules` that states that a worker never pays and tells users to report a fee request to the Trust & Safety Administrator; pgTAP `089_workers_never_pay` fails if the current version loses either statement. Launch gate (not a build check): legal counsel approves the text, which is published as the next version through the administration console. The contact address for such reports belongs to the legal-entity settings of the public pages (FR-H1), not to this requirement.
