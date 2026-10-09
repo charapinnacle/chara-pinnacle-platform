@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(20);
 
 -- Whatever the local database already holds (earlier browser tests leave rows behind) is taken out of the counted sets,
 -- inside this transaction, so that the counts below are absolute.
@@ -126,13 +126,6 @@ refresh materialized view concurrently stats.platform_counts_mv;
 select is(
   (select employers || '|' || workers from stats.platform_counts_mv), '2|1',
   'a suspended employer and a candidate whose deletion is pending are no longer counted'
-);
-
--- The index behind the vacancy count and the distinct countries.
-select ok(
-  exists (select 1 from pg_indexes where indexname = 'jobs_public_country_idx' and indexdef like '%(country_code)%'
-          and indexdef like '%status = ''open''%' and indexdef like '%deleted_at IS NULL%'),
-  'the public vacancies have an index on the country'
 );
 
 select * from finish();

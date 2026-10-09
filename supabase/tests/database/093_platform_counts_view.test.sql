@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 
 \ir organizations_fixture.inc
 
@@ -155,11 +155,15 @@ select is(pg_temp.view_as('anon'), 'null|null|null|null', 'AC8: with the row mis
 select pg_temp.set_snapshot(5, 5, 5, 5);
 select is(pg_temp.view_as('anon'), '5|5|10|5', 'AC8: with the row missing a count of 5 is shown');
 insert into private.settings (key, value) values ('stats_min_count', '1');
-select is(pg_temp.view_as('anon'), '5|5|10|5', 'AC8: k = 1 is allowed and shows every count from 1');
-select pg_temp.set_snapshot(0, 1, 1, 0);
-select is(pg_temp.view_as('anon'), 'null|1|0|null', 'AC8: with k = 1 only a count of 0 is hidden, and a single candidate rounds to 0 (the rounding follows the test)');
+select pg_temp.set_snapshot(4, 4, 4, 4);
+select is(pg_temp.view_as('anon'), 'null|null|null|null', 'AC8: 5 is a floor: with the setting at 1 a count of 4 is still hidden');
+select pg_temp.set_snapshot(5, 5, 5, 5);
+select is(pg_temp.view_as('anon'), '5|5|10|5', 'AC8: with the setting at 1 a count of 5 is shown');
+select pg_temp.set_k('4');
+select pg_temp.set_snapshot(4, 4, 4, 4);
+select is(pg_temp.view_as('anon'), 'null|null|null|null', 'AC8: with the setting at 4 a count of 4 is still hidden, so no candidate count ever rounds to 0');
 select is(
-  (select value from private.settings where key = 'stats_min_count'), '1'::jsonb,
+  (select value from private.settings where key = 'stats_min_count'), '4'::jsonb,
   'control: the test changed the setting row itself'
 );
 
