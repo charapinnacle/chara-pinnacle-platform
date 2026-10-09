@@ -81,6 +81,7 @@ export default defineConfig({
         "**/member-invitation-email.spec.ts",
         "**/checkout-disclosure.spec.ts",
         "**/public-pages-failure.spec.ts",
+        "**/pricing.spec.ts",
       ],
     },
     {
@@ -204,13 +205,21 @@ export default defineConfig({
       testMatch: "**/checkout-disclosure.spec.ts",
       dependencies: ["notify-invitation"],
     },
+    // The price, the name and the trial length of the plans are changed for the whole database while this spec runs, and
+    // the view of the plans is withdrawn from the API roles, so it follows the other spec that changes a plan.
+    {
+      name: "pricing-plans",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/pricing.spec.ts",
+      dependencies: ["billing-plans"],
+    },
     // The accessor of the public settings is withdrawn from the API roles while this spec runs, so it follows every
     // other project.
     {
       name: "public-pages-failure",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/public-pages-failure.spec.ts",
-      dependencies: ["billing-plans"],
+      dependencies: ["pricing-plans"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
