@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
-import { TextLink } from "@/components/forms/text-link";
+import { LegalLink, TextLink } from "@/components/forms/text-link";
 import { listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { isJobStatus, jobDateText, jobStatusText, statusLabels } from "@/lib/jobs/presentation";
+import { APPEAL_PAGE_SLUG, isJobStatus, jobDateText, jobStatusText, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { index: false } };
@@ -65,6 +65,11 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                   {job.city}, {job.country} · {jobDateText(job)}
                 </span>
                 {job.staleOpen ? <span className="font-medium text-foreground">{STALE_OPEN_TEXT}</span> : null}
+                {job.moderationState === "hidden" ? (
+                  <LegalLink slug={APPEAL_PAGE_SLUG} newTabLabel="(opens in a new tab)">
+                    How to appeal
+                  </LegalLink>
+                ) : null}
               </p>
             </li>
           ))}

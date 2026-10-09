@@ -19,8 +19,11 @@ export function isJobStatus(value: unknown): value is JobStatus {
   return typeof value === "string" && Object.hasOwn(statusLabels, value);
 }
 
+export const APPEAL_PAGE_SLUG = "complaints-and-dispute-process";
+
 // A vacancy hidden by moderation is not public whatever its status.
 export function jobStatusText(status: JobStatus, moderationState: JobModerationState): string {
+  if (moderationState === "hidden") return "Hidden by moderation";
   if (moderationState !== "visible") return "Hidden - not public";
   return status === "open" ? statusLabels.open : `${statusLabels[status]} - not public`;
 }

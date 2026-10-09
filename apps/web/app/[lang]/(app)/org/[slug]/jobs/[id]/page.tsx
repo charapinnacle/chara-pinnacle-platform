@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
-import { TextLink } from "@/components/forms/text-link";
+import { LegalLink, TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
@@ -9,7 +9,7 @@ import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
-import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
+import { APPEAL_PAGE_SLUG, jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancy — CHARA", robots: { index: false } };
@@ -29,6 +29,15 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
         {job.staleOpen ? ` · ${STALE_OPEN_TEXT}` : ""}
         {` · ${jobDateText(job)}`}
       </Notice>
+      {job.moderationState === "hidden" ? (
+        <Notice tone="info" role="status">
+          Our moderators hid this vacancy, so it is not public. The owner and the administrators were emailed the reasons. To appeal, follow the route on the{" "}
+          <LegalLink slug={APPEAL_PAGE_SLUG} newTabLabel="(opens in a new tab)">
+            Complaints and Dispute Process
+          </LegalLink>{" "}
+          page.
+        </Notice>
+      ) : null}
       {organization.role === "member" ? null : (
         <JobStatusActions slug={slug} jobId={job.id} status={job.status} billingHref={billingPath(lang, slug)} />
       )}
