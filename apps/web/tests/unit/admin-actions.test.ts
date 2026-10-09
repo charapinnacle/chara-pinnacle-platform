@@ -208,11 +208,11 @@ describe("revokeRole, resetMfa and publishLegalDocument", () => {
   it("publish a document and answer the version the database gave", async () => {
     rpcMock.mockResolvedValue({ data: 3, error: null });
     const input = {
-      expectedVersion: 2,
       slug: "privacy-policy",
       title: " Privacy policy ",
       body: "The text.",
       changeSummary: " Adds retention periods. ",
+      isDraft: true,
     };
     expect(await publishLegalDocument(input)).toEqual({ done: true, version: 3 });
     expect(rpcMock).toHaveBeenCalledWith("publish_legal_document", {
@@ -220,19 +220,17 @@ describe("revokeRole, resetMfa and publishLegalDocument", () => {
       p_title: "Privacy policy",
       p_body: "The text.",
       p_change_summary: "Adds retention periods.",
-      p_expected_version: 2,
+      p_is_draft: true,
     });
     expect(revalidateMock).toHaveBeenCalledWith("/en/admin/legal");
     expect((await publishLegalDocument({ ...input, slug: "Bad_Slug" })).errors?.slug).toBeDefined();
-    expect((await publishLegalDocument({ ...input, expectedVersion: -1 })).errors).toBeDefined();
+    expect((await publishLegalDocument({ ...input, title: "ab" })).errors?.title).toBeDefined();
   });
 
-  it("refuse a form that was submitted before, telling the person to open the document again", async () => {
-    rpcMock.mockResolvedValue(failure("CHARA_CONFLICT", "version"));
-    const input = { expectedVersion: 2, slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods." };
-    expect(await publishLegalDocument(input)).toEqual({
-      message: "This document has a different current version than the form showed. Open it from the list and try again.",
-    });
+  it("refuse a text that repeats the current version, publishing nothing", async () => {
+    rpcMock.mockResolvedValue(failure("CHARA_CONFLICT", "unchanged"));
+    const input = { slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods.", isDraft: false };
+    expect(await publishLegalDocument(input)).toEqual({ message: "This text is already the current version of the document." });
     expect(revalidateMock).not.toHaveBeenCalled();
   });
 });

@@ -71,7 +71,7 @@ export type StaffRow = {
   lastSignInAt: string | null;
 };
 
-export type LegalDocumentRow = { slug: string; version: number; title: string; publishedAt: string };
+export type LegalDocumentRow = { slug: string; version: number; title: string; publishedAt: string; isDraft: boolean };
 
 const memberRole = z.enum(["owner", "admin", "member"]);
 const membershipsSchema = z.array(z.object({ organization_id: z.uuid(), name: z.string(), role: memberRole }));
@@ -312,5 +312,11 @@ export async function listLegalDocuments(): Promise<LegalDocumentRow[]> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_list_legal_documents");
   if (error) throw failure("The legal documents", error);
-  return data.map((row): LegalDocumentRow => ({ slug: row.slug, version: row.version, title: row.title, publishedAt: row.published_at }));
+  return data.map((row): LegalDocumentRow => ({
+    slug: row.slug,
+    version: row.version,
+    title: row.title,
+    publishedAt: row.published_at,
+    isDraft: row.is_draft,
+  }));
 }
