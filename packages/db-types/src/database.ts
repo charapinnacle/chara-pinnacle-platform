@@ -893,6 +893,9 @@ isOneToOne: false
               "customer_ref": string,"slug": string
             }[]
                            },
+"billing_record_worker_attempt":
+{ Args: { "p_user": string }; Returns: boolean
+                           },
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {
               "application_id": string,"error_code": string,"ok": boolean

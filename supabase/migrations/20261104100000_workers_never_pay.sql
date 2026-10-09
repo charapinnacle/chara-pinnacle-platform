@@ -4,8 +4,12 @@
 -- only as a non-member, after the organization had been looked up, so the answer depended on the organization id. The
 -- account kind is now the first check of the checkout, the portal and the page state, before the organization is
 -- touched, so the answer is the same for any id and a refused call writes nothing. The refusal rolls back, so the
--- billing-checkout function records every worker attempt (audit action billing.worker_checkout_refused) to make the
--- KPI countable.
+-- billing-checkout function records worker attempts (audit action billing.worker_checkout_refused) to make the KPI
+-- countable, up to an allowance per person and window so that a loop cannot grow the log without bound.
+
+insert into private.settings (key, value) values
+  ('worker_checkout_refused_audit_max', '60'),
+  ('worker_checkout_refused_audit_seconds', '3600');
 
 create function private.assert_company_account() returns void
 language plpgsql
@@ -164,3 +168,33 @@ begin
   return query select v_price_ref, v_customer_ref, v_trial, v_org.slug;
 end;
 $$;
+
+-- Records one refused worker attempt. It writes nothing for a person who is no worker account and, once the allowance
+-- of the window is used (counted from the audit rows of the person, which log_actor_created_idx serves), no further
+-- row: the refusal itself never depends on this record. Returns whether a row was written.
+create function public.billing_record_worker_attempt(p_user uuid) returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_max integer := (select (value #>> '{}')::integer from private.settings where key = 'worker_checkout_refused_audit_max');
+  v_seconds integer := (select (value #>> '{}')::integer from private.settings where key = 'worker_checkout_refused_audit_seconds');
+begin
+  if not exists (select 1 from public.profiles p where p.id = p_user and p.account_kind = 'worker') then
+    return false;
+  end if;
+  if (
+    select count(*) from audit.log l
+    where l.actor_id = p_user and l.created_at > now() - make_interval(secs => v_seconds)
+      and l.action = 'billing.worker_checkout_refused'
+  ) >= v_max then
+    return false;
+  end if;
+  perform public.audit_record_external('billing.worker_checkout_refused', 'profile', p_user::text, p_user);
+  return true;
+end;
+$$;
+
+revoke all on function public.billing_record_worker_attempt(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.billing_record_worker_attempt(uuid) to service_role;

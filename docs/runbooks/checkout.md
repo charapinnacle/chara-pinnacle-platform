@@ -103,9 +103,9 @@ A candidate account cannot start a checkout or hold a subscription. The guarante
 - `private.assert_company_account()` is the first statement of `billing_checkout_start` and of `private.assert_billing_manager` (the portal and `billing_checkout_state`): an account of kind worker raises `CHARA_FORBIDDEN` with the detail `worker_account`, an account whose kind is not committed yet `account_kind_unset`. The answer does not depend on the organisation id.
 - No billing table has a column or a foreign key for a person, `organization_members` refuses a worker, and the account kind is committed once (pgTAP `089_workers_never_pay`).
 - The billing pages answer a candidate with the page of an unknown address, and no page of the candidate area links to pricing, billing or checkout or loads a payment script (Playwright `workers-never-pay`).
-- The refusal rolls the call back, so `billing-checkout` writes the audit row `billing.worker_checkout_refused` (entity: the profile, actor: the person, no metadata) through `audit_record_external`, once per attempt. A company user refused for another reason is not recorded.
+- The refusal rolls the call back, so `billing-checkout` records it through `billing_record_worker_attempt` (service role only), which writes the audit row `billing.worker_checkout_refused` (entity: the profile, actor: the person, no metadata). A company user refused for another reason is not recorded. The allowance is 60 rows per person and hour (settings `worker_checkout_refused_audit_max` and `worker_checkout_refused_audit_seconds`), so a loop on the endpoint cannot grow the append-only log without bound; the refusal itself is unconditional.
 
-KPI "worker checkout attempts refused (100 %)": the first column counts the recorded refusals, the second the starts of a checkout or portal by a worker account that got through. The target is a second column of 0 for every period; run it quarterly as the database owner. A worker whose account has been erased has no actor and is not counted in the second column; the refusal itself does not depend on the audit row.
+KPI "worker checkout attempts refused (100 %)": the first column counts the recorded refusals, the second the starts of a checkout or portal by a worker account that got through. The target is a second column of 0 for every period; run it quarterly as the database owner, with `:from` and `:to` the start and end of the quarter (the range is served by `log_created_at_id_idx`). The first column is a lower bound: attempts beyond the allowance, and a refusal whose audit write failed (the function logs `billing-checkout could not record a worker attempt` and the refusal stands), are not counted, so a first column below the number of `403` answers with the log line `worker_account` points to a failed write. The guarantee is the database refusal, not this count. A worker whose account has been erased has no actor and is not counted in the second column.
 
 ```sql
 select date_trunc('quarter', l.created_at)::date as quarter,
@@ -113,7 +113,8 @@ select date_trunc('quarter', l.created_at)::date as quarter,
        count(*) filter (where l.action in ('billing.checkout_started', 'billing.portal_opened') and p.account_kind = 'worker') as worker_attempts_admitted
 from audit.log l left join public.profiles p on p.id = l.actor_id
 where l.action in ('billing.worker_checkout_refused', 'billing.checkout_started', 'billing.portal_opened')
+  and l.created_at >= :from and l.created_at < :to
 group by 1 order by 1 desc;
 ```
 
-Launch gate (not a build check): legal counsel approves the Platform Rules text. It must state that a worker never pays CHARA or anyone else a fee for finding work, applying or using CHARA, and must tell users to report a request for a fee to the Trust & Safety Administrator. The contact address for such reports belongs to the legal-entity settings of the public pages (FR-H1), not to this requirement.
+Hosted check after each deploy of `billing-checkout`: post a checkout with the token of a candidate, expect `403` with `{"error":"forbidden","reason":null}` and one new `billing.worker_checkout_refused` row for that person. No row means the function's service-role key or the RPC is missing on the project.

@@ -7,7 +7,7 @@ const ORG = "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11";
 const SITE = "https://app.chara.example";
 const START = "POST /rest/v1/rpc/billing_checkout_start";
 const PORTAL = "POST /rest/v1/rpc/billing_portal_start";
-const AUDIT = "POST /rest/v1/rpc/audit_record_external";
+const AUDIT = "POST /rest/v1/rpc/billing_record_worker_attempt";
 const USER = "3f1c2a54-8d7e-4c1b-9a60-2b5d6e7f8a90";
 
 function token(claims: Record<string, unknown>): string {
@@ -305,14 +305,9 @@ Deno.test("FR-G6 AC7: a worker's checkout is refused with a generic answer, crea
   assert.deepEqual(db.calls.map((c) => c.path), ["/rest/v1/rpc/billing_checkout_start"]);
   assert.deepEqual(audit.calls.map((c) => [c.method, c.path, c.body]), [[
     "POST",
-    "/rest/v1/rpc/audit_record_external",
-    {
-      p_action: "billing.worker_checkout_refused",
-      p_entity_type: "profile",
-      p_entity_id: USER,
-      p_actor_id: USER,
-    },
-  ]], "one record, for the person in the token and not for a user id in the body, with no metadata");
+    "/rest/v1/rpc/billing_record_worker_attempt",
+    { p_user: USER },
+  ]], "one record, for the person in the token and not for a user id in the body");
 });
 
 Deno.test("FR-G6 AC7: a worker's portal request is refused and recorded the same way", async () => {
@@ -326,9 +321,7 @@ Deno.test("FR-G6 AC7: a worker's portal request is refused and recorded the same
   assert.deepEqual(await result.json(), { error: "forbidden", reason: null });
   assert.deepEqual([spy.checkouts.length, spy.portals.length], [0, 0]);
   assert.deepEqual(db.calls.map((c) => c.path), ["/rest/v1/rpc/billing_portal_start"]);
-  assert.deepEqual(audit.calls.map((c) => (c.body as Record<string, unknown>).p_action), [
-    "billing.worker_checkout_refused",
-  ]);
+  assert.deepEqual(audit.calls.map((c) => c.body), [{ p_user: USER }]);
 });
 
 Deno.test("FR-G6: every attempt of a worker is recorded, so the refusals can be counted", async () => {

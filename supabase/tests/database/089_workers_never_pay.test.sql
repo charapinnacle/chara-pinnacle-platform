@@ -1,5 +1,5 @@
 begin;
-select plan(42);
+select plan(52);
 
 \ir organizations_fixture.inc
 
@@ -97,7 +97,7 @@ select is(
 );
 select is(pg_temp.page_state(:'nul', :'o'), 'P0001|CHARA_FORBIDDEN|account_kind_unset', 'AC1: and the page state');
 
-select is(pg_temp.written(), current_setting('t.written'), 'AC1: no row was written to the customers, subscriptions, trial grants, consents or audit log by any refused call');
+select is(pg_temp.written(), current_setting('t.written'), 'AC1: the refused calls leave no row in the customers, subscriptions, trial grants, consents or audit log (the order of the checks is proven by the identical answers for any organisation id above)');
 
 select is(
   pg_temp.call_as(null, 'anon', format($$select * from public.billing_checkout_start(%L, 'employer_starter', 'DE', null, 'HRB12345', 0)$$, :'o')),
@@ -199,13 +199,14 @@ select is((select account_kind::text from public.profiles where id = :'wkr'), 'w
 select is(pg_temp.checkout(:'wkr', :'p'), 'P0001|CHARA_FORBIDDEN|worker_account', 'AC4: the checkout still raises worker_account');
 
 -- The KPI of the SOP: the attempts the billing-checkout function records after the refusal, and the attempts that got through.
-select is(
-  pg_temp.call_as(null, 'service_role', format(
-    $f$select public.audit_record_external('billing.worker_checkout_refused', 'profile', %L, %L)$f$, :'wkr', :'wkr')),
-  'ok', 'KPI: the function records a refused attempt of the worker through audit_record_external'
-);
-select pg_temp.call_as(null, 'service_role', format(
-  $f$select public.audit_record_external('billing.worker_checkout_refused', 'profile', %L, %L)$f$, :'wkr', :'wkr')) as again \gset
+create function pg_temp.record_attempt(p_user uuid) returns text
+language sql as $$
+  select pg_temp.call_as(null, 'service_role', format(
+    $f$select set_config('t.recorded', public.billing_record_worker_attempt(%L)::text, true)$f$, p_user))
+  || '|' || current_setting('t.recorded')
+$$;
+select is(pg_temp.record_attempt(:'wkr'), 'ok|true', 'KPI: the function records a refused attempt of the worker');
+select is(pg_temp.record_attempt(:'wkr'), 'ok|true', 'KPI: and a second one');
 create function pg_temp.worker_kpi() returns text
 language sql as $$
   select format('%s|%s',
@@ -215,12 +216,36 @@ language sql as $$
 $$;
 select is(pg_temp.worker_kpi(), '2|0', 'KPI: two refusals are counted and no worker checkout or portal start exists, so 100 % are refused');
 select is(
-  (select metadata::text from audit.log where action = 'billing.worker_checkout_refused' limit 1), '{}',
-  'KPI: the record carries no payload'
+  (select row(actor_id, entity_type, entity_id, metadata)::text from audit.log where action = 'billing.worker_checkout_refused' limit 1),
+  format('(%s,profile,%s,{})', :'wkr'::text, :'wkr'::text),
+  'KPI: the record names the worker, the profile and carries no payload'
 );
 select is(
   (select count(*) from audit.log where action = 'billing.checkout_started' and actor_id = :'own1'), 1::bigint,
   'KPI: the company owner''s start is recorded under the owner and is not counted as a worker''s'
+);
+select is(pg_temp.record_attempt(:'own1'), 'ok|false', 'KPI: a company account is not recorded as a refused worker');
+select is(pg_temp.record_attempt(gen_random_uuid()), 'ok|false', 'KPI: nor an unknown user');
+select is((select count(*) from audit.log where action = 'billing.worker_checkout_refused'), 2::bigint, 'KPI: both wrote nothing');
+
+-- A loop cannot grow the log without bound: the allowance per person and window.
+update private.settings set value = '3' where key = 'worker_checkout_refused_audit_max';
+select pg_temp.record_attempt(:'wkr') as third \gset
+select is(:'third'::text, 'ok|true', 'KPI: the attempt that reaches the allowance of the window is still recorded');
+select is(pg_temp.record_attempt(:'wkr'), 'ok|false', 'KPI: an attempt beyond the allowance is not recorded');
+select is(
+  (select count(*) from audit.log where action = 'billing.worker_checkout_refused' and actor_id = :'wkr'), 3::bigint,
+  'KPI: the log holds the allowance and no more'
+);
+update private.settings set value = '0' where key = 'worker_checkout_refused_audit_seconds';
+select is(pg_temp.record_attempt(:'wkr'), 'ok|true', 'KPI: only the attempts inside the window count: with an empty window the allowance is open again');
+select is(
+  pg_temp.call_as(null, 'anon', format($$select public.billing_record_worker_attempt(%L)$$, :'wkr')),
+  '42501|permission denied for function billing_record_worker_attempt|', 'KPI: an anonymous caller cannot record'
+);
+select is(
+  pg_temp.call_as(:'wkr', 'authenticated', format($$select public.billing_record_worker_attempt(%L)$$, :'wkr')),
+  '42501|permission denied for function billing_record_worker_attempt|', 'KPI: nor can the worker, so the allowance is not a way to write the log'
 );
 
 select * from finish();

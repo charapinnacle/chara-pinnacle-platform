@@ -26,7 +26,6 @@ const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration
 // FR-G6: the database refuses a worker account with this detail. The answer to the caller is the generic one (it is not
 // in REASONS); the attempt is recorded so that the refusals can be counted.
 const WORKER_ACCOUNT = "worker_account";
-const WORKER_REFUSED_ACTION = "billing.worker_checkout_refused";
 
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
@@ -139,16 +138,11 @@ function refusal(error: DatabaseError): Response {
 
 type Row = Record<string, string | number | null>;
 
-// The database rolls the refused call back, so nothing else records it. The answer does not wait for the record: a
-// failed write is logged and the refusal stands.
+// The database rolls the refused call back, so nothing else records it. The database bounds the records per person and
+// window; the answer does not depend on the record: a failed write is logged and the refusal stands.
 async function answer(error: DatabaseError, userId: string, deps: BillingCheckoutDeps): Promise<Response> {
   if (error.message === "CHARA_FORBIDDEN" && error.details === WORKER_ACCOUNT) {
-    const { error: auditError } = await deps.serviceClient.rpc("audit_record_external", {
-      p_action: WORKER_REFUSED_ACTION,
-      p_entity_type: "profile",
-      p_entity_id: userId,
-      p_actor_id: userId,
-    });
+    const { error: auditError } = await deps.serviceClient.rpc("billing_record_worker_attempt", { p_user: userId });
     if (auditError) {
       console.error("billing-checkout could not record a worker attempt", {
         code: (auditError.code ?? "").slice(0, 16),
