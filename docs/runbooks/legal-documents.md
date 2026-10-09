@@ -1,6 +1,6 @@
 # Runbook: legal documents
 
-FR-H3 (SOP Legal Document Versioning and Publication, on every change and once a year, owner legal counsel and the Platform Administrator), design point D74 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 4 and 11. The pages are `/[lang]/legal/<slug>`, the console page is `/[lang]/admin/legal`, the work of the emails is `account-ops` (`admin-console.md`, section 3).
+FR-H3 (SOP Legal Document Versioning and Publication, on every change and once a year, owner legal counsel and the Platform Administrator), design point D76 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 4 and 11. The pages are `/[lang]/legal/<slug>`, the console page is `/[lang]/admin/legal`, the work of the emails is `account-ops` (`admin-console.md`, section 3).
 
 ## 1. The process, step by step
 
