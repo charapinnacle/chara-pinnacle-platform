@@ -1,5 +1,5 @@
 begin;
-select plan(140);
+select plan(145);
 
 \ir status_fixture.inc
 \ir billing_events_fixture.inc
@@ -157,6 +157,28 @@ select ok(
   and not has_function_privilege('authenticated', 'billing.check_past_due_overdue(timestamptz)', 'execute')
   and not has_function_privilege('service_role', 'billing.check_past_due_overdue(timestamptz)', 'execute'),
   'AC4: no API role can run the check'
+);
+select billing.check_past_due_overdue('2030-01-01T00:00:00Z') as ignored \gset
+select billing.check_past_due_overdue('2030-01-01T00:00:00Z') as ignored \gset
+create temp table t_many as select pg_temp.org_on('employer_starter', 'past_due') as org, n from generate_series(1, 101) as n;
+update billing.subscriptions s set past_due_since = '2029-01-01T00:00:00Z'::timestamptz + make_interval(days => m.n)
+from t_many m where s.organization_id = m.org;
+select is(billing.check_past_due_overdue('2030-01-01T00:00:00Z'), 100, 'AC4: with 101 overdue subscriptions a run raises 100 alerts');
+select is(
+  (select count(*) from private.security_events e join t_many m on e.detail ->> 'organization_id' = m.org::text
+   where e.kind = 'billing_past_due_overdue' and m.n = 1),
+  1::bigint, 'AC4: and the first run alerted the oldest by past_due_since'
+);
+select is(
+  (select count(*) from private.security_events e join t_many m on e.detail ->> 'organization_id' = m.org::text
+   where e.kind = 'billing_past_due_overdue' and m.n = 101),
+  0::bigint, 'AC4: and left the newest for the next run'
+);
+select is(billing.check_past_due_overdue('2030-01-01T00:00:00Z'), 1, 'AC4: the next run raises the one left');
+select is(
+  (select count(*) from private.security_events e join t_many m on e.detail ->> 'organization_id' = m.org::text
+   where e.kind = 'billing_past_due_overdue' and m.n = 101),
+  1::bigint, 'AC4: and it is the newest'
 );
 
 -- AC5: only the deleted event cancels.
