@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { InternalNotes } from "@/components/applicants/internal-notes";
 import { ProfileSnapshot } from "@/components/applicants/profile-snapshot";
+import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
@@ -17,6 +19,7 @@ import {
   listSharedDocuments,
 } from "@/lib/dal/applicant-review";
 import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/dal/applicants";
+import { isSubscriptionEnded } from "@/lib/dal/hiring";
 import { getCountries, getLanguages } from "@/lib/dal/reference";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
@@ -60,6 +63,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
   ]);
   if (!profile) notFound();
   const applicant = reread ?? first;
+  const ended = applicant.stageChangeBlocked !== null && (await isSubscriptionEnded(organization.id));
   const targets = allowedTargets(applicant.status, "employer", { shortlisting: applicant.shortlistingAvailable });
   const name = applicant.applicantName ?? FORMER_CANDIDATE;
   const upgradeForShortlisting =
@@ -88,9 +92,16 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
       </dl>
 
       {applicant.stageChangeBlocked ? (
-        <Notice tone="info" role="status">
-          {blockedText}
-        </Notice>
+        <>
+          <ReadOnlyPlanNotice
+            ended={ended}
+            billingHref={organization.role === "member" ? null : billingPath(lang, slug)}
+            otherwise={blockedText}
+          />
+          <div>
+            <ReadOnlyButton className="w-full sm:w-auto">Change stage</ReadOnlyButton>
+          </div>
+        </>
       ) : targets.length > 0 ? (
         <div>
           <StageChange

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SelectApplicant } from "@/components/applicants/bulk-selection";
 import { NewBadge } from "@/components/applicants/new-badge";
+import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { TextLink } from "@/components/forms/text-link";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import type { ApplicantRow } from "@/lib/dal/applicant-list";
@@ -25,7 +26,7 @@ export const moveButtonId = (id: string) => `move-${id}`;
 
 // The Move button is the keyboard and screen reader way to do what dragging does: Enter opens the menu of the stages the
 // card may go to, the arrow keys choose one, Enter applies it and Escape closes it. A final card has nothing to move to,
-// so it has no button and cannot be dragged; a frozen board (a lapsed organisation) shows the button disabled.
+// so it has no button and cannot be dragged; a frozen board (a lapsed organisation) shows the button aria-disabled, in the tab order, with the reason it points to.
 export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onDragEnd }: BoardCardProps) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -84,12 +85,15 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
             ref={trigger}
             id={moveButtonId(row.id)}
             type="button"
-            disabled={frozen}
+            aria-disabled={frozen || undefined}
+            aria-describedby={frozen ? READ_ONLY_REASON_ID : undefined}
             aria-label={`Move ${name}`}
             aria-haspopup="menu"
             aria-expanded={open}
-            onClick={() => setOpen((value) => !value)}
-            className="min-h-11 rounded-lg border border-input bg-card px-3 text-sm font-medium hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+            onClick={() => {
+              if (!frozen) setOpen((value) => !value);
+            }}
+            className="min-h-11 rounded-lg border border-input bg-card px-3 text-sm font-medium hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           >
             Move
           </button>

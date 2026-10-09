@@ -15,6 +15,7 @@ const getProfileMock = vi.hoisted(() => vi.fn());
 const listDocumentsMock = vi.hoisted(() => vi.fn());
 const profileChangedMock = vi.hoisted(() => vi.fn());
 const listNotesMock = vi.hoisted(() => vi.fn());
+const endedMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -29,6 +30,7 @@ vi.mock("@/lib/dal/applicants", () => ({
   listApplicantEvents: listApplicantEventsMock,
   markApplicationViewed: markApplicationViewedMock,
 }));
+vi.mock("@/lib/dal/hiring", () => ({ isSubscriptionEnded: endedMock }));
 vi.mock("@/lib/dal/applicant-review", () => ({
   getApplicantProfile: getProfileMock,
   listSharedDocuments: listDocumentsMock,
@@ -93,6 +95,7 @@ beforeEach(() => {
   listDocumentsMock.mockResolvedValue([]);
   profileChangedMock.mockResolvedValue(false);
   listNotesMock.mockResolvedValue({ notes: [], hasMore: false });
+  endedMock.mockResolvedValue(false);
 });
 
 describe("the applicant page of FR-D5", () => {
@@ -189,6 +192,24 @@ describe("the applicant page of FR-D5", () => {
     expect(html).toContain("so notes cannot be added");
     expect(html).toContain("Earlier note");
     expect(html).toContain("Team member");
+    expect(html).toMatch(/<textarea[^>]*readOnly=""[^>]*aria-disabled="true"[^>]*aria-describedby="read-only-reason"/);
+    expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*aria-describedby="read-only-reason"[^>]*>Add note/);
+  });
+
+  it("says that the subscription has ended, with the link to choose a plan for an owner and without it for a member, and keeps the stage control off", async () => {
+    getApplicantMock.mockResolvedValue({ ...applicant, stageChangeBlocked: "read_only_free_plan" });
+    endedMock.mockResolvedValue(true);
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, role: "owner" } });
+    let html = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(endedMock).toHaveBeenCalledWith("org-1");
+    expect(html).toContain("Your subscription has ended. Your past applicants stay readable, and changes to them need an active plan.");
+    expect(html).toContain('href="/en/org/acme-bau/billing"');
+    expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*aria-describedby="read-only-reason"[^>]*>Change stage/);
+    expect(stageChangeMock).not.toHaveBeenCalled();
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization });
+    html = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(html).toContain("Your subscription has ended");
+    expect(html).not.toContain("Choose a plan");
   });
 
   it("links to older notes from the last note of the page, and to the newest notes from an older page", async () => {

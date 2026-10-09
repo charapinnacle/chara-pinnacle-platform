@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { LegalEntityForm } from "@/components/billing/legal-entity-form";
+import { PastDueAlert } from "@/components/billing/past-due-alert";
 import { PortalButton } from "@/components/billing/portal-button";
 import { formatDate } from "@/lib/i18n/format";
 import { priceLine, daysText, subscriptionStatusLabels } from "@/lib/billing/presentation";
@@ -30,6 +31,10 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Billing</h1>
         <p className="text-body text-muted-foreground">{organization.displayName}</p>
       </header>
+
+      {subscription?.status === "past_due" && subscription.pastDueSince ? (
+        <PastDueAlert slug={slug} pastDueSince={new Date(subscription.pastDueSince)} now={new Date()} />
+      ) : null}
 
       {subscription ? (
         <section aria-labelledby="plan-heading" className="grid gap-2 rounded-xl border bg-card p-4">

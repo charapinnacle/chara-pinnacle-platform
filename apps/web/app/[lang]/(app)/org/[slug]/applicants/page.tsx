@@ -6,12 +6,13 @@ import { Board } from "@/components/applicants/board";
 import { BulkSelection } from "@/components/applicants/bulk-selection";
 import { BulkToolbar } from "@/components/applicants/bulk-toolbar";
 import { ExportButton } from "@/components/applicants/export-button";
+import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { StageFilter } from "@/components/applications/stage-filter";
+import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { FormButton } from "@/components/forms/form-button";
-import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import {
   APPLICANTS_PAGE_SIZE,
@@ -20,7 +21,7 @@ import {
   listBoard,
 } from "@/lib/dal/applicant-list";
 import { FORMER_CANDIDATE } from "@/lib/applications/presentation";
-import { getJob } from "@/lib/dal/hiring";
+import { getJob, isSubscriptionEnded } from "@/lib/dal/hiring";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { applicantsExportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { parseApplicantListParams } from "@/lib/validation/applicant-list";
@@ -55,6 +56,7 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
   const total = board ? board.columns.reduce((sum, column) => sum + column.total, 0) : (list?.total ?? 0);
   const empty = total === 0 && (board !== null || parsed.stage === null);
   const frozen = access.stageChangeBlocked !== null;
+  const ended = frozen && (await isSubscriptionEnded(organization.id));
   const withoutStage = { ...parsed, stage: null, page: 1 };
   const kept = Object.fromEntries(new URL(applicantsPath(lang, slug, withoutStage), "http://localhost").searchParams);
   const visibleRows = board ? board.columns.flatMap((column) => column.rows) : (list?.rows ?? []);
@@ -76,9 +78,11 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
       </header>
 
       {frozen ? (
-        <Notice tone="info" role="status">
-          {frozenText}
-        </Notice>
+        <ReadOnlyPlanNotice
+          ended={ended}
+          billingHref={organization.role === "member" ? null : billingPath(lang, slug)}
+          otherwise={frozenText}
+        />
       ) : null}
 
       {!frozen && shortlistable && !access.shortlistingAvailable ? (
@@ -103,6 +107,11 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
 
       <BulkSelection key={JSON.stringify(parsed)} rows={bulkRows}>
         {bulkRows ? <BulkToolbar slug={slug} shortlisting={access.shortlistingAvailable} noteMaxChars={access.noteMaxChars} /> : null}
+        {frozen && !empty ? (
+          <div>
+            <ReadOnlyButton className="w-full sm:w-auto">Change stage of selected applicants</ReadOnlyButton>
+          </div>
+        ) : null}
         {empty ? (
           <EmptyState icon={Users} title="No applications yet" description="Applications appear here as candidates apply.">
             <TextLink standalone href={job ? jobPath(lang, slug, job.id) : jobsPath(lang, slug)}>

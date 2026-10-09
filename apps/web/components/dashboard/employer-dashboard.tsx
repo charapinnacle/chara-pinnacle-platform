@@ -52,7 +52,7 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
       </header>
 
       <Panel promise={plan} errorTitle="The plan could not be loaded" quiet>
-        {(value) => <PlanAlerts plan={value} now={now} billingHref={billingHref} />}
+        {(value) => <PlanAlerts plan={value} now={now} slug={slug} billingHref={billingHref} />}
       </Panel>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

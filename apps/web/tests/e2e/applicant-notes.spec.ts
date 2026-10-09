@@ -78,7 +78,8 @@ test.describe("the internal notes of the applicant detail page", () => {
     const notes = page.getByRole("region", { name: "Internal notes" });
     await expect(notes.getByText("Secret opinion of the team")).toBeVisible();
     await expect(notes.getByText("Your organization has no active paid plan, so notes cannot be added.", { exact: false })).toBeVisible();
-    await expect(notes.getByLabel("Add an internal note")).toHaveCount(0);
+    await expect(notes.getByLabel("Add an internal note")).toHaveAttribute("aria-disabled", "true");
+    await expect(notes.getByRole("button", { name: "Add note" })).toBeDisabled();
     await expect(page.getByRole("region", { name: "Profile as submitted" })).toBeVisible();
 
     const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "10.4.3.3" } });
