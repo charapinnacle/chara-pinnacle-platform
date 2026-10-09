@@ -418,6 +418,9 @@ allow_dynamic_registration = false
 [functions.account-ops]
 verify_jwt = true
 
+[functions.audit-export]
+verify_jwt = true
+
 [functions.scan-document]
 verify_jwt = false
 

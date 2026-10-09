@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasSharedSecret } from "../_shared/auth.ts";
 import { json } from "../_shared/http.ts";
+import { type Audit, parseAudit, record, UUID } from "./audit.ts";
 
 const BATCH_SIZE = 100;
 const CONCURRENCY = 5;
 // Members whose sessions are ended at the same time.
 const MEMBER_CHUNK = 10;
 const TIME_BUDGET_MS = 100_000;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DOCUMENT_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const BUCKET_ID = /^[a-z0-9-]{1,63}$/;
 const OBJECT_PATH = /^[A-Za-z0-9._/-]{1,300}$/;
@@ -18,14 +18,17 @@ const MAX_DEPTH = 3;
 // A suspension bans the account for a hundred years; a reinstatement lifts the ban.
 const BAN_DURATION = "876000h";
 
-type Job =
-  | { msgId: number; action: "sign_out_organization"; organizationId: string }
-  | { msgId: number; action: "fan_out_legal_version"; documentSlug: string; version: number }
-  | (
-    & { msgId: number; userId: string }
-    & (
-      | { action: "sign_out" | "reset_mfa" | "erase_user" | "suspend_user" | "reinstate_user" }
-      | { action: "delete_object"; bucketId: string; path: string }
+export type Job =
+  & { msgId: number; audit: Audit | null }
+  & (
+    | { action: "sign_out_organization"; organizationId: string }
+    | { action: "fan_out_legal_version"; documentSlug: string; version: number }
+    | (
+      & { userId: string }
+      & (
+        | { action: "sign_out" | "reset_mfa" | "erase_user" | "suspend_user" | "reinstate_user" }
+        | { action: "delete_object"; bucketId: string; path: string }
+      )
     )
   );
 
@@ -50,6 +53,8 @@ function parseJob(row: unknown): Job | null {
     version,
     bucket_id: bucketId,
     path,
+    actor_id: actorId,
+    request_id: requestId,
   } = message as {
     action?: unknown;
     user_id?: unknown;
@@ -58,14 +63,22 @@ function parseJob(row: unknown): Job | null {
     version?: unknown;
     bucket_id?: unknown;
     path?: unknown;
+    actor_id?: unknown;
+    request_id?: unknown;
   };
+  const audit = parseAudit(actorId, requestId);
+  if (audit === undefined) {
+    return null;
+  }
   if (action === "sign_out_organization") {
-    return typeof organizationId === "string" && UUID.test(organizationId) ? { msgId, action, organizationId } : null;
+    return typeof organizationId === "string" && UUID.test(organizationId)
+      ? { msgId, audit, action, organizationId }
+      : null;
   }
   if (action === "fan_out_legal_version") {
     return typeof documentSlug === "string" && DOCUMENT_SLUG.test(documentSlug) && documentSlug.length <= 60 &&
         typeof version === "number" && Number.isInteger(version) && version > 0
-      ? { msgId, action, documentSlug, version }
+      ? { msgId, audit, action, documentSlug, version }
       : null;
   }
   if (typeof userId !== "string" || !UUID.test(userId)) {
@@ -75,7 +88,7 @@ function parseJob(row: unknown): Job | null {
     action === "sign_out" || action === "reset_mfa" || action === "erase_user" || action === "suspend_user" ||
     action === "reinstate_user"
   ) {
-    return { msgId, action, userId };
+    return { msgId, audit, action, userId };
   }
   // An object is only ever removed from the folder of the user the job names.
   if (
@@ -83,7 +96,7 @@ function parseJob(row: unknown): Job | null {
     typeof path === "string" &&
     OBJECT_PATH.test(path) && path.startsWith(`${userId}/`)
   ) {
-    return { msgId, action, userId, bucketId, path };
+    return { msgId, audit, action, userId, bucketId, path };
   }
   return null;
 }
@@ -278,7 +291,9 @@ async function runJob(deps: AccountOpsDeps, row: unknown): Promise<boolean> {
     return false;
   }
   try {
-    await finish(deps.client, job, await run(deps.client, job));
+    const result = await run(deps.client, job);
+    await record(deps.client, job, result);
+    await finish(deps.client, job, result);
     return true;
   } catch (e) {
     failure(job.msgId, job.action, e);

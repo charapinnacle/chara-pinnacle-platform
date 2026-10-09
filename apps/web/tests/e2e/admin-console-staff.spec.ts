@@ -62,7 +62,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await expect(dialog).toBeHidden();
     await expect(page.getByText("The role is granted. The person is signed out and signs in again.", { exact: true })).toBeVisible();
     expect(roles(person.id)).toEqual([{ role: "trust_safety", revoked: false, granted_by: admin.user.id }]);
-    expect(query<{ metadata: { reason: string } }>(`select metadata from audit.log where action = 'platform_role_granted' and metadata ->> 'user_id' = ${literal(person.id)}`)[0].metadata.reason).toBe(REASON);
+    expect(query<{ metadata: { reason: string } }>(`select metadata from audit.log where action = 'platform_role.grant' and metadata ->> 'user_id' = ${literal(person.id)}`)[0].metadata.reason).toBe(REASON);
     expect(query<{ n: number }>(`select count(*)::int as n from pgmq.q_account_ops where message ->> 'user_id' = ${literal(person.id)}`)[0].n).toBe(1);
     await expect(table.getByRole("row", { name: new RegExp(person.email) })).toContainText(admin.user.email);
 
@@ -199,7 +199,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await expect(page.getByText("The reset is queued. The person is signed out and told by email.", { exact: true })).toBeVisible();
     expect(query<{ message: { action: string } }>(`select message from pgmq.q_account_ops where message ->> 'user_id' = ${literal(target.id)}`).map((row) => row.message.action)).toEqual(["reset_mfa"]);
     expect(query(`select 1 from public.notifications where user_id = ${literal(target.id)} and kind = 'mfa_reset'`)).toHaveLength(1);
-    expect(query<{ metadata: { reason: string } }>(`select metadata from audit.log where action = 'mfa_reset' and entity_id = ${literal(target.id)}`)[0].metadata.reason).toBe("Lost the phone, identity checked");
+    expect(query<{ metadata: { reason: string } }>(`select metadata from audit.log where action = 'mfa.reset' and entity_id = ${literal(target.id)}`)[0].metadata.reason).toBe("Lost the phone, identity checked");
     await expect(userId).toHaveValue("");
   });
 

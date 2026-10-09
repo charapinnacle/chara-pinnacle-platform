@@ -43,10 +43,10 @@ select ok(
 -- Bootstrap insert by the table owner is audited with no actor
 insert into public.platform_staff (user_id, role) values ('00000000-0000-0000-0000-00000000a001', 'admin');
 select is(
-  (select count(*) from audit.log where action = 'platform_role_granted'
+  (select count(*) from audit.log where action = 'platform_role.grant'
      and metadata ->> 'user_id' = '00000000-0000-0000-0000-00000000a001' and metadata ->> 'role' = 'admin' and actor_id is null),
   1::bigint,
-  'the bootstrap insert writes one platform_role_granted audit row with no actor'
+  'the bootstrap insert writes one platform_role.grant audit row with no actor'
 );
 
 -- Grant by an administrator carries grantor and reason
@@ -56,13 +56,13 @@ insert into public.platform_staff (user_id, role, granted_by)
 values ('00000000-0000-0000-0000-00000000b002', 'trust_safety', '00000000-0000-0000-0000-00000000a001');
 select set_config('chara.audit_reason', '', true);
 select is(
-  (select metadata from audit.log where action = 'platform_role_granted'
+  (select metadata - 'staff_id' - 'request_id' from audit.log where action = 'platform_role.grant'
      and metadata ->> 'user_id' = '00000000-0000-0000-0000-00000000b002'),
   '{"user_id":"00000000-0000-0000-0000-00000000b002","role":"trust_safety","granted_by":"00000000-0000-0000-0000-00000000a001","reason":"New hire, ticket 4812"}'::jsonb,
   'a grant audit row holds grantee, role, grantor and the reason'
 );
 select is(
-  (select actor_id from audit.log where action = 'platform_role_granted'
+  (select actor_id from audit.log where action = 'platform_role.grant'
      and metadata ->> 'user_id' = '00000000-0000-0000-0000-00000000b002'),
   '00000000-0000-0000-0000-00000000a001'::uuid,
   'the audit actor is the signed-in grantor'
@@ -157,7 +157,7 @@ where user_id = '00000000-0000-0000-0000-00000000b002' and role = 'verification_
 select set_config('chara.audit_reason', '', true);
 select is(
   (select metadata ->> 'reason' from audit.log
-    where action = 'platform_role_revoked' and metadata ->> 'user_id' = '00000000-0000-0000-0000-00000000b002'),
+    where action = 'platform_role.revoke' and metadata ->> 'user_id' = '00000000-0000-0000-0000-00000000b002'),
   'Left the team',
   'a revocation writes one audit row with the reason'
 );

@@ -655,3 +655,189 @@ Deno.test("a fan-out job with a bad slug or version is never executed or acknowl
   assert.deepEqual(await response.json(), { processed: 0, failed: 3 });
   assert.deepEqual(calls.map((c) => c.path), Array(2).fill("/rest/v1/rpc/account_ops_dequeue"));
 });
+
+const ADMIN = "00000000-0000-0000-0000-00000000ad01";
+const REQUEST = "7d9c1f0e-5b1a-4c63-9a52-0e6d2b9f4a11";
+const asked = { actor_id: ADMIN, request_id: REQUEST };
+const auditCalls = (calls: Call[]) => calls.filter((c) => c.path.endsWith("audit_record_external")).map((c) => c.body);
+const step = (
+  action: string,
+  entityType: string,
+  entityId: string,
+  jobId: string,
+  data: Record<string, unknown> = {},
+) => ({
+  p_action: action,
+  p_entity_type: entityType,
+  p_entity_id: entityId,
+  p_actor_id: ADMIN,
+  p_metadata: { ...data, request_id: REQUEST, job_id: jobId },
+});
+
+Deno.test("FR-F2: a suspension records the sign-out and the ban against the administrator and the request, before it is acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 90,
+      message: { action: "suspend_user", user_id: USER, ...asked },
+    }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "suspended"),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 2),
+    "PUT /auth/v1/admin/users/{id}": reply(200, { id: USER }),
+    "POST /rest/v1/rpc/audit_record_external": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(auditCalls(calls), [
+    step("account_ops.sign_out_global", "profile", USER, "90", { sessions_ended: 2 }),
+    step("account_ops.ban_user", "profile", USER, "90"),
+  ]);
+  assert.deepEqual(rpcCalls(calls).map((c) => c.path.split("/").pop()), [
+    "account_ops_dequeue",
+    "account_ops_user_status",
+    "account_ops_end_sessions",
+    "audit_record_external",
+    "audit_record_external",
+    "account_ops_ack",
+    "account_ops_dequeue",
+  ]);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 90, p_result: { banned: 1, sessions_ended: 2 } }]);
+});
+
+Deno.test("FR-F2: a reinstatement records the lifting of the ban and no sign-out", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 91,
+      message: { action: "reinstate_user", user_id: USER, ...asked },
+    }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "active"),
+    "PUT /auth/v1/admin/users/{id}": reply(200, { id: USER }),
+    "POST /rest/v1/rpc/audit_record_external": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(auditCalls(calls), [step("account_ops.unban_user", "profile", USER, "91")]);
+});
+
+Deno.test("FR-F2: a reset of the second factor records the sign-out and the factors deleted", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 92,
+      message: { action: "reset_mfa", user_id: USER, ...asked },
+    }),
+    "GET /auth/v1/admin/users/{id}/factors": reply(200, [factorRow(FACTOR_A), factorRow(FACTOR_B)]),
+    "DELETE /auth/v1/admin/users/{id}/factors/{id}": reply(200, {}),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/audit_record_external": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(auditCalls(calls), [
+    step("account_ops.sign_out_global", "profile", USER, "92", { sessions_ended: 1 }),
+    step("account_ops.delete_factors", "profile", USER, "92", { factors_deleted: 2 }),
+  ]);
+});
+
+Deno.test("FR-F2: the sign-out of a role change, of an organisation and the fan-out of a legal version record their effect", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 93, message: { action: "sign_out", user_id: USER, reason: "platform_role_granted", ...asked } },
+      { msg_id: 94, message: { action: "sign_out_organization", organization_id: ORG, ...asked } },
+      {
+        msg_id: 95,
+        message: { action: "fan_out_legal_version", document_slug: "privacy-policy", version: 3, ...asked },
+      },
+    ),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 2),
+    "POST /rest/v1/rpc/account_ops_organization_members": reply(200, [USER, OTHER]),
+    "POST /rest/v1/rpc/account_ops_fan_out_legal_version": (call) =>
+      reply(200, (call.body as { p_after: string | null }).p_after === null ? [{ last_id: USER, queued: 7 }] : []),
+    "POST /rest/v1/rpc/audit_record_external": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 3, failed: 0 });
+  const byAction = (rows: unknown[]) =>
+    [...rows].sort((a, b) => (a as { p_action: string }).p_action.localeCompare((b as { p_action: string }).p_action));
+  assert.deepEqual(byAction(auditCalls(calls)), [
+    step("account_ops.fan_out_legal_version", "legal_document", "privacy-policy:3", "95", { emails_queued: 7 }),
+    step("account_ops.sign_out_global", "profile", USER, "93", { sessions_ended: 2 }),
+    step("account_ops.sign_out_organization", "organization", ORG, "94", { sessions_ended: 4 }),
+  ]);
+});
+
+Deno.test("FR-F2: a job read again records again and the database answers that the row exists, which is a success", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 96,
+      message: { action: "suspend_user", user_id: USER, ...asked },
+    }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, "suspended"),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 0),
+    "PUT /auth/v1/admin/users/{id}": reply(200, { id: USER }),
+    "POST /rest/v1/rpc/audit_record_external": reply(200, false),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.equal(auditCalls(calls).length, 2);
+  assert.equal(acks(calls).length, 1);
+});
+
+Deno.test("FR-F2: an effect that cannot be recorded leaves the job unacknowledged, so it is read again", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 97,
+      message: { action: "sign_out", user_id: USER, ...asked },
+    }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/audit_record_external": reply(500, {
+      code: "XX000",
+      message: "boom",
+      details: null,
+      hint: null,
+    }),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 1 });
+  assert.deepEqual(acks(calls), []);
+});
+
+Deno.test("FR-F2: a job without an administrator records nothing, and a job with half of the context or a bad one is never executed", async () => {
+  const bad: Record<string, unknown>[] = [
+    { actor_id: ADMIN },
+    { request_id: REQUEST },
+    { actor_id: "not-a-uuid", request_id: REQUEST },
+    { actor_id: ADMIN, request_id: "r-1" },
+    { actor_id: 7, request_id: REQUEST },
+  ];
+  const rows = bad.map((context, i) => ({
+    msg_id: 100 + i,
+    message: { action: "sign_out", user_id: USER, ...context },
+  }));
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(...rows, {
+      msg_id: 120,
+      message: { action: "sign_out", user_id: USER },
+    }),
+    "POST /rest/v1/rpc/account_ops_end_sessions": reply(200, 1),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 5 });
+  assert.deepEqual(acks(calls), [{ p_msg_id: 120, p_result: { sessions_ended: 1 } }]);
+  assert.equal(auditCalls(calls).length, 0);
+});
+
+Deno.test("FR-F2: a suspension of an account that is gone records nothing", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 98,
+      message: { action: "suspend_user", user_id: USER, ...asked },
+    }),
+    "POST /rest/v1/rpc/account_ops_user_status": reply(200, null),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.equal(auditCalls(calls).length, 0);
+});

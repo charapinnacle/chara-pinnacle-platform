@@ -227,13 +227,13 @@ select lives_ok(
 insert into public.notification_preferences (user_id, digest) values (:'tgt', true);
 select pgmq.purge_queue('notifications');
 delete from public.notifications;
-delete from audit.log where action = 'mfa_reset';
+delete from audit.log where action = 'mfa.reset';
 select is(
   pg_temp.call_as(:'sta', 'authenticated', format($$select public.reset_mfa(%L, 'Authenticator device lost, identity checked')$$, :'tgt')),
   'ok', 'AC8: an administrator at aal2 resets the factors of a user with digest = true whose device is lost'
 );
 select is(
-  (select count(*) from audit.log where action = 'mfa_reset' and entity_id = :'tgt' and metadata ->> 'reason' = 'Authenticator device lost, identity checked'),
+  (select count(*) from audit.log where action = 'mfa.reset' and entity_id = :'tgt' and metadata ->> 'reason' = 'Authenticator device lost, identity checked'),
   1::bigint, 'AC8: one audit row holds the reason'
 );
 select is(

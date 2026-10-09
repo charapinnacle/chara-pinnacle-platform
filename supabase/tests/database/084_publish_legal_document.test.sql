@@ -85,7 +85,7 @@ select is(
 );
 select is(
   (select count(*) from pgmq.q_account_ops
-   where message = jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', 'privacy-policy', 'version', 3)),
+   where message @> jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', 'privacy-policy', 'version', 3)),
   1::bigint, 'AC11: it queues one fan-out job for account-ops'
 );
 select is(pg_temp.fan_out('privacy-policy'), '1|' || (:workers + :companies), 'AC11: the fan-out job queues the emails');
@@ -180,7 +180,7 @@ select is(
 
 -- the job of account-ops leaves its trace on the document, and only account-ops may run the fan-out
 select msg_id as fan_job from pgmq.q_account_ops
-where message = jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', 'privacy-policy', 'version', 3) \gset
+where message @> jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', 'privacy-policy', 'version', 3) \gset
 select is(
   (select public.account_ops_ack(:fan_job, '{"emails": 5}')), true, 'the fan-out job is acknowledged'
 );

@@ -51,7 +51,7 @@ select is(
   1::bigint, 'AC5: the audit row is written in the transaction of the change'
 );
 select is(
-  (select count(*) from pgmq.q_account_ops where message = jsonb_build_object('action', 'suspend_user', 'user_id', :'own1')),
+  (select count(*) from pgmq.q_account_ops where message @> jsonb_build_object('action', 'suspend_user', 'user_id', :'own1')),
   1::bigint, 'AC5: exactly one account-ops message signs the user out and sets the ban'
 );
 select is(
@@ -110,7 +110,7 @@ select is(
   format('1|%s|%s', :'back', :'request'), 'AC5: one audit row user.reinstate with the reason'
 );
 select is(
-  (select count(*) from pgmq.q_account_ops where message = jsonb_build_object('action', 'reinstate_user', 'user_id', :'own1')),
+  (select count(*) from pgmq.q_account_ops where message @> jsonb_build_object('action', 'reinstate_user', 'user_id', :'own1')),
   1::bigint, 'AC5: one account-ops message lifts the ban'
 );
 select is(

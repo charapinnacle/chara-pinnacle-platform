@@ -5,8 +5,8 @@ FR-A7, design points D1 and D11 (OPEN_QUESTIONS.md), ADR-0003. Steps marked "onc
 ## 1. Rules
 
 - Every staff member is a named individual supplied by CHARA, with their own email address, who signs up through the normal sign-up, confirms the address and enrols two-step verification. There is no shared or generic administrator account.
-- Only a Platform Administrator at two-step level (aal2) grants or revokes a role, for another person, with a reason of 10 to 500 characters (`grant_platform_role`, `revoke_platform_role`; the staff page of the administration console, unit U41, calls them). Nobody grants a role to themselves, and the last active administrator cannot be revoked.
-- Every grant and revocation writes one `audit.log` row (`platform_role_granted`, `platform_role_revoked`) with grantor, grantee, role and reason, and queues a sign-out of the affected person, which `account-ops` carries out within two minutes.
+- Only a Platform Administrator at two-step level (aal2) grants or revokes a role, for another person, with a reason of 10 to 2000 characters in the database (`grant_platform_role`, `revoke_platform_role`; the staff page of the administration console, unit U41, calls them and asks for 10 to 500). Nobody grants a role to themselves, and the last active administrator cannot be revoked.
+- Every grant and revocation writes one `audit.log` row (`platform_role.grant`, `platform_role.revoke`; entity `platform_staff`, the entity id is the person, the staff row is `metadata.staff_id`) with grantor, grantee, role, reason and request id, and queues a sign-out of the affected person, which `account-ops` carries out within two minutes.
 - A person may hold several roles. The Verification Reviewer role has no screens in Phase 1.
 
 ## 2. Bootstrap the first administrator (once per environment)
@@ -28,7 +28,7 @@ Check that exactly one row was inserted and audited:
 
 ```sql
 select id, actor_id, entity_id, metadata, created_at
-from audit.log where action = 'platform_role_granted' order by id desc limit 1;
+from audit.log where action = 'platform_role.grant' order by id desc limit 1;
 ```
 
 Record the bootstrap here in the pull request that deploys it (this table is the record the release owner checks):
@@ -56,7 +56,7 @@ CHARA names at least two administrators before go-live (OPEN_QUESTIONS.md, O6). 
 4. Verify: queue a harmless job by granting and revoking a role for a test account, then within two minutes `select * from pgmq.q_account_ops` is empty, `audit.log` has `account_ops_done` rows, and `cron.job_run_details` for `account-ops-run` shows `succeeded`. Then call the function by hand with `curl -X POST https://<project-ref>.supabase.co/functions/v1/account-ops -H "Authorization: Bearer <anon key>"`: without `x-edge-secret` it answers 401 `unauthorized` from the function; with a wrong bearer token the gateway answers 401 before the function runs, and the legacy anon key is still accepted by the gateway (check this again after the project's signing keys change). While none of the three Vault secrets exists the minute job does nothing and logs nothing; with only some of them it writes a warning to the database log and calls nothing.
 5. Rotate the shared secret (when a holder of database access leaves, and yearly): the call's headers sit in `net.http_request_queue`, which every database role can read while a request is pending, so treat the secret as rotatable. Set a new `EDGE_SHARED_SECRET` with `npx supabase secrets set`, then `select vault.update_secret((select id from vault.secrets where name = 'edge_shared_secret'), '<new value>');` in the same minute; a call in between answers 401 and runs again in the next minute.
 
-Monitoring (daily; an administrator who ran a `reset_mfa`, `grant` or `revoke` also confirms the job's `account_ops_done` row, because the `mfa_reset` audit row records the request, not the result): jobs that wait longer than five minutes, and jobs the database gave up on after eight attempts. An `account_ops_abandoned` row means the action did not happen (the factor is still enrolled, the sessions are still open).
+Monitoring (daily; an administrator who ran a `reset_mfa`, `grant` or `revoke` also confirms the job's `account_ops_done` row, because the `mfa.reset` audit row records the request, not the result; the steps of the job are the rows `account_ops.sign_out_global` and `account_ops.delete_factors` of the same request id, FR-F2): jobs that wait longer than five minutes, and jobs the database gave up on after eight attempts. An `account_ops_abandoned` row means the action did not happen (the factor is still enrolled, the sessions are still open).
 
 ```sql
 select msg_id, read_ct, enqueued_at, message from pgmq.q_account_ops where enqueued_at < now() - interval '5 minutes';
