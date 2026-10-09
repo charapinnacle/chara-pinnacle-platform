@@ -8,7 +8,7 @@ The page `/<lang>/org/<slug>/billing` is for owners and administrators at the se
 
 ## 2. Usage
 
-`billing_usage(p_org)` returns one row per limit key (`active_jobs`, `members`) with the number used and the limit of the plan (`null` is unlimited). A usage above the limit after a downgrade is shown as over the limit; nothing is paused or deleted, and only opening or inviting beyond the limit is refused.
+`billing_usage(p_org)` returns one row per limit key (`active_jobs`, `members`) with the number used and the limit of the plan (`null` is unlimited). Open vacancies are counted as `v_org_limits` and `record_job_limit_prompt` count them (status open, not deleted), and members as `private.team_size` counts them for the member limit (accepted members plus open invitations): change those definitions together. The page reads usage only for a trialing, active or past due subscription; a paused one has the free plan's limits. A usage above the limit after a downgrade is shown as over the limit; nothing is paused or deleted, and only opening or inviting beyond the limit is refused.
 
 ```sql
 select * from public.billing_usage('<organisation id>'); -- as the owner at aal2
@@ -26,5 +26,7 @@ from audit.log where action = 'billing.portal_opened' and created_at >= now() - 
 select kind, count(*) from billing.provider_events
 where kind like 'subscription.%' and received_at >= now() - interval '90 days' group by kind;
 ```
+
+The audit action carries no record of which control was used. `audit.log` has an index on `created_at` only, so keep the window as written and run the query at the semi-annual review, not on a schedule.
 
 The rate is the portal sessions that end without a billing contact to staff. The contacts to staff come from the support mailbox and are counted by hand at the semi-annual review of the SOP; the platform holds no support tickets.
