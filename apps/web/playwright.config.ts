@@ -38,7 +38,10 @@ process.env.SCAN_DOCUMENT_PORT ||= "54431";
 process.env.DOCUMENT_URL_PORT ||= "54432";
 process.env.NOTIFY_PORT ||= "54433";
 process.env.BILLING_CHECKOUT_PORT ||= "54434";
+process.env.BILLING_WEBHOOK_PORT ||= "54435";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
+// Signs the deliveries that tests send to billing-webhook (the null billing provider).
+process.env.BILLING_WEBHOOK_SECRET ||= "local-billing-webhook-secret";
 // Signs the delivery events that tests send to notify, as Resend would (whsec_ and the base64 of the key).
 process.env.RESEND_WEBHOOK_SECRET ||= "whsec_bG9jYWwtcmVzZW5kLXdlYmhvb2stc2VjcmV0LTAxMjM0NQ==";
 process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_URL_PORT}/`;
@@ -230,6 +233,12 @@ export default defineConfig({
     {
       command: `../../supabase/functions/serve-local.sh billing-checkout ${process.env.BILLING_CHECKOUT_PORT}`,
       port: Number(process.env.BILLING_CHECKOUT_PORT),
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: `../../supabase/functions/serve-local.sh billing-webhook ${process.env.BILLING_WEBHOOK_PORT}`,
+      port: Number(process.env.BILLING_WEBHOOK_PORT),
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,
     },

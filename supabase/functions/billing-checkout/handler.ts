@@ -26,7 +26,7 @@ const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration
 
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
-  provider: BillingProvider;
+  provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal">;
   siteUrl: string;
 }
 

@@ -1,0 +1,23 @@
+{
+  "id": "evt_inv_one_off",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1793527200,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.paid",
+  "data": {
+    "object": {
+      "id": "in_3Nx",
+      "object": "invoice",
+      "customer": "cus_1Nx",
+      "subscription": null,
+      "amount_paid": 1000,
+      "currency": "eur"
+    }
+  }
+}

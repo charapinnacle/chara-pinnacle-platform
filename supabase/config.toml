@@ -433,6 +433,14 @@ verify_jwt = true
 [functions.billing-checkout]
 verify_jwt = true
 
+# The provider cannot send a JWT; the signature of the delivery is the authentication.
+[functions.billing-webhook]
+verify_jwt = false
+
+# Called by the weekly job with the project's public key; the shared secret in x-edge-secret is the authentication.
+[functions.billing-reconcile]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
