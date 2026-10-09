@@ -1,6 +1,6 @@
 # Runbook: subscription states and the lapse
 
-FR-G4, design point D71 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 10.1 and 10.4. The state of a subscription is changed by the payment provider's events only (`billing_apply_event`, see `webhook-processing.md`); no timer, no staff function and no API role changes it.
+FR-G4, design point D72 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 10.1 and 10.4. The state of a subscription is changed by the payment provider's events only (`billing_apply_event`, see `webhook-processing.md`); no timer, no staff function and no API role changes it.
 
 ## 1. States
 

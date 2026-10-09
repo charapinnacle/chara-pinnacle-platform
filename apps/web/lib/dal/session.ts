@@ -122,7 +122,7 @@ type OrganizationAccess = {
 type OrgRoleOptions = {
   // Vacancy pages are not gated by two-step verification (FR-A4 AC3).
   mfa?: boolean;
-  // Vacancy pages answer a user who is no member as if the page did not exist (FR-C1).
+  // Vacancy (FR-C1) and billing (FR-G6) pages answer a user who is no member as if the page did not exist.
   hideFromOutsiders?: boolean;
 };
 

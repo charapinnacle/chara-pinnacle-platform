@@ -55,7 +55,7 @@ describe("grace period (FR-E5 AC7)", () => {
 
 describe("grace period of the overdue check (FR-G4 AC4)", () => {
   it("is waited out for one more day by the daily check, so the two literals cannot drift apart", () => {
-    const sql = readFileSync(new URL("../../../../supabase/migrations/20261104100000_subscription_states.sql", import.meta.url), "utf8");
+    const sql = readFileSync(new URL("../../../../supabase/migrations/20261104130000_subscription_states.sql", import.meta.url), "utf8");
     const days = Number(/past_due_since < p_now - interval '(\d+) days'/.exec(sql)?.[1]);
     const since = new Date(now.getTime());
     expect(days).toBe((graceEnd(since).getTime() - since.getTime()) / DAY + 1);

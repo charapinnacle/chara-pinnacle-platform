@@ -23,9 +23,13 @@ const REASONS = new Set([
   "no_customer",
 ]);
 const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration_number"]);
+// FR-G6: the database refuses a worker account with this detail. The answer to the caller is the generic one (it is not
+// in REASONS); the attempt is recorded so that the refusals can be counted.
+const WORKER_ACCOUNT = "worker_account";
 
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
+  serviceClient: SupabaseClient;
   provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal">;
   siteUrl: string;
 }
@@ -47,19 +51,21 @@ interface Portal {
 }
 
 // The platform has verified the signature (verify_jwt); this only turns away, before any call, a token that cannot be
-// a signed-in person's: the publishable key, an anonymous token, an expired one. What the person may do is the
-// database's to say.
-function isSignedIn(authorization: string): boolean {
+// a signed-in person's: the publishable key, an anonymous token, an expired one, and returns who the person is. What
+// the person may do is the database's to say.
+function signedInUser(authorization: string): string | null {
   const payload = BEARER.exec(authorization)?.[2];
   if (!payload) {
-    return false;
+    return null;
   }
   try {
     const claims: unknown = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
     return isObject(claims) && claims.role === "authenticated" && typeof claims.sub === "string" &&
-      typeof claims.exp === "number" && claims.exp * 1000 > Date.now();
+        typeof claims.exp === "number" && claims.exp * 1000 > Date.now()
+      ? claims.sub
+      : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -112,7 +118,9 @@ function parse(body: unknown): Checkout | Portal | null {
   };
 }
 
-function refusal(error: { code?: string; message?: string; details?: string | null }): Response {
+type DatabaseError = { code?: string; message?: string; details?: string | null };
+
+function refusal(error: DatabaseError): Response {
   const { code = "", message = "", details = null } = error;
   // The publishable key as a bearer, a role without the grant, a user id missing from the token, an expired token.
   if (message === "CHARA_UNAUTHENTICATED" || message.startsWith("permission denied") || code.startsWith("PGRST30")) {
@@ -130,11 +138,30 @@ function refusal(error: { code?: string; message?: string; details?: string | nu
 
 type Row = Record<string, string | number | null>;
 
+// The database rolls the refused call back, so nothing else records it. The database bounds the records per person and
+// window; the answer does not depend on the record: a failed write is logged and the refusal stands.
+async function answer(error: DatabaseError, userId: string, deps: BillingCheckoutDeps): Promise<Response> {
+  if (error.message === "CHARA_FORBIDDEN" && error.details === WORKER_ACCOUNT) {
+    const { error: auditError } = await deps.serviceClient.rpc("billing_record_worker_attempt", { p_user: userId });
+    if (auditError) {
+      console.error("billing-checkout could not record a worker attempt", {
+        code: (auditError.code ?? "").slice(0, 16),
+      });
+    }
+  }
+  return refusal(error);
+}
+
 function firstRow(data: unknown): Row | null {
   return Array.isArray(data) && isObject(data[0]) ? (data[0] as Row) : null;
 }
 
-async function startCheckout(client: SupabaseClient, request: Checkout, deps: BillingCheckoutDeps): Promise<Response> {
+async function startCheckout(
+  client: SupabaseClient,
+  userId: string,
+  request: Checkout,
+  deps: BillingCheckoutDeps,
+): Promise<Response> {
   const { data, error } = await client.rpc("billing_checkout_start", {
     p_org: request.orgId,
     p_plan_code: request.planCode,
@@ -147,7 +174,7 @@ async function startCheckout(client: SupabaseClient, request: Checkout, deps: Bi
   });
   const row = firstRow(data);
   if (error || !row) {
-    return error ? refusal(error) : json(502, { error: "unavailable" });
+    return error ? answer(error, userId, deps) : json(502, { error: "unavailable" });
   }
   const trialDays = row.trial_days as number;
   if (request.disclosedTrialDays !== null && request.disclosedTrialDays !== trialDays) {
@@ -166,11 +193,16 @@ async function startCheckout(client: SupabaseClient, request: Checkout, deps: Bi
   return json(200, { url });
 }
 
-async function startPortal(client: SupabaseClient, request: Portal, deps: BillingCheckoutDeps): Promise<Response> {
+async function startPortal(
+  client: SupabaseClient,
+  userId: string,
+  request: Portal,
+  deps: BillingCheckoutDeps,
+): Promise<Response> {
   const { data, error } = await client.rpc("billing_portal_start", { p_org: request.orgId });
   const row = firstRow(data);
   if (error || !row) {
-    return error ? refusal(error) : json(502, { error: "unavailable" });
+    return error ? answer(error, userId, deps) : json(502, { error: "unavailable" });
   }
   const { url } = await deps.provider.createPortal({
     customerRef: String(row.customer_ref),
@@ -188,7 +220,8 @@ export async function handleBillingCheckout(req: Request, deps: BillingCheckoutD
     return json(405, { error: "method_not_allowed" });
   }
   const authorization = req.headers.get("authorization") ?? "";
-  if (!isSignedIn(authorization)) {
+  const userId = signedInUser(authorization);
+  if (!userId) {
     return json(401, { error: "unauthorized" });
   }
   const request = parse(await req.json().catch(() => null));
@@ -199,8 +232,8 @@ export async function handleBillingCheckout(req: Request, deps: BillingCheckoutD
   const client = deps.userClient(authorization);
   try {
     return request.action === "portal"
-      ? await startPortal(client, request, deps)
-      : await startCheckout(client, request, deps);
+      ? await startPortal(client, userId, request, deps)
+      : await startCheckout(client, userId, request, deps);
   } catch (e) {
     console.error("billing-checkout provider failed", { code: e instanceof BillingProviderError ? e.code : "unknown" });
     return json(502, { error: "unavailable" });

@@ -164,7 +164,7 @@ select set_config('t.written', pg_temp.written(), true) as base \gset
 select is(pg_temp.checkout(:'mem', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2), 'P0001|CHARA_FORBIDDEN|', 'AC5: a member is refused');
 select is(pg_temp.checkout(:'own2', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2), 'P0001|CHARA_FORBIDDEN|', 'AC5: the owner of another organisation is refused');
 select is(pg_temp.checkout(:'plat', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2), 'P0001|CHARA_FORBIDDEN|', 'AC5: a Platform Administrator who is no member is refused');
-select is(pg_temp.checkout(:'wkr', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2), 'P0001|CHARA_FORBIDDEN|', 'a candidate is refused');
+select is(pg_temp.checkout(:'wkr', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2), 'P0001|CHARA_FORBIDDEN|worker_account', 'a candidate is refused with the worker detail (FR-G6)');
 select is(pg_temp.checkout(:'own1', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2, 'aal1'), 'P0001|CHARA_FORBIDDEN|aal2_required', 'AC5: an owner at aal1 is refused and told to confirm the second step');
 select is(pg_temp.checkout(:'adm', :'p', 'employer_starter', 'DE', 'DE123456789', null, 2, 'aal1'), 'P0001|CHARA_FORBIDDEN|aal2_required', 'AC5: an admin at aal1 is refused');
 select is(
