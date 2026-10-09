@@ -64,7 +64,7 @@ test.describe("the public vacancy page when a vacancy is not available", () => {
 
     await page.goto(publicUrl(ids[0]));
     await expect(page.getByRole("heading", { name: UNAVAILABLE })).toBeVisible();
-    await page.getByRole("link", { name: "Find jobs" }).click();
+    await page.getByRole("main").getByRole("link", { name: "Find jobs" }).click();
     await expect(page).toHaveURL("/en/jobs");
     await expectNoAxeViolations(page);
   });
