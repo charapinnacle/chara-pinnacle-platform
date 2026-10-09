@@ -11,7 +11,7 @@ FR-H1. The SOP (Public Website Publication, quarterly review, owner Marketing / 
 | Find Jobs, Vacancy | `/en/jobs`, `/en/jobs/<id>` | the open and visible vacancies (FR-C3, FR-C4) |
 | Ten legal pages | `/en/legal/<slug>` | the published version in `public.legal_documents`; a page exists exactly when a published version of its lower-case slug exists (FR-H3 adds publishing) |
 
-The header links and the footer links are in `apps/web/lib/public/navigation.ts`. Every route renders per request (ADR-0004), so a change of a setting or of a legal text is on the page at the next request, without a release. The texts in the code are drafts until CHARA approves them (section 4); the Pricing page carries no plan data until FR-H2.
+The header links and the footer links are in `apps/web/lib/public/navigation.ts`. Every route renders per request (ADR-0004), so a change of a setting or of a legal text is on the page at the next request, without a release. The texts in the code are drafts until CHARA approves them (section 4); the Pricing page reads its plans from the database (FR-H2, `docs/runbooks/pricing.md`).
 
 ## 2. Settings: legal entity and contacts
 

@@ -13,6 +13,7 @@ import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { createOrganization } from "@/lib/actions/organizations";
+import { oneTrialRule } from "@/lib/billing/presentation";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import { mfaPath } from "@/lib/routes";
@@ -144,7 +145,7 @@ export function OrganizationForm({ lang, countries, industries }: OrganizationFo
         name="identifier"
         id={ids.identifier}
         label="Company registration number or VAT number (optional until you start your trial)"
-        description="A free trial is granted once per legal entity."
+        description={oneTrialRule}
       />
       <SelectField
         control={control}
