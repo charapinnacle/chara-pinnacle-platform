@@ -1,4 +1,5 @@
 import { literal, query } from "./support/db";
+import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { logIn } from "./support/login-page";
 import { extractLinks, messageCount, waitForMessage } from "./support/mailpit";
@@ -71,7 +72,9 @@ test.describe("FR-I1: the invitation email", () => {
     const email = `again-${team.slug}@example.test`;
     await signInAtAal2(page, team.owner, team.ownerSecret, membersPath(team.slug));
     for (let invitation = 0; invitation < 2; invitation++) {
-      await page.getByRole("button", { name: "Invite member" }).click();
+      const trigger = page.getByRole("button", { name: "Invite member" });
+      await waitForHydration(trigger);
+      await trigger.click();
       const form = page.getByRole("dialog", { name: "Invite a team member" });
       await form.getByLabel("Email address").fill(email);
       await form.getByRole("button", { name: "Create invitation" }).click();
