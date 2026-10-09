@@ -98,9 +98,11 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
             billingHref={organization.role === "member" ? null : billingPath(lang, slug)}
             otherwise={blockedText}
           />
-          <div>
-            <ReadOnlyButton className="w-full sm:w-auto">Change stage</ReadOnlyButton>
-          </div>
+          {targets.length > 0 ? (
+            <div>
+              <ReadOnlyButton className="w-full sm:w-auto">Change stage</ReadOnlyButton>
+            </div>
+          ) : null}
         </>
       ) : targets.length > 0 ? (
         <div>

@@ -26,7 +26,7 @@ export const moveButtonId = (id: string) => `move-${id}`;
 
 // The Move button is the keyboard and screen reader way to do what dragging does: Enter opens the menu of the stages the
 // card may go to, the arrow keys choose one, Enter applies it and Escape closes it. A final card has nothing to move to,
-// so it has no button and cannot be dragged; a frozen board (a lapsed organisation) shows the button aria-disabled, in the tab order, with the reason it points to.
+// so it has no button and cannot be dragged; a frozen board (a lapsed organisation) keeps the button aria-disabled, not disabled, so the reason is announced.
 export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onDragEnd }: BoardCardProps) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);

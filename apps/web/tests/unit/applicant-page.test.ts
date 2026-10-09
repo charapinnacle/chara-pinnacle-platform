@@ -212,6 +212,14 @@ describe("the applicant page of FR-D5", () => {
     expect(html).not.toContain("Choose a plan");
   });
 
+  it("shows no stage control for a final application of a lapsed organization", async () => {
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "hired", stageChangeBlocked: "read_only_free_plan" });
+    endedMock.mockResolvedValue(true);
+    const html = renderToStaticMarkup(await ApplicantPage(props()));
+    expect(html).toContain("Your subscription has ended");
+    expect(html).not.toContain("Change stage");
+  });
+
   it("links to older notes from the last note of the page, and to the newest notes from an older page", async () => {
     const page = { notes: [{ id: 41, authorName: null, body: "Note 41", createdAt: "2026-10-04T09:00:00Z" }], hasMore: true };
     listNotesMock.mockResolvedValue(page);

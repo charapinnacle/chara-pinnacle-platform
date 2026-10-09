@@ -55,9 +55,15 @@ test.describe("subscription states: what the organisation and its people see (FR
     const { context: adminContext, page: adminPage } = await newVisitor(browser);
     await signInAtAal2(adminPage, admin.user, admin.secret, billingPath(team.slug));
     await expect(warning(adminPage)).toContainText(expected);
-    await expect(warning(adminPage).getByRole("button", { name: "Update payment method" })).toBeVisible();
     await adminPage.goto(dashboardUrl(team.slug));
     await expect(warning(adminPage)).toContainText(expected);
+    const adminHosted = await stubHostedPages(adminPage);
+    const adminButton = warning(adminPage).getByRole("button", { name: "Update payment method" });
+    await waitForHydration(adminButton);
+    await adminButton.click();
+    await expect(adminPage).toHaveURL(new RegExp(`^${HOSTED_ORIGIN}/portal/cus_due`));
+    expect(adminHosted.visits).toHaveLength(1);
+    expect(teamAudit(team, "billing.portal_opened").map((row) => row.actor_id)).toEqual([team.owner.id, admin.user.id]);
     await adminContext.close();
 
     const { context: memberContext, page: memberView } = await memberPage(browser, team);
@@ -89,6 +95,8 @@ test.describe("subscription states: what the organisation and its people see (FR
 
   test("FR-G4 AC11: after the cancellation the vacancies are paused, the pages say the subscription has ended, the controls that change applicants are off with the reason, and the candidate can still withdraw", async ({ page, browser }) => {
     const team = await newTeam(uniqueName("Lapse Bau"));
+    const admin = await addMember(team, "admin");
+    if (!admin.secret) throw new Error("The admin has no factor");
     const candidate = await newApplicant();
     const job = seedJob(team, { title: "Lapsing welder", status: "open" });
     const applicationId = seedNamedApplication(candidate, job, team, "applied");
@@ -141,6 +149,11 @@ test.describe("subscription states: what the organisation and its people see (FR
     await expect(memberView.getByRole("status").filter({ hasText: "Your subscription has ended" })).toContainText(REASON);
     await expect(memberView.getByRole("link", { name: "Choose a plan" })).toHaveCount(0);
     await memberContext.close();
+
+    const { context: adminContext, page: adminPage } = await newVisitor(browser);
+    await signInAtAal2(adminPage, admin.user, admin.secret, `/en/org/${team.slug}/applicants`);
+    await expect(adminPage.getByRole("status").filter({ hasText: "Your subscription has ended" }).getByRole("link", { name: "Choose a plan" })).toHaveAttribute("href", billingPath(team.slug));
+    await adminContext.close();
 
     const candidateContext = await browser.newContext();
     await signInBrowser(candidateContext, candidate);
