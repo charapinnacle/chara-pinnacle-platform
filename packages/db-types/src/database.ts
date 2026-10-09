@@ -152,13 +152,13 @@ isOneToOne: false
                   ]
                 },"jobs": {
                   Row: {
-                    "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry_code": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id": string | null,"published_at": string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string | null,"salary_max": number | null,"salary_min": number | null,"salary_period": Database["public"]['Enums']["salary_period"] | null,"search_vector": unknown,"status": Database["public"]['Enums']["job_status"],"status_changed_at": string,"title": string,"visa_support": boolean
+                    "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry_code": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id": string | null,"published_at": string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string | null,"salary_max": number | null,"salary_min": number | null,"salary_period": Database["public"]['Enums']["salary_period"] | null,"search_vector": unknown,"status": Database["public"]['Enums']["job_status"],"status_changed_at": string,"title": string,"updated_at": string,"visa_support": boolean
                   }
                   Insert: {
-                    "accommodation"?: boolean,"city": string,"country_code": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code": string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title": string,"visa_support"?: boolean
+                    "accommodation"?: boolean,"city": string,"country_code": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code": string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title": string,"updated_at"?: string,"visa_support"?: boolean
                   }
                   Update: {
-                    "accommodation"?: boolean,"city"?: string,"country_code"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description"?: string,"employment_type"?: Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code"?: string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id"?: string,"organization_id"?: string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference"?: Database["public"]['Enums']["recruitment_preference"],"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title"?: string,"visa_support"?: boolean
+                    "accommodation"?: boolean,"city"?: string,"country_code"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description"?: string,"employment_type"?: Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code"?: string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id"?: string,"organization_id"?: string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference"?: Database["public"]['Enums']["recruitment_preference"],"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visa_support"?: boolean
                   }
                   Relationships: [
                     {
@@ -1041,6 +1041,9 @@ isOneToOne: false
               "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
             }[]
                            },
+"list_sitemap_jobs":
+{ Args: { "p_after_created"?: string,"p_after_id"?: string,"p_limit"?: number }; Returns: Json
+                           },
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
                            },
@@ -1073,6 +1076,9 @@ isOneToOne: false
                            },
 "publish_legal_document":
 { Args: { "p_body": string,"p_change_summary": string,"p_expected_version": number,"p_slug": string,"p_title": string }; Returns: number
+                           },
+"published_legal_slugs":
+{ Args: { "p_slugs": (string)[] }; Returns: string[]
                            },
 "rate_limit_attempt":
 { Args: { "p_action": string,"p_key": string }; Returns: {
