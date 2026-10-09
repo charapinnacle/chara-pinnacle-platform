@@ -1,6 +1,6 @@
 # Runbook: payment webhook processing
 
-FR-G3, design point D70 (OPEN_QUESTIONS.md), ARCHITECTURE.md section 10.3. The payment provider sends its events to the Edge Function `billing-webhook`. Each event is verified, stored once, and applied to the subscription records; an event that cannot be applied yet is retried; a weekly function compares the provider's subscriptions with the records. The checkout that starts a subscription is in `checkout.md`; the lapse of a cancelled organisation (FR-G4) is a later unit.
+FR-G3, design point D70 (OPEN_QUESTIONS.md), ARCHITECTURE.md section 10.3. The payment provider sends its events to the Edge Function `billing-webhook`. Each event is verified, stored once, and applied to the subscription records; an event that cannot be applied yet is retried; a weekly function compares the provider's subscriptions with the records. The checkout that starts a subscription is in `checkout.md`; the states and the lapse of a cancelled organisation (FR-G4) are in `subscription-states.md`.
 
 ## 1. The path of an event
 
@@ -14,7 +14,7 @@ FR-G3, design point D70 (OPEN_QUESTIONS.md), ARCHITECTURE.md section 10.3. The p
 |---|---|
 | `checkout.session.completed` | Sets `billing.customers.customer_ref` and the customer and subscription references of the live subscription. |
 | `customer.subscription.created`, `.updated` | Upserts plan, status, current period, trial end, cancellation date. The first event with a trial end writes the trial grants of the organisation's identifiers; an identifier another organisation already holds raises the alert `billing_trial_repeated`. |
-| `customer.subscription.deleted` | Status `canceled`; the organisation is on `free_employer` (`private.org_plan_code`). Pausing its vacancies (FR-G4) is added by U47. |
+| `customer.subscription.deleted` | Status `canceled`; the organisation is on `free_employer` (`private.org_plan_code`) and its Open vacancies are paused in the same transaction (FR-G4, `subscription-states.md`). |
 | `invoice.paid` | Writes the order when the amount is above zero, clears `past_due_since`, sets Active when the invoice was paid with an amount (an invoice carries no subscription status; the zero-amount invoice of a trial leaves Trialing). |
 | `invoice.payment_failed` | Past due; `past_due_since` is set once per dunning period, from the time of the failure, and only then is the `payment_failed` email queued for the owner. |
 | `customer.subscription.trial_will_end` | One `trial_ending` email for the owner while the subscription is Trialing. |

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireUserMock = vi.hoisted(() => vi.fn());
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const getJobMock = vi.hoisted(() => vi.fn());
+const endedMock = vi.hoisted(() => vi.fn());
 const getAccessMock = vi.hoisted(() => vi.fn());
 const listApplicantsMock = vi.hoisted(() => vi.fn());
 const listBoardMock = vi.hoisted(() => vi.fn());
@@ -21,7 +22,7 @@ const notFoundMock = vi.hoisted(() =>
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock, useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
-vi.mock("@/lib/dal/hiring", () => ({ getJob: getJobMock }));
+vi.mock("@/lib/dal/hiring", () => ({ getJob: getJobMock, isSubscriptionEnded: endedMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
 vi.mock("@/lib/dal/applicant-list", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/applicant-list")>()),
@@ -55,6 +56,7 @@ beforeEach(() => {
   requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization });
   getAccessMock.mockResolvedValue(access);
   getJobMock.mockResolvedValue({ id: job, title: "Welder" });
+  endedMock.mockResolvedValue(false);
   listApplicantsMock.mockResolvedValue({ rows: [row("a1", "Ana Silva"), row("a2", "Ben Okoro", "shortlisted")], total: 2, page: 1 });
 });
 
@@ -285,6 +287,39 @@ describe("the bulk actions of the applicants page", () => {
     expect(html).not.toContain("TOOLBAR");
     expect(html).not.toContain('type="checkbox"');
     expect(html).not.toContain(">Select<");
+  });
+
+  it("shows a lapsed organization why the changes are off, with a disabled bulk control that points to the reason", async () => {
+    getAccessMock.mockResolvedValue({ ...access, stageChangeBlocked: "read_only_free_plan" });
+    endedMock.mockResolvedValue(true);
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, role: "owner" } });
+    const html = await render({ job });
+    expect(endedMock).toHaveBeenCalledWith("org-1");
+    expect(html).toContain('id="read-only-reason"');
+    expect(html).toContain("Your subscription has ended. Your past applicants stay readable, and changes to them need an active plan.");
+    expect(html).toContain('href="/en/org/acme-bau/billing"');
+    expect(html).toContain("Choose a plan");
+    expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*aria-describedby="read-only-reason"[^>]*>Change stage of selected applicants/);
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>Change stage of selected applicants/);
+  });
+
+  it("gives a member the same notice without the link to choose a plan", async () => {
+    getAccessMock.mockResolvedValue({ ...access, stageChangeBlocked: "read_only_free_plan" });
+    endedMock.mockResolvedValue(true);
+    const html = await render({ job });
+    expect(html).toContain("Your subscription has ended");
+    expect(html).not.toContain("Choose a plan");
+  });
+
+  it("keeps the text of the plan for an organization that never subscribed and reads no subscription state for an active one", async () => {
+    getAccessMock.mockResolvedValue({ ...access, stageChangeBlocked: "read_only_free_plan" });
+    const html = await render({ job });
+    expect(html).toContain("Your organization has no active paid plan. Applicant changes and the CSV export are disabled until a plan is chosen.");
+    expect(html).not.toContain("Your subscription has ended");
+    getAccessMock.mockResolvedValue(access);
+    endedMock.mockClear();
+    await render({ job });
+    expect(endedMock).not.toHaveBeenCalled();
   });
 
   it("offers neither boxes nor toolbar when there is no application", async () => {

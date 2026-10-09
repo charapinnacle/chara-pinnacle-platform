@@ -231,6 +231,19 @@ export async function getJobLimit(organizationId: string): Promise<LimitPrompt |
   return { planName: data.plan_name, limit: data.active_jobs_limit, used: data.open_jobs };
 }
 
+// Whether the organization has had a subscription and every one has ended (FR-G4): its pages say so, and why the controls
+// that change applicants are off. The view shows an organization to its members only.
+export async function isSubscriptionEnded(organizationId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("v_org_limits")
+    .select("subscription_ended")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error) throw new Error("The subscription state could not be loaded", { cause: error });
+  return data?.subscription_ended === true;
+}
+
 // The public search. The function applies the public predicate itself, so it answers the same for a visitor, a candidate
 // and a member of a company; the cursor of the last row of a page, when there is a next page, starts the next one.
 export async function searchJobs(

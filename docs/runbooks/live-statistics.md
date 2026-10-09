@@ -1,6 +1,6 @@
 # Runbook: live statistics
 
-FR-H4, design point D72 (OPEN_QUESTIONS.md). The SOP is "Public Statistics E2E SOP" (owner Platform, reviewed twice a year). It names one KPI, the refresh success rate, and two controls, the threshold and real data only. Nothing is stored about a visitor.
+FR-H4, design point D73 (OPEN_QUESTIONS.md). The SOP is "Public Statistics E2E SOP" (owner Platform, reviewed twice a year). It names one KPI, the refresh success rate, and two controls, the threshold and real data only. Nothing is stored about a visitor.
 
 ## 1. What is stored and how it reaches the home page
 
@@ -28,7 +28,7 @@ A failed run keeps the previous snapshot: the page keeps showing the last values
 1. The success rate of the last six months from section 2 (target 100 %; investigate every failed run in `return_message`).
 2. The counted sets still match the lifecycle: a new vacancy status, moderation state, account status or organisation type must be added to the definition of the view, with a test in `092_platform_counts_snapshot.test.sql`.
 3. `k` (5) and the rounding (10) are still what CHARA wants to publish. A later phase adds the recruitment, staffing and requirement counts of ARCHITECTURE section 9.4 as new columns.
-4. The meaning of "countries" is the open question of D72; confirm it with CHARA.
+4. The meaning of "countries" is the open question of D73; confirm it with CHARA.
 
 ## 4. Manual check (FR-H4 AC11)
 

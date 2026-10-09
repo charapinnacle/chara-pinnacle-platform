@@ -30,7 +30,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("@/lib/jobs/search-log", () => ({ logSearch: vi.fn() }));
 
-const { getEmployer, getJob, getJobLimit, getPublicJob, JOBS_PAGE_SIZE, listJobs, searchJobs } = await import(
+const { getEmployer, getJob, getJobLimit, getPublicJob, isSubscriptionEnded, JOBS_PAGE_SIZE, listJobs, searchJobs } = await import(
   "@/lib/dal/hiring"
 );
 const { logSearch } = await import("@/lib/jobs/search-log");
@@ -284,6 +284,28 @@ describe("getJobLimit", () => {
   it("throws on a failed read, with the cause attached and no text for the caller", async () => {
     result = { data: null, error: { message: "secret detail" } };
     await expect(getJobLimit("org-1")).rejects.toThrow("The vacancy limit could not be loaded");
+  });
+});
+
+describe("isSubscriptionEnded", () => {
+  it("reads the flag of the organization from the member view", async () => {
+    result = { data: { subscription_ended: true }, error: null };
+    await expect(isSubscriptionEnded("org-1")).resolves.toBe(true);
+    expect(calls).toContainEqual(["v_org_limits.select", "subscription_ended"]);
+    expect(calls).toContainEqual(["v_org_limits.eq", "organization_id", "org-1"]);
+  });
+
+  it.each([
+    ["an organization that never subscribed or has a live subscription", { subscription_ended: false }],
+    ["an organization the caller is not a member of", null],
+  ])("is false for %s", async (_, data) => {
+    result = { data, error: null };
+    await expect(isSubscriptionEnded("org-1")).resolves.toBe(false);
+  });
+
+  it("throws on a failed read, with the cause attached and no text for the caller", async () => {
+    result = { data: null, error: { message: "secret detail" } };
+    await expect(isSubscriptionEnded("org-1")).rejects.toThrow("The subscription state could not be loaded");
   });
 });
 

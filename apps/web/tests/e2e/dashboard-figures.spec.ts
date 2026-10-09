@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { formatDate } from "@/lib/i18n/format";
+import { formatDate, formatShortDate } from "@/lib/i18n/format";
 import { expectNoAxeViolations } from "./support/axe";
 import { callAs } from "./support/accounts";
 import {
@@ -169,18 +169,17 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await paidView.context.close();
   });
 
-  test("FR-E5 AC7: a failed payment is a warning above the cards with the end of the grace period, linked for the owner only", async ({ browser, page }) => {
+  test("FR-E5 AC7, FR-G4 AC11: a failed payment is a warning above the cards for the owner, with the end of the grace period and the button of the portal; a member sees the status only", async ({ browser, page }) => {
     const team = await newTeam();
     const since = ago(2 * DAY);
     seedSubscription(team, "employer_starter", "past_due", { pastDueSince: since });
     const graceEnd = new Date(new Date(since).getTime() + 7 * DAY).toISOString();
-    const warning = (target: Page) => target.getByRole("alert").filter({ hasText: "payment" });
+    const warning = (target: Page) => target.getByRole("alert").filter({ hasText: "Payment failed" });
 
     await openDashboardAtAal2(page, team);
-    await expect(warning(page)).toContainText("failed");
-    await expect(warning(page)).toContainText(formatDate(graceEnd));
-    await expect(warning(page)).toContainText("5 days left");
-    await expect(warning(page).getByRole("link")).toHaveAttribute("href", `/en/org/${team.slug}/billing`);
+    await expect(warning(page)).toContainText(`Payment failed on ${formatShortDate(since)}.`);
+    await expect(warning(page)).toContainText(`Update your payment method before ${formatShortDate(graceEnd)} to keep your plan.`);
+    await expect(warning(page).getByRole("button", { name: "Update payment method" })).toBeVisible();
     await expectNoAxeViolations(page);
     const plan = page.getByRole("region", { name: "Plan" });
     await expect(plan).toContainText("Past due");
@@ -191,9 +190,8 @@ test.describe("the employer dashboard: plan and payment status", () => {
 
     const { context, page: memberView } = await memberPage(browser, team);
     await memberView.goto(dashboardUrl(team.slug));
-    await expect(warning(memberView)).toContainText("5 days left");
-    await expect(warning(memberView).getByRole("link")).toHaveCount(0);
     await expect(memberView.getByRole("region", { name: "Plan" })).toContainText("Past due");
+    await expect(warning(memberView)).toHaveCount(0);
     await context.close();
   });
 

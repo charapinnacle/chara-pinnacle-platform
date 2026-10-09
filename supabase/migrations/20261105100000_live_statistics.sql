@@ -1,8 +1,8 @@
--- Live statistics (FR-H4; ARCHITECTURE.md section 9.4; OPEN_QUESTIONS.md D72).
+-- Live statistics (FR-H4; ARCHITECTURE.md section 9.4; OPEN_QUESTIONS.md D73).
 
 insert into private.settings (key, value) values ('stats_min_count', '5');
 
--- countries counts the distinct countries of the counted vacancies (D72). The recruitment, staffing and requirement
+-- countries counts the distinct countries of the counted vacancies (D73). The recruitment, staffing and requirement
 -- counts of ARCHITECTURE.md section 9.4 are later phase.
 create materialized view stats.platform_counts_mv as
 select
