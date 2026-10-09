@@ -1,5 +1,5 @@
 begin;
-select plan(48);
+select plan(50);
 
 \ir organizations_fixture.inc
 \ir billing_events_fixture.inc
@@ -178,6 +178,25 @@ select ok(
   and not has_function_privilege('authenticated', 'public.billing_reconcile_records(text, uuid, integer)', 'execute')
   and not has_function_privilege('anon', 'public.billing_reconcile_report(text, integer, jsonb)', 'execute'),
   'only service_role executes the two reconciliation functions'
+);
+
+-- The KPIs as the runbook states them: events applied within 1 minute (%), and the differences per week.
+insert into billing.provider_events (provider, provider_event_id, kind, payload, signature_valid, provider_created_at, received_at, status, applied_at, error)
+values
+  ('null', 'kpi_fast', 'payment.failed', '{}', true, '2026-01-15T10:00:00Z', '2026-01-15T10:00:00Z', 'applied', '2026-01-15T10:00:10Z', null),
+  ('null', 'kpi_slow', 'payment.failed', '{}', true, '2026-01-15T10:00:00Z', '2026-01-15T10:00:00Z', 'applied', '2026-01-15T10:01:30Z', null),
+  ('null', 'kpi_error', 'payment.failed', '{}', true, '2026-01-15T10:00:00Z', '2026-01-15T10:00:00Z', 'error', null, 'transient'),
+  ('null', 'kpi_waiting', 'payment.failed', '{}', true, '2026-01-15T10:00:00Z', '2026-01-15T10:00:00Z', 'received', null, null),
+  ('null', 'kpi_stale', 'payment.failed', '{}', true, '2026-01-15T10:00:00Z', '2026-01-15T10:00:00Z', 'stale', null, null);
+select is(
+  (select round(100.0 * count(*) filter (where status = 'applied' and applied_at - received_at <= interval '1 minute')
+                / nullif(count(*) filter (where status in ('applied', 'error') or (status = 'received' and received_at < now() - interval '1 minute')), 0), 1)
+   from billing.provider_events where date_trunc('month', received_at)::date = '2026-01-01'),
+  25.0, 'KPI: the share of events applied within a minute counts errors and waiting events, not stale ones'
+);
+select is(
+  (select count(*) from private.security_events where kind = 'billing_reconciliation_difference' and date_trunc('week', created_at)::date = date_trunc('week', now())::date),
+  4::bigint, 'KPI: the differences of the week are read from the alerts'
 );
 
 select * from finish();
