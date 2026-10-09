@@ -80,6 +80,7 @@ export default defineConfig({
         "**/admin-console-staff-database.spec.ts",
         "**/member-invitation-email.spec.ts",
         "**/checkout-disclosure.spec.ts",
+        "**/public-pages-failure.spec.ts",
       ],
     },
     {
@@ -202,6 +203,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/checkout-disclosure.spec.ts",
       dependencies: ["notify-invitation"],
+    },
+    // The accessor of the public settings is withdrawn from the API roles while this spec runs, so it follows every
+    // other project.
+    {
+      name: "public-pages-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/public-pages-failure.spec.ts",
+      dependencies: ["billing-plans"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

@@ -97,7 +97,8 @@ export const getPendingReconsents = cache(
   },
 );
 
-export async function getLegalDocument(slug: string) {
+// Cached because the page and its metadata both read it in one request.
+export const getLegalDocument = cache(async (slug: string) => {
   if (!SLUG_PATTERN.test(slug)) return null;
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -115,4 +116,4 @@ export async function getLegalDocument(slug: string) {
     body: data.body,
     publishedAt: data.published_at,
   };
-}
+});

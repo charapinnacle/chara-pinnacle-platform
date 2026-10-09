@@ -23,7 +23,6 @@ from (values
   ('worker-terms', 'Worker Terms'),
   ('complaints-and-dispute-process', 'Complaints and Dispute Process'),
   ('account-suspension-and-termination-rules', 'Account Suspension and Termination Rules'),
-  ('imprint', 'Imprint'),
   ('sharing-notice', 'Sharing Notice')
 ) as d (slug, title)
 on conflict (slug, version) do nothing;

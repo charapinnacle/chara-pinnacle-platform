@@ -16,7 +16,7 @@ select set_eq(
   $$select slug from public.legal_documents where version = 0$$,
   $$values
     ('account-suspension-and-termination-rules'), ('acceptable-use-policy'), ('age-18-plus'), ('complaints-and-dispute-process'),
-    ('cookie-policy'), ('employer-terms'), ('imprint'), ('platform-rules'), ('privacy-policy'),
+    ('cookie-policy'), ('employer-terms'), ('platform-rules'), ('privacy-policy'),
     ('sharing-notice'), ('subscription-and-billing-terms'), ('terms-of-service'), ('worker-terms')$$,
   'version 0 exists for every Phase 1 legal document and the age attestation'
 );
