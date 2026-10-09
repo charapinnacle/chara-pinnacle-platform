@@ -5,9 +5,11 @@ import { SiteHeader } from "@/components/layout/site-header";
 export function SiteShell({
   children,
   headerActions,
+  footerLinks,
 }: {
   children: React.ReactNode;
   headerActions?: React.ReactNode;
+  footerLinks?: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
@@ -15,7 +17,7 @@ export function SiteShell({
       <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex flex-1 flex-col outline-none">
         {children}
       </main>
-      <SiteFooter />
+      <SiteFooter links={footerLinks} />
     </div>
   );
 }
