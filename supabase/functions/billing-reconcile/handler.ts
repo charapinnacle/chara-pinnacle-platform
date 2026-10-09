@@ -10,6 +10,9 @@ import {
 import { compareSubscriptions, type SubscriptionRecord } from "../_shared/billing/reconcile.ts";
 
 const RECORD_PAGE_SIZE = 1000;
+// The sample of differences sent to be raised as alerts; the total travels with it. A run after an outage can differ in
+// thousands of subscriptions, and it must still be reported.
+const MAX_REPORTED = 100;
 // 50,000 subscriptions at 100 a page: a provider that never ends its list is a fault, not a long list.
 const MAX_PAGES = 500;
 
@@ -61,8 +64,8 @@ async function records(client: SupabaseClient, provider: string): Promise<Subscr
 }
 
 // Weekly (pg_cron through pg_net): the subscriptions the provider holds against the records. The database raises one
-// operations alert per difference and writes one audit row for the run. The null provider has no remote state, so
-// there is nothing to compare.
+// operations alert per difference of a sample and writes one audit row, with the total, for the run. The null provider
+// has no remote state, so there is nothing to compare.
 export async function handleBillingReconcile(req: Request, deps: BillingReconcileDeps): Promise<Response> {
   if (req.method !== "POST") {
     return json(405, { error: "method_not_allowed" });
@@ -82,7 +85,8 @@ export async function handleBillingReconcile(req: Request, deps: BillingReconcil
     const { error } = await deps.client.rpc("billing_reconcile_report", {
       p_provider: deps.provider.name,
       p_checked: held.length,
-      p_differences: differences,
+      p_difference_count: differences.length,
+      p_differences: differences.slice(0, MAX_REPORTED),
     });
     if (error) {
       throw error;

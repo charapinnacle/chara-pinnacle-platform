@@ -115,6 +115,7 @@ Deno.test("FR-G3 AC12: the function reports the four differences in one call and
   assert.deepEqual(report, {
     p_provider: "stripe",
     p_checked: 2,
+    p_difference_count: 2,
     p_differences: [{ kind: "missing_record", subscription_ref: "sub_new" }, {
       kind: "extra_record",
       subscription_ref: "sub_extra",
@@ -133,6 +134,20 @@ Deno.test("FR-G3 AC12: the function reports the four differences in one call and
     [],
   );
   assert.deepEqual(same.alerts, []);
+});
+
+Deno.test("a run with thousands of differences is reported with its total and a sample, not refused", async () => {
+  const stored = Array.from({ length: 250 }, (_, n) => ({
+    id: `00000000-0000-0000-0000-${String(n + 1).padStart(12, "0")}`,
+    ...record(`sub_${n}`, "active"),
+  }));
+  const wrong = Array.from({ length: 250 }, (_, n) => held(`sub_${n}`, "past_due"));
+  const { calls, deps } = setup([wrong], [stored]);
+  const response = await handleBillingReconcile(request(), deps);
+  assert.deepEqual(await response.json(), { status: "compared", checked: 250, differences: 250 });
+  const report = calls.find((call) => call.path.endsWith("/billing_reconcile_report"))?.body as Record<string, unknown>;
+  assert.equal(report.p_difference_count, 250);
+  assert.equal((report.p_differences as unknown[]).length, 100);
 });
 
 Deno.test("the lists are read page by page", async () => {

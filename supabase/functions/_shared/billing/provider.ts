@@ -100,13 +100,17 @@ export interface BillingProvider {
   createPortal(input: { customerRef: string; returnUrl: string }): Promise<{ url: string }>;
   // Checks the signature against the raw body, before anything in the body is read.
   verifyWebhook(req: Request, rawBody: string): Promise<WebhookVerification>;
-  // Zero events for a type CHARA does not use; at most one for the types it does.
+  // Empty for a type CHARA does not use; one event for the types it does.
   normalize(payload: unknown): NormalizedEvent[];
   // The current state of a subscription, as an event created now, for an event that arrived out of order. Null when
   // the provider has nothing to fetch.
   fetchSubscription(providerSubscriptionRef: string, fetchedAt: Date): Promise<NormalizedEvent | null>;
   // One page of the subscriptions that are not canceled, for the weekly comparison.
   listSubscriptions(startingAfter?: string): Promise<{ subscriptions: SubscriptionState[]; next: string | null }>;
+}
+
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export class BillingProviderError extends Error {

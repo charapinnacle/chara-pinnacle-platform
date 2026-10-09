@@ -13,14 +13,11 @@ interface BillingWebhookDeps {
   log: (entry: Record<string, unknown>) => void;
 }
 
+// Every rejection is a log line. The endpoint is public and the audit log is permanent, so the database writes an audit
+// row for it at most once an hour for each provider and reason.
 async function reject(deps: BillingWebhookDeps, reason: string): Promise<void> {
   const provider = deps.provider.name;
-  const { error } = await deps.client.rpc("audit_record_external", {
-    p_action: "billing.webhook_rejected",
-    p_entity_type: "billing_webhook",
-    p_entity_id: provider,
-    p_metadata: { reason, provider },
-  });
+  const { error } = await deps.client.rpc("billing_webhook_rejected", { p_provider: provider, p_reason: reason });
   deps.log({ event: "billing_webhook_rejected", provider, reason, ...(error ? { audit: "failed" } : {}) });
 }
 
@@ -92,14 +89,13 @@ export async function handleBillingWebhook(req: Request, deps: BillingWebhookDep
     return json(401, { error: "unauthorized" });
   }
 
-  const events = deps.provider.normalize(verified.payload);
-  for (const [index, event] of events.entries()) {
-    const eventId = index === 0 ? verified.eventId : `${verified.eventId}#${index}`;
-    const id = await ingest(deps, eventId, event);
+  const [event] = deps.provider.normalize(verified.payload);
+  if (event) {
+    const id = await ingest(deps, verified.eventId, event);
     if (!id) {
       return json(500, { error: "unavailable" });
     }
-    if (await apply(deps, id, eventId) === "stale") {
+    if (await apply(deps, id, verified.eventId) === "stale") {
       await applyCurrentState(deps, event);
     }
   }

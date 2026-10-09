@@ -1,4 +1,4 @@
-import type { NormalizedEvent, SubscriptionState, SubscriptionStatus } from "../provider.ts";
+import { isObject, type NormalizedEvent, type SubscriptionState, type SubscriptionStatus } from "../provider.ts";
 
 // Stripe's event and object shapes, read defensively: the body is signed by Stripe, but its API version is chosen in the
 // account, so a field may sit in the older place (subscription.current_period_end, invoice.subscription) or the newer
@@ -8,17 +8,13 @@ type Obj = Record<string, unknown>;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function isObj(value: unknown): value is Obj {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function str(value: unknown): string | undefined {
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
 // An expandable field is the id, or the object that has it.
 function ref(value: unknown): string | undefined {
-  return str(value) ?? (isObj(value) ? str(value.id) : undefined);
+  return str(value) ?? (isObject(value) ? str(value.id) : undefined);
 }
 
 function num(value: unknown): number | undefined {
@@ -40,7 +36,7 @@ function at(object: unknown, ...path: (string | number)[]): unknown {
     if (Array.isArray(value)) {
       return typeof key === "number" ? value[key] : undefined;
     }
-    return isObj(value) ? value[key] : undefined;
+    return isObject(value) ? value[key] : undefined;
   }, object);
 }
 
@@ -59,7 +55,7 @@ export function subscriptionStatus(status: unknown): SubscriptionStatus | undefi
 
 function firstItem(subscription: Obj): Obj | undefined {
   const item = at(subscription, "items", "data", 0);
-  return isObj(item) ? item : undefined;
+  return isObject(item) ? item : undefined;
 }
 
 export function subscriptionState(subscription: Obj): SubscriptionState | null {
@@ -172,10 +168,10 @@ function invoiceEvent(type: string, invoice: Obj, providerCreatedAt: string): No
 // The seven Stripe events of the subscription lifecycle; anything else (charge.succeeded, customer.updated, ...) is
 // acknowledged by the caller without being stored.
 export function normalizeStripeEvent(payload: unknown): NormalizedEvent[] {
-  const type = isObj(payload) ? str(payload.type) : undefined;
+  const type = isObject(payload) ? str(payload.type) : undefined;
   const object = at(payload, "data", "object");
-  const providerCreatedAt = isObj(payload) ? iso(payload.created) : undefined;
-  if (!type || !providerCreatedAt || !isObj(object)) {
+  const providerCreatedAt = isObject(payload) ? iso(payload.created) : undefined;
+  if (!type || !providerCreatedAt || !isObject(object)) {
     return [];
   }
   let event: NormalizedEvent | null = null;

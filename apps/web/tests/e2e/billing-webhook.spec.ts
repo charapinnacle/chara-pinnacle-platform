@@ -143,17 +143,21 @@ test.describe("payment webhook: the provider's events keep the billing page corr
     expect(teamAudit(team, "billing.event_applied")).toHaveLength(audited);
   });
 
-  test("a forged delivery is refused with 401, stored nowhere and logged once without its content", async () => {
+  test("a forged delivery is refused with 401, stored nowhere, and a second one adds no audit row within the hour", async () => {
     const team = await newTeam(uniqueName("Forged Hook"));
     const forged = { kind: "subscription.activated", orgId: team.id, planCode: "employer_professional", status: "active", providerSubscriptionRef: "sub_forged" };
-    const before = rejectedDeliveries();
     const response = await deliverBillingEvent(forged, { id: "evt_forged_" + team.id, secret: "not-the-secret" });
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: "unauthorized" });
 
     expect(subscriptionRows(team)).toEqual([]);
     expect(storedEvents(team)).toEqual([]);
-    expect(rejectedDeliveries() - before).toBe(1);
+    const audited = rejectedDeliveries();
+    expect(audited).toBeGreaterThanOrEqual(1);
+
+    const again = await deliverBillingEvent(forged, { id: "evt_forged_again_" + team.id, secret: "not-the-secret" });
+    expect(again.status).toBe(401);
+    expect(rejectedDeliveries()).toBe(audited);
   });
 
   test("an event that arrives after newer state changes nothing and is marked stale", async () => {

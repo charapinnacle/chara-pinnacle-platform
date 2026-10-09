@@ -32,7 +32,7 @@ function setup(routes: Record<string, Route | Response>, fetchFn: typeof fetch =
   const { calls, client } = harness({
     [rpcPath("billing_ingest_event")]: reply(200, EVENT_ID),
     [rpcPath("billing_apply_event")]: reply(200, "applied"),
-    [rpcPath("audit_record_external")]: reply(200, true),
+    [rpcPath("billing_webhook_rejected")]: reply(200, true),
     ...routes,
   });
   const deps = {
@@ -108,14 +108,9 @@ Deno.test("FR-G3 AC1: every request that does not verify is answered with 401, s
     assert.deepEqual(await response.json(), { error: "unauthorized" }, `${name}: the answer gives no detail`);
     assert.equal(names(calls).includes("billing_ingest_event"), false, `${name}: nothing is stored`);
     assert.equal(names(calls).includes("billing_apply_event"), false, `${name}: nothing is applied`);
-    const audits = calls.filter((call) => call.path.endsWith("/audit_record_external"));
-    assert.equal(audits.length, 1, `${name}: one audit row`);
-    assert.deepEqual(audits[0].body, {
-      p_action: "billing.webhook_rejected",
-      p_entity_type: "billing_webhook",
-      p_entity_id: "stripe",
-      p_metadata: { reason, provider: "stripe" },
-    }, name);
+    const audits = calls.filter((call) => call.path.endsWith("/billing_webhook_rejected"));
+    assert.equal(audits.length, 1, `${name}: one audit call`);
+    assert.deepEqual(audits[0].body, { p_provider: "stripe", p_reason: reason }, name);
     assert.doesNotMatch(
       JSON.stringify(audits[0].body),
       /evt_|sub_1Nx|cus_|trialing/,
@@ -161,7 +156,7 @@ Deno.test("FR-G3 AC1: with the null provider a valid x-chara-signature is accept
     const refused = await run(headers);
     assert.equal(refused.status, 401);
     assert.equal(names(refused.calls).includes("billing_ingest_event"), false);
-    assert.equal(names(refused.calls).filter((name) => name === "audit_record_external").length, 1);
+    assert.equal(names(refused.calls).filter((name) => name === "billing_webhook_rejected").length, 1);
   }
 });
 
@@ -290,8 +285,8 @@ Deno.test("FR-G3 AC6: the database layer makes no outbound call: only the three 
   await handleBillingWebhook(await stripeDelivery(body), deps);
   await handleBillingWebhook(await stripeDelivery(body, ""), deps);
   assert.deepEqual([...new Set(names(calls))].sort(), [
-    "audit_record_external",
     "billing_apply_event",
     "billing_ingest_event",
+    "billing_webhook_rejected",
   ]);
 });

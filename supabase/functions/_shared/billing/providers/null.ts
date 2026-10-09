@@ -2,6 +2,7 @@ import {
   assertAppOrigin,
   type BillingProvider,
   EVENT_KINDS,
+  isObject,
   type NormalizedEvent,
   type WebhookVerification,
 } from "../provider.ts";
@@ -10,10 +11,6 @@ import { hmacMatches } from "../signature.ts";
 // For the local stack and CI: no account and no network. The hosted pages are addresses on a host that cannot exist
 // (RFC 6761), so a test can intercept the redirect and nothing leaves the machine.
 const HOSTED = "https://null-provider.invalid";
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 // The body of a delivery is {"id": <event id>, "event": <an event already in the normalised form>}, signed with
 // BILLING_WEBHOOK_SECRET in the header x-chara-signature (hex HMAC-SHA256 of the raw body).

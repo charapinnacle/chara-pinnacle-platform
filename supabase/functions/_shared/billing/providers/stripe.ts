@@ -3,6 +3,7 @@ import {
   type BillingProvider,
   BillingProviderError,
   type CheckoutInput,
+  isObject,
   type SubscriptionState,
   type WebhookVerification,
 } from "../provider.ts";
@@ -47,10 +48,6 @@ function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchP
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // Stripe-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body">,... (several v1 while a secret is rotated).
