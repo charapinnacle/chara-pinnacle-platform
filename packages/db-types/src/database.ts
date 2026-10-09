@@ -806,6 +806,11 @@ isOneToOne: false
               "count": number,"status": Database["public"]['Enums']["application_status"]
             }[]
                            },
+"admin_get_job":
+{ Args: { "p_job": string }; Returns: {
+              "city": string,"country_code": string,"created_at": string,"description": string,"history": Json,"id": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"organization_id": string,"organization_name": string,"status": Database["public"]['Enums']["job_status"],"title": string
+            }[]
+                           },
 "admin_get_organization":
 { Args: { "p_org": string }; Returns: {
               "display_name": string,"id": string,"legal_name": string,"members": Json,"slug": string,"status": Database["public"]['Enums']["organization_status"],"vacancies": Json
@@ -829,6 +834,11 @@ isOneToOne: false
 "admin_search_audit":
 { Args: { "p_action"?: string,"p_actor"?: string,"p_after_at"?: string,"p_after_id"?: number,"p_entity_id"?: string,"p_entity_type"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: {
               "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"ip": unknown,"metadata": Json
+            }[]
+                           },
+"admin_search_jobs":
+{ Args: { "p_after_at"?: string,"p_after_id"?: string,"p_limit"?: number,"p_term": string }; Returns: {
+              "created_at": string,"id": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"organization_name": string,"status": Database["public"]['Enums']["job_status"],"title": string
             }[]
                            },
 "admin_search_organizations":
@@ -1003,6 +1013,9 @@ isOneToOne: false
                            },
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
+                           },
+"moderate_job":
+{ Args: { "p_action": string,"p_job": string,"p_reason": string }; Returns: undefined
                            },
 "my_applications":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_stage"?: Database["public"]['Enums']["application_status"] }; Returns: {
