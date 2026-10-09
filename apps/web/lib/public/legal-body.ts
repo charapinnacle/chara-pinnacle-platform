@@ -1,4 +1,4 @@
-export type LegalBlock = { kind: "heading" | "paragraph"; text: string };
+type LegalBlock = { kind: "heading" | "paragraph"; text: string };
 
 const HEADING = /^## +(\S.*)$/;
 

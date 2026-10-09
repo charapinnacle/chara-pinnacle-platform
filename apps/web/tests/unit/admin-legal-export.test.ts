@@ -73,6 +73,11 @@ describe("the export of the legal documents", () => {
     expect(JSON.parse(await (await call()).text())).toEqual([]);
   });
 
+  it("fails before the response when the first page cannot be read, so no cut file is sent", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { code: "57014", message: "timeout" } });
+    await expect(call()).rejects.toThrow("could not be loaded");
+  });
+
   it("reads nothing when the guard refuses", async () => {
     requireRoleMock.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
     await expect(call()).rejects.toThrow("NEXT_NOT_FOUND");

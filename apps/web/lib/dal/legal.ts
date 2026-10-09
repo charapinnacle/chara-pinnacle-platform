@@ -109,10 +109,11 @@ const currentVersion = z.object({
 
 const CHANGE_LOG_LIMIT = 100;
 
-export type ChangeLogEntry = { version: number; publishedAt: string; changeSummary: string; isDraft: boolean };
+type ChangeLogEntry = { version: number; publishedAt: string; changeSummary: string; isDraft: boolean };
 
 // The current version is the highest published one (v_legal_current); the change log lists the published versions,
-// newest first. Cached because the page and its metadata both read it in one request.
+// newest first, the latest CHANGE_LOG_LIMIT of them (one more is read to know that older ones exist; the export holds
+// them all). Cached because the page and its metadata both read it in one request.
 export const getLegalDocument = cache(async (slug: string) => {
   if (!SLUG_PATTERN.test(slug)) return null;
   const supabase = await createClient();
@@ -127,13 +128,13 @@ export const getLegalDocument = cache(async (slug: string) => {
       .select("version, published_at, change_summary, is_draft")
       .eq("slug", slug)
       .order("version", { ascending: false })
-      .limit(CHANGE_LOG_LIMIT),
+      .limit(CHANGE_LOG_LIMIT + 1),
   ]);
   if (current.error) throw new Error("The legal document could not be loaded", { cause: current.error });
   if (log.error) throw new Error("The change log could not be loaded", { cause: log.error });
   if (!current.data) return null;
   const document = currentVersion.parse(current.data);
-  const changeLog = log.data.flatMap((row): ChangeLogEntry[] =>
+  const changeLog = log.data.slice(0, CHANGE_LOG_LIMIT).flatMap((row): ChangeLogEntry[] =>
     row.published_at
       ? [{ version: row.version, publishedAt: row.published_at, changeSummary: row.change_summary, isDraft: row.is_draft }]
       : [],
@@ -146,5 +147,6 @@ export const getLegalDocument = cache(async (slug: string) => {
     publishedAt: document.published_at,
     isDraft: document.is_draft,
     changeLog,
+    changeLogTruncated: log.data.length > CHANGE_LOG_LIMIT,
   };
 });

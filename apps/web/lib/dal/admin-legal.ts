@@ -1,20 +1,14 @@
 import "server-only";
+import type { Database } from "@chara-pinnacle/db-types";
 import { adminClient, failure } from "@/lib/dal/admin";
 
-export type LegalExportEntry = {
-  slug: string;
-  version: number;
-  title: string;
-  body: string;
-  change_summary: string;
-  is_draft: boolean;
-  published_at: string;
-};
+type LegalExportEntry = Database["public"]["Functions"]["admin_export_legal_documents"]["Returns"][number];
 
 const EXPORT_PAGE_SIZE = 25;
 
 // Every published version of every document, one page of the database at a time, so a long archive is never held whole.
-// The client is made before the first page is read, while the request is still the current one.
+// The client is made before the first page is read, while the request is still the current one. A page that fails
+// after the first one ends the stream with an error, so the file is cut short and the download fails.
 export async function exportLegalDocuments(): Promise<AsyncGenerator<LegalExportEntry[]>> {
   const supabase = await adminClient();
 

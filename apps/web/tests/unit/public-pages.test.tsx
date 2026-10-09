@@ -11,6 +11,7 @@ type LegalFixture = {
   changeSummary: string;
   isDraft: boolean;
   changeLog: { version: number; publishedAt: string; changeSummary: string; isDraft: boolean }[];
+  changeLogTruncated: boolean;
 };
 
 let legalDocument: LegalFixture | null = null;
@@ -23,6 +24,7 @@ const legalFixture = (over: Partial<LegalFixture> = {}): LegalFixture => ({
   changeSummary: "Adds the retention periods.",
   isDraft: false,
   changeLog: [{ version: 3, publishedAt: "2026-10-01T00:00:00Z", changeSummary: "Adds the retention periods.", isDraft: false }],
+  changeLogTruncated: false,
   ...over,
 });
 
@@ -135,6 +137,14 @@ describe("the legal page (FR-H3)", () => {
     expect(log.indexOf("Version 2 · 20 September 2026")).toBeLessThan(log.indexOf("Version 1 · 1 September 2026"));
     expect(log).toContain("Third change.");
     expect(log).toContain("Initial version");
+  });
+
+  it("says that older versions exist only when the change log was cut off", async () => {
+    legalDocument = legalFixture({ changeLogTruncated: true });
+    expect(renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")))).toContain("Older versions are available on request.");
+
+    legalDocument = legalFixture();
+    expect(renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")))).not.toContain("Older versions");
   });
 
   it("shows the draft banner above the text of a draft and none for an approved text (AC3)", async () => {

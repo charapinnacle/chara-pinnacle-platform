@@ -70,6 +70,9 @@ export default async function LegalPage({
               </li>
             ))}
           </ol>
+          {document.changeLogTruncated ? (
+            <p className="text-sm text-muted-foreground">Older versions are available on request.</p>
+          ) : null}
         </section>
       </article>
     </PageContainer>

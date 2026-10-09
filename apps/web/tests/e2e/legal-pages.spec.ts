@@ -72,6 +72,12 @@ test.describe("the legal pages", () => {
     await expect(page.getByRole("main").getByText("Draft - not yet approved by legal counsel", { exact: true })).toBeVisible();
   });
 
+  test("FR-H3 AC3: the working text of the platform rules that counsel has not approved shows the banner", async ({ page }) => {
+    await page.goto("/en/legal/platform-rules");
+    await expect(page.getByRole("main").getByRole("heading", { name: "DRAFT: Platform Rules", level: 1 })).toBeVisible();
+    await expect(page.getByRole("main").getByText("Draft - not yet approved by legal counsel", { exact: true })).toBeVisible();
+  });
+
   test("FR-H3 AC12: markup in the text is shown as text and nothing runs", async ({ page }) => {
     const slug = `e2e-escaped-${uniqueTag()}`;
     publish(slug, [
