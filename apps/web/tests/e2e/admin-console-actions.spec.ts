@@ -125,7 +125,7 @@ test.describe("suspending and reinstating from the console", () => {
 
     await signInStaff(page, "trust_safety", `/en/admin/organizations/${company.id}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Vacancy Bau");
-    await expect(page.getByRole("table", { name: "Vacancies" })).toContainText("Hidden by moderation");
+    await expect(page.getByRole("row", { name: /Hidden welder/ }).getByRole("cell").last()).toHaveText("Hidden");
     await expectNoAxeViolations(page);
     await submit(page, "Suspend organisation", REASON);
     await expect(page.getByText("The organisation is suspended", { exact: true })).toBeVisible();

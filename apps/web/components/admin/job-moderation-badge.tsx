@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 type ModerationState = Database["public"]["Enums"]["job_moderation_state"];
 
-const labels = { visible: "Visible", hidden: "Hidden", org_suspended: "Hidden with the suspension" } as const satisfies Record<ModerationState, string>;
+export const moderationLabels = { visible: "Visible", hidden: "Hidden", org_suspended: "Hidden with the suspension" } as const satisfies Record<ModerationState, string>;
 
 export function JobModerationBadge({ state }: { state: ModerationState }) {
   return (
@@ -13,7 +13,7 @@ export function JobModerationBadge({ state }: { state: ModerationState }) {
         state === "visible" ? "bg-accent text-accent-foreground" : "border-destructive/30 bg-destructive-surface text-foreground",
       )}
     >
-      {labels[state]}
+      {moderationLabels[state]}
     </span>
   );
 }
