@@ -1,6 +1,10 @@
 import { NoteForm } from "@/components/applicants/note-form";
+import { ReadOnlyButton } from "@/components/applicants/read-only-button";
+import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { ApplicantNote } from "@/lib/dal/applicant-review";
 import { formatDateTime } from "@/lib/i18n/format";
 
@@ -24,9 +28,18 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
         <p className="text-sm text-muted-foreground">Visible to your organization only. The candidate never sees them.</p>
       </div>
       {blocked ? (
-        <Notice tone="info" role="status">
-          Your organization has no active paid plan, so notes cannot be added. The notes written before stay readable.
-        </Notice>
+        <div className="grid gap-3">
+          <Notice tone="info" role="status">
+            Your organization has no active paid plan, so notes cannot be added. The notes written before stay readable.
+          </Notice>
+          <div className="grid gap-1.5">
+            <Label htmlFor="internal-note-read-only">Add an internal note</Label>
+            <Textarea id="internal-note-read-only" readOnly aria-disabled="true" aria-describedby={READ_ONLY_REASON_ID} rows={3} />
+          </div>
+          <div>
+            <ReadOnlyButton className="w-full sm:w-auto">Add note</ReadOnlyButton>
+          </div>
+        </div>
       ) : (
         <NoteForm slug={slug} applicationId={applicationId} />
       )}

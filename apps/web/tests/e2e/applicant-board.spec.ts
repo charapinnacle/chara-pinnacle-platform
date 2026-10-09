@@ -270,7 +270,7 @@ test.describe("the pipeline board", () => {
     await neverPolls(page);
     await page.reload();
     await waitForHydration(page.getByRole("region", { name: "Pipeline board" }));
-    const banner = page.getByRole("status").filter({ hasText: "Applicant changes and the CSV export are disabled until a plan is chosen." });
+    const banner = page.getByRole("status").filter({ hasText: "Your subscription has ended. Your past applicants stay readable" });
     await expect(banner).toHaveCount(0);
 
     execute(`update billing.subscriptions set status = 'canceled' where organization_id = ${literal(company.id)}`);

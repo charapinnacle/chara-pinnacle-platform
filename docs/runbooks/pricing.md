@@ -1,6 +1,6 @@
 # Runbook: pricing page from configuration
 
-FR-H2, design point D72 (OPEN_QUESTIONS.md). The SOP (Pricing Page from Configuration, quarterly review, owner Finance / Platform) has four steps (read, display, change, verify), one output (the pricing page), one KPI (pricing mismatches, target 0), one risk (the advertised price differs from the charged price) and two controls (a single source of truth, and a test). The page stores nothing.
+FR-H2, design point D74 (OPEN_QUESTIONS.md). The SOP (Pricing Page from Configuration, quarterly review, owner Finance / Platform) has four steps (read, display, change, verify), one output (the pricing page), one KPI (pricing mismatches, target 0), one risk (the advertised price differs from the charged price) and two controls (a single source of truth, and a test). The page stores nothing.
 
 ## 1. What the page shows and where it comes from
 
@@ -17,7 +17,7 @@ FR-H2, design point D72 (OPEN_QUESTIONS.md). The SOP (Pricing Page from Configur
 
 A plan lists only what this release delivers: the labels in `apps/web/lib/billing/pricing.ts` (`limitLabels`, `featureLabels`) are the list. Today the features are `shortlisting` and `csv_export`; `analytics_advanced` is a record of the plans but has no label because no page of Phase 1 uses it. The release that delivers a feature adds its label there. Nothing else on the page names a feature, and the page states that a paid plan does not make an organisation verified or move its vacancies up in search results.
 
-The link of a card depends on who reads the page: a visitor is led to the generic sign-up (the account type is chosen after it, D72 point 8), an owner or admin to the billing page of the first organisation they own or administer, and a worker, a plain member and a person who has not finished setting up see a note and no link to buy. If the organisations of the person cannot be read, the plans still show with neither note nor link.
+The link of a card depends on who reads the page: a visitor is led to the generic sign-up (the account type is chosen after it, D74 point 8), an owner or admin to the billing page of the first organisation they own or administer, and a worker, a plain member and a person who has not finished setting up see a note and no link to buy. If the organisations of the person cannot be read, the plans still show with neither note nor link.
 
 ## 2. Changing a price, a name, a trial or a limit (SOP FR-G1)
 
