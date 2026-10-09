@@ -31,6 +31,12 @@ export function daysText(days: number): string {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
+export const oneTrialRule = "One free trial is granted for each legal entity.";
+
+export function trialConversion(planName: string): string {
+  return `When the trial ends, your subscription converts to the paid ${planName} plan and your payment method is charged automatically.`;
+}
+
 type Disclosure = { title: string; text: string };
 
 // The five things the person is told before the redirect (FR-G2): the trial period, the price after it, the billing
@@ -52,7 +58,7 @@ export function checkoutDisclosures(plan: SoldPlan, trialUsed: boolean): Disclos
       title: "Automatic conversion",
       text:
         trialDays > 0
-          ? `When the trial ends, your subscription converts to the paid ${plan.name} plan and your payment method is charged automatically.`
+          ? trialConversion(plan.name)
           : `Your subscription starts as the paid ${plan.name} plan and renews automatically every ${plan.interval}.`,
     },
     {
