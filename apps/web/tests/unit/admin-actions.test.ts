@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/session", () => ({ requirePlatformRole: requireRoleMock }));
 vi.mock("@/lib/dal/admin", () => ({ adminClient: async () => ({ rpc: rpcMock }) }));
 
-const { changeStanding } = await import("@/lib/actions/admin-moderation");
+const { changeStanding, moderateJob } = await import("@/lib/actions/admin-moderation");
 const { grantRole, publishLegalDocument, resetMfa, revokeRole } = await import("@/lib/actions/admin-staff");
 
 const ID = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
@@ -86,6 +86,50 @@ describe("changeStanding", () => {
   it("lets the refusal of the role guard through before anything is called", async () => {
     requireRoleMock.mockRejectedValue(new Error("NOT_FOUND"));
     await expect(changeStanding({ target: "user", id: ID, to: "suspended", reason: REASON })).rejects.toThrow("NOT_FOUND");
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("moderateJob", () => {
+  it.each(["hide", "unhide"] as const)("calls moderate_job to %s with the trimmed reason, asks for the Trust & Safety role and refreshes the page of the vacancy", async (action) => {
+    expect(await moderateJob({ id: ID, action, reason: `  ${REASON}  ` })).toEqual({ done: true });
+    expect(requireRoleMock).toHaveBeenCalledWith("en", ["trust_safety"]);
+    expect(rpcMock).toHaveBeenCalledWith("moderate_job", { p_job: ID, p_action: action, p_reason: REASON });
+    expect(revalidateMock).toHaveBeenCalledWith(`/en/admin/moderation/${ID}`);
+  });
+
+  it("refuses a short reason with the field error and an action that is none, and calls nothing", async () => {
+    expect((await moderateJob({ id: ID, action: "hide", reason: "short" })).errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+    expect((await moderateJob({ id: ID, action: "delete" as "hide", reason: REASON })).errors).toBeDefined();
+    expect((await moderateJob({ id: "1", action: "hide", reason: REASON })).errors).toBeDefined();
+    expect(requireRoleMock).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["hidden", "This vacancy is already hidden"],
+    ["visible", "This vacancy is not hidden"],
+    ["org_suspended", "This vacancy is hidden with the suspension of its organisation"],
+  ])("says what is the matter when the database finds the vacancy %s", async (state, expected) => {
+    rpcMock.mockResolvedValue(failure("CHARA_INVALID_STATE", state));
+    expect(await moderateJob({ id: ID, action: "hide", reason: REASON })).toEqual({ message: expected });
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
+  it("explains a missing vacancy and a refusal without leaking the database text, and sends a lapsed session to confirm", async () => {
+    rpcMock.mockResolvedValueOnce(failure("CHARA_NOT_FOUND"));
+    expect(await moderateJob({ id: ID, action: "hide", reason: REASON })).toEqual({ message: "This record no longer exists." });
+    rpcMock.mockResolvedValueOnce(failure("XX000: relation \"jobs\" does not exist"));
+    expect(await moderateJob({ id: ID, action: "hide", reason: REASON })).toEqual({ message: GENERIC });
+    rpcMock.mockResolvedValueOnce(failure("CHARA_FORBIDDEN", "aal2_required"));
+    await expect(moderateJob({ id: ID, action: "hide", reason: REASON })).rejects.toThrow(
+      `REDIRECT:/en/mfa?next=${encodeURIComponent(`/en/admin/moderation/${ID}`)}`,
+    );
+  });
+
+  it("lets the refusal of the role guard through before anything is called", async () => {
+    requireRoleMock.mockRejectedValue(new Error("NOT_FOUND"));
+    await expect(moderateJob({ id: ID, action: "hide", reason: REASON })).rejects.toThrow("NOT_FOUND");
     expect(rpcMock).not.toHaveBeenCalled();
   });
 });

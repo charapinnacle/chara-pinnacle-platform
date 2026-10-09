@@ -8,8 +8,7 @@ import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
 const ADMIN_ENTRIES = ["Users", "Organisations", "Statistics", "Legal documents", "Audit log", "Staff", "MFA reset"];
-// The entry for vacancy moderation arrives with FR-C7.
-const TRUST_ENTRIES = ["Users", "Organisations", "Suspensions and reinstatements"];
+const TRUST_ENTRIES = ["Users", "Organisations", "Vacancy moderation", "Suspensions and reinstatements"];
 
 async function entries(page: Page): Promise<string[]> {
   return page.getByRole("navigation", { name: "Administration" }).getByRole("link").allInnerTexts();
@@ -103,10 +102,10 @@ test.describe("the administration console: who gets in and what each role sees",
   }) => {
     await signInStaff(page, "trust_safety");
     expect(await entries(page)).toEqual(TRUST_ENTRIES);
-    for (const path of ["audit", "statistics", "legal", "staff", "mfa-reset", "moderation"]) {
+    for (const path of ["audit", "statistics", "legal", "staff", "mfa-reset"]) {
       await expectNotFound(page, `/en/admin/${path}`);
     }
-    for (const path of ["users", "organizations", "suspensions"]) {
+    for (const path of ["users", "organizations", "moderation", "suspensions"]) {
       const response = await page.goto(`/en/admin/${path}`);
       expect(response?.status(), path).toBe(200);
     }
@@ -118,7 +117,7 @@ test.describe("the administration console: who gets in and what each role sees",
     await signInStaff(page, "verification_reviewer");
     await expect(page.getByText("No functions are available for your role in this release.")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Administration" })).toHaveCount(0);
-    for (const path of ["users", "organizations", "audit", "suspensions", "staff"]) {
+    for (const path of ["users", "organizations", "audit", "moderation", "suspensions", "staff"]) {
       await expectNotFound(page, `/en/admin/${path}`, { staff: false });
     }
   });
@@ -127,6 +126,6 @@ test.describe("the administration console: who gets in and what each role sees",
     const staff = await enrolledStaff("admin");
     execute(`insert into public.platform_staff (user_id, role) values (${literal(staff.user.id)}, 'trust_safety')`);
     await signInAtAal2(page, staff.user, staff.secret, "/en/admin");
-    expect(await entries(page)).toEqual([...ADMIN_ENTRIES, "Suspensions and reinstatements"]);
+    expect(await entries(page)).toEqual([...ADMIN_ENTRIES, "Vacancy moderation", "Suspensions and reinstatements"]);
   });
 });

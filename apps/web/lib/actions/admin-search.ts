@@ -9,14 +9,17 @@ import {
   type Page,
   type UserRow,
 } from "@/lib/dal/admin";
+import { searchJobs, type JobRow } from "@/lib/dal/admin-jobs";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import {
   auditFilterSchema,
+  jobCursorSchema,
   nameCursorSchema,
   searchTermSchema,
   timeCursorSchema,
   type AuditFilterForm,
+  type JobCursor,
   type NameCursor,
   type TimeCursor,
 } from "@/lib/validation/admin";
@@ -52,6 +55,14 @@ export async function searchOrganizationsAction(
   const cursor = nameCursorSchema.safeParse(after);
   if (!parsed.success || !cursor.success) return { ok: false };
   return answer("The organisation search", () => searchOrganizations(parsed.data, cursor.data));
+}
+
+export async function searchJobsAction(term: string, after: JobCursor): Promise<Answer<JobRow, NonNullable<JobCursor>>> {
+  await requirePlatformRole(defaultLocale, ["trust_safety"]);
+  const parsed = searchTermSchema.safeParse(term);
+  const cursor = jobCursorSchema.safeParse(after);
+  if (!parsed.success || !cursor.success) return { ok: false };
+  return answer("The vacancy search", () => searchJobs(parsed.data, cursor.data));
 }
 
 export async function searchAuditAction(

@@ -14,6 +14,7 @@ export const adminEntries = [
   { label: "Audit log", segment: "audit", roles: ["admin"] },
   { label: "Staff", segment: "staff", roles: ["admin"] },
   { label: "MFA reset", segment: "mfa-reset", roles: ["admin"] },
+  { label: "Vacancy moderation", segment: "moderation", roles: ["trust_safety"] },
   { label: "Suspensions and reinstatements", segment: "suspensions", roles: ["trust_safety"] },
 ] as const satisfies readonly Entry[];
 

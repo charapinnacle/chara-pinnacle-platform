@@ -29,6 +29,8 @@ export function TextLink({ tone, standalone, className, ...props }: TextLinkProp
   return <Link className={cn(textLinkVariants({ tone, standalone }), className)} {...props} />;
 }
 
+export const COMPLAINTS_SLUG = "complaints-and-dispute-process";
+
 type LegalLinkProps = Pick<TextLinkProps, "standalone" | "className" | "children"> & {
   slug: string;
   newTabLabel: string;

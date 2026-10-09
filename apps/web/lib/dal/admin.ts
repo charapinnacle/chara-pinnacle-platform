@@ -115,12 +115,12 @@ export async function adminClient() {
   return createClient(Object.keys(forwarded).length > 0 ? forwarded : undefined);
 }
 
-function failure(what: string, cause: unknown): Error {
+export function failure(what: string, cause: unknown): Error {
   return new Error(`${what} could not be loaded`, { cause });
 }
 
 // One row more than a page is read: its presence says there is a next page, and the last row shown is its cursor.
-function paged<Row, Cursor>(rows: Row[], cursorOf: (row: Row) => Cursor): Page<Row, Cursor> {
+export function paged<Row, Cursor>(rows: Row[], cursorOf: (row: Row) => Cursor): Page<Row, Cursor> {
   const shown = rows.slice(0, ADMIN_PAGE_SIZE);
   return { rows: shown, next: rows.length > ADMIN_PAGE_SIZE ? cursorOf(shown[shown.length - 1]) : null };
 }

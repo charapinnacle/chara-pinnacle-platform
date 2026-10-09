@@ -37,8 +37,13 @@ describe("jobStatusText", () => {
     expect(jobStatusText(status, "visible")).toBe(text);
   });
 
-  it("says hidden for a vacancy hidden by moderation whatever its status", () => {
-    expect(jobStatusText("open", "hidden")).toBe("Hidden - not public");
+  it("says hidden by moderation for a vacancy a moderator hid, whatever its status", () => {
+    for (const status of ["draft", "open", "paused", "closed", "filled"] as const) {
+      expect(jobStatusText(status, "hidden"), status).toBe("Hidden by moderation");
+    }
+  });
+
+  it("says hidden, not public, for a vacancy hidden with the suspension of its organisation", () => {
     expect(jobStatusText("open", "org_suspended")).toBe("Hidden - not public");
   });
 });
