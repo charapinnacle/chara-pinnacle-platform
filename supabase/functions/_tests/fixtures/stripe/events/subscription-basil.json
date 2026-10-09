@@ -1,0 +1,46 @@
+{
+  "id": "evt_sub_basil",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1793527200,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "customer.subscription.updated",
+  "data": {
+    "object": {
+      "id": "sub_1Nx",
+      "object": "subscription",
+      "customer": {
+        "id": "cus_1Nx",
+        "object": "customer"
+      },
+      "status": "unpaid",
+      "metadata": {
+        "org_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11"
+      },
+      "cancel_at_period_end": true,
+      "items": {
+        "object": "list",
+        "data": [
+          {
+            "id": "si_1Nx",
+            "object": "subscription_item",
+            "current_period_start": 1793527200,
+            "current_period_end": 1796119200,
+            "price": {
+              "id": "price_basic",
+              "object": "price",
+              "metadata": {
+                "plan_code": "employer_starter"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

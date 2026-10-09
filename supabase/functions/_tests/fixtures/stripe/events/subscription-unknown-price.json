@@ -1,0 +1,45 @@
+{
+  "id": "evt_sub_noprice",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1793527200,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "customer.subscription.updated",
+  "data": {
+    "object": {
+      "id": "sub_1Nx",
+      "object": "subscription",
+      "customer": "cus_1Nx",
+      "status": "active",
+      "metadata": {
+        "org_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11"
+      },
+      "current_period_start": 1793527200,
+      "current_period_end": 1796119200,
+      "trial_end": 1796119200,
+      "cancel_at": null,
+      "cancel_at_period_end": false,
+      "items": {
+        "object": "list",
+        "data": [
+          {
+            "id": "si_1Nx",
+            "object": "subscription_item",
+            "price": {
+              "id": "price_other",
+              "object": "price",
+              "unit_amount": 500,
+              "currency": "eur",
+              "metadata": {}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -15,7 +15,7 @@ The header links and the footer links are in `apps/web/lib/public/navigation.ts`
 
 ## 2. Settings: legal entity and contacts
 
-Seven keys of `private.settings`, seeded empty by `20261104100000_public_settings.sql`, are read through `public.get_public_settings()`, the only way a visitor can read the table (no other key is returned):
+Seven keys of `private.settings`, seeded empty by `20261104120000_public_settings.sql`, are read through `public.get_public_settings()`, the only way a visitor can read the table (no other key is returned):
 
 | Key | Shown on |
 |---|---|

@@ -50,7 +50,7 @@ Phase 1 scope: candidate (worker) and employer accounts only — public site, va
 │                                                                                               │
 │  Edge Functions (Deno, x-region = project region) — the ONLY place the secret key exists      │
 │   document-url · billing-webhook · billing-checkout · account-ops · notify · scan-document    │
-│   audit-export (monthly export of the audit log to the archive)                               │
+│   audit-export (monthly export of the audit log to the archive) · billing-reconcile (weekly)  │
 └───────────────────────────────────────────────────────────────────────────────────────────────┘
           ▲                                        ▲
           │ Stripe webhooks (signature-verified)    │ Resend (EU region) · AV scanner (vendor undecided)
@@ -153,7 +153,7 @@ chara-pinnacle-platform/
                                     billing/provider.ts, billing/providers/{null,stripe}.ts,
                                     database.types.ts (generated: public + billing + audit)
     functions/_tests/               [now] Deno tests (a directory named tests/ would deploy as a function)
-    functions/document-url · billing-checkout · billing-webhook · notify · account-ops · scan-document · audit-export
+    functions/document-url · billing-checkout · billing-webhook · billing-reconcile · notify · account-ops · scan-document · audit-export
                                     [now] account-ops (handler.ts is the testable part, index.ts only serves it); audit-export (U42: handler.ts, archive.ts)
     functions/serve-local.sh        [now] runs account-ops on the port of `ACCOUNT_OPS_PORT` (`playwright.config.ts`) against the local stack for the browser tests
     functions/.env.example          [now] committed, names only; local values go in functions/.env (gitignored)
@@ -586,7 +586,7 @@ grant execute on function public.document_access_grant(uuid, text) to authentica
 |---|---|---|
 | Must be true regardless of caller (ownership, visibility, limits, status transitions, append-only, k-anonymity, workers never pay) | Postgres: constraints, RLS, triggers, security_invoker views | `audit.log` immutability trigger; owner-count constraint; `jobs_enforce_limits` trigger; application transition guard; `guard_verification_transition` (later phase) |
 | Touches several tables or needs a privileged read | SECURITY DEFINER RPC in `public` (owned by postgres, `set search_path = ''`, re-checks uid/role/aal, writes audit) | `create_organization`, `apply_to_job`, `set_application_status`, `document_access_grant`; later phase: `verification_decide`, `chara_match` |
-| Needs a secret, outbound network or long runtime | Edge Function (one capability each); database access only through RPCs | `billing-checkout`, `billing-webhook`, `document-url`, `notify`, `account-ops`, `scan-document` |
+| Needs a secret, outbound network or long runtime | Edge Function (one capability each); database access only through RPCs | `billing-checkout`, `billing-webhook`, `billing-reconcile`, `document-url`, `notify`, `account-ops`, `scan-document` |
 | Scheduled | pg_cron → SQL function; pg_net to an Edge Function when the outside world is needed; pgmq for retries | MV refresh, expiries, retention, billing retry, notification fan-out |
 | Rendering, forms, navigation, i18n | Next.js Server Components and thin Server Actions (zod → DAL → RPC/table via the user's session) | — |
 
@@ -596,6 +596,9 @@ Edge Functions and the database: an Edge Function never reads or writes a table 
 |---|---|---|
 | `billing_ingest_event` | `billing-webhook` | Idempotent insert into `billing.provider_events` (unique provider + provider event id). |
 | `billing_apply_event` | `billing-webhook`, billing retry job | Applies a stored event to subscriptions, customers and orders. |
+| `billing_webhook_rejected` | `billing-webhook` | Audits a delivery with an invalid signature (`billing.webhook_rejected`: provider and reason, no payload), at most once an hour for each provider and reason, because the endpoint is public and the audit log permanent. |
+| `billing_reconcile_records` | `billing-reconcile` | One page (at most 5,000, in primary-key order) of the subscription records that have a provider reference, for the weekly comparison with the provider. |
+| `billing_reconcile_report` | `billing-reconcile` | The result of one comparison: the total of differences, one operations alert per difference of a sample of at most 200 (and one more when the sample is smaller than the total), and one audit row `billing.reconciled` with the total. A large run is never refused. |
 | `audit_record_external` | any function | Appends an `audit.log` row for an action that happened outside the database. As built (U42, D68): `audit_record_external(action, entity_type, entity_id, actor_id, metadata)` takes the actor from the job (kept only while the profile exists), refuses an action that is not lower-case `<entity>.<verb>` or that starts with a name the database writes for administrative acts (`user.`, `organization.`, `job.`, `mfa.`, `platform_role.`, `legal_document.`), and for `account_ops.*` actions requires `metadata.job_id` and writes one row per action and job (a unique index): a repeat returns false and adds none. `created_at` and `ip` are never arguments. |
 | `audit_export_month` / `audit_export_count` | `audit-export` | The rows of one finished calendar month (UTC) as one jsonb page of at most 5,000 (default 1,000) in keyset order of (`created_at`, `id`), and their number. A month that is not over is refused. |
 | `document_set_scan_status` | `scan-document` | Sets `worker_documents.scan_status`. |
@@ -686,7 +689,7 @@ Plans, limits and features are rows, not code.
 - Trial (decided — OPEN_QUESTIONS.md, D4, C6): the card is collected at checkout before the trial starts (card timing to be confirmed — OPEN_QUESTIONS.md, C15); the trial lasts `plans.trial_days` (30, administrator-editable) and converts automatically to the selected paid plan. One trial per legal entity: the billing customer carries a unique legal-entity identifier (company registration number, VAT number or another unique legal-entity identifier; C14), and `billing_checkout_start` grants no trial when that identifier has already had one. Which identifier is mandatory per country and how it is validated is open (C14). Before the trial starts the checkout confirmation page states the trial period, the price after the trial, the billing frequency, the automatic conversion and how to cancel.
 - `customers(organization_id, provider, customer_ref, billing_country, vat_id, registration_number)`, written by `billing_checkout_start` (the webhook sets `customer_ref`); the billing address is collected by the provider and not stored. `trial_grants(identifier_key, organization_id, granted_at)` holds one row per legal-entity identifier that had a trial (`vat:<VAT ID>` or `reg:<country>:<registration number>`, normalised), written by the webhook; `plan_provider_refs(plan_code, provider, provider_product_ref, provider_price_ref)` holds the provider's product and price of a sold plan, written only by `scripts/sync-stripe-plans.mjs` and never exposed through a view. `billing_checkout_start(p_org, p_plan_code, p_billing_country, p_vat_id, p_registration_number, p_terms_version, p_provider, p_disclosed_trial_days)` returns the price reference, the customer reference, the trial length and the slug for the return address; `billing_portal_start(p_org)` returns the customer reference and the slug; both are for an owner or admin at aal2 and write an audit row (`billing.checkout_started`, `billing.portal_opened`). The runbook is `docs/runbooks/checkout.md`.
 - Currency and VAT (decided — OPEN_QUESTIONS.md, C7): prices are stored and displayed in EUR, exclusive of VAT; VAT is calculated by the payment provider from the customer's location and the applicable tax rules. EUR is the only billing currency in the first release; every price row has a `currency` column so further currencies can be added as rows. Tax treatment for customers outside the EU follows the payment provider and accounting setup agreed with the owner's advisers.
-- `orders(id, organization_id, kind, sku_or_plan, amount_minor, tax_minor, currency, status, provider_ref, invoice_ref, details jsonb)` — the tax amount and invoice reference come from the provider (Stripe Tax).
+- `orders(id, organization_id, kind, sku_or_plan, amount_minor, tax_minor, currency, provider, provider_ref, invoice_ref, created_at)` — one row per paid invoice with an amount above zero, written by the webhook, unique on `(provider, provider_ref)`; the tax amount and invoice reference come from the provider (Stripe Tax). Differences from this sketch: OPEN_QUESTIONS.md, D70.
 - `provider_events(id, provider, provider_event_id, kind, payload jsonb, signature_valid, provider_created_at, received_at, status received | applied | stale | error, applied_at, error, unique(provider, provider_event_id))` — inserted only by `billing_ingest_event`; `status`, `applied_at` and `error` are set by `billing_apply_event` (§10.3).
 - (later phase) `boost_products(sku, target_type job | organization, org_type, days, price_minor, currency)` seeded from the pricing doc: job 2500/7d, 3900/14d, 5900/30d; recruitment 5900/10900/19900; staffing 4900/8900/13900. `boosts(id, organization_id, sku, target_type, target_id, starts_at, ends_at, provider_payment_ref unique)`; `public.v_active_boosts` is the only reader (BoostedRail). Decided (OPEN_QUESTIONS.md, R29): boosts are sold to hiring, recruitment and staffing companies for job postings, workforce requirements, company profiles and partner profiles, and can be bought on any plan, without a higher plan. Possible functions: top search placement, featured profile, job or requirement, priority visibility, regional or country visibility, homepage or category placement. The reply asks for the boost system in the production architecture from the start; it is designed here and built in the boosts phase (to confirm — OPEN_QUESTIONS.md, P9). Boost products are administrator-editable rows; administrators control price, duration, placement, country or region, category, availability and promotional discounts. The catalogue prices are open (C8), and the columns for the attributes not listed above are designed with that phase.
 - (later phase) `verification_products(sku verification_basic | professional | enterprise, price_minor 4900 | 9900 | 19900 (Enterprise is a starting price), interval 'year', eligible_levels text[])`; `verification_fees(id, organization_id, sku, paid_at, expires_at, provider_payment_ref unique)` — a paid fee only allows `verification_submit` for a paid level; it never touches `verifications.status`.
@@ -697,17 +700,18 @@ Plans, limits and features are rows, not code.
 ### 10.2 Adapter interface (`supabase/functions/_shared/billing/provider.ts`)
 
 ```ts
-// Every event also carries providerCreatedAt (ISO time the provider created it), used for the stale check (§10.3).
+// Every event also carries providerCreatedAt (ISO time the provider created it), used for the stale check (§10.3). Outside the
+// checkout orgId is optional: an event without it is resolved through providerCustomerRef or providerSubscriptionRef.
 export type NormalizedEvent = { providerCreatedAt: string } & (
   | { kind: 'checkout.completed'; orgId: string; providerCustomerRef: string; providerSubscriptionRef?: string }
-  | { kind: 'subscription.activated' | 'subscription.updated' | 'subscription.canceled' | 'subscription.past_due';
-      orgId: string; planCode: string; status: 'trialing'|'active'|'past_due'|'canceled'|'paused';
-      providerSubscriptionRef: string; currentPeriodEnd?: string; trialEndsAt?: string }
-  | { kind: 'subscription.trial_will_end'; orgId: string; providerSubscriptionRef: string; trialEndsAt: string }
-  | { kind: 'payment.succeeded'; orgId: string; purpose: 'subscription'|'boost'|'verification_fee';
-      sku?: string; targetId?: string; amountMinor: number; currency: string; providerPaymentRef: string }
-  | { kind: 'payment.failed'; orgId: string; providerPaymentRef: string; reason?: string }
-  | { kind: 'refund.issued'; orgId: string; providerPaymentRef: string; amountMinor: number });
+  | { kind: 'subscription.activated' | 'subscription.updated' | 'subscription.canceled';
+      orgId?: string; providerCustomerRef?: string; planCode?: string; status: 'trialing'|'active'|'past_due'|'canceled'|'paused';
+      providerSubscriptionRef: string; currentPeriodStart?: string; currentPeriodEnd?: string; trialEndsAt?: string; cancelAt?: string }
+  | { kind: 'subscription.trial_will_end'; orgId?: string; providerCustomerRef?: string; providerSubscriptionRef: string; trialEndsAt: string }
+  | { kind: 'payment.succeeded'; purpose: 'subscription'; orgId?: string; providerCustomerRef?: string; providerSubscriptionRef: string;
+      subscriptionStatus: 'active'|'trialing'; amountMinor: number; taxMinor: number; currency: string; invoiceRef: string; providerPaymentRef: string }
+  | { kind: 'payment.failed'; orgId?: string; providerCustomerRef?: string; providerSubscriptionRef: string; providerPaymentRef: string });
+  // later phase: refund.issued and the boost and verification_fee purposes of payment.succeeded
 
 export interface CheckoutInput {
   orgId: string; planCode: string; priceRef: string | null; trialDays: number;
@@ -716,14 +720,16 @@ export interface CheckoutInput {
 
 export interface BillingProvider {
   readonly name: 'null' | 'stripe';
-  verifyWebhook(req: Request, rawBody: string): Promise<{ ok: boolean; eventId: string; type: string; payload: unknown }>;
-  normalize(payload: unknown): NormalizedEvent[];
   createCheckout(input: CheckoutInput): Promise<{ url: string }>;
   createPortal(input: { customerRef: string; returnUrl: string }): Promise<{ url: string }>;
+  verifyWebhook(req: Request, rawBody: string): Promise<{ ok: true; eventId: string; type: string; payload: unknown } | { ok: false; reason: string }>;
+  normalize(payload: unknown): NormalizedEvent[];            // [] for a type CHARA does not use
+  fetchSubscription(providerSubscriptionRef: string, fetchedAt: Date): Promise<NormalizedEvent | null>;  // the re-fetch of a stale event
+  listSubscriptions(startingAfter?: string): Promise<{ subscriptions: SubscriptionState[]; next: string | null }>;  // the weekly comparison
 }
 ```
 
-`providers/null.ts` verifies `x-chara-signature` = HMAC-SHA256(rawBody, `BILLING_WEBHOOK_SECRET`) and parses already-normalized JSON; it is the provider in dev, CI and E2E. `providers/stripe.ts` is the production provider: Stripe Checkout, Customer Portal, Stripe Tax and webhook signature verification. The `boost` and `verification_fee` kinds in the interface are later phase. `billing_checkout_start` passes the organization id, which `providers/stripe.ts` sets as the Checkout session `client_reference_id` and in `subscription_data.metadata`; `normalize` takes `orgId` from that subscription metadata (from `client_reference_id` for `checkout.session.completed`), so subscription and invoice events resolve to the organization even when they arrive before `checkout.session.completed`. The interface is built in two steps: `createCheckout` and `createPortal` with the checkout function (FR-G2; the null provider answers with addresses on `null-provider.invalid`, which a test intercepts), `verifyWebhook` and `normalize` with the webhook (FR-G3).
+`providers/null.ts` verifies `x-chara-signature` = HMAC-SHA256(rawBody, `BILLING_WEBHOOK_SECRET`) (hex) and takes a body `{id, event}` whose event is already normalized; it is the provider in dev, CI and E2E. `providers/stripe.ts` is the production provider: Stripe Checkout, Customer Portal, Stripe Tax and webhook signature verification. The `boost` and `verification_fee` kinds in the interface are later phase. `billing_checkout_start` passes the organization id, which `providers/stripe.ts` sets as the Checkout session `client_reference_id` and in `subscription_data.metadata`; `normalize` takes `orgId` from that subscription metadata (from `client_reference_id` for `checkout.session.completed`), so subscription and invoice events resolve to the organization even when they arrive before `checkout.session.completed`. The interface is built in two steps: `createCheckout` and `createPortal` with the checkout function (FR-G2; the null provider answers with addresses on `null-provider.invalid`, which a test intercepts), `verifyWebhook` and `normalize` with the webhook (FR-G3).
 
 ### 10.3 Webhook ingestion and application
 
@@ -744,11 +750,11 @@ create policy provider_events_all_billing_owner on billing.provider_events
   for all to billing_owner using (true) with check (true);
 
 create or replace function public.billing_ingest_event(
-  p_provider text, p_provider_event_id text, p_kind text, p_payload jsonb, p_signature_valid boolean)
+  p_provider text, p_provider_event_id text, p_kind text, p_payload jsonb, p_signature_valid boolean, p_provider_created_at timestamptz)
 returns uuid
 language plpgsql security definer set search_path = '' as $$ /* insert into billing.provider_events … on conflict (provider, provider_event_id) do nothing; returns the event id */ $$;
 
-create or replace function public.billing_apply_event(p_event_id uuid) returns void
+create or replace function public.billing_apply_event(p_event_id uuid) returns text   -- the status of the event
 language plpgsql security definer set search_path = '' as $$ /* maps NormalizedEvent kinds to subscriptions, customers, orders (later phase: boosts, verification_fees) per the table below; skips stale events; an unknown plan code or organization sets status 'error'; sets applied_at; audit.record('billing.event_applied') */ $$;
 
 -- for both functions:
@@ -893,7 +899,7 @@ As built for FR-F1 (U41, OPEN_QUESTIONS.md D66, `docs/runbooks/admin-console.md`
 
 As built for FR-C7 (U44, `docs/runbooks/vacancy-moderation.md`, migration `20261103110000_vacancy_moderation.sql`): `moderate_job(job_id, 'hide' | 'unhide', reasons)` (`trust_safety` + aal2) locks the vacancy row, moves `moderation_state` between `visible` and `hidden` (an unhide of a vacancy of a suspended organisation goes to `org_suspended`), writes a `moderation_actions` row (`target_type = 'job'`, `job_hidden` or `job_unhidden`) and the audit row `job.hide` or `job.unhide`, and on a hide queues one mandatory `vacancy_hidden` email for each accepted owner and admin; an unhide sends none. `admin_search_jobs` (title, organisation name or id; keyset on `created_at, id`) and `admin_get_job` (the text and the history of one vacancy, no applicant data) feed the pages `admin/moderation` and `admin/moderation/<id>`. An unknown or soft-deleted vacancy raises `CHARA_NOT_FOUND` and a vacancy not in the required state `CHARA_INVALID_STATE`; the reasons follow the limits of every administrative action (10 to 2000 characters, `CHARA_INVALID_INPUT`).
 
-As built for FR-H1 (U50, `docs/runbooks/public-pages.md`, migration `20261104100000_public_settings.sql`): the public group of `app/[lang]/(public)` holds Home, How CHARA Works, Trust & Safety, About, Pricing (text only until FR-H2), Contact and Imprint beside Find Jobs, the vacancy page and `legal/[slug]`; its layout gives them one header (the links of `lib/public/navigation.ts`, behind a Menu button below 768 px) and one footer (Imprint and the ten legal pages), shows Log in and Sign up to every visitor (the layout reads no session), and has its own error page and not-found page. The legal entity, the privacy contact and the data-protection contact are seven keys of `private.settings` that `public.get_public_settings()` (definer, granted to `anon` and `authenticated`) returns by key and no other key; a read that fails throws to the error page (500). `scripts/check-go-live.mjs` also fails while the name, the address or one of the two contacts is empty.
+As built for FR-H1 (U50, `docs/runbooks/public-pages.md`, migration `20261104120000_public_settings.sql`): the public group of `app/[lang]/(public)` holds Home, How CHARA Works, Trust & Safety, About, Pricing (text only until FR-H2), Contact and Imprint beside Find Jobs, the vacancy page and `legal/[slug]`; its layout gives them one header (the links of `lib/public/navigation.ts`, behind a Menu button below 768 px) and one footer (Imprint and the ten legal pages), shows Log in and Sign up to every visitor (the layout reads no session), and has its own error page and not-found page. The legal entity, the privacy contact and the data-protection contact are seven keys of `private.settings` that `public.get_public_settings()` (definer, granted to `anon` and `authenticated`) returns by key and no other key; a read that fails throws to the error page (500). `scripts/check-go-live.mjs` also fails while the name, the address or one of the two contacts is empty.
 
 - `badge_definitions(level identity | business | licence | workforce_capability | verified_partner | skill, label, description, default_validity_months, checks_catalog jsonb)`.
 - `verifications(id, subject_type organization | worker_skill, organization_id, worker_skill_id, level, status draft | submitted | in_review | info_requested | approved | rejected | suspended | expired, country_code (required for licence), source (skills), checks_completed jsonb, submitted_at, claimed_by, claimed_at, decided_by, second_approved_by, decided_at, verified_at, expires_at, decision_reason, info_request, verification_fee_id)`, `verification_evidence`, `verification_events` (append-only transitions), view `public.org_badges` (approved and unexpired only: level, country, verified_at, expires_at, checks_completed labels, source — licence badges always carry the country; nothing implies "authorised everywhere").
@@ -1070,6 +1076,8 @@ allowed_mime_types = ["application/pdf", "image/jpeg", "image/png"]
 verify_jwt = true              # the scheduler sends the project's anon key; the function also checks x-edge-secret
 [functions.billing-webhook]
 verify_jwt = false
+[functions.billing-reconcile]
+verify_jwt = true              # scheduler shared-secret header, as account-ops
 [functions.scan-document]
 verify_jwt = false
 [functions.notify]

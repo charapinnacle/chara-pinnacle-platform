@@ -1,0 +1,32 @@
+{
+  "id": "evt_checkout",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1793527200,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed",
+  "data": {
+    "object": {
+      "id": "cs_test_1",
+      "object": "checkout.session",
+      "mode": "subscription",
+      "client_reference_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11",
+      "customer": "cus_1Nx",
+      "subscription": "sub_1Nx",
+      "payment_status": "no_payment_required",
+      "customer_details": {
+        "email": "billing@example.test",
+        "name": "Acme Bau GmbH",
+        "address": {
+          "line1": "Hauptstrasse 1",
+          "country": "DE"
+        }
+      }
+    }
+  }
+}

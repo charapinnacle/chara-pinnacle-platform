@@ -37,3 +37,13 @@ export function harness(routes: Record<string, Route | Response>) {
   });
   return { calls, client, fetch: fakeFetch };
 }
+
+// The hex HMAC-SHA256 a provider signs a delivery with.
+export async function hmacHex(secret: string, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ]);
+  const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+  return Array.from(new Uint8Array(mac), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
