@@ -100,7 +100,7 @@ test.describe("price changes (FR-H2 AC4, AC8)", () => {
     const [basic] = records;
     await page.getByRole("link", { name: `Choose ${basic.name}` }).click();
     await expect(page).toHaveURL(billingPath(team.slug));
-    await page.getByRole("link", { name: `Choose ${basic.name}` }).click();
+    await page.getByRole("link", { name: new RegExp(`(free trial of|Subscribe to) ${basic.name}$`) }).click();
     await expect(page).toHaveURL(checkoutPath(team.slug));
     const disclosures = page.getByRole("region", { name: "Before you continue" });
     await expect(page.getByText(`${basic.name}, ${priceText(basic.price_minor, basic.currency)} per ${basic.interval}`)).toBeVisible();
