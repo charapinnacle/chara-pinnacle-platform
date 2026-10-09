@@ -1,6 +1,6 @@
 # Runbook: billing page
 
-FR-G5, design point D73 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 10.1 and 10.4.
+FR-G5, design point D75 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 10.1 and 10.4.
 
 ## 1. Who sees what
 
