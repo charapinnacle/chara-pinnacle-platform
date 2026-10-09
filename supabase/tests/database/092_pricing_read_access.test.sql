@@ -1,10 +1,11 @@
 begin;
-select plan(14);
+select plan(6);
 
 \ir organizations_fixture.inc
 
--- FR-H2 AC9: the pricing page reads public.v_plans. A visitor sees exactly the public plans, the rest of billing is
--- closed to them, and no API role writes a plan.
+-- FR-H2 AC9: the pricing page reads public.v_plans. What 023_plans_as_data already proves (the public plans in order,
+-- security_invoker, select-only grants, no provider columns) is not repeated here: this file covers a plan changing
+-- visibility, the plan of the own organisation and the rest of billing staying closed to a visitor.
 
 create function pg_temp.new_org(p_owner uuid) returns uuid
 language plpgsql as $$
@@ -38,11 +39,6 @@ $$;
 
 select pg_temp.new_org(:'own1') as o \gset
 
-select is(
-  pg_temp.codes_as('anon'), 'employer_starter,employer_professional',
-  'a visitor sees exactly the public plans, in display order'
-);
-
 update billing.plans set is_public = true, contact_sales = false, price_minor = 19900 where code = 'employer_enterprise';
 select is(
   pg_temp.codes_as('anon'), 'employer_starter,employer_professional,employer_enterprise',
@@ -73,31 +69,12 @@ select is(
 );
 
 select is(
-  (select count(*) from information_schema.columns
-   where table_schema = 'public' and table_name = 'v_plans' and column_name ~* 'provider|stripe|ref$|customer'),
-  0::bigint, 'the view holds no column of the payment provider'
-);
-select is(
-  (select count(*) from pg_class c, lateral unnest(coalesce(c.reloptions, '{}')) o
-   where c.oid = 'public.v_plans'::regclass and o = 'security_invoker=true'),
-  1::bigint, 'the view is security_invoker'
-);
-
-select is(
   (select count(*) from (values ('anon'), ('authenticated')) r (rol)
     cross join (values ('billing.subscriptions'), ('billing.customers'), ('billing.orders'), ('billing.provider_events'),
       ('billing.trial_grants'), ('billing.plan_provider_refs')) t (tbl)
     where has_table_privilege(r.rol, t.tbl, 'select')),
   0::bigint, 'a visitor and a signed-in user hold no table-wide select on the other billing tables'
 );
-
-set local role anon;
-select throws_ok($$select count(*) from billing.subscriptions$$, '42501', 'permission denied for table subscriptions', 'a visitor is refused the subscriptions');
-select throws_ok($$select count(*) from billing.customers$$, '42501', 'permission denied for table customers', 'and the customers');
-select throws_ok($$select count(*) from billing.orders$$, '42501', 'permission denied for table orders', 'and the orders');
-select throws_ok($$select count(*) from billing.provider_events$$, '42501', 'permission denied for table provider_events', 'and the provider events');
-select throws_ok($$update billing.plans set price_minor = 1$$, '42501', 'permission denied for table plans', 'and cannot change a price');
-reset role;
 
 select * from finish();
 rollback;

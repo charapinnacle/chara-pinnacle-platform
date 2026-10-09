@@ -21,14 +21,30 @@ export function setPlan(code: string, assignments: string): void {
   execute(`update billing.plans set ${assignments} where code = ${literal(code)}`);
 }
 
-// The seeded values of what the tests change (supabase/seeds/ref/plans.sql).
+const PLAN_TABLES = ["plans", "plan_limits", "plan_features"] as const;
+let snapshot: Record<(typeof PLAN_TABLES)[number], string> | null = null;
+
+// The plan records as they are when the file starts, so that what the tests change is put back to whatever the seed
+// and the migrations left, not to values copied into the tests.
+export function snapshotPlans(): void {
+  snapshot = Object.fromEntries(
+    PLAN_TABLES.map((table) => [table, execute(`select coalesce(json_agg(t), '[]') from billing.${table} t`).trim()]),
+  ) as NonNullable<typeof snapshot>;
+}
+
 export function restorePlans(): void {
+  const saved = snapshot;
+  if (!saved) throw new Error("snapshotPlans() has not run");
+  const rows = (table: (typeof PLAN_TABLES)[number]) => `json_populate_recordset(null::billing.${table}, ${literal(saved[table])}::json)`;
   execute(`
-    update billing.plans set name = 'Basic', price_minor = 3900, trial_days = 30, is_public = true where code = 'employer_starter';
-    update billing.plans set name = 'Professional', price_minor = 7900, trial_days = 30, is_public = true where code = 'employer_professional';
-    update billing.plans set is_public = false, contact_sales = true, price_minor = 0 where code = 'employer_enterprise';
-    delete from billing.plan_features where feature_key in ('chara_match', 'corridors', 'advanced_worker_search');
-    delete from billing.plan_limits where limit_key = 'active_requirements';
+    insert into billing.plans select * from ${rows("plans")}
+      on conflict (code) do update set org_type = excluded.org_type, name = excluded.name, price_minor = excluded.price_minor,
+        currency = excluded.currency, interval = excluded.interval, trial_days = excluded.trial_days, is_public = excluded.is_public,
+        is_default_trial = excluded.is_default_trial, contact_sales = excluded.contact_sales, sort = excluded.sort;
+    delete from billing.plan_limits;
+    insert into billing.plan_limits select * from ${rows("plan_limits")};
+    delete from billing.plan_features;
+    insert into billing.plan_features select * from ${rows("plan_features")};
     grant select on public.v_plans to anon, authenticated;
   `);
 }

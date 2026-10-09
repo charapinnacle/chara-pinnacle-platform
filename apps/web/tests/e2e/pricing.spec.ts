@@ -4,13 +4,14 @@ import { execute, literal } from "./support/db";
 import { createCommittedUser } from "./support/login";
 import { logIn } from "./support/login-page";
 import { uniqueName } from "./support/organizations";
-import { planCard, planCards, priceText, publicPlanRecords, restorePlans, setPlan, workersSection } from "./support/pricing";
+import { planCard, planCards, priceText, publicPlanRecords, restorePlans, setPlan, snapshotPlans, workersSection } from "./support/pricing";
 import { addMember, newTeam, newVisitor, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
 // The plan records are changed for the whole database while this file runs, so it has a project of its own that follows
-// the others and runs in one worker (playwright.config.ts); the seeded values are put back when it ends.
+// the others and runs in one worker (playwright.config.ts); the records are put back when it ends.
 test.describe.configure({ mode: "serial" });
+test.beforeAll(() => snapshotPlans());
 test.beforeEach(() => restorePlans());
 test.afterAll(() => restorePlans());
 
@@ -18,19 +19,22 @@ const VERIFIED_SENTENCE = "A paid plan does not make an organisation verified or
 
 test.describe("the cards (FR-H2 AC1, AC2, AC3, AC10)", () => {
   test("AC1, AC2, AC10: one card per public plan in order, the worker statement and no claim that payment buys visibility", async ({ page }) => {
+    const records = publicPlanRecords();
     const response = await page.goto("/en/pricing");
     expect(response?.status()).toBe(200);
 
-    await expect(planCards(page)).toHaveCount(2);
-    await expect(planCards(page).getByRole("heading")).toHaveText(["Basic", "Professional"]);
-    const basic = planCard(page, "Basic");
-    await expect(basic).toContainText("EUR 39.00");
-    await expect(basic).toContainText("per month excl. VAT");
-    await expect(basic).toContainText("30-day free trial");
-    await expect(basic).toContainText("Then EUR 39.00 per month excl. VAT.");
-    await expect(basic).toContainText("The trial converts automatically to the paid Basic plan.");
-    await expect(basic).toContainText("One free trial is granted per legal entity.");
-    await expect(planCard(page, "Professional")).toContainText("EUR 79.00");
+    await expect(planCards(page)).toHaveCount(records.length);
+    await expect(planCards(page).getByRole("heading")).toHaveText(records.map((record) => record.name));
+    for (const record of records) {
+      const card = planCard(page, record.name);
+      const price = priceText(record.price_minor, record.currency);
+      await expect(card).toContainText(price);
+      await expect(card).toContainText(`per ${record.interval} excl. VAT`);
+      await expect(card).toContainText(`${record.trial_days} days free trial`);
+      await expect(card).toContainText(`Then ${price} per ${record.interval} excl. VAT.`);
+      await expect(card).toContainText(`converts to the paid ${record.name} plan`);
+      await expect(card).toContainText("One free trial is granted for each legal entity.");
+    }
     await expect(page.getByRole("main").getByText("Free", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("main").getByText("Enterprise")).toHaveCount(0);
 
@@ -46,34 +50,37 @@ test.describe("the cards (FR-H2 AC1, AC2, AC3, AC10)", () => {
   });
 
   test("AC3: the trial text follows trial_days of the record, and 0 days shows none", async ({ page }) => {
+    const [first, second] = publicPlanRecords();
     await page.goto("/en/pricing");
-    await expect(planCard(page, "Basic")).toContainText("30-day free trial");
+    await expect(planCard(page, first.name)).toContainText(`${first.trial_days} days free trial`);
 
-    setPlan("employer_starter", "trial_days = 14");
+    setPlan(first.code, "trial_days = 14");
     await page.reload();
-    await expect(planCard(page, "Basic")).toContainText("14-day free trial");
-    await expect(planCard(page, "Basic")).not.toContainText("30-day");
+    await expect(planCard(page, first.name)).toContainText("14 days free trial");
+    await expect(planCard(page, first.name)).not.toContainText(`${first.trial_days} days`);
 
-    setPlan("employer_starter", "trial_days = 0");
+    setPlan(first.code, "trial_days = 0");
     await page.reload();
-    await expect(planCard(page, "Basic")).toContainText("EUR 39.00");
-    await expect(planCard(page, "Basic")).not.toContainText(/trial|Then EUR/);
-    await expect(planCard(page, "Professional")).toContainText("30-day free trial");
+    await expect(planCard(page, first.name)).toContainText(priceText(first.price_minor, first.currency));
+    await expect(planCard(page, first.name)).not.toContainText(/trial|Then EUR/);
+    await expect(planCard(page, second.name)).toContainText(`${second.trial_days} days free trial`);
   });
 });
 
 test.describe("price changes (FR-H2 AC4, AC8)", () => {
   test("AC4: a new price and name appear on the next request, and no other card changes", async ({ page }) => {
+    const [first, second] = publicPlanRecords();
     await page.goto("/en/pricing");
-    await expect(planCard(page, "Basic")).toContainText("EUR 39.00");
+    await expect(planCard(page, first.name)).toContainText(priceText(first.price_minor, first.currency));
 
-    setPlan("employer_starter", "price_minor = 4900, name = 'Starter'");
+    setPlan(first.code, "price_minor = price_minor + 1000, name = 'Starter'");
     await page.reload();
 
-    await expect(planCard(page, "Starter")).toContainText("EUR 49.00");
-    await expect(planCard(page, "Starter")).toContainText("Then EUR 49.00 per month excl. VAT.");
-    await expect(page.getByRole("heading", { name: "Basic", exact: true })).toHaveCount(0);
-    await expect(planCard(page, "Professional")).toContainText("EUR 79.00");
+    const raised = priceText(first.price_minor + 1000, first.currency);
+    await expect(planCard(page, "Starter")).toContainText(raised);
+    await expect(planCard(page, "Starter")).toContainText(`Then ${raised} per ${first.interval} excl. VAT.`);
+    await expect(page.getByRole("heading", { name: first.name, exact: true })).toHaveCount(0);
+    await expect(planCard(page, second.name)).toContainText(priceText(second.price_minor, second.currency));
   });
 
   test("AC8: every card equals its plan record, and the checkout of the owner shows the same name, price and trial", async ({ page }) => {
@@ -87,16 +94,16 @@ test.describe("price changes (FR-H2 AC4, AC8)", () => {
       const card = planCard(page, record.name);
       await expect(card).toContainText(priceText(record.price_minor, record.currency));
       await expect(card).toContainText(`per ${record.interval} excl. VAT`);
-      await expect(card).toContainText(`${record.trial_days}-day free trial`);
+      await expect(card).toContainText(`${record.trial_days} days free trial`);
     }
 
-    await page.getByRole("link", { name: "Choose Basic" }).click();
-    await expect(page).toHaveURL(billingPath(team.slug));
-    await page.getByRole("link", { name: "Choose Basic" }).click();
-    await expect(page).toHaveURL(checkoutPath(team.slug));
     const [basic] = records;
+    await page.getByRole("link", { name: `Choose ${basic.name}` }).click();
+    await expect(page).toHaveURL(billingPath(team.slug));
+    await page.getByRole("link", { name: `Choose ${basic.name}` }).click();
+    await expect(page).toHaveURL(checkoutPath(team.slug));
     const disclosures = page.getByRole("region", { name: "Before you continue" });
-    await expect(page.getByText(`Basic, ${priceText(basic.price_minor, basic.currency)} per ${basic.interval}`)).toBeVisible();
+    await expect(page.getByText(`${basic.name}, ${priceText(basic.price_minor, basic.currency)} per ${basic.interval}`)).toBeVisible();
     await expect(disclosures).toContainText(`${basic.trial_days} days free`);
     await expect(disclosures).toContainText(`${priceText(basic.price_minor, basic.currency)} per ${basic.interval}, excluding VAT`);
   });
@@ -121,12 +128,13 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
     await expect(enterprise.getByRole("link", { name: "Contact sales about Enterprise" })).toHaveAttribute("href", "/en/contact");
   });
 
-  test("AC6: each card lists the limits of its own rows and the features that have a label, and nothing of a later phase", async ({ page }) => {
+  test("AC6: each card lists the limits of its own rows (none for a null value) and the features that have a label, and nothing of a later phase", async ({ page }) => {
     setPlan("employer_enterprise", "is_public = true, contact_sales = false, price_minor = 19900");
     execute(`
       insert into billing.plan_features (plan_code, feature_key)
       values ('employer_starter', 'chara_match'), ('employer_starter', 'corridors'), ('employer_starter', 'advanced_worker_search');
-      insert into billing.plan_limits (plan_code, limit_key, limit_value) values ('employer_starter', 'active_requirements', null);
+      insert into billing.plan_limits (plan_code, limit_key, limit_value) values ('employer_starter', 'active_requirements', 4);
+      update billing.plan_limits set limit_value = null where plan_code = 'employer_enterprise' and limit_key = 'active_jobs';
     `);
 
     await page.goto("/en/pricing");
@@ -134,10 +142,10 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
     for (const [name, vacancies, members] of [
       ["Basic", "3 active vacancies", "1 team member"],
       ["Professional", "15 active vacancies", "5 team members"],
-      ["Enterprise", "50 active vacancies", "15 team members"],
-    ]) {
+      ["Enterprise", null, "15 team members"],
+    ] as const) {
       const card = planCard(page, name);
-      await expect(card.getByRole("listitem").filter({ hasText: vacancies })).toHaveCount(1);
+      await expect(card.getByRole("listitem").filter({ hasText: vacancies ?? "active vacanc" })).toHaveCount(vacancies ? 1 : 0);
       await expect(card.getByRole("listitem").filter({ hasText: members })).toHaveCount(1);
       await expect(card.getByText("Shortlisting of applicants")).toBeVisible();
     }
