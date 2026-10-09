@@ -1,5 +1,5 @@
 begin;
-select plan(134);
+select plan(140);
 
 \ir status_fixture.inc
 \ir billing_events_fixture.inc
@@ -394,6 +394,14 @@ select is(
      and p.proname not in ('billing_apply_event')),
   0::bigint, 'no other public function writes a subscription'
 );
+
+-- The pages tell a member that the subscription has ended (v_org_limits.subscription_ended).
+select is(pg_temp.json_as(:'l_member', format('select subscription_ended from public.v_org_limits where organization_id = %L', (select org from t_l))), '[{"subscription_ended": true}]'::jsonb, 'a member of a lapsed organisation reads subscription_ended true');
+select is(pg_temp.json_as(:'l8_owner', format('select subscription_ended from public.v_org_limits where organization_id = %L', (select org from t_l8))), '[{"subscription_ended": true}]'::jsonb, 'so does the owner');
+select is(pg_temp.json_as(:'n8_owner', format('select subscription_ended from public.v_org_limits where organization_id = %L', (select org from t_n8))), '[{"subscription_ended": false}]'::jsonb, 'an organisation that never subscribed reads false');
+select is(pg_temp.json_as(pg_temp.member_of((select org from t_r)), format('select subscription_ended from public.v_org_limits where organization_id = %L', (select org from t_r))), '[{"subscription_ended": false}]'::jsonb, 'a reactivated organisation, whose old canceled row is kept, reads false');
+select is(pg_temp.json_as(:'own2', format('select subscription_ended from public.v_org_limits where organization_id = %L', (select org from t_l))), '[]'::jsonb, 'a user outside the organisation reads no row');
+select is(split_part(pg_temp.call_as(null, 'anon', 'select subscription_ended from public.v_org_limits', 'aal1'), '|', 1), '42501', 'an anonymous caller is refused');
 
 select * from finish();
 rollback;
