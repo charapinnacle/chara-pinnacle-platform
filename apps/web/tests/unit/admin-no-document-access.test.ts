@@ -13,9 +13,9 @@ const FORBIDDEN = [
   "document_access_grant",
   "v_my_document_access_log",
 ];
-// The console's own layers; the shared infrastructure beyond them (environment, clients, form primitives) has no document code of its own to find.
-const LAYERS = /^@\/(lib\/(dal|actions|admin)\/|components\/admin\/|lib\/validation\/admin$)/;
-const IMPORT = /(?:from|import)\s+["']((?:@\/|\.\.?\/)[^"']+)["']/g;
+// Every module the console imports is read, except shared infrastructure: the primitives, the environment and the Supabase clients.
+const INFRASTRUCTURE = /^@\/(components\/ui\/|lib\/env|lib\/supabase\/|lib\/utils$)/;
+const IMPORT = /(?:from|import)\s*\(?\s*["']((?:@\/|\.\.?\/)[^"']+)["']/g;
 const EXTENSIONS = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
 
 function sourceFiles(directory: string): string[] {
@@ -31,7 +31,7 @@ function resolve(from: string, specifier: string): string | undefined {
   return EXTENSIONS.map((extension) => base + extension).find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
 }
 
-// The pages of the console and every module of the console's layers that they import, directly or through each other.
+// The pages of the console and every module that they import, directly or through each other.
 function reachable(): string[] {
   const seen = new Set<string>();
   const queue = sourceFiles(consoleDirectory);
@@ -40,7 +40,7 @@ function reachable(): string[] {
     if (seen.has(file)) continue;
     seen.add(file);
     for (const [, specifier] of readFileSync(file, "utf8").matchAll(IMPORT)) {
-      const next = LAYERS.test(specifier) ? resolve(file, specifier) : undefined;
+      const next = INFRASTRUCTURE.test(specifier) ? undefined : resolve(file, specifier);
       if (next) queue.push(next);
     }
   }
@@ -64,12 +64,15 @@ describe("the source of the administration console", () => {
         "lib/dal/admin.ts",
       ]),
     );
-    expect(files.length).toBeGreaterThan(40);
   });
 
   it("contains no code that opens, signs, lists or logs a document", () => {
     const found = files.flatMap((file) => offences(readFileSync(path.join(root, file), "utf8")).map((word) => `${file}: ${word}`));
     expect(found).toEqual([]);
+  });
+
+  it("imports no module whose path names a document or a storage client", () => {
+    expect(files.filter((file) => /document|storage/i.test(file))).toEqual([]);
   });
 
   it("is checked by a scan that finds every one of the words", () => {
