@@ -6,6 +6,7 @@ import { restoreSnapshot, showSnapshot, visitorCounts } from "./support/statisti
 import { expect, test } from "./support/test";
 
 const VIEW = "public.v_platform_counts";
+const SCHEDULED_REFRESH = "select cron.alter_job((select jobid from cron.job where jobname = 'refresh-platform-counts'), active := ";
 
 // The snapshot of the statistics, the threshold setting and the grant on the view are changed for the whole database
 // while this file runs, so it has a project of its own that follows the others (playwright.config.ts).
@@ -14,6 +15,7 @@ test.afterEach(() => {
   restoreSnapshot();
   execute(`grant select on ${VIEW} to anon, authenticated`);
   execute("update private.settings set value = '5' where key = 'stats_min_count'");
+  execute(`${SCHEDULED_REFRESH}true)`);
 });
 
 const heading = (page: Page) => page.getByRole("heading", { name: "CHARA in numbers" });
@@ -91,22 +93,25 @@ test.describe("live statistics on the home page", () => {
   });
 
   test("FR-H4 AC5, AC9: real data reaches the page through the refresh and not before it", async ({ page }) => {
-    execute("update private.settings set value = '1' where key = 'stats_min_count'");
+    execute(`${SCHEDULED_REFRESH}false)`);
     execute("refresh materialized view concurrently stats.platform_counts_mv");
     const before = visitorCounts();
 
-    const company = await newCompany();
-    seedJob(company, { title: "Statistics welder", status: "open", country: "PL" });
+    const companies = await Promise.all(Array.from({ length: 5 }, () => newCompany()));
+    companies.forEach((company) => seedJob(company, { title: "Statistics welder", status: "open", country: "PL" }));
     expect(visitorCounts()).toEqual(before);
 
     execute("refresh materialized view concurrently stats.platform_counts_mv");
     const after = visitorCounts();
-    expect(after.active_jobs).toBe((before.active_jobs ?? 0) + 1);
-    expect(after.employers).toBe((before.employers ?? 0) + 1);
-    const direct = query<{ n: number }>(
-      "select count(*)::integer as n from public.jobs where status = 'open' and moderation_state = 'visible' and deleted_at is null",
-    )[0].n;
-    expect(after.active_jobs).toBe(direct);
+    const direct = query<{ jobs: number; employers: number }>(
+      `select (select count(*) from public.jobs where status = 'open' and moderation_state = 'visible' and deleted_at is null)::integer as jobs,
+              (select count(*) from public.organizations where type = 'employer' and status = 'active')::integer as employers`,
+    )[0];
+    expect(direct.jobs).toBeGreaterThanOrEqual(5);
+    expect(direct.employers).toBeGreaterThanOrEqual(5);
+    expect(after.active_jobs).toBe(direct.jobs);
+    expect(after.employers).toBe(direct.employers);
+    expect(after.active_jobs).not.toBe(before.active_jobs);
 
     await openHome(page);
     await expect(groups(page).filter({ hasText: "Vacancies" })).toHaveText(new RegExp(`^Vacancies\\s*${after.active_jobs}$`));

@@ -1,6 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 
-export type PlatformCounts = Database["public"]["Views"]["v_platform_counts"]["Row"];
+type PlatformCounts = Database["public"]["Views"]["v_platform_counts"]["Row"];
 export type StatisticTile = { label: string; value: string };
 
 const columns = [

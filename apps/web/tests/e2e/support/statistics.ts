@@ -1,6 +1,6 @@
 import { execute, query } from "./db";
 
-export interface SnapshotCounts {
+interface SnapshotCounts {
   jobs: number;
   employers: number;
   workers: number;
