@@ -7,7 +7,7 @@ FR-F1, design point D66 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 3 and 11. 
 | Role | Functions |
 |---|---|
 | Platform Administrator (`admin`) | Users, Organisations (search and view), Statistics, Legal documents, Audit log, Staff, MFA reset |
-| Trust & Safety Administrator (`trust_safety`) | Users, Organisations (search, view, suspend, reinstate), Suspensions and reinstatements; vacancy moderation arrives with FR-C7 |
+| Trust & Safety Administrator (`trust_safety`) | Users, Organisations (search, view, suspend, reinstate), Vacancy moderation (`vacancy-moderation.md`), Suspensions and reinstatements |
 | Verification Reviewer | None in Phase 1 |
 
 Every page asks for its role on every request (`requirePlatformRole`): a visitor goes to log in, a user without an active role or a page outside the role is not found (HTTP 404), staff at aal1 go to the MFA page. Every function in the database repeats the check (`private.assert_staff`), so a changed token or a crafted request gains nothing. Plans, limits and settings have no screen in Phase 1: they change by a reviewed migration under `supabase/migrations` (CODEOWNERS), as FR-F1 allows.
