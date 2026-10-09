@@ -4,6 +4,7 @@ import {
   checkoutPath,
   currentTermsVersion,
   customerRows,
+  expectPlan,
   fillCheckout,
   grantTrial,
   HOSTED_ORIGIN,
@@ -21,7 +22,7 @@ import { captureActionRequests } from "./support/server-action";
 import { uniqueName } from "./support/organizations";
 import { newTeam, signInAtAal2, teamAudit } from "./support/team";
 import { expect, test } from "./support/test";
-import { formatDate } from "@/lib/i18n/format";
+import { formatShortDate } from "@/lib/i18n/format";
 
 const TRIAL_TEXT = "30 days free, starting when you confirm your payment details.";
 const NO_TRIAL_TEXT = "There is no free trial: a free trial has already been used for this company, so the first payment is due at once.";
@@ -38,7 +39,7 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
     await expect(page.getByText(NO_PAYMENT)).toBeVisible();
     await expectNoAxeViolations(page);
-    await page.getByRole("link", { name: "Choose Basic" }).click();
+    await page.getByRole("link", { name: "Start 30-day free trial of Basic" }).click();
     await expect(page).toHaveURL(checkoutPath(team.slug));
     await expect(page.getByRole("heading", { name: "Confirm your plan", level: 1 })).toBeVisible();
 
@@ -72,9 +73,9 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
     // The provider's deliveries after the hosted page (FR-G3): the customer is linked and the trial starts.
     const trialEnd = await startTrialThroughWebhook(team);
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Trial")).toBeVisible();
-    await expect(page.getByText(`Your free trial ends on ${formatDate(trialEnd)}.`)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Choose Basic" })).toHaveCount(0);
+    await expectPlan(page, "Basic", "Trial");
+    await expect(page.getByText(`Trial ends ${formatShortDate(trialEnd)}`)).toBeVisible();
+    await expect(page.getByRole("link", { name: /free trial of Basic/ })).toHaveCount(0);
   });
 
   test("AC3: the terms gate, the labels, the validation messages and the keyboard", async ({ page }) => {

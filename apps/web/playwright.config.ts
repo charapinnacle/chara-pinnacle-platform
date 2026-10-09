@@ -81,6 +81,7 @@ export default defineConfig({
         "**/member-invitation-email.spec.ts",
         "**/checkout-disclosure.spec.ts",
         "**/public-pages-failure.spec.ts",
+        "**/billing-page-failure.spec.ts",
       ],
     },
     {
@@ -211,6 +212,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/public-pages-failure.spec.ts",
       dependencies: ["billing-plans"],
+    },
+    // The jobs table is locked, and the usage function withdrawn from the API role, while this spec runs.
+    {
+      name: "billing-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/billing-page-failure.spec.ts",
+      dependencies: ["public-pages-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
