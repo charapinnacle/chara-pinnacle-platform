@@ -1,7 +1,7 @@
 -- FR-F3 AC5 and AC6, the regression guard of the build (AC10): read from the catalogue, not from a fixture. A policy that
 -- gives a staff role a path to a document, or a function behind a staff check that touches documents, fails these tests.
 begin;
-select plan(14);
+select plan(15);
 
 create temp table doc_policies as
 select schemaname, tablename, policyname, cmd, roles::text as roles, coalesce(qual, '') as qual, coalesce(with_check, '') as with_check,
@@ -15,6 +15,12 @@ create function pg_temp.staff_pattern() returns text language sql as $$
 $$;
 create function pg_temp.document_pattern() returns text language sql as $$
   select 'worker_documents|passport_shares|storage\.objects|document_access_grant|document_access_log|passport-documents'
+$$;
+
+-- The deparsed text of a policy depends on the search_path and the version of Postgres: compare it without schema
+-- qualifiers, casts, parentheses and white space.
+create function pg_temp.norm(p_expr text) returns text language sql immutable as $$
+  select regexp_replace(regexp_replace(lower(p_expr), '(public|storage|auth)\.', '', 'g'), '[()\s]|::[a-z]+', '', 'g')
 $$;
 
 -- AC5: the policies
@@ -46,15 +52,19 @@ select is_empty(
     where f.prosrc ~* pg_temp.staff_pattern()$$,
   'AC5: and no function that a policy calls is itself a platform role check or reads the table of the roles'
 );
-select ok(
-  (select qual from doc_policies where policyname = 'passport_docs_owner_select') ~ '^\(\(bucket_id = ''passport-documents''::text\) AND \(\(storage\.foldername\(name\)\)\[1\] = \(\( SELECT auth\.uid\(\) AS uid\)\)::text\)\)$'
-  and (select qual from doc_policies where policyname = 'passport_docs_owner_delete') ~ '^\(\(bucket_id = ''passport-documents''::text\) AND \(\(storage\.foldername\(name\)\)\[1\] = \(\( SELECT auth\.uid\(\) AS uid\)\)::text\)\)$',
-  'AC5: the select and delete policies of the bucket test only that the first folder of the path is the user'
+select is(
+  pg_temp.norm((select qual from doc_policies where policyname = 'passport_docs_owner_select')),
+  'bucket_id=''passport-documents''andfoldernamename[1]=selectuidasuid',
+  'AC5: the select policy of the bucket tests only that the first folder of the path is the user'
+);
+select is(
+  pg_temp.norm((select qual from doc_policies where policyname = 'passport_docs_owner_delete')),
+  'bucket_id=''passport-documents''andfoldernamename[1]=selectuidasuid',
+  'AC5: and so does the delete policy'
 );
 select ok(
-  (select with_check from doc_policies where policyname = 'passport_docs_owner_insert') ~ '\(storage\.foldername\(name\)\)\[1\] = \(\( SELECT auth\.uid\(\) AS uid\)\)::text'
-  and (select with_check from doc_policies where policyname = 'passport_docs_owner_insert')
-        ~ 'FROM worker_documents d\s+WHERE \(\(d\.worker_user_id = \( SELECT auth\.uid\(\) AS uid\)\) AND \(d\.deleted_at IS NULL\) AND \(d\.storage_path = objects\.name\)\)',
+  pg_temp.norm((select with_check from doc_policies where policyname = 'passport_docs_owner_insert')) ~
+    'foldernamename\[1\]=selectuidasuid.*fromworker_documentsdwhered\.worker_user_id=selectuidasuidandd\.deleted_atisnullandd\.storage_path=objects\.name',
   'AC5: the insert policy of the bucket also needs the own, undeleted worker_documents row of the object name'
 );
 
