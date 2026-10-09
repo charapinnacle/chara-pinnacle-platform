@@ -8,12 +8,6 @@
 alter table public.moderation_actions drop constraint moderation_actions_target_type_check;
 alter table public.moderation_actions drop constraint moderation_actions_action_check;
 alter table public.moderation_actions drop constraint moderation_actions_check;
-alter table public.moderation_actions add constraint moderation_actions_target_type_check
-  check (target_type in ('profile', 'organization', 'job'));
-alter table public.moderation_actions add constraint moderation_actions_action_check
-  check (action in (
-    'account_suspended', 'account_reinstated', 'organization_suspended', 'organization_reinstated', 'job_hidden', 'job_unhidden'
-  ));
 alter table public.moderation_actions add constraint moderation_actions_target_action_check
   check ((target_type, action) in (
     ('profile', 'account_suspended'), ('profile', 'account_reinstated'),
@@ -23,6 +17,8 @@ alter table public.moderation_actions add constraint moderation_actions_target_a
 
 comment on table public.moderation_actions is
   'Append-only record of the suspensions and reinstatements of users and organisations and of the hiding and unhiding of vacancies. actor_id and target_id have no foreign key: the record outlives an erased account, and a deleted profile would otherwise update it.';
+
+create index moderation_actions_accounts_idx on public.moderation_actions (id desc) where target_type <> 'job';
 
 -- The page of suspensions and reinstatements lists accounts and organisations; the vacancies have their own history.
 create or replace function public.admin_list_moderation_actions(p_limit integer default 25, p_after_id bigint default null)
@@ -54,6 +50,23 @@ begin
 end;
 $$;
 
+-- The recipients of a notice to an organisation (the owner and each administrator) are chosen in one place; p_extra adds
+-- keys to the queue message, here the vacancy.
+drop function private.queue_organization_notice(text, uuid, text);
+create function private.queue_organization_notice(p_kind text, p_org uuid, p_reason text, p_extra jsonb default '{}') returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  select pgmq.send('notifications', jsonb_build_object(
+    'kind', p_kind, 'user_id', m.user_id, 'mandatory', true, 'organization_id', p_org, 'reasons', p_reason
+  ) || p_extra)
+  from public.organization_members m
+  where m.organization_id = p_org and m.role in ('owner', 'admin') and m.accepted_at is not null
+$$;
+
+revoke all on function private.queue_organization_notice(text, uuid, text, jsonb) from public, anon, authenticated, service_role;
+
 -- p_action is 'hide' or 'unhide'. A vacancy is hidden only while it is visible and unhidden only while it is hidden; the
 -- row is locked, so of two simultaneous calls one finds the new state and is refused. A vacancy of a suspended
 -- organisation that is unhidden goes to org_suspended, not to visible: it stays out of the public until the organisation
@@ -80,8 +93,15 @@ begin
   end if;
   v_hide := p_action = 'hide';
 
-  select j.moderation_state, j.organization_id into v_state, v_org
-  from public.jobs j where j.id = p_job and j.deleted_at is null for no key update;
+  select j.organization_id into v_org from public.jobs j where j.id = p_job and j.deleted_at is null;
+  if not found then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  -- The organisation is locked before the vacancy, the order of suspend_organization and reinstate_organization, so that
+  -- the status read here cannot change before this transaction ends and the two cannot deadlock.
+  select o.status into v_org_status from public.organizations o where o.id = v_org for share;
+  select j.moderation_state into v_state
+  from public.jobs j where j.id = p_job and j.deleted_at is null and j.organization_id = v_org for no key update;
   if not found then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
@@ -89,7 +109,6 @@ begin
     raise exception 'CHARA_INVALID_STATE' using detail = v_state::text;
   end if;
 
-  select o.status into v_org_status from public.organizations o where o.id = v_org;
   update public.jobs
   set moderation_state = (case
     when v_hide then 'hidden'
@@ -100,11 +119,7 @@ begin
   perform private.record_moderation('job', p_job, case when v_hide then 'job_hidden' else 'job_unhidden' end, case when v_hide then 'job.hide' else 'job.unhide' end, v_reason);
 
   if v_hide then
-    perform pgmq.send('notifications', jsonb_build_object(
-      'kind', 'vacancy_hidden', 'user_id', m.user_id, 'mandatory', true, 'job_id', p_job, 'reasons', v_reason
-    ))
-    from public.organization_members m
-    where m.organization_id = v_org and m.role in ('owner', 'admin') and m.accepted_at is not null;
+    perform private.queue_organization_notice('vacancy_hidden', v_org, v_reason, jsonb_build_object('job_id', p_job));
   end if;
 end;
 $$;
@@ -112,8 +127,14 @@ $$;
 revoke all on function public.moderate_job(uuid, text, text) from public, anon, authenticated, service_role;
 grant execute on function public.moderate_job(uuid, text, text) to authenticated;
 
+-- A term that matches many titles is answered by walking the vacancies newest first until a page is full; the trigram index
+-- answers a rare term. Without this index every page sorted all the matches.
+create index jobs_newest_idx on public.jobs (created_at desc, id desc) where deleted_at is null;
+
 -- The vacancies of every organisation by part of the title, part of the name of the organisation or the vacancy id,
 -- newest first in keyset pages of (created_at, id). Nothing of an application is read; a soft-deleted vacancy is left out.
+-- Each call is planned with its own values: after five calls a connection switches to a generic plan, which cannot see
+-- the term or the cursor and took 100 times as long at 200,000 vacancies.
 create function public.admin_search_jobs(
   p_term text, p_limit integer default 25, p_after_at timestamptz default null, p_after_id uuid default null
 ) returns table (
@@ -124,30 +145,45 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
   v_like text;
+  v_limit integer := least(greatest(coalesce(p_limit, 25), 1), 100);
+  v_after_at timestamptz := coalesce(p_after_at, 'infinity');
+  v_after_id uuid := coalesce(p_after_id, 'ffffffff-ffff-ffff-ffff-ffffffffffff');
   v_id uuid := case when btrim(p_term) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then btrim(p_term)::uuid end;
 begin
   perform private.assert_staff(array['trust_safety']::public.platform_role[]);
   v_like := private.search_pattern(p_term);
 
+  -- Each branch applies the cursor (no cursor is the largest key, so the condition is always a range an index can use) and
+  -- takes at most one page, so the union holds at most three pages however many vacancies match.
   return query
   with hits as (
-    select j.id from public.jobs j where j.title ilike v_like
+    (select j.id, j.created_at from public.jobs j
+     where j.title ilike v_like and j.deleted_at is null and (j.created_at, j.id) < (v_after_at, v_after_id)
+     order by j.created_at desc, j.id desc limit v_limit)
     union
-    select j.id from public.jobs j join public.organizations o on o.id = j.organization_id where lower(o.display_name) like v_like
+    (select j.id, j.created_at from public.organizations o
+     cross join lateral (
+       select x.id, x.created_at from public.jobs x
+       where x.organization_id = o.id and x.deleted_at is null and (x.created_at, x.id) < (v_after_at, v_after_id)
+       order by x.created_at desc, x.id desc limit v_limit
+     ) j
+     where lower(o.display_name) like v_like
+     order by j.created_at desc, j.id desc limit v_limit)
     union
-    select v_id where v_id is not null
+    (select j.id, j.created_at from public.jobs j
+     where j.id = v_id and j.deleted_at is null and (j.created_at, j.id) < (v_after_at, v_after_id))
   )
   select j.id, j.title, o.display_name, j.status, j.moderation_state, j.created_at
   from hits h
   join public.jobs j on j.id = h.id
   join public.organizations o on o.id = j.organization_id
-  where j.deleted_at is null and (p_after_id is null or (j.created_at, j.id) < (p_after_at, p_after_id))
-  order by j.created_at desc, j.id desc
-  limit least(greatest(coalesce(p_limit, 25), 1), 100);
+  order by h.created_at desc, h.id desc
+  limit v_limit;
 end;
 $$;
 

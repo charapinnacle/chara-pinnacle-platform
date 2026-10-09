@@ -1,5 +1,5 @@
 begin;
-select plan(111);
+select plan(113);
 
 -- FR-C7: moderate_job, admin_search_jobs and admin_get_job. The Trust & Safety Administrator is st_trust; Acme (t.a) has
 -- the owner own1, the admin adm, the member mem and the invited-but-not-accepted member pending.
@@ -253,6 +253,8 @@ select is(pg_temp.moderate_as(:'st_trust', :'s1', 'hide', :'reason40'), 'P0001|C
 select is(pg_temp.moderate_as(:'st_trust', :'s1', 'unhide', :'reason40'), 'P0001|CHARA_INVALID_STATE|org_suspended', 'AC8: so is an unhide of it');
 select is(pg_temp.moderate_as(:'st_trust', :'s3', 'unhide', :'reason30'), 'ok', 'AC8: the hidden vacancy of the suspended organisation is unhidden');
 select is(pg_temp.state_of(:'s3'), 'org_suspended:open', 'AC8: and stays out of the public with the suspension, not visible');
+select is(pg_temp.scalar_as('anon', null, format('select count(*) from public.jobs where id = %L', :'s3')), '0', 'AC8: an anonymous table read does not return it');
+select is(pg_temp.search_ids('anon', null, $$p_q => 'suspend hidden'$$) ~ :'s3', false, 'AC8: nor does the search');
 select is(
   pg_temp.call_as(:'st_trust', 'authenticated', format($$select public.reinstate_organization(%L, 'Documents checked, genuine.')$$, :'org')), 'ok',
   'AC8: the organisation is reinstated'
