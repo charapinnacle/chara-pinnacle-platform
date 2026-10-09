@@ -3,7 +3,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let settings: Record<string, string> = {};
 let failure: Error | null = null;
-let legalDocument: { title: string; version: number; body: string; publishedAt: string } | null = null;
+type LegalFixture = {
+  title: string;
+  version: number;
+  body: string;
+  publishedAt: string;
+  changeSummary: string;
+  isDraft: boolean;
+  changeLog: { version: number; publishedAt: string; changeSummary: string; isDraft: boolean }[];
+};
+
+let legalDocument: LegalFixture | null = null;
+
+const legalFixture = (over: Partial<LegalFixture> = {}): LegalFixture => ({
+  title: "Privacy Policy",
+  version: 3,
+  body: "The legal text.",
+  publishedAt: "2026-10-01T00:00:00Z",
+  changeSummary: "Adds the retention periods.",
+  isDraft: false,
+  changeLog: [{ version: 3, publishedAt: "2026-10-01T00:00:00Z", changeSummary: "Adds the retention periods.", isDraft: false }],
+  ...over,
+});
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
@@ -32,7 +53,7 @@ const legalProps = (slug: string) => ({ params: Promise.resolve({ lang: "en", sl
 beforeEach(() => {
   settings = {};
   failure = null;
-  legalDocument = { title: "Privacy Policy", version: 3, body: "The legal text.", publishedAt: "2026-10-01T00:00:00Z" };
+  legalDocument = legalFixture();
 });
 
 describe("the pages that read the settings (FR-H1 AC7, AC8)", () => {
@@ -80,7 +101,7 @@ describe("the legal page (FR-H1 AC7)", () => {
 
   it("does not read the settings for another document", async () => {
     failure = new Error("not to be called");
-    legalDocument = { title: "Terms of Service", version: 1, body: "Terms.", publishedAt: "2026-10-01T00:00:00Z" };
+    legalDocument = legalFixture({ title: "Terms of Service", version: 1, body: "Terms." });
     const html = renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")));
     expect(html).toContain("Terms.");
     expect(html).not.toContain("Contacts for questions");
@@ -89,6 +110,50 @@ describe("the legal page (FR-H1 AC7)", () => {
   it("is not found when no version of the slug is published", async () => {
     legalDocument = null;
     await expect(LegalPage(legalProps("nope"))).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+});
+
+describe("the legal page (FR-H3)", () => {
+  it("shows the version, the UTC date, the change summary, the headings and paragraphs of the body, and the change log newest first (AC1)", async () => {
+    legalDocument = legalFixture({
+      publishedAt: "2026-10-01T23:30:00Z",
+      body: "## Scope\n\nFirst paragraph.\n\nSecond paragraph.",
+      changeLog: [
+        { version: 3, publishedAt: "2026-10-01T23:30:00Z", changeSummary: "Third change.", isDraft: false },
+        { version: 2, publishedAt: "2026-09-20T00:00:00Z", changeSummary: "Second change.", isDraft: false },
+        { version: 1, publishedAt: "2026-09-01T00:00:00Z", changeSummary: "Initial version", isDraft: false },
+      ],
+    });
+    const html = renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")));
+    expect(html).toContain("Version 3 · Published 1 October 2026");
+    expect(html).toContain("<h2");
+    expect(html).toMatch(/<h2[^>]*>Scope<\/h2>/);
+    expect(html).toContain(">First paragraph.</p>");
+    expect(html).toContain(">Second paragraph.</p>");
+    const log = html.slice(html.indexOf("Change log"));
+    expect(log.indexOf("Version 3 · 1 October 2026")).toBeLessThan(log.indexOf("Version 2 · 20 September 2026"));
+    expect(log.indexOf("Version 2 · 20 September 2026")).toBeLessThan(log.indexOf("Version 1 · 1 September 2026"));
+    expect(log).toContain("Third change.");
+    expect(log).toContain("Initial version");
+  });
+
+  it("shows the draft banner above the text of a draft and none for an approved text (AC3)", async () => {
+    legalDocument = legalFixture({ isDraft: true });
+    const draft = renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")));
+    expect(draft).toContain("Draft - not yet approved by legal counsel");
+    expect(draft.indexOf("Draft - not yet approved by legal counsel")).toBeLessThan(draft.indexOf("The legal text."));
+
+    legalDocument = legalFixture({ isDraft: false });
+    expect(renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")))).not.toContain("not yet approved");
+  });
+
+  it("renders markup in the text as literal text (AC12)", async () => {
+    legalDocument = legalFixture({ body: "<script>window.hacked=1</script>\n\n<img src=x onerror=window.hacked=1>" });
+    const html = renderToStaticMarkup(await LegalPage(legalProps("terms-of-service")));
+    expect(html).toContain("&lt;script&gt;window.hacked=1&lt;/script&gt;");
+    expect(html).toContain("&lt;img src=x onerror=window.hacked=1&gt;");
+    expect(html).not.toContain("<script");
+    expect(html).not.toContain("<img");
   });
 });
 
