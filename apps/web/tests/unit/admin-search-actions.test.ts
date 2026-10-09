@@ -4,6 +4,7 @@ const requireRoleMock = vi.hoisted(() => vi.fn());
 const searchUsersMock = vi.fn();
 const searchOrganizationsMock = vi.fn();
 const searchAuditMock = vi.fn();
+const searchJobsMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/session", () => ({ requirePlatformRole: requireRoleMock }));
@@ -11,6 +12,7 @@ vi.mock("@/lib/dal/admin", () => ({
   searchUsers: searchUsersMock,
   searchOrganizations: searchOrganizationsMock,
   searchAudit: searchAuditMock,
+  searchJobs: searchJobsMock,
 }));
 
 const actions = await import("@/lib/actions/admin-search");
@@ -22,6 +24,36 @@ beforeEach(() => {
   vi.clearAllMocks();
   requireRoleMock.mockResolvedValue({ user: { id: "staff" }, roles: ["admin"] });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
+});
+
+describe("the vacancy search action", () => {
+  it("asks for the Trust & Safety role alone and answers a page with the rows of the data access layer", async () => {
+    searchJobsMock.mockResolvedValue({ rows: [{ id: ID }], next: { at: "2026-10-01T10:00:00+00:00", id: ID } });
+    const answer = await actions.searchJobsAction("  welder ", { at: "2026-10-02T10:00:00+00:00", id: ID });
+
+    expect(requireRoleMock).toHaveBeenCalledWith("en", ["trust_safety"]);
+    expect(searchJobsMock).toHaveBeenCalledWith("welder", { at: "2026-10-02T10:00:00+00:00", id: ID });
+    expect(answer).toEqual({ ok: true, page: { rows: [{ id: ID }], next: { at: "2026-10-01T10:00:00+00:00", id: ID } } });
+  });
+
+  it("refuses a term and a cursor that are not what the page hands out, without reading", async () => {
+    expect(await actions.searchJobsAction("ab", null)).toEqual({ ok: false });
+    expect(await actions.searchJobsAction("welder", { at: "yesterday", id: ID })).toEqual({ ok: false });
+    expect(await actions.searchJobsAction("welder", { at: "2026-10-02T10:00:00+00:00", id: "1" })).toEqual({ ok: false });
+    expect(searchJobsMock).not.toHaveBeenCalled();
+  });
+
+  it("answers a failure of the database as not ok and logs only the code of the cause", async () => {
+    searchJobsMock.mockRejectedValue(new Error("The vacancies could not be loaded", { cause: { message: "the term was welder", code: "57014" } }));
+    expect(await actions.searchJobsAction("welder", null)).toEqual({ ok: false });
+    expect(console.error).toHaveBeenCalledWith("The vacancy search failed", { code: "57014" });
+  });
+
+  it("lets the refusal of the role guard through", async () => {
+    requireRoleMock.mockRejectedValue(new Error("NOT_FOUND"));
+    await expect(actions.searchJobsAction("welder", null)).rejects.toThrow("NOT_FOUND");
+    expect(searchJobsMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("the search actions", () => {

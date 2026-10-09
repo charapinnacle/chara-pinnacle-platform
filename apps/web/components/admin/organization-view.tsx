@@ -56,7 +56,13 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
           <ResultsTable caption="Vacancies" columns={["Vacancy", "Status", "Visibility"]}>
             {organization.vacancies.map((vacancy) => (
               <tr key={vacancy.id}>
-                <td className={`${cell} break-words`}>{vacancy.title}</td>
+                <td className={`${cell} break-words`}>
+                  {roles.includes("trust_safety") ? (
+                    <TextLink href={adminPath(lang, `moderation/${vacancy.id}`)}>{vacancy.title}</TextLink>
+                  ) : (
+                    vacancy.title
+                  )}
+                </td>
                 <td className={cell}>{isJobStatus(vacancy.status) ? statusLabels[vacancy.status] : vacancy.status}</td>
                 <td className={cell}>{moderationLabels[vacancy.moderationState]}</td>
               </tr>

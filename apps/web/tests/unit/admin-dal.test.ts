@@ -73,6 +73,31 @@ describe("the paged searches", () => {
     expect((await dal.searchOrganizations("org", null)).next).toEqual({ name: "Org 24", id: ID });
   });
 
+  it("search vacancies in pages of (created_at, id), newest first, with the cursor of the last row shown", async () => {
+    const row = (n: number) => ({
+      id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+      title: `Welder ${n}`,
+      organization_name: "Acme Bau",
+      status: "open",
+      moderation_state: "hidden",
+      created_at: `2026-10-01T10:00:${String(60 - n).padStart(2, "0")}.123456+00:00`,
+    });
+    rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
+    const page = await dal.searchJobs("welder", { at: "2026-10-02T00:00:00+00:00", id: ID });
+
+    expect(rpcMock).toHaveBeenCalledWith("admin_search_jobs", { p_term: "welder", p_limit: 26, p_after_at: "2026-10-02T00:00:00+00:00", p_after_id: ID });
+    expect(page.rows).toHaveLength(25);
+    expect(page.rows[0]).toEqual({
+      id: row(1).id,
+      title: "Welder 1",
+      organizationName: "Acme Bau",
+      status: "open",
+      moderationState: "hidden",
+      createdAt: row(1).created_at,
+    });
+    expect(page.next).toEqual({ at: row(25).created_at, id: row(25).id });
+  });
+
   it("send the audit filter as the arguments of the function, leave out what is empty and show the reason, request and job of the row", async () => {
     rpcMock.mockResolvedValue({
       data: [
@@ -199,6 +224,49 @@ describe("the details", () => {
       members: [{ userId: ID, displayName: null, role: "owner" }],
       vacancies: [{ title: "Welder", moderationState: "org_suspended" }],
     });
+  });
+});
+
+describe("the vacancy to moderate", () => {
+  const detail = {
+    id: ID,
+    title: "Welder",
+    description: "Weld steel frames.",
+    organization_id: ID,
+    organization_name: "Acme Bau",
+    country_code: "DE",
+    city: "Hamburg",
+    status: "open",
+    moderation_state: "hidden",
+    created_at: "2026-10-01T00:00:00Z",
+    history: [{ action: "job_hidden", reasons: "Asks for a fee.", at: "2026-10-02T00:00:00Z" }],
+  };
+
+  it("maps the vacancy with its text, its organisation and its history", async () => {
+    rpcMock.mockResolvedValue({ data: [detail], error: null });
+    expect(await dal.getModerationJob(ID)).toEqual({
+      id: ID,
+      title: "Welder",
+      description: "Weld steel frames.",
+      organizationId: ID,
+      organizationName: "Acme Bau",
+      countryCode: "DE",
+      city: "Hamburg",
+      status: "open",
+      moderationState: "hidden",
+      createdAt: "2026-10-01T00:00:00Z",
+      history: [{ action: "job_hidden", reasons: "Asks for a fee.", at: "2026-10-02T00:00:00Z" }],
+    });
+    expect(rpcMock).toHaveBeenCalledWith("admin_get_job", { p_job: ID });
+  });
+
+  it("answers null for an unknown vacancy, fails for anything else and refuses a history that is not what the database promises", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_NOT_FOUND" } });
+    expect(await dal.getModerationJob(ID)).toBeNull();
+    rpcMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+    await expect(dal.getModerationJob(ID)).rejects.toThrow("The vacancy could not be loaded");
+    rpcMock.mockResolvedValue({ data: [{ ...detail, history: [{ action: "job_deleted", reasons: "x", at: "y" }] }], error: null });
+    await expect(dal.getModerationJob(ID)).rejects.toThrow();
   });
 });
 

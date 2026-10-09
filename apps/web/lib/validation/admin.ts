@@ -30,6 +30,10 @@ export const nameCursorSchema = z.object({ name: z.string().max(200), id: z.uuid
 
 export type NameCursor = z.infer<typeof nameCursorSchema>;
 
+export const jobCursorSchema = z.object({ at: z.iso.datetime({ offset: true }), id: z.uuid() }).nullable();
+
+export type JobCursor = z.infer<typeof jobCursorSchema>;
+
 export const timeCursorSchema = z.object({ at: z.iso.datetime({ offset: true }), id: z.number().int().positive() }).nullable();
 
 export type TimeCursor = z.infer<typeof timeCursorSchema>;
@@ -58,6 +62,8 @@ export const moderationInputSchema = moderationFormSchema.extend({
   id: z.uuid(),
   to: z.enum(["suspended", "active"]),
 });
+
+export const jobModerationInputSchema = moderationFormSchema.extend({ id: z.uuid(), action: z.enum(["hide", "unhide"]) });
 
 const userIdSchema = z.uuid({ error: "Enter a valid user id" });
 
