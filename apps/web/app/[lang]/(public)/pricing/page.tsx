@@ -16,7 +16,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
       </ContentSection>
       <ContentSection heading="Employers">
         <p>
-          Prices are shown in euros and exclude VAT. The terms of a subscription are in the{" "}
+          The terms of a subscription are in the{" "}
           <TextLink href={`/${lang}/legal/subscription-and-billing-terms`}>Subscription and Billing Terms</TextLink>.
         </p>
       </ContentSection>

@@ -17,7 +17,7 @@ const employerSteps = [
   "Register your organisation and invite your team.",
   "Publish a vacancy with its location, pay and conditions.",
   "Review the applicants, move them through the stages of your pipeline and shortlist the best.",
-  "Choose a plan on the Pricing page when you need more vacancies or team members.",
+  "Choose a plan on the billing page of your organisation when you need more vacancies or team members.",
 ];
 
 function Steps({ steps }: { steps: readonly string[] }) {
