@@ -13,6 +13,7 @@ import { SelectField } from "@/components/forms/select-field";
 import { LegalLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { startCheckout } from "@/lib/actions/billing";
+import { oneTrialRule } from "@/lib/billing/presentation";
 import { formatDate } from "@/lib/i18n/format";
 import { checkoutFormSchema, type CheckoutFormInput } from "@/lib/validation/billing";
 
@@ -102,7 +103,7 @@ export function CheckoutForm({
         name="registrationNumber"
         id={ids.registrationNumber}
         label="Company registration number"
-        description="One free trial is granted for each company."
+        description={oneTrialRule}
         autoComplete="off"
       />
       <ConsentPanel>

@@ -1,17 +1,32 @@
-import { formatPrice } from "@/lib/billing/presentation";
+import { z } from "zod";
+import { daysText, formatPrice, oneTrialRule, trialConversion } from "@/lib/billing/presentation";
 import { billingPath } from "@/lib/routes";
 
-export type PublicPlan = {
-  code: string;
-  name: string;
-  priceMinor: number;
-  currency: string;
-  interval: string;
-  trialDays: number;
-  contactSales: boolean;
-  limits: Readonly<Record<string, number | null>>;
-  features: readonly string[];
-};
+export const publicPlanSchema = z
+  .object({
+    code: z.string(),
+    name: z.string(),
+    price_minor: z.number().int(),
+    currency: z.string(),
+    interval: z.string(),
+    trial_days: z.number().int(),
+    contact_sales: z.boolean(),
+    limits: z.record(z.string(), z.number().int().nullable()),
+    features: z.array(z.string()),
+  })
+  .transform((row) => ({
+    code: row.code,
+    name: row.name,
+    priceMinor: row.price_minor,
+    currency: row.currency,
+    interval: row.interval,
+    trialDays: row.trial_days,
+    contactSales: row.contact_sales,
+    limits: row.limits,
+    features: row.features,
+  }));
+
+export type PublicPlan = z.infer<typeof publicPlanSchema>;
 
 // A plan lists only the limits and features this release delivers (FR-H2): a key without a label here is not shown,
 // whatever the plan records hold. A feature of a later phase gets its label with the release that delivers it.
@@ -47,11 +62,7 @@ export function planCard(plan: PublicPlan): PlanCard {
     per,
     trial:
       price && plan.trialDays > 0
-        ? [
-            `${plan.trialDays}-day free trial`,
-            `Then ${price} ${per} excl. VAT.`,
-            `The trial converts automatically to the paid ${plan.name} plan. One free trial is granted per legal entity.`,
-          ]
+        ? [`${daysText(plan.trialDays)} free trial`, `Then ${price} ${per} excl. VAT.`, `${trialConversion(plan.name)} ${oneTrialRule}`]
         : [],
     limits: Object.entries(limitLabels).flatMap(([key, label]) => {
       const value = plan.limits[key];
@@ -66,9 +77,10 @@ export type PricingViewer =
   | { kind: "worker" }
   | { kind: "member" }
   | { kind: "manager"; slug: string }
-  | { kind: "setup" };
+  | { kind: "setup" }
+  | { kind: "unknown" };
 
-type Link = { href: string; label: string };
+export type Link = { href: string; label: string };
 
 // The link of a card for the person who reads it. Every label holds the plan name, so the links of a page differ.
 export function planLink(viewer: PricingViewer, card: PlanCard, lang: string): Link | null {

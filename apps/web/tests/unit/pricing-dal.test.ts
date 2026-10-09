@@ -6,6 +6,7 @@ const calls: Call[] = [];
 let result: { data: unknown; error: unknown } = { data: null, error: null };
 let user: { id: string; accountKind: string | null } | null = null;
 let organizations: { slug: string; role: "owner" | "admin" | "member" }[] = [];
+let organizationsFailure = false;
 
 function builder() {
   const chain: Record<string, unknown> = {};
@@ -20,6 +21,8 @@ function builder() {
 }
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/env", () => ({ env: { NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421" } }));
+vi.mock("@/lib/env.server", () => ({ serverEnv: () => ({}) }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: (table: string) => {
@@ -32,9 +35,15 @@ vi.mock("@/lib/dal/session", () => ({
   getCurrentUser: async () => user,
   roleRank: { member: 1, admin: 2, owner: 3 },
 }));
-vi.mock("@/lib/dal/organizations", () => ({ getMyOrganizations: async () => organizations }));
+vi.mock("@/lib/dal/organizations", () => ({
+  getMyOrganizations: async () => {
+    if (organizationsFailure) throw new Error("The organizations could not be loaded");
+    return organizations;
+  },
+}));
 
 const { getPricingViewer, listPublicPlans } = await import("@/lib/dal/pricing");
+const { listSoldPlans } = await import("@/lib/dal/billing");
 
 const row = (overrides: Record<string, unknown> = {}) => ({
   code: "employer_starter",
@@ -54,6 +63,7 @@ beforeEach(() => {
   result = { data: [], error: null };
   user = null;
   organizations = [];
+  organizationsFailure = false;
 });
 
 describe("the plans of the pricing page (FR-H2 AC1, AC5)", () => {
@@ -88,6 +98,22 @@ describe("the plans of the pricing page (FR-H2 AC1, AC5)", () => {
   });
 });
 
+describe("the plans that can be bought (FR-G2, read through the pricing reader)", () => {
+  it("leaves out a plan sold by contact and a plan without a price", async () => {
+    result = {
+      data: [
+        row(),
+        row({ code: "employer_enterprise", name: "Enterprise", price_minor: 0, contact_sales: true }),
+        row({ code: "employer_gratis", name: "Gratis", price_minor: 0 }),
+      ],
+      error: null,
+    };
+
+    expect((await listSoldPlans()).map((plan) => plan.code)).toEqual(["employer_starter"]);
+    expect(calls).toContainEqual(["from", "v_plans"]);
+  });
+});
+
 describe("who reads the page (FR-H2 AC12)", () => {
   it("is a visitor without a session", async () => {
     expect(await getPricingViewer()).toEqual({ kind: "visitor" });
@@ -119,5 +145,11 @@ describe("who reads the page (FR-H2 AC12)", () => {
     user = { id: "u1", accountKind: "company" };
     organizations = [{ slug: "joined", role: "member" }];
     expect(await getPricingViewer()).toEqual({ kind: "member" });
+  });
+
+  it("is unknown when the organisations cannot be read, so that the plans still show and no link is promised", async () => {
+    user = { id: "u1", accountKind: "company" };
+    organizationsFailure = true;
+    expect(await getPricingViewer()).toEqual({ kind: "unknown" });
   });
 });

@@ -9,6 +9,7 @@ import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveLegalEntityIdentifier } from "@/lib/actions/billing";
+import { oneTrialRule } from "@/lib/billing/presentation";
 import { legalEntityFormSchema, type LegalEntityFormInput } from "@/lib/validation/billing";
 import { identifierKindOptions } from "@/lib/validation/organization";
 
@@ -54,7 +55,7 @@ export function LegalEntityForm({ slug, defaults }: { slug: string; defaults: Le
         name="identifier"
         id={ids.identifier}
         label="Company registration number or VAT number"
-        description="A free trial is granted once for each legal entity."
+        description={oneTrialRule}
         autoComplete="off"
       />
       <SelectField

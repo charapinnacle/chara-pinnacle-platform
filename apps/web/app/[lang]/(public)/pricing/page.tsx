@@ -20,7 +20,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
   return (
     <ContentPage
       title="Pricing"
-      lead="CHARA is free for workers. Employers use it under a subscription plan. All prices are in euros and exclude VAT."
+      lead="CHARA is free for workers. Employers use it under a subscription plan. All prices exclude VAT."
     >
       <ContentSection heading="Workers">
         <p>Workers never pay to create a profile, search vacancies or apply.</p>

@@ -32,15 +32,15 @@ describe("the card of a plan record (FR-H2 AC1, AC3, AC6)", () => {
       price: "EUR 39.00",
       per: "per month",
       trial: [
-        "30-day free trial",
+        "30 days free trial",
         "Then EUR 39.00 per month excl. VAT.",
-        "The trial converts automatically to the paid Basic plan. One free trial is granted per legal entity.",
+        "When the trial ends, your subscription converts to the paid Basic plan and your payment method is charged automatically. One free trial is granted for each legal entity.",
       ],
     });
   });
 
   it("follows the trial length, and shows no trial text for 0 days", () => {
-    expect(planCard({ ...BASIC, trialDays: 14 }).trial[0]).toBe("14-day free trial");
+    expect(planCard({ ...BASIC, trialDays: 14 }).trial[0]).toBe("14 days free trial");
     expect(planCard({ ...BASIC, trialDays: 0 }).trial).toEqual([]);
   });
 
@@ -77,12 +77,12 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
   });
 
   it("gives a worker, a member and a person who has not finished setting up no link to buy", () => {
-    expect([links({ kind: "worker" }), links({ kind: "member" }), links({ kind: "setup" })]).toEqual([null, null, null]);
+    expect([links({ kind: "worker" }), links({ kind: "member" }), links({ kind: "setup" }), links({ kind: "unknown" })]).toEqual([null, null, null, null]);
   });
 
   it("gives every reader the contact page for a plan sold by contact", () => {
     const enterprise = planCard({ ...BASIC, name: "Enterprise", contactSales: true });
-    for (const kind of ["visitor", "worker", "member", "setup"] as const) {
+    for (const kind of ["visitor", "worker", "member", "setup", "unknown"] as const) {
       expect(planLink({ kind }, enterprise, "en")).toEqual({ href: "/en/contact", label: "Contact sales about Enterprise" });
     }
   });
@@ -93,5 +93,6 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
     expect(viewerNote({ kind: "worker" }, "en")?.text).toBe("Plans are for employers. Workers never pay.");
     expect(viewerNote({ kind: "member" }, "en")?.text).toBe("The owner or an admin of your organisation manages its plan.");
     expect(viewerNote({ kind: "setup" }, "en")?.link?.href).toBe("/en/onboarding");
+    expect(viewerNote({ kind: "unknown" }, "en")).toBeNull();
   });
 });

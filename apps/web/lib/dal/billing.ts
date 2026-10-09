@@ -1,11 +1,11 @@
 import "server-only";
 import { z } from "zod";
 import type { SoldPlan, SubscriptionStatus } from "@/lib/billing/presentation";
+import { listPublicPlans } from "@/lib/dal/pricing";
 import { env } from "@/lib/env";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_PLANS = 20;
 const TIMEOUT_MS = 20_000;
 
 const stateSchema = z.object({
@@ -37,24 +37,9 @@ type Subscription = {
   currentPeriodEnd: string | null;
 };
 
-// The plans a company can buy online: public, priced and not for contact. Limits and features are not read here.
+// The plans a company can buy online: public, priced and not for contact.
 export async function listSoldPlans(): Promise<SoldPlan[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("v_plans")
-    .select("code, name, price_minor, currency, interval, trial_days")
-    .eq("org_type", "employer")
-    .eq("is_public", true)
-    .eq("contact_sales", false)
-    .gt("price_minor", 0)
-    .order("sort")
-    .limit(MAX_PLANS);
-  if (error) throw new Error("The plans could not be loaded", { cause: error });
-  return data.flatMap((row) =>
-    row.code && row.name && row.price_minor !== null && row.currency && row.interval && row.trial_days !== null
-      ? [{ code: row.code, name: row.name, priceMinor: row.price_minor, currency: row.currency, interval: row.interval, trialDays: row.trial_days }]
-      : [],
-  );
+  return (await listPublicPlans()).filter((plan) => !plan.contactSales && plan.priceMinor > 0);
 }
 
 export async function getBillingState(organizationId: string): Promise<BillingState> {

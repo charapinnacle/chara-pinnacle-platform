@@ -43,7 +43,7 @@ describe("the pricing page (FR-H2)", () => {
     const html = renderToStaticMarkup(await PricingPage(props));
 
     expect(html.indexOf("Basic")).toBeLessThan(html.indexOf("Professional"));
-    for (const text of ["EUR 39.00", "EUR 79.00", "excl. VAT", "30-day free trial", "3 active vacancies", "15 active vacancies", "5 team members"]) {
+    for (const text of ["EUR 39.00", "EUR 79.00", "excl. VAT", "30 days free trial", "3 active vacancies", "15 active vacancies", "5 team members"]) {
       expect(html).toContain(text);
     }
     expect(html.match(/<h3/g)).toHaveLength(2);

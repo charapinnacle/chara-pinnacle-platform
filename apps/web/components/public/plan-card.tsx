@@ -1,5 +1,5 @@
 import { TextLink } from "@/components/forms/text-link";
-import type { PlanCard as Card } from "@/lib/billing/pricing";
+import type { Link, PlanCard as Card } from "@/lib/billing/pricing";
 
 function Bullets({ items }: { items: readonly string[] }) {
   return (
@@ -11,7 +11,7 @@ function Bullets({ items }: { items: readonly string[] }) {
   );
 }
 
-export function PlanCard({ card, link }: { card: Card; link: { href: string; label: string } | null }) {
+export function PlanCard({ card, link }: { card: Card; link: Link | null }) {
   const [headline, ...terms] = card.trial;
   return (
     <li className="grid content-start gap-3 rounded-xl border bg-card p-4">
