@@ -15,7 +15,7 @@ const kindLabels = Object.fromEntries(identifierKindOptions.map((option) => [opt
 
 export default async function BillingPage({ params }: PageProps<"/[lang]/org/[slug]/billing">) {
   const { lang, slug } = await params;
-  const { organization } = await requireOrgRole(lang, slug, "admin");
+  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true });
   const [subscription, state, plans] = await Promise.all([
     getSubscription(organization.id),
     getBillingState(organization.id),
