@@ -118,3 +118,5 @@ group by 1 order by 1 desc;
 ```
 
 Hosted check after each deploy of `billing-checkout`: post a checkout with the token of a candidate, expect `403` with `{"error":"forbidden","reason":null}` and one new `billing.worker_checkout_refused` row for that person. No row means the function's service-role key or the RPC is missing on the project.
+
+Policy text (AC8): migration `20261104110000_platform_rules_worker_statement.sql` publishes a DRAFT version 1 of `platform-rules` that states that a worker never pays and tells users to report a fee request to the Trust & Safety Administrator; pgTAP `089_workers_never_pay` fails if the current version loses either statement. Launch gate (not a build check): legal counsel approves the text, which is published as the next version through the administration console. The contact address for such reports belongs to the legal-entity settings of the public pages (FR-H1), not to this requirement.

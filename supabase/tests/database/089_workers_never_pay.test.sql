@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(53);
 
 \ir organizations_fixture.inc
 
@@ -246,6 +246,13 @@ select is(
 select is(
   pg_temp.call_as(:'wkr', 'authenticated', format($$select public.billing_record_worker_attempt(%L)$$, :'wkr')),
   '42501|permission denied for function billing_record_worker_attempt|', 'KPI: nor can the worker, so the allowance is not a way to write the log'
+);
+
+-- AC8 (manual check, kept honest): the Platform Rules in force say that a worker never pays and where to report a fee request.
+select ok(
+  (select d.body ~* 'never pay' and d.body ~* 'finding work' and d.body ~* 'applying' and d.body ~* 'Trust & Safety Administrator'
+   from public.legal_documents d where d.slug = 'platform-rules' order by d.version desc limit 1),
+  'AC8: the current Platform Rules state that a worker never pays and name the Trust & Safety Administrator as the recipient of fee-request reports'
 );
 
 select * from finish();
