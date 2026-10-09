@@ -27,3 +27,46 @@ select
   private.member_org_subscription_ended(o.id) as subscription_ended
 from public.organizations o
 left join billing.plans p on p.code = private.org_plan_code(o.id);
+
+-- The dashboard plan card answers the same question through the same helper, so the definition of a lapse is written once.
+create or replace function public.get_dashboard_plan(p_organization_id uuid) returns table (
+  plan_name text,
+  status text,
+  trial_ends_at timestamptz,
+  current_period_end timestamptz,
+  past_due_since timestamptz,
+  subscription_ended boolean
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or private.account_kind() is distinct from 'company' then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'company_account_required';
+  end if;
+  if private.is_org_member(p_organization_id, 'admin') and not private.is_aal2() then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
+  end if;
+  return query
+  select
+    p.name,
+    coalesce(s.status, 'free'),
+    s.trial_ends_at,
+    s.current_period_end,
+    s.past_due_since,
+    private.member_org_subscription_ended(o.id)
+  from public.organizations o
+  join billing.plans p on p.code = private.org_plan_code(o.id)
+  -- The live statuses and the order are those of private.org_plan_code, so that the name and the status agree.
+  left join lateral (
+    select x.status, x.trial_ends_at, x.current_period_end, x.past_due_since
+    from billing.subscriptions x
+    where x.organization_id = o.id and x.status in ('trialing', 'active', 'past_due')
+    order by x.created_at desc
+    limit 1
+  ) s on true
+  where o.id = p_organization_id and o.id in (select private.member_org_ids());
+end;
+$$;

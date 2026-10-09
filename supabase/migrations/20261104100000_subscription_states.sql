@@ -4,9 +4,8 @@
 -- transaction of the event) and the daily check that a subscription is not still Past due a day after its grace period,
 -- which only Stripe's dunning ends.
 
--- The lapse. billing_apply_event of 20261103120000_webhook_processing.sql with one addition, marked below: a status that
--- turns canceled calls private.pause_jobs_on_lapse (FR-C2) before the event is marked applied. If that raises, the
--- transaction of the event is rolled back and the subscription keeps its status; the retry job tries the event again.
+-- The lapse. billing_apply_event of 20261103120000_webhook_processing.sql with one addition: a status that turns canceled calls
+-- private.pause_jobs_on_lapse (FR-C2) before the event is marked applied.
 -- Keyed on the status and not on the kind of the event, so that every way into canceled lapses the organisation once:
 -- a second event finds the subscription canceled and is stale.
 create or replace function public.billing_apply_event(p_event_id uuid) returns text
@@ -65,6 +64,7 @@ begin
     return 'error';
   end if;
 
+  -- In the transaction of the event, so that a failed pause rolls the status back and the retry job tries the event again.
   if v_out.to_status = 'canceled' and v_out.from_status is distinct from 'canceled' then
     perform private.pause_jobs_on_lapse(v_org);
   end if;
