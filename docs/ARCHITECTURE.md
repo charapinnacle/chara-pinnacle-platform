@@ -50,7 +50,7 @@ Phase 1 scope: candidate (worker) and employer accounts only — public site, va
 │                                                                                               │
 │  Edge Functions (Deno, x-region = project region) — the ONLY place the secret key exists      │
 │   document-url · billing-webhook · billing-checkout · account-ops · notify · scan-document    │
-│   audit-export (monthly export of the audit log to the archive)                               │
+│   audit-export (monthly export of the audit log to the archive) · billing-reconcile (weekly)  │
 └───────────────────────────────────────────────────────────────────────────────────────────────┘
           ▲                                        ▲
           │ Stripe webhooks (signature-verified)    │ Resend (EU region) · AV scanner (vendor undecided)
@@ -153,7 +153,7 @@ chara-pinnacle-platform/
                                     billing/provider.ts, billing/providers/{null,stripe}.ts,
                                     database.types.ts (generated: public + billing + audit)
     functions/_tests/               [now] Deno tests (a directory named tests/ would deploy as a function)
-    functions/document-url · billing-checkout · billing-webhook · notify · account-ops · scan-document · audit-export
+    functions/document-url · billing-checkout · billing-webhook · billing-reconcile · notify · account-ops · scan-document · audit-export
                                     [now] account-ops (handler.ts is the testable part, index.ts only serves it); audit-export (U42: handler.ts, archive.ts)
     functions/serve-local.sh        [now] runs account-ops on the port of `ACCOUNT_OPS_PORT` (`playwright.config.ts`) against the local stack for the browser tests
     functions/.env.example          [now] committed, names only; local values go in functions/.env (gitignored)
@@ -586,7 +586,7 @@ grant execute on function public.document_access_grant(uuid, text) to authentica
 |---|---|---|
 | Must be true regardless of caller (ownership, visibility, limits, status transitions, append-only, k-anonymity, workers never pay) | Postgres: constraints, RLS, triggers, security_invoker views | `audit.log` immutability trigger; owner-count constraint; `jobs_enforce_limits` trigger; application transition guard; `guard_verification_transition` (later phase) |
 | Touches several tables or needs a privileged read | SECURITY DEFINER RPC in `public` (owned by postgres, `set search_path = ''`, re-checks uid/role/aal, writes audit) | `create_organization`, `apply_to_job`, `set_application_status`, `document_access_grant`; later phase: `verification_decide`, `chara_match` |
-| Needs a secret, outbound network or long runtime | Edge Function (one capability each); database access only through RPCs | `billing-checkout`, `billing-webhook`, `document-url`, `notify`, `account-ops`, `scan-document` |
+| Needs a secret, outbound network or long runtime | Edge Function (one capability each); database access only through RPCs | `billing-checkout`, `billing-webhook`, `billing-reconcile`, `document-url`, `notify`, `account-ops`, `scan-document` |
 | Scheduled | pg_cron → SQL function; pg_net to an Edge Function when the outside world is needed; pgmq for retries | MV refresh, expiries, retention, billing retry, notification fan-out |
 | Rendering, forms, navigation, i18n | Next.js Server Components and thin Server Actions (zod → DAL → RPC/table via the user's session) | — |
 
@@ -596,6 +596,9 @@ Edge Functions and the database: an Edge Function never reads or writes a table 
 |---|---|---|
 | `billing_ingest_event` | `billing-webhook` | Idempotent insert into `billing.provider_events` (unique provider + provider event id). |
 | `billing_apply_event` | `billing-webhook`, billing retry job | Applies a stored event to subscriptions, customers and orders. |
+| `billing_webhook_rejected` | `billing-webhook` | Audits a delivery with an invalid signature (`billing.webhook_rejected`: provider and reason, no payload), at most once an hour for each provider and reason, because the endpoint is public and the audit log permanent. |
+| `billing_reconcile_records` | `billing-reconcile` | One page (at most 5,000, in primary-key order) of the subscription records that have a provider reference, for the weekly comparison with the provider. |
+| `billing_reconcile_report` | `billing-reconcile` | The result of one comparison: the total of differences, one operations alert per difference of a sample of at most 200 (and one more when the sample is smaller than the total), and one audit row `billing.reconciled` with the total. A large run is never refused. |
 | `audit_record_external` | any function | Appends an `audit.log` row for an action that happened outside the database. As built (U42, D68): `audit_record_external(action, entity_type, entity_id, actor_id, metadata)` takes the actor from the job (kept only while the profile exists), refuses an action that is not lower-case `<entity>.<verb>` or that starts with a name the database writes for administrative acts (`user.`, `organization.`, `job.`, `mfa.`, `platform_role.`, `legal_document.`), and for `account_ops.*` actions requires `metadata.job_id` and writes one row per action and job (a unique index): a repeat returns false and adds none. `created_at` and `ip` are never arguments. |
 | `audit_export_month` / `audit_export_count` | `audit-export` | The rows of one finished calendar month (UTC) as one jsonb page of at most 5,000 (default 1,000) in keyset order of (`created_at`, `id`), and their number. A month that is not over is refused. |
 | `document_set_scan_status` | `scan-document` | Sets `worker_documents.scan_status`. |
@@ -1071,6 +1074,8 @@ allowed_mime_types = ["application/pdf", "image/jpeg", "image/png"]
 verify_jwt = true              # the scheduler sends the project's anon key; the function also checks x-edge-secret
 [functions.billing-webhook]
 verify_jwt = false
+[functions.billing-reconcile]
+verify_jwt = true              # scheduler shared-secret header, as account-ops
 [functions.scan-document]
 verify_jwt = false
 [functions.notify]

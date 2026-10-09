@@ -4,11 +4,11 @@ FR-G3, design point D70 (OPEN_QUESTIONS.md), ARCHITECTURE.md section 10.3. The p
 
 ## 1. The path of an event
 
-1. `billing-webhook` reads the raw body and asks the provider adapter to verify the signature (Stripe: header `Stripe-Signature`, HMAC-SHA256 of `<t>.<raw body>`, 300 seconds tolerance, any `v1` value of a rotated secret; null provider: header `x-chara-signature`, HMAC-SHA256 of the raw body). A delivery that does not verify is answered with `401` and no detail, is not stored, and writes one audit row `billing.webhook_rejected` whose metadata is the reason (`missing_signature`, `malformed_signature`, `timestamp_outside_tolerance`, `signature_mismatch`, `invalid_payload`, `not_configured`) and the provider: no payload, no event id.
+1. `billing-webhook` reads the raw body and asks the provider adapter to verify the signature (Stripe: header `Stripe-Signature`, HMAC-SHA256 of `<t>.<raw body>`, 300 seconds tolerance, any `v1` value of a rotated secret; null provider: header `x-chara-signature`, HMAC-SHA256 of the raw body). A delivery that does not verify is answered with `401` and no detail, is not stored, and is logged on every attempt (`billing_webhook_rejected`, provider and reason). The audit row `billing.webhook_rejected` (metadata: the reason, one of `missing_signature`, `malformed_signature`, `timestamp_outside_tolerance`, `signature_mismatch`, `invalid_payload`, `not_configured`, and the provider; no payload, no event id) is written by `billing_webhook_rejected` at most once an hour for each provider and reason, because the endpoint is public and the audit log is permanent.
 2. The adapter turns the event into a normalised event (`normalize`); a type CHARA does not use (`charge.succeeded`, `customer.updated`, ...) is answered with `200` and not stored. The normalised event holds ids, the plan code, the status, dates and amounts, and no name, address or card.
 3. `billing_ingest_event` stores it once, keyed by provider and provider event id; a second delivery returns the first row and changes nothing. A failure to store answers `500`, so that Stripe delivers again.
 4. `billing_apply_event` applies it in one transaction and answers the status: `applied` (one audit row `billing.event_applied` with the event id, kind, organisation, status before and after), `stale`, `error` or `received`. A failure of this call is logged and answered with `200`: the event is stored and the retry job owns it.
-5. `stale`: the event is older than the state held (`subscriptions.last_provider_event_at`). The function fetches the subscription from Stripe, stores it as `subscription.updated` (or `subscription.canceled`) under the id `refetch:<subscription>:<time of the fetch>` and applies that. A failed fetch is logged and left to the next event or the weekly comparison.
+5. `stale`: the event is older than the state held (`subscriptions.last_provider_event_at`). The function fetches the subscription from Stripe, stores it as `subscription.updated` (or `subscription.canceled`) under the id `refetch:<subscription>:<time of the fetch>` and applies that. A failed fetch is logged and left to the next event or the weekly comparison. An event that waited as `received` and turns `stale` in a retry run is not fetched again (only the function calls Stripe): the next event of the subscription or the weekly comparison corrects the record.
 
 | Provider event | Effect (`billing_apply_event`) |
 |---|---|
@@ -41,7 +41,7 @@ The scheduler jobs are `billing-retry-events` (`*/5 * * * *`, `select billing.re
 
 ## 3. Retry and alerts
 
-`billing.retry_failed_events()` takes the 100 oldest events that are still `received` and applies each. An event that is still `received` after `billing_retry_alert_minutes` becomes `error` with the reason `org_not_linked` (the organisation or its subscription never appeared) or `transient` (the application itself keeps failing), and raises one alert. Alerts are rows of `private.security_events` (ids and reasons only) and a server log line `{"alert": ..., "detail": ...}`; operations configure the log platform to notify on the key `alert`. The kinds of this unit: `billing_event_error`, `billing_trial_repeated`, `billing_reconciliation_difference`; the function logs add `billing_webhook_ingest_failed`, `billing_reconcile_failed` and `billing_reconcile_misconfigured`.
+`billing.retry_failed_events()` takes the 100 oldest events that are still `received` and applies each. An event that is still `received` after `billing_retry_alert_minutes` becomes `error` with the reason `org_not_linked` (the organisation or its subscription never appeared) or `transient` (the application itself keeps failing), and raises one alert. Alerts are rows of `private.security_events` (ids and reasons only) and a server log line `{"alert": ..., "detail": ...}`; operations configure the log platform to notify on the key `alert`. A plan that is unknown (`unknown_plan`) or a second customer for an organisation (`customer_conflict`) is an error and an alert at once, and is not retried. Alerts are kept 13 months (`security_events` in `private.retention_policies`). The kinds of this unit: `billing_event_error`, `billing_trial_repeated`, `billing_reconciliation_difference`, `billing_reconciliation_truncated`; the function logs add `billing_webhook_ingest_failed`, `billing_reconcile_failed` and `billing_reconcile_misconfigured`.
 
 ```sql
 -- What waits or failed (the payload is the normalised event; read it as the database owner only)
@@ -62,7 +62,7 @@ select audit.record_as(null, 'billing.event_reset', 'provider_event', id::text, 
 
 ## 4. Reconciliation (weekly, Monday 04:00 UTC)
 
-`billing-reconcile` lists the subscriptions Stripe holds that are not cancelled and reads the records of `billing.subscriptions` for the provider, and compares them by subscription reference: `missing_record` (Stripe has it, the records do not), `extra_record` (a live record Stripe does not list), `status_mismatch`, `plan_mismatch`. `billing_reconcile_report` raises one alert `billing_reconciliation_difference` per difference and writes one audit row `billing.reconciled` (`checked`, `differences`). A difference can be an event still in flight: run the function again before acting (`select private.call_edge_function('billing-reconcile')`, or POST with the shared secret), then compare the record with the subscription in Stripe and correct the cause (re-deliver the event from the Stripe dashboard; it is stored once and a stored event is not applied twice, so reset a stuck event as in section 3 instead). With the null provider the function answers `skipped`. The check that alerts when a subscription is still Past due a day after the grace period belongs to FR-G4.
+`billing-reconcile` lists the subscriptions Stripe holds that are not cancelled and reads the records of `billing.subscriptions` for the provider, and compares them by subscription reference: `missing_record` (Stripe has it, the records do not), `extra_record` (a live record Stripe does not list), `status_mismatch`, `plan_mismatch`. `billing-reconcile` sends the total and a sample of 100 differences; `billing_reconcile_report` raises one alert `billing_reconciliation_difference` per difference of the sample (at most 200), one alert `billing_reconciliation_truncated` when the sample is smaller than the total, and writes one audit row `billing.reconciled` (`checked`, `differences` = the total). A large run, for example after an outage of the webhook, is reported, never refused. A difference can be an event still in flight: run the function again before acting (`select private.call_edge_function('billing-reconcile')`, or POST with the shared secret), then compare the record with the subscription in Stripe and correct the cause (re-deliver the event from the Stripe dashboard; it is stored once and a stored event is not applied twice, so reset a stuck event as in section 3 instead). With the null provider the function answers `skipped`. The check that alerts when a subscription is still Past due a day after the grace period belongs to FR-G4.
 
 ## 5. KPIs (monthly review)
 
@@ -75,15 +75,15 @@ select date_trunc('month', received_at)::date as month,
 from billing.provider_events group by 1 order by 1 desc;
 ```
 
-Reconciliation differences (target 0), per week, and the runs themselves:
+Reconciliation differences (target 0), per week: the total of the runs is in the audit rows (the alerts are a sample of at most 200 for each run):
 
 ```sql
-select date_trunc('week', created_at)::date as week, count(*) as differences
-from private.security_events where kind = 'billing_reconciliation_difference' group by 1 order by 1 desc;
+select date_trunc('week', created_at)::date as week, sum((metadata ->> 'differences')::int) as differences
+from audit.log where action = 'billing.reconciled' group by 1 order by 1 desc;
 select created_at, metadata from audit.log where action = 'billing.reconciled' order by id desc limit 10;
 ```
 
-Also review monthly (SOP frequency): events in `error`, the oldest `received` event, the rejected deliveries (`select date_trunc('day', created_at)::date, metadata ->> 'reason', count(*) from audit.log where action = 'billing.webhook_rejected' group by 1, 2 order by 1 desc`). An endpoint that anyone can post to can fill the audit log with rejections; if the volume becomes a problem, replace the audit row by the log line the function already writes.
+Also review monthly (SOP frequency): events in `error`, the oldest `received` event, the rejected deliveries (`select date_trunc('day', created_at)::date, metadata ->> 'reason', count(*) from audit.log where action = 'billing.webhook_rejected' group by 1, 2 order by 1 desc`). The audit rows are bounded to one an hour for each provider and reason; the number of attempts is the log line `billing_webhook_rejected`.
 
 ## 6. Local stack and tests
 
