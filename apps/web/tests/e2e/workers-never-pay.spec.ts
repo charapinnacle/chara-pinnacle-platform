@@ -22,7 +22,7 @@ async function paymentElements(page: Page): Promise<string[]> {
     }
     for (const control of document.querySelectorAll("a, button, [role=button], input[type=submit]")) {
       const label = (control.textContent || (control as HTMLInputElement).value || "").trim();
-      if (/^(subscribe|upgrade|start (your )?(free )?trial|pay\b|choose\b|continue to payment)/i.test(label)) {
+      if (/^(subscribe|upgrade|start (your |\d+-day )?(free )?trial|pay\b|choose\b|continue to payment)/i.test(label)) {
         found.push(`control ${label}`);
       }
     }
@@ -76,7 +76,7 @@ test.describe("FR-G6: no pricing or payment element in the candidate area", () =
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
     const found = await paymentElements(page);
     expect(found).toContain(`link ${checkoutPath(team.slug)}`);
-    expect(found.some((entry) => entry.startsWith("control Choose"))).toBe(true);
+    expect(found.some((entry) => entry.startsWith("control Start"))).toBe(true);
     expect(found.some((entry) => entry.startsWith("price "))).toBe(true);
   });
 
