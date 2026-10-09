@@ -908,6 +908,11 @@ isOneToOne: false
 "billing_record_worker_attempt":
 { Args: { "p_user": string }; Returns: boolean
                            },
+"billing_usage":
+{ Args: { "p_org": string }; Returns: {
+              "limit_key": string,"limit_value": number,"used": number
+            }[]
+                           },
 "billing_webhook_rejected":
 { Args: { "p_provider": string,"p_reason": string }; Returns: boolean
                            },
