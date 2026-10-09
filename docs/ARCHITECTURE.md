@@ -657,6 +657,8 @@ As built for the vacancy page (FR-C4, OPEN_QUESTIONS.md D50): `get_public_job(p_
   - whether the direct Find Workers channel is available.
 - The rule row selects the workflow. The direct employer-to-worker channel (`search_workers`, Find Workers) is available only where the corridor rule allows it; where the source country requires an authorised agency, the employer is routed to a verified recruitment partner instead. The employer-to-staffing-partner flow is likewise selected by the corridor rule. A corridor rule that enables a regulated workflow is switched on only after the legal review for that corridor (OPEN_QUESTIONS.md, L3, L4). The table is designed with that phase.
 
+As built for `v_platform_counts` (FR-H4, OPEN_QUESTIONS.md D73): a `security_invoker` view cannot read a snapshot that anonymous callers may not select, so the view reads `private.platform_counts()`, a definer function that applies `k` (`private.stats_min_count()`) to the exact counts and rounds the candidate count after the test (`k` is never below 5); the Phase 1 snapshot has the columns `countries`, `workers`, `employers`, `active_jobs` only.
+
 ---
 
 ## 10. Billing (provider-neutral)
