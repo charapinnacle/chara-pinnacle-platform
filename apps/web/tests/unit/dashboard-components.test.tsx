@@ -22,7 +22,7 @@ const plan = (over: Partial<DashboardPlan>): DashboardPlan => ({
   ...over,
 });
 const alerts = (over: Partial<DashboardPlan>, billingHref: string | null = billing) =>
-  renderToStaticMarkup(<PlanAlerts plan={plan(over)} now={now} billingHref={billingHref} />);
+  renderToStaticMarkup(<PlanAlerts plan={plan(over)} now={now} slug="acme" billingHref={billingHref} />);
 const card = (over: Partial<DashboardPlan>, billingHref: string | null = billing) =>
   renderToStaticMarkup(<PlanCard plan={plan(over)} now={now} billingHref={billingHref} />);
 const trial = (ms: number) => ({ status: "trialing" as const, trialEndsAt: new Date(now.getTime() + ms) });
@@ -61,26 +61,29 @@ describe("an active plan and a failed payment (FR-E5 AC5, AC7)", () => {
     expect(alerts({ currentPeriodEnd: new Date("2026-11-03T00:00:00Z") })).toBe("");
   });
 
-  it("warns above the cards that the payment failed, with the end of the grace period 5 days after two days", () => {
+  it("warns an owner or an admin above the cards that the payment failed, with the day it failed, the end of the grace period and the button of the portal", () => {
     const past = { status: "past_due" as const, pastDueSince: new Date(now.getTime() - 2 * DAY) };
     const owner = alerts(past);
     expect(owner).toContain('role="alert"');
-    expect(owner).toContain("payment for your plan failed");
-    expect(owner).toContain("October 13, 2026");
-    expect(owner).toContain("5 days left");
-    expect(owner).toContain(`href="${billing}"`);
-    expect(alerts(past, null)).not.toContain("href=");
+    expect(owner.replace(/<[^>]+>/g, "")).toContain(
+      "Payment failed on 6 Oct 2026. Update your payment method before 13 Oct 2026 to keep your plan.",
+    );
+    expect(owner).toContain(">Update payment method</button>");
     const html = card(past);
     expect(html).toContain("Past due");
     expect(html).toContain("Basic");
   });
 
+  it("shows a member no payment warning, only the status on the plan card", () => {
+    const past = { status: "past_due" as const, pastDueSince: new Date(now.getTime() - 2 * DAY) };
+    expect(alerts(past, null)).toBe("");
+    expect(card(past, null)).toContain("Past due");
+  });
+
   it("says the grace period has ended instead of a date in the past once 7 days have passed", () => {
-    const owner = alerts({ status: "past_due", pastDueSince: new Date(now.getTime() - 8 * DAY) });
-    expect(owner).toContain("payment for your plan failed");
-    expect(owner).toContain("The grace period has ended");
-    expect(owner).not.toContain("stays active");
-    expect(owner).not.toContain("0 days left");
+    const owner = alerts({ status: "past_due", pastDueSince: new Date(now.getTime() - 8 * DAY) }).replace(/<[^>]+>/g, "");
+    expect(owner).toMatch(/Payment failed on 30 Sept? 2026\. The grace period has ended\. Update your payment method now\./);
+    expect(owner).not.toContain("to keep your plan");
   });
 });
 

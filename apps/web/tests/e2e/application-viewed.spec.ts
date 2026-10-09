@@ -102,8 +102,8 @@ test.describe("the first open of an application", () => {
     await logIn(page, member, applicantUrl(company.slug, applicationId));
     await expect(page.getByRole("heading", { name: "Ana Silva", level: 1 })).toBeVisible();
     await expect(stageValue(page)).toHaveText("Applied");
-    await expect(page.getByRole("status").filter({ hasText: "Your organization has no active paid plan, so the stage cannot be changed." })).toBeVisible();
-    await expect(changeStageButton(page)).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: "Your subscription has ended. Your past applicants stay readable" })).toBeVisible();
+    await expect(changeStageButton(page)).toBeDisabled();
     expect(eventRows(applicationId)).toHaveLength(1);
   });
 

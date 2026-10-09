@@ -744,7 +744,7 @@ isOneToOne: false
                   ]
                 },"v_org_limits": {
                   Row: {
-                    "active_jobs_limit": number | null,"open_jobs": number | null,"organization_id": string | null,"plan_name": string | null
+                    "active_jobs_limit": number | null,"open_jobs": number | null,"organization_id": string | null,"plan_name": string | null,"subscription_ended": boolean | null
                   }
                   Relationships: [
                     

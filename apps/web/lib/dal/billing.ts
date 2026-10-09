@@ -26,6 +26,7 @@ const subscriptionSchema = z.object({
   status: z.enum(statuses),
   trial_ends_at: z.string().nullable(),
   current_period_end: z.string().nullable(),
+  past_due_since: z.string().nullable(),
 });
 
 export type BillingState = z.infer<typeof stateSchema>;
@@ -35,6 +36,7 @@ type Subscription = {
   status: SubscriptionStatus;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
+  pastDueSince: string | null;
 };
 
 // The plans a company can buy online: public, priced and not for contact. Limits and features are not read here.
@@ -69,13 +71,19 @@ export async function getSubscription(organizationId: string): Promise<Subscript
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("v_my_subscription")
-    .select("plan_name, status, trial_ends_at, current_period_end")
+    .select("plan_name, status, trial_ends_at, current_period_end, past_due_since")
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The subscription could not be loaded", { cause: error });
   if (!data) return null;
   const row = subscriptionSchema.parse(data);
-  return { planName: row.plan_name, status: row.status, trialEndsAt: row.trial_ends_at, currentPeriodEnd: row.current_period_end };
+  return {
+    planName: row.plan_name,
+    status: row.status,
+    trialEndsAt: row.trial_ends_at,
+    currentPeriodEnd: row.current_period_end,
+    pastDueSince: row.past_due_since,
+  };
 }
 
 const answerSchema = z.object({

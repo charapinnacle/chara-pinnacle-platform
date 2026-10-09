@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
+import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
-import { listJobs } from "@/lib/dal/hiring";
+import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { jobPath, jobsPath } from "@/lib/routes";
+import { billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { isJobStatus, jobDateText, jobStatusText, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
@@ -18,7 +19,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
   if (organization.suspended) return <SuspendedOrganization title="Vacancies" subject="vacancies" />;
   const cursor = parseJobCursor(after);
   const status = isJobStatus(statusParam) ? statusParam : null;
-  const page = await listJobs(organization.id, cursor, status);
+  const [page, ended] = await Promise.all([listJobs(organization.id, cursor, status), isSubscriptionEnded(organization.id)]);
   const canCreate = organization.role !== "member";
   const newJob = canCreate ? (
     <TextLink standalone href={`${jobsPath(lang, slug)}/new`}>
@@ -35,6 +36,8 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
         </div>
         {page.jobs.length > 0 ? newJob : null}
       </header>
+
+      <ReadOnlyPlanNotice ended={ended} billingHref={organization.role === "member" ? null : billingPath(lang, slug)} />
 
       {page.jobs.length === 0 && status ? (
         <EmptyState icon={Briefcase} title={`No ${statusLabels[status].toLowerCase()} vacancies`}>
