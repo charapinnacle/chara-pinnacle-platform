@@ -80,6 +80,7 @@ export default defineConfig({
         "**/admin-console-staff-database.spec.ts",
         "**/member-invitation-email.spec.ts",
         "**/checkout-disclosure.spec.ts",
+        "**/live-statistics.spec.ts",
         "**/public-pages-failure.spec.ts",
         "**/pricing.spec.ts",
       ],
@@ -220,6 +221,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/public-pages-failure.spec.ts",
       dependencies: ["pricing-plans"],
+    },
+    // The snapshot of the home page statistics is replaced, the threshold changed and the grant on its view withdrawn
+    // while this spec runs, so it follows every other project.
+    {
+      name: "statistics",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/live-statistics.spec.ts",
+      dependencies: ["staff-database", "billing-plans", "public-pages-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

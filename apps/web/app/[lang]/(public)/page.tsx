@@ -1,7 +1,15 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { TextLink } from "@/components/forms/text-link";
+import { StatisticsBlock } from "@/components/home/statistics-block";
 import { PageContainer } from "@/components/layout/page-container";
 import { ContentSection } from "@/components/public/content-page";
+import { getPlatformStatistics } from "@/lib/dal/statistics";
+
+async function Statistics() {
+  const tiles = await getPlatformStatistics();
+  return tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null;
+}
 
 const buttonClassName =
   "inline-flex min-h-11 items-center rounded-lg px-6 text-base font-semibold";
@@ -34,6 +42,9 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </Link>
         </div>
       </header>
+      <Suspense fallback={null}>
+        <Statistics />
+      </Suspense>
       <div className="grid gap-10 md:grid-cols-3">
         <ContentSection heading="For workers">
           <p>

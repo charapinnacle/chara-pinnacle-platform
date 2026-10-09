@@ -762,6 +762,13 @@ isOneToOne: false
                         Relationships: [
                     
                   ]
+                },"v_platform_counts": {
+                  Row: {
+                    "active_jobs": number | null,"countries": number | null,"employers": number | null,"workers": number | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Functions: {
