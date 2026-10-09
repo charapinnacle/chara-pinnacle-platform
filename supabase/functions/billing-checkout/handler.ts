@@ -30,7 +30,7 @@ const WORKER_ACCOUNT = "worker_account";
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
   serviceClient: SupabaseClient;
-  provider: BillingProvider;
+  provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal">;
   siteUrl: string;
 }
 

@@ -29,7 +29,7 @@ const database = (message: string, code: string, details: string | null = null) 
 function providerSpy(options: { fail?: boolean } = {}) {
   const checkouts: CheckoutInput[] = [];
   const portals: { customerRef: string; returnUrl: string }[] = [];
-  const provider: BillingProvider = {
+  const provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal"> = {
     name: "stripe",
     createCheckout(input) {
       checkouts.push(input);

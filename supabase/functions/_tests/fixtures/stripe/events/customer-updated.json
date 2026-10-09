@@ -1,0 +1,20 @@
+{
+  "id": "evt_cust",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1793527200,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "customer.updated",
+  "data": {
+    "object": {
+      "id": "cus_1Nx",
+      "object": "customer",
+      "email": "billing@example.test"
+    }
+  }
+}

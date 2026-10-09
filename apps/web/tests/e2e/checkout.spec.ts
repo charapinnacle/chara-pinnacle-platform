@@ -11,9 +11,11 @@ import {
   proceed,
   setIdentifier,
   startTrial,
+  startTrialThroughWebhook,
   stubHostedPages,
   terms,
   termsConsents,
+  uniqueIdentifiers,
 } from "./support/billing";
 import { captureActionRequests } from "./support/server-action";
 import { uniqueName } from "./support/organizations";
@@ -40,7 +42,9 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
     await expect(page).toHaveURL(checkoutPath(team.slug));
     await expect(page.getByRole("heading", { name: "Confirm your plan", level: 1 })).toBeVisible();
 
-    await fillCheckout(page);
+    // The trial is recorded for good through the webhook below, so this test has identifiers of its own.
+    const identifiers = uniqueIdentifiers();
+    await fillCheckout(page, identifiers);
     await terms(page).check();
     await expectNoAxeViolations(page);
     expect(await page.locator('input[autocomplete^="cc-"]').count()).toBe(0);
@@ -52,7 +56,7 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
     expect(requests.some((entry) => /card|cvc|cc-/i.test(entry))).toBe(false);
 
     expect(customerRows(team)).toEqual([
-      { provider: "null", customer_ref: null, billing_country: "DE", vat_id: "DE123456789", registration_number: "HRB12345" },
+      { provider: "null", customer_ref: null, billing_country: "DE", vat_id: identifiers.vat, registration_number: identifiers.registrationStored },
     ]);
     expect(termsConsents(team.owner)).toEqual([{ version: currentTermsVersion(), action: "granted" }]);
     const [started, ...others] = teamAudit(team, "billing.checkout_started");
@@ -62,10 +66,11 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
       entity_id: team.id,
       metadata: { plan_code: "employer_starter", trial_days: 30, legal_entity_trial_used: false },
     });
-    expect(JSON.stringify(started.metadata)).not.toMatch(/DE123456789|HRB/);
+    expect(JSON.stringify(started.metadata)).not.toContain(identifiers.vat);
+    expect(JSON.stringify(started.metadata)).not.toContain(identifiers.registrationStored);
 
-    // What the webhook (FR-G3) leaves after the hosted page: the subscription of the trial.
-    const trialEnd = startTrial(team);
+    // The provider's deliveries after the hosted page (FR-G3): the customer is linked and the trial starts.
+    const trialEnd = await startTrialThroughWebhook(team);
     await page.goto(billingPath(team.slug));
     await expect(page.getByText("Basic · Status: Trial")).toBeVisible();
     await expect(page.getByText(`Your free trial ends on ${formatDate(trialEnd)}.`)).toBeVisible();

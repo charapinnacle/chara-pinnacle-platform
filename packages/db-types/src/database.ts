@@ -878,6 +878,9 @@ isOneToOne: false
 "audit_record_external":
 { Args: { "p_action": string,"p_actor_id"?: string,"p_entity_id": string,"p_entity_type": string,"p_metadata"?: Json }; Returns: boolean
                            },
+"billing_apply_event":
+{ Args: { "p_event_id": string }; Returns: string
+                           },
 "billing_checkout_start":
 { Args: { "p_billing_country": string,"p_disclosed_trial_days"?: number,"p_org": string,"p_plan_code": string,"p_provider"?: string,"p_registration_number": string,"p_terms_version": number,"p_vat_id": string }; Returns: {
               "customer_ref": string,"price_ref": string,"slug": string,"trial_days": number
@@ -888,13 +891,25 @@ isOneToOne: false
               "billing_country": string,"has_customer": boolean,"identifier": string,"identifier_kind": string,"identifier_locked": boolean,"registration_number": string,"trial_used": boolean,"vat_id": string
             }[]
                            },
+"billing_ingest_event":
+{ Args: { "p_kind": string,"p_payload": Json,"p_provider": string,"p_provider_created_at": string,"p_provider_event_id": string,"p_signature_valid": boolean }; Returns: string
+                           },
 "billing_portal_start":
 { Args: { "p_org": string }; Returns: {
               "customer_ref": string,"slug": string
             }[]
                            },
+"billing_reconcile_records":
+{ Args: { "p_after"?: string,"p_limit"?: number,"p_provider": string }; Returns: Json
+                           },
+"billing_reconcile_report":
+{ Args: { "p_checked": number,"p_difference_count": number,"p_differences": Json,"p_provider": string }; Returns: number
+                           },
 "billing_record_worker_attempt":
 { Args: { "p_user": string }; Returns: boolean
+                           },
+"billing_webhook_rejected":
+{ Args: { "p_provider": string,"p_reason": string }; Returns: boolean
                            },
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {

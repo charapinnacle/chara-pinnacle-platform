@@ -1,0 +1,33 @@
+{
+  "id": "evt_inv_paid",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1796119205,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.paid",
+  "data": {
+    "object": {
+      "id": "in_1Nx",
+      "object": "invoice",
+      "customer": "cus_1Nx",
+      "subscription": "sub_1Nx",
+      "subscription_details": {
+        "metadata": {
+          "org_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11"
+        }
+      },
+      "status": "paid",
+      "amount_paid": 3900,
+      "currency": "eur",
+      "tax": 741,
+      "payment_intent": "pi_1Nx",
+      "customer_email": "billing@example.test",
+      "customer_name": "Acme Bau GmbH"
+    }
+  }
+}

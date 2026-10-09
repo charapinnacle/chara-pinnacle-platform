@@ -1,0 +1,40 @@
+{
+  "id": "evt_inv_failed",
+  "object": "event",
+  "api_version": "2025-01-27.acacia",
+  "created": 1796119500,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.payment_failed",
+  "data": {
+    "object": {
+      "id": "in_2Nx",
+      "object": "invoice",
+      "customer": "cus_1Nx",
+      "status": "open",
+      "amount_due": 3900,
+      "amount_paid": 0,
+      "currency": "eur",
+      "payment_intent": "pi_2Nx",
+      "parent": {
+        "type": "subscription_details",
+        "subscription_details": {
+          "subscription": "sub_1Nx",
+          "metadata": {
+            "org_id": "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11"
+          }
+        }
+      },
+      "total_taxes": [
+        {
+          "amount": 741,
+          "tax_behavior": "exclusive"
+        }
+      ]
+    }
+  }
+}
