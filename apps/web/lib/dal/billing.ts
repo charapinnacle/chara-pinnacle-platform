@@ -22,22 +22,32 @@ const stateSchema = z.object({
 const statuses = ["trialing", "active", "past_due", "canceled", "paused"] as const satisfies readonly SubscriptionStatus[];
 
 const subscriptionSchema = z.object({
+  plan_code: z.string(),
   plan_name: z.string().nullable(),
   status: z.enum(statuses),
   trial_ends_at: z.string().nullable(),
   current_period_end: z.string().nullable(),
+  cancel_at: z.string().nullable(),
   past_due_since: z.string().nullable(),
 });
 
+const usageSchema = z.array(
+  z.object({ limit_key: z.enum(["active_jobs", "members"]), used: z.number(), limit_value: z.number().nullable() }),
+);
+
 export type BillingState = z.infer<typeof stateSchema>;
 
-type Subscription = {
+export type Subscription = {
+  planCode: string;
   planName: string | null;
   status: SubscriptionStatus;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
+  cancelAt: string | null;
   pastDueSince: string | null;
 };
+
+export type Usage = { key: "active_jobs" | "members"; used: number; limit: number | null };
 
 // The plans a company can buy online: public, priced and not for contact. Limits and features are not read here.
 export async function listSoldPlans(): Promise<SoldPlan[]> {
@@ -71,19 +81,29 @@ export async function getSubscription(organizationId: string): Promise<Subscript
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("v_my_subscription")
-    .select("plan_name, status, trial_ends_at, current_period_end, past_due_since")
+    .select("plan_code, plan_name, status, trial_ends_at, current_period_end, cancel_at, past_due_since")
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The subscription could not be loaded", { cause: error });
   if (!data) return null;
   const row = subscriptionSchema.parse(data);
   return {
+    planCode: row.plan_code,
     planName: row.plan_name,
     status: row.status,
     trialEndsAt: row.trial_ends_at,
     currentPeriodEnd: row.current_period_end,
+    cancelAt: row.cancel_at,
     pastDueSince: row.past_due_since,
   };
+}
+
+// The open vacancies and the team members against the limits of the plan (null is unlimited).
+export async function getUsage(organizationId: string): Promise<Usage[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("billing_usage", { p_org: organizationId });
+  if (error) throw new Error("The usage could not be loaded", { cause: error });
+  return usageSchema.parse(data).map((row) => ({ key: row.limit_key, used: row.used, limit: row.limit_value }));
 }
 
 const answerSchema = z.object({

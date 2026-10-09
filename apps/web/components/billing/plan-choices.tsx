@@ -1,0 +1,41 @@
+import { TextLink } from "@/components/forms/text-link";
+import { Notice } from "@/components/forms/notice";
+import { daysText, shortPriceLine, type SoldPlan } from "@/lib/billing/presentation";
+
+type PlanChoicesProps = { plans: SoldPlan[]; checkoutHref: (planCode: string) => string; offerTrial: boolean };
+
+// The plans sold online, each leading to the confirmation step where the final trial eligibility is decided (FR-G2).
+export function PlanChoices({ plans, checkoutHref, offerTrial }: PlanChoicesProps) {
+  return (
+    <section id="plans" aria-labelledby="plans-heading" className="grid gap-3">
+      <h2 id="plans-heading" className="text-lg font-semibold">
+        Choose a plan
+      </h2>
+      <Notice tone="info" role="status">
+        You have no active subscription, and no payment was taken.
+      </Notice>
+      <ul className="grid gap-3">
+        {plans.map((plan) => {
+          const trial = offerTrial && plan.trialDays > 0;
+          const label = trial ? `Start ${plan.trialDays}-day free trial` : "Subscribe";
+          return (
+            <li key={plan.code} className="grid gap-1 rounded-xl border bg-card p-4">
+              <h3 className="font-medium">{plan.name}</h3>
+              <p className="text-sm text-muted-foreground">{shortPriceLine(plan)}</p>
+              <p className="text-sm text-muted-foreground">
+                {trial ? `${daysText(plan.trialDays)} free trial` : "No free trial"}
+              </p>
+              <TextLink
+                standalone
+                href={checkoutHref(plan.code)}
+                aria-label={trial ? `${label} of ${plan.name}` : `${label} to ${plan.name}`}
+              >
+                {label}
+              </TextLink>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}

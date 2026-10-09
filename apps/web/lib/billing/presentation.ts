@@ -1,3 +1,6 @@
+import { graceEnd } from "@/lib/dashboard/plan-status";
+import { formatShortDate } from "@/lib/i18n/format";
+
 export type SoldPlan = {
   code: string;
   name: string;
@@ -27,8 +30,56 @@ export function priceLine(plan: Pick<SoldPlan, "priceMinor" | "currency" | "inte
   return `${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}, excluding VAT`;
 }
 
+export function shortPriceLine(plan: Pick<SoldPlan, "priceMinor" | "currency" | "interval">): string {
+  return `${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval} excl. VAT`;
+}
+
 export function daysText(days: number): string {
   return `${days} ${days === 1 ? "day" : "days"}`;
+}
+
+export type PlanChange = { kind: "upgrade" | "downgrade"; label: string; plan: SoldPlan };
+
+// What the portal can switch the current plan to (Phase 1): the other plans sold online, as an upgrade when they cost
+// more and a downgrade when they cost less. A plan that is not sold online (Enterprise, the free plan) has none.
+export function planChanges(currentCode: string, plans: SoldPlan[]): PlanChange[] {
+  const current = plans.find((plan) => plan.code === currentCode);
+  if (!current) return [];
+  return plans
+    .filter((plan) => plan.code !== current.code)
+    .map((plan): PlanChange => {
+      const kind = plan.priceMinor > current.priceMinor ? "upgrade" : "downgrade";
+      return { kind, label: `${kind === "upgrade" ? "Upgrade" : "Downgrade"} to ${plan.name}`, plan };
+    });
+}
+
+type PlanFactsInput = {
+  status: SubscriptionStatus;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  cancelAt: string | null;
+  pastDueSince: string | null;
+};
+
+// The dates and the amount that go with the status of a live subscription, as sentences. A subscription that ends
+// shows its end and no next invoice; a failed payment shows the grace period and no next invoice.
+export function planFacts(subscription: PlanFactsInput, plan: SoldPlan | undefined): string[] {
+  const { status, trialEndsAt, currentPeriodEnd, cancelAt, pastDueSince } = subscription;
+  const facts: string[] = [];
+  if (status === "trialing" && trialEndsAt) facts.push(`Trial ends ${formatShortDate(trialEndsAt)}`);
+  if (status === "past_due" && pastDueSince) {
+    facts.push(`Payment failed ${formatShortDate(pastDueSince)}`);
+    facts.push(`Grace period ends ${formatShortDate(graceEnd(new Date(pastDueSince)).toISOString())}`);
+  }
+  if (cancelAt) {
+    facts.push(`Ends ${formatShortDate(cancelAt)}`);
+  } else if (status === "trialing" && trialEndsAt && plan) {
+    facts.push(`First payment of ${formatPrice(plan.priceMinor, plan.currency)} excl. VAT on ${formatShortDate(trialEndsAt)}`);
+  } else if (status === "active" && currentPeriodEnd) {
+    facts.push(`Next invoice ${formatShortDate(currentPeriodEnd)}`);
+    if (plan) facts.push(shortPriceLine(plan));
+  }
+  return facts;
 }
 
 type Disclosure = { title: string; text: string };

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { requireOrgRole } from "@/lib/dal/session";
-import { applicantsPath, jobsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, jobsPath } from "@/lib/routes";
 import { roleLabels } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Organization — CHARA", robots: { index: false } };
@@ -29,6 +29,11 @@ export default async function OrganizationPage({ params }: PageProps<"/[lang]/or
       <TextLink standalone href={`/${lang}/org/${slug}/members`}>
         Team
       </TextLink>
+      {organization.role === "member" ? null : (
+        <TextLink standalone href={billingPath(lang, slug)}>
+          Billing
+        </TextLink>
+      )}
     </AuthCard>
   );
 }
