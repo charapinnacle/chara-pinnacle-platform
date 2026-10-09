@@ -5,28 +5,32 @@ import { PlanActions } from "@/components/billing/plan-actions";
 import { PlanChoices } from "@/components/billing/plan-choices";
 import { PlanSummary } from "@/components/billing/plan-summary";
 import { UsageSection } from "@/components/billing/usage-section";
-import { planChanges } from "@/lib/billing/presentation";
+import { planChanges, type SubscriptionStatus } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, getUsage, listSoldPlans } from "@/lib/dal/billing";
 import { requireOrgRole } from "@/lib/dal/session";
 import { identifierKindOptions } from "@/lib/validation/organization";
 
 export const metadata: Metadata = { title: "Billing — CHARA", robots: { index: false } };
 
+// The statuses whose plan limits apply: the database gives any other status (a paused one) the limits of the free plan.
+const ENTITLED_STATUSES: readonly SubscriptionStatus[] = ["trialing", "active", "past_due"];
+
 const kindLabels = Object.fromEntries(identifierKindOptions.map((option) => [option.value, option.label]));
 
 export default async function BillingPage({ params }: PageProps<"/[lang]/org/[slug]/billing">) {
   const { lang, slug } = await params;
   const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true });
-  const [subscription, state, plans, usage] = await Promise.all([
+  const [subscription, state, plans] = await Promise.all([
     getSubscription(organization.id),
     getBillingState(organization.id),
     listSoldPlans(),
-    getUsage(organization.id),
   ]);
   const live = subscription !== null && subscription.status !== "canceled";
+  const entitled = subscription !== null && ENTITLED_STATUSES.includes(subscription.status);
   const isOwner = organization.role === "owner";
   const plan = subscription ? plans.find((candidate) => candidate.code === subscription.planCode) : undefined;
-  const changes = live ? planChanges(subscription.planCode, plans) : [];
+  const usage = entitled ? await getUsage(organization.id) : [];
+  const changes = entitled && state.has_customer ? planChanges(subscription.planCode, plans) : [];
   const canUpgrade = changes.some((change) => change.kind === "upgrade");
 
   return (
@@ -42,7 +46,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
 
       <PlanSummary subscription={subscription} plan={plan} />
 
-      {live ? <UsageSection usage={usage} upgradeHref={canUpgrade ? "#plan-actions" : null} /> : null}
+      {entitled ? <UsageSection usage={usage} upgradeHref={canUpgrade ? "#plan-actions" : null} /> : null}
 
       {state.has_customer ? <PlanActions slug={slug} changes={changes} live={live} /> : null}
 

@@ -15,7 +15,7 @@ import { seedJob } from "./support/jobs";
 import { waitForHydration } from "./support/hydration";
 import { overflow } from "./support/login-page";
 import { uniqueName } from "./support/organizations";
-import { addMember, newTeam, signInAtAal2, type Team } from "./support/team";
+import { addMember, newTeam, seedInvitation, signInAtAal2, type Team } from "./support/team";
 import { expect, test } from "./support/test";
 
 const usageRow = (page: Page, name: string): Locator =>
@@ -26,10 +26,12 @@ async function seedJobs(team: Team, status: "open" | "paused" | "closed", count:
 }
 
 test.describe("billing page: usage against limits (FR-G5 AC7)", () => {
-  test("a Professional organisation counts open vacancies and accepted members only", async ({ page }) => {
+  test("a Professional organisation counts open vacancies and the members and pending invitations that fill its seats", async ({ page }) => {
     const team = await newTeam(uniqueName("Pro Bau"));
     await addMember(team, "admin");
     await addMember(team, "member");
+    seedInvitation(team, "pending@example.test");
+    seedInvitation(team, "expired@example.test", "member", { expired: true });
     seedSubscription(team, "employer_professional", "active", { currentPeriodEnd: fromNow(20 * DAY) });
     await seedJobs(team, "open", 7);
     await seedJobs(team, "paused", 2);
@@ -41,8 +43,8 @@ test.describe("billing page: usage against limits (FR-G5 AC7)", () => {
     await expect(vacancies).toHaveAttribute("aria-valuenow", "7");
     await expect(vacancies).toHaveAttribute("aria-valuemax", "15");
     await expect(usageRow(page, "Open vacancies")).toContainText("7 of 15");
-    await expect(page.getByRole("progressbar", { name: "Team members" })).toHaveAttribute("aria-valuenow", "3");
-    await expect(usageRow(page, "Team members")).toContainText("3 of 5");
+    await expect(page.getByRole("progressbar", { name: "Team members" })).toHaveAttribute("aria-valuenow", "4");
+    await expect(usageRow(page, "Team members")).toContainText("4 of 5");
     await expect(page.getByText("Limit reached")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Upgrade", exact: true })).toHaveCount(0);
     await expectNoAxeViolations(page);
@@ -50,6 +52,7 @@ test.describe("billing page: usage against limits (FR-G5 AC7)", () => {
 
   test("a Basic organisation at its limit is told so and offered the upgrade", async ({ page }) => {
     const team = await newTeam(uniqueName("Basic Bau"));
+    linkCustomer(team, "cus_basic_limit");
     seedSubscription(team, "employer_starter", "active", { currentPeriodEnd: fromNow(20 * DAY) });
     await seedJobs(team, "open", 3);
 
@@ -58,8 +61,20 @@ test.describe("billing page: usage against limits (FR-G5 AC7)", () => {
     await expect(usageRow(page, "Open vacancies")).toContainText("Limit reached");
     await expect(usageRow(page, "Team members")).toContainText("1 of 1");
     await expect(usageRow(page, "Open vacancies").getByRole("link", { name: "Upgrade" })).toHaveAttribute("href", "#plan-actions");
+    await expect(page.locator("#plan-actions")).toBeVisible();
     await expect(usageRow(page, "Open vacancies")).not.toContainText("Over the limit");
     await expectNoAxeViolations(page);
+  });
+
+  test("a Basic organisation at its limit with no payment customer is not offered an Upgrade link that leads nowhere", async ({ page }) => {
+    const team = await newTeam(uniqueName("Nolink Bau"));
+    seedSubscription(team, "employer_starter", "active", { currentPeriodEnd: fromNow(20 * DAY) });
+    await seedJobs(team, "open", 3);
+
+    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
+    await expect(usageRow(page, "Open vacancies")).toContainText("Limit reached");
+    await expect(page.getByRole("link", { name: /Upgrade/ })).toHaveCount(0);
+    await expect(page.locator("#plan-actions")).toHaveCount(0);
   });
 
   test("an organisation downgraded to Basic keeps its vacancies and is told that no more can be opened", async ({ page }) => {

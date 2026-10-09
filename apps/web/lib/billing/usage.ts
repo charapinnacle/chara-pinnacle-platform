@@ -1,6 +1,6 @@
 export type UsageState = "ok" | "at_limit" | "over_limit" | "unlimited";
 
-export type UsageLevel = { state: UsageState; label: string; percent: number | null };
+type UsageLevel = { state: UsageState; label: string; percent: number | null };
 
 // How full a limit is. A null limit is unlimited. Usage above the limit stays above it (a downgrade keeps the data,
 // FR-G5 C9), and a limit of 0 is full at 0, so the bar never divides by zero.

@@ -26,12 +26,18 @@ export function formatPrice(minor: number, currency: string): string {
   return format.format(minor / 10 ** digits).replace(/\s/g, " ");
 }
 
-export function priceLine(plan: Pick<SoldPlan, "priceMinor" | "currency" | "interval">): string {
-  return `${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}, excluding VAT`;
+type PricedPlan = Pick<SoldPlan, "priceMinor" | "currency" | "interval">;
+
+function perInterval(plan: PricedPlan): string {
+  return `${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}`;
 }
 
-export function shortPriceLine(plan: Pick<SoldPlan, "priceMinor" | "currency" | "interval">): string {
-  return `${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval} excl. VAT`;
+export function priceLine(plan: PricedPlan): string {
+  return `${perInterval(plan)}, excluding VAT`;
+}
+
+export function shortPriceLine(plan: PricedPlan): string {
+  return `${perInterval(plan)} excl. VAT`;
 }
 
 export function daysText(days: number): string {
@@ -40,13 +46,14 @@ export function daysText(days: number): string {
 
 export type PlanChange = { kind: "upgrade" | "downgrade"; label: string; plan: SoldPlan };
 
-// What the portal can switch the current plan to (Phase 1): the other plans sold online, as an upgrade when they cost
-// more and a downgrade when they cost less. A plan that is not sold online (Enterprise, the free plan) has none.
+// What the portal can switch the current plan to (Phase 1): the other plans sold online with the same billing interval,
+// as an upgrade when they cost more and a downgrade when they cost less; a plan at the same price is no change. A plan
+// that is not sold online (Enterprise, the free plan) has none.
 export function planChanges(currentCode: string, plans: SoldPlan[]): PlanChange[] {
   const current = plans.find((plan) => plan.code === currentCode);
   if (!current) return [];
   return plans
-    .filter((plan) => plan.code !== current.code)
+    .filter((plan) => plan.code !== current.code && plan.interval === current.interval && plan.priceMinor !== current.priceMinor)
     .map((plan): PlanChange => {
       const kind = plan.priceMinor > current.priceMinor ? "upgrade" : "downgrade";
       return { kind, label: `${kind === "upgrade" ? "Upgrade" : "Downgrade"} to ${plan.name}`, plan };
@@ -71,6 +78,7 @@ export function planFacts(subscription: PlanFactsInput, plan: SoldPlan | undefin
     facts.push(`Payment failed ${formatShortDate(pastDueSince)}`);
     facts.push(`Grace period ends ${formatShortDate(graceEnd(new Date(pastDueSince)).toISOString())}`);
   }
+  if (status === "paused") facts.push("Paused: the free plan applies until the subscription is resumed");
   if (cancelAt) {
     facts.push(`Ends ${formatShortDate(cancelAt)}`);
   } else if (status === "trialing" && trialEndsAt && plan) {

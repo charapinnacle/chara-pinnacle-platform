@@ -154,6 +154,19 @@ test.describe("billing page: plan, state and dates (FR-G5 AC4, AC5, AC9)", () =>
     await expectNoAxeViolations(page);
   });
 
+  test("a paused subscription shows that the free plan applies, no usage and no plan change, and no plan to choose", async ({ page }) => {
+    const team = await newTeam(uniqueName("Pause Bau"));
+    linkCustomer(team, "cus_paused");
+    seedSubscription(team, "employer_starter", "paused", { currentPeriodEnd: "2026-12-04T12:00:00Z" });
+    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
+    await expectPlan(page, "Basic", "Paused");
+    await expect(page.getByText("Paused: the free plan applies until the subscription is resumed")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Usage" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Upgrade|Downgrade/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Manage billing" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Choose a plan" })).toHaveCount(0);
+  });
+
   test("AC9: an organisation that never subscribed and one that did are offered the plans that are sold, and neither Enterprise", async ({ page }) => {
     const team = await newTeam(uniqueName("Plans Bau"));
     await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
