@@ -993,6 +993,11 @@ isOneToOne: false
               "accommodation": boolean,"city": string,"country": string,"country_code": string,"description": string,"employer_country": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
             }[]
                            },
+"get_public_settings":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "key": string,"value": string
+            }[]
+                           },
 "grant_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },

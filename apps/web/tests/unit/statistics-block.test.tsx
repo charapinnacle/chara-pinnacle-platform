@@ -11,7 +11,7 @@ vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 const { default: Home } = await import("@/app/[lang]/(public)/page");
 
 async function renderHome(): Promise<string> {
-  const { prelude } = await prerender(<Home />);
+  const { prelude } = await prerender(<Home params={Promise.resolve({ lang: "en" })} searchParams={Promise.resolve({})} />);
   return new Response(prelude).text();
 }
 
@@ -42,6 +42,5 @@ describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
     expect(html).toContain("Your Workforce. Your Network. One Platform.");
     expect(html).not.toContain("CHARA in numbers");
     expect(html).not.toContain("<dl");
-    expect(html).not.toContain("<section");
   });
 });

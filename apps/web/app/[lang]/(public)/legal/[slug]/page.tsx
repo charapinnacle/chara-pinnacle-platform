@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
+import { SettingDetails } from "@/components/public/setting-details";
 import { getLegalDocument } from "@/lib/dal/legal";
+import { getPublicSettings } from "@/lib/dal/settings";
 import { formatDate } from "@/lib/i18n/format";
+import { PRIVACY_FIELDS, PRIVACY_POLICY_SLUG, settingRows } from "@/lib/public/setting-rows";
+
+export async function generateMetadata({ params }: PageProps<"/[lang]/legal/[slug]">): Promise<Metadata> {
+  const document = await getLegalDocument((await params).slug);
+  return document ? { title: `${document.title} — CHARA` } : {};
+}
 
 export default async function LegalPage({
   params,
@@ -9,6 +18,7 @@ export default async function LegalPage({
   const { slug } = await params;
   const document = await getLegalDocument(slug);
   if (!document) notFound();
+  const contacts = slug === PRIVACY_POLICY_SLUG ? settingRows(await getPublicSettings(), PRIVACY_FIELDS) : [];
   return (
     <PageContainer layout="page">
       <article className="grid max-w-[65ch] gap-8">
@@ -21,6 +31,12 @@ export default async function LegalPage({
           </p>
         </div>
         <div className="text-base leading-7 whitespace-pre-line">{document.body}</div>
+        {contacts.length > 0 ? (
+          <section className="grid gap-3 border-t pt-6">
+            <h2 className="text-xl font-semibold tracking-tight">Contacts for questions about your data</h2>
+            <SettingDetails rows={contacts} />
+          </section>
+        ) : null}
       </article>
     </PageContainer>
   );

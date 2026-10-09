@@ -4,7 +4,7 @@ export function DetailList({ items }: { items: readonly { label: string; value: 
       {items.map(({ label, value }) => (
         <div key={label} className="grid gap-1 sm:contents">
           <dt className="font-medium text-muted-foreground">{label}</dt>
-          <dd className="break-words">{value}</dd>
+          <dd className="[overflow-wrap:anywhere]">{value}</dd>
         </div>
       ))}
     </dl>
