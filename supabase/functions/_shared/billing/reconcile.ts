@@ -1,6 +1,6 @@
 import type { SubscriptionState } from "./provider.ts";
 
-export type DifferenceKind = "missing_record" | "extra_record" | "status_mismatch" | "plan_mismatch";
+type DifferenceKind = "missing_record" | "extra_record" | "status_mismatch" | "plan_mismatch";
 
 export interface SubscriptionRecord {
   provider_subscription_ref: string;
@@ -8,7 +8,7 @@ export interface SubscriptionRecord {
   status: string;
 }
 
-export interface Difference {
+interface Difference {
   kind: DifferenceKind;
   subscription_ref: string;
 }

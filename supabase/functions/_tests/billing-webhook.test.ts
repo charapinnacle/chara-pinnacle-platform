@@ -2,12 +2,11 @@ import assert from "node:assert/strict";
 import { handleBillingWebhook } from "../billing-webhook/handler.ts";
 import { nullProvider } from "../_shared/billing/providers/null.ts";
 import { stripeProvider } from "../_shared/billing/providers/stripe.ts";
-import { hmacHex } from "../_shared/billing/signature.ts";
 import charge from "./fixtures/stripe/events/charge-succeeded.json" with { type: "json" };
 import invoicePaid from "./fixtures/stripe/events/invoice-paid.json" with { type: "json" };
 import created from "./fixtures/stripe/events/subscription-created.json" with { type: "json" };
 import updated from "./fixtures/stripe/events/subscription-updated.json" with { type: "json" };
-import { type Call, harness, reply, type Route } from "./harness.ts";
+import { type Call, harness, hmacHex, reply, type Route } from "./harness.ts";
 
 const SITE = "https://app.chara.example";
 const SECRET = "whsec_test_secret";

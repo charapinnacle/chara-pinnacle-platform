@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { NormalizedEvent } from "../_shared/billing/provider.ts";
 import { nullProvider } from "../_shared/billing/providers/null.ts";
 import { stripeProvider } from "../_shared/billing/providers/stripe.ts";
-import { hmacHex } from "../_shared/billing/signature.ts";
+import { hmacHex } from "./harness.ts";
 import charge from "./fixtures/stripe/events/charge-succeeded.json" with { type: "json" };
 import checkoutCompleted from "./fixtures/stripe/events/checkout-session-completed.json" with { type: "json" };
 import customerUpdated from "./fixtures/stripe/events/customer-updated.json" with { type: "json" };
