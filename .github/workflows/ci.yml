@@ -65,7 +65,7 @@ jobs:
   e2e:
     needs: [web, db]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

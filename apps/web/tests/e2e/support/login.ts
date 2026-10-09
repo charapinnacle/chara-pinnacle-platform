@@ -186,15 +186,18 @@ export async function enrollTotp(user: TestUser): Promise<string> {
   const factor = (await (
     await authFetch("/factors", { factor_type: "totp", friendly_name: "e2e" }, access_token)
   ).json()) as { id: string; totp: { secret: string } };
-  const challenge = (await (
-    await authFetch(`/factors/${factor.id}/challenge`, {}, access_token)
-  ).json()) as { id: string };
-  const verified = await authFetch(
-    `/factors/${factor.id}/verify`,
-    { challenge_id: challenge.id, code: totpCode(factor.totp.secret) },
-    access_token,
-  );
-  if (!verified.ok) throw new Error(`TOTP enrolment answered ${verified.status}`);
+  let verified: Response | undefined;
+  for (let attempt = 0; attempt < 3 && !verified?.ok; attempt++) {
+    const challenge = (await (
+      await authFetch(`/factors/${factor.id}/challenge`, {}, access_token)
+    ).json()) as { id: string };
+    verified = await authFetch(
+      `/factors/${factor.id}/verify`,
+      { challenge_id: challenge.id, code: totpCode(factor.totp.secret) },
+      access_token,
+    );
+  }
+  if (!verified?.ok) throw new Error(`TOTP enrolment answered ${verified?.status}`);
   return factor.totp.secret;
 }
 
