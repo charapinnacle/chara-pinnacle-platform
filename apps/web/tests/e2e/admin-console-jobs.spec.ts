@@ -246,7 +246,7 @@ test.describe("the console with account-ops and notify running", () => {
     await expect(ownPage).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await enterCode(ownPage, secret);
     await expect(ownPage).toHaveURL("/en/admin");
-    await expect(ownPage.getByRole("navigation", { name: "Administration" }).getByRole("link")).toHaveCount(3);
+    await expect(ownPage.getByRole("navigation", { name: "Administration" }).getByRole("link")).toHaveCount(4);
     expect((await ownPage.goto("/en/admin/staff"))?.status()).toBe(404);
 
     await page.reload();
@@ -314,6 +314,59 @@ test.describe("the console with account-ops and notify running", () => {
     } finally {
       execute(`update private.settings set value = ${literal(JSON.stringify(original))}::jsonb where key = 'required_consents'`);
     }
+  });
+
+  test("FR-C7 AC6 and AC7: hiding queues one email for the owner and the administrator and none for a member, notify sends it with the reasons and the appeal route and no applicant data, and unhiding sends none", async ({
+    page,
+  }) => {
+    const company = await newCompany();
+    const admin = await addCompanyUser(company, "admin");
+    const member = await addCompanyUser(company, "member");
+    const title = `Moderated welder ${uniqueTag()}`;
+    const vacancy = seedJob(company, { title, status: "open" });
+    const applicant = await newApplicant();
+    seedApplication(applicant.id, vacancy, company.id, { coverNote: "PRIVATE-COVER-NOTE" });
+    const emails = () =>
+      query<{ user_id: string; status: string }>(
+        `select user_id, status from public.notifications where kind = 'vacancy_hidden' and payload ->> 'job_id' = ${literal(vacancy)} order by user_id`,
+      );
+
+    await signInStaff(page, "trust_safety", `/en/admin/moderation/${vacancy}`);
+    const open = page.getByRole("button", { name: "Hide this vacancy" });
+    await waitForHydration(open);
+    await open.click();
+    const dialog = page.getByRole("dialog", { name: "Hide a vacancy" });
+    await dialog.getByLabel("Statement of reasons").fill(REASON);
+    await dialog.getByRole("button", { name: "Hide vacancy", exact: true }).click();
+    await expect(page.getByText("The vacancy is hidden", { exact: true })).toBeVisible();
+
+    expect(emails()).toEqual([company.owner.id, admin.id].sort().map((user_id) => ({ user_id, status: "queued" })));
+    expect(query<{ state: string }>(`select moderation_state::text as state from public.jobs where id = ${literal(vacancy)}`)).toEqual([{ state: "hidden" }]);
+
+    await runNotify();
+    for (const person of [company.owner, admin]) {
+      const mail = await waitForMessage(person.email, { subject: "was hidden" });
+      expect(mail.Subject).toBe(`Your vacancy "${title}" was hidden`);
+      expect(mail.Text).toContain(REASON);
+      expect(mail.HTML).toContain("/legal/complaints-and-dispute-process");
+      expect(mail.Text).toContain("Complaints and Dispute Process");
+      expect(`${mail.Text}${mail.HTML}`).not.toMatch(/PRIVATE-COVER-NOTE/);
+      expect(`${mail.Text}${mail.HTML}`).not.toContain(applicant.email);
+      expect(await messageCount(person.email)).toBe(1);
+    }
+    expect(await messageCount(member.email)).toBe(0);
+    expect(await messageCount(applicant.email)).toBe(0);
+    expect(emails().map((row) => row.status)).toEqual(["sent", "sent"]);
+
+    await page.getByRole("button", { name: "Unhide this vacancy" }).click();
+    const back = page.getByRole("dialog", { name: "Unhide a vacancy" });
+    await back.getByLabel("Statement of reasons").fill(BACK);
+    await back.getByRole("button", { name: "Unhide vacancy", exact: true }).click();
+    await expect(page.getByText("The vacancy is unhidden", { exact: true })).toBeVisible();
+    await runNotify();
+    expect(emails()).toHaveLength(2);
+    expect(await messageCount(company.owner.email)).toBe(1);
+    expect(await messageCount(admin.email)).toBe(1);
   });
 
   test("FR-F2 AC7: the audit search lists what account-ops did for a suspension and for a reset, against the request and the administrator, and a job delivered twice adds no row", async ({

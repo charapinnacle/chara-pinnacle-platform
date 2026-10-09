@@ -22,9 +22,10 @@ insert into public.platform_staff (user_id, role) values (:'revokee', 'verificat
 
 select pg_temp.org_on('employer_starter') as org_active \gset
 select pg_temp.org_on() as org_suspended \gset
+select pg_temp.open_job('Matrix vacancy') as mjob \gset
 update public.organizations set status = 'suspended' where id = :'org_suspended';
 
--- The 14 functions of Phase 1 that the console calls (moderate_job is FR-C7): the SQL of a valid call and the roles that
+-- The 19 functions of Phase 1 that the console calls: the SQL of a valid call and the roles that
 -- may make it. The calls that change something name their own targets, so a call that is refused changes none of them.
 create temp table fns (name text primary key, sql text not null, roles text[] not null);
 insert into fns values
@@ -40,6 +41,9 @@ insert into fns values
   ('suspend_organization', format($$select public.suspend_organization(%L, 'The company details are false.')$$, :'org_active'), '{trust_safety}'),
   ('reinstate_organization', format($$select public.reinstate_organization(%L, 'Documents checked, genuine.')$$, :'org_suspended'), '{trust_safety}'),
   ('admin_list_moderation_actions', $$select * from public.admin_list_moderation_actions()$$, '{trust_safety}'),
+  ('moderate_job', format($$select public.moderate_job(%L, 'hide', 'Offers jobs for a fee.')$$, :'mjob'), '{trust_safety}'),
+  ('admin_search_jobs', $$select * from public.admin_search_jobs('matrix')$$, '{trust_safety}'),
+  ('admin_get_job', format($$select * from public.admin_get_job(%L)$$, :'mjob'), '{trust_safety}'),
   ('admin_search_users', $$select * from public.admin_search_users('example')$$, '{admin,trust_safety}'),
   ('admin_search_organizations', $$select * from public.admin_search_organizations('org')$$, '{admin,trust_safety}'),
   ('admin_get_user', format($$select * from public.admin_get_user(%L)$$, :'wa'), '{admin,trust_safety}'),
@@ -86,7 +90,7 @@ create temp table refused as
 select f.name as fn, c.name as caller, pg_temp.call_as(c.uid, c.db_role, f.sql, c.aal) as outcome
 from fns f cross join callers c
 where not (f.roles && c.held and c.aal = 'aal2');
-select is((select count(*) from refused), 140::bigint, 'AC2: each of the 16 functions was called by each of the 10 callers that may not call it');
+select is((select count(*) from refused), 167::bigint, 'AC2: each of the 19 functions was called by each of the 10 callers that may not call it');
 select is_empty(
   $$select fn, caller, outcome from refused r where outcome is distinct from pg_temp.expected(fn, caller)$$,
   'AC2: a caller without the role, at aal1, revoked or anonymous is refused with the expected error by every function'
@@ -99,7 +103,7 @@ select f.name as fn, c.name as caller, pg_temp.call_as(c.uid, c.db_role, f.sql, 
 from fns f join callers c on f.roles && c.held and c.aal = 'aal2'
 order by f.name, c.name;
 select is_empty($$select * from allowed where outcome <> 'ok'$$, 'AC2: the role named for the function, at aal2, succeeds');
-select is((select count(*) from allowed), 20::bigint, 'AC2: each of the 16 functions was called by each role it names');
+select is((select count(*) from allowed), 23::bigint, 'AC2: each of the 19 functions was called by each role it names');
 select is(
   (select count(*) from refused where fn in ('suspend_user', 'reinstate_user', 'suspend_organization', 'reinstate_organization')
      and caller in ('admin at aal2', 'admin at aal1') and outcome = 'P0001|CHARA_FORBIDDEN|'),
@@ -109,8 +113,8 @@ select is(
   (select count(*) from allowed where caller like 'verification_reviewer%'), 0::bigint, 'AC2: the Verification Reviewer can do nothing'
 );
 select is(
-  (select count(*) from refused where caller = 'verification_reviewer at aal2' and outcome = 'P0001|CHARA_FORBIDDEN|'), 16::bigint,
-  'AC2: and is refused all 16 with CHARA_FORBIDDEN'
+  (select count(*) from refused where caller = 'verification_reviewer at aal2' and outcome = 'P0001|CHARA_FORBIDDEN|'), 19::bigint,
+  'AC2: and is refused all 19 with CHARA_FORBIDDEN'
 );
 
 -- AC2: the configuration tables

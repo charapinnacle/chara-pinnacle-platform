@@ -1,10 +1,9 @@
-import { LegalLink } from "@/components/forms/text-link";
+import { COMPLAINTS_SLUG, LegalLink } from "@/components/forms/text-link";
 import type { AccessLogItem } from "@/lib/access-log/fetch-access-log";
 import { formatDateTime } from "@/lib/i18n/format";
 
 const FORMER_ORGANISATION = "A former organisation";
 const DELETED_DOCUMENT = "Deleted document";
-const COMPLAINTS_SLUG = "complaints-and-dispute-process";
 
 export function AccessLogTable({ items }: { items: AccessLogItem[] }) {
   return (

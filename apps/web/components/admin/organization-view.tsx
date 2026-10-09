@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { DetailList } from "@/components/admin/detail-list";
+import { moderationLabels } from "@/components/admin/job-moderation-badge";
 import { ModerationForm } from "@/components/admin/moderation-form";
 import { PageHeading } from "@/components/admin/page-heading";
 import { cell, ResultsTable } from "@/components/admin/results-table";
@@ -12,8 +13,6 @@ import { isJobStatus, statusLabels } from "@/lib/jobs/presentation";
 import { adminPath } from "@/lib/routes";
 import type { PlatformRole } from "@/lib/validation/admin";
 import { roleLabels } from "@/lib/validation/team";
-
-const moderationLabels = { visible: "Visible", hidden: "Hidden by moderation", org_suspended: "Hidden with the suspension" } as const;
 
 export async function OrganizationView({ lang, id, roles }: { lang: string; id: string; roles: readonly PlatformRole[] }) {
   const organization = await getOrganization(id);
@@ -56,7 +55,13 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
           <ResultsTable caption="Vacancies" columns={["Vacancy", "Status", "Visibility"]}>
             {organization.vacancies.map((vacancy) => (
               <tr key={vacancy.id}>
-                <td className={`${cell} break-words`}>{vacancy.title}</td>
+                <td className={`${cell} break-words`}>
+                  {roles.includes("trust_safety") ? (
+                    <TextLink href={adminPath(lang, `moderation/${vacancy.id}`)}>{vacancy.title}</TextLink>
+                  ) : (
+                    vacancy.title
+                  )}
+                </td>
                 <td className={cell}>{isJobStatus(vacancy.status) ? statusLabels[vacancy.status] : vacancy.status}</td>
                 <td className={cell}>{moderationLabels[vacancy.moderationState]}</td>
               </tr>

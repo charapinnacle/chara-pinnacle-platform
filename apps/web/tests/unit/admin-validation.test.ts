@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   auditFilterSchema,
   grantFormSchema,
+  jobCursorSchema,
+  jobModerationInputSchema,
   legalDocumentSchema,
   mfaResetFormSchema,
   moderationInputSchema,
@@ -47,6 +49,25 @@ describe("the statement of reasons", () => {
     expect(moderationInputSchema.safeParse({ ...valid, target: "job" }).success).toBe(false);
     expect(moderationInputSchema.safeParse({ ...valid, to: "deleted" }).success).toBe(false);
     expect(moderationInputSchema.safeParse({ ...valid, id: "1" }).success).toBe(false);
+  });
+});
+
+describe("the moderation of a vacancy", () => {
+  const valid = { reason: "Asks for a fee before hiring.", id: ID, action: "hide" };
+
+  it("travels with a vacancy id and hide or unhide, and nothing else is accepted", () => {
+    expect(jobModerationInputSchema.safeParse(valid).success).toBe(true);
+    expect(jobModerationInputSchema.safeParse({ ...valid, action: "unhide" }).success).toBe(true);
+    expect(jobModerationInputSchema.safeParse({ ...valid, action: "delete" }).success).toBe(false);
+    expect(jobModerationInputSchema.safeParse({ ...valid, id: "1" }).success).toBe(false);
+    expect(message(jobModerationInputSchema.safeParse({ ...valid, reason: "short" }))).toBe("Give a reason of at least 10 characters");
+  });
+
+  it("pages by a time and an id, or from the start", () => {
+    expect(jobCursorSchema.safeParse(null).success).toBe(true);
+    expect(jobCursorSchema.safeParse({ at: "2026-10-01T10:00:00.123456+00:00", id: ID }).success).toBe(true);
+    expect(jobCursorSchema.safeParse({ at: "yesterday", id: ID }).success).toBe(false);
+    expect(jobCursorSchema.safeParse({ at: "2026-10-01T10:00:00Z", id: 5 }).success).toBe(false);
   });
 });
 
