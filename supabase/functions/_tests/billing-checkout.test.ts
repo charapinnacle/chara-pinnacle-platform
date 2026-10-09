@@ -7,6 +7,8 @@ const ORG = "7b0f6a53-2d2c-4a43-9b3b-0f5a3f4a1e11";
 const SITE = "https://app.chara.example";
 const START = "POST /rest/v1/rpc/billing_checkout_start";
 const PORTAL = "POST /rest/v1/rpc/billing_portal_start";
+const AUDIT = "POST /rest/v1/rpc/audit_record_external";
+const USER = "3f1c2a54-8d7e-4c1b-9a60-2b5d6e7f8a90";
 
 function token(claims: Record<string, unknown>): string {
   const part = (value: unknown) =>
@@ -17,6 +19,7 @@ function token(claims: Record<string, unknown>): string {
 const future = Math.floor(Date.now() / 1000) + 3600;
 const SIGNED_IN = token({ sub: "u1", role: "authenticated", exp: future });
 const bearer = (value: string) => ({ authorization: `Bearer ${value}` });
+const AS_USER = bearer(token({ sub: USER, role: "authenticated", exp: future }));
 
 const row = { price_ref: "price_basic", customer_ref: "cus_linked", trial_days: 30, slug: "acme" };
 const started = reply(200, [row]);
@@ -61,8 +64,10 @@ function run(
   headers: Record<string, string> = bearer(SIGNED_IN),
   spy = providerSpy(),
   method = "POST",
+  auditReply: Response = reply(200, true),
 ) {
   const database = harness(routes);
+  const audit = harness({ [AUDIT]: auditReply });
   const seen: string[] = [];
   const request = new Request("http://stack.test/functions/v1/billing-checkout", {
     method,
@@ -74,10 +79,11 @@ function run(
       seen.push(authorization);
       return database.client;
     },
+    serviceClient: audit.client,
     provider: spy.provider,
     siteUrl: SITE,
   });
-  return { database, spy, seen, response };
+  return { database, audit, spy, seen, response };
 }
 
 Deno.test("FR-G2 AC9: a request without a signed-in person's token calls neither the database nor the provider: 401", async () => {
@@ -203,11 +209,12 @@ Deno.test("refusals of the database are told apart, with a reason only from the 
     [database("deadlock detected", "40P01"), 502, { error: "unavailable" }],
   ];
   for (const [failure, status, expected] of cases) {
-    const { spy, response } = run(checkoutBody, { [START]: failure });
+    const { audit, spy, response } = run(checkoutBody, { [START]: failure });
     const result = await response;
     assert.equal(result.status, status);
     assert.deepEqual(await result.json(), expected);
     assert.equal(spy.checkouts.length, 0, "no session is created after a refusal");
+    assert.equal(audit.calls.length, 0, "only a worker's attempt is recorded");
   }
 });
 
@@ -281,4 +288,97 @@ Deno.test("a portal without a customer is refused with its reason, and a provide
   const failed = await failing.response;
   assert.equal(failed.status, 502);
   assert.deepEqual(await failed.json(), { error: "unavailable" });
+});
+
+Deno.test("FR-G6 AC7: a worker's checkout is refused with a generic answer, creates no session and is recorded once, without a payload", async () => {
+  const refused = database("CHARA_FORBIDDEN", "P0001", "worker_account");
+  const { database: db, audit, spy, seen, response } = run(
+    { ...checkoutBody, userId: "00000000-0000-0000-0000-000000000000" },
+    { [START]: refused },
+    AS_USER,
+  );
+  const result = await response;
+  assert.equal(result.status, 403);
+  assert.deepEqual(await result.json(), { error: "forbidden", reason: null });
+  assert.deepEqual([spy.checkouts.length, spy.portals.length], [0, 0], "no provider session is created");
+  assert.deepEqual(seen, [AS_USER.authorization], "the start ran with the worker's own token");
+  assert.deepEqual(db.calls.map((c) => c.path), ["/rest/v1/rpc/billing_checkout_start"]);
+  assert.deepEqual(audit.calls.map((c) => [c.method, c.path, c.body]), [[
+    "POST",
+    "/rest/v1/rpc/audit_record_external",
+    {
+      p_action: "billing.worker_checkout_refused",
+      p_entity_type: "profile",
+      p_entity_id: USER,
+      p_actor_id: USER,
+    },
+  ]], "one record, for the person in the token and not for a user id in the body, with no metadata");
+});
+
+Deno.test("FR-G6 AC7: a worker's portal request is refused and recorded the same way", async () => {
+  const { database: db, audit, spy, response } = run(
+    { action: "portal", orgId: ORG },
+    { [PORTAL]: database("CHARA_FORBIDDEN", "P0001", "worker_account") },
+    AS_USER,
+  );
+  const result = await response;
+  assert.equal(result.status, 403);
+  assert.deepEqual(await result.json(), { error: "forbidden", reason: null });
+  assert.deepEqual([spy.checkouts.length, spy.portals.length], [0, 0]);
+  assert.deepEqual(db.calls.map((c) => c.path), ["/rest/v1/rpc/billing_portal_start"]);
+  assert.deepEqual(audit.calls.map((c) => (c.body as Record<string, unknown>).p_action), [
+    "billing.worker_checkout_refused",
+  ]);
+});
+
+Deno.test("FR-G6: every attempt of a worker is recorded, so the refusals can be counted", async () => {
+  let recorded = 0;
+  for (const attempt of [checkoutBody, { action: "portal", orgId: ORG }, checkoutBody]) {
+    const { audit, response } = run(attempt, {
+      [START]: database("CHARA_FORBIDDEN", "P0001", "worker_account"),
+      [PORTAL]: database("CHARA_FORBIDDEN", "P0001", "worker_account"),
+    }, AS_USER);
+    assert.equal((await response).status, 403);
+    recorded += audit.calls.length;
+  }
+  assert.equal(recorded, 3);
+});
+
+Deno.test("FR-G6: a failure to record the attempt does not change the refusal", async () => {
+  const { audit, spy, response } = run(
+    checkoutBody,
+    { [START]: database("CHARA_FORBIDDEN", "P0001", "worker_account") },
+    AS_USER,
+    providerSpy(),
+    "POST",
+    database("audit unavailable", "XX000"),
+  );
+  const result = await response;
+  assert.equal(result.status, 403);
+  assert.deepEqual(await result.json(), { error: "forbidden", reason: null });
+  assert.equal(audit.calls.length, 1);
+  assert.equal(spy.checkouts.length, 0);
+});
+
+Deno.test("FR-G6: an account whose kind is not set is refused with the generic answer and is not recorded as a worker", async () => {
+  const { audit, spy, response } = run(
+    checkoutBody,
+    { [START]: database("CHARA_FORBIDDEN", "P0001", "account_kind_unset") },
+    AS_USER,
+  );
+  const result = await response;
+  assert.equal(result.status, 403);
+  assert.deepEqual(await result.json(), { error: "forbidden", reason: null });
+  assert.equal(spy.checkouts.length, 0);
+  assert.equal(audit.calls.length, 0);
+});
+
+Deno.test("FR-G6: a refusal that merely carries the detail text on another error is not recorded as a worker attempt", async () => {
+  const { audit, response } = run(
+    checkoutBody,
+    { [START]: database("CHARA_INVALID_INPUT", "22023", "worker_account") },
+    AS_USER,
+  );
+  assert.equal((await response).status, 400);
+  assert.equal(audit.calls.length, 0);
 });

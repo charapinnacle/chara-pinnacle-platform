@@ -1,4 +1,4 @@
-import { userClient } from "../_shared/supabase.ts";
+import { serviceClient, userClient } from "../_shared/supabase.ts";
 import type { BillingProvider } from "../_shared/billing/provider.ts";
 import { nullProvider } from "../_shared/billing/providers/null.ts";
 import { stripeProvider } from "../_shared/billing/providers/stripe.ts";
@@ -27,6 +27,7 @@ function provider(site: string): BillingProvider {
 
 const deps = {
   userClient: (authorization: string) => userClient(Deno.env, authorization),
+  serviceClient: serviceClient(Deno.env),
   provider: provider(siteUrl),
   siteUrl,
 };
