@@ -7,14 +7,17 @@ import { cn } from "@/lib/utils";
 type MenuDisclosureProps = {
   label: React.ReactNode;
   icon?: React.ReactNode;
+  // above opens the panel upwards, for a button at the foot of the sidebar.
+  placement?: "below" | "above";
   className?: string;
+  buttonClassName?: string;
   children: React.ReactNode;
 };
 
 // A button that shows a panel of links or buttons: the disclosure pattern, so it opens with Enter, Space or a tap, the
 // next Tab enters the panel, Escape gives the focus back to the button, and Escape, a press outside or Tab out of the panel
 // closes it.
-export function MenuDisclosure({ label, icon, className, children }: MenuDisclosureProps) {
+export function MenuDisclosure({ label, icon, placement = "below", className, buttonClassName, children }: MenuDisclosureProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -51,17 +54,26 @@ export function MenuDisclosure({ label, icon, className, children }: MenuDisclos
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-h-11 max-w-56 items-center gap-2 rounded-lg px-3 text-small font-medium hover:bg-accent"
+        className={cn(
+          "inline-flex min-h-11 max-w-56 items-center gap-2 rounded-lg px-3 text-small font-medium transition-colors duration-150 hover:bg-secondary",
+          buttonClassName,
+        )}
       >
         {icon}
-        <span className="truncate">{label}</span>
-        <ChevronDown aria-hidden className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronDown
+          aria-hidden
+          className={cn("ms-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200", open !== (placement === "above") && "rotate-180")}
+        />
       </button>
       <div
         id={panelId}
         hidden={!open}
         onClick={onPanelClick}
-        className="absolute end-0 top-full z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-2 shadow-card"
+        className={cn(
+          "absolute z-40 w-72 max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-2 shadow-card animate-in fade-in zoom-in-95 duration-150",
+          placement === "above" ? "bottom-full start-0 mb-2 origin-bottom-left" : "end-0 top-full mt-1 origin-top-right",
+        )}
       >
         {children}
       </div>

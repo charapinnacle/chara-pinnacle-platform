@@ -1,11 +1,10 @@
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AccountMenu } from "@/components/layout/account-panel";
-import { PageContainer } from "@/components/layout/page-container";
-import { SiteShell } from "@/components/layout/site-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { entriesFor } from "@/lib/admin/navigation";
 import { getCurrentUser, getPlatformRoles } from "@/lib/dal/session";
 import { adminPath } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 import { platformRoleLabels } from "@/lib/validation/admin";
 
 // The navigation is only a convenience: every page asks for its role itself, because a layout does not run again when a
@@ -14,19 +13,19 @@ export default async function AdminLayout({ children, params }: LayoutProps<"/[l
   const { lang } = await params;
   const user = await getCurrentUser();
   const roles = user ? await getPlatformRoles() : [];
-  const entries = entriesFor(roles).map(({ label, segment }) => ({ label, href: adminPath(lang, segment) }));
+  const entries = entriesFor(roles).map(({ label, segment }) => ({ label, segment, href: adminPath(lang, segment) }));
+  const roleLabel = roles.map((role) => platformRoleLabels[role]).join(", ") || undefined;
 
   return (
-    <SiteShell
+    <AppShell
       homeHref={adminPath(lang)}
-      headerActions={
-        user ? <AccountMenu email={user.email} roleLabel={roles.map((role) => platformRoleLabels[role]).join(", ") || undefined} links={[]} /> : null
-      }
+      headerActions={user ? <AccountMenu email={user.email} roleLabel={roleLabel} links={[]} /> : null}
+      sidebar={user ? <AdminSidebar entries={entries} email={user.email} roleLabel={roleLabel} /> : null}
     >
-      <PageContainer layout="page" className={cn("grid grid-cols-[minmax(0,1fr)] items-start gap-6", entries.length > 0 && "lg:grid-cols-[16rem_minmax(0,1fr)]")}>
-        {entries.length > 0 ? <AdminNav entries={entries} /> : null}
-        <div className="min-w-0">{children}</div>
-      </PageContainer>
-    </SiteShell>
+      <div className="grid min-w-0 gap-page">
+        {entries.length > 0 ? <AdminNav entries={entries} className="lg:hidden" /> : null}
+        {children}
+      </div>
+    </AppShell>
   );
 }
