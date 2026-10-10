@@ -2,7 +2,6 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { classifyUsage, type UsageState } from "@/lib/billing/usage";
 import type { Usage } from "@/lib/dal/billing";
-import { cn } from "@/lib/utils";
 
 const USAGE_NAMES = { active_jobs: "Open vacancies", members: "Team members" } as const satisfies Record<Usage["key"], string>;
 
@@ -47,10 +46,10 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
                   aria-valuetext={level.label}
                   className="h-2 overflow-hidden rounded-full bg-muted"
                 >
-                  <div
-                    className={cn("h-full rounded-full", level.state === "ok" ? "bg-primary" : "bg-destructive")}
-                    style={{ width: `${level.percent}%` }}
-                  />
+                  {/* An SVG attribute, not a style attribute, sets the width: the CSP allows no inline style. */}
+                  <svg aria-hidden viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
+                    <rect width={level.percent} height="1" className={level.state === "ok" ? "fill-primary" : "fill-destructive"} />
+                  </svg>
                 </div>
               ) : null}
               {stateText ? (

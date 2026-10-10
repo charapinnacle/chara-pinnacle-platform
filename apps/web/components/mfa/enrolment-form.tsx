@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/feedback/toast-store";
 import { CodeForm } from "@/components/mfa/code-form";
@@ -13,14 +12,17 @@ export function EnrolmentForm({ enrolment, next }: EnrolmentFormProps) {
   const router = useRouter();
   return (
     <div className="grid gap-6">
-      <Image
-        src={enrolment.qrCode}
-        alt="QR code to add CHARA to your authenticator app. If you cannot scan it, use the setup key below."
-        width={200}
-        height={200}
-        unoptimized
-        className="mx-auto rounded-lg border bg-white p-2"
-      />
+      {/* A plain img: next/image writes a style attribute, which the CSP blocks (style-src-attr), and a data URL has
+          nothing to optimise. */}
+      <picture className="mx-auto">
+        <img
+          src={enrolment.qrCode}
+          alt="QR code to add CHARA to your authenticator app. If you cannot scan it, use the setup key below."
+          width={200}
+          height={200}
+          className="block rounded-lg border bg-white p-2"
+        />
+      </picture>
       <div className="grid gap-1.5 text-body">
         <p className="text-muted-foreground">Setup key, if you cannot scan the code</p>
         <code className="rounded-lg border bg-muted px-3 py-2 font-mono text-small break-all select-all">

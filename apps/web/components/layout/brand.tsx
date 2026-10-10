@@ -1,19 +1,20 @@
-import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // The gold CP monogram as CHARA supplied it, on its own black ground. It sits only on dark surfaces or as its own dark
-// tile; the files are ready-sized WebP, so they are served as they are.
+// tile; the files are ready-sized WebP, so they are served as they are. It is decoration beside the wordmark, so it is a
+// background image: next/image writes a style attribute, which the CSP blocks (style-src-attr).
 export function BrandMark({ size = "sm", className }: { size?: "sm" | "lg"; className?: string }) {
-  const large = size === "lg";
   return (
-    <Image
-      src={large ? "/brand/cp-monogram-512.webp" : "/brand/cp-monogram-128.webp"}
-      alt=""
-      width={large ? 512 : 128}
-      height={large ? 512 : 128}
-      unoptimized
-      className={cn("shrink-0 ring-1 ring-black/5", large ? "size-14 rounded-2xl" : "size-8 rounded-lg", className)}
+    <span
+      aria-hidden
+      className={cn(
+        "block shrink-0 bg-cover ring-1 ring-black/5",
+        size === "lg"
+          ? "size-14 rounded-2xl bg-[url(/brand/cp-monogram-512.webp)]"
+          : "size-8 rounded-lg bg-[url(/brand/cp-monogram-128.webp)]",
+        className,
+      )}
     />
   );
 }
