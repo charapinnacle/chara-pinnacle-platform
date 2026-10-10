@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/billing/checkout-form";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { checkoutDisclosures, formatPrice, type SoldPlan } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, listSoldPlans, type BillingState } from "@/lib/dal/billing";
@@ -49,7 +50,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
         description={`${organization.displayName} · ${plan.name}, ${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}`}
       />
 
-      <section aria-labelledby="terms-heading" className="grid gap-3 rounded-xl border bg-card p-4">
+      <Card as="section" aria-labelledby="terms-heading">
         <h2 id="terms-heading" className="text-h2">
           Before you continue
         </h2>
@@ -64,7 +65,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
         <p className="text-small text-muted-foreground">
           You enter your card on the page of our payment provider. CHARA never sees or stores your card details.
         </p>
-      </section>
+      </Card>
 
       <CheckoutForm
         slug={slug}

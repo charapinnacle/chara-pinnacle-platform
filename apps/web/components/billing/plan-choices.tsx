@@ -1,5 +1,6 @@
 import { TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
+import { Card } from "@/components/layout/card";
 import { daysText, shortPriceLine, type SoldPlan } from "@/lib/billing/presentation";
 
 type PlanChoicesProps = { plans: SoldPlan[]; checkoutHref: (planCode: string) => string; offerTrial: boolean };
@@ -19,7 +20,7 @@ export function PlanChoices({ plans, checkoutHref, offerTrial }: PlanChoicesProp
           const trial = offerTrial && plan.trialDays > 0;
           const label = trial ? `Start ${plan.trialDays}-day free trial` : "Subscribe";
           return (
-            <li key={plan.code} className="grid gap-1 rounded-xl border bg-card p-4">
+            <Card as="li" key={plan.code} className="gap-1">
               <h3 className="font-medium">{plan.name}</h3>
               <p className="text-small text-muted-foreground">{shortPriceLine(plan)}</p>
               <p className="text-small text-muted-foreground">
@@ -32,7 +33,7 @@ export function PlanChoices({ plans, checkoutHref, offerTrial }: PlanChoicesProp
               >
                 {label}
               </TextLink>
-            </li>
+            </Card>
           );
         })}
       </ul>

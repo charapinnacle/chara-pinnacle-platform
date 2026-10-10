@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { Card } from "@/components/layout/card";
 import { cn } from "@/lib/utils";
 
 type AuthCardProps = {
@@ -13,7 +14,7 @@ export const cardDividerClassName = "border-t pt-6";
 
 export function AuthCard({ title, description, icon: Icon, children, footer }: AuthCardProps) {
   return (
-    <div className="mx-auto grid w-full max-w-md gap-6 rounded-2xl border bg-card p-6 shadow-card sm:p-8">
+    <Card elevated className="mx-auto w-full max-w-md gap-6 rounded-2xl p-6 sm:p-8">
       {title || Icon ? (
         <div className={cn("grid gap-2", Icon && "justify-items-center text-center")}>
           {Icon ? (
@@ -36,6 +37,6 @@ export function AuthCard({ title, description, icon: Icon, children, footer }: A
       ) : null}
       {children}
       {footer ? <div className={cn(cardDividerClassName, "text-body text-muted-foreground")}>{footer}</div> : null}
-    </div>
+    </Card>
   );
 }

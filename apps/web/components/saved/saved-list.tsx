@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { useActionCall } from "@/components/feedback/use-action-call";
+import { Card } from "@/components/layout/card";
 import { setSavedJob } from "@/lib/actions/saved-jobs";
 import type { ApplicationState } from "@/lib/dal/applications";
 import type { SavedJob } from "@/lib/dal/saved-jobs";
@@ -32,7 +33,7 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
   }
 
   return (
-    <li className="grid gap-2 rounded-xl border bg-card p-4">
+    <Card as="li" className="gap-2">
       {job.available ? (
         <>
           <h2 className="text-h2">
@@ -70,7 +71,7 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
           Unsave<span className="sr-only"> vacancy: {title ?? "no longer available"}</span>
         </FormButton>
       </div>
-    </li>
+    </Card>
   );
 }
 

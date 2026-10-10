@@ -1,9 +1,9 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const cardVariants = cva("grid gap-3 rounded-xl border bg-card", {
+export const cardVariants = cva("grid gap-3 rounded-xl border bg-card", {
   variants: {
-    padding: { sm: "p-card-sm", md: "p-card", lg: "p-card-lg" },
+    padding: { none: "", sm: "p-card-sm", md: "p-card", lg: "p-card-lg" },
     elevated: { true: "shadow-card", false: "" },
   },
   defaultVariants: { padding: "md", elevated: false },

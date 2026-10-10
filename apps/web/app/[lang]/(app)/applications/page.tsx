@@ -4,6 +4,7 @@ import { StageFilter } from "@/components/applications/stage-filter";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import { logTrackerView } from "@/lib/applications/tracker-log";
@@ -60,7 +61,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
         <div className="grid gap-4">
           <ul className="grid gap-3">
             {applications.map((application) => (
-              <li key={application.id} className="grid gap-2 rounded-xl border bg-card p-4">
+              <Card as="li" key={application.id} className="gap-2">
                 <h2 className="text-h2">
                   <TextLink href={applicationPath(lang, application.id)} className="wrap-anywhere">
                     {application.jobTitle}
@@ -74,7 +75,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
                   Applied <time dateTime={application.appliedAt}>{formatShortDate(application.appliedAt)}</time>
                   {" · "}Last update <time dateTime={application.lastEventAt}>{formatShortDate(application.lastEventAt)}</time>
                 </p>
-              </li>
+              </Card>
             ))}
           </ul>
           {page > 1 || hasNext ? (

@@ -1,5 +1,6 @@
 import { Building2 } from "lucide-react";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import type { Employer, VacancyDetails } from "@/lib/dal/hiring";
 import { formatDate } from "@/lib/i18n/format";
@@ -56,7 +57,7 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
       </section>
 
       {employer ? (
-        <section aria-labelledby="job-employer-heading" className="grid gap-2 rounded-xl border bg-card p-4">
+        <Card as="section" aria-labelledby="job-employer-heading" className="gap-2">
           <h2 id="job-employer-heading" className="flex items-center gap-2 text-h2">
             <Building2 aria-hidden className="size-5 text-muted-foreground" />
             {employer.displayName}
@@ -76,7 +77,7 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
               <span className="sr-only"> (opens in a new tab)</span>
             </TextLink>
           ) : null}
-        </section>
+        </Card>
       ) : null}
     </article>
   );

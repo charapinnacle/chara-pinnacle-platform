@@ -3,6 +3,7 @@ import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApplicantNote } from "@/lib/dal/applicant-review";
@@ -48,7 +49,7 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
       ) : (
         <ul className="grid gap-2">
           {notes.map((note) => (
-            <li key={note.id} className="grid gap-1 rounded-xl border bg-card p-3">
+            <Card as="li" padding="sm" key={note.id} className="gap-1">
               <p className="text-small font-medium text-muted-foreground">Internal note</p>
               <p className="wrap-anywhere whitespace-pre-line">{note.body}</p>
               <p className="text-small text-muted-foreground wrap-anywhere">
@@ -56,7 +57,7 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
                 {" · "}
                 <time dateTime={note.createdAt}>{formatDateTime(note.createdAt)}</time>
               </p>
-            </li>
+            </Card>
           ))}
         </ul>
       )}

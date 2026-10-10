@@ -1,4 +1,5 @@
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { applicationStatusLabels, pipelineStages } from "@/lib/applications/presentation";
 import type { DashboardApplications } from "@/lib/dal/dashboard";
 import { applicantsPath } from "@/lib/routes";
@@ -8,7 +9,7 @@ type StageTableProps = { lang: string; slug: string; applications: DashboardAppl
 // Every stage, a stage with none shown as 0; each links to the organisation-wide list filtered by that stage.
 export function StageTable({ lang, slug, applications }: StageTableProps) {
   return (
-    <section aria-labelledby="stage-heading" className="grid gap-3 rounded-xl border bg-card p-5 shadow-card">
+    <Card as="section" aria-labelledby="stage-heading" padding="lg" elevated>
       <h2 id="stage-heading" className="text-h2">
         Applicants by stage
       </h2>
@@ -42,6 +43,6 @@ export function StageTable({ lang, slug, applications }: StageTableProps) {
           </tr>
         </tfoot>
       </table>
-    </section>
+    </Card>
   );
 }

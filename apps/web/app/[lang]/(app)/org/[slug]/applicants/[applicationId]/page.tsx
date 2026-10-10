@@ -7,6 +7,7 @@ import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
@@ -154,7 +155,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
         </h2>
         <ol className="grid gap-2">
           {events.map((event) => (
-            <li key={event.id} className="grid gap-1 rounded-xl border bg-card p-3">
+            <Card as="li" padding="sm" key={event.id} className="gap-1">
               <p className="font-medium">
                 {event.fromStatus
                   ? `${applicationStatusLabels[event.fromStatus]} to ${applicationStatusLabels[event.toStatus]}`
@@ -171,7 +172,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
                   <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
                 </div>
               ) : null}
-            </li>
+            </Card>
           ))}
         </ol>
       </section>

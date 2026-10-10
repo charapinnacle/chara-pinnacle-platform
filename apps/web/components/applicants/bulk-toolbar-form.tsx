@@ -13,6 +13,7 @@ import { TextareaField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { Card } from "@/components/layout/card";
 import { bulkChangeApplicantStage } from "@/lib/actions/applicants";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import {
@@ -97,7 +98,7 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
   }
 
   return (
-    <section aria-label="Bulk actions" className="grid gap-4 rounded-xl border bg-card p-4">
+    <Card as="section" aria-label="Bulk actions" className="gap-4">
       <form noValidate className="grid gap-4" onSubmit={handleSubmit(startReview)}>
         <ErrorSummary
           ref={summaryRef}
@@ -149,6 +150,6 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
           <BulkReviewBody review={review} busy={confirming} onCancel={() => setReview(null)} onConfirm={confirm} />
         ) : null}
       </ModalDialog>
-    </section>
+    </Card>
   );
 }

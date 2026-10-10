@@ -1,4 +1,5 @@
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
 import { planFacts, subscriptionStatusLabels, type SoldPlan } from "@/lib/billing/presentation";
 import type { Subscription } from "@/lib/dal/billing";
@@ -20,7 +21,7 @@ export function PlanSummary({ subscription, plan }: PlanSummaryProps) {
       ];
 
   return (
-    <section aria-labelledby="plan-heading" className="grid gap-3 rounded-xl border bg-card p-4">
+    <Card as="section" aria-labelledby="plan-heading">
       <h2 id="plan-heading" className="text-h2">
         Current plan
       </h2>
@@ -39,6 +40,6 @@ export function PlanSummary({ subscription, plan }: PlanSummaryProps) {
           </TextLink>
         </>
       ) : null}
-    </section>
+    </Card>
   );
 }

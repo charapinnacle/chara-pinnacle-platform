@@ -5,6 +5,7 @@ import { SelectApplicant } from "@/components/applicants/bulk-selection";
 import { NewBadge } from "@/components/applicants/new-badge";
 import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import type { ApplicantRow } from "@/lib/dal/applicant-list";
 import { formatShortDate } from "@/lib/i18n/format";
@@ -53,7 +54,9 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
   }
 
   return (
-    <li
+    <Card
+      as="li"
+      padding="sm"
       draggable={draggable}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
@@ -61,7 +64,7 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
         onDragStart(row);
       }}
       onDragEnd={onDragEnd}
-      className={cn("grid gap-2 rounded-xl border bg-card p-3", draggable && "cursor-grab")}
+      className={cn("gap-2", draggable && "cursor-grab")}
     >
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium wrap-anywhere">
         <SelectApplicant id={row.id} name={name} />
@@ -123,6 +126,6 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
           ) : null}
         </div>
       ) : null}
-    </li>
+    </Card>
   );
 }

@@ -6,6 +6,7 @@ import { BoardCard, moveButtonId } from "@/components/applicants/board-card";
 import { StageChangeDialog } from "@/components/applicants/stage-change";
 import { TextLink } from "@/components/forms/text-link";
 import { useActionCall } from "@/components/feedback/use-action-call";
+import { Card } from "@/components/layout/card";
 import { changeApplicantStage, readBoardCounts } from "@/lib/actions/applicants";
 import { moveCard } from "@/lib/applicants/board";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
@@ -113,8 +114,9 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
           {shown.map((column) => {
             const accepts = dragging !== null && targetsOf(dragging).includes(column.status);
             return (
-              <div
+              <Card
                 key={column.status}
+                padding="sm"
                 role="group"
                 aria-labelledby={`column-${column.status}`}
                 onDragOver={(event) => {
@@ -129,10 +131,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
                   if (dragging && accepts) move(dragging, column.status);
                   setDragging(null);
                 }}
-                className={cn(
-                  "grid w-64 shrink-0 gap-3 rounded-xl border bg-muted/40 p-3",
-                  over === column.status && "border-primary ring-2 ring-primary/30",
-                )}
+                className={cn("w-64 shrink-0 bg-muted/40", over === column.status && "border-primary ring-2 ring-primary/30")}
               >
                 <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-base font-semibold">
                   {applicationStatusLabels[column.status]}
@@ -161,7 +160,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
                     Show all {column.total} in the list
                   </TextLink>
                 ) : null}
-              </div>
+              </Card>
             );
           })}
         </div>

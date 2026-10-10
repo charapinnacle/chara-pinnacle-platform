@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { z } from "zod";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -89,7 +90,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
         </h2>
         <ul className="grid gap-3">
           {members.map((member) => (
-            <li key={member.userId} className="grid gap-3 rounded-xl border bg-card p-4">
+            <Card as="li" key={member.userId}>
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                 <div className="min-w-0">
                   <p className="font-medium break-words">{displayName(member)}</p>
@@ -105,7 +106,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
               {manager && member.role !== "owner" && member.userId !== user.id ? (
                 <MemberActions slug={slug} userId={member.userId} name={displayName(member)} role={member.role} />
               ) : null}
-            </li>
+            </Card>
           ))}
         </ul>
         {page.nextCursor ? (
@@ -127,7 +128,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
           </h2>
           <ul className="grid gap-3">
             {invitations.map((invitation) => (
-              <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+              <Card as="li" key={invitation.id} className="flex flex-wrap items-center justify-between">
                 <div className="min-w-0">
                   <p className="font-medium break-all">{invitation.email}</p>
                   <p className="text-small text-muted-foreground">
@@ -142,7 +143,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
                 {!invitation.open ? (
                   <ResendInvitation slug={slug} email={invitation.email} role={invitation.role} />
                 ) : null}
-              </li>
+              </Card>
             ))}
           </ul>
         </section>

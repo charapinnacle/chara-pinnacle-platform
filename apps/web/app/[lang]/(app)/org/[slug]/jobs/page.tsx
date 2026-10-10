@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
@@ -51,7 +52,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
       ) : (
         <ul className="grid gap-3">
           {page.jobs.map((job) => (
-            <li key={job.id} className="grid gap-1 rounded-xl border bg-card p-4">
+            <Card as="li" key={job.id} className="gap-1">
               <TextLink href={jobPath(lang, slug, job.id)} className="break-words">
                 {job.title}
               </TextLink>
@@ -69,7 +70,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                   </LegalLink>
                 ) : null}
               </p>
-            </li>
+            </Card>
           ))}
         </ul>
       )}

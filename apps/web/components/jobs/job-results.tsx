@@ -2,6 +2,7 @@ import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { SaveJob } from "@/components/jobs/save-job";
+import { Card } from "@/components/layout/card";
 import { searchJobs, type JobSearchResult } from "@/lib/dal/hiring";
 import { getCountries } from "@/lib/dal/reference";
 import { getSavedJobIds } from "@/lib/dal/saved-jobs";
@@ -18,7 +19,7 @@ type ResultCardProps = { job: JobSearchResult; lang: string; countryName: string
 
 function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardProps) {
   return (
-    <li className="grid gap-2 rounded-xl border bg-card p-4">
+    <Card as="li" className="gap-2">
       <h2 className="text-h2">
         <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
           {job.title}
@@ -45,7 +46,7 @@ function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardP
           <SaveJob jobId={job.id} title={job.title} viewer={viewer} saved={saved} next={next} />
         </div>
       )}
-    </li>
+    </Card>
   );
 }
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { WithdrawApplication } from "@/components/applications/withdraw-application";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { applicationNextSteps, applicationStatusLabels, eventActorLabels, eventNoteLabels } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
@@ -90,7 +91,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
         </h2>
         <ol className="grid gap-2">
           {timeline.map((event) => (
-            <li key={`${event.createdAt}-${event.toStatus}`} className="rounded-xl border bg-card p-3">
+            <Card as="li" padding="sm" key={`${event.createdAt}-${event.toStatus}`} className="block">
               <p className="font-medium">
                 {applicationStatusLabels[event.toStatus]}{" "}
                 <time dateTime={event.createdAt} className="font-normal text-muted-foreground">
@@ -104,7 +105,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
                   <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
                 </div>
               ) : null}
-            </li>
+            </Card>
           ))}
         </ol>
       </section>
