@@ -55,7 +55,7 @@ test.describe("FR-I1: the invitation email", () => {
     await logIn(otherPage, invitee, pathname);
     await expect(otherPage.getByRole("heading", { name: `Join ${name}` })).toBeVisible();
     await otherPage.getByRole("button", { name: "Accept invitation" }).click();
-    await expect(otherPage).toHaveURL(`/en/org/${team.slug}`);
+    await expect(otherPage).toHaveURL(`/en/dashboard/employer?org=${team.slug}`);
     expect(memberRows(team).map((row) => [row.user_id, row.role])).toContainEqual([invitee.id, "member"]);
     expect(invitationRows(team)[0].accepted_at).not.toBeNull();
 
@@ -79,6 +79,8 @@ test.describe("FR-I1: the invitation email", () => {
       await form.getByLabel("Email address").fill(email);
       await form.getByRole("button", { name: "Create invitation" }).click();
       await page.getByRole("dialog", { name: "Invitation link" }).getByRole("button", { name: "Done" }).click();
+      // Done refreshes the page, and the invite button moves into the page header once the list has an invitation.
+      await expect(page.getByRole("main").getByText(email)).toBeVisible();
     }
     expect(invitationNotice(name).map((row) => row.status).sort()).toEqual(["queued", "suppressed"]);
     await runNotify();

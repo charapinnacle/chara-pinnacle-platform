@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { TextLink } from "@/components/forms/text-link";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { NotificationForm } from "@/components/settings/notification-form";
 import { getEmailDelivery } from "@/lib/dal/notifications";
 import { requireUser } from "@/lib/dal/session";
-import { homePath } from "@/lib/routes";
+import { homePath, settingsPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Notification settings — CHARA", robots: { index: false } };
 
@@ -18,11 +18,18 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-page">
-      <PageHeader title="Notification settings">
-        <TextLink standalone href={homePath(lang, user.accountKind)}>
-          Back to the dashboard
-        </TextLink>
-      </PageHeader>
+      <PageHeader
+        title="Notification settings"
+        breadcrumb={
+          <Breadcrumbs
+            items={[
+              { label: "Dashboard", href: homePath(lang, user.accountKind) },
+              ...(user.accountKind === "worker" ? [{ label: "Settings", href: settingsPath(lang) }] : []),
+              { label: "Notification settings" },
+            ]}
+          />
+        }
+      />
       {delivery ? (
         <Section
           id="new-applications"

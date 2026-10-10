@@ -1,3 +1,4 @@
+import { logOut } from "./support/app-shell";
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import type { Browser, Page } from "@playwright/test";
@@ -295,7 +296,7 @@ test.describe("password recovery", () => {
     await newPasswordField(page).fill(NEW_PASSWORD);
     await submit(page);
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
-    await page.getByRole("button", { name: "Log out" }).click();
+    await logOut(page);
     await expect(page).toHaveURL(/\/en\/login$/);
 
     await page.getByLabel("Email", { exact: true }).fill(user.email);

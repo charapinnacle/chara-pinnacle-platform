@@ -1,3 +1,4 @@
+import { mainNavigation } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { billingPath, checkoutPath, expectPlan, linkCustomer, resetSubscriptions, summaryValue } from "./support/billing";
 import { seedSubscription } from "./support/dashboard";
@@ -53,9 +54,9 @@ test.describe("billing page: who sees it (FR-G5 AC1, AC2)", () => {
     seedSubscription(team, "employer_starter", "active", { currentPeriodEnd: "2026-12-04T12:00:00Z" });
     const path = billingPath(team.slug);
 
-    await signInAtAal2(page, team.owner, team.ownerSecret, `/en/org/${team.slug}`);
-    await expect(page.getByRole("link", { name: "Billing" })).toHaveAttribute("href", path);
-    await page.getByRole("link", { name: "Billing" }).click();
+    await signInAtAal2(page, team.owner, team.ownerSecret, `/en/org/${team.slug}/members`);
+    await expect(mainNavigation(page).getByRole("link", { name: "Billing" })).toHaveAttribute("href", path);
+    await mainNavigation(page).getByRole("link", { name: "Billing" }).click();
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
 
     const { context: memberContext, page: memberPage } = await newVisitor(browser);
@@ -63,9 +64,9 @@ test.describe("billing page: who sees it (FR-G5 AC1, AC2)", () => {
     await expect(memberPage).toHaveURL(/\/en\/forbidden$/);
     await expect(memberPage.getByRole("heading", { name: "You do not have access to this page" })).toBeVisible();
     await expect(memberPage.getByText(/Basic|Next invoice|Manage billing/)).toHaveCount(0);
-    await memberPage.goto(`/en/org/${team.slug}`);
-    await expect(memberPage.getByRole("link", { name: "Team" })).toBeVisible();
-    await expect(memberPage.getByRole("link", { name: "Billing" })).toHaveCount(0);
+    await memberPage.goto(`/en/dashboard/employer?org=${team.slug}`);
+    await expect(mainNavigation(memberPage).getByRole("link", { name: "Team" })).toBeVisible();
+    await expect(mainNavigation(memberPage).getByRole("link", { name: "Billing" })).toHaveCount(0);
     await memberContext.close();
 
     const { context: firstStep, page: firstStepPage } = await newVisitor(browser);

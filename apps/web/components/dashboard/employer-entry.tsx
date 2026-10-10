@@ -31,7 +31,6 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
     );
   }
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
-  const others = organizations.filter((other) => other.slug !== organization.slug);
   const needsCode = organization.role !== "member" && user.aal !== "aal2";
   return (
     <>
@@ -60,16 +59,6 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
       ) : (
         <EmployerDashboard lang={lang} organization={organization} twoStepDone={twoStepDone} />
       )}
-      {others.length > 0 ? (
-        <nav aria-label="Your organizations" className="mx-auto grid w-full max-w-5xl gap-1">
-          <p className="text-small text-muted-foreground">You also belong to</p>
-          {others.map((other) => (
-            <TextLink key={other.id} href={employerDashboardPath(lang, other.slug)}>
-              {other.displayName}
-            </TextLink>
-          ))}
-        </nav>
-      ) : null}
     </>
   );
 }

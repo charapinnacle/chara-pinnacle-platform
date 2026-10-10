@@ -1,4 +1,5 @@
 import { DAILY_SUMMARY_TIME_TEXT } from "@/lib/validation/notifications";
+import { breadcrumbs } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
@@ -91,7 +92,7 @@ test.describe("notification settings", () => {
     );
 
     await waitForHydration(immediately);
-    await page.getByRole("link", { name: "Back to the dashboard" }).focus();
+    await breadcrumbs(page).getByRole("link", { name: "Dashboard" }).focus();
     await page.keyboard.press("Tab");
     await expect(immediately).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -117,7 +118,7 @@ test.describe("notification settings", () => {
     await signInBrowser(context, await addCompanyUser(company, "member"));
     await page.goto(`/en/dashboard/employer?org=${company.slug}`);
     await page.getByRole("link", { name: "Notification settings" }).click();
-    await expect(page).toHaveURL(SETTINGS);
+    await expect(page).toHaveURL(`${SETTINGS}?org=${company.slug}`);
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
   });
 

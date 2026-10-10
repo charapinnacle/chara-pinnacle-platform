@@ -80,7 +80,7 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
         <FirstSteps empty={empty} lang={lang} slug={slug} role={role} twoStepDone={twoStepDone} />
       </Suspense>
 
-      <TextLink standalone href={notificationSettingsPath(lang)}>
+      <TextLink standalone href={notificationSettingsPath(lang, slug)}>
         Notification settings
       </TextLink>
     </div>

@@ -8,6 +8,7 @@ type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 type Applicant = {
   id: string;
   organizationId: string;
+  jobId: string;
   jobTitle: string;
   applicantName: string | null;
   status: ApplicationStatus;
@@ -45,6 +46,7 @@ export async function getApplicant(id: string): Promise<Applicant | null> {
   return {
     id: row.id,
     organizationId: row.organization_id,
+    jobId: row.job_id,
     jobTitle: row.job_title,
     applicantName: row.applicant_name,
     status: row.status,

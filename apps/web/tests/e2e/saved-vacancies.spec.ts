@@ -13,7 +13,7 @@ import { bodyOf, publicUrl } from "./support/vacancy-page";
 
 const newMarker = () => `zq${uniqueToken()}`;
 
-const rows = (page: Page): Locator => page.locator("ul > li");
+const rows = (page: Page): Locator => page.getByRole("main").locator("ul > li");
 const row = (page: Page, title: string): Locator => rows(page).filter({ hasText: title });
 const saveButton = (scope: Page | Locator, title: string): Locator =>
   scope.getByRole("button", { name: `Save vacancy: ${title}` });
@@ -124,7 +124,7 @@ test.describe("saved vacancies", () => {
 
     await row(page, `Welder ${marker} first`).getByRole("button", { name: "Unsave" }).click();
     await expect(page.getByRole("heading", { name: "No saved vacancies yet", level: 2 })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Find Jobs" })).toHaveAttribute("href", "/en/jobs");
+    await expect(page.getByRole("main").getByRole("link", { name: "Find Jobs" })).toHaveAttribute("href", "/en/jobs");
     await expect(rows(page)).toHaveCount(0);
     expect(savedJobIds(candidate.id)).toEqual([]);
     await page.reload();

@@ -79,7 +79,7 @@ test.describe("team membership: invitations", () => {
     await expect(invitee.page).toHaveURL(`/en/invitations/${token}`);
     await expect(invitee.page.getByLabel("Legal company name")).toHaveCount(0);
     await invitee.page.getByRole("button", { name: "Accept invitation" }).click();
-    await expect(invitee.page).toHaveURL(`/en/org/${team.slug}`);
+    await expect(invitee.page).toHaveURL(`/en/dashboard/employer?org=${team.slug}`);
 
     expect(memberRows(team).map((row) => [row.role, row.invited_by])).toEqual([
       ["owner", null],
@@ -151,8 +151,11 @@ test.describe("team membership: invitations", () => {
     expect(memberRows(second).map((row) => [row.user_id, row.role])).toContainEqual([first.owner.id, "admin"]);
     expect(memberRows(first).map((row) => [row.user_id, row.role])).toContainEqual([first.owner.id, "owner"]);
     await page.goto("/en/dashboard/employer");
-    await expect(page.getByText(firstName, { exact: true })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Your organizations" }).getByRole("link", { name: secondName })).toBeVisible();
+    await expect(page.getByRole("main").getByText(firstName, { exact: true })).toBeVisible();
+    const switcher = page.getByRole("button", { name: firstName });
+    await waitForHydration(switcher);
+    await switcher.click();
+    await expect(page.getByRole("link", { name: secondName, exact: true }).filter({ visible: true })).toHaveAttribute("href", `/en/dashboard/employer?org=${second.slug}`);
   });
 
   test("FR-A5 AC11: with only the owner the page says so, and the dialog is keyboard operable and axe clean at 360 px and 1280 px", async ({
@@ -289,11 +292,11 @@ test.describe("team membership: invitations", () => {
     seedInvitation(team, newEmail());
     await signInAtAal1(page, viewer.user, membersPath(team.slug));
     await expect(page.getByRole("heading", { name: "Team", level: 1 })).toBeVisible();
-    const list = page.getByRole("list").first();
+    const list = page.getByRole("main").getByRole("list").filter({ hasText: "Olga Owner" });
     await expect(list).toContainText("Olga Owner");
     await expect(list).toContainText("Owner");
     await expect(list).toContainText("Otto Other");
-    const html = await page.content();
+    const html = await page.getByRole("main").innerHTML();
     for (const user of [team.owner, other.user, viewer.user]) expect(html).not.toContain(user.email);
     await expect(page.getByRole("button", { name: /Invite|Remove|Make|Resend|Transfer/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Invitations" })).toHaveCount(0);

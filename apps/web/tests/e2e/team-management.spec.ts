@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { accountButton, mainNavigation, openAccountMenu } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { literal, query } from "./support/db";
 import { createCommittedUser } from "./support/login";
@@ -60,7 +61,7 @@ test.describe("team membership: removing members and changing roles", () => {
     expect(teamAudit(team, "member_removed")).toHaveLength(1);
 
     await visitor.page.goto(`/en/org/${second.slug}`);
-    await expect(visitor.page).toHaveURL(`/en/org/${second.slug}`);
+    await expect(visitor.page).toHaveURL(`/en/dashboard/employer?org=${second.slug}`);
     expect(memberRows(second).map((entry) => entry.user_id)).toContain(member.user.id);
     await visitor.context.close();
   });
@@ -148,7 +149,7 @@ test.describe("team membership: page guard and status", () => {
     await signInAtAal1(visitor.page, plain.user, path);
     await expect(visitor.page.getByRole("heading", { name: "Team", level: 1 })).toBeVisible();
     await visitor.page.goto(`/en/org/${team.slug}`);
-    await expect(visitor.page).toHaveURL(`/en/org/${team.slug}`);
+    await expect(visitor.page).toHaveURL(`/en/dashboard/employer?org=${team.slug}`);
 
     await signInAtAal1(visitor.page, promoted.user, path);
     await expect(visitor.page.getByRole("heading", { name: "Team", level: 1 })).toBeVisible();
@@ -171,7 +172,7 @@ test.describe("team membership: page guard and status", () => {
     setName(enrolled.user.id, "Ena Enrolled");
     setName(bare.user.id, "Bo Bare");
     setName(member.user.id, "Max Member");
-    await signInAtAal2(page, team.owner, team.ownerSecret, `/en/org/${team.slug}`);
+    await signInAtAal2(page, team.owner, team.ownerSecret, `/en/org/${team.slug}/billing`);
     await page.waitForLoadState("networkidle");
 
     await page.route(
@@ -181,7 +182,7 @@ test.describe("team membership: page guard and status", () => {
         await route.continue();
       },
     );
-    await page.getByRole("link", { name: "Team" }).click();
+    await mainNavigation(page).getByRole("link", { name: "Team" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Team", level: 1 })).toBeVisible();
 
@@ -222,6 +223,8 @@ test.describe("team membership: ownership transfer", () => {
     await expect(visitor.page.getByText(/asked you to become the owner/)).toBeVisible();
     await visitor.page.getByRole("button", { name: "Become the owner" }).click();
     await expect(visitor.page.getByText("You are now the owner", { exact: true })).toBeVisible();
+    await openAccountMenu(visitor.page);
+    await expect(accountButton(visitor.page).locator("xpath=..").getByText("Owner", { exact: true })).toBeVisible();
     expect(memberRows(team).map((entry) => [entry.user_id, entry.role]).sort()).toEqual(
       [
         [team.owner.id, "admin"],

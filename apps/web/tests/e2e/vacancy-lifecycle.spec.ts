@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { mainNavigation } from "./support/app-shell";
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal } from "./support/db";
@@ -248,10 +249,10 @@ test.describe("vacancy lifecycle", () => {
     const prefetched = memberPage.waitForResponse(
       (response) => /\/jobs\?_rsc=/.test(response.url()) && response.request().headers()["next-router-prefetch"] === "1",
     );
-    await memberPage.goto(`/en/org/${acme.slug}`);
+    await memberPage.goto(`/en/dashboard/employer?org=${acme.slug}`);
     await prefetched;
     await memberPage.waitForLoadState("networkidle");
-    await memberPage.getByRole("link", { name: "Vacancies" }).click();
+    await mainNavigation(memberPage).getByRole("link", { name: "Vacancies" }).click();
     await expect(memberPage.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
     release();
     await expect(memberPage.getByRole("listitem").filter({ hasText: "Stale welder" })).toBeVisible();

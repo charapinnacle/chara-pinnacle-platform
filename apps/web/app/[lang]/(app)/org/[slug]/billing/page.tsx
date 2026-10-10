@@ -5,7 +5,9 @@ import { PlanActions } from "@/components/billing/plan-actions";
 import { PlanChoices } from "@/components/billing/plan-choices";
 import { PlanSummary } from "@/components/billing/plan-summary";
 import { UsageSection } from "@/components/billing/usage-section";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { planChanges, type SubscriptionStatus } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, getUsage, listSoldPlans } from "@/lib/dal/billing";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -36,7 +38,11 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-section">
-      <PageHeader title="Billing" description={organization.displayName} />
+      <PageHeader
+        title="Billing"
+        description={organization.displayName}
+        breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Billing" }]} />}
+      />
 
       {subscription?.status === "past_due" && subscription.pastDueSince ? (
         <PastDueAlert slug={slug} pastDueSince={new Date(subscription.pastDueSince)} now={new Date()} />

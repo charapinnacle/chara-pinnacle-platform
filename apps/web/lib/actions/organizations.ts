@@ -3,6 +3,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { mfaPath } from "@/lib/routes";
@@ -69,5 +70,6 @@ export async function createOrganization(
 
   const created = createdOrganizationSchema.parse(data);
   if (created.duplicate_legal_name) return { duplicateLegalName: true };
+  refreshAppShell();
   redirect(mfaPath(defaultLocale));
 }

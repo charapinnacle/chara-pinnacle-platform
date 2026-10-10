@@ -78,7 +78,7 @@ test.describe("apply to a vacancy", () => {
     await page.getByRole("link", { name: "My applications" }).click();
     await expect(page).toHaveURL(APPLICATIONS_URL);
     await expect(page.getByRole("heading", { name: "My applications", level: 1 })).toBeVisible();
-    const row = page.locator("ul > li").filter({ hasText: "Welder" });
+    const row = page.getByRole("main").locator("ul > li").filter({ hasText: "Welder" });
     await expect(row).toContainText("Applied");
     await expect(row).toContainText(employer);
     await expect(row.getByRole("link", { name: "Welder" })).toHaveAttribute("href", applicationUrl(application.id));
@@ -95,17 +95,17 @@ test.describe("apply to a vacancy", () => {
     }
 
     await logIn(page, candidate, APPLICATIONS_URL);
-    await expect(page.locator("ul > li")).toHaveCount(20);
-    await expect(page.locator("ul > li").first()).toContainText(longTitle);
+    await expect(page.getByRole("main").locator("ul > li")).toHaveCount(20);
+    await expect(page.getByRole("main").locator("ul > li").first()).toContainText(longTitle);
     await expectAccessibleAtBothWidths(page);
     await page.getByRole("link", { name: "Next page" }).click();
     await expect(page).toHaveURL(`${APPLICATIONS_URL}?page=2`);
-    await expect(page.locator("ul > li")).toHaveCount(1);
+    await expect(page.getByRole("main").locator("ul > li")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Next page" })).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
     await page.getByRole("link", { name: "Previous page" }).click();
     await expect(page).toHaveURL(APPLICATIONS_URL);
-    await expect(page.locator("ul > li")).toHaveCount(20);
+    await expect(page.getByRole("main").locator("ul > li")).toHaveCount(20);
   });
 
   test("FR-D1 AC7: a visitor who presses Apply logs in and lands on the apply form of that vacancy", async ({ page }) => {

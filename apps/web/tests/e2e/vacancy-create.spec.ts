@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { expect, test } from "./support/test";
+import { breadcrumbs } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { createCommittedUser } from "./support/login";
 import { logIn } from "./support/login-page";
@@ -89,7 +90,7 @@ test.describe("create vacancy", () => {
     await expect(page.getByText("Not stated", { exact: true })).toBeVisible();
     expect(job).toMatchObject({ salary_min: null, salary_max: null, salary_currency: null, salary_period: null, created_by: admin.id });
 
-    await page.getByRole("link", { name: "Back to vacancies" }).click();
+    await breadcrumbs(page).getByRole("link", { name: "Vacancies" }).click();
     await expect(page).toHaveURL(jobsUrl(company.slug));
     const row = page.getByRole("listitem").filter({ hasText: "Crane operator" });
     await expect(row).toContainText("Hamburg, Germany");
@@ -150,7 +151,7 @@ test.describe("create vacancy", () => {
     }
 
     await page.getByLabel("Title", { exact: true }).fill("Entered title");
-    const link = page.getByRole("link", { name: /Platform Rules/ });
+    const link = page.getByRole("main").getByRole("link", { name: /Platform Rules/ });
     await expect(link).toHaveAttribute("href", "/en/legal/platform-rules");
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(link).toHaveAttribute("rel", /noopener/);

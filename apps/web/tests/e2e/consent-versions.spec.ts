@@ -1,3 +1,4 @@
+import { logOut } from "./support/app-shell";
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import {
@@ -83,7 +84,7 @@ test("FR-A8 AC9: a changed document gates the next sign-in, not the open session
       "/en/legal/employer-terms",
     );
     await expect(next.getByRole("checkbox")).toHaveCount(1);
-    await expect(next.getByText(/Terms of Service/)).toHaveCount(0);
+    await expect(next.getByRole("main").getByText(/Terms of Service/)).toHaveCount(0);
     await expectNoAxeViolations(next);
 
     const legal = await next.request.get("/en/legal/employer-terms", { maxRedirects: 0 });
@@ -180,7 +181,7 @@ test("FR-H3 AC9: a candidate and an employer owner with an older acceptance are 
       await expect(page.getByRole("link", { name: /Read the full text/ })).toHaveAttribute("href", "/en/legal/terms-of-service");
       await expect(page.getByRole("checkbox")).toHaveCount(1);
 
-      await page.getByRole("button", { name: "Log out" }).click();
+      await logOut(page);
       await expect(page).toHaveURL(/\/en\/login/);
       await signInBrowser(context, user);
       await page.goto(home);

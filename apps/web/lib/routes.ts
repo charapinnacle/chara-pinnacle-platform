@@ -34,8 +34,10 @@ export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }
 
-export function notificationSettingsPath(lang: string): string {
-  return `${settingsPath(lang)}/notifications`;
+// The organisation is carried so that the header of an employer in several organisations stays on the one they work in.
+export function notificationSettingsPath(lang: string, orgSlug?: string): string {
+  const path = `${settingsPath(lang)}/notifications`;
+  return orgSlug ? `${path}?org=${encodeURIComponent(orgSlug)}` : path;
 }
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
@@ -55,6 +57,10 @@ export function jobPath(lang: string, slug: string, id: string): string {
 
 export function billingPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/billing`;
+}
+
+export function membersPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/members`;
 }
 
 export function applyPath(lang: string, jobId: string): string {

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/billing/checkout-form";
-import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { checkoutDisclosures, formatPrice, type SoldPlan } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, listSoldPlans, type BillingState } from "@/lib/dal/billing";
 import { getLegalDocument } from "@/lib/dal/legal";
@@ -48,6 +49,11 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
       <PageHeader
         title="Confirm your plan"
         description={`${organization.displayName} · ${plan.name}, ${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}`}
+        breadcrumb={
+          <Breadcrumbs
+            items={[organizationCrumb(lang, organization), { label: "Billing", href: billingPath(lang, slug) }, { label: "Checkout" }]}
+          />
+        }
       />
 
       <Card as="section" aria-labelledby="terms-heading">
@@ -77,9 +83,6 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
         countries={toOptions(countries)}
         defaults={identifierDefaults(state)}
       />
-      <TextLink standalone href={billingPath(lang, slug)}>
-        Back to billing
-      </TextLink>
     </div>
   );
 }

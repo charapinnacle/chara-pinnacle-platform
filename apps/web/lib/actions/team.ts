@@ -3,6 +3,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { getOrganizationSlug } from "@/lib/dal/organizations";
 import { getAllowance } from "@/lib/dal/team";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
@@ -67,6 +68,7 @@ async function runTeamAction(
   const { error } = await call(await createClient(), organization.id);
   if (error) return refusal(error, slug);
   revalidatePath(membersPath(slug));
+  refreshAppShell();
   return {};
 }
 
@@ -171,6 +173,7 @@ export async function acceptInvitation(token: string): Promise<{ message: string
   if (error) return { message: invitationRefusal(error) };
 
   await forgetInvitation();
+  refreshAppShell();
   const slug = await getOrganizationSlug(organizationId).catch(() => null);
   redirect(slug ? `/${defaultLocale}/org/${slug}` : homePath(defaultLocale, "company"));
 }

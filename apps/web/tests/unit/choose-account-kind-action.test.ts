@@ -8,9 +8,11 @@ const redirectMock = vi.hoisted(() =>
 );
 const rpcMock = vi.fn();
 const documentsMock = vi.hoisted(() => vi.fn());
+const refreshShellMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("@/lib/app/refresh-shell", () => ({ refreshAppShell: refreshShellMock }));
 vi.mock("@/lib/dal/legal", () => ({
   getSignupDocuments: documentsMock,
   getPendingReconsents: vi.fn(),
@@ -38,6 +40,7 @@ beforeEach(() => {
 describe("chooseAccountKind", () => {
   it("commits the chosen kind with the accepted versions and goes back to onboarding", async () => {
     await expect(chooseAccountKind("company", entries)).rejects.toThrow("REDIRECT:/en/onboarding");
+    expect(refreshShellMock).toHaveBeenCalledOnce();
     expect(documentsMock).toHaveBeenCalledWith("company");
     expect(rpcMock).toHaveBeenCalledWith("choose_account_kind", { p_kind: "company", p_consents: entries });
   });
