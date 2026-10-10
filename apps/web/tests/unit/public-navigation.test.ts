@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { footerGroups, footerLinks, guestLinks, headerLinks, siteLinks } from "@/lib/public/navigation";
+import { footerGroups, guestLinks, legalSlugs, siteLinks } from "@/lib/public/navigation";
+
+const headerLinks = [...siteLinks, ...guestLinks];
+const footerLinks = footerGroups.flatMap(({ links }) => links);
 
 describe("the navigation of the public pages (FR-H1 AC3)", () => {
   it("has the header links in the order of the requirement", () => {
@@ -51,7 +54,7 @@ describe("the navigation of the public pages (FR-H1 AC3)", () => {
   });
 
   it("links the legal pages by a lower-case slug, which is how the route looks them up", () => {
-    const slugs = footerLinks.flatMap(({ path }) => (path.startsWith("legal/") ? [path.slice("legal/".length)] : []));
+    const slugs = legalSlugs;
     expect(slugs).toHaveLength(10);
     expect(new Set(slugs).size).toBe(10);
     for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);

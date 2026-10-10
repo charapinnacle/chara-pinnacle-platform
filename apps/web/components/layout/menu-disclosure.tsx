@@ -8,13 +8,13 @@ type MenuDisclosureProps = {
   label: React.ReactNode;
   icon?: React.ReactNode;
   className?: string;
-  buttonClassName?: string;
   children: React.ReactNode;
 };
 
 // A button that shows a panel of links or buttons: the disclosure pattern, so it opens with Enter, Space or a tap, the
-// next Tab enters the panel, and Escape or a press outside closes it and gives the focus back to the button.
-export function MenuDisclosure({ label, icon, className, buttonClassName, children }: MenuDisclosureProps) {
+// next Tab enters the panel, Escape gives the focus back to the button, and Escape, a press outside or Tab out of the panel
+// closes it.
+export function MenuDisclosure({ label, icon, className, children }: MenuDisclosureProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -35,22 +35,23 @@ export function MenuDisclosure({ label, icon, className, buttonClassName, childr
     button.current?.focus();
   }
 
+  function onBlur(event: React.FocusEvent) {
+    if (event.relatedTarget instanceof Node && !root.current?.contains(event.relatedTarget)) setOpen(false);
+  }
+
   function onPanelClick(event: React.MouseEvent) {
     if (event.target instanceof Element && event.target.closest("a")) setOpen(false);
   }
 
   return (
-    <div ref={root} className={cn("relative", className)} onKeyDown={onKeyDown}>
+    <div ref={root} className={cn("relative", className)} onKeyDown={onKeyDown} onBlur={onBlur}>
       <button
         ref={button}
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className={cn(
-          "inline-flex min-h-11 max-w-56 items-center gap-2 rounded-lg px-3 text-small font-medium hover:bg-accent",
-          buttonClassName,
-        )}
+        className="inline-flex min-h-11 max-w-56 items-center gap-2 rounded-lg px-3 text-small font-medium hover:bg-accent"
       >
         {icon}
         <span className="truncate">{label}</span>

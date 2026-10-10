@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { FormButton } from "@/components/forms/form-button";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { LinkButton } from "@/components/layout/link-button";
+import { signOut } from "@/lib/actions/login";
 import { getCurrentUser } from "@/lib/dal/session";
 import { guestLinks, siteLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
@@ -26,6 +27,13 @@ function GuestItems({ lang }: { lang: string }) {
   ));
 }
 
+// A plain form around the server action instead of LogoutButton: a visitor downloads no log-out code, and it works without
+// JavaScript.
+async function logOut() {
+  "use server";
+  await signOut();
+}
+
 // A signed-in person is offered the way back to their own area and the way out instead of Log in and Sign up.
 async function AccountItems({ lang }: { lang: string }) {
   const user = await getCurrentUser();
@@ -38,7 +46,11 @@ async function AccountItems({ lang }: { lang: string }) {
         </Link>
       </li>
       <li>
-        <LogoutButton className="min-h-11 w-full min-w-0 px-3 md:w-auto" />
+        <form action={logOut}>
+          <FormButton type="submit" variant="secondary" className="min-h-11 w-full min-w-0 px-3 text-small md:w-auto">
+            Log out
+          </FormButton>
+        </form>
       </li>
     </>
   );
@@ -56,7 +68,7 @@ export function PublicNav({ lang }: { lang: string }) {
               </Link>
             </li>
           ))}
-          <Suspense fallback={<GuestItems lang={lang} />}>
+          <Suspense fallback={<li aria-hidden className="min-h-11 md:w-44" />}>
             <AccountItems lang={lang} />
           </Suspense>
         </ul>

@@ -1,19 +1,17 @@
-export const headerLinks = [
+// The links of the header that are the same for everybody, and the two that only a visitor needs.
+export const siteLinks = [
   { path: "jobs", label: "Find Jobs" },
   { path: "pricing", label: "Pricing" },
   { path: "how-it-works", label: "How CHARA Works" },
   { path: "trust-safety", label: "Trust & Safety" },
   { path: "about", label: "About" },
   { path: "contact", label: "Contact" },
+] as const;
+
+export const guestLinks = [
   { path: "login", label: "Log in" },
   { path: "signup", label: "Sign up" },
 ] as const;
-
-const accountPaths = ["login", "signup"];
-
-// The links of the header that are the same for everybody, and the two that only a visitor needs.
-export const siteLinks = headerLinks.filter(({ path }) => !accountPaths.includes(path));
-export const guestLinks = headerLinks.filter(({ path }) => accountPaths.includes(path));
 
 // The terms of a subscription concern employers; the pages of a candidate hold no link about billing (FR-G6 AC5).
 export const BILLING_TERMS_PATH = "legal/subscription-and-billing-terms";
@@ -49,7 +47,5 @@ export const footerGroups: readonly { title: string; links: readonly { path: str
   },
 ];
 
-export const footerLinks = footerGroups.flatMap(({ links }) => links);
-
 // The slugs of the legal pages that the footer links to; the sitemap asks the database which of them are published.
-export const legalSlugs = footerLinks.flatMap(({ path }) => (path.startsWith("legal/") ? [path.slice("legal/".length)] : []));
+export const legalSlugs = footerGroups.flatMap(({ links }) => links).flatMap(({ path }) => (path.startsWith("legal/") ? [path.slice("legal/".length)] : []));
