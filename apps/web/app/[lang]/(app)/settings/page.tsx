@@ -18,7 +18,7 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
   const status = await getDeletionStatus();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-page">
+    <div className="grid w-full max-w-3xl gap-page">
       <PageHeader
         title="Settings"
         breadcrumb={<Breadcrumbs items={[{ label: "Dashboard", href: homePath(lang, "worker") }, { label: "Settings" }]} />}

@@ -43,7 +43,7 @@ export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-page">
+    <div className="grid w-full max-w-3xl gap-page">
       <PageHeader title={job ? `Apply for ${job.title}` : "Apply"} description={job?.employer.displayName} />
       {!job ? (
         <NotAcceptingNotice lang={lang} />

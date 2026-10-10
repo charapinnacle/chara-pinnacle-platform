@@ -76,7 +76,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
     allowedTargets(applicant.status, "employer", { shortlisting: true }).includes("shortlisted");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-page">
+    <div className="grid w-full max-w-3xl gap-page">
       <PageHeader
         title={name}
         breadcrumb={

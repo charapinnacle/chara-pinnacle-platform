@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { LinkButton } from "@/components/layout/link-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
-import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
+import { COMPLAINTS_SLUG, LegalLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
@@ -25,7 +26,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
   if (!job) notFound();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-page">
+    <div className="grid w-full max-w-3xl gap-page">
       <Breadcrumbs
         items={[organizationCrumb(lang, organization), { label: "Vacancies", href: jobsPath(lang, slug) }, { label: job.title }]}
       />
@@ -47,13 +48,13 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
         <JobStatusActions slug={slug} jobId={job.id} status={job.status} billingHref={billingPath(lang, slug)} />
       )}
       <VacancyView job={job} />
-      <div className="flex flex-wrap gap-x-6">
-        <TextLink standalone href={applicantsPath(lang, slug, { job: job.id })}>
+      <div className="flex flex-wrap gap-3">
+        <LinkButton href={applicantsPath(lang, slug, { job: job.id })} variant="secondary" size="default">
           Applicants
-        </TextLink>
-        <TextLink standalone href={`${jobPath(lang, slug, job.id)}/preview`}>
+        </LinkButton>
+        <LinkButton href={`${jobPath(lang, slug, job.id)}/preview`} variant="secondary" size="default">
           Preview as candidates see it
-        </TextLink>
+        </LinkButton>
       </div>
     </div>
   );

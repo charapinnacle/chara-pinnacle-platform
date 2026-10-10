@@ -57,7 +57,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
   ) : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Team"
         description={organization.displayName}

@@ -37,7 +37,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
   const canUpgrade = changes.some((change) => change.kind === "upgrade");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Billing"
         description={organization.displayName}
@@ -48,9 +48,10 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
         <PastDueAlert slug={slug} pastDueSince={new Date(subscription.pastDueSince)} now={new Date()} />
       ) : null}
 
-      <PlanSummary subscription={subscription} plan={plan} />
-
-      {entitled ? <UsageSection usage={usage} upgradeHref={canUpgrade ? "#plan-actions" : null} /> : null}
+      <div className="grid items-start gap-page lg:grid-cols-2">
+        <PlanSummary subscription={subscription} plan={plan} />
+        {entitled ? <UsageSection usage={usage} upgradeHref={canUpgrade ? "#plan-actions" : null} /> : null}
+      </div>
 
       {state.has_customer ? <PlanActions slug={slug} changes={changes} live={live} /> : null}
 

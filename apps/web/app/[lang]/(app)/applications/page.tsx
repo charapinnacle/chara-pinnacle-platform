@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
+import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { applicationStatusLabels, applicationStatusTones } from "@/lib/applications/presentation";
 import { logTrackerView } from "@/lib/applications/tracker-log";
@@ -27,7 +28,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
   logTrackerView("list");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-page">
+    <div className="grid w-full gap-section">
       <PageHeader title="My applications" description="The vacancies you applied to, with the latest change first." />
       {firstUse ? null : <StageFilter basePath={applicationsPath(lang)} stage={stage} />}
       {applications.length === 0 ? (
@@ -37,9 +38,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
             title="You have not applied to any vacancy yet"
             description="Applications you send appear here with their stage."
           >
-            <TextLink standalone href={`/${lang}/jobs`}>
-              Find vacancies
-            </TextLink>
+            <LinkButton href={`/${lang}/jobs`}>Find vacancies</LinkButton>
           </EmptyState>
         ) : page > 1 ? (
           <EmptyState icon={FileText} title="No more applications on this page">
@@ -60,20 +59,24 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
         <div className="grid gap-4">
           <ul className="grid gap-3">
             {applications.map((application) => (
-              <Card as="li" key={application.id} className="gap-2">
-                <h2 className="text-h2">
-                  <TextLink href={applicationPath(lang, application.id)} className="wrap-anywhere">
-                    {application.jobTitle}
-                  </TextLink>
-                </h2>
-                <p className="font-medium wrap-anywhere">{application.employerName}</p>
-                <p>
-                  <StatusBadge status={applicationStatusTones[application.status]}>{applicationStatusLabels[application.status]}</StatusBadge>
-                </p>
-                <p className="text-small text-muted-foreground">
-                  Applied <time dateTime={application.appliedAt}>{formatShortDate(application.appliedAt)}</time>
-                  {" · "}Last update <time dateTime={application.lastEventAt}>{formatShortDate(application.lastEventAt)}</time>
-                </p>
+              <Card as="li" key={application.id} padding="lg" className="gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-x-8">
+                <div className="grid gap-1">
+                  <h2 className="text-h2">
+                    <TextLink href={applicationPath(lang, application.id)} className="wrap-anywhere">
+                      {application.jobTitle}
+                    </TextLink>
+                  </h2>
+                  <p className="text-muted-foreground wrap-anywhere">{application.employerName}</p>
+                </div>
+                <div className="grid gap-1.5 sm:justify-items-end">
+                  <p>
+                    <StatusBadge status={applicationStatusTones[application.status]}>{applicationStatusLabels[application.status]}</StatusBadge>
+                  </p>
+                  <p className="text-small text-muted-foreground">
+                    Applied <time dateTime={application.appliedAt}>{formatShortDate(application.appliedAt)}</time>
+                    {" · "}Last update <time dateTime={application.lastEventAt}>{formatShortDate(application.lastEventAt)}</time>
+                  </p>
+                </div>
               </Card>
             ))}
           </ul>
