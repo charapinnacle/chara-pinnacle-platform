@@ -23,32 +23,32 @@ const headCell = "text-start font-medium sm:px-3 sm:py-2";
 
 // Each header sorts by its column: the first click ascending, the next descending; the list of all vacancies sorts by
 // stage and applied date only (parseApplicantListParams). On a narrow screen the rows become cards and the headers a row
-// of sort links.
+// of sort links; the explicit roles keep the table, row and cell semantics when the display of the elements changes.
 export function ApplicantTable({ lang, slug, rows, params, selectable }: ApplicantTableProps) {
   const showVacancy = params.job === null;
 
   return (
-    <table className="w-full text-body max-sm:block">
+    <table role="table" className="w-full text-body max-sm:block">
       <caption className="sr-only">Applicants</caption>
-      <thead className="max-sm:block">
-        <tr className="max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 sm:border-b">
+      <thead role="rowgroup" className="max-sm:block">
+        <tr role="row" className="max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 sm:border-b">
           {selectable ? (
-            <th scope="col" className={`${headCell} w-10 max-sm:sr-only`}>
+            <th role="columnheader" scope="col" className={`${headCell} w-10 max-sm:sr-only`}>
               <span className="sr-only">Select</span>
             </th>
           ) : null}
-          <th scope="col" className={`${headCell} max-sm:sr-only`}>
+          <th role="columnheader" scope="col" className={`${headCell} max-sm:sr-only`}>
             Candidate
           </th>
           {showVacancy ? (
-            <th scope="col" className={`${headCell} max-sm:sr-only`}>
+            <th role="columnheader" scope="col" className={`${headCell} max-sm:sr-only`}>
               Vacancy
             </th>
           ) : null}
           {sortable.map(({ key, label, sortLabel, vacancyOnly }) => {
             if (vacancyOnly && showVacancy) {
               return (
-                <th key={key} scope="col" className={`${headCell} max-sm:sr-only`}>
+                <th key={key} role="columnheader" scope="col" className={`${headCell} max-sm:sr-only`}>
                   {label}
                 </th>
               );
@@ -58,6 +58,7 @@ export function ApplicantTable({ lang, slug, rows, params, selectable }: Applica
             return (
               <th
                 key={key}
+                role="columnheader"
                 scope="col"
                 aria-sort={active ? (params.dir === "asc" ? "ascending" : "descending") : undefined}
                 className={headCell}
@@ -75,33 +76,33 @@ export function ApplicantTable({ lang, slug, rows, params, selectable }: Applica
           })}
         </tr>
       </thead>
-      <tbody className="max-sm:mt-3 max-sm:grid max-sm:gap-3">
+      <tbody role="rowgroup" className="max-sm:mt-3 max-sm:grid max-sm:gap-3">
         {rows.map((row) => (
-          <tr key={row.id} className="max-sm:grid max-sm:gap-1 max-sm:rounded-xl max-sm:border max-sm:bg-card max-sm:p-4 sm:border-b">
+          <tr key={row.id} role="row" className="max-sm:grid max-sm:gap-1 max-sm:rounded-xl max-sm:border max-sm:bg-card max-sm:p-4 sm:border-b">
             {selectable ? (
-              <td className={`${cell} max-sm:items-center`}>
+              <td role="cell" className={`${cell} max-sm:items-center`}>
                 <SelectApplicant id={row.id} name={row.candidateName ?? FORMER_CANDIDATE} />
               </td>
             ) : null}
-            <td className={`${cell} wrap-anywhere max-sm:flex-wrap max-sm:items-center`}>
+            <td role="cell" className={`${cell} wrap-anywhere max-sm:flex-wrap max-sm:items-center`}>
               <TextLink href={applicantPath(lang, slug, row.id)}>{row.candidateName ?? FORMER_CANDIDATE}</TextLink>{" "}
               {row.status === "applied" ? <NewBadge /> : null}
             </td>
             {showVacancy ? (
-              <td data-label="Vacancy" className={`${cell} wrap-anywhere`}>
+              <td role="cell" data-label="Vacancy" className={`${cell} wrap-anywhere`}>
                 <TextLink href={jobPath(lang, slug, row.jobId)}>{row.jobTitle}</TextLink>
               </td>
             ) : null}
-            <td data-label="Stage" className={cell}>
+            <td role="cell" data-label="Stage" className={cell}>
               {applicationStatusLabels[row.status]}
             </td>
-            <td data-label="Applied" className={cell}>
+            <td role="cell" data-label="Applied" className={cell}>
               <time dateTime={row.appliedAt}>{formatShortDate(row.appliedAt)}</time>
             </td>
-            <td data-label="Completeness" className={cell}>
+            <td role="cell" data-label="Completeness" className={cell}>
               {row.completeness} %
             </td>
-            <td data-label="Documents" className={cell}>
+            <td role="cell" data-label="Documents" className={cell}>
               {row.documents}
             </td>
           </tr>
