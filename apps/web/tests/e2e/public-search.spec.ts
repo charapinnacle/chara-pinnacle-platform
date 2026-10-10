@@ -123,7 +123,7 @@ test.describe("public vacancy search", () => {
     await expect(card).toContainText("EUR 2,800 to 3,400, per month");
     await expect(card.getByText("Accommodation", { exact: true })).toBeVisible();
     await expect(card.getByText("Visa support", { exact: true })).toBeVisible();
-    await expect(card).toContainText(/Posted [A-Z][a-z]+ \d{1,2}, \d{4}/);
+    await expect(card).toContainText(/Posted \d{1,2} [A-Z][a-z]+ \d{4}/);
     await expect(status(page, "1 vacancy shown")).toBeVisible();
     const text = (await page.locator("body").innerText()) + (await page.content());
     expect(text).not.toContain(organization.legal_name);

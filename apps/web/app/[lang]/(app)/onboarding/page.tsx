@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ChooseKindForm } from "@/components/consent/choose-kind-form";
 import { CommitKind } from "@/components/consent/commit-kind";
+import { OnboardingSteps } from "@/components/consent/onboarding-steps";
 import { ConsentForm } from "@/components/consent/consent-form";
 import { AuthCard } from "@/components/layout/auth-card";
 import { OrganizationForm } from "@/components/organization/organization-form";
@@ -40,6 +41,7 @@ export default async function OnboardingPage({
     }
     return (
       <AuthCard
+        progress={<OnboardingSteps current={2} kind="company" />}
         title="Your account type is Employer"
         description="This cannot be changed later. Tell us about your company to finish setting up."
       >
@@ -53,6 +55,7 @@ export default async function OnboardingPage({
     if (passport) redirect(homePath(lang, "worker"));
     return (
       <AuthCard
+        progress={<OnboardingSteps current={2} kind="worker" />}
         title="Your account type is Worker"
         description="This cannot be changed later. Create your passport to finish setting up: only you can see it."
       >
@@ -65,6 +68,7 @@ export default async function OnboardingPage({
     const form = await getSignUpForm();
     return (
       <AuthCard
+        progress={<OnboardingSteps current={1} kind={null} />}
         title="Choose your account type"
         description="Tell us how you will use CHARA and accept the documents for it to finish creating your account."
       >
@@ -79,6 +83,7 @@ export default async function OnboardingPage({
   const kind = kindLabel[user.intendedAccountKind];
   return (
     <AuthCard
+      progress={<OnboardingSteps current={1} kind={user.intendedAccountKind} />}
       title={`Set up your ${kind} account`}
       description={
         documents.length === 0

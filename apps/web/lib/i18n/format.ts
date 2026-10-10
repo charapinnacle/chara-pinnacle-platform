@@ -5,26 +5,17 @@ export function formatCount(count: number): string {
   return countFormat.format(count);
 }
 
-const dateFormat = new Intl.DateTimeFormat("en", {
+const dateFormat = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "long",
   timeZone: "UTC",
 });
 
+// The UTC date, as 1 October 2026 (FR-H3); every long date of the pages uses it.
 export function formatDate(iso: string): string {
   return dateFormat.format(new Date(iso));
 }
 
-const legalDateFormat = new Intl.DateTimeFormat("en-GB", {
-  dateStyle: "long",
-  timeZone: "UTC",
-});
-
-// The UTC date of a legal document version, as 1 October 2026.
-export function formatLegalDate(iso: string): string {
-  return legalDateFormat.format(new Date(iso));
-}
-
-const dateTimeFormat = new Intl.DateTimeFormat("en", {
+const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "long",
   timeStyle: "short",
   timeZone: "UTC",

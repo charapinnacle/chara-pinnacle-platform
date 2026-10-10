@@ -55,7 +55,7 @@ describe("the metadata of the legal pages (FR-H5 AC1)", () => {
   it("takes the title from the current version and a description that holds the title, the version and the date", () => {
     const metadata = legalPageMetadata("en", "terms-of-service", document("Terms of Service"));
     expect(metadata.title).toBe("Terms of Service — CHARA");
-    expect(metadata.description).toBe("Read the Terms of Service of CHARA: version 3, published October 6, 2026.");
+    expect(metadata.description).toBe("Read the Terms of Service of CHARA: version 3, published 6 October 2026.");
     expect(canonicalOf(metadata)).toBe(`${SITE}/en/legal/terms-of-service`);
     expect(metadata.openGraph?.title).toBe(metadata.title);
     expect(metadata.openGraph?.description).toBe(metadata.description);

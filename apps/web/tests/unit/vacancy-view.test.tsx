@@ -48,7 +48,7 @@ describe("VacancyView", () => {
   it("shows the title as the only h1, the date of publication and the employer card", () => {
     const html = render(job);
     expect(html.match(/<h1/g)).toHaveLength(1);
-    expect(html).toContain('<time dateTime="2026-10-06T10:00:00+00:00">October 6, 2026</time>');
+    expect(html).toContain('<time dateTime="2026-10-06T10:00:00+00:00">6 October 2026</time>');
     expect(html).toContain("Acme");
     expect(html).toContain("Based in Germany");
     expect(html).toContain("Industry: Construction");

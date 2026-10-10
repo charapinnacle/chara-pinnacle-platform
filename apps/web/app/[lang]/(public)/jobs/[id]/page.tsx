@@ -42,7 +42,7 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
       ? await Promise.all([getSavedJobIds([job.id]), getApplicationStates([job.id])])
       : [new Set<string>(), new Map<string, ApplicationState>()];
   return (
-    <PageContainer layout="page" className="max-w-3xl">
+    <PageContainer layout="page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jobPostingJsonLd(job) }} />
       <VacancyView
         job={job}

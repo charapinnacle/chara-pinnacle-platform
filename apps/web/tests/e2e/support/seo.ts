@@ -11,6 +11,7 @@ export interface Head {
   canonical: string | null;
   ogTitle: string | null;
   ogDescription: string | null;
+  ogImage: string | null;
 }
 
 export async function readHead(page: Page): Promise<Head> {
@@ -21,6 +22,7 @@ export async function readHead(page: Page): Promise<Head> {
     canonical: await page.locator('link[rel="canonical"]').first().getAttribute("href"),
     ogTitle: await content('meta[property="og:title"]'),
     ogDescription: await content('meta[property="og:description"]'),
+    ogImage: await content('meta[property="og:image"]'),
   };
 }
 

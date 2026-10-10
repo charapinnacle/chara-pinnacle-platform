@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { FormButton } from "@/components/forms/form-button";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { LinkButton } from "@/components/layout/link-button";
@@ -34,7 +33,9 @@ async function logOut() {
   await signOut();
 }
 
-// A signed-in person is offered the way back to their own area and the way out instead of Log in and Sign up.
+// A signed-in person is offered the way back to their own area and the way out instead of Log in and Sign up. Not behind a
+// Suspense boundary: React streams a finished boundary separately once the page passes about 12.8 kB of HTML, and a
+// streamed part stays hidden without JavaScript and appears only after the load event with it.
 async function AccountItems({ lang }: { lang: string }) {
   const user = await getCurrentUser();
   if (!user) return <GuestItems lang={lang} />;
@@ -68,9 +69,7 @@ export function PublicNav({ lang }: { lang: string }) {
               </Link>
             </li>
           ))}
-          <Suspense fallback={<li aria-hidden className="min-h-11 md:w-44" />}>
-            <AccountItems lang={lang} />
-          </Suspense>
+          <AccountItems lang={lang} />
         </ul>
       </nav>
     </HeaderMenu>

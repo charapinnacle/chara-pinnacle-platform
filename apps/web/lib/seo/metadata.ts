@@ -23,12 +23,13 @@ function fit(text: string, max: number): string {
 }
 
 // The canonical address has no query string: a search, a campaign tag and the page itself are one page to a crawler.
+// The image of app/opengraph-image.tsx is named again because a page's openGraph replaces the inherited one whole.
 function pageMetadata(title: string, description: string, path: string): Metadata {
   return {
     title,
     description,
     alternates: { canonical: absoluteUrl(path) },
-    openGraph: { title, description },
+    openGraph: { title, description, images: "/opengraph-image" },
   };
 }
 

@@ -11,7 +11,7 @@ import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { LegalLink } from "@/components/forms/text-link";
 import type { ConsentActionResult } from "@/lib/actions/consents";
-import { formatLegalDate } from "@/lib/i18n/format";
+import { formatDate } from "@/lib/i18n/format";
 import { isRedirectError } from "@/lib/redirect-error";
 import {
   acceptedSchema,
@@ -82,7 +82,7 @@ export function ConsentForm({
             <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
               <h2 className="text-h3">{document.title}</h2>
               <p className="text-small text-muted-foreground">
-                Version {document.version}, published {formatLegalDate(document.publishedAt)}
+                Version {document.version}, published {formatDate(document.publishedAt)}
               </p>
               <p className="text-small leading-relaxed">{document.changeSummary}</p>
               <LegalLink

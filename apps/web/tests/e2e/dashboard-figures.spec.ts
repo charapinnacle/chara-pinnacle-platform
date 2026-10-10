@@ -157,13 +157,13 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(paidPlan).toContainText("Professional");
     await expect(paidPlan).toContainText("Active");
     await expect(paidPlan).toContainText("Next billing date");
-    await expect(paidPlan).toContainText("November 3, 2026");
+    await expect(paidPlan).toContainText("3 November 2026");
     await expect(trialAlerts(page)).toHaveCount(0);
     await expect(page.getByText(/stripe|provider|cus_|sub_/i)).toHaveCount(0);
     const paidView = await memberView(paid);
     const paidMemberPlan = paidView.page.getByRole("region", { name: "Plan" });
     await expect(paidMemberPlan).toContainText("Active");
-    await expect(paidMemberPlan).toContainText("November 3, 2026");
+    await expect(paidMemberPlan).toContainText("3 November 2026");
     await expect(trialAlerts(paidView.page)).toHaveCount(0);
     await expect(paidView.page.getByRole("main").locator('a[href$="/billing"]')).toHaveCount(0);
     await paidView.context.close();

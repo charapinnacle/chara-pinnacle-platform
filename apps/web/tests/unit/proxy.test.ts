@@ -23,6 +23,7 @@ describe("proxy matcher", () => {
     "/favicon.ico",
     "/robots.txt",
     "/sitemap.xml",
+    "/opengraph-image",
     "/api/health",
     "/logo.svg",
   ])("skips %s", (url) => {

@@ -40,6 +40,10 @@ const featureLabels = {
   csv_export: "CSV export of the applicant list",
 } as const satisfies Record<string, string>;
 
+// The plan the pricing page marks as recommended (OPEN_QUESTIONS.md P19: the owner has not named one; the default is the
+// plan in the middle of the range). A code that is not public marks nothing.
+export const RECOMMENDED_PLAN_CODE = "employer_professional";
+
 export type PlanCard = {
   code: string;
   name: string;

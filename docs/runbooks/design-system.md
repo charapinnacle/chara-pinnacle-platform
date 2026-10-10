@@ -1,12 +1,12 @@
 # Runbook: design system
 
-NFR-U1 and NFR-U2, audit findings DS-01 to DS-03, CODE-01, CODE-02, CODE-05 and UX-07 (unit U56); the brand, the app layout and the dashboards of unit U59 (audit findings UX-03, UX-04, UX-10). The tokens live in `apps/web/app/globals.css`; the shared components in `apps/web/components/layout`, `components/feedback`, `components/forms` and `components/dashboard`. `components/ui` holds the shadcn/ui primitives: they are never edited, a component wraps them.
+NFR-U1 and NFR-U2, audit findings DS-01 to DS-03, CODE-01, CODE-02, CODE-05 and UX-07 (unit U56); the brand, the app layout and the dashboards of unit U59 (audit findings UX-03, UX-04, UX-10); the public site and the sign-in journey of unit U63 (section 6). The tokens live in `apps/web/app/globals.css`; the shared components in `apps/web/components/layout`, `components/feedback`, `components/forms` and `components/dashboard`. `components/ui` holds the shadcn/ui primitives: they are never edited, a component wraps them.
 
 ## 0. Design brief
 
 CHARA sells into a design-sensitive European market. The product is calm, confident and typographic, in the Swiss and Nordic tradition (Linear, Stripe, Vercel, Personio, N26): it must never look like a template website.
 
-- **Brand.** The owner's gold CP monogram on black (`docs/phase-1/client/brand/`, not in git; web copies in `apps/web/public/brand/` as PNG and WebP at 128 and 512 px, the favicon `app/icon.png`, `app/apple-icon.png` and `app/opengraph-image.png`, all cropped from it, never redrawn). The monogram sits only on black: its own tile in the headers and the sidebar, the dark footer and the dark panel of the sign-in pages. Next to it the wordmark CHARA in the UI typeface with wide tracking, and Pinnacle in small capitals in gold where there is room (sidebar, footer, sign-in panel).
+- **Brand.** The owner's gold CP monogram on black (`docs/phase-1/client/brand/`, not in git; web copies in `apps/web/public/brand/` as PNG and WebP at 128 and 512 px, the favicon `app/icon.png`, `app/apple-icon.png`, all cropped from it, never redrawn; `app/opengraph-image.tsx` sets the 512 px monogram beside the wordmark CHARA and Pinnacle in Geist on 1200 by 630 px with `next/og`). The monogram sits only on black: its own tile in the headers and the sidebar, the dark footer and the dark panel of the sign-in pages. Next to it the wordmark CHARA in the UI typeface with wide tracking, and Pinnacle in small capitals in gold where there is room (sidebar, footer, sign-in panel).
 - **Palette.** Near-black ink for text and the primary button, warm off-white for the page, white cards, hairline borders. Gold is the single accent and appears sparingly: the gold mark of the current sidebar item, the progress bars, the icon tiles, the underline of text links. Gold is never text on a light surface: `brand-ink`, a deep bronze, is (6.57:1). Status colours are semantic only (green, amber, red, blue, grey) and every status is also said in words.
 - **Type.** Geist (variable, `latin` and `latin-ext` for European names), loaded with `next/font` from our own origin. Headings are large, tight and semibold; secondary text is quiet (`muted-foreground`); figures use tabular numbers (`tabular-nums`).
 - **Space and surfaces.** An 8 px grid: 16 px gutters on a phone, 24 px on a tablet, 40 px on a desktop; 24 px between the blocks of a section and 32 px between sections (`gap-page`, `gap-section`). Cards have a 10 to 14 px radius, a hairline border and one very soft shadow; no heavy boxes.
@@ -24,6 +24,7 @@ One utility per size, from `@theme` in `globals.css`. `display` and `h1` step up
 
 | Utility | Size | Line height | Use |
 |---|---|---|---|
+| `text-hero` | 2.5 rem, 3.5 rem from `sm`, 4 rem from `lg` (tracking -0.04 em) | 1.05 | The one headline of the home page, nowhere else |
 | `text-display` | 2.25 rem, 3 rem from `sm` (tracking -0.035 em) | 1.15 | The title of the home page and of content and legal pages (`PageHeader size="display"`) |
 | `text-h1` | 1.625 rem, 2 rem from `sm` (tracking -0.03 em) | 1.2 | The one title of a page (`PageHeader`), the card title of the auth pages |
 | `text-h2` | 1.125 rem | 1.55 | Section and card headings (including a section heading on the home page), dialog titles |
@@ -33,6 +34,7 @@ One utility per size, from `@theme` in `globals.css`. `display` and `h1` step up
 | `text-body` | 0.9375 rem | inherited | Running text in the application |
 | `text-small` | 0.875 rem | 1.43 | Secondary text, labels, table headers |
 | `text-caption` | 0.75 rem | 1.33 | The smallest text (a badge such as New) |
+| `text-eyebrow` | 0.75 rem, semibold, tracking 0.14 em, written with `uppercase` | 1.33 | The label above a section heading on a marketing page (`SectionHeading`), the "On this page" list of a legal page, the statistics heading. In `brand-ink` on light, `brand` on black |
 
 Arbitrary sizes such as `text-[1.75rem]` are not used. Every size in the interface is one of the utilities above.
 
@@ -52,7 +54,7 @@ Arbitrary sizes such as `text-[1.75rem]` are not used. Every size in the interfa
 
 Core tokens: `background` (warm off-white), `foreground` (near-black ink), `card`, `primary` (ink, with `-hover`, `-active`, `-foreground`), `secondary`, `muted`, `muted-foreground`, `accent` (a warm gold tint for hover and selection, with `accent-foreground`), `destructive` (with `-hover`, `-active`, `-foreground`, `-surface`), `border`, `input`, `ring` (= `brand-ink`).
 
-Brand tokens: `brand` (solid gold, C9973D, for marks, bars and icons, never text on light), `brand-ink` (bronze, text and icons in gold on a light surface), `inverse`, `inverse-foreground`, `inverse-muted` (the black surfaces: footer, sign-in panel).
+Brand tokens: `brand` (solid gold, C9973D, for marks, bars and icons, never text on light), `brand-highlight` (the light gold of the monogram, F3D27A, only inside the gradient), `brand-ink` (bronze, text and icons in gold on a light surface), `inverse`, `inverse-foreground`, `inverse-muted` (the black surfaces: footer, sign-in panel). `bg-brand-gradient` runs from `brand-highlight` to `brand` at 135 degrees and is kept for brand moments: the closing call to action of the home page, the step numbers, the Recommended badge and the rule of the sign-in panel. Text on the gradient is `text-inverse`, near-black in both themes.
 
 Status tokens, five statuses with three tokens each: `success`, `warning`, `danger`, `info`, `neutral`, as `--<status>-foreground` (text and icon), `--<status>-background` and `--<status>-border`. Tailwind utilities: `text-success-foreground`, `bg-success-background`, `border-success-border`, and so on. `danger` is the `destructive` pair, `info` a quiet blue of its own (it no longer borrows the accent, which is gold now) and `neutral` the `secondary` text on a grey surface.
 
@@ -64,12 +66,15 @@ Contrast, computed by the WCAG formula from the tokens (`tests/unit/support/toke
 |---|---|---|
 | foreground on background / card | 18.68 / 19.67 | 17.51 / 16.44 |
 | muted-foreground on background / card | 6.48 / 6.83 | 8.53 / 8.01 |
+| muted-foreground on accent (the trial terms of a plan card) | 5.99 | 6.55 |
+| secondary-foreground on background / card (the fact tags of a result card) | 14.31 / 15.07 | 15.53 / 14.57 |
 | primary-foreground on primary / hover / active | 18.58 / 14.64 / 11.43 | 9.75 / 11.60 / 13.69 |
 | destructive-foreground on destructive / hover / active | 6.47 / 8.06 / 10.11 | 7.88 / 9.42 / 11.80 |
 | brand-ink on background / card / accent | 6.57 / 6.92 / 6.07 | 10.47 / 9.83 / 8.03 |
 | accent-foreground on accent | 9.62 | 10.50 |
 | inverse-foreground / inverse-muted on inverse | 18.04 / 8.53 | 18.75 / 8.87 |
 | brand on inverse | 7.48 | 7.78 |
+| inverse on brand / brand-highlight (text on the gradient) | 7.48 / 13.38 | 7.78 / 13.92 |
 | success-foreground on success-background / card / background | 8.12 / 8.77 / 8.32 | 9.83 / 12.31 / 13.12 |
 | warning-foreground on warning-background / card / background | 7.87 / 8.67 / 8.23 | 10.17 / 12.80 / 13.63 |
 | danger-foreground on danger-background / card / background | 6.15 / 6.66 / 6.33 | 6.41 / 7.46 / 7.95 |
@@ -123,6 +128,44 @@ Form feedback, in one place: field errors under the field and in the summary (wh
 
 The signed-in pages sit in a 12-column grid inside `max-w-content`: figure cards in a row of three from 1280 px (two from 640 px, one on a phone; at 1024 px the sidebar leaves too little width for three), then a main column of 7 or 8 and a side column of 5 or 4 for panels, lists and quick actions. Below 1024 px everything is one column in reading order, so the order of the markup is the order on a phone and for the keyboard.
 
-## 5. Verification
+## 5. Verification (U56, U59)
 
 `npm test` (the tokens, the components and the contrast helper are in `tokens.test.ts`, `design-system-components.test.tsx`, `form-error-summary.test.tsx`, `utils.test.ts`, `toast.test.tsx`), `tests/e2e/design-system.spec.ts` (the destructive style, the spinner and the status badges in a browser), and the axe checks of the existing browser tests, which run on every screen the tokens reach.
+
+## 6. The public site and the sign-in journey (U63)
+
+The pages a visitor sees first are held to the brief of section 0, read as a European product page: typography carries the page, one dark brand surface per page at most, gold only where it marks something, and the content of the database shown as it is.
+
+### Layout
+
+- **Width.** Public pages use the full `PageContainer` (72 rem, 16/24 px gutters). Running text keeps a 65 ch measure inside it; nothing stretches a paragraph across the page.
+- **Rhythm.** Sections of the home page are 80 px apart on a phone and 112 px from `sm` (`gap-20 sm:gap-28`); content pages put 48 to 64 px between their header and their sections. Inside a section 24 to 40 px.
+- **Editorial grid.** Content pages (How CHARA Works, Trust & Safety, About, Contact, Imprint) and the notes of the pricing page put each section heading in a 16 rem column beside its text from 1024 px, with a hairline above each section (`ContentSection`); on a phone the heading sits above its text.
+- **Legal pages.** A text with three or more `##` headings gets "On this page" beside it from 1024 px (sticky) and between its header and its text on a phone; each heading has the anchor `section-<n>` in reading order. Shorter texts have no list.
+- **Vacancy page.** From 1024 px the salary and the actions form a raised panel in a 20 rem column that stays in view while the description scrolls; on a phone the panel follows the title, so Apply is in the first screen. The key facts are a hairline grid (`dl`), the one place assistive technology reads them: the employer, location and employment type line under the title is a visual summary and hidden from it. The description keeps 65 ch, the employer card closes the page. The split follows the width the article has (a container query at 56 rem), so the employer preview, in the 48 rem column of the signed-in area, keeps one column with the panel after the title.
+- **Find Jobs.** The search and the filters sit in a card in the 19 rem column; each result is a card: the title (the link) and the employer, then the location and the employment type as quiet tags with icons, accommodation and visa support as info badges, and the salary set apart above the date. Only the title link and Save are targets, so a card does not lift on hover; its hairline darkens.
+- **Pricing.** Three columns from 1024 px with a subgrid, so the workers card on black ("Always free") and the plan cards share one top line; the plans fill their two columns with as many cards of at least 15 rem as fit in a row (`auto-fit`): two plans share the width, and three (Enterprise made public) stand in one row from 1280 px and wrap to two and one below it. The plan named by `RECOMMENDED_PLAN_CODE` in `lib/billing/pricing.ts` (OPEN_QUESTIONS.md P19) has a gold edge, the Recommended badge and the primary button; the other plans have a secondary button. The trial terms sit in a tinted block of the card; VAT is stated in the lead, beside every price and in Good to know.
+- **Sign-in journey.** From 1024 px the black brand panel (sticky) and the form share the width; a short form is centred against the panel, a long one runs past it. Below 1024 px only the form shows. Onboarding shows its three steps (Account, Account type, Passport or Organisation) above the title (`OnboardingSteps`).
+
+### Components
+
+| Component | File | Rules |
+|---|---|---|
+| `HeroSearch` | `components/home/hero-search.tsx` | A GET form to `/[lang]/jobs` with the fields `q` and `city` (the names of the address filters, 100 characters each); it needs no JavaScript, Find Jobs validates the address. Its submit is the primary action of the home page; Browse vacancies and Create an account are secondary link buttons |
+| `SectionHeading` | `components/public/section-heading.tsx` | Eyebrow, h2 (its `id` names the section through `aria-labelledby`) and a lead line; `tone="inverse"` on black |
+| `StepList` | `components/public/step-list.tsx` | The steps of `lib/public/steps.ts`, the one source for the home page and How CHARA Works; numbers on the gradient are hidden from assistive technology (the list is ordered); `titleAs="h4"` under an h3 |
+| `PlanCard` | `components/public/plan-card.tsx` | One public plan from its record; the price is `text-figure` with `tabular-nums`; the card holds exactly the limit and feature items of its record |
+| `OnboardingSteps` | `components/consent/onboarding-steps.tsx` | An ordered list named "Setting up your account"; the current step has `aria-current="step"`, earlier steps say "(done)" to assistive technology |
+| `AuthBrandPanel` | `components/layout/auth-brand-panel.tsx` | The monogram, the wordmark with Pinnacle, the claim and three points with icons, under a gold rule |
+
+### Header and statistics
+
+The account items of the public header (Log in and Sign up, or Go to my area and Log out) and the statistics block of the home page are rendered with the page, not behind a Suspense boundary: React streams a finished boundary separately once the HTML of a page passes about 12.8 kB, and such a part stays hidden without JavaScript and appears only after the load event with it, pushing the content below it down (FR-H1 AC1, AC3, FR-H4 AC1).
+
+### Motion
+
+The hero, the page headers and the auth form rise once (`animate-rise`); steps, safeguards, statistics, plan cards, results and content sections rise in turn (`animate-stagger`); the hairline of a result card darkens on hover in 200 ms; the arrow of Browse vacancies moves 2 px; the current onboarding bar slides in (tw-animate-css). All of it stops under `prefers-reduced-motion` (`tests/e2e/public-site-design.spec.ts`).
+
+### Verification
+
+`tests/e2e/public-site-design.spec.ts` (the hero search with and without JavaScript, the order of the home sections, reduced motion, the vacancy panel on a desktop and a phone, the recommended plan, the legal contents list, the sign-in split and the onboarding steps, and axe plus no sideways scrolling at 1440, 1024, 768 and 375 px on eight pages), `tests/unit/public-site-components.test.tsx`, `tests/unit/pricing-page.test.tsx`, `tests/unit/tokens.test.ts`, and the existing public page specs (`public-pages`, `public-pages-content`, `pricing`, `public-search`, `vacancy-page`, `legal-pages`, `design-system`).
