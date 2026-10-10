@@ -3,12 +3,12 @@ import { LinkButton } from "@/components/layout/link-button";
 import type { Link, PlanCard as PricedPlan } from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 
-function Bullets({ items }: { items: readonly string[] }) {
+export function Bullets({ items }: { items: readonly string[] }) {
   return (
     <ul className="grid gap-2 text-body">
       {items.map((item) => (
         <li key={item} className="flex gap-2.5">
-          <Check aria-hidden className="mt-1 size-4 shrink-0 text-brand-ink" strokeWidth={2} />
+          <Check aria-hidden className="mt-1 size-4 shrink-0 text-brand-ink in-[.bg-inverse]:text-brand" strokeWidth={2} />
           {item}
         </li>
       ))}
@@ -21,7 +21,7 @@ export function PlanCard({ card, link, recommended }: { card: PricedPlan; link: 
   return (
     <li
       className={cn(
-        "relative flex flex-col gap-6 rounded-2xl border bg-card p-card-xl shadow-card transition-[transform,box-shadow] duration-200 ease-brand hover:-translate-y-0.5 hover:shadow-md",
+        "relative flex flex-col gap-6 rounded-2xl border bg-card p-card-xl shadow-card",
         recommended && "border-brand ring-1 ring-brand",
       )}
     >

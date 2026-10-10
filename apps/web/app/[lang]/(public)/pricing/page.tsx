@@ -1,10 +1,9 @@
-import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
-import { PlanCard } from "@/components/public/plan-card";
+import { Bullets, PlanCard } from "@/components/public/plan-card";
 import { planCard, planLink, RECOMMENDED_PLAN_CODE, viewerNote } from "@/lib/billing/pricing";
 import { getPricingViewer, listPublicPlans } from "@/lib/dal/pricing";
 import { staticPageMetadata } from "@/lib/seo/metadata";
@@ -24,14 +23,7 @@ function WorkersCard() {
           <p className="text-figure text-inverse-foreground">Always free</p>
           <p className="leading-7">Workers never pay to create a profile, search vacancies or apply.</p>
         </div>
-        <ul className="grid gap-2 text-body">
-          {["One profile and your documents", "Every open vacancy", "Your journey tracker"].map((item) => (
-            <li key={item} className="flex gap-2.5">
-              <Check aria-hidden className="mt-1 size-4 shrink-0 text-brand" strokeWidth={2} />
-              {item}
-            </li>
-          ))}
-        </ul>
+        <Bullets items={["One profile and your documents", "Every open vacancy", "Your journey tracker"]} />
       </div>
     </section>
   );
@@ -71,7 +63,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
             ) : null}
           </div>
           {cards.length > 0 ? (
-            <ul aria-label="Employer plans" className="grid animate-stagger gap-6 sm:grid-cols-2">
+            <ul aria-label="Employer plans" className="grid animate-stagger gap-6 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
               {cards.map((card) => (
                 <PlanCard key={card.code} card={card} link={planLink(viewer, card, lang)} recommended={card.code === RECOMMENDED_PLAN_CODE} />
               ))}

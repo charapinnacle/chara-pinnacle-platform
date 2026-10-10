@@ -24,7 +24,7 @@ function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardP
     <Card
       as="li"
       padding="lg"
-      className="gap-4 transition-[transform,box-shadow,border-color] duration-200 ease-brand hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+      className="gap-4 transition-colors duration-200 ease-brand hover:border-foreground/20"
     >
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="grid min-w-0 flex-1 gap-1">
