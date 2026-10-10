@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isCurrent } from "@/lib/app/navigation";
 import { cn } from "@/lib/utils";
 
 export function AdminNav({ entries, className }: { entries: readonly { label: string; href: string }[]; className?: string }) {
@@ -11,7 +12,7 @@ export function AdminNav({ entries, className }: { entries: readonly { label: st
     <nav aria-label="Administration" className={className}>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {entries.map(({ label, href }) => {
-          const current = pathname === href || pathname.startsWith(`${href}/`);
+          const current = isCurrent(pathname, { match: href });
           return (
             <li key={href}>
               <Link

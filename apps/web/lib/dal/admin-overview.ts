@@ -1,9 +1,9 @@
 import "server-only";
 import { adminClient, failure } from "@/lib/dal/admin";
 
-export type ModerationCounts = { suspendedUsers: number; suspendedOrganizations: number; hiddenVacancies: number };
+type ModerationCounts = { suspendedUsers: number; suspendedOrganizations: number; hiddenVacancies: number };
 
-// The platform staff roles active now (Platform Administrator only).
+// The people who hold an active platform staff role now (Platform Administrator only).
 export async function staffCount(): Promise<number> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_staff_count");

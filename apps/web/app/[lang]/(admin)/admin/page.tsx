@@ -15,7 +15,7 @@ import { lastThirtyDays, platformRoleLabels } from "@/lib/validation/admin";
 
 export const metadata: Metadata = { title: "Administration — CHARA", robots: { index: false } };
 
-const statRow = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
+const statRow = "animate-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
 // The administrator's figures: who holds a staff role, what was applied for in the last 30 days, which legal documents
 // are drafts. Counts only, as everything the console reads (FR-F1 AC3).
@@ -31,7 +31,7 @@ function AdministratorOverview({ lang }: { lang: string }) {
       </h2>
       <div className={statRow}>
         <Panel promise={staffCount()} errorTitle="The staff could not be counted">
-          {(count) => <SummaryCard label="Active staff roles" detail="Held now, revoked roles not counted" value={count} href={adminPath(lang, "staff")} icon={UserCog} />}
+          {(count) => <SummaryCard label="Staff members" detail="With an active staff role now" value={count} href={adminPath(lang, "staff")} icon={UserCog} />}
         </Panel>
         <Panel promise={counts} errorTitle="The applications could not be counted">
           {(totals) => (
@@ -52,7 +52,7 @@ function AdministratorOverview({ lang }: { lang: string }) {
           </Panel>
         </div>
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-12">
+      <div className="animate-stagger grid items-start gap-6 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <Panel promise={counts} errorTitle="The applications by stage could not be counted">
             {(totals) => (

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { SidebarIdentity } from "@/components/layout/sidebar-identity";
 import { SidebarLink } from "@/components/layout/sidebar-link";
 import type { adminEntries } from "@/lib/admin/navigation";
+import { isCurrent } from "@/lib/app/navigation";
 
 type Segment = (typeof adminEntries)[number]["segment"];
 
@@ -37,7 +38,7 @@ export function AdminSidebar({ entries, email, roleLabel }: AdminSidebarProps) {
           <ul className="grid gap-1">
             {entries.map(({ label, href, segment }) => (
               <li key={href}>
-                <SidebarLink href={href} label={label} icon={icons[segment]} current={pathname === href || pathname.startsWith(`${href}/`)} />
+                <SidebarLink href={href} label={label} icon={icons[segment]} current={isCurrent(pathname, { match: href })} />
               </li>
             ))}
           </ul>
