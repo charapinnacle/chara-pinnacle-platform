@@ -33,7 +33,13 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
     const team = await newTeam(uniqueName("Acme Bau"));
     const hosted = await stubHostedPages(page);
     const requests: string[] = [];
-    page.on("request", (request) => requests.push(`${request.url()} ${request.postData() ?? ""}`));
+    // What a card field would send: the page addresses and the bodies of the requests. The static assets are left out:
+    // their hashed file names and the names of layout components (Card) say nothing about card data.
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/brand/")) return;
+      requests.push(`${url.pathname}${url.search} ${request.postData() ?? ""}`);
+    });
 
     await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
