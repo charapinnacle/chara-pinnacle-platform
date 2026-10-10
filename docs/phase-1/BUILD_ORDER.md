@@ -81,5 +81,6 @@ Supabase stack: `npm run db:start` (API 54421, database 54422, Studio 54423, mai
 | U53 | `feat/live-statistics` | FR-H4 | U22, U27 |
 | U54 | `feat/search-engine-readiness` | FR-H5 | U25, U50 |
 | U55 | `chore/nfr-hardening` | NFR checks: headers, accessibility, performance smoke, backup and restore runbook | all |
+| U56 | `feat/design-system` | NFR-U1, NFR-U2: design tokens (type scale, status colours, spacing, focus ring) and shared primitives (Card, StatusBadge, PageHeader, LinkButton, destructive variant, FormErrorSummary) with the duplicates migrated, no change of text or behaviour (`docs/runbooks/design-system.md`) | U04, U55 |
 
 Items that need a live account (Stripe, Resend sending, the hosted Supabase project) are built against the null provider and the local stack and marked as not verified against the live service in their pull requests.
