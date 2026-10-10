@@ -1,4 +1,5 @@
 import { expectNoAxeViolations } from "./support/axe";
+import { logOut } from "./support/app-shell";
 import { expect, test } from "./support/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import {
@@ -69,7 +70,7 @@ test.describe("logout", () => {
     const refreshToken = decodeSession(await context.cookies()).refresh_token;
     const { session_id: sessionId } = await sessionClaims(context);
     const response = page.waitForResponse((r) => r.request().method() === "POST");
-    await page.getByRole("button", { name: "Log out" }).click();
+    await logOut(page);
     return { refreshToken, sessionId, response: await response };
   }
 
@@ -119,7 +120,7 @@ test.describe("logout", () => {
     const user = await createCommittedUser("worker");
     const { context, page } = await loggedIn(browser, user);
     await context.setOffline(true);
-    await page.getByRole("button", { name: "Log out" }).click();
+    await logOut(page);
     await expect(page.getByText("Could not log out", { exact: true })).toBeVisible();
     await expectNoAxeViolations(page);
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { getPendingReconsents, getSignupDocuments } from "@/lib/dal/legal";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -35,6 +36,7 @@ export async function commitAccountKind(
     p_consents: parsed.data,
   });
   if (error) return { error: describe(error.message) };
+  refreshAppShell();
   redirect(`/${defaultLocale}/onboarding`);
 }
 
@@ -57,6 +59,7 @@ export async function chooseAccountKind(
     p_consents: parsedEntries.data,
   });
   if (error) return { error: describe(error.message) };
+  refreshAppShell();
   redirect(`/${defaultLocale}/onboarding`);
 }
 

@@ -17,6 +17,14 @@ function normalised(html: string, id: string): string {
   return withoutNonce.replaceAll(id, "ID");
 }
 
+// The header of a signed-in person differs from that of a visitor (Go to my area, Log out) and the page data repeats it, so
+// the pages of a signed-in person are compared by what the page itself says: its title and its main area.
+function pageOwnContent(html: string, id: string): string {
+  const title = /<title>[^<]*<\/title>/.exec(html)?.[0] ?? "";
+  const main = /<main[\s\S]*?<\/main>/.exec(html)?.[0] ?? "";
+  return normalised(title + main, id);
+}
+
 test.describe("the public vacancy page when a vacancy is not available", () => {
   test("FR-C4 AC7: every vacancy that is not available gives the same 404 page, without a field, a name or a reason", async ({
     page,
@@ -84,7 +92,7 @@ test.describe("the public vacancy page when a vacancy is not available", () => {
       seedJob(company, { title: "Own paused", status: "paused" }),
       seedJob(company, { title: "Own hidden", status: "open", moderation: "hidden" }),
     ];
-    const anonymous = normalised((await bodyOf(page, publicUrl(ids[0]))).html, ids[0]);
+    const anonymous = pageOwnContent((await bodyOf(page, publicUrl(ids[0]))).html, ids[0]);
 
     for (const user of [company.owner, member]) {
       await context.clearCookies();
@@ -93,7 +101,7 @@ test.describe("the public vacancy page when a vacancy is not available", () => {
         const { status, html } = await bodyOf(page, publicUrl(id));
         expect(status, id).toBe(404);
         expect(html, id).not.toContain("Own ");
-        expect(normalised(html, id), id).toBe(anonymous);
+        expect(pageOwnContent(html, id), id).toBe(anonymous);
       }
     }
   });

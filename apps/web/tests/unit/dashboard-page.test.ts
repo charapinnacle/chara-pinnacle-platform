@@ -122,9 +122,9 @@ describe("what each role sees", () => {
     expect(html).not.toContain("FIGURES");
   });
 
-  it("lists the other organizations of the user with the address of their dashboard", async () => {
+  it("does not list the other organizations of the user: the switcher of the header does", async () => {
     const html = await render();
-    expect(html).toContain('href="/en/dashboard/employer?org=beta-works"');
-    expect(html).not.toContain('href="/en/dashboard/employer?org=acme-bau"');
+    expect(html).not.toContain("beta-works");
+    expect(html).not.toContain("You also belong to");
   });
 });

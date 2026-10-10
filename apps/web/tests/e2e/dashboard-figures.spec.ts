@@ -41,7 +41,7 @@ test.describe("the employer dashboard: the figures", () => {
 
     await open.click();
     await expect(page).toHaveURL(`/en/org/${company.slug}/jobs?status=open`);
-    const rows = page.getByRole("main").getByRole("listitem");
+    const rows = page.getByRole("main").locator("li:not(nav li)");
     await expect(rows).toHaveCount(2);
     await expect(rows.filter({ hasText: "Open one" })).toHaveCount(1);
     await expect(rows.filter({ hasText: "Open two" })).toHaveCount(1);

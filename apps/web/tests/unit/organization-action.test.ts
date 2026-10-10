@@ -8,9 +8,11 @@ const redirectMock = vi.hoisted(() =>
 );
 const rpcMock = vi.fn();
 const requireUserMock = vi.hoisted(() => vi.fn());
+const refreshShellMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("@/lib/app/refresh-shell", () => ({ refreshAppShell: refreshShellMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
@@ -39,6 +41,7 @@ beforeEach(() => {
 describe("createOrganization", () => {
   it("checks the session, sends the normalised values and goes to two-step setup", async () => {
     await expect(createOrganization(input)).rejects.toThrow("REDIRECT:/en/mfa");
+    expect(refreshShellMock).toHaveBeenCalledOnce();
     expect(requireUserMock).toHaveBeenCalledWith("en");
     expect(rpcMock).toHaveBeenCalledWith("create_organization", {
       p_type: "employer",

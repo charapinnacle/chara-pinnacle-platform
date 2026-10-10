@@ -22,6 +22,7 @@ import {
 } from "./support/mfa";
 import { signInAsEmployer } from "./support/organizations";
 import { captureActionRequests } from "./support/server-action";
+import { logOut } from "./support/app-shell";
 import { expect, test } from "./support/test";
 import { totpCode } from "./support/totp";
 
@@ -239,7 +240,7 @@ test.describe("two-step verification: devices, limits and sessions", () => {
     expect(refreshed.expires_at).toBeGreaterThan(Date.now() / 1000);
     expect((await sessionClaims(page.context())).aal).toBe("aal2");
 
-    await page.getByRole("button", { name: "Log out" }).click();
+    await logOut(page);
     await expect(page).toHaveURL(/\/en\/login$/);
     await logIn(page, user);
     await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);

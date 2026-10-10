@@ -44,7 +44,7 @@ export function HeaderMenu({ children }: { children: React.ReactNode }) {
       <div
         id={panelId}
         onClick={onPanelClick}
-        className={cn("order-last basis-full pb-3 md:order-none md:block md:basis-auto md:pb-0", interactive && !open && "hidden")}
+        className={cn("order-last basis-full pt-1 pb-3 md:order-none md:block md:basis-auto md:pb-0", interactive && !open && "hidden")}
       >
         {children}
       </div>

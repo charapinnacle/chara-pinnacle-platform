@@ -3,7 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { MemberRole } from "@/lib/validation/team";
 
-type Organization = { id: string; slug: string; displayName: string; role: MemberRole };
+type Organization = { id: string; slug: string; displayName: string; role: MemberRole; suspended: boolean };
 
 const MAX_LISTED_ORGANIZATIONS = 20;
 
@@ -12,7 +12,7 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_members")
-    .select("role, organizations(id, slug, display_name)")
+    .select("role, organizations(id, slug, display_name, status)")
     .eq("user_id", userId)
     .not("accepted_at", "is", null)
     .order("accepted_at")
@@ -20,7 +20,15 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
   if (error) throw new Error("The organizations could not be loaded", { cause: error });
   return data.flatMap(({ role, organizations }) =>
     organizations
-      ? [{ id: organizations.id, slug: organizations.slug, displayName: organizations.display_name, role }]
+      ? [
+          {
+            id: organizations.id,
+            slug: organizations.slug,
+            displayName: organizations.display_name,
+            role,
+            suspended: organizations.status === "suspended",
+          },
+        ]
       : [],
   );
 });

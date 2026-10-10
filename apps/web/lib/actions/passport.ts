@@ -5,6 +5,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { homePath } from "@/lib/routes";
@@ -82,6 +83,7 @@ export async function createPassport(input: CreatePassportInput): Promise<Passpo
   });
   // A second submit of the same form finds the passport already created, which is what the person wanted.
   if (error && error.code !== "23505") return refusal(error);
+  refreshAppShell();
   redirect(homePath(defaultLocale, "worker"));
 }
 
