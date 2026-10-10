@@ -91,7 +91,7 @@ test.describe("vacancy pages: who sees what", () => {
     const open = await page.goto(`/en/jobs/${id}`);
     expect(open?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Open welder", level: 1 })).toBeVisible();
-    await expect(page.getByText("Hamburg, Germany")).toBeVisible();
+    await expect(page.getByRole("definition").filter({ hasText: "Hamburg, Germany" })).toBeVisible();
     await expectNoAxeViolations(page);
 
     const others = [

@@ -5,6 +5,7 @@ import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
 import { JobResults } from "@/components/jobs/job-results";
 import { JobSearchForm } from "@/components/jobs/job-search-form";
+import { Card } from "@/components/layout/card";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
@@ -34,7 +35,7 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
 
   return (
     <PageContainer layout="page" className="grid gap-section">
-      <PageHeader title="Find jobs" description="Open vacancies from employers on CHARA." />
+      <PageHeader title="Find jobs" description="Open vacancies from employers on CHARA." className="animate-rise" />
 
       {ignored.length > 0 ? (
         <Notice tone="warning" role="alert">
@@ -47,15 +48,17 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
         </Notice>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-10">
-        <JobSearchForm
-          lang={lang}
-          query={searchQuery({ ...filters, cursor: undefined })}
-          occupations={occupations}
-          industries={industries}
-          countries={countries}
-          currencies={currencies}
-        />
+      <div className="grid gap-6 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <Card padding="lg" className="block">
+          <JobSearchForm
+            lang={lang}
+            query={searchQuery({ ...filters, cursor: undefined })}
+            occupations={occupations}
+            industries={industries}
+            countries={countries}
+            currencies={currencies}
+          />
+        </Card>
         <div className="grid gap-4">
           <ActiveFilters chips={chips} />
           <Suspense key={searchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>
