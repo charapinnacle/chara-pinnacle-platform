@@ -417,29 +417,37 @@ allow_dynamic_registration = false
 
 [functions.account-ops]
 verify_jwt = true
+import_map = "./functions/deno.json"
 
 [functions.audit-export]
 verify_jwt = true
+import_map = "./functions/deno.json"
 
 [functions.scan-document]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.notify]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.document-url]
 verify_jwt = true
+import_map = "./functions/deno.json"
 
 [functions.billing-checkout]
 verify_jwt = true
+import_map = "./functions/deno.json"
 
 # The provider cannot send a JWT; the signature of the delivery is the authentication.
 [functions.billing-webhook]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 # Called by the weekly job with the project's public key; the shared secret in x-edge-secret is the authentication.
 [functions.billing-reconcile]
 verify_jwt = true
+import_map = "./functions/deno.json"
 
 [edge_runtime]
 enabled = true
