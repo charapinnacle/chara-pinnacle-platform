@@ -9,8 +9,7 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
     <nav aria-label="Breadcrumb" className="text-small">
       <ol className="flex flex-wrap items-center gap-x-1">
         {items.map(({ label, href }, index) => (
-          <li key={label} className="flex min-w-0 items-center gap-x-1">
-            {index > 0 ? <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null}
+          <li key={index} className="flex min-w-0 items-center gap-x-1">
             {href ? (
               <Link href={href} className="inline-flex min-h-11 items-center rounded-sm text-primary underline underline-offset-4 [overflow-wrap:anywhere]">
                 {label}
@@ -20,6 +19,7 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
                 {label}
               </span>
             )}
+            {index < items.length - 1 ? <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null}
           </li>
         ))}
       </ol>

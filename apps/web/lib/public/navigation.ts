@@ -15,6 +15,9 @@ const accountPaths = ["login", "signup"];
 export const siteLinks = headerLinks.filter(({ path }) => !accountPaths.includes(path));
 export const guestLinks = headerLinks.filter(({ path }) => accountPaths.includes(path));
 
+// The terms of a subscription concern employers; the pages of a candidate hold no link about billing (FR-G6 AC5).
+export const BILLING_TERMS_PATH = "legal/subscription-and-billing-terms";
+
 // The Imprint and the legal pages of Phase 1. Whether a legal page exists is decided by the database (a published version
 // of its slug), not by this list: the list only says which of them the footer links to.
 export const footerGroups: readonly { title: string; links: readonly { path: string; label: string }[] }[] = [
@@ -39,7 +42,7 @@ export const footerGroups: readonly { title: string; links: readonly { path: str
   {
     title: "Billing and roles",
     links: [
-      { path: "legal/subscription-and-billing-terms", label: "Subscription and Billing Terms" },
+      { path: BILLING_TERMS_PATH, label: "Subscription and Billing Terms" },
       { path: "legal/employer-terms", label: "Employer Terms" },
       { path: "legal/worker-terms", label: "Worker Terms" },
     ],

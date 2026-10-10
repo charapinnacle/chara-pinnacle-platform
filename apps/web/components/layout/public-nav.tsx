@@ -38,7 +38,7 @@ async function AccountItems({ lang }: { lang: string }) {
         </Link>
       </li>
       <li>
-        <LogoutButton className="min-h-11 min-w-0 px-3" />
+        <LogoutButton className="min-h-11 w-full min-w-0 px-3 md:w-auto" />
       </li>
     </>
   );
