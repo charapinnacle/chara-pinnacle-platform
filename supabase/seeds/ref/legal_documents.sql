@@ -4,14 +4,15 @@
 -- age-18-plus holds the wording of the age attestation (FR-A9); its slug is the consent purpose.
 -- Existing rows are never overwritten, so a text that was published afterwards is not touched by a re-seed.
 
-insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
 select
   d.slug,
   0,
   'DRAFT: ' || d.title,
   'DRAFT placeholder. This text has not been approved by legal counsel and must not be relied on.',
   'Draft placeholder pending approval by legal counsel.',
-  now()
+  now(),
+  true
 from (values
   ('terms-of-service', 'Terms of Service'),
   ('privacy-policy', 'Privacy Policy'),
@@ -27,13 +28,14 @@ from (values
 ) as d (slug, title)
 on conflict (slug, version) do nothing;
 
-insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
 values (
   'age-18-plus',
   0,
   'DRAFT: Age confirmation',
   'I am 18 or older. (DRAFT wording, pending review by legal counsel.)',
   'Draft placeholder pending approval by legal counsel.',
-  now()
+  now(),
+  true
 )
 on conflict (slug, version) do nothing;

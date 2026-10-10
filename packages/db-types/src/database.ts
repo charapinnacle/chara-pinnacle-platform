@@ -232,13 +232,13 @@ isOneToOne: false
                   ]
                 },"legal_documents": {
                   Row: {
-                    "body": string,"change_summary": string,"published_at": string | null,"slug": string,"title": string,"version": number
+                    "body": string,"change_summary": string,"is_draft": boolean,"published_at": string | null,"slug": string,"title": string,"version": number
                   }
                   Insert: {
-                    "body": string,"change_summary": string,"published_at"?: string | null,"slug": string,"title": string,"version": number
+                    "body": string,"change_summary": string,"is_draft"?: boolean,"published_at"?: string | null,"slug": string,"title": string,"version": number
                   }
                   Update: {
-                    "body"?: string,"change_summary"?: string,"published_at"?: string | null,"slug"?: string,"title"?: string,"version"?: number
+                    "body"?: string,"change_summary"?: string,"is_draft"?: boolean,"published_at"?: string | null,"slug"?: string,"title"?: string,"version"?: number
                   }
                   Relationships: [
                     
@@ -709,6 +709,13 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"v_legal_current": {
+                  Row: {
+                    "body": string | null,"change_summary": string | null,"is_draft": boolean | null,"published_at": string | null,"slug": string | null,"title": string | null,"version": number | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"v_my_application_timeline": {
                   Row: {
                     "actor_role": string | null,"application_id": string | null,"created_at": string | null,"from_status": Database["public"]['Enums']["application_status"] | null,"note": string | null,"to_status": Database["public"]['Enums']["application_status"] | null
@@ -813,6 +820,11 @@ isOneToOne: false
               "count": number,"status": Database["public"]['Enums']["application_status"]
             }[]
                            },
+"admin_export_legal_documents":
+{ Args: { "p_after_slug"?: string,"p_after_version"?: number,"p_limit"?: number }; Returns: {
+              "body": string,"change_summary": string,"is_draft": boolean,"published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
 "admin_get_job":
 { Args: { "p_job": string }; Returns: {
               "city": string,"country_code": string,"created_at": string,"description": string,"history": Json,"id": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"organization_id": string,"organization_name": string,"status": Database["public"]['Enums']["job_status"],"title": string
@@ -830,7 +842,7 @@ isOneToOne: false
                            },
 "admin_list_legal_documents":
 { Args: Record<PropertyKey, never>; Returns: {
-              "published_at": string,"slug": string,"title": string,"version": number
+              "is_draft": boolean,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
 "admin_list_moderation_actions":
@@ -1077,7 +1089,7 @@ isOneToOne: false
             }[]
                            },
 "publish_legal_document":
-{ Args: { "p_body": string,"p_change_summary": string,"p_expected_version": number,"p_slug": string,"p_title": string }; Returns: number
+{ Args: { "p_body": string,"p_change_summary": string,"p_is_draft"?: boolean,"p_slug": string,"p_title": string }; Returns: number
                            },
 "rate_limit_attempt":
 { Args: { "p_action": string,"p_key": string }; Returns: {

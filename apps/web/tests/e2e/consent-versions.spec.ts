@@ -8,6 +8,7 @@ import {
   pendingConsents,
   publishNewVersion,
 } from "./support/accounts";
+import { createCommittedUser } from "./support/login";
 import { signInBrowser } from "./support/session";
 import { createTestUser, deleteTestUser } from "./support/test-user";
 
@@ -150,5 +151,51 @@ test("FR-A8 AC10 (web part): a withdrawal holds the next sign-in on the consent 
     });
   } finally {
     await deleteTestUser(user.id);
+  }
+});
+
+test("FR-H3 AC9: a candidate and an employer owner with an older acceptance are held on the re-consent page after logging in, can log out, and are let through once they accept", async ({
+  browser,
+}) => {
+  for (const [kind, home] of [
+    ["worker", "/en/dashboard/worker"],
+    ["company", "/en/dashboard/employer"],
+  ] as const) {
+    const user = await createCommittedUser(kind);
+    try {
+      const before = accountRows(user.id).consents.find((c) => c.purpose === "terms-of-service")!;
+      const version = publishNewVersion("terms-of-service", "Adds the clause on the liability of the platform.");
+      expect(version).toBeGreaterThan(before.version);
+
+      const context = await browser.newContext();
+      await signInBrowser(context, user);
+      const page = await context.newPage();
+      for (const path of [home, "/en/onboarding"]) {
+        await page.goto(path);
+        await expect(page, path).toHaveURL(new RegExp(`/en/consent\\?next=${encodeURIComponent(path)}$`));
+      }
+      await expect(page.getByRole("heading", { name: /Terms of Service/ })).toBeVisible();
+      await expect(page.getByText(`Version ${version}, published`)).toBeVisible();
+      await expect(page.getByText("Adds the clause on the liability of the platform.")).toBeVisible();
+      await expect(page.getByRole("link", { name: /Read the full text/ })).toHaveAttribute("href", "/en/legal/terms-of-service");
+      await expect(page.getByRole("checkbox")).toHaveCount(1);
+
+      await page.getByRole("button", { name: "Log out" }).click();
+      await expect(page).toHaveURL(/\/en\/login/);
+      await signInBrowser(context, user);
+      await page.goto(home);
+      await expect(page).toHaveURL(/\/en\/consent/);
+
+      await page.getByRole("checkbox").check();
+      await page.getByRole("button", { name: "Accept and continue" }).click();
+      await expect(page).not.toHaveURL(/\/en\/consent/);
+      const latest = accountRows(user.id).consents.filter((c) => c.purpose === "terms-of-service").at(-1);
+      expect(latest).toEqual({ purpose: "terms-of-service", version, action: "granted" });
+
+      await page.goto("/en/consent");
+      await expect(page).not.toHaveURL(/\/en\/consent/);
+    } finally {
+      await deleteTestUser(user.id);
+    }
   }
 });

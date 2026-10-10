@@ -114,15 +114,15 @@ describe("the statistics range", () => {
 });
 
 describe("the legal document form", () => {
-  const valid = { expectedVersion: 2, slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods." };
+  const valid = { slug: "privacy-policy", title: "Privacy policy", body: "The text.", changeSummary: "Adds retention periods.", isDraft: false };
 
-  it("accepts a document", () => {
+  it("accepts a document, as a draft or as approved", () => {
     expect(legalDocumentSchema.safeParse(valid).success).toBe(true);
-    expect(legalDocumentSchema.safeParse({ ...valid, expectedVersion: 0 }).success).toBe(true);
+    expect(legalDocumentSchema.safeParse({ ...valid, isDraft: true }).success).toBe(true);
   });
 
-  it.each([-1, 1.5, "2"])("refuses %s as the version the form showed", (expectedVersion) => {
-    expect(legalDocumentSchema.safeParse({ ...valid, expectedVersion }).success).toBe(false);
+  it.each([undefined, "true", 1])("refuses %s as the draft mark", (isDraft) => {
+    expect(legalDocumentSchema.safeParse({ ...valid, isDraft }).success).toBe(false);
   });
 
   it.each([

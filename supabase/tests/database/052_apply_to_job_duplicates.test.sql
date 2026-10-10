@@ -186,7 +186,7 @@ select is(split_part(pg_temp.call_as(null, 'postgres', format($$insert into publ
 -- A legal document that a consent refers to cannot be deleted or re-keyed, which the foreign key used to guarantee.
 select is(split_part(pg_temp.call_as(null, 'postgres', $$delete from public.legal_documents where slug = 'sharing-notice' and version = 0$$), '|', 1), '23503', 'the sharing notice of a granted consent cannot be deleted');
 select is(split_part(pg_temp.call_as(null, 'postgres', $$update public.legal_documents set version = 7 where slug = 'sharing-notice' and version = 0$$), '|', 1), '23503', 'nor re-keyed');
-select is(pg_temp.call_as(null, 'postgres', $$update public.legal_documents set title = 'Sharing notice, corrected' where slug = 'sharing-notice' and version = 0$$), 'ok', 'a change of the title is not a change of the key');
+select is(split_part(pg_temp.call_as(null, 'postgres', $$update public.legal_documents set title = 'Sharing notice, corrected' where slug = 'sharing-notice' and version = 0$$), '|', 1), '42501', 'a change of the title is refused too: a published version is immutable');
 insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
 values ('sharing-notice', 3, 'Sharing notice', 'Text.', 'A version that no consent has.', now());
 select is(pg_temp.call_as(null, 'postgres', $$delete from public.legal_documents where slug = 'sharing-notice' and version = 3$$), 'ok', 'a version without a consent can be deleted');

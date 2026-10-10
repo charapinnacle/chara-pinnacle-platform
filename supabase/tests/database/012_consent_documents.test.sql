@@ -98,8 +98,10 @@ select is(
   'ok',
   'an anonymous visitor reads the sign-up documents'
 );
+alter table public.legal_documents disable trigger legal_documents_immutable;
 update public.legal_documents set published_at = now() - interval '1 day'
 where slug = 'privacy-policy' and version = 0;
+alter table public.legal_documents enable always trigger legal_documents_immutable;
 insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
 values
   ('privacy-policy', 1, 'Privacy Policy', 'Version one.', 'Describes the new retention periods.', now() - interval '1 hour'),
@@ -115,7 +117,9 @@ select is(
   'Describes the new retention periods.',
   'the change summary of the current version is returned'
 );
+alter table public.legal_documents disable trigger legal_documents_immutable;
 update public.legal_documents set published_at = null where slug = 'worker-terms' and version = 0;
+alter table public.legal_documents enable always trigger legal_documents_immutable;
 select is(
   pg_temp.call_as(null, 'anon', $$select * from public.signup_documents('worker')$$),
   'P0001|CHARA_INVALID_INPUT|a required document has no published version',
@@ -189,7 +193,9 @@ select is(
 );
 
 -- A new version gates a session that started after it, not one that started before
+alter table public.legal_documents disable trigger legal_documents_immutable;
 update public.legal_documents set published_at = now() - interval '3 days' where slug = 'privacy-policy' and version = 1;
+alter table public.legal_documents enable always trigger legal_documents_immutable;
 insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
 values
   ('terms-of-service', 1, 'Terms of Service', 'Version one.', 'Adds the complaints procedure.', now() - interval '2 days'),
@@ -296,7 +302,9 @@ select is(
   '',
   'a session that started before a change of 6 days ago is not gated'
 );
+alter table public.legal_documents disable trigger legal_documents_immutable;
 update public.legal_documents set published_at = now() - interval '8 days' where slug = 'terms-of-service' and version = 2;
+alter table public.legal_documents enable always trigger legal_documents_immutable;
 select is(
   pg_temp.pending(:'w', '00000000-0000-0000-0000-0000000000a6'),
   'terms-of-service:2',
