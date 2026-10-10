@@ -990,7 +990,7 @@ isOneToOne: false
                            },
 "get_public_job":
 { Args: { "p_id": string }; Returns: {
-              "accommodation": boolean,"city": string,"country": string,"country_code": string,"description": string,"employer_country": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
+              "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_country": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
             }[]
                            },
 "get_public_settings":
@@ -1076,9 +1076,6 @@ isOneToOne: false
                            },
 "publish_legal_document":
 { Args: { "p_body": string,"p_change_summary": string,"p_expected_version": number,"p_slug": string,"p_title": string }; Returns: number
-                           },
-"published_legal_slugs":
-{ Args: { "p_slugs": (string)[] }; Returns: string[]
                            },
 "rate_limit_attempt":
 { Args: { "p_action": string,"p_key": string }; Returns: {

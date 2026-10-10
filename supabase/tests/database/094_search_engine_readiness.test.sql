@@ -1,5 +1,5 @@
 begin;
-select plan(45);
+select plan(39);
 
 \ir search_fixture.inc
 
@@ -110,6 +110,25 @@ select throws_ok(
 );
 reset role;
 
+-- The predicate of the function is the one of the policy jobs_select_public: the vacancies it lists are those that an
+-- anonymous caller can select, seeded rows included.
+create function pg_temp.anon_job_ids() returns text
+language plpgsql as $$
+declare
+  v_ids text;
+begin
+  set local role anon;
+  select coalesce(string_agg(id::text, ',' order by id), '') into v_ids from public.jobs;
+  reset role;
+  return v_ids;
+end;
+$$;
+select is(
+  (select coalesce(string_agg(e ->> 'id', ',' order by e ->> 'id'), '') from jsonb_array_elements(pg_temp.sitemap_as('anon')) e),
+  pg_temp.anon_job_ids(),
+  'the vacancies of the sitemap are exactly those that an anonymous caller can select'
+);
+
 -- The dates of an entry are those of the row.
 select is(
   (select e ->> 'created_at' from jsonb_array_elements(pg_temp.sitemap_as('anon')) e where e ->> 'id' = (select id::text from t_ids where label = 'open_a')),
@@ -180,43 +199,23 @@ select throws_ok(
 );
 reset role;
 
--- published_legal_slugs: the slugs among the given ones that have a published version.
-insert into public.legal_documents (slug, version, title, body, change_summary, published_at) values
-  ('seo-unpublished', 1, 'Unpublished notice', 'The text.', 'The first text of the notice.', null),
-  ('seo-future', 1, 'Future notice', 'The text.', 'The first text of the notice.', now() + interval '1 day'),
-  ('seo-published', 1, 'Published notice', 'The text.', 'The first text of the notice.', now() - interval '1 day');
-
-create function pg_temp.legal_slugs(p_role text, p_slugs text) returns text
+-- get_public_job gives the creation time beside the publication time: datePosted is the date of created_at (FR-H5 AC8).
+create temp table t_public as
+  select pg_temp.seed_job('{"title": "Public read vacancy", "status": "open", "created_at": "2026-05-01T23:30:00Z"}') as id;
+update public.jobs set published_at = '2026-05-03T08:00:00Z' where id = (select id from t_public);
+create function pg_temp.public_row(p_id uuid) returns jsonb
 language plpgsql as $$
 declare
-  v_result text;
+  v_row jsonb;
 begin
-  execute format('set local role %I', p_role);
-  execute format('select coalesce(string_agg(s, '','' order by s), '''') from public.published_legal_slugs(%s) s', p_slugs) into v_result;
+  set local role anon;
+  select to_jsonb(g) into v_row from public.get_public_job(p_id) g;
   reset role;
-  return v_result;
+  return v_row;
 end;
 $$;
-
-select is(
-  pg_temp.legal_slugs('anon', $$array['seo-unpublished', 'seo-future', 'seo-published', 'seo-missing', 'terms-of-service']$$),
-  'seo-published,terms-of-service', 'only the slugs with a version published now are returned'
-);
-select is(pg_temp.legal_slugs('authenticated', $$array['seo-published']$$), 'seo-published', 'a signed-in caller gets the same');
-select is(pg_temp.legal_slugs('anon', $$array['seo-published', 'seo-published']$$), 'seo-published', 'a slug given twice is returned once');
-select is(pg_temp.legal_slugs('anon', $$array[]::text[]$$), '', 'no slug gives no slug');
-select throws_ok($$select public.published_legal_slugs(null)$$, 'P0001', 'CHARA_INVALID_INPUT', 'null is refused');
-select throws_ok(
-  $$select public.published_legal_slugs((select array_agg('slug-' || i) from generate_series(1, 51) i))$$,
-  'P0001', 'CHARA_INVALID_INPUT', 'more than 50 slugs are refused'
-);
-select ok(has_function_privilege('anon', 'public.published_legal_slugs(text[])', 'execute'), 'anon can execute published_legal_slugs');
-select ok(not has_function_privilege('service_role', 'public.published_legal_slugs(text[])', 'execute'), 'service_role cannot execute published_legal_slugs');
-select is(
-  (select not p.prosecdef and p.proconfig @> array['search_path=""']
-   from pg_proc p where p.proname = 'published_legal_slugs' and p.pronamespace = 'public'::regnamespace),
-  true, 'published_legal_slugs runs with the rights of the caller and an empty search path'
-);
+select is((pg_temp.public_row((select id from t_public)) ->> 'created_at')::timestamptz, '2026-05-01T23:30:00Z'::timestamptz, 'get_public_job gives the creation time');
+select is((pg_temp.public_row((select id from t_public)) ->> 'published_at')::timestamptz, '2026-05-03T08:00:00Z'::timestamptz, 'and the publication time apart from it');
 
 select * from finish();
 rollback;

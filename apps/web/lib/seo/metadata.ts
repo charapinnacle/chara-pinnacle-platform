@@ -8,7 +8,7 @@ const TITLE_MAX = 60;
 const DESCRIPTION_MAX = 160;
 const VACANCY_DESCRIPTION_LENGTH = 155;
 
-export function absoluteUrl(path: string): string {
+function absoluteUrl(path: string): string {
   return new URL(path, env.NEXT_PUBLIC_SITE_URL).toString();
 }
 
@@ -18,12 +18,8 @@ function cut(text: string, max: number): string {
   return text.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max);
 }
 
-function fitTitle(title: string): string {
-  return title.length <= TITLE_MAX ? title : `${cut(title, TITLE_MAX - 1).trimEnd()}…`;
-}
-
-function fitDescription(description: string): string {
-  return description.length <= DESCRIPTION_MAX ? description : `${cut(description, DESCRIPTION_MAX - 1).trimEnd()}…`;
+function fit(text: string, max: number): string {
+  return text.length <= max ? text : `${cut(text, max - 1).trimEnd()}…`;
 }
 
 // The canonical address has no query string: a search, a campaign tag and the page itself are one page to a crawler.
@@ -47,8 +43,8 @@ export function legalPageMetadata(
   document: { title: string; version: number; publishedAt: string },
 ): Metadata {
   return pageMetadata(
-    fitTitle(`${document.title} — CHARA`),
-    fitDescription(`Read the ${document.title} of CHARA: version ${document.version}, published ${formatDate(document.publishedAt)}.`),
+    fit(`${document.title} — CHARA`, TITLE_MAX),
+    fit(`Read the ${document.title} of CHARA: version ${document.version}, published ${formatDate(document.publishedAt)}.`, DESCRIPTION_MAX),
     `/${lang}/legal/${slug}`,
   );
 }
@@ -57,5 +53,5 @@ export function legalPageMetadata(
 // spaces, and nothing added to it.
 export function vacancyMetadata(lang: string, job: Pick<PublicJob, "id" | "title" | "description" | "employer">): Metadata {
   const description = cut(job.description.replace(/\s+/g, " ").trim(), VACANCY_DESCRIPTION_LENGTH).trimEnd();
-  return pageMetadata(fitTitle(`${job.title} - ${job.employer.displayName} | CHARA`), description, `/${lang}/jobs/${job.id}`);
+  return pageMetadata(fit(`${job.title} - ${job.employer.displayName} | CHARA`, TITLE_MAX), description, `/${lang}/jobs/${job.id}`);
 }

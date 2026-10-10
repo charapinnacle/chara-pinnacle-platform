@@ -19,7 +19,8 @@ const job: PublicJob = {
   accommodation: true,
   visaSupport: true,
   recruitmentPreference: "both",
-  publishedAt: "2026-10-06T10:00:00.123456+00:00",
+  publishedAt: "2026-10-08T10:00:00.123456+00:00",
+  createdAt: "2026-10-06T10:00:00.123456+00:00",
   employer: { displayName: "Acme", country: "Germany", industry: "Construction", website: "https://acme.example" },
 };
 
@@ -109,6 +110,11 @@ describe("jobPostingJsonLd", () => {
       currency: "EUR",
       value: { "@type": "QuantitativeValue", maxValue: 3000, unitText: "MONTH" },
     });
+  });
+
+  it("FR-H5 AC8: datePosted is the UTC date of the creation time, not of the publication (the job below is published two days later) or of a local day", () => {
+    expect(parse({ ...job, createdAt: "2026-09-01T23:30:00-02:00" }).datePosted).toBe("2026-09-02");
+    expect(parse({ ...job, createdAt: "2026-09-01T00:00:00+00:00" }).datePosted).toBe("2026-09-01");
   });
 
   it("FR-H5 AC8: has no validThrough", () => {

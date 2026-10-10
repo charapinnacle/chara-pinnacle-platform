@@ -3,13 +3,12 @@ import { formatIsoDate } from "@/lib/i18n/format";
 import { staticPages } from "./pages";
 
 // The protocol allows 50,000 URLs in one file; the capacity target is far below it (NFR-P1), so there is one file.
-export const SITEMAP_URL_LIMIT = 50_000;
+const SITEMAP_URL_LIMIT = 50_000;
 
 export type SitemapVacancy = { id: string; updatedAt: string };
 
 const staticCount = Object.keys(staticPages).length;
 
-// How many vacancies fit beside the static pages and the given number of legal pages.
 export function vacancyCapacity(legalPages: number): number {
   return SITEMAP_URL_LIMIT - staticCount - legalPages;
 }

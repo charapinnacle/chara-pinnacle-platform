@@ -5,7 +5,6 @@ import { defaultLocale } from "@/lib/i18n/locale";
 import { legalSlugs } from "@/lib/public/navigation";
 import { sitemapEntries, vacancyCapacity } from "@/lib/seo/sitemap";
 
-// Built from the database at every request, so a vacancy that opens or leaves is listed or gone without a deployment.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [published, vacancies] = await Promise.all([
     listPublishedLegalSlugs(legalSlugs),

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Result = { data: unknown; error: { code: string; message: string } | null };
 
 const calls: { name: string; args: Record<string, unknown> }[] = [];
+const selects: { table: string; column: string; filter: [string, unknown[]]; limit: number }[] = [];
 let results: Result[] = [];
 
 vi.mock("server-only", () => ({}));
@@ -12,6 +13,16 @@ vi.mock("@/lib/supabase/server", () => ({
       calls.push({ name, args });
       return Promise.resolve(results.shift() ?? { data: [], error: null });
     },
+    from: (table: string) => ({
+      select: (column: string) => ({
+        in: (name: string, values: unknown[]) => ({
+          limit: (limit: number) => {
+            selects.push({ table, column, filter: [name, values], limit });
+            return Promise.resolve(results.shift() ?? { data: [], error: null });
+          },
+        }),
+      }),
+    }),
   }),
 }));
 
@@ -26,6 +37,7 @@ const page = (from: number, to: number) => Array.from({ length: to - from + 1 },
 
 beforeEach(() => {
   calls.length = 0;
+  selects.length = 0;
   results = [];
 });
 
@@ -37,18 +49,19 @@ describe("listSitemapVacancies (FR-H5 AC3, AC4)", () => {
       { id: entry(2).id, updatedAt: entry(2).updated_at },
       { id: entry(3).id, updatedAt: entry(3).updated_at },
     ]);
-    expect(calls).toEqual([{ name: "list_sitemap_jobs", args: { p_after_created: undefined, p_after_id: undefined, p_limit: 100 } }]);
+    expect(calls[0]).toEqual({ name: "list_sitemap_jobs", args: { p_after_created: undefined, p_after_id: undefined, p_limit: 100 } });
   });
 
-  it("reads page after page from the cursor of the last entry until a page comes back short", async () => {
+  it("reads page after page from the cursor of the last entry until an empty page, whatever size the function cuts them at", async () => {
     results = [
       { data: page(1, 5000), error: null },
       { data: page(5001, 7000), error: null },
+      { data: [], error: null },
     ];
     const vacancies = await listSitemapVacancies(49_000);
     expect(vacancies).toHaveLength(7000);
-    expect(calls.map((call) => call.args.p_limit)).toEqual([5000, 5000]);
-    expect(calls[1].args).toEqual({ p_after_created: entry(5000).created_at, p_after_id: entry(5000).id, p_limit: 5000 });
+    expect(calls.map((call) => call.args.p_limit)).toEqual([49_000, 44_000, 42_000]);
+    expect(calls[1].args).toEqual({ p_after_created: entry(5000).created_at, p_after_id: entry(5000).id, p_limit: 44_000 });
   });
 
   it("stops at the limit, asking for no more than is left", async () => {
@@ -57,7 +70,7 @@ describe("listSitemapVacancies (FR-H5 AC3, AC4)", () => {
       { data: page(5001, 6000), error: null },
     ];
     expect(await listSitemapVacancies(6000)).toHaveLength(6000);
-    expect(calls.map((call) => call.args.p_limit)).toEqual([5000, 1000]);
+    expect(calls.map((call) => call.args.p_limit)).toEqual([6000, 1000]);
   });
 
   it("returns an empty list when no vacancy is public and asks once", async () => {
@@ -78,10 +91,12 @@ describe("listSitemapVacancies (FR-H5 AC3, AC4)", () => {
 });
 
 describe("listPublishedLegalSlugs", () => {
-  it("passes the slugs on and returns the published ones", async () => {
-    results = [{ data: ["privacy-policy"], error: null }];
-    expect(await listPublishedLegalSlugs(["privacy-policy", "nope"])).toEqual(["privacy-policy"]);
-    expect(calls).toEqual([{ name: "published_legal_slugs", args: { p_slugs: ["privacy-policy", "nope"] } }]);
+  it("asks for the given slugs and returns those that have a published version, once each and in the given order", async () => {
+    results = [{ data: [{ slug: "privacy-policy" }, { slug: "privacy-policy" }, { slug: "cookie-policy" }], error: null }];
+    expect(await listPublishedLegalSlugs(["cookie-policy", "nope", "privacy-policy"])).toEqual(["cookie-policy", "privacy-policy"]);
+    expect(selects).toEqual([
+      { table: "legal_documents", column: "slug", filter: ["slug", ["cookie-policy", "nope", "privacy-policy"]], limit: 100 },
+    ]);
   });
 
   it("throws when the read fails", async () => {

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { execute, literal } from "./support/db";
 import { createCommittedUser } from "./support/login";
 import { DESCRIPTION, newCompany, seedJob } from "./support/jobs";
 import { LEGAL_SLUGS, legalPaths, sitePaths } from "./support/public-pages";
@@ -77,6 +78,7 @@ test.describe("structured data of a vacancy", () => {
   test("FR-H5 AC8: an open vacancy carries one valid JobPosting, and no other public page carries one", async ({ page }) => {
     const { company, id } = await openVacancy("Warehouse Operator", { description: DESCRIPTION, createdAt: "'2026-09-01T10:00:00Z'" });
     nameCompany(company, "Example Logistics", "https://example.com");
+    execute(`update public.jobs set published_at = '2026-09-04T08:00:00Z' where id = ${literal(id)}`);
 
     await page.goto(`/en/jobs/${id}`);
     await expect(jsonLdScripts(page)).toHaveCount(1);
@@ -147,6 +149,12 @@ test.describe("private pages are marked noindex", () => {
       if (path === "/en/dashboard/worker") expect(documents.at(-1)?.url).toContain("/en/login");
       for (const document of documents) expect(document.robots, `${path} at ${document.url}`).toBe(NOINDEX);
     }
+
+    const withoutLanguage = await followDocuments(page, "/dashboard");
+    expect(withoutLanguage[0].url).toBe(`${SITE}/dashboard`);
+    expect(withoutLanguage.length).toBeGreaterThan(1);
+    for (const document of withoutLanguage) expect(document.robots, `/dashboard at ${document.url}`).toBe(NOINDEX);
+    expect((await followDocuments(page, "/jobs"))[0].robots, "the redirect of a public path").toBeUndefined();
 
     for (const path of [...sitePaths(id), ...legalPaths()]) {
       const response = await page.goto(path);

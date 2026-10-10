@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { legalSlugs } from "@/lib/public/navigation";
 import { robotsDisallow } from "@/lib/seo/private-routes";
-import { sitemapEntries, SITEMAP_URL_LIMIT, vacancyCapacity } from "@/lib/seo/sitemap";
+import { sitemapEntries, vacancyCapacity } from "@/lib/seo/sitemap";
 
 const SITE = "https://chara.example";
 const vacancies = [
@@ -43,7 +43,7 @@ describe("the sitemap entries (FR-H5 AC3)", () => {
   });
 
   it("leaves room for the vacancies under the limit of the protocol", () => {
-    expect(vacancyCapacity(10) + 8 + 10).toBe(SITEMAP_URL_LIMIT);
+    expect(vacancyCapacity(10) + 8 + 10).toBe(50_000);
   });
 });
 

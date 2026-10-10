@@ -96,7 +96,7 @@ select is(pg_temp.page_title((select id from t_flip)), null, 'it has none when d
 update public.organizations set website = 'https://acme.example' where id = current_setting('t.a')::uuid;
 create temp table t_page as select pg_temp.page_json((select id from t_ids where label = 'open')) as j;
 select is(
-  (select j - 'id' - 'published_at' from t_page),
+  (select j - 'id' - 'published_at' - 'created_at' from t_page),
   jsonb_build_object(
     'title', 'Seed open vacancy',
     'description', (select description from public.jobs where id = (select id from t_ids where label = 'open')),
@@ -129,7 +129,7 @@ select is(
   array[
     'id', 'title', 'description', 'occupation', 'industry', 'country_code', 'country', 'city', 'employment_type',
     'salary_min', 'salary_max', 'salary_currency', 'salary_period', 'accommodation', 'visa_support',
-    'recruitment_preference', 'published_at', 'employer_display_name', 'employer_country', 'employer_industry',
+    'recruitment_preference', 'published_at', 'created_at', 'employer_display_name', 'employer_country', 'employer_industry',
     'employer_website'
   ],
   'the result columns are the public ones: no created_by, no organisation id, no legal name, no member or plan data'

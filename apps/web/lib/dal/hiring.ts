@@ -54,8 +54,8 @@ export type VacancyDetails = Omit<Job, "status" | "moderationState" | "statusCha
 // The public profile of an employer, as the SOP names it: name, country, industry and website. Never the legal name.
 export type Employer = { displayName: string; country: string; industry: string | null; website: string | null };
 
-// An open vacancy as a visitor sees it, with the employer and the date it was first published.
-export type PublicJob = VacancyDetails & { countryCode: string; publishedAt: string; employer: Employer };
+// An open vacancy as a visitor sees it, with the employer, the date it was first published and the date it was created.
+export type PublicJob = VacancyDetails & { countryCode: string; publishedAt: string; createdAt: string; employer: Employer };
 
 type JobPage = { jobs: JobSummary[]; nextCursor: string | null };
 
@@ -148,6 +148,7 @@ export const getPublicJob = cache(async (id: string): Promise<PublicJob | null> 
     visaSupport: row.visa_support,
     recruitmentPreference: row.recruitment_preference,
     publishedAt: row.published_at,
+    createdAt: row.created_at,
     employer: {
       displayName: row.employer_display_name,
       country: row.employer_country,

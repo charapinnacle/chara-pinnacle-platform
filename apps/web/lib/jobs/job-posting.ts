@@ -18,7 +18,7 @@ type JobPostingSource = Pick<
   PublicJob,
   | "title"
   | "description"
-  | "publishedAt"
+  | "createdAt"
   | "countryCode"
   | "employmentType"
   | "salaryMin"
@@ -38,7 +38,7 @@ export function jobPostingJsonLd(job: JobPostingSource): string {
     "@type": "JobPosting",
     title: job.title,
     description: job.description,
-    datePosted: formatIsoDate(job.publishedAt),
+    datePosted: formatIsoDate(job.createdAt),
     hiringOrganization: {
       "@type": "Organization",
       name: job.employer.displayName,
