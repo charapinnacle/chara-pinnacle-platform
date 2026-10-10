@@ -114,7 +114,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await slug.fill(name);
     await page.getByLabel("Change summary").fill("Adds retention periods for application data.");
     await page.getByRole("button", { name: "Publish new version" }).click();
-    await expect(page.getByText(`Version 1 of ${name} is published`, { exact: true })).toBeVisible();
+    await expect(page.getByText("Published version 1", { exact: true })).toBeVisible();
     expect(query(`select version from public.legal_documents where slug = ${literal(name)}`)).toEqual([{ version: 1 }]);
     expect(query<{ metadata: { reason: string } }>(`select metadata from audit.log where action = 'legal_document.publish' and entity_id = ${literal(`${name}:1`)}`)[0].metadata.reason).toBe(
       "Adds retention periods for application data.",
@@ -122,7 +122,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await expect(table.getByRole("row", { name: new RegExp(name) })).toContainText("1");
   });
 
-  test("FR-F1 AC11: the same form submitted from a second tab publishes nothing more, and the person is told why", async ({ page }) => {
+  test("FR-F1 AC11: the same text submitted from a second tab publishes nothing more, and the person is told why", async ({ page }) => {
     const name = `e2e-${uniqueTag()}`;
     execute(
       `insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
@@ -139,9 +139,9 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     }
 
     await page.getByRole("button", { name: "Publish new version" }).click();
-    await expect(page.getByText(`Version 2 of ${name} is published`, { exact: true })).toBeVisible();
+    await expect(page.getByText("Published version 2", { exact: true })).toBeVisible();
     await second.getByRole("button", { name: "Publish new version" }).click();
-    await expect(second.getByText("This document has a different current version than the form showed.").first()).toBeVisible();
+    await expect(second.getByText("This text is already the current version of the document.").first()).toBeVisible();
     expect(query(`select version from public.legal_documents where slug = ${literal(name)} order by version`)).toEqual([{ version: 1 }, { version: 2 }]);
     expect(query(`select 1 from audit.log where action = 'legal_document.publish' and entity_id like ${literal(`${name}:%`)}`)).toHaveLength(1);
     expect(query(`select 1 from pgmq.q_account_ops where message ->> 'document_slug' = ${literal(name)}`)).toHaveLength(1);

@@ -9,7 +9,7 @@ FR-H1. The SOP (Public Website Publication, quarterly review, owner Marketing / 
 | Home, How CHARA Works, Trust & Safety, About, Pricing | `/en`, `/en/how-it-works`, `/en/trust-safety`, `/en/about`, `/en/pricing` | in the code, `apps/web/app/[lang]/(public)/` |
 | Contact, Imprint | `/en/contact`, `/en/imprint` | text in the code, details from the settings of section 2 |
 | Find Jobs, Vacancy | `/en/jobs`, `/en/jobs/<id>` | the open and visible vacancies (FR-C3, FR-C4) |
-| Ten legal pages | `/en/legal/<slug>` | the published version in `public.legal_documents`; a page exists exactly when a published version of its lower-case slug exists (FR-H3 adds publishing) |
+| Ten legal pages | `/en/legal/<slug>` | the published version in `public.legal_documents`; a page exists exactly when a published version of its lower-case slug exists; publishing, the draft banner and the change log are `legal-documents.md` (FR-H3) |
 
 The header links and the footer links are in `apps/web/lib/public/navigation.ts`. Every route renders per request (ADR-0004), so a change of a setting or of a legal text is on the page at the next request, without a release. The texts in the code are drafts until CHARA approves them (section 4); the Pricing page reads its plans from the database (FR-H2, `docs/runbooks/pricing.md`).
 

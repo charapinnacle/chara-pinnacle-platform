@@ -65,7 +65,9 @@ select ok(
 select pg_temp.new_org(:'own1') as o \gset
 select set_config('t.written', pg_temp.written(), true) as base \gset
 
+alter table public.legal_documents disable trigger legal_documents_immutable;
 update public.legal_documents set published_at = null where slug = 'subscription-and-billing-terms';
+alter table public.legal_documents enable always trigger legal_documents_immutable;
 select is(
   pg_temp.checkout(:'own1', :'o', 'employer_starter', 'DE', 'DE123456789', 'HRB 12345', 0),
   'P0001|CHARA_FORBIDDEN|terms_not_published', 'AC4: with no published version of the terms the call is refused'

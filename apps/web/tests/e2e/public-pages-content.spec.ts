@@ -51,7 +51,7 @@ test.describe("the details of the legal entity", () => {
     const policy = page.getByRole("main");
     await expect(policy.getByRole("link", { name: "privacy@example.com" })).toBeVisible();
     await expect(policy.getByRole("link", { name: "dpo@example.com" })).toBeVisible();
-    const text = await policy.getByText("DRAFT placeholder").boundingBox();
+    const text = await policy.getByText("This text has not been approved by legal counsel").boundingBox();
     const contacts = await policy.getByRole("link", { name: "privacy@example.com" }).boundingBox();
     expect(contacts?.y).toBeGreaterThan((text?.y ?? Infinity) + (text?.height ?? 0));
 

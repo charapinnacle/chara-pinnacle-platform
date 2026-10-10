@@ -264,53 +264,54 @@ test.describe("the console with account-ops and notify running", () => {
 
   // The document is added to the ones a candidate has to accept for the length of the test and taken out again: a
   // required document that is published for good would ask every later test to accept it at sign-in.
-  test("FR-F1 AC11: publishing a document that candidates must accept returns at once, and account-ops then queues one email for each active candidate, once", async ({
+  test("FR-F1 AC11 and FR-H3 AC10: publishing a new version returns at once, and account-ops then queues one email for each active candidate who accepted the document before, once", async ({
     page,
   }) => {
     const name = `e2e-accept-${uniqueTag()}`;
     const original = query<{ value: unknown }>(`select value from private.settings where key = 'required_consents'`)[0].value;
     const worker = await createCommittedUser("worker");
+    const stranger = await createCommittedUser("worker");
     execute(
-      `update private.settings set value = jsonb_set(value, '{worker}', (value -> 'worker') || to_jsonb(${literal(name)}::text)) where key = 'required_consents'`,
+      `update private.settings set value = jsonb_set(value, '{worker}', (value -> 'worker') || to_jsonb(${literal(name)}::text)) where key = 'required_consents';
+       insert into public.legal_documents (slug, version, title, body, change_summary, published_at)
+       values (${literal(name)}, 1, 'Terms everyone accepts', 'The first text.', 'The first approved text.', now() - interval '1 day');
+       insert into public.consents (user_id, purpose, version, action) values (${literal(worker.id)}, ${literal(name)}, 1, 'granted')`,
     );
     try {
-      await signInStaff(page, "admin", "/en/admin/legal");
+      await signInStaff(page, "admin", `/en/admin/legal?slug=${name}`);
       const slug = page.getByLabel("Document name");
       await waitForHydration(slug);
-      await slug.fill(name);
-      await page.getByLabel("Title").fill("Terms everyone accepts");
+      await expect(slug).toHaveValue(name);
       await page.getByLabel("Text of the document").fill("The text of the terms.");
       await page.getByLabel("Change summary").fill("Adds retention periods for application data.");
       await page.getByRole("button", { name: "Publish new version" }).click();
-      await expect(page.getByText(`Version 1 of ${name} is published`, { exact: true })).toBeVisible();
+      await expect(page.getByText("Published version 2", { exact: true })).toBeVisible();
 
-      const emails = () =>
+      const emails = (userId?: string) =>
         query<{ n: number }>(
-          `select count(*)::int as n from public.notifications where kind = 'legal_version' and payload ->> 'document_slug' = ${literal(name)}`,
+          `select count(*)::int as n from public.notifications where kind = 'legal_version' and payload ->> 'document_slug' = ${literal(name)}
+           ${userId ? `and user_id = ${literal(userId)}` : ""}`,
         )[0].n;
-      const candidates = query<{ n: number }>(
-        `select count(*)::int as n from public.profiles where account_kind = 'worker' and status = 'active' and deleted_at is null`,
-      )[0].n;
       expect(emails()).toBe(0);
       expect(query(`select 1 from pgmq.q_account_ops where message ->> 'document_slug' = ${literal(name)}`)).toHaveLength(1);
 
       await runAccountOps();
-      expect(candidates).toBeGreaterThan(0);
-      expect(emails()).toBe(candidates);
+      expect(emails()).toBe(1);
+      expect(emails(stranger.id)).toBe(0);
       expect(
         query<{ payload: { version: number; change_summary: string } }>(
           `select payload from public.notifications where kind = 'legal_version' and user_id = ${literal(worker.id)} and payload ->> 'document_slug' = ${literal(name)}`,
         ),
-      ).toEqual([{ payload: expect.objectContaining({ version: 1, change_summary: "Adds retention periods for application data." }) }]);
+      ).toEqual([{ payload: expect.objectContaining({ version: 2, change_summary: "Adds retention periods for application data." }) }]);
       expect(
         query<{ entity_type: string; emails: number }>(
-          `select entity_type, (metadata ->> 'emails_queued')::int as emails from audit.log where action = 'account_ops_done' and entity_id = ${literal(`${name}:1`)}`,
+          `select entity_type, (metadata ->> 'emails_queued')::int as emails from audit.log where action = 'account_ops_done' and entity_id = ${literal(`${name}:2`)}`,
         ),
-      ).toEqual([{ entity_type: "legal_document", emails: candidates }]);
+      ).toEqual([{ entity_type: "legal_document", emails: 1 }]);
 
-      execute(`select pgmq.send('account_ops', jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', ${literal(name)}, 'version', 1))`);
+      execute(`select pgmq.send('account_ops', jsonb_build_object('action', 'fan_out_legal_version', 'document_slug', ${literal(name)}, 'version', 2))`);
       await runAccountOps();
-      expect(emails()).toBe(candidates);
+      expect(emails()).toBe(1);
     } finally {
       execute(`update private.settings set value = ${literal(JSON.stringify(original))}::jsonb where key = 'required_consents'`);
     }

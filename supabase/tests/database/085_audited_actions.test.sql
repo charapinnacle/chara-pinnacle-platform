@@ -49,7 +49,7 @@ begin
     when 'revoke_platform_role' then format('select public.revoke_platform_role(%L, %L, %L)', v_id, 'verification_reviewer', p_reason)
     when 'reset_mfa' then format('select public.reset_mfa(%L, %L)', v_id, p_reason)
     when 'publish_legal_document' then format(
-      'select public.publish_legal_document(%L, %L, %L, %L, 0)', 'audit-doc-' || left(v_id::text, 8), 'Audit document', 'The text.', p_reason)
+      'select public.publish_legal_document(%L, %L, %L, %L)', 'audit-doc-' || left(v_id::text, 8), 'Audit document', 'The text.', p_reason)
     when 'suspend_user' then format('select public.suspend_user(%L, %L)', v_id, p_reason)
     when 'reinstate_user' then format('select public.reinstate_user(%L, %L)', v_id, p_reason)
     when 'suspend_organization' then format('select public.suspend_organization(%L, %L)', v_org, p_reason)
@@ -297,7 +297,7 @@ language sql as $$
     and p.prosrc ~ 'has_platform_role|assert_staff|assert_platform_admin'
     and p.proname not in ('admin_search_users', 'admin_search_organizations', 'admin_get_user', 'admin_get_organization',
       'admin_application_counts', 'admin_search_audit', 'admin_list_moderation_actions', 'admin_list_legal_documents',
-      'list_platform_staff', 'admin_search_jobs', 'admin_get_job')
+      'admin_export_legal_documents', 'list_platform_staff', 'admin_search_jobs', 'admin_get_job')
     and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation'
     and not (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
   order by p.proname

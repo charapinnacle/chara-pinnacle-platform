@@ -333,14 +333,14 @@ describe("the log of suspensions and the staff", () => {
   it("list the current version of each legal document as the database gives it", async () => {
     rpcMock.mockResolvedValue({
       data: [
-        { slug: "privacy-policy", version: 3, title: "Privacy policy", published_at: "2026-10-03T00:00:00Z" },
-        { slug: "worker-terms", version: 0, title: "Worker terms draft", published_at: "2026-01-01T00:00:00Z" },
+        { slug: "privacy-policy", version: 3, title: "Privacy policy", published_at: "2026-10-03T00:00:00Z", is_draft: false },
+        { slug: "worker-terms", version: 0, title: "Worker terms draft", published_at: "2026-01-01T00:00:00Z", is_draft: true },
       ],
       error: null,
     });
     expect(await dal.listLegalDocuments()).toEqual([
-      { slug: "privacy-policy", version: 3, title: "Privacy policy", publishedAt: "2026-10-03T00:00:00Z" },
-      { slug: "worker-terms", version: 0, title: "Worker terms draft", publishedAt: "2026-01-01T00:00:00Z" },
+      { slug: "privacy-policy", version: 3, title: "Privacy policy", publishedAt: "2026-10-03T00:00:00Z", isDraft: false },
+      { slug: "worker-terms", version: 0, title: "Worker terms draft", publishedAt: "2026-01-01T00:00:00Z", isDraft: true },
     ]);
     expect(rpcMock).toHaveBeenCalledWith("admin_list_legal_documents");
   });
