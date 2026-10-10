@@ -143,11 +143,9 @@ test.describe("private pages are marked noindex", () => {
     const { company, id } = await openVacancy("Noindex welder");
 
     for (const path of privatePaths(company.slug, id)) {
-      const hop = await page.request.get(path, { maxRedirects: 0 });
-      expect(hop.headers()["x-robots-tag"], `${path} (${hop.status()})`).toBe(NOINDEX);
-      for (const page_ of await followDocuments(page, path)) {
-        expect(page_.robots, `${path} at ${page_.url}`).toBe(NOINDEX);
-      }
+      const documents = await followDocuments(page, path);
+      if (path === "/en/dashboard/worker") expect(documents.at(-1)?.url).toContain("/en/login");
+      for (const document of documents) expect(document.robots, `${path} at ${document.url}`).toBe(NOINDEX);
     }
 
     for (const path of [...sitePaths(id), ...legalPaths()]) {

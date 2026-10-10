@@ -1,4 +1,4 @@
-import type { Page, Response } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { env } from "@/lib/env";
 import { execute, literal } from "./db";
 import type { Company } from "./jobs";
@@ -38,24 +38,19 @@ export function robotsMeta(page: Page) {
 
 export const NOINDEX = "noindex, nofollow";
 
-// Opens a path and follows the redirects that the page itself asks for (a redirect from a streamed page is a refresh
-// tag, not a status), and returns the X-Robots-Tag of every document the browser was given on the way, the last one
-// included.
+// Requests a path and follows the redirects of the answer, a Location header or the refresh tag that a streamed page
+// carries in place of a status, one request at a time. Returns the X-Robots-Tag of every document on the way, the last
+// one included.
 export async function followDocuments(page: Page, path: string): Promise<{ url: string; robots: string | undefined }[]> {
   const documents: { url: string; robots: string | undefined }[] = [];
-  const record = (response: Response) => {
-    if (response.request().resourceType() === "document") {
-      documents.push({ url: response.url(), robots: response.headers()["x-robots-tag"] });
-    }
-  };
-  page.on("response", record);
-  await page.goto(path, { waitUntil: "commit" });
-  await page.waitForLoadState("load");
-  for (let hops = 0; hops < 3 && (await page.locator('meta[http-equiv="refresh"]').count()) > 0; hops++) {
-    const from = page.url();
-    await page.waitForURL((url) => url.href !== from);
-    await page.waitForLoadState("load");
+  let url = new URL(path, SITE).toString();
+  for (let hop = 0; hop < 5; hop++) {
+    const response = await page.request.get(url, { maxRedirects: 0 });
+    documents.push({ url, robots: response.headers()["x-robots-tag"] });
+    const refresh = /<meta[^>]*http-equiv="refresh"[^>]*content="\d+;url=([^"]+)"/.exec(await response.text())?.[1];
+    const next = response.headers().location ?? refresh?.replaceAll("&amp;", "&");
+    if (!next) return documents;
+    url = new URL(next, url).toString();
   }
-  page.off("response", record);
-  return documents;
+  throw new Error(`${path} redirects more than five times`);
 }
