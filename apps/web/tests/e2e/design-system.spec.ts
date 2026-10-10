@@ -75,23 +75,27 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     const sizeOf = (name: string) => page.getByRole("heading", { level: 1, name }).evaluate((heading) => getComputedStyle(heading).fontSize);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/en");
-    expect(await sizeOf("The Global Workforce Network")).toBe("48px");
+    expect(await sizeOf("The Global Workforce Network")).toBe("64px");
     await page.goto("/en/jobs");
     expect(await sizeOf("Find jobs")).toBe("32px");
+    await page.goto("/en/pricing");
+    expect(await sizeOf("Pricing")).toBe("48px");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/en");
-    expect(await sizeOf("The Global Workforce Network")).toBe("36px");
+    expect(await sizeOf("The Global Workforce Network")).toBe("40px");
     await page.goto("/en/jobs");
     expect(await sizeOf("Find jobs")).toBe("26px");
   });
 
-  test("DS-01: the home links are link-buttons of the button height, and a click follows the link", async ({ page }) => {
+  test("DS-01: the search of the hero is the primary action, the home links are secondary link-buttons of the button height, and a click follows the link", async ({ page }) => {
     await page.goto("/en");
+    const search = page.getByRole("search", { name: "Search vacancies" }).getByRole("button", { name: "Search vacancies" });
     const browse = page.getByRole("link", { name: "Browse vacancies" });
     const create = page.getByRole("link", { name: "Create an account" });
     expect((await browse.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     expect((await create.boundingBox())?.height).toBeGreaterThanOrEqual(44);
-    expect(await backgroundOf(browse)).toBe(await tokenColour(page, "--primary"));
+    expect(await backgroundOf(search)).toBe(await tokenColour(page, "--primary"));
+    expect(await backgroundOf(browse)).toBe(await tokenColour(page, "--card"));
     expect(await backgroundOf(create)).toBe(await tokenColour(page, "--card"));
     await browse.click();
     await expect(page).toHaveURL("/en/jobs");
