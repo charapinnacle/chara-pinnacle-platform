@@ -43,7 +43,6 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ["inverse-foreground", "inverse"],
     ["inverse-muted", "inverse"],
     ["brand", "inverse"],
-    ["brand-light", "inverse"],
     ...STATUSES.flatMap((status) =>
       ["background", "card", "muted", `${status}-background`].map((surface) => [`${status}-foreground`, surface]),
     ),
@@ -64,6 +63,7 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ["input", "background"],
     ["input", "card"],
     ["input", "muted"],
+    ["brand", "inverse"],
   ])("component boundary %s against %s is at least 3:1", (foreground, background) => {
     expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(3);
   });
@@ -125,5 +125,10 @@ describe("visible focus (NFR-U1)", () => {
     expect(rule?.[1]).toMatch(/button/);
     expect(rule?.[2]).toMatch(/outline:\s*var\(--focus-ring\)/);
     expect(declared("light", "focus-ring")).toBe("2px solid var(--ring)");
+  });
+
+  it("draws it in gold on the near-black surfaces, where the bronze ring is under 3:1", () => {
+    expect(contrast("light", "ring", "inverse")).toBeLessThan(3);
+    expect(css).toMatch(/:where\(\.bg-inverse\)\s*\{\s*--ring: var\(--brand\);\s*--focus-ring: 2px solid var\(--ring\);\s*\}/);
   });
 });

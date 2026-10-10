@@ -6,11 +6,11 @@ NFR-U1 and NFR-U2, audit findings DS-01 to DS-03, CODE-01, CODE-02, CODE-05 and 
 
 CHARA sells into a design-sensitive European market. The product is calm, confident and typographic, in the Swiss and Nordic tradition (Linear, Stripe, Vercel, Personio, N26): it must never look like a template website.
 
-- **Brand.** The owner's gold CP monogram on black (`docs/phase-1/client/brand/`, not in git; web copies in `apps/web/public/brand/` as WebP, the favicon `app/icon.png`, `app/apple-icon.png` and `app/opengraph-image.png`, all cropped from it, never redrawn). The monogram sits only on black: its own tile in the headers and the sidebar, the dark footer and the dark panel of the sign-in pages. Next to it the wordmark CHARA in the UI typeface with wide tracking, and Pinnacle in small capitals in gold where there is room (sidebar, footer, sign-in panel).
+- **Brand.** The owner's gold CP monogram on black (`docs/phase-1/client/brand/`, not in git; web copies in `apps/web/public/brand/` as PNG and WebP at 128 and 512 px, the favicon `app/icon.png`, `app/apple-icon.png` and `app/opengraph-image.png`, all cropped from it, never redrawn). The monogram sits only on black: its own tile in the headers and the sidebar, the dark footer and the dark panel of the sign-in pages. Next to it the wordmark CHARA in the UI typeface with wide tracking, and Pinnacle in small capitals in gold where there is room (sidebar, footer, sign-in panel).
 - **Palette.** Near-black ink for text and the primary button, warm off-white for the page, white cards, hairline borders. Gold is the single accent and appears sparingly: the gold mark of the current sidebar item, the progress bars, the icon tiles, the underline of text links. Gold is never text on a light surface: `brand-ink`, a deep bronze, is (6.57:1). Status colours are semantic only (green, amber, red, blue, grey) and every status is also said in words.
 - **Type.** Geist (variable, `latin` and `latin-ext` for European names), loaded with `next/font` from our own origin. Headings are large, tight and semibold; secondary text is quiet (`muted-foreground`); figures use tabular numbers (`tabular-nums`).
 - **Space and surfaces.** An 8 px grid: 16 px gutters on a phone, 24 px on a tablet, 40 px on a desktop; 24 px between the blocks of a section and 32 px between sections (`gap-page`, `gap-section`). Cards have a 10 to 14 px radius, a hairline border and one very soft shadow; no heavy boxes.
-- **Motion.** Purposeful and short: 150 ms for colour, 200 ms for movement, 240 ms for entrances, all `ease-brand` (an ease-out). Cards rise 6 px as they appear, menus fade and scale from 95 %, skeletons shimmer, progress bars fill. Every animation stops under `prefers-reduced-motion` (the base layer sets durations and delays to zero).
+- **Motion.** Purposeful and short: 150 ms for colour, 200 ms for movement, 240 ms for entrances, all `ease-brand` (an ease-out). Cards rise 6 px as they appear, the figure cards, panels and list rows of a dashboard one after the other (`animate-stagger`, 50 ms apart), menus fade and scale from 95 %, skeletons shimmer, progress bars fill. Every animation stops under `prefers-reduced-motion` (the base layer sets durations and delays to zero).
 - **Copy and conduct.** Short, precise, friendly; GDPR-aware and honest (no dark patterns, no claim the data does not support). Dates are written in full (`formatDate`), short European dates (`formatShortDate`, 3 Oct 2026) in lists, relative times ("2 hours ago", `formatRelative`) beside the exact date in a `time` element. Money is `EUR 39.00` with the VAT note.
 - **Accessibility.** WCAG 2.2 AA: every pair below is tested, focus is a 2 px bronze outline outside the cascade layers, targets are at least 40 px (44 px for touch controls), charts are tables with bars added for the eye only.
 
@@ -45,14 +45,14 @@ Arbitrary sizes such as `text-[1.75rem]` are not used. Every size in the interfa
 | `rounded-lg`, `rounded-xl`, `rounded-2xl` | `--radius` times 1, 1.4, 1.8 (0.625 rem base) | Controls and buttons, cards, auth card and dialogs |
 | `shadow-card` | one soft warm shadow | The single elevation: raised cards, the auth card, dialogs and toasts. There is no second shadow (a hovered figure card lifts by 2 px and uses the `md` shadow of Tailwind) |
 | `max-w-content`, `--spacing-sidebar` | 75 rem, 16 rem | The width of the page column of the signed-in area, and of its sidebar |
-| `ease-brand`, `animate-rise`, `animate-shimmer` | `cubic-bezier(0.22, 1, 0.36, 1)`; 240 ms rise of 6 px; 1.6 s band | Motion: transitions use `duration-150` (colour) or `duration-200` (movement) with `ease-brand`; `animate-rise` for an entrance; `animate-shimmer` (on a `before:` layer, see `shimmerClassName`) for skeletons; menus use `animate-in fade-in zoom-in-95` of tw-animate-css |
+| `ease-brand`, `animate-rise`, `animate-shimmer` | `cubic-bezier(0.22, 1, 0.36, 1)`; 240 ms rise of 6 px; 1.6 s band | Motion: transitions use `duration-150` (colour) or `duration-200` (movement) with `ease-brand`; `animate-rise` for an entrance, `animate-stagger` on a grid or list for its items in turn; `animate-shimmer` (on a `before:` layer, see `shimmerClassName`) for skeletons; menus use `animate-in fade-in zoom-in-95` of tw-animate-css |
 | `--focus-ring`, `--focus-ring-offset` | `2px solid var(--ring)`, 2 px | The visible focus of every link, button, field and summary. It is drawn outside the cascade layers on purpose (see `tokens.test.ts`) |
 
 ### Colours
 
 Core tokens: `background` (warm off-white), `foreground` (near-black ink), `card`, `primary` (ink, with `-hover`, `-active`, `-foreground`), `secondary`, `muted`, `muted-foreground`, `accent` (a warm gold tint for hover and selection, with `accent-foreground`), `destructive` (with `-hover`, `-active`, `-foreground`, `-surface`), `border`, `input`, `ring` (= `brand-ink`).
 
-Brand tokens: `brand` (solid gold, C9973D, for marks, bars and icons, never text on light), `brand-light` (F3D27A, the light end of the gold for brand moments on black), `brand-ink` (bronze, text and icons in gold on a light surface), `inverse`, `inverse-foreground`, `inverse-muted` (the black surfaces: footer, sign-in panel).
+Brand tokens: `brand` (solid gold, C9973D, for marks, bars and icons, never text on light), `brand-ink` (bronze, text and icons in gold on a light surface), `inverse`, `inverse-foreground`, `inverse-muted` (the black surfaces: footer, sign-in panel).
 
 Status tokens, five statuses with three tokens each: `success`, `warning`, `danger`, `info`, `neutral`, as `--<status>-foreground` (text and icon), `--<status>-background` and `--<status>-border`. Tailwind utilities: `text-success-foreground`, `bg-success-background`, `border-success-border`, and so on. `danger` is the `destructive` pair, `info` a quiet blue of its own (it no longer borrows the accent, which is gold now) and `neutral` the `secondary` text on a grey surface.
 
@@ -69,7 +69,7 @@ Contrast, computed by the WCAG formula from the tokens (`tests/unit/support/toke
 | brand-ink on background / card / accent | 6.57 / 6.92 / 6.07 | 10.47 / 9.83 / 8.03 |
 | accent-foreground on accent | 9.62 | 10.50 |
 | inverse-foreground / inverse-muted on inverse | 18.04 / 8.53 | 18.75 / 8.87 |
-| brand / brand-light on inverse | 7.48 / 13.38 | 7.78 / 13.92 |
+| brand on inverse | 7.48 | 7.78 |
 | success-foreground on success-background / card / background | 8.12 / 8.77 / 8.32 | 9.83 / 12.31 / 13.12 |
 | warning-foreground on warning-background / card / background | 7.87 / 8.67 / 8.23 | 10.17 / 12.80 / 13.63 |
 | danger-foreground on danger-background / card / background | 6.15 / 6.66 / 6.33 | 6.41 / 7.46 / 7.95 |
@@ -77,6 +77,7 @@ Contrast, computed by the WCAG formula from the tokens (`tests/unit/support/toke
 | neutral-foreground on neutral-background / card / background | 13.22 / 15.07 / 14.31 | 12.26 / 14.57 / 15.53 |
 | input on card / background (3:1) | 3.64 / 3.46 | 5.07 / 5.40 |
 | ring on card / background (3:1) | 6.92 / 6.57 | 9.15 / 9.75 |
+| ring on inverse (3:1; on a `bg-inverse` surface the ring is `brand`) | 7.48 | 7.78 |
 
 The gold itself (`brand`) on white is 2.6:1, so it is used only for marks, bars and decoration that a word next to it explains, and for text only on black.
 
@@ -120,7 +121,7 @@ Form feedback, in one place: field errors under the field and in the summary (wh
 
 ## 4. Layout grid
 
-The signed-in pages sit in a 12-column grid inside `max-w-content`: figure cards in a row of three from 1024 px (two from 640 px, one on a phone), then a main column of 7 or 8 and a side column of 5 or 4 for panels, lists and quick actions. Below 1024 px everything is one column in reading order, so the order of the markup is the order on a phone and for the keyboard.
+The signed-in pages sit in a 12-column grid inside `max-w-content`: figure cards in a row of three from 1280 px (two from 640 px, one on a phone; at 1024 px the sidebar leaves too little width for three), then a main column of 7 or 8 and a side column of 5 or 4 for panels, lists and quick actions. Below 1024 px everything is one column in reading order, so the order of the markup is the order on a phone and for the keyboard.
 
 ## 5. Verification
 

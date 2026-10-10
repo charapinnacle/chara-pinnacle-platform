@@ -44,7 +44,7 @@ export function CompletenessCard({ lang, completeness }: CompletenessCardProps) 
             {item.done ? (
               <CircleCheck aria-hidden className="size-5 shrink-0 text-brand-ink" strokeWidth={1.75} />
             ) : (
-              <Circle aria-hidden className="size-5 shrink-0 text-border" strokeWidth={1.75} />
+              <Circle aria-hidden className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             )}
             <span className={item.done ? undefined : "text-muted-foreground"}>
               {item.label}

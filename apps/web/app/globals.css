@@ -39,7 +39,6 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-brand: var(--brand);
-  --color-brand-light: var(--brand-light);
   --color-brand-ink: var(--brand-ink);
   --color-inverse: var(--inverse);
   --color-inverse-foreground: var(--inverse-foreground);
@@ -139,6 +138,23 @@
   }
 }
 
+/* The entrance of the items of a grid or a list: each rises in turn, 50 ms after the one before it (from the fourth on
+   together). A part that streams in later rises when it arrives. */
+@utility animate-stagger {
+  & > * {
+    animation: var(--animate-rise);
+  }
+  & > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+  & > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+  & > :nth-child(n + 4) {
+    animation-delay: 150ms;
+  }
+}
+
 /* The CHARA Pinnacle palette, derived from the gold-on-black monogram: near-black ink, warm off-white surfaces and gold as
    the single accent. Gold is never text on a light surface: --brand-ink, a deep bronze, is. Status colours are semantic
    only. Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. */
@@ -157,7 +173,6 @@
   --accent: oklch(0.955 0.016 85);
   --accent-foreground: oklch(0.36 0.06 75);
   --brand: oklch(0.708 0.121 79);
-  --brand-light: oklch(0.873 0.114 89);
   --brand-ink: oklch(0.47 0.087 77);
   --inverse: oklch(0.15 0.003 85);
   --inverse-foreground: oklch(0.97 0.004 85);
@@ -256,6 +271,13 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* On the near-black surfaces (the footer, the sign-in panel) the bronze ring is under 3:1 and the gold one is not.
+   --focus-ring is declared again so that it takes this --ring, not the one it resolved to on :root. */
+:where(.bg-inverse) {
+  --ring: var(--brand);
+  --focus-ring: 2px solid var(--ring);
 }
 
 /* Unlayered on purpose: the shadcn primitives set outline-none in the utilities layer, which

@@ -19,7 +19,7 @@ export function RecentApplications({ lang, applications, now }: RecentApplicatio
         </h2>
         <p className="text-small text-muted-foreground">The three with the latest change</p>
       </div>
-      <ul className="-mx-2 grid">
+      <ul className="animate-stagger -mx-2 grid">
         {applications.map((application) => (
           <li key={application.id} className="border-t first:border-t-0">
             <Link
