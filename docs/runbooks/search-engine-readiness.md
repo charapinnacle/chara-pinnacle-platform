@@ -1,6 +1,6 @@
 # Runbook: search engine readiness
 
-FR-H5, design point D75 (OPEN_QUESTIONS.md). The SOP is "Search Engine Readiness E2E SOP" (owner Marketing / Platform, reviewed quarterly). It names one KPI, the share of open vacancies that are indexed, one risk, indexing of private pages, and two controls, the robots rules and the tests.
+FR-H5, design point D77 (OPEN_QUESTIONS.md). The SOP is "Search Engine Readiness E2E SOP" (owner Marketing / Platform, reviewed quarterly). It names one KPI, the share of open vacancies that are indexed, one risk, indexing of private pages, and two controls, the robots rules and the tests.
 
 ## 1. What the application produces
 

@@ -103,10 +103,7 @@ export const rangeSchema = z
     else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days` });
   });
 
-// expectedVersion is the current version the form showed (0 for a new name): a form submitted twice finds the first
-// publication and is refused.
 export const legalDocumentSchema = z.object({
-  expectedVersion: z.number().int().min(0),
   slug: z
     .string()
     .trim()
@@ -116,6 +113,7 @@ export const legalDocumentSchema = z.object({
   title: z.string().trim().min(3, "Enter a title of 3 to 200 characters").max(200, "Enter a title of 3 to 200 characters"),
   body: z.string().refine((value) => value.trim() !== "", "Enter the text of the document").refine((value) => value.length <= 200_000, "The text can have at most 200,000 characters"),
   changeSummary: z.string().trim().min(10, "Describe the change in 10 to 1000 characters").max(1000, "Describe the change in 10 to 1000 characters"),
+  isDraft: z.boolean(),
 });
 
 export type LegalDocumentForm = z.input<typeof legalDocumentSchema>;

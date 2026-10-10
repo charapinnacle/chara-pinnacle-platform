@@ -1,6 +1,7 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import { cache } from "react";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   AGE_ATTESTATION_SLUG,
@@ -97,23 +98,55 @@ export const getPendingReconsents = cache(
   },
 );
 
-// Cached because the page and its metadata both read it in one request.
+const currentVersion = z.object({
+  title: z.string(),
+  version: z.number(),
+  body: z.string(),
+  change_summary: z.string(),
+  published_at: z.string(),
+  is_draft: z.boolean(),
+});
+
+const CHANGE_LOG_LIMIT = 100;
+
+type ChangeLogEntry = { version: number; publishedAt: string; changeSummary: string; isDraft: boolean };
+
+// The current version is the highest published one (v_legal_current); the change log lists the published versions,
+// newest first, the latest CHANGE_LOG_LIMIT of them (one more is read to know that older ones exist; the export holds
+// them all). Cached because the page and its metadata both read it in one request.
 export const getLegalDocument = cache(async (slug: string) => {
   if (!SLUG_PATTERN.test(slug)) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("legal_documents")
-    .select("title, version, body, published_at")
-    .eq("slug", slug)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error("The legal document could not be loaded", { cause: error });
-  if (!data?.published_at) return null;
+  const [current, log] = await Promise.all([
+    supabase
+      .from("v_legal_current")
+      .select("title, version, body, change_summary, published_at, is_draft")
+      .eq("slug", slug)
+      .maybeSingle(),
+    supabase
+      .from("legal_documents")
+      .select("version, published_at, change_summary, is_draft")
+      .eq("slug", slug)
+      .order("version", { ascending: false })
+      .limit(CHANGE_LOG_LIMIT + 1),
+  ]);
+  if (current.error) throw new Error("The legal document could not be loaded", { cause: current.error });
+  if (log.error) throw new Error("The change log could not be loaded", { cause: log.error });
+  if (!current.data) return null;
+  const document = currentVersion.parse(current.data);
+  const changeLog = log.data.slice(0, CHANGE_LOG_LIMIT).flatMap((row): ChangeLogEntry[] =>
+    row.published_at
+      ? [{ version: row.version, publishedAt: row.published_at, changeSummary: row.change_summary, isDraft: row.is_draft }]
+      : [],
+  );
   return {
-    title: data.title,
-    version: data.version,
-    body: data.body,
-    publishedAt: data.published_at,
+    title: document.title,
+    version: document.version,
+    body: document.body,
+    changeSummary: document.change_summary,
+    publishedAt: document.published_at,
+    isDraft: document.is_draft,
+    changeLog,
+    changeLogTruncated: log.data.length > CHANGE_LOG_LIMIT,
   };
 });

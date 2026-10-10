@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       // The sitemap is read from the database at every request that reaches the server; the CDN in front of the web host
-      // answers a crawler that polls it, so a new vacancy is listed within s-maxage seconds (D75).
+      // answers a crawler that polls it, so a new vacancy is listed within s-maxage seconds (D77).
       { source: "/sitemap.xml", headers: [{ key: "Cache-Control", value: SITEMAP_CACHE_CONTROL }] },
     ];
   },

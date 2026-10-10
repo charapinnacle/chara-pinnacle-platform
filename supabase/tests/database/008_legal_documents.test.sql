@@ -4,8 +4,8 @@ select plan(21);
 select has_table('public', 'legal_documents', 'legal_documents exists');
 select columns_are(
   'public', 'legal_documents',
-  array['slug', 'version', 'title', 'body', 'change_summary', 'published_at'],
-  'legal_documents has the SDD columns'
+  array['slug', 'version', 'title', 'body', 'change_summary', 'published_at', 'is_draft'],
+  'legal_documents has the SDD columns and the draft mark'
 );
 select ok(
   (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.legal_documents'::regclass),
@@ -21,7 +21,7 @@ select set_eq(
   'version 0 exists for every Phase 1 legal document and the age attestation'
 );
 select is_empty(
-  $$select 1 from public.legal_documents where version = 0 and (title not like 'DRAFT%' or published_at is null)$$,
+  $$select 1 from public.legal_documents where version = 0 and (title not like 'DRAFT%' or published_at is null or not is_draft)$$,
   'every seeded placeholder is published and marked DRAFT'
 );
 

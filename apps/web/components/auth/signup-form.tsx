@@ -12,7 +12,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { LegalLink } from "@/components/forms/text-link";
 import { signUp } from "@/lib/actions/auth";
-import { formatDate } from "@/lib/i18n/format";
+import { formatLegalDate } from "@/lib/i18n/format";
 import { AGE_ATTESTATION_SLUG, type LegalDocumentSummary } from "@/lib/validation/consents";
 import {
   signUpFormSchema,
@@ -168,7 +168,7 @@ export function SignupForm({ documents, attestationWording, invitation }: SignUp
                     {document.title}
                   </LegalLink>
                   <span className="block text-sm text-muted-foreground">
-                    (version {document.version}, published {formatDate(document.publishedAt)})
+                    (version {document.version}, published {formatLegalDate(document.publishedAt)})
                   </span>
                 </span>
               )}

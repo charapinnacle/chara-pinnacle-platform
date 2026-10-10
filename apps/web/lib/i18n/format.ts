@@ -7,6 +7,16 @@ export function formatDate(iso: string): string {
   return dateFormat.format(new Date(iso));
 }
 
+const legalDateFormat = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "long",
+  timeZone: "UTC",
+});
+
+// The UTC date of a legal document version, as 1 October 2026.
+export function formatLegalDate(iso: string): string {
+  return legalDateFormat.format(new Date(iso));
+}
+
 const dateTimeFormat = new Intl.DateTimeFormat("en", {
   dateStyle: "long",
   timeStyle: "short",
