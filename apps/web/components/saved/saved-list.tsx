@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { useActionCall } from "@/components/feedback/use-action-call";
-import { Card } from "@/components/layout/card";
+import { Card, CardFooter } from "@/components/layout/card";
 import { setSavedJob } from "@/lib/actions/saved-jobs";
 import type { ApplicationState } from "@/lib/dal/applications";
 import type { SavedJob } from "@/lib/dal/saved-jobs";
@@ -60,7 +60,7 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
       <p className="text-small text-muted-foreground">
         Saved <time dateTime={job.savedAt}>{formatDate(job.savedAt)}</time>
       </p>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <CardFooter>
         {applied ? (
           <TextLink standalone href={applicationPath(lang, applied.id)}>
             View your application<span className="sr-only"> for {title}</span>
@@ -73,7 +73,7 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={unsave}>
           Unsave<span className="sr-only"> vacancy: {title ?? "no longer available"}</span>
         </FormButton>
-      </div>
+      </CardFooter>
     </Card>
   );
 }

@@ -1,6 +1,6 @@
 import { TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
-import { Card } from "@/components/layout/card";
+import { Card, CardFooter, CardHeader } from "@/components/layout/card";
 import { daysText, shortPriceLine, type SoldPlan } from "@/lib/billing/presentation";
 
 type PlanChoicesProps = { plans: SoldPlan[]; checkoutHref: (planCode: string) => string; offerTrial: boolean };
@@ -21,18 +21,22 @@ export function PlanChoices({ plans, checkoutHref, offerTrial }: PlanChoicesProp
           const label = trial ? `Start ${plan.trialDays}-day free trial` : "Subscribe";
           return (
             <Card as="li" key={plan.code} className="gap-1">
-              <h3 className="font-medium">{plan.name}</h3>
-              <p className="text-small text-muted-foreground">{shortPriceLine(plan)}</p>
-              <p className="text-small text-muted-foreground">
-                {trial ? `${daysText(plan.trialDays)} free trial` : "No free trial"}
-              </p>
-              <TextLink
-                standalone
-                href={checkoutHref(plan.code)}
-                aria-label={trial ? `${label} of ${plan.name}` : `${label} to ${plan.name}`}
-              >
-                {label}
-              </TextLink>
+              <CardHeader>
+                <h3 className="font-medium">{plan.name}</h3>
+                <p className="text-small text-muted-foreground">{shortPriceLine(plan)}</p>
+                <p className="text-small text-muted-foreground">
+                  {trial ? `${daysText(plan.trialDays)} free trial` : "No free trial"}
+                </p>
+              </CardHeader>
+              <CardFooter>
+                <TextLink
+                  standalone
+                  href={checkoutHref(plan.code)}
+                  aria-label={trial ? `${label} of ${plan.name}` : `${label} to ${plan.name}`}
+                >
+                  {label}
+                </TextLink>
+              </CardFooter>
             </Card>
           );
         })}
