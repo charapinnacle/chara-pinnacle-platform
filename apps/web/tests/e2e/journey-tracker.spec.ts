@@ -30,6 +30,7 @@ const STAGES = [
 
 const rows = (page: Page) => page.locator("main ul > li");
 const stageFilter = (page: Page) => page.getByLabel("Filter by stage");
+const applyFilter = (page: Page) => page.getByRole("button", { name: "Apply filter" }).click();
 
 async function hasFocusRing(page: Page): Promise<boolean> {
   return page.evaluate(() => {
@@ -102,7 +103,7 @@ test.describe("the candidate's journey tracker", () => {
     expect(html).not.toContain(company.owner.id);
   });
 
-  test("FR-D3 AC2: the stage filter writes the address, survives a reload, offers every stage and works with the keyboard", async ({ page }) => {
+  test("FR-D3 AC2: the stage filter writes the address when Apply is pressed, survives a reload, offers every stage and works with the keyboard", async ({ page }) => {
     const { candidate } = await applicantWithEveryStage();
     await logIn(page, candidate, APPLICATIONS_URL);
     await expect(rows(page)).toHaveCount(8);
@@ -110,6 +111,8 @@ test.describe("the candidate's journey tracker", () => {
     await expect(stageFilter(page).locator("option")).toHaveText(["All stages", ...STAGES.map(([, label]) => label)]);
 
     await stageFilter(page).selectOption({ label: "Interview" });
+    await expect(page).toHaveURL(APPLICATIONS_URL);
+    await applyFilter(page);
     await expect(page).toHaveURL(`${APPLICATIONS_URL}?stage=interview`);
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText("Stage Interview welder");
@@ -119,7 +122,8 @@ test.describe("the candidate's journey tracker", () => {
     await expect(stageFilter(page)).toHaveValue("interview");
 
     await stageFilter(page).selectOption({ label: "All stages" });
-    await expect(page).toHaveURL(APPLICATIONS_URL);
+    await applyFilter(page);
+    await expect(page).toHaveURL(`${APPLICATIONS_URL}?stage=`);
     await expect(rows(page)).toHaveCount(8);
 
     await page.goto(`${APPLICATIONS_URL}?stage=foo`);
@@ -130,6 +134,9 @@ test.describe("the candidate's journey tracker", () => {
     await waitForHydration(stageFilter(page));
     await stageFilter(page).focus();
     await page.keyboard.type("Hired");
+    await expect(page).toHaveURL(APPLICATIONS_URL);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
     await expect(page).toHaveURL(`${APPLICATIONS_URL}?stage=hired`);
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText("Hired");

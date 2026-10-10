@@ -68,6 +68,7 @@ test.describe("shortlisting an applicant", () => {
 
     await page.goto(applicantsUrl(company.slug, `?job=${jobId}`));
     await page.getByLabel("Filter by stage").selectOption({ label: "Shortlisted" });
+    await page.getByRole("button", { name: "Apply filter" }).click();
     await expect(page).toHaveURL(/stage=shortlisted/);
     await expect(listRows(page)).toHaveCount(2);
     await expect(listRows(page).filter({ hasText: "Ana Silva" })).toContainText("Shortlisted");
@@ -98,6 +99,7 @@ test.describe("shortlisting an applicant", () => {
 
     await logIn(page, member, applicantsUrl(company.slug, `?job=${jobId}`));
     await page.getByLabel("Filter by stage").selectOption({ label: "Shortlisted" });
+    await page.getByRole("button", { name: "Apply filter" }).click();
     await expect(page).toHaveURL(/stage=shortlisted/);
     await expect(listRows(page)).toHaveCount(1);
     await expect(listRows(page).filter({ hasText: "Ben Okoro" })).toContainText("Shortlisted");
