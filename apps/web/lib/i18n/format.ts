@@ -43,3 +43,24 @@ const shortDateFormat = new Intl.DateTimeFormat("en-GB", {
 export function formatShortDate(iso: string): string {
   return shortDateFormat.format(new Date(iso));
 }
+
+const relativeFormat = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
+
+const relativeUnits: readonly [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 86_400],
+  ["month", 30 * 86_400],
+  ["week", 7 * 86_400],
+  ["day", 86_400],
+  ["hour", 3_600],
+  ["minute", 60],
+];
+
+// How long ago (or ahead) a moment is, in the largest whole unit, as "2 days ago", "yesterday" or "just now"; the page
+// shows the exact date next to it in a time element.
+export function formatRelative(iso: string, now: Date): string {
+  const seconds = (new Date(iso).getTime() - now.getTime()) / 1000;
+  for (const [unit, size] of relativeUnits) {
+    if (Math.abs(seconds) >= size) return relativeFormat.format(Math.round(seconds / size), unit);
+  }
+  return "just now";
+}

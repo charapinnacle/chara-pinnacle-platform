@@ -34,20 +34,21 @@ test.describe("employer registration: after the organization exists", () => {
     await signInAsEmployer(page, user);
     expect((await sessionClaims(page.context())).aal).toBe("aal1");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByText("Steps Bau", { exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByText("Steps Bau", { exact: true })).toBeVisible();
     const steps = page.getByRole("main").getByRole("listitem");
     await expect(steps).toHaveText([
+      "Create your organisation (done)",
       "Set up two-step verification",
-      "Start the free trial",
-      "Post the first vacancy",
+      "Publish your first vacancy",
       "Invite a team member",
+      "Choose a plan",
     ]);
     await expect(page.getByRole("link", { name: "Set up two-step verification" })).toHaveAttribute("href", "/en/mfa");
     await expectNoAxeViolations(page);
 
     await enrollTotp(user);
     await signInAsEmployer(page, user);
-    await expect(steps.first()).toHaveText("Set up two-step verification (done)");
+    await expect(steps.nth(1)).toHaveText("Set up two-step verification (done)");
     await expect(page.getByRole("link", { name: "Set up two-step verification" })).toHaveCount(0);
   });
 

@@ -2,6 +2,8 @@
 
 FR-F1, design point D66 (OPEN_QUESTIONS.md), ARCHITECTURE.md sections 3 and 11. The console is `/[lang]/admin`; the staff roles and the account-ops function it relies on are in `platform-staff.md`.
 
+The landing page (U59, UX-10) shows each role the counts it may see, each linking to its page, each with its own skeleton and error: the Platform Administrator the active staff roles (`admin_staff_count`), the applications of the last 30 days by stage (`admin_application_counts`, UTC days, today included) and the legal documents with their draft marks (`admin_list_legal_documents`); the Trust & Safety Administrator the suspended accounts and organisations and the hidden vacancies (`admin_moderation_counts`, partial indexes `profiles_suspended_idx`, `organizations_suspended_idx`, `jobs_moderation_hidden_idx`); a Verification Reviewer is told that no function is available. Both new functions check the role and aal2 with `private.assert_staff` and are on the read-only allowlist of the audit guard (pgTAP 085).
+
 ## 1. Who sees what
 
 | Role | Functions |

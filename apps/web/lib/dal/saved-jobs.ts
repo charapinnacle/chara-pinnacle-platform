@@ -38,3 +38,11 @@ export async function getSavedJobIds(ids: string[]): Promise<Set<string>> {
   if (error) throw new Error("The saved vacancies could not be loaded", { cause: error });
   return new Set(data.map((row) => row.job_id));
 }
+
+// The number of vacancies the candidate saved; row level security counts only the caller's own rows.
+export async function countSavedJobs(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase.from("saved_jobs").select("job_id", { count: "exact", head: true });
+  if (error || count === null) throw new Error("The saved vacancies could not be counted", { cause: error });
+  return count;
+}

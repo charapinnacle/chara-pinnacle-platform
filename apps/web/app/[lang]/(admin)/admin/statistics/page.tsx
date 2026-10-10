@@ -10,16 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { cn } from "@/lib/utils";
-import { rangeSchema } from "@/lib/validation/admin";
+import { lastThirtyDays, rangeSchema } from "@/lib/validation/admin";
 
 export const metadata: Metadata = { title: "Statistics — CHARA", robots: { index: false } };
-
-// The default range is the last 30 days, today included.
-function lastThirtyDays(): { from: string; to: string } {
-  const start = new Date();
-  start.setUTCDate(start.getUTCDate() - 29);
-  return { from: start.toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) };
-}
 
 function value(raw: string | string[] | undefined, fallback: string): string {
   return typeof raw === "string" ? raw : fallback;

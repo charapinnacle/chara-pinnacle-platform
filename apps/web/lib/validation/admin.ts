@@ -95,6 +95,13 @@ export type AuditFilter = z.output<typeof auditFilterSchema>;
 
 const MAX_RANGE_DAYS = 366;
 
+// The default range of the statistics: the last 30 days, today included, as UTC days.
+export function lastThirtyDays(now = new Date()): { from: string; to: string } {
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return { from: start.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
+}
+
 export const rangeSchema = z
   .object({ from: z.string().refine(isDay, "Enter a date as year-month-day"), to: z.string().refine(isDay, "Enter a date as year-month-day") })
   .superRefine((value, ctx) => {
