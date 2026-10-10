@@ -18,8 +18,6 @@ type ResultCardProps = { job: JobSearchResult; lang: string; countryName: string
 
 const tagClassName = "inline-flex min-h-7 items-center gap-1.5 rounded-full border bg-background px-2.5 text-small text-secondary-foreground";
 
-// The facts a visitor scans for first: the title and the employer, then location, terms and support as tags, and the
-// salary set apart. The whole card lifts on hover; the title is the link.
 function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardProps) {
   const salary = formatSalary(job);
   return (

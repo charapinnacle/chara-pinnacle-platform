@@ -1,7 +1,5 @@
 import type { Step } from "@/lib/public/steps";
 
-// Numbered steps: the number is the list marker, drawn on the gold of the brand, and the items rise in turn. The title is
-// one level under the heading of the list (h4 where the list sits under an h3).
 export function StepList({ steps, titleAs: Title = "h3" }: { steps: readonly Step[]; titleAs?: "h3" | "h4" }) {
   return (
     <ol className="grid animate-stagger gap-6">

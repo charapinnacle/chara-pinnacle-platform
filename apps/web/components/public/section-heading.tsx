@@ -6,15 +6,12 @@ type SectionHeadingProps = {
   title: string;
   description?: React.ReactNode;
   tone?: "default" | "inverse";
-  className?: string;
 };
 
-// The heading of a section of a marketing page: a small upper-case label, the h2 (its id names the section) and a quiet
-// line under it.
-export function SectionHeading({ id, eyebrow, title, description, tone = "default", className }: SectionHeadingProps) {
+export function SectionHeading({ id, eyebrow, title, description, tone = "default" }: SectionHeadingProps) {
   const inverse = tone === "inverse";
   return (
-    <div className={cn("grid max-w-2xl gap-3", className)}>
+    <div className="grid max-w-2xl gap-3">
       {eyebrow ? (
         <p className={cn("text-eyebrow uppercase", inverse ? "text-brand" : "text-brand-ink")}>{eyebrow}</p>
       ) : null}

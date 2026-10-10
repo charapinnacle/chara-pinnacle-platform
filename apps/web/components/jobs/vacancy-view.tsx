@@ -20,9 +20,7 @@ function yesNo(value: boolean): string {
 }
 
 // The public layout of a vacancy, shared by the public page and the employer's preview. The employer card, the date
-// of publication and the actions come from the pages that own them: a draft has no date, and the actions differ. With
-// actions, the salary and the actions form a panel that follows the reader from 1024 px and comes right after the title on
-// a phone.
+// of publication and the actions come from the pages that own them: a draft has no date, and the actions differ.
 export function VacancyView({ job, employer = null, publishedAt, actions }: VacancyViewProps) {
   const salary = formatSalary(job);
   const details: (readonly [string, React.ReactNode])[] = [

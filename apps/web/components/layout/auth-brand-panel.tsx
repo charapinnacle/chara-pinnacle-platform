@@ -7,8 +7,7 @@ const points = [
   { icon: LockKeyhole, text: "Your documents stay private until you choose to share them." },
 ] as const;
 
-// The dark half of the sign-in pages from 1024 px: the monogram on its own black, and what CHARA is, in three lines. It
-// stays in view beside a long form, under a gold rule that stops short of the corners.
+// The dark half of the sign-in pages from 1024 px: the monogram on its own black, and what CHARA is, in three lines.
 export function AuthBrandPanel() {
   return (
     <div className="relative hidden min-h-[34rem] flex-col justify-between rounded-2xl bg-inverse p-10 text-inverse-muted shadow-card lg:sticky lg:top-8 lg:flex">

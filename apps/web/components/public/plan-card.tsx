@@ -16,7 +16,6 @@ function Bullets({ items }: { items: readonly string[] }) {
   );
 }
 
-// One employer plan as its record describes it. The recommended plan has a gold edge and says so in words.
 export function PlanCard({ card, link, recommended }: { card: PricedPlan; link: Link | null; recommended: boolean }) {
   const [headline, ...terms] = card.trial;
   return (

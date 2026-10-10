@@ -8,7 +8,6 @@ type AuthCardProps = {
   icon?: LucideIcon;
   children?: React.ReactNode;
   footer?: React.ReactNode;
-  // Where the person is in a flow of several steps, shown above the title.
   progress?: React.ReactNode;
 };
 

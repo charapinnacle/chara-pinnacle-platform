@@ -20,7 +20,6 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/legal/[slu
 
 type Heading = { id: string; text: string };
 
-// A long text gets a list of its sections beside it from 1024 px (above it on a phone); a short one does not need it.
 const CONTENTS_FROM = 3;
 
 function Contents({ headings }: { headings: Heading[] }) {

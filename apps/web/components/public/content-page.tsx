@@ -1,8 +1,6 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 
-// The long-form pages about CHARA: a display title with its lead, then sections in an editorial grid (the heading in a
-// narrow column beside the text from 1024 px), each text kept to a readable measure.
 export function ContentPage({
   title,
   lead,

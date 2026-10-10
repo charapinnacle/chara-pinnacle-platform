@@ -5,7 +5,7 @@ type OnboardingStepsProps = { current: 1 | 2; kind: "worker" | "company" | null 
 const finalStep = { worker: "Passport", company: "Organisation" } as const;
 
 // The three steps of setting up an account: the account itself (done once the email is confirmed), the account type
-// with its documents, then the passport or the organisation. The bar of a step is gold once it is reached.
+// with its documents, then the passport or the organisation.
 export function OnboardingSteps({ current, kind }: OnboardingStepsProps) {
   const steps = ["Account", "Account type", kind ? finalStep[kind] : "Profile"];
   return (
