@@ -11,7 +11,7 @@ FR-H1. The SOP (Public Website Publication, quarterly review, owner Marketing / 
 | Find Jobs, Vacancy | `/en/jobs`, `/en/jobs/<id>` | the open and visible vacancies (FR-C3, FR-C4) |
 | Ten legal pages | `/en/legal/<slug>` | the published version in `public.legal_documents`; a page exists exactly when a published version of its lower-case slug exists; publishing, the draft banner and the change log are `legal-documents.md` (FR-H3) |
 
-The header links and the footer links are in `apps/web/lib/public/navigation.ts`. Every route renders per request (ADR-0004), so a change of a setting or of a legal text is on the page at the next request, without a release. The texts in the code are drafts until CHARA approves them (section 4); the Pricing page reads its plans from the database (FR-H2, `docs/runbooks/pricing.md`).
+The header links and the footer links are in `apps/web/lib/public/navigation.ts`. Since the owner decision of 2026-10-10 (OPEN_QUESTIONS.md P18) the header holds Find Jobs and How CHARA Works next to Log in and Sign up (or Go to my area and Log out), and the footer starts with the group CHARA (Pricing, How CHARA Works, Trust & Safety, About, Contact), followed by the Imprint and the ten legal pages; this replaces the header order of FR-H1 AC3. Every route renders per request (ADR-0004), so a change of a setting or of a legal text is on the page at the next request, without a release. The texts in the code are drafts until CHARA approves them (section 4); the Pricing page reads its plans from the database (FR-H2, `docs/runbooks/pricing.md`).
 
 ## 2. Settings: legal entity and contacts
 

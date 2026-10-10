@@ -1,16 +1,11 @@
-import Link from "next/link";
+import { BrandLink } from "@/components/layout/brand";
 import { PageContainer } from "@/components/layout/page-container";
 
 export function SiteHeader({ actions, homeHref = "/" }: { actions?: React.ReactNode; homeHref?: string }) {
   return (
-    <header className="border-b bg-card">
-      <PageContainer className="flex min-h-16 flex-wrap items-center justify-between gap-x-4">
-        <Link
-          href={homeHref}
-          className="-mx-2 inline-flex h-11 items-center rounded-lg px-2 text-h2 tracking-wider text-primary"
-        >
-          CHARA
-        </Link>
+    <header className="border-b bg-background">
+      <PageContainer className="flex min-h-16 flex-wrap items-center justify-between gap-x-6">
+        <BrandLink href={homeHref} />
         {actions}
       </PageContainer>
     </header>

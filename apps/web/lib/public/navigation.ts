@@ -1,6 +1,12 @@
-// The links of the header that are the same for everybody, and the two that only a visitor needs.
+// The links of the header that are the same for everybody, and the two that only a visitor needs. The owner keeps the
+// header to the two ways in (OPEN_QUESTIONS.md, owner decision 2026-10-10): the pages about CHARA are in the footer.
 export const siteLinks = [
   { path: "jobs", label: "Find Jobs" },
+  { path: "how-it-works", label: "How CHARA Works" },
+] as const;
+
+// The pages about CHARA itself, as the first group of the public footer.
+export const aboutLinks = [
   { path: "pricing", label: "Pricing" },
   { path: "how-it-works", label: "How CHARA Works" },
   { path: "trust-safety", label: "Trust & Safety" },

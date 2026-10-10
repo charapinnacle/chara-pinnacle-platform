@@ -9,13 +9,13 @@ import { guestLinks, siteLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
 
 const linkClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium hover:bg-accent";
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground";
 
 function GuestItems({ lang }: { lang: string }) {
   return guestLinks.map(({ path, label }) => (
     <li key={path}>
       {path === "signup" ? (
-        <LinkButton href={`/${lang}/${path}`} size="default" className="min-h-11 px-3">
+        <LinkButton href={`/${lang}/${path}`} size="default" className="min-h-11 px-4 md:ms-2">
           {label}
         </LinkButton>
       ) : (

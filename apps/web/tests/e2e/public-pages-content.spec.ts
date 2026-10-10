@@ -106,7 +106,7 @@ test.describe("the accessibility of the public pages", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/en");
     await page.getByRole("button", { name: "Menu" }).click();
-    await expect(page.getByRole("link", { name: "Pricing" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" })).toBeVisible();
     await expectNoAxeViolations(page);
   });
 });
