@@ -34,6 +34,16 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ["destructive-foreground", "destructive"],
     ["destructive-foreground", "destructive-hover"],
     ["destructive-foreground", "destructive-active"],
+    ["brand-ink", "background"],
+    ["brand-ink", "card"],
+    ["brand-ink", "muted"],
+    ["brand-ink", "accent"],
+    ["accent-foreground", "background"],
+    ["accent-foreground", "card"],
+    ["inverse-foreground", "inverse"],
+    ["inverse-muted", "inverse"],
+    ["brand", "inverse"],
+    ["brand-light", "inverse"],
     ...STATUSES.flatMap((status) =>
       ["background", "card", "muted", `${status}-background`].map((surface) => [`${status}-foreground`, surface]),
     ),
@@ -88,7 +98,7 @@ describe("the type scale and spacing tokens (DS-02)", () => {
   });
 
   it("steps display and h1 up from the sm breakpoint", () => {
-    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 1\.75rem;/);
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 2rem;/);
   });
 
   it.each(["card-sm", "card", "card-lg", "page", "section"])("declares the %s spacing", (name) => {

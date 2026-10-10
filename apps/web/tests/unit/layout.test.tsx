@@ -6,6 +6,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { SkipLink } from "@/components/layout/skip-link";
 
 vi.mock("next/server", () => ({ connection: async () => undefined }));
+vi.mock("@/lib/fonts", () => ({ geist: { variable: "font-geist-variable" } }));
 
 describe("root layout language attribute (NFR-U1)", () => {
   it("sets the html lang from the route segment", async () => {
@@ -15,6 +16,7 @@ describe("root layout language attribute (NFR-U1)", () => {
     });
     expect(isValidElement<{ lang: string }>(tree) && tree.type).toBe("html");
     expect(isValidElement<{ lang: string }>(tree) && tree.props.lang).toBe("en");
+    expect(isValidElement<{ className: string }>(tree) && tree.props.className).toBe("font-geist-variable");
   });
 });
 

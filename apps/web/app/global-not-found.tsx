@@ -5,6 +5,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SkipLink } from "@/components/layout/skip-link";
+import { geist } from "@/lib/fonts";
 import { defaultLocale } from "@/lib/i18n/locale";
 import "./globals.css";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Page not found — CHARA" };
 export default async function GlobalNotFound() {
   await connection();
   return (
-    <html lang="en">
+    <html lang="en" className={geist.variable}>
       <body>
         <SkipLink />
         <SiteShell>

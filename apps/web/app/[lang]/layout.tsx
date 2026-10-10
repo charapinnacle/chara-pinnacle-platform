@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Toaster } from "@/components/feedback/toaster";
 import { SkipLink } from "@/components/layout/skip-link";
+import { env } from "@/lib/env";
+import { geist } from "@/lib/fonts";
 import "../globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
   title: "CHARA — The Global Workforce Network",
   description:
     "CHARA connects workers, employers, recruitment companies and staffing companies.",
@@ -25,7 +28,7 @@ export default async function RootLayout({
   await connection();
   const { lang } = await params;
   return (
-    <html lang={lang}>
+    <html lang={lang} className={geist.variable}>
       <body>
         <SkipLink />
         {children}

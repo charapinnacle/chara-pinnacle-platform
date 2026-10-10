@@ -23,6 +23,7 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -37,6 +38,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-light: var(--brand-light);
+  --color-brand-ink: var(--brand-ink);
+  --color-inverse: var(--inverse);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-inverse-muted: var(--inverse-muted);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-hover: var(--destructive-hover);
@@ -66,7 +73,7 @@
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --shadow-card:
-    0 1px 2px oklch(0.2 0.03 265 / 0.04), 0 12px 32px -12px oklch(0.2 0.05 265 / 0.12);
+    0 1px 2px oklch(0.2 0.01 85 / 0.04), 0 8px 24px -12px oklch(0.2 0.01 85 / 0.1);
   --shadow-focus: 0 0 0 4px color-mix(in oklch, var(--ring) 22%, transparent);
 }
 
@@ -79,22 +86,24 @@
   --text-display: 2.25rem;
   --text-display--line-height: 1.15;
   --text-display--font-weight: 600;
-  --text-display--letter-spacing: -0.025em;
-  --text-h1: 1.5rem;
-  --text-h1--line-height: 1.25;
+  --text-display--letter-spacing: -0.035em;
+  --text-h1: 1.625rem;
+  --text-h1--line-height: 1.2;
   --text-h1--font-weight: 600;
-  --text-h1--letter-spacing: -0.025em;
+  --text-h1--letter-spacing: -0.03em;
   --text-h2: 1.125rem;
   --text-h2--line-height: 1.55;
   --text-h2--font-weight: 600;
+  --text-h2--letter-spacing: -0.012em;
   --text-h3: 1rem;
   --text-h3--line-height: 1.5;
   --text-h3--font-weight: 600;
   --text-lead: 1.125rem;
   --text-lead--line-height: 1.75;
-  --text-figure: 1.875rem;
-  --text-figure--line-height: 1.2;
+  --text-figure: 2rem;
+  --text-figure--line-height: 1.15;
   --text-figure--font-weight: 600;
+  --text-figure--letter-spacing: -0.03em;
   --text-body: 0.9375rem;
   --text-small: 0.875rem;
   --text-small--line-height: 1.43;
@@ -107,68 +116,98 @@
   --spacing-card-2xl: 2rem;
   --spacing-page: 1.5rem;
   --spacing-section: 2rem;
+  --spacing-sidebar: 16rem;
+  --container-content: 75rem;
+  --ease-brand: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-rise: rise 240ms var(--ease-brand) both;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
 }
 
-/* Placeholder until the CHARA brand colours and logo exist (OPEN_QUESTIONS W6).
-   Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. */
+/* The CHARA Pinnacle palette, derived from the gold-on-black monogram: near-black ink, warm off-white surfaces and gold as
+   the single accent. Gold is never text on a light surface: --brand-ink, a deep bronze, is. Status colours are semantic
+   only. Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. */
 :root {
-  --background: oklch(0.98 0.004 265);
-  --foreground: oklch(0.17 0.02 265);
+  --background: oklch(0.982 0.004 85);
+  --foreground: oklch(0.15 0.003 85);
   --card: oklch(1 0 0);
-  --primary: oklch(0.46 0.19 264);
-  --primary-foreground: oklch(0.99 0 0);
-  --primary-hover: oklch(0.4 0.19 264);
-  --primary-active: oklch(0.34 0.17 264);
-  --secondary: oklch(0.96 0.006 265);
-  --secondary-foreground: oklch(0.25 0.02 265);
-  --muted: oklch(0.965 0.006 265);
-  --muted-foreground: oklch(0.49 0.02 265);
-  --accent: oklch(0.955 0.03 265);
-  --accent-foreground: oklch(0.3 0.1 265);
-  --destructive: oklch(0.5 0.21 27);
+  --primary: oklch(0.17 0.004 85);
+  --primary-foreground: oklch(0.99 0.002 85);
+  --primary-hover: oklch(0.27 0.005 85);
+  --primary-active: oklch(0.34 0.006 85);
+  --secondary: oklch(0.962 0.004 85);
+  --secondary-foreground: oklch(0.27 0.006 85);
+  --muted: oklch(0.962 0.004 85);
+  --muted-foreground: oklch(0.47 0.008 85);
+  --accent: oklch(0.955 0.016 85);
+  --accent-foreground: oklch(0.36 0.06 75);
+  --brand: oklch(0.708 0.121 79);
+  --brand-light: oklch(0.873 0.114 89);
+  --brand-ink: oklch(0.47 0.087 77);
+  --inverse: oklch(0.15 0.003 85);
+  --inverse-foreground: oklch(0.97 0.004 85);
+  --inverse-muted: oklch(0.74 0.008 85);
+  --destructive: oklch(0.5 0.2 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --destructive-hover: oklch(0.44 0.2 27);
-  --destructive-active: oklch(0.38 0.18 27);
+  --destructive-hover: oklch(0.44 0.19 27);
+  --destructive-active: oklch(0.38 0.17 27);
   --destructive-surface: oklch(0.975 0.014 20);
-  --success-foreground: oklch(0.4 0.11 155);
-  --success-background: oklch(0.97 0.035 155);
-  --success-border: oklch(0.72 0.13 155);
+  --success-foreground: oklch(0.4 0.1 155);
+  --success-background: oklch(0.97 0.03 155);
+  --success-border: oklch(0.76 0.1 155);
   --warning-foreground: oklch(0.42 0.09 65);
-  --warning-background: oklch(0.97 0.05 90);
-  --warning-border: oklch(0.74 0.13 80);
+  --warning-background: oklch(0.97 0.045 85);
+  --warning-border: oklch(0.78 0.11 80);
   --danger-foreground: var(--destructive);
   --danger-background: var(--destructive-surface);
-  --danger-border: oklch(0.75 0.12 25);
-  --info-foreground: var(--accent-foreground);
-  --info-background: var(--accent);
-  --info-border: oklch(0.78 0.08 265);
+  --danger-border: oklch(0.78 0.1 25);
+  --info-foreground: oklch(0.42 0.1 250);
+  --info-background: oklch(0.966 0.018 250);
+  --info-border: oklch(0.8 0.06 250);
   --neutral-foreground: var(--secondary-foreground);
-  --neutral-background: oklch(0.955 0.006 265);
-  --neutral-border: oklch(0.8 0.01 265);
-  --border: oklch(0.91 0.008 265);
-  --input: oklch(0.62 0.015 265);
-  --ring: oklch(0.46 0.19 264);
+  --neutral-background: oklch(0.955 0.004 85);
+  --neutral-border: oklch(0.82 0.006 85);
+  --border: oklch(0.915 0.005 85);
+  --input: oklch(0.62 0.008 85);
+  --ring: var(--brand-ink);
   --focus-ring: 2px solid var(--ring);
   --focus-ring-offset: 2px;
   --radius: 0.625rem;
 }
 
 /* The dark set is complete and tested, and is applied by putting the dark class on the root element; nothing does that
-   yet (no theme switch exists), so the interface is unchanged. */
+   yet (no theme switch exists), so the interface is unchanged. Gold becomes the primary there, as on the brand tile. */
 .dark {
-  --background: oklch(0.17 0.02 265);
-  --foreground: oklch(0.96 0.006 265);
-  --card: oklch(0.21 0.02 265);
-  --primary: oklch(0.72 0.14 264);
-  --primary-foreground: oklch(0.16 0.03 265);
-  --primary-hover: oklch(0.78 0.13 264);
-  --primary-active: oklch(0.84 0.1 264);
-  --secondary: oklch(0.25 0.02 265);
-  --secondary-foreground: oklch(0.92 0.01 265);
-  --muted: oklch(0.25 0.02 265);
-  --muted-foreground: oklch(0.74 0.02 265);
-  --accent: oklch(0.28 0.06 265);
-  --accent-foreground: oklch(0.88 0.06 265);
+  --background: oklch(0.15 0.003 85);
+  --foreground: oklch(0.96 0.004 85);
+  --card: oklch(0.19 0.004 85);
+  --primary: oklch(0.78 0.11 82);
+  --primary-foreground: oklch(0.15 0.003 85);
+  --primary-hover: oklch(0.83 0.1 85);
+  --primary-active: oklch(0.88 0.09 88);
+  --secondary: oklch(0.24 0.005 85);
+  --secondary-foreground: oklch(0.92 0.005 85);
+  --muted: oklch(0.24 0.005 85);
+  --muted-foreground: oklch(0.74 0.008 85);
+  --accent: oklch(0.27 0.03 80);
+  --accent-foreground: oklch(0.88 0.07 85);
+  --brand-ink: oklch(0.8 0.11 84);
+  --inverse: oklch(0.11 0.002 85);
   --destructive: oklch(0.74 0.16 27);
   --destructive-foreground: oklch(0.16 0.03 27);
   --destructive-hover: oklch(0.8 0.14 27);
@@ -180,13 +219,15 @@
   --warning-foreground: oklch(0.88 0.12 85);
   --warning-background: oklch(0.28 0.06 80);
   --warning-border: oklch(0.5 0.1 80);
-  --neutral-background: oklch(0.27 0.01 265);
-  --neutral-border: oklch(0.4 0.015 265);
+  --info-foreground: oklch(0.86 0.08 250);
+  --info-background: oklch(0.27 0.04 250);
+  --info-border: oklch(0.5 0.08 250);
+  --neutral-background: oklch(0.26 0.005 85);
+  --neutral-border: oklch(0.42 0.008 85);
   --danger-border: oklch(0.5 0.14 25);
-  --info-border: oklch(0.5 0.1 265);
-  --border: oklch(0.32 0.02 265);
-  --input: oklch(0.62 0.02 265);
-  --ring: oklch(0.72 0.14 264);
+  --border: oklch(0.3 0.005 85);
+  --input: oklch(0.62 0.008 85);
+  --ring: oklch(0.78 0.11 82);
 }
 
 @layer base {
@@ -202,7 +243,7 @@
   @media (min-width: 40rem) {
     :root {
       --text-display: 3rem;
-      --text-h1: 1.75rem;
+      --text-h1: 2rem;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -210,6 +251,7 @@
     ::before,
     ::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
