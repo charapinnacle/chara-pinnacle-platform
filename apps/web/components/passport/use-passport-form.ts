@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type DefaultValues, type FieldValues } from "react-hook-form";
 import type { z } from "zod";
-import { toast } from "@/components/feedback/toast-store";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import type { PassportResult } from "@/lib/actions/passport";
 
@@ -25,7 +25,7 @@ export function usePassportForm<TInput extends FieldValues>(
       () => save(form.getValues()),
       (result) => {
         if (result.message) {
-          toast({ variant: "error", title: failureTitle, description: result.message });
+          toastError(failureTitle, result.message);
         } else if (!result.errors) {
           toast({ title: saved });
           if (resetOnSuccess) form.reset();

@@ -120,7 +120,7 @@ describe("PageHeader", () => {
   });
 
   it("renders further lines under the description", () => {
-    expect(html(<PageHeader title="Settings">{<a href="/back">Back</a>}</PageHeader>)).toContain('<a href="/back">Back</a>');
+    expect(html(<PageHeader title="Settings"><p>Back to the dashboard</p></PageHeader>)).toContain("<p>Back to the dashboard</p>");
   });
 });
 

@@ -3,12 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { DetailList } from "@/components/layout/detail-list";
-import { summaryItems } from "@/components/admin/summary-items";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
@@ -78,11 +77,7 @@ function Form({ id, title, organizationName, action, onClose }: ModerateJobDialo
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={summaryItems(formState.errors, { reason: REASON_ID })}
-        onSelect={(key) => form.setFocus(key as FieldPath<ModerationForm>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={{ reason: REASON_ID }} />
       <DetailList items={[{ label: "Vacancy", value: title }, { label: "Organisation", value: organizationName }]} />
       <TextareaField control={control} name="reason" id={REASON_ID} label="Statement of reasons" description={words[action].description} />
       <div className="grid gap-3 sm:grid-cols-2">

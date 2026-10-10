@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
-import { toast } from "@/components/feedback/toast-store";
+import { toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { useActionCall } from "@/components/feedback/use-action-call";
@@ -28,7 +28,7 @@ function DeleteBody({ id, onClose, onDeleted }: Omit<DeleteDocumentDialogProps, 
       () => {
         if (!current) return;
         setShares(null);
-        toast({ variant: "error", title: "Could not check where this document is shared", description: "Check your connection and try again." });
+        toastNetworkError("Could not check where this document is shared");
       },
     );
     return () => {

@@ -3,11 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
-import { summaryItems } from "@/components/admin/summary-items";
+import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
@@ -63,11 +62,7 @@ function Form({ userId, role, roleLabel, person, onClose }: RevokeRoleDialogProp
       <p className="text-body">
         {person} loses the role {roleLabel} and is signed out.
       </p>
-      <ErrorSummary
-        ref={summaryRef}
-        items={summaryItems(formState.errors, { reason: REASON_ID })}
-        onSelect={(key) => form.setFocus(key as FieldPath<RevokeValues>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={{ reason: REASON_ID }} />
       <TextareaField control={control} name="reason" id={REASON_ID} label="Reason" description="Required, 10 to 500 characters. It is written to the audit log." />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

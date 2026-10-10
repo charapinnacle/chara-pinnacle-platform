@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toastNetworkError } from "@/components/feedback/toast-store";
 import { isRedirectError } from "@/lib/redirect-error";
 
 type ServerFormResult = { errors?: Record<string, string>; message?: string };
@@ -44,11 +44,7 @@ export function useServerFormSubmit<TValues extends FieldValues, TContext, TOutp
     } catch (error) {
       if (isRedirectError(error)) return;
       if (clearOnFailure) resetField(clearOnFailure);
-      toast({
-        variant: "error",
-        title: failureTitle,
-        description: "Check your connection and try again.",
-      });
+      toastNetworkError(failureTitle);
     } finally {
       inFlight.current = false;
     }

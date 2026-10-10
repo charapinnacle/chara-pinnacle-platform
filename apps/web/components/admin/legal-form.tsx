@@ -2,12 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useForm, type FieldPath } from "react-hook-form";
-import { summaryItems } from "@/components/admin/summary-items";
+import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
 import { CheckboxField } from "@/components/forms/checkbox-field";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { publishLegalDocument } from "@/lib/actions/admin-staff";
@@ -42,11 +41,7 @@ export function LegalForm({ slug, title }: { slug: string; title: string }) {
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={summaryItems(formState.errors, ids)}
-        onSelect={(key) => form.setFocus(key as FieldPath<LegalDocumentForm>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField
         control={control}
         name="slug"

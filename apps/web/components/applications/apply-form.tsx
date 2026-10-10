@@ -6,8 +6,8 @@ import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { NotAcceptingNotice } from "@/components/applications/not-accepting-notice";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -38,14 +38,6 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents }: Appl
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not submit your application" });
   const noteLength = useWatch({ control, name: "coverNote" }).length;
 
-  const items: ErrorSummaryItem[] = [
-    ...(Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-      const error = formState.errors[name];
-      return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-    }),
-    ...(formState.errors.root?.server ? [{ key: "root", message: String(formState.errors.root.server.message) }] : []),
-  ];
-
   function onValid() {
     return submit(
       () => applyToVacancy(jobId, form.getValues()),
@@ -61,7 +53,7 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents }: Appl
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onValid)}>
-      <ErrorSummary ref={summaryRef} items={items} onSelect={(key) => form.setFocus(key as FieldPath<ApplyFormInput>)} />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
 
       <TextareaField
         control={control}

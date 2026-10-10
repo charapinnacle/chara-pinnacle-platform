@@ -2,9 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { useForm } from "react-hook-form";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { resetPassword } from "@/lib/actions/recovery";
@@ -28,17 +28,6 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
     if (needsCode) form.setFocus("code");
   }, [needsCode, form]);
 
-  const errors = formState.errors;
-  const items: ErrorSummaryItem[] = [
-    errors.password && {
-      key: "password",
-      message: String(errors.password.message),
-      targetId: ids.password,
-    },
-    errors.code && { key: "code", message: String(errors.code.message), targetId: ids.code },
-    errors.root?.server && { key: "root", message: String(errors.root.server.message) },
-  ].filter((item): item is ErrorSummaryItem => Boolean(item));
-
   function onSubmit(values: ResetPasswordFormInput) {
     return submit(
       () =>
@@ -55,11 +44,7 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
 
   return (
     <form noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<ResetPasswordFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField
         control={control}
         name="password"

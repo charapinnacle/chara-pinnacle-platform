@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
@@ -24,11 +24,7 @@ export function ForgotPasswordForm() {
         setError("root.server", { message: result.message });
       }
     } catch {
-      toast({
-        variant: "error",
-        title: "Could not send the link",
-        description: "Check your connection and try again.",
-      });
+      toastNetworkError("Could not send the link");
     }
   }
 

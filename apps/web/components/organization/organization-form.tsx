@@ -2,11 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { useForm } from "react-hook-form";
+import { toastError } from "@/components/feedback/toast-store";
 import { ComboboxField } from "@/components/forms/combobox-field";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
@@ -59,23 +59,13 @@ export function OrganizationForm({ lang, countries, industries }: OrganizationFo
     failureTitle: "Could not create the company",
   });
 
-  const items: ErrorSummaryItem[] = [
-    ...(Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-      const error = formState.errors[name];
-      return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-    }),
-    ...(formState.errors.root?.server
-      ? [{ key: "root", message: String(formState.errors.root.server.message) }]
-      : []),
-  ];
-
   function onSubmit() {
     return submit(
       () => createOrganization(form.getValues()),
       (result) => {
         setDuplicateLegalName(Boolean(result.duplicateLegalName));
         if (result.message) {
-          toast({ variant: "error", title: "Could not create the company", description: result.message });
+          toastError("Could not create the company", result.message);
         }
       },
     );
@@ -97,11 +87,7 @@ export function OrganizationForm({ lang, countries, industries }: OrganizationFo
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<OrganizationFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField
         control={control}
         name="legalName"

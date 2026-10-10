@@ -2,13 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "@/components/feedback/toast-store";
+import { toastNetworkError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ConsentPanel } from "@/components/forms/consent-panel";
 import { FormButton } from "@/components/forms/form-button";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { LegalLink } from "@/components/forms/text-link";
 import type { ConsentActionResult } from "@/lib/actions/consents";
 import { formatLegalDate } from "@/lib/i18n/format";
@@ -57,21 +57,7 @@ export function ConsentForm({
     if (formState.submitCount > 0 && summaryRef.current) summaryRef.current.focus();
   }, [formState.submitCount]);
 
-  const items: ErrorSummaryItem[] = documents.flatMap((document) => {
-    const error = formState.errors.accepted?.[document.slug];
-    return error
-      ? [
-          {
-            key: `accepted.${document.slug}`,
-            message: String(error.message),
-            targetId: checkboxId(document.slug),
-          },
-        ]
-      : [];
-  });
-  if (formState.errors.root?.server) {
-    items.push({ key: "root", message: String(formState.errors.root.server.message) });
-  }
+  const ids = Object.fromEntries(documents.map((document) => [`accepted.${document.slug}`, checkboxId(document.slug)]));
 
   async function onSubmit(values: { accepted: Record<string, boolean> }) {
     try {
@@ -83,21 +69,13 @@ export function ConsentForm({
       if (result) setError("root.server", { message: result.error });
     } catch (error) {
       if (isRedirectError(error)) return;
-      toast({
-        variant: "error",
-        title: "Could not save your answer",
-        description: "Check your connection and try again.",
-      });
+      toastNetworkError("Could not save your answer");
     }
   }
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<FormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       {documents.map((document) => (
         <ConsentPanel as="section" key={document.slug}>
           {document.slug === AGE_ATTESTATION_SLUG ? null : (

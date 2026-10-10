@@ -1,12 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch, type FieldPath } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { kindOptions, KIND_IS_FINAL, type Kind } from "@/components/forms/account-kind-options";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ConsentPanel } from "@/components/forms/consent-panel";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
@@ -58,29 +58,12 @@ export function SignupForm({ documents, attestationWording, invitation }: SignUp
     clearOnFailure: "password",
   });
 
-  const errors = formState.errors;
-  const items: ErrorSummaryItem[] = [
-    errors.kind && { key: "kind", message: String(errors.kind.message), targetId: ids.kind },
-    errors.email && { key: "email", message: String(errors.email.message), targetId: ids.email },
-    errors.password && {
-      key: "password",
-      message: String(errors.password.message),
-      targetId: ids.password,
-    },
-    ...shown.flatMap((document) => {
-      const error = errors.accepted?.[document.slug];
-      return error
-        ? [
-            {
-              key: `accepted.${document.slug}`,
-              message: String(error.message),
-              targetId: ids.accepted(document.slug),
-            },
-          ]
-        : [];
-    }),
-    errors.root?.server && { key: "root", message: String(errors.root.server.message) },
-  ].filter((item): item is ErrorSummaryItem => Boolean(item));
+  const summaryIds = {
+    kind: ids.kind,
+    email: ids.email,
+    password: ids.password,
+    ...Object.fromEntries(shown.map((document) => [`accepted.${document.slug}`, ids.accepted(document.slug)])),
+  };
 
   function onSubmit(values: SignUpFormOutput) {
     return submit(() =>
@@ -104,11 +87,7 @@ export function SignupForm({ documents, attestationWording, invitation }: SignUp
       className="grid gap-6"
       onSubmit={(event) => handleSubmit(onSubmit)(event)}
     >
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<SignUpFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={summaryIds} />
       {invitation ? (
         <p className="text-body leading-relaxed">
           You are creating an employer account to join {invitation.organizationName}. Use the address the invitation was

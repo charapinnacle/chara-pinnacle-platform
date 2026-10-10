@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { useForm } from "react-hook-form";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
@@ -25,19 +25,11 @@ export function LegalEntityForm({ slug, defaults }: { slug: string; defaults: Le
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not save the identifier" });
 
-  const items: ErrorSummaryItem[] = [
-    ...(Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-      const error = formState.errors[name];
-      return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-    }),
-    ...(formState.errors.root?.server ? [{ key: "root", message: String(formState.errors.root.server.message) }] : []),
-  ];
-
   function onSubmit(values: LegalEntityFormInput) {
     return submit(
       () => saveLegalEntityIdentifier(slug, values),
       (result) => {
-        if (result.message) toast({ variant: "error", title: "Could not save the identifier", description: result.message });
+        if (result.message) toastError("Could not save the identifier", result.message);
         else if (!result.errors) toast({ title: "Identifier saved" });
       },
     );
@@ -45,11 +37,7 @@ export function LegalEntityForm({ slug, defaults }: { slug: string; defaults: Le
 
   return (
     <form noValidate className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<LegalEntityFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField
         control={control}
         name="identifier"

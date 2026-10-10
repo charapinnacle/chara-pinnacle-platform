@@ -36,6 +36,15 @@ export function toast({ variant = "default", ...input }: ToastInput) {
   publish([...toasts, { id: nextId++, variant, ...input }].slice(-MAX_TOASTS));
 }
 
+export function toastError(title: string, description?: string) {
+  toast({ variant: "error", title, description });
+}
+
+// A server call that could not be made at all: the same words everywhere, because the cause is always the connection.
+export function toastNetworkError(title: string) {
+  toastError(title, "Check your connection and try again.");
+}
+
 export function dismiss(id: number) {
   publish(toasts.filter((item) => item.id !== id));
 }

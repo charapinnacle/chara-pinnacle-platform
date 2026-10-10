@@ -3,10 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { useForm } from "react-hook-form";
+import { toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
@@ -89,11 +89,6 @@ function InviteForm({ slug, billingHref, limitMessage, onCreated, onLimitReached
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not create the invitation" });
 
-  const items: ErrorSummaryItem[] = (Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-    const error = formState.errors[name];
-    return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-  });
-
   // A toast sits outside the modal, so the dialog closes before it is shown.
   function onSubmit(values: InviteFormOutput) {
     return submit(
@@ -103,7 +98,7 @@ function InviteForm({ slug, billingHref, limitMessage, onCreated, onLimitReached
         if (result.limitReached) onLimitReached(result.limitReached);
         if (result.message) {
           onClose();
-          toast({ variant: "error", title: "Could not create the invitation", description: result.message });
+          toastError("Could not create the invitation", result.message);
         }
       },
     );
@@ -111,11 +106,7 @@ function InviteForm({ slug, billingHref, limitMessage, onCreated, onLimitReached
 
   return (
     <form noValidate className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<InviteFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       {limitMessage ? (
         <Notice tone="info" role="status">
           {limitMessage}{" "}

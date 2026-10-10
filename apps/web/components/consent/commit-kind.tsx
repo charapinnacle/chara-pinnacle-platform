@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { commitAccountKind } from "@/lib/actions/consents";
 import { isRedirectError } from "@/lib/redirect-error";
@@ -18,16 +18,12 @@ export function CommitKind() {
       try {
         const result = await commitAccountKind([]);
         if (result) {
-          toast({ variant: "error", title: result.error });
+          toastError(result.error);
           setFailed(true);
         }
       } catch (error) {
         if (isRedirectError(error)) return;
-        toast({
-          variant: "error",
-          title: "Could not set up your account",
-          description: "Check your connection and try again.",
-        });
+        toastNetworkError("Could not set up your account");
         setFailed(true);
       }
     });

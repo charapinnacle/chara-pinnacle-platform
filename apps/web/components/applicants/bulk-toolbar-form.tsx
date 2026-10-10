@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { BulkResultSummary, BulkReviewBody, type BulkResult, type BulkReview } from "@/components/applicants/bulk-review";
 import { useBulkSelection } from "@/components/applicants/bulk-selection";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError } from "@/components/feedback/toast-store";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
 import { TextareaField } from "@/components/forms/form-field";
@@ -90,7 +90,7 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
           });
           router.refresh();
         } else if (response.message) {
-          toast({ variant: "error", title: "The stage was not changed", description: response.message });
+          toastError("The stage was not changed", response.message);
         }
       },
     );

@@ -3,11 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
-import { summaryItems } from "@/components/admin/summary-items";
+import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
@@ -58,11 +57,7 @@ function Form({ onClose }: { onClose: () => void }) {
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={summaryItems(formState.errors, ids)}
-        onSelect={(key) => form.setFocus(key as FieldPath<GrantForm>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField control={control} name="email" id={ids.email} label="Email address of the person" type="email" autoComplete="off" />
       <SelectField control={control} name="role" id={ids.role} label="Role" placeholder="Choose a role" options={roleOptions} />
       <TextareaField control={control} name="reason" id={ids.reason} label="Reason" description="Required, 10 to 500 characters. It is written to the audit log." />

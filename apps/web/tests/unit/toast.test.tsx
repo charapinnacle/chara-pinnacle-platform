@@ -9,6 +9,8 @@ import {
   getToasts,
   subscribe,
   toast,
+  toastError,
+  toastNetworkError,
   type ToastItem,
 } from "@/components/feedback/toast-store";
 
@@ -42,6 +44,27 @@ describe("toast store", () => {
   it("keeps only the three newest toasts so a failing loop cannot fill the screen", () => {
     ["a", "b", "c", "d", "e"].forEach((title) => toast({ title }));
     expect(getToasts().map((item) => item.title)).toEqual(["c", "d", "e"]);
+    getToasts().forEach((item) => dismiss(item.id));
+  });
+});
+
+describe("error toasts", () => {
+  it("toastError raises an error toast with the reason the server gave, or none", () => {
+    toastError("The note was not added", "The organization has no active plan.");
+    toastError("Could not set up your account");
+    const [withReason, without] = getToasts();
+    expect(withReason).toMatchObject({ variant: "error", title: "The note was not added", description: "The organization has no active plan." });
+    expect(without).toMatchObject({ variant: "error", title: "Could not set up your account", description: undefined });
+    getToasts().forEach((item) => dismiss(item.id));
+  });
+
+  it("toastNetworkError always says the same about the connection", () => {
+    toastNetworkError("Could not log out");
+    toastNetworkError("Could not save the vacancy");
+    expect(getToasts().map(({ variant, description }) => [variant, description])).toEqual([
+      ["error", "Check your connection and try again."],
+      ["error", "Check your connection and try again."],
+    ]);
     getToasts().forEach((item) => dismiss(item.id));
   });
 });

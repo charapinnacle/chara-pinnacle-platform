@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { toast } from "@/components/feedback/toast-store";
+import { toast, toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { isRedirectError } from "@/lib/redirect-error";
 
 // A button that runs one server action: a toast says what happened, and onSettled runs first so that a modal is closed
@@ -17,14 +17,14 @@ export function useActionCall(failureTitle: string) {
         onSettled?.();
         if (result.silent) return;
         if (result.message) {
-          toast({ variant: "error", title: failureTitle, description: result.message });
+          toastError(failureTitle, result.message);
           return;
         }
         toast({ title: success });
       } catch (error) {
         if (isRedirectError(error)) return;
         onSettled?.();
-        toast({ variant: "error", title: failureTitle, description: "Check your connection and try again." });
+        toastNetworkError(failureTitle);
       }
     });
   }

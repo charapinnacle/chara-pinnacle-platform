@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarClock, Mail, type LucideIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
@@ -40,7 +40,7 @@ export function NotificationForm({ delivery }: { delivery: NotificationSettings[
           reset(values);
           toast({ title: "Notification settings saved" });
         } else if (result.message) {
-          toast({ variant: "error", title: "The settings were not saved", description: result.message });
+          toastError("The settings were not saved", result.message);
         }
       },
     );
