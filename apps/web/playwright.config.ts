@@ -75,6 +75,7 @@ export default defineConfig({
         "**/apply-failure.spec.ts",
         "**/applicant-list-failure.spec.ts",
         "**/dashboard-failure.spec.ts",
+        "**/error-boundary.spec.ts",
         "**/notify-emails.spec.ts",
         "**/admin-console-jobs.spec.ts",
         "**/admin-console-staff-database.spec.ts",
@@ -170,13 +171,21 @@ export default defineConfig({
       testMatch: "**/dashboard-failure.spec.ts",
       dependencies: ["applicants-failure"],
     },
+    // The limits function of the passport and the document function of the sign-up page are withdrawn from the API roles
+    // while this spec runs.
+    {
+      name: "error-boundary",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/error-boundary.spec.ts",
+      dependencies: ["dashboard-failure"],
+    },
     // notify takes every message in the queue and sends it to the mail catcher, so it runs after everything that counts
     // queued messages.
     {
       name: "notify",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/notify-emails.spec.ts",
-      dependencies: ["dashboard-failure"],
+      dependencies: ["error-boundary"],
     },
     // These run account-ops and notify as well, so they follow notify.
     {
