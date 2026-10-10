@@ -2,15 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let session: { access_token: string } | null = { access_token: "token-of-the-owner" };
 const fetchMock = vi.hoisted(() => vi.fn());
+const rpcMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/env", () => ({ env: { NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421" } }));
 vi.mock("@/lib/env.server", () => ({ serverEnv: () => ({ BILLING_CHECKOUT_ENDPOINT: process.env.TEST_ENDPOINT }) }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getSession: async () => ({ data: { session } }) } }),
+  createClient: async () => ({ auth: { getSession: async () => ({ data: { session } }) }, rpc: rpcMock }),
 }));
 
-const { requestHostedSession } = await import("@/lib/dal/billing");
+const { getUsage, requestHostedSession } = await import("@/lib/dal/billing");
 
 beforeEach(() => {
   session = { access_token: "token-of-the-owner" };
@@ -66,5 +67,32 @@ describe("requestHostedSession", () => {
   it("answers a network failure with a refusal and no detail", async () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed: connect ECONNREFUSED"));
     expect(await requestHostedSession({})).toEqual({ refusal: { status: 0, reason: null, field: null } });
+  });
+});
+
+describe("getUsage (FR-G5 AC7)", () => {
+  it("asks for the usage of the organisation and returns the used count and the limit of each key", async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        { limit_key: "active_jobs", used: 7, limit_value: 15 },
+        { limit_key: "members", used: 3, limit_value: null },
+      ],
+      error: null,
+    });
+    expect(await getUsage("org-1")).toEqual([
+      { key: "active_jobs", used: 7, limit: 15 },
+      { key: "members", used: 3, limit: null },
+    ]);
+    expect(rpcMock).toHaveBeenCalledWith("billing_usage", { p_org: "org-1" });
+  });
+
+  it("fails without the cause in the message when the database refuses, so that the error page shows", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: "aal2_required" } });
+    await expect(getUsage("org-1")).rejects.toThrow("The usage could not be loaded");
+  });
+
+  it("refuses an answer of another shape instead of showing a wrong figure", async () => {
+    rpcMock.mockResolvedValue({ data: [{ limit_key: "messages", used: 1, limit_value: 2 }], error: null });
+    await expect(getUsage("org-1")).rejects.toThrow();
   });
 });

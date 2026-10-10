@@ -3,7 +3,7 @@ import { formatShortDate } from "@/lib/i18n/format";
 import { expectNoAxeViolations } from "./support/axe";
 import { applicantUrl, seedNamedApplication, stageValue } from "./support/applicants";
 import { applicationUrl, eventRows, newApplicant } from "./support/applications";
-import { billingPath, deliverBillingEvent, HOSTED_ORIGIN, linkCustomer, stubHostedPages, subscriptionRows } from "./support/billing";
+import { billingPath, deliverBillingEvent, expectPlan, HOSTED_ORIGIN, linkCustomer, stubHostedPages, subscriptionRows } from "./support/billing";
 import { ago, dashboardUrl, DAY, fromNow, memberPage } from "./support/dashboard";
 import { literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
@@ -38,7 +38,7 @@ test.describe("subscription states: what the organisation and its people see (FR
     const hosted = await stubHostedPages(page);
     await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
     await expect(warning(page)).toHaveText(expected + "Update payment method");
-    await expect(page.getByText("Basic · Status: Past due")).toBeVisible();
+    await expectPlan(page, "Basic", "Past due");
     await expectNoAxeViolations(page);
     await page.goto(dashboardUrl(team.slug));
     await expect(warning(page)).toContainText(expected);
@@ -89,7 +89,7 @@ test.describe("subscription states: what the organisation and its people see (FR
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Active");
     await expect(warning(page)).toHaveCount(0);
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Active")).toBeVisible();
+    await expectPlan(page, "Basic", "Active");
     await expect(warning(page)).toHaveCount(0);
   });
 

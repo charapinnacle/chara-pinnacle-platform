@@ -19,6 +19,7 @@ export const fromNow = (ms: number) => new Date(Date.now() + ms).toISOString();
 interface SubscriptionDates {
   trialEndsAt?: string;
   currentPeriodEnd?: string;
+  cancelAt?: string;
   pastDueSince?: string;
 }
 
@@ -26,9 +27,9 @@ interface SubscriptionDates {
 export function seedSubscription(company: Company, plan: string, status: string, dates: SubscriptionDates = {}): void {
   const value = (iso?: string) => (iso ? `${literal(iso)}::timestamptz` : "null");
   execute(
-    `insert into billing.subscriptions (organization_id, plan_code, status, provider, trial_ends_at, current_period_end, past_due_since)
+    `insert into billing.subscriptions (organization_id, plan_code, status, provider, trial_ends_at, current_period_end, cancel_at, past_due_since)
      values (${literal(company.id)}, ${literal(plan)}, ${literal(status)}, 'null', ${value(dates.trialEndsAt)},
-             ${value(dates.currentPeriodEnd)}, ${value(dates.pastDueSince)})`,
+             ${value(dates.currentPeriodEnd)}, ${value(dates.cancelAt)}, ${value(dates.pastDueSince)})`,
   );
 }
 

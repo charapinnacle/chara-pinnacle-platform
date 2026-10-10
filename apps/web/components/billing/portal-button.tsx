@@ -6,8 +6,10 @@ import { FormButton } from "@/components/forms/form-button";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { openPortal } from "@/lib/actions/billing";
 
-// Card changes, plan changes, cancellation and invoices are all done on the provider's pages.
-export function PortalButton({ slug, label = "Manage billing" }: { slug: string; label?: string }) {
+type PortalButtonProps = { slug: string; label?: string; variant?: "primary" | "secondary" };
+
+// Card changes, plan changes, cancellation, tax details and invoices are all done on the provider's pages.
+export function PortalButton({ slug, label = "Manage billing", variant }: PortalButtonProps) {
   const form = useForm();
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not open billing" });
 
@@ -22,7 +24,7 @@ export function PortalButton({ slug, label = "Manage billing" }: { slug: string;
 
   return (
     <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
-      <FormButton type="submit" busy={form.formState.isSubmitting} className="w-full sm:w-auto">
+      <FormButton type="submit" variant={variant} busy={form.formState.isSubmitting} className="w-full sm:w-auto">
         {form.formState.isSubmitting ? "Opening billing..." : label}
       </FormButton>
     </form>

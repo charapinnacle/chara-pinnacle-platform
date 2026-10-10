@@ -82,6 +82,7 @@ export default defineConfig({
         "**/checkout-disclosure.spec.ts",
         "**/live-statistics.spec.ts",
         "**/public-pages-failure.spec.ts",
+        "**/billing-page-failure.spec.ts",
         "**/pricing.spec.ts",
         "**/search-engine-sitemap.spec.ts",
       ],
@@ -231,13 +232,20 @@ export default defineConfig({
       testMatch: "**/live-statistics.spec.ts",
       dependencies: ["staff-database", "billing-plans", "public-pages-failure"],
     },
+    // The jobs table is locked, and the usage function withdrawn from the API role, while this spec runs.
+    {
+      name: "billing-failure",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/billing-page-failure.spec.ts",
+      dependencies: ["statistics"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["statistics"],
+      dependencies: ["billing-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.
