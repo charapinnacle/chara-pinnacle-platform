@@ -57,7 +57,7 @@ test.describe("the search of users, organisations and the audit log", () => {
 
     await delaySearch(page, "/en/admin/users", 1500);
     await search(page, "Search users", `test user ${tag}`);
-    await expect(page.locator('div[aria-busy="true"]')).toBeVisible();
+    await expect(page.locator('div[aria-busy="true"]').first()).toBeVisible();
     await expect(page.getByRole("status").getByText("Loading")).toBeVisible();
     await expect(rows(page, "Users")).toHaveCount(25);
     await expect(page.locator('div[aria-busy="true"]')).toHaveCount(0);

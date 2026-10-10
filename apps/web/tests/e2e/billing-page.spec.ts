@@ -2,6 +2,7 @@ import { expectNoAxeViolations } from "./support/axe";
 import {
   billingPath,
   checkoutPath,
+  expectPlan,
   fillCheckout,
   HOSTED_ORIGIN,
   linkCustomer,
@@ -36,7 +37,7 @@ test.describe("billing page: the company identifier and who may use the page (FR
     ]);
     expect(teamAudit(team, "legal_entity_identifier_set")).toHaveLength(1);
 
-    await page.getByRole("link", { name: "Choose Basic" }).click();
+    await page.getByRole("link", { name: "Start 30-day free trial of Basic" }).click();
     await expect(page.getByLabel("VAT ID", { exact: true })).toHaveValue("DE123456788");
     await expect(page.getByLabel("Company registration number", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Billing country", { exact: true })).toHaveValue("DE");
@@ -126,7 +127,7 @@ test.describe("checkout: returning from the hosted pages (AC11)", () => {
     await page.getByRole("link", { name: "cancel_url" }).click();
     await expect(page).toHaveURL(billingPath(team.slug));
     await expect(page.getByText(NO_PAYMENT)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Choose Basic" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Start 30-day free trial of Basic" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Manage billing" })).toHaveCount(0);
     expect(hosted.visits).toHaveLength(1);
     expect(subscriptionCount(team)).toBe(0);
@@ -153,6 +154,6 @@ test.describe("checkout: returning from the hosted pages (AC11)", () => {
     await page.getByRole("link", { name: "return_url" }).click();
     await expect(page).toHaveURL(billingPath(team.slug));
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
-    await expect(page.getByText("Basic · Status: Trial")).toBeVisible();
+    await expectPlan(page, "Basic", "Trial");
   });
 });

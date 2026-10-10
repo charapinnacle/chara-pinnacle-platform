@@ -4,6 +4,7 @@ import {
   checkoutPath,
   customerRows,
   deliverBillingEvent,
+  expectPlan,
   fillCheckout,
   proceed,
   queuedMails,
@@ -14,6 +15,7 @@ import {
   storedEvents,
   stubHostedPages,
   subscriptionRows,
+  summaryValue,
   terms,
   trialGrantCount,
   uniqueIdentifiers,
@@ -21,7 +23,7 @@ import {
 import { uniqueName } from "./support/organizations";
 import { newTeam, signInAtAal2, teamAudit } from "./support/team";
 import { expect, test } from "./support/test";
-import { formatDate } from "@/lib/i18n/format";
+import { formatShortDate } from "@/lib/i18n/format";
 
 const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
@@ -54,8 +56,8 @@ test.describe("payment webhook: the provider's events keep the billing page corr
     expect(trialGrantCount(team)).toBe(2);
 
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Trial")).toBeVisible();
-    await expect(page.getByText(`Your free trial ends on ${formatDate(new Date(trialEnd).toISOString())}.`)).toBeVisible();
+    await expectPlan(page, "Basic", "Trial");
+    await expect(page.getByText(`Trial ends ${formatShortDate(new Date(trialEnd).toISOString())}`)).toBeVisible();
     await expect(page.getByRole("button", { name: /Manage billing/ })).toBeVisible();
     await expectNoAxeViolations(page);
 
@@ -79,15 +81,15 @@ test.describe("payment webhook: the provider's events keep the billing page corr
     });
     await deliverBillingEvent({ ...subscribed, kind: "subscription.updated", status: "active", trialEndsAt: trialEnd, currentPeriodEnd: periodEnd });
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Active")).toBeVisible();
-    await expect(page.getByText(`Your plan renews on ${formatDate(new Date(periodEnd).toISOString())}.`)).toBeVisible();
+    await expectPlan(page, "Basic", "Active");
+    await expect(page.getByText(`Next invoice ${formatShortDate(periodEnd)}`)).toBeVisible();
 
     // A failed payment: Past due, and one email however often it fails again.
     const failure = { kind: "payment.failed", orgId: team.id, providerSubscriptionRef: subscription, providerPaymentRef: `in_failed_${subscription}` };
     await deliverBillingEvent(failure);
     await deliverBillingEvent(failure);
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Past due")).toBeVisible();
+    await expectPlan(page, "Basic", "Past due");
     expect(queuedMails(team.owner.id, "payment_failed")).toBe(1);
     expect(subscriptionRows(team)[0].past_due_since).not.toBeNull();
 
@@ -105,15 +107,15 @@ test.describe("payment webhook: the provider's events keep the billing page corr
       providerPaymentRef: `pi_retry_${subscription}`,
     });
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Active")).toBeVisible();
+    await expectPlan(page, "Basic", "Active");
     expect(subscriptionRows(team)[0].past_due_since).toBeNull();
 
     // The subscription is deleted: Cancelled, and the organisation can choose a plan again.
     await deliverBillingEvent({ ...subscribed, kind: "subscription.canceled", status: "canceled" });
     await page.goto(billingPath(team.slug));
-    await expect(page.getByText("Basic · Status: Cancelled")).toBeVisible();
+    await expect(summaryValue(page, "Plan")).toHaveText("No active plan");
     await expect(page.getByText("You have no active subscription, and no payment was taken.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Choose Basic" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Subscribe to Basic" })).toBeVisible();
 
     expect(storedEvents(team).map((event) => `${event.kind}:${event.status}`)).toEqual([
       "checkout.completed:applied",

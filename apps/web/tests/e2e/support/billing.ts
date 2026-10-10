@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import type { Locator, Page } from "@playwright/test";
 import { execute, literal, query } from "./db";
+import { expect } from "./test";
 import type { Team } from "./team";
 import type { TestUser } from "./test-user";
 
@@ -183,6 +184,28 @@ export function setTrialDays(days: number): void {
 
 export function grantTrial(team: Pick<Team, "id">, key: string): void {
   execute(`insert into billing.trial_grants (identifier_key, organization_id) values (${literal(key)}, ${literal(team.id)})`);
+}
+
+const planSummary = (page: Page): Locator => page.getByRole("region", { name: "Current plan" });
+
+// The value of a row of the plan summary of the billing page (Plan, Status).
+export const summaryValue = (page: Page, label: string): Locator => planSummary(page).locator(`div:has(> dt:text-is("${label}")) > dd`);
+
+export async function expectPlan(page: Page, plan: string, status: string): Promise<void> {
+  await expect(summaryValue(page, "Plan")).toHaveText(plan);
+  await expect(summaryValue(page, "Status")).toHaveText(status);
+}
+
+// Replaces the subscription rows of an organisation, so that one test can show it in several states in turn.
+export function resetSubscriptions(team: Pick<Team, "id">): void {
+  execute(`delete from billing.subscriptions where organization_id = ${literal(team.id)}`);
+}
+
+export function portalOpenedCount(team: Pick<Team, "id">): number {
+  const [row] = query<{ n: number }>(
+    `select count(*)::int as n from audit.log where action = 'billing.portal_opened' and entity_id = ${literal(team.id)}`,
+  );
+  return row.n;
 }
 
 export const NO_PAYMENT = "You have no active subscription, and no payment was taken.";
