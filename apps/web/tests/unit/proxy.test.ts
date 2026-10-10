@@ -42,6 +42,19 @@ describe("proxy", () => {
     expect(response.headers.get("location")).toBe(`${origin}/en`);
   });
 
+  it("FR-H5 AC7: marks the language redirect of a private path noindex, and that of a public path not", async () => {
+    for (const path of ["/dashboard", "/login", "/org/acme/jobs"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.status, path).toBe(307);
+      expect(response.headers.get("x-robots-tag"), path).toBe("noindex, nofollow");
+    }
+    for (const path of ["/", "/jobs", "/pricing"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.status, path).toBe(307);
+      expect(response.headers.get("x-robots-tag"), path).toBeNull();
+    }
+  });
+
   it("sets a nonce CSP on the response and passes the same one to the page", async () => {
     const response = await proxy(new NextRequest(`${origin}/en`));
     const csp = response.headers.get("content-security-policy") ?? "";
@@ -53,6 +66,17 @@ describe("proxy", () => {
     ).toBe(csp);
     expect(csp).toContain("'strict-dynamic'");
     expect(csp).not.toContain("'unsafe-inline'");
+  });
+
+  it("FR-H5 AC7: marks the answer for a private page noindex and leaves the public pages alone", async () => {
+    for (const path of ["/en/dashboard/worker", "/en/org/acme/jobs", "/en/login", "/en/mfa", "/auth/callback"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.headers.get("x-robots-tag"), path).toBe("noindex, nofollow");
+    }
+    for (const path of ["/en", "/en/jobs", "/en/jobs/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11", "/en/pricing", "/en/legal/privacy-policy"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.headers.get("x-robots-tag"), path).toBeNull();
+    }
   });
 
   it("uses a different nonce and request id on every request", async () => {

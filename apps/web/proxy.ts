@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp } from "@/lib/csp";
 import { env } from "@/lib/env";
 import { localeRedirectPath } from "@/lib/i18n/locale";
+import { isPrivatePath } from "@/lib/seo/private-routes";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
@@ -9,7 +10,9 @@ export async function proxy(request: NextRequest) {
   if (redirectPath) {
     const url = request.nextUrl.clone();
     url.pathname = redirectPath;
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    if (isPrivatePath(redirectPath)) redirect.headers.set("x-robots-tag", "noindex, nofollow");
+    return redirect;
   }
 
   const nonce = btoa(crypto.randomUUID());
@@ -33,6 +36,7 @@ export async function proxy(request: NextRequest) {
   const response = await updateSession(request, requestHeaders);
   response.headers.set("content-security-policy", csp);
   response.headers.set("x-request-id", requestId);
+  if (isPrivatePath(request.nextUrl.pathname)) response.headers.set("x-robots-tag", "noindex, nofollow");
   return response;
 }
 

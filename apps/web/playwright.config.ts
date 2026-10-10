@@ -84,6 +84,7 @@ export default defineConfig({
         "**/public-pages-failure.spec.ts",
         "**/billing-page-failure.spec.ts",
         "**/pricing.spec.ts",
+        "**/search-engine-sitemap.spec.ts",
       ],
     },
     {
@@ -237,6 +238,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/billing-page-failure.spec.ts",
       dependencies: ["statistics"],
+    },
+    // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
+    // these tests run: they follow every other project.
+    {
+      name: "sitemap",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/search-engine-sitemap.spec.ts",
+      dependencies: ["billing-failure"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
+import { staticPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "How CHARA Works — CHARA",
-  description: "How workers and employers use CHARA, step by step.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/how-it-works">): Promise<Metadata> {
+  return staticPageMetadata("howItWorks", (await params).lang);
+}
 
 const workerSteps = [
   "Create an account and fill in your profile: occupation, skills, languages, experience and documents.",

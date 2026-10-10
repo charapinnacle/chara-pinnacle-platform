@@ -16,6 +16,8 @@ const securityHeaders = [
   },
 ];
 
+const SITEMAP_CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=300";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // npm workspaces hoist node_modules to the repo root; trace from there or the standalone build misses them.
@@ -24,7 +26,12 @@ const nextConfig: NextConfig = {
   experimental: { globalNotFound: true },
   deploymentId: process.env.DEPLOYMENT_VERSION,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The sitemap is read from the database at every request that reaches the server; the CDN in front of the web host
+      // answers a crawler that polls it, so a new vacancy is listed within s-maxage seconds (D77).
+      { source: "/sitemap.xml", headers: [{ key: "Cache-Control", value: SITEMAP_CACHE_CONTROL }] },
+    ];
   },
 };
 

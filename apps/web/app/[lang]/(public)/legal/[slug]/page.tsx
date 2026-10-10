@@ -8,10 +8,12 @@ import { getPublicSettings } from "@/lib/dal/settings";
 import { formatLegalDate } from "@/lib/i18n/format";
 import { parseLegalBody } from "@/lib/public/legal-body";
 import { PRIVACY_FIELDS, PRIVACY_POLICY_SLUG, settingRows } from "@/lib/public/setting-rows";
+import { legalPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/legal/[slug]">): Promise<Metadata> {
-  const document = await getLegalDocument((await params).slug);
-  return document ? { title: `${document.title} — CHARA` } : {};
+  const { lang, slug } = await params;
+  const document = await getLegalDocument(slug);
+  return document ? legalPageMetadata(lang, slug, document) : {};
 }
 
 export default async function LegalPage({

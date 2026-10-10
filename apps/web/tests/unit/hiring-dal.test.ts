@@ -114,6 +114,7 @@ describe("getPublicJob", () => {
     visa_support: false,
     recruitment_preference: "both",
     published_at: "2026-10-06T10:00:00+00:00",
+    created_at: "2026-10-04T08:00:00+00:00",
     employer_display_name: "Acme Bau",
     employer_country: "Germany",
     employer_industry: null,
@@ -146,6 +147,7 @@ describe("getPublicJob", () => {
       visaSupport: false,
       recruitmentPreference: "both",
       publishedAt: "2026-10-06T10:00:00+00:00",
+      createdAt: "2026-10-04T08:00:00+00:00",
       employer: { displayName: "Acme Bau", country: "Germany", industry: null, website: "https://acme.example" },
     });
   });

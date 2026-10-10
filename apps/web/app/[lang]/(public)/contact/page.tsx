@@ -4,11 +4,11 @@ import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { SettingDetails } from "@/components/public/setting-details";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { CONTACT_FIELDS, settingRows } from "@/lib/public/setting-rows";
+import { staticPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Contact — CHARA",
-  description: "How to reach CHARA, its privacy contact and its data-protection contact.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/contact">): Promise<Metadata> {
+  return staticPageMetadata("contact", (await params).lang);
+}
 
 export default async function ContactPage({ params }: PageProps<"/[lang]/contact">) {
   const [{ lang }, settings] = await Promise.all([params, getPublicSettings()]);

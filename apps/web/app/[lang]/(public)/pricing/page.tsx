@@ -5,11 +5,11 @@ import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { PlanCard } from "@/components/public/plan-card";
 import { planCard, planLink, viewerNote } from "@/lib/billing/pricing";
 import { getPricingViewer, listPublicPlans } from "@/lib/dal/pricing";
+import { staticPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Pricing — CHARA",
-  description: "What CHARA costs for workers and employers.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/pricing">): Promise<Metadata> {
+  return staticPageMetadata("pricing", (await params).lang);
+}
 
 export default async function PricingPage({ params }: PageProps<"/[lang]/pricing">) {
   const { lang } = await params;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { TextLink } from "@/components/forms/text-link";
@@ -5,6 +6,11 @@ import { StatisticsBlock } from "@/components/home/statistics-block";
 import { PageContainer } from "@/components/layout/page-container";
 import { ContentSection } from "@/components/public/content-page";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
+import { staticPageMetadata } from "@/lib/seo/metadata";
+
+export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
+  return staticPageMetadata("home", (await params).lang);
+}
 
 async function Statistics() {
   const tiles = await getPlatformStatistics();

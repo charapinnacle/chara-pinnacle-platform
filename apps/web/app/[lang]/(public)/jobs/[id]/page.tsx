@@ -9,6 +9,7 @@ import { getSavedJobIds } from "@/lib/dal/saved-jobs";
 import { getCurrentUser } from "@/lib/dal/session";
 import { jobPostingJsonLd } from "@/lib/jobs/job-posting";
 import { logVacancy } from "@/lib/jobs/vacancy-log";
+import { vacancyMetadata } from "@/lib/seo/metadata";
 import { viewerOf } from "@/lib/jobs/viewer";
 import { jobIdSchema } from "@/lib/validation/job";
 
@@ -19,8 +20,9 @@ async function loadJob(id: string) {
 
 // A vacancy that is not available has no title to show: the neutral not-found page of this route sets its own.
 export async function generateMetadata({ params }: PageProps<"/[lang]/jobs/[id]">): Promise<Metadata> {
-  const job = await loadJob((await params).id);
-  return job ? { title: `${job.title} - ${job.employer.displayName} | CHARA` } : {};
+  const { id, lang } = await params;
+  const job = await loadJob(id);
+  return job ? vacancyMetadata(lang, job) : {};
 }
 
 // Rendered per request from the database (ADR-0004), so an edit is on the page at once. A vacancy that is not open and

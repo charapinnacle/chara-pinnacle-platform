@@ -24,3 +24,6 @@ export const footerLinks = [
   { path: "legal/complaints-and-dispute-process", label: "Complaints and Dispute Process" },
   { path: "legal/account-suspension-and-termination-rules", label: "Account Suspension and Termination Rules" },
 ] as const;
+
+// The slugs of the legal pages that the footer links to; the sitemap asks the database which of them are published.
+export const legalSlugs = footerLinks.flatMap(({ path }) => (path.startsWith("legal/") ? [path.slice("legal/".length)] : []));

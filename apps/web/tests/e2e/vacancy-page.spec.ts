@@ -19,7 +19,7 @@ function openJob(company: Company, title: string): string {
     accommodation: true,
     visaSupport: true,
   });
-  execute(`update public.jobs set published_at = '2026-03-04T10:00:00Z' where id = ${literal(id)}`);
+  execute(`update public.jobs set created_at = '2026-03-02T09:00:00Z', published_at = '2026-03-04T10:00:00Z' where id = ${literal(id)}`);
   return id;
 }
 
@@ -84,8 +84,8 @@ test.describe("the public vacancy page", () => {
       "@type": "JobPosting",
       title: "Welder MIG/MAG",
       description: "Line one of the description.\nLine two of it, which is long enough to pass the limit.",
-      datePosted: "2026-03-04T10:00:00.000Z",
-      hiringOrganization: { "@type": "Organization", name: display_name },
+      datePosted: "2026-03-02",
+      hiringOrganization: { "@type": "Organization", name: display_name, sameAs: WEBSITE },
       jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Hamburg", addressCountry: "DE" } },
       employmentType: "FULL_TIME",
       baseSalary: {
