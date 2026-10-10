@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { execute, literal, query } from "./db";
 import { newApplicant, seedApplication } from "./applications";
 import { seedDocument } from "./documents";
+import { waitForHydration } from "./hydration";
 import { addCompanyUser, newCompany, seedJob, type Company } from "./jobs";
 import { expect } from "./test";
 import type { TestUser } from "./test-user";
@@ -84,6 +85,7 @@ export const DECLINE_TEMPLATES = ["Position filled", "Qualifications do not matc
 // Opens the dialog with the keyboard, as a person who does not use a mouse does, and chooses a stage. A decline takes its
 // reason from the templates when the text is one of them and from Other otherwise; any other stage takes the text as its note.
 export async function chooseStage(page: Page, stage: string, note: string): Promise<void> {
+  await waitForHydration(changeStageButton(page));
   await changeStageButton(page).focus();
   await page.keyboard.press("Enter");
   const dialog = stageDialog(page);
