@@ -33,7 +33,7 @@ async function expectFigure(page: Page, label: string, sql: string, href: string
   await expect(async () => {
     value = count(sql);
     await page.reload();
-    await expect(card(page, `${label}: ${value}`)).toHaveAttribute("href", href, { timeout: 2_000 });
+    await expect(card(page, `${label}: ${value.toLocaleString("en")}`)).toHaveAttribute("href", href, { timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
   return value;
 }
@@ -186,22 +186,33 @@ test.describe("the console landing (UX-10, FR-F1)", () => {
   test("the Platform Administrator sees the staff, the applications of the last 30 days and the drafts, each from the database and linked", async ({ page }) => {
     const staff = await enrolledStaff("admin");
     await signInAtAal2(page, staff.user, staff.secret, "/en/admin");
-    await expectFigure(page, "Active staff roles", "select count(*) from public.platform_staff where revoked_at is null", "/en/admin/staff");
+    await expectFigure(page, "Staff members", "select count(distinct user_id) from public.platform_staff where revoked_at is null", "/en/admin/staff");
+    const lastThirtyDays =
+      "created_at >= (current_date - 29)::timestamp at time zone 'UTC' and created_at < (current_date + 1)::timestamp at time zone 'UTC'";
     await expectFigure(
       page,
       "Applications in the last 30 days",
-      "select count(*) from public.job_applications where created_at >= (current_date - 29)::timestamp at time zone 'UTC' and created_at < (current_date + 1)::timestamp at time zone 'UTC'",
+      `select count(*) from public.job_applications where ${lastThirtyDays}`,
       /\/en\/admin\/statistics\?from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/,
     );
     const drafts = await expectFigure(page, "Legal documents in draft", "select count(*) from public.v_legal_current where is_draft", "/en/admin/legal");
-    await expect(page.getByRole("table", { name: "Applications by stage" }).locator("tfoot")).toHaveText(/^Total\d+$/);
+    await expect(async () => {
+      const byStage = query<{ n: number }>(
+        `select count(a.id)::int as n from unnest(enum_range(null::public.application_status)) s(status)
+         left join public.job_applications a on a.status = s.status and ${lastThirtyDays} group by s.status order by s.status`,
+      );
+      await page.reload();
+      expect(await stageTable(page, "Applications by stage")).toEqual(STAGES.map((label, index) => [label, byStage[index].n.toLocaleString("en")]));
+      const total = byStage.reduce((sum, { n }) => sum + n, 0);
+      await expect(page.getByRole("table", { name: "Applications by stage" }).locator("tfoot")).toHaveText(`Total${total.toLocaleString("en")}`, { timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
     await expect(
       page.getByRole("region", { name: "Legal documents" }).getByRole("listitem").filter({ has: page.getByText("Draft", { exact: true }) }),
     ).toHaveCount(drafts);
     await expect(page.getByRole("region", { name: "Trust and safety" })).toHaveCount(0);
     await expectNoAxeViolations(page);
 
-    await card(page, /^Active staff roles/).click();
+    await card(page, /^Staff members/).click();
     await expect(page).toHaveURL("/en/admin/staff");
   });
 
@@ -210,9 +221,9 @@ test.describe("the console landing (UX-10, FR-F1)", () => {
     await signInAtAal2(page, staff.user, staff.secret, "/en/admin");
     await expectFigure(page, "Suspended accounts", "select count(*) from public.profiles where status = 'suspended'", "/en/admin/suspensions");
     await expectFigure(page, "Suspended organisations", "select count(*) from public.organizations where status = 'suspended'", "/en/admin/suspensions");
-    await expectFigure(page, "Hidden vacancies", "select count(*) from public.jobs where moderation_state = 'hidden'", "/en/admin/moderation");
+    await expectFigure(page, "Hidden vacancies", "select count(*) from public.jobs where moderation_state = 'hidden' and deleted_at is null", "/en/admin/moderation");
     await expect(page.getByRole("region", { name: "Platform overview" })).toHaveCount(0);
-    await expect(card(page, /^Active staff roles/)).toHaveCount(0);
+    await expect(card(page, /^Staff members/)).toHaveCount(0);
     await expectNoAxeViolations(page);
   });
 
