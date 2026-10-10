@@ -57,6 +57,10 @@ export function billingPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/billing`;
 }
 
+export function membersPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/members`;
+}
+
 export function applyPath(lang: string, jobId: string): string {
   return `/${lang}/jobs/${jobId}/apply`;
 }
