@@ -42,6 +42,7 @@ export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
     submit(
       async (): Promise<Outcome> => {
         const { type: kind, title, expiresOn, file } = form.getValues();
+        const supabase = await createLazyClient();
         const ticket = await startDocumentUpload({
           type: kind,
           title,
@@ -53,8 +54,8 @@ export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
           return ticket;
         }
         const { documentId, path, token } = ticket.upload;
-        const { error } = await (await createLazyClient())
-          .storage.from(DOCUMENT_BUCKET)
+        const { error } = await supabase.storage
+          .from(DOCUMENT_BUCKET)
           .uploadToSignedUrl(path, token, file, { contentType: file.type });
         if (error) onFailed(documentId);
         onChanged();
