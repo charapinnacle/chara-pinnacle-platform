@@ -4,7 +4,8 @@ import { signInBrowser } from "./session";
 import { expect, visitorAddress } from "./test";
 import type { TestUser } from "./test-user";
 
-export const accountButton = (page: Page): Locator => page.getByRole("button", { name: "Account" });
+// Scoped to the header: a page can have its own button whose name contains the word (Delete account on Settings).
+export const accountButton = (page: Page): Locator => page.getByRole("banner").getByRole("button", { name: "Account" });
 
 export const mainNavigation = (page: Page): Locator => page.getByRole("navigation", { name: "Main" });
 
