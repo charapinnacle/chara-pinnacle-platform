@@ -40,6 +40,7 @@ test.describe("metadata of the public pages", () => {
       expect(head.canonical, `${path} canonical`).not.toContain("?");
       expect(head.ogTitle, `${path} og:title`).toBe(head.title);
       expect(head.ogDescription, `${path} og:description`).toBe(head.description);
+      expect(head.ogImage, `${path} og:image`).toBe(`${SITE}/opengraph-image`);
       if (eighteen.includes(path)) {
         expect(head.description?.length, `${path} description`).toBeGreaterThanOrEqual(50);
         descriptions.push(head.description ?? "");
@@ -47,6 +48,14 @@ test.describe("metadata of the public pages", () => {
     }
     expect(new Set(descriptions).size).toBe(18);
     expect(LEGAL_SLUGS).toHaveLength(10);
+  });
+
+  test("the Open Graph image is a 1200 by 630 PNG served without a language redirect", async ({ request }) => {
+    const response = await request.get("/opengraph-image", { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("image/png");
+    const png = await response.body();
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
   });
 
   test("FR-H5 AC2: a vacancy page names the vacancy and the employer, describes it with the first 155 characters of its text and ignores the query string in its canonical address", async ({
