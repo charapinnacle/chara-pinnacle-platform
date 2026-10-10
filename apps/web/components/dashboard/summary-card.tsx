@@ -19,7 +19,7 @@ export function SummaryCard({ label, hint, detail, value, href, icon: Icon }: Su
       aria-describedby={detail ? detailId : undefined}
       className={cn(
         cardVariants({ padding: "lg", elevated: true }),
-        "group min-h-11 content-between gap-4 transition-[border-color,box-shadow,translate] duration-200 ease-brand hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-md",
+        "group h-full min-h-11 content-between gap-4 transition-[border-color,box-shadow,translate] duration-200 ease-brand hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-md",
       )}
     >
       <span className="flex items-start justify-between gap-3">
