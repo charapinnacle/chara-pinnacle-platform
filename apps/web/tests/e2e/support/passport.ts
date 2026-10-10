@@ -73,7 +73,7 @@ export function passportAudit(userId: string) {
 export async function expectTabOrderFollowsPage(page: Page): Promise<void> {
   const controls = await page.evaluate(() => {
     const found = [...document.querySelectorAll<HTMLElement>("main a[href], main input, main select, main button, main summary")].filter(
-      (element) => !element.matches(":disabled, [type=hidden]") && element.getClientRects().length > 0,
+      (element) => !element.matches(":disabled, [type=hidden], [tabindex='-1']") && element.getClientRects().length > 0,
     );
     found.forEach((element, index) => element.setAttribute("data-tab-check", String(index)));
     return found.map((element) => ({
