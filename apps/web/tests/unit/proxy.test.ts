@@ -55,6 +55,17 @@ describe("proxy", () => {
     expect(csp).not.toContain("'unsafe-inline'");
   });
 
+  it("FR-H5 AC7: marks the answer for a private page noindex and leaves the public pages alone", async () => {
+    for (const path of ["/en/dashboard/worker", "/en/org/acme/jobs", "/en/login", "/en/mfa", "/auth/callback"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.headers.get("x-robots-tag"), path).toBe("noindex, nofollow");
+    }
+    for (const path of ["/en", "/en/jobs", "/en/jobs/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11", "/en/pricing", "/en/legal/privacy-policy"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.headers.get("x-robots-tag"), path).toBeNull();
+    }
+  });
+
   it("uses a different nonce and request id on every request", async () => {
     const [a, b] = await Promise.all([
       proxy(new NextRequest(`${origin}/en`)),
