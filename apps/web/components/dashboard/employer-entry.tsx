@@ -1,5 +1,6 @@
 import { Building2, LockKeyhole } from "lucide-react";
 import { EmployerDashboard } from "@/components/dashboard/employer-dashboard";
+import { Panel } from "@/components/dashboard/panel";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -48,7 +49,9 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
         </Notice>
         <div className="grid items-start gap-6 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <GuidedSteps lang={lang} organizationSlug={organization.slug} twoStepDone={twoStepDone} steps={await getFirstSteps(organization.id)} />
+            <Panel promise={getFirstSteps(organization.id)} errorTitle="The first steps could not be loaded">
+              {(steps) => <GuidedSteps lang={lang} organizationSlug={organization.slug} twoStepDone={twoStepDone} steps={steps} />}
+            </Panel>
           </div>
           <Card padding="lg" className="gap-3 lg:col-span-5">
             <span aria-hidden className="flex size-9 items-center justify-center rounded-lg bg-accent text-brand-ink">

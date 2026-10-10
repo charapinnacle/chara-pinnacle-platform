@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MemberRole } from "@/lib/validation/team";
 
@@ -18,7 +18,7 @@ const notFoundMock = vi.hoisted(() =>
 );
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock, useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/organizations", () => ({ getMyOrganizations: organizationsMock }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
@@ -41,7 +41,11 @@ const acme = { id: "org-a", slug: "acme-bau", displayName: "Acme Bau", role: "ow
 const beta = { id: "org-b", slug: "beta-works", displayName: "Beta Works", role: "member" as MemberRole };
 const props = (kind: string, query: Record<string, string> = {}) =>
   ({ params: Promise.resolve({ lang: "en", kind }), searchParams: Promise.resolve(query) }) as Parameters<typeof DashboardPage>[0];
-const render = async (kind = "employer", query?: Record<string, string>) => renderToStaticMarkup(await DashboardPage(props(kind, query)));
+// prerender waits for the async parts (Panel) as the server does; the comments it puts between text nodes are dropped.
+const render = async (kind = "employer", query?: Record<string, string>) => {
+  const { prelude } = await prerender(await DashboardPage(props(kind, query)));
+  return (await new Response(prelude).text()).replaceAll("<!-- -->", "");
+};
 const access = (over: Partial<typeof acme & { suspended: boolean }> = {}) => ({
   user: { id: "user-1" },
   organization: { ...acme, suspended: false, ...over },
@@ -124,6 +128,15 @@ describe("what each role sees", () => {
     expect(html).toContain("Choose a plan<span class=\"sr-only\"> (done)</span>");
     expect(html).toMatch(/<a [^>]*href="\/en\/org\/acme-bau\/members"[^>]*>.*Invite a team member/);
     expect(html).not.toMatch(/href="\/en\/org\/acme-bau\/billing"/);
+  });
+
+  it("shows an error in place of the first steps at aal1 when they cannot be read, and keeps the rest of the page", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1" });
+    firstStepsMock.mockRejectedValue(new Error("The first steps could not be loaded"));
+    const html = await render();
+    expect(html).toContain("The first steps could not be loaded");
+    expect(html).toContain("Enter your code");
+    expect(html).not.toContain("Get set up");
   });
 
   it("tells an owner at aal1 without a device to set one up, with no link to enter a code", async () => {
