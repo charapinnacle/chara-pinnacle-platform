@@ -32,14 +32,16 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
 
     const row = page.getByRole("main").getByRole("listitem").filter({ hasText: "Max Member" });
     const opener = row.getByRole("button", { name: /Remove/ });
-    expect(await backgroundOf(opener)).toBe(await tokenColour(page, "--card"));
+    await expect.poll(() => backgroundOf(opener)).toBe(await tokenColour(page, "--card"));
     await opener.click();
 
     const dialog = page.getByRole("dialog", { name: "Remove Max Member?" });
     const confirm = dialog.getByRole("button", { name: "Remove member" });
-    expect(await backgroundOf(confirm)).toBe(await tokenColour(page, "--destructive"));
-    expect(await confirm.evaluate((element) => getComputedStyle(element).color)).toBe(await tokenColour(page, "--destructive-foreground"));
-    expect(await backgroundOf(dialog.getByRole("button", { name: "Cancel" }))).toBe(await tokenColour(page, "--card"));
+    await expect.poll(() => backgroundOf(confirm)).toBe(await tokenColour(page, "--destructive"));
+    await expect
+      .poll(() => confirm.evaluate((element) => getComputedStyle(element).color))
+      .toBe(await tokenColour(page, "--destructive-foreground"));
+    await expect.poll(() => backgroundOf(dialog.getByRole("button", { name: "Cancel" }))).toBe(await tokenColour(page, "--card"));
     await expectNoAxeViolations(page);
   });
 
