@@ -156,9 +156,9 @@ The pages a visitor sees first are held to the brief of section 0, read as a Eur
 | `OnboardingSteps` | `components/consent/onboarding-steps.tsx` | An ordered list named "Setting up your account"; the current step has `aria-current="step"`, earlier steps say "(done)" to assistive technology |
 | `AuthBrandPanel` | `components/layout/auth-brand-panel.tsx` | The monogram, the wordmark with Pinnacle, the claim and three points with icons, under a gold rule |
 
-### Header
+### Header and statistics
 
-The account items of the public header (Log in and Sign up, or Go to my area and Log out) are rendered with the page, not behind a Suspense boundary: React streams a finished boundary separately once the HTML of a page passes about 12.8 kB, and such a part stays hidden without JavaScript and appears only after the load event with it (FR-H1 AC1, AC3).
+The account items of the public header (Log in and Sign up, or Go to my area and Log out) and the statistics block of the home page are rendered with the page, not behind a Suspense boundary: React streams a finished boundary separately once the HTML of a page passes about 12.8 kB, and such a part stays hidden without JavaScript and appears only after the load event with it, pushing the content below it down (FR-H1 AC1, AC3, FR-H4 AC1).
 
 ### Motion
 

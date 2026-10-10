@@ -40,6 +40,17 @@ test.describe("live statistics on the home page", () => {
     await expectNoAxeViolations(page);
   });
 
+  test("FR-H4 AC1: the block is part of the served page, so it shows without JavaScript", async ({ browser }) => {
+    showSnapshot({ jobs: 15, employers: 8, workers: 30, countries: 6 });
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await openHome(page);
+
+    await expect(block(page)).toBeVisible();
+    await expect(groups(page)).toHaveCount(4);
+    await context.close();
+  });
+
   test("FR-H4 AC2, AC7, AC12: a count of 5 is shown, the candidate count is rounded to the nearest 10 and a thousand has a separator", async ({ page }) => {
     showSnapshot({ jobs: 5, employers: 5, workers: 1234, countries: 1234 });
     await openHome(page);

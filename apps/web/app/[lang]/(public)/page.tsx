@@ -1,6 +1,5 @@
 import { ArrowRight, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { TextLink } from "@/components/forms/text-link";
 import { HeroSearch } from "@/components/home/hero-search";
 import { StatisticsBlock } from "@/components/home/statistics-block";
@@ -156,9 +155,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   return (
     <PageContainer layout="page" className="grid gap-20 sm:gap-28">
       <Hero lang={lang} />
-      <Suspense fallback={null}>
-        <Statistics />
-      </Suspense>
+      <Statistics />
       <HowItWorks lang={lang} />
       <Safeguards lang={lang} />
       <ClosingCall lang={lang} />
