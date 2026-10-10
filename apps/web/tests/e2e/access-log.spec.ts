@@ -58,7 +58,7 @@ test.describe("document access log", () => {
     const times = await section.locator("tbody time").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("datetime") ?? ""));
     expect(times).toHaveLength(25);
     expect(times.map((time) => Date.parse(time))).toEqual([...times.map((time) => Date.parse(time))].sort((a, b) => b - a));
-    await expect(section.locator("tbody time").first()).toHaveText(/^[A-Z][a-z]+ \d{1,2}, \d{4} at \d{1,2}:\d{2} [AP]M UTC$/);
+    await expect(section.locator("tbody time").first()).toHaveText(/^\d{1,2} [A-Z][a-z]+ \d{4} at \d{2}:\d{2} UTC$/);
     await expectNoAxeViolations(page);
 
     await section.getByRole("button", { name: "Next page" }).focus();
