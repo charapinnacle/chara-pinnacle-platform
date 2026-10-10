@@ -17,7 +17,7 @@ export function OrganizationSearch({ lang }: { lang: string }) {
   );
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <SearchBox
         label="Search organisations"
         description="Part of the display name, the legal name or the address name, or the organisation id."

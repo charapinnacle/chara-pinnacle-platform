@@ -55,7 +55,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
   ) : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8">
+    <div className="mx-auto grid w-full max-w-3xl gap-section">
       <PageHeader title="Team" description={organization.displayName} actions={!onlyOwner ? invite : null} />
 
       {transfer?.toUserId === user.id ? (

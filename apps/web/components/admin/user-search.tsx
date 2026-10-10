@@ -16,7 +16,7 @@ export function UserSearch({ lang }: { lang: string }) {
   const { state, page, search, next, previous, retry } = usePagedSearch<string, UserRow, NonNullable<NameCursor>>(searchUsersAction);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <SearchBox
         label="Search users"
         description="Part of the display name, the whole email address or the user id."

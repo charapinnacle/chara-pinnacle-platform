@@ -39,7 +39,7 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
   if (!passport) redirect(`/${lang}/onboarding`);
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader title="Your passport" description="Only you can see your passport. Each section below is saved on its own.">
         <TextLink standalone href={homePath(lang, "worker")}>
           Back to the dashboard

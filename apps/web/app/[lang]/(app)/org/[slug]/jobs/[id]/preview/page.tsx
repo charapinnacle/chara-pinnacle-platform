@@ -24,7 +24,7 @@ export default async function JobPreviewPage({ params }: PageProps<"/[lang]/org/
   if (!job) notFound();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <Notice tone="info" role="status">
         Preview - not public
       </Notice>

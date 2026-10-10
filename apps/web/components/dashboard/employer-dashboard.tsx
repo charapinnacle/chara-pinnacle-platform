@@ -46,7 +46,7 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
   const now = new Date();
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6">
+    <div className="mx-auto grid w-full max-w-5xl gap-page">
       <PageHeader title="Dashboard" description={organization.displayName} />
 
       <Panel promise={plan} errorTitle="The plan could not be loaded" quiet>

@@ -29,7 +29,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
   const existing = (await searchParams).existing === "1";
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader title={application.jobTitle}>
         <p className="text-body font-medium wrap-anywhere">{application.employerName}</p>
         <TextLink standalone href={applicationsPath(lang)}>

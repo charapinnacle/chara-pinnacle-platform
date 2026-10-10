@@ -66,7 +66,7 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
   const lastPage = list ? Math.max(1, Math.ceil(list.total / APPLICANTS_PAGE_SIZE)) : 1;
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6">
+    <div className="mx-auto grid w-full max-w-5xl gap-page">
       <PageHeader
         title="Applicants"
         description={

@@ -23,7 +23,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
   if (!job) notFound();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <Notice tone="info" role="status">
         {jobStatusText(job.status, job.moderationState)}
         {job.staleOpen ? ` · ${STALE_OPEN_TEXT}` : ""}

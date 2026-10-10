@@ -18,7 +18,7 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
   if (!user) notFound();
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title={user.displayName ?? user.email}>
         <TextLink standalone href={adminPath(lang, "users")}>
           Back to the user search

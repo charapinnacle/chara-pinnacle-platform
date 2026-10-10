@@ -24,7 +24,7 @@ export function AuditSearch({ lang }: { lang: string }) {
   const { state, page, search, next, previous, retry } = usePagedSearch<AuditFilter, AuditRow, NonNullable<TimeCursor>>(searchAuditAction);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <form noValidate className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit(search)}>
         <InputField control={control} name="actor" label="Actor (user id)" autoComplete="off" />
         <InputField control={control} name="action" label="Action" description="For example user.suspend" autoComplete="off" maxLength={100} />

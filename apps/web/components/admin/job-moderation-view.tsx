@@ -18,7 +18,7 @@ export async function JobModerationView({ lang, id }: { lang: string; id: string
   if (!job) notFound();
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title={job.title}>
         <TextLink standalone href={adminPath(lang, "moderation")}>
           Back to the vacancy search

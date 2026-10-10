@@ -35,7 +35,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
   const canUpgrade = changes.some((change) => change.kind === "upgrade");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8">
+    <div className="mx-auto grid w-full max-w-3xl gap-section">
       <PageHeader title="Billing" description={organization.displayName} />
 
       {subscription?.status === "past_due" && subscription.pastDueSince ? (

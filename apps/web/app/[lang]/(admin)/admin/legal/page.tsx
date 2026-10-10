@@ -19,7 +19,7 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
   const chosen = typeof slug === "string" ? documents.find((document) => document.slug === slug) : undefined;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="Legal documents" />
       <Section id="current" title="Current versions" description="Version 0 is the draft placeholder until the first approved text is published.">
         <ResultsTable caption="Current versions of the legal documents" columns={["Document", "Title", "Version", "Status", "Published", "New version"]}>

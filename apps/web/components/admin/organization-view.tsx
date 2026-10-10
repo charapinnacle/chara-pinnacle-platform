@@ -19,7 +19,7 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
   if (!organization) notFound();
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title={organization.displayName}>
         <TextLink standalone href={adminPath(lang, "organizations")}>
           Back to the organisation search

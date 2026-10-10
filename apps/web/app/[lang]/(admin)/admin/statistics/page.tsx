@@ -34,7 +34,7 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
   const range = rangeSchema.safeParse({ from, to });
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="Statistics">
         <p className="text-body text-muted-foreground">Applications by stage, counted only. The days are in UTC, both included, at most 366.</p>
       </PageHeader>

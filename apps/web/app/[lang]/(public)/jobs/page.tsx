@@ -26,7 +26,7 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
   const ignored = Object.values(errors);
 
   return (
-    <PageContainer layout="page" className="grid max-w-4xl gap-8">
+    <PageContainer layout="page" className="grid max-w-4xl gap-section">
       <PageHeader title="Find jobs" description="Open vacancies from employers on CHARA." />
 
       {ignored.length > 0 ? (

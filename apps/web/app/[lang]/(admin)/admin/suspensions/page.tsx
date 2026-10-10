@@ -13,7 +13,7 @@ export default async function SuspensionsPage({ params, searchParams }: PageProp
   const cursor = typeof after === "string" && /^\d{1,15}$/.test(after) ? Number(after) : null;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="Suspensions and reinstatements">
         <p className="text-body text-muted-foreground">
           Open a user or an organisation from the search to suspend or reinstate it. This is the record, newest first.

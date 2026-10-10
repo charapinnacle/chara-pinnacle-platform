@@ -25,7 +25,7 @@ export default async function SavedPage({ params, searchParams }: PageProps<"/[l
   const applications = Object.fromEntries([...states].filter(([, state]) => state.status !== "withdrawn"));
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader
         title="Saved vacancies"
         titleProps={{ id: SAVED_HEADING_ID, tabIndex: -1 }}

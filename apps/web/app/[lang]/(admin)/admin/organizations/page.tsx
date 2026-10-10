@@ -9,7 +9,7 @@ export default async function OrganizationsPage({ params }: PageProps<"/[lang]/a
   const { lang } = await params;
   await requirePlatformRole(lang, ["admin", "trust_safety"]);
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="Organisations" />
       <OrganizationSearch lang={lang} />
     </div>

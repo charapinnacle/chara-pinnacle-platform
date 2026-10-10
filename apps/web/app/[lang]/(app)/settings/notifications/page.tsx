@@ -17,7 +17,7 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
   const delivery = user.accountKind === "company" ? await getEmailDelivery() : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader title="Notification settings">
         <TextLink standalone href={homePath(lang, user.accountKind)}>
           Back to the dashboard

@@ -74,7 +74,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
     allowedTargets(applicant.status, "employer", { shortlisting: true }).includes("shortlisted");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader title={name}>
         <p className="text-body font-medium wrap-anywhere">{applicant.jobTitle}</p>
       </PageHeader>

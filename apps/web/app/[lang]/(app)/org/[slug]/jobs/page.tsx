@@ -31,7 +31,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
   ) : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8">
+    <div className="mx-auto grid w-full max-w-3xl gap-section">
       <PageHeader title="Vacancies" description={organization.displayName} actions={page.jobs.length > 0 ? newJob : null} />
 
       <ReadOnlyPlanNotice ended={ended} billingHref={organization.role === "member" ? null : billingPath(lang, slug)} />

@@ -13,7 +13,7 @@ export default async function MfaResetPage({ params, searchParams }: PageProps<"
   const userId = z.uuid().safeParse(user);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="MFA reset" />
       <Section
         id="reset"

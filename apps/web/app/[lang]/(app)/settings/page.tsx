@@ -18,7 +18,7 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
   const status = await getDeletionStatus();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader title="Settings">
         <TextLink standalone href={homePath(lang, "worker")}>
           Back to the dashboard

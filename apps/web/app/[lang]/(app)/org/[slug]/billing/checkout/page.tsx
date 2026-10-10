@@ -44,7 +44,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
 
   const trialDays = state.trial_used ? 0 : plan.trialDays;
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8">
+    <div className="mx-auto grid w-full max-w-3xl gap-section">
       <PageHeader
         title="Confirm your plan"
         description={`${organization.displayName} · ${plan.name}, ${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}`}

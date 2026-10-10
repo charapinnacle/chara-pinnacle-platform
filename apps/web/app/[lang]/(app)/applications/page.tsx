@@ -27,7 +27,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
   logTrackerView("list");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <PageHeader title="My applications" description="The vacancies you applied to, with the latest change first." />
       {firstUse ? null : <StageFilter basePath={applicationsPath(lang)} stage={stage} />}
       {applications.length === 0 ? (

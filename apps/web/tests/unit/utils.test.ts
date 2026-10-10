@@ -22,5 +22,6 @@ describe("cn", () => {
     expect(cn("p-card", "p-6")).toBe("p-6");
     expect(cn("p-6", "p-card-lg")).toBe("p-card-lg");
     expect(cn("gap-page", "gap-2")).toBe("gap-2");
+    expect(cn("gap-2", "gap-section")).toBe("gap-section");
   });
 });

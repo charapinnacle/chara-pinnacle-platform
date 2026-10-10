@@ -37,6 +37,10 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ...STATUSES.flatMap((status) =>
       ["background", "card", "muted", `${status}-background`].map((surface) => [`${status}-foreground`, surface]),
     ),
+    ...STATUSES.flatMap((status) => [
+      ["foreground", `${status}-background`],
+      ["muted-foreground", `${status}-background`],
+    ]),
   ])("text %s on %s is at least 4.5:1", (foreground, background) => {
     expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(4.5);
   });
@@ -87,7 +91,7 @@ describe("the type scale and spacing tokens (DS-02)", () => {
     expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 1\.75rem;/);
   });
 
-  it.each(["card-sm", "card", "card-lg", "page"])("declares the %s spacing", (name) => {
+  it.each(["card-sm", "card", "card-lg", "page", "section"])("declares the %s spacing", (name) => {
     expect(css).toMatch(new RegExp(`--spacing-${name}:\\s*[\\d.]+rem;`));
   });
 });

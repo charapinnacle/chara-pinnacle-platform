@@ -73,8 +73,8 @@
 /* The type scale: display and h1 step up at the sm breakpoint (the :root override in the base layer below), and the
    headings carry their weight and tracking, so a heading is one utility: text-display, text-h1, text-h2, text-h3.
    text-figure is the size of a number shown on its own (a count, a price tile).
-   text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the gap
-   between the blocks of a page. docs/runbooks/design-system.md documents each token. */
+   text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the two gaps
+   between the blocks of a page (page, and section for a page of several sections). docs/runbooks/design-system.md documents each token. */
 @theme {
   --text-display: 2.25rem;
   --text-display--line-height: 1.15;
@@ -102,6 +102,7 @@
   --spacing-card: 1rem;
   --spacing-card-lg: 1.25rem;
   --spacing-page: 1.5rem;
+  --spacing-section: 2rem;
 }
 
 /* Placeholder until the CHARA brand colours and logo exist (OPEN_QUESTIONS W6).

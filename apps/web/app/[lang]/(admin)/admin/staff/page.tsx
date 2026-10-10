@@ -13,7 +13,7 @@ export default async function StaffPage({ params, searchParams }: PageProps<"/[l
   await requirePlatformRole(lang, ["admin"]);
   const cursor = typeof after === "string" && /^\d{1,15}$/.test(after) ? Number(after) : null;
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="Staff">
         <p className="text-body text-muted-foreground">
           Roles of the people who run the platform. A revoked role stays in the list as history. Staff must verify with two steps to use the console.

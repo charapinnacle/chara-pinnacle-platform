@@ -9,7 +9,7 @@ export default async function AuditPage({ params }: PageProps<"/[lang]/admin/aud
   const { lang } = await params;
   await requirePlatformRole(lang, ["admin"]);
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <PageHeader title="Audit log">
         <p className="text-body text-muted-foreground">Every administrative action, newest first. The times are in UTC.</p>
       </PageHeader>
