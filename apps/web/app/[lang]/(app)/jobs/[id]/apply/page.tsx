@@ -4,6 +4,7 @@ import { ApplyForm } from "@/components/applications/apply-form";
 import { NotAcceptingNotice } from "@/components/applications/not-accepting-notice";
 import { TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
+import { PageHeader } from "@/components/layout/page-header";
 import { profileFields } from "@/lib/applications/presentation";
 import { getApplicationStates, getApplyDocuments, getApplyLimits, getApplyOccupation } from "@/lib/dal/applications";
 import { getPublicJob } from "@/lib/dal/hiring";
@@ -43,12 +44,7 @@ export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
-          {job ? `Apply for ${job.title}` : "Apply"}
-        </h1>
-        {job ? <p className="text-body text-muted-foreground">{job.employer.displayName}</p> : null}
-      </header>
+      <PageHeader title={job ? `Apply for ${job.title}` : "Apply"} description={job?.employer.displayName} />
       {!job ? (
         <NotAcceptingNotice lang={lang} />
       ) : missing.length > 0 ? (

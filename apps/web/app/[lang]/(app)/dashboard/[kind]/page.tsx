@@ -29,7 +29,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
     return (
       <AuthCard title="Dashboard" description={`Welcome, ${passport.firstName}`}>
         <div className="grid gap-4">
-          <h2 className="text-lg font-semibold">Your passport</h2>
+          <h2 className="text-h2">Your passport</h2>
           <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, today)} />
           <TextLink standalone href={`/${lang}/passport`}>
             Open your passport

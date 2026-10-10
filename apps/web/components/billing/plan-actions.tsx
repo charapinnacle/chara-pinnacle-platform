@@ -8,7 +8,7 @@ type PlanActionsProps = { slug: string; changes: PlanChange[]; live: boolean };
 export function PlanActions({ slug, changes, live }: PlanActionsProps) {
   return (
     <section id="plan-actions" aria-labelledby="actions-heading" className="grid gap-3">
-      <h2 id="actions-heading" className="text-lg font-semibold">
+      <h2 id="actions-heading" className="text-h2">
         Plan, tax details and invoices
       </h2>
       <p className="text-body text-muted-foreground">

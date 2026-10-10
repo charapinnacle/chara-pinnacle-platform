@@ -103,10 +103,10 @@ export function ConsentForm({
           {document.slug === AGE_ATTESTATION_SLUG ? null : (
             <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
               <h2 className="text-base font-semibold tracking-tight">{document.title}</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-small text-muted-foreground">
                 Version {document.version}, published {formatLegalDate(document.publishedAt)}
               </p>
-              <p className="text-sm leading-relaxed">{document.changeSummary}</p>
+              <p className="text-small leading-relaxed">{document.changeSummary}</p>
               <LegalLink
                 slug={document.slug}
                 newTabLabel={`of the ${document.title} (opens in a new tab)`}

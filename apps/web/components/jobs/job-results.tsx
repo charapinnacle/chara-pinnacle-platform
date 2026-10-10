@@ -12,14 +12,14 @@ import { searchPath, usedFilters, type JobSearchFilters } from "@/lib/jobs/searc
 import { viewerOf, type Viewer } from "@/lib/jobs/viewer";
 import { employmentTypeLabels } from "@/lib/validation/job";
 
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-medium text-accent-foreground";
+const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-small font-medium text-accent-foreground";
 
 type ResultCardProps = { job: JobSearchResult; lang: string; countryName: string; viewer: Viewer; saved: boolean; next: string };
 
 function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardProps) {
   return (
     <li className="grid gap-2 rounded-xl border bg-card p-4">
-      <h2 className="text-lg font-semibold">
+      <h2 className="text-h2">
         <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
           {job.title}
         </TextLink>
@@ -37,7 +37,7 @@ function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardP
           {job.visaSupport ? <span className={badgeClassName}>Visa support</span> : null}
         </p>
       ) : null}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         Posted <time dateTime={job.createdAt}>{formatDate(job.createdAt)}</time>
       </p>
       {viewer === "company" ? null : (

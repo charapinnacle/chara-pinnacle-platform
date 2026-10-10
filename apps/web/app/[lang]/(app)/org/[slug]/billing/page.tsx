@@ -5,6 +5,7 @@ import { PlanActions } from "@/components/billing/plan-actions";
 import { PlanChoices } from "@/components/billing/plan-choices";
 import { PlanSummary } from "@/components/billing/plan-summary";
 import { UsageSection } from "@/components/billing/usage-section";
+import { PageHeader } from "@/components/layout/page-header";
 import { planChanges, type SubscriptionStatus } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, getUsage, listSoldPlans } from "@/lib/dal/billing";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -35,10 +36,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-8">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Billing</h1>
-        <p className="text-body text-muted-foreground">{organization.displayName}</p>
-      </header>
+      <PageHeader title="Billing" description={organization.displayName} />
 
       {subscription?.status === "past_due" && subscription.pastDueSince ? (
         <PastDueAlert slug={slug} pastDueSince={new Date(subscription.pastDueSince)} now={new Date()} />
@@ -60,7 +58,7 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
 
       {isOwner ? (
         <section aria-labelledby="identifier-heading" className="grid gap-3">
-          <h2 id="identifier-heading" className="text-lg font-semibold">
+          <h2 id="identifier-heading" className="text-h2">
             Company identifier
           </h2>
           {state.identifier_locked ? (

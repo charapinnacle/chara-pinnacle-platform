@@ -66,7 +66,7 @@ export default async function MfaPage({ params, searchParams }: PageProps<"/[lan
       </ul>
       {factors.length < MAX_TOTP_FACTORS ? (
         <section aria-labelledby="mfa-backup-heading" className="grid gap-4">
-          <h2 id="mfa-backup-heading" className="text-lg font-semibold">
+          <h2 id="mfa-backup-heading" className="text-h2">
             Add a backup device
           </h2>
           <p className="text-body text-muted-foreground">

@@ -79,7 +79,7 @@ describe("PageHeader", () => {
   it("renders the title as the h1 with the description under it", () => {
     const markup = html(<PageHeader title="Vacancies" description="Acme" />);
     expect(markup.match(/<h1/g)).toHaveLength(1);
-    expect(markup).toMatch(/<h1 class="text-h1">Vacancies<\/h1><p class="text-body text-muted-foreground">Acme<\/p>/);
+    expect(markup).toMatch(/<h1 class="wrap-anywhere text-h1">Vacancies<\/h1><p class="text-muted-foreground wrap-anywhere text-body">Acme<\/p>/);
   });
 
   it("puts the breadcrumb before the title and the actions after the text", () => {
@@ -95,12 +95,19 @@ describe("PageHeader", () => {
     expect(html(<PageHeader title="Team" />)).not.toContain("justify-between");
   });
 
+  it("gives the display size a roomier description and lets the caller change the gap", () => {
+    const markup = html(<PageHeader title="About" description="Lead" size="display" className="gap-5" />);
+    expect(markup).toContain("text-lg leading-8");
+    expect(markup).toContain("gap-5");
+    expect(markup).not.toContain("gap-3");
+  });
+
   it("uses the display size for marketing pages and passes heading attributes through", () => {
-    const markup = html(<PageHeader title="Home" size="display" titleProps={{ id: "page-title", tabIndex: -1, className: "wrap-anywhere" }} />);
+    const markup = html(<PageHeader title="Home" size="display" titleProps={{ id: "page-title", tabIndex: -1, className: "ps-2" }} />);
     expect(markup).toContain("text-display");
     expect(markup).toContain('id="page-title"');
     expect(markup).toContain('tabindex="-1"');
-    expect(markup).toContain("wrap-anywhere");
+    expect(markup).toContain("ps-2");
     expect(markup).not.toContain("text-h1");
   });
 

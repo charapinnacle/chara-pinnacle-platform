@@ -162,7 +162,7 @@ export function JobForm({ slug, occupations, industries, countries, currencies }
       />
 
       <fieldset className="grid gap-6 sm:grid-cols-2">
-        <legend className="mb-4 text-lg font-semibold">Salary (optional)</legend>
+        <legend className="mb-4 text-h2">Salary (optional)</legend>
         <InputField control={control} name="salaryMin" id={ids.salaryMin} label="Salary minimum" inputMode="decimal" />
         <InputField control={control} name="salaryMax" id={ids.salaryMax} label="Salary maximum" inputMode="decimal" />
         <ComboboxField

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { TextLink } from "@/components/forms/text-link";
 import { StatisticsBlock } from "@/components/home/statistics-block";
+import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
 import { ContentSection } from "@/components/public/content-page";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
 import { staticPageMetadata } from "@/lib/seo/metadata";
@@ -17,37 +18,23 @@ async function Statistics() {
   return tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null;
 }
 
-const buttonClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-6 text-base font-semibold";
-
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   return (
     <PageContainer layout="page" className="grid max-w-4xl gap-12">
-      <header className="grid gap-5">
-        <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-tight">
-          The Global Workforce Network
-        </h1>
+      <PageHeader size="display" title="The Global Workforce Network" className="gap-5">
         <p className="text-xl text-muted-foreground">Your Workforce. Your Network. One Platform.</p>
         <p className="max-w-[65ch] text-lg leading-8">
           CHARA brings workers and employers together. Workers keep one profile and apply to open vacancies. Employers
           publish vacancies and manage the applications they receive.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/${lang}/jobs`}
-            className={`${buttonClassName} bg-primary text-primary-foreground hover:bg-primary-hover`}
-          >
-            Browse vacancies
-          </Link>
-          <Link
-            href={`/${lang}/signup`}
-            className={`${buttonClassName} border border-input bg-card text-secondary-foreground hover:bg-secondary`}
-          >
+          <LinkButton href={`/${lang}/jobs`}>Browse vacancies</LinkButton>
+          <LinkButton href={`/${lang}/signup`} variant="secondary">
             Create an account
-          </Link>
+          </LinkButton>
         </div>
-      </header>
+      </PageHeader>
       <Suspense fallback={null}>
         <Statistics />
       </Suspense>

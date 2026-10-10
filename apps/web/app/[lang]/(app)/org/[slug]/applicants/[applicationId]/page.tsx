@@ -7,6 +7,7 @@ import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
+import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
@@ -73,18 +74,17 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight wrap-anywhere sm:text-[1.75rem]">{name}</h1>
+      <PageHeader title={name}>
         <p className="text-body font-medium wrap-anywhere">{applicant.jobTitle}</p>
-      </header>
+      </PageHeader>
 
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         <div className="grid gap-0.5">
-          <dt className="text-sm text-muted-foreground">Stage</dt>
+          <dt className="text-small text-muted-foreground">Stage</dt>
           <dd className="font-medium">{applicationStatusLabels[applicant.status]}</dd>
         </div>
         <div className="grid gap-0.5">
-          <dt className="text-sm text-muted-foreground">Applied</dt>
+          <dt className="text-small text-muted-foreground">Applied</dt>
           <dd className="font-medium">
             <time dateTime={applicant.appliedAt}>{formatShortDate(applicant.appliedAt)}</time>
           </dd>
@@ -149,7 +149,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
       />
 
       <section aria-labelledby="history-heading" className="grid gap-2">
-        <h2 id="history-heading" className="text-lg font-semibold">
+        <h2 id="history-heading" className="text-h2">
           History
         </h2>
         <ol className="grid gap-2">
@@ -160,14 +160,14 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
                   ? `${applicationStatusLabels[event.fromStatus]} to ${applicationStatusLabels[event.toStatus]}`
                   : applicationStatusLabels[event.toStatus]}
               </p>
-              <p className="text-sm text-muted-foreground wrap-anywhere">
+              <p className="text-small text-muted-foreground wrap-anywhere">
                 <time dateTime={event.createdAt}>{formatDateTime(event.createdAt)}</time>
                 {" · "}
                 {event.actor === "employer" ? (event.actorName ?? "Team member") : actorText[event.actor]}
               </p>
               {event.note ? (
                 <div className="grid gap-0.5">
-                  <p className="text-sm text-muted-foreground">Visible to the candidate</p>
+                  <p className="text-small text-muted-foreground">Visible to the candidate</p>
                   <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
                 </div>
               ) : null}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { z } from "zod";
 import { MfaResetForm } from "@/components/admin/mfa-reset-form";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { requirePlatformRole } from "@/lib/dal/session";
 
@@ -14,7 +14,7 @@ export default async function MfaResetPage({ params, searchParams }: PageProps<"
 
   return (
     <div className="grid gap-6">
-      <PageHeading title="MFA reset" />
+      <PageHeader title="MFA reset" />
       <Section
         id="reset"
         title="Reset two-step verification"

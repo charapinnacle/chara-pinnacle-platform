@@ -34,7 +34,7 @@ export function HeaderMenu({ children }: { children: React.ReactNode }) {
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "-me-2 ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-accent md:hidden",
+          "-me-2 ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-small font-medium hover:bg-accent md:hidden",
           !interactive && "hidden",
         )}
       >

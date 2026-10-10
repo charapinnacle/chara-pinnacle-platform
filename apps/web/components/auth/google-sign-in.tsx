@@ -44,8 +44,8 @@ export function GoogleSignIn({ note }: { note: string }) {
       <form action={continueWithGoogle} className="grid">
         <GoogleButton />
       </form>
-      <p className="text-sm leading-relaxed text-muted-foreground">{note}</p>
-      <div aria-hidden className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
+      <p className="text-small leading-relaxed text-muted-foreground">{note}</p>
+      <div aria-hidden className="mt-3 flex items-center gap-3 text-small text-muted-foreground">
         <Separator className="flex-1" />
         or
         <Separator className="flex-1" />

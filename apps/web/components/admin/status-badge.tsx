@@ -6,7 +6,7 @@ export function StatusBadge({ status }: { status: "active" | "suspended" | "dele
   return (
     <span
       className={cn(
-        "inline-block rounded-full border px-2 py-0.5 text-sm font-medium",
+        "inline-block rounded-full border px-2 py-0.5 text-small font-medium",
         status === "suspended" ? "border-destructive/30 bg-destructive-surface text-foreground" : "bg-accent text-accent-foreground",
       )}
     >

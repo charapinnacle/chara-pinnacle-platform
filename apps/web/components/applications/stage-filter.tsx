@@ -16,7 +16,7 @@ export function StageFilter({ basePath, stage }: StageFilterProps) {
 
   return (
     <div className="grid gap-2 sm:max-w-xs">
-      <label htmlFor={id} className="text-sm leading-snug font-medium">
+      <label htmlFor={id} className="text-small leading-snug font-medium">
         Filter by stage
       </label>
       <select

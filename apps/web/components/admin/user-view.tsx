@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { DetailList } from "@/components/layout/detail-list";
 import { ModerationForm } from "@/components/admin/moderation-form";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { Section } from "@/components/layout/section";
@@ -19,11 +19,11 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
 
   return (
     <div className="grid gap-6">
-      <PageHeading title={user.displayName ?? user.email}>
+      <PageHeader title={user.displayName ?? user.email}>
         <TextLink standalone href={adminPath(lang, "users")}>
           Back to the user search
         </TextLink>
-      </PageHeading>
+      </PageHeader>
       <Section id="account" title="Account">
         <DetailList
           items={[

@@ -8,6 +8,7 @@ import { BulkToolbar } from "@/components/applicants/bulk-toolbar";
 import { ExportButton } from "@/components/applicants/export-button";
 import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
+import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { StageFilter } from "@/components/applications/stage-filter";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
@@ -66,16 +67,12 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Applicants</h1>
-        <p className="text-body text-muted-foreground wrap-anywhere">
-          {job ? (
-            <TextLink href={jobPath(lang, slug, job.id)}>{job.title}</TextLink>
-          ) : (
-            `All vacancies of ${organization.displayName}`
-          )}
-        </p>
-      </header>
+      <PageHeader
+        title="Applicants"
+        description={
+          job ? <TextLink href={jobPath(lang, slug, job.id)}>{job.title}</TextLink> : `All vacancies of ${organization.displayName}`
+        }
+      />
 
       {frozen ? (
         <ReadOnlyPlanNotice

@@ -86,15 +86,15 @@ export function StageChangeForm({
         <>
           <dl className="grid gap-3">
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">Applicant</dt>
+              <dt className="text-small text-muted-foreground">Applicant</dt>
               <dd className="font-medium wrap-anywhere">{applicantName}</dd>
             </div>
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">New stage</dt>
+              <dt className="text-small text-muted-foreground">New stage</dt>
               <dd className="font-medium">{applicationStatusLabels[review.status]}</dd>
             </div>
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">
+              <dt className="text-small text-muted-foreground">
                 {review.status === "rejected" ? "Reason (visible to the candidate)" : "Note (visible to the candidate)"}
               </dt>
               <dd className="wrap-anywhere whitespace-pre-line">{review.note === "" ? "No note" : review.note}</dd>

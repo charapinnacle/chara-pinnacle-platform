@@ -18,7 +18,7 @@ type VacancyActionsProps = {
   application: ApplicationState | null;
 };
 
-const noteClassName = "text-sm text-muted-foreground";
+const noteClassName = "text-small text-muted-foreground";
 
 // The employer's preview of the page: the actions as a candidate will see them, switched off.
 export function PreviewActions() {

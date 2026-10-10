@@ -6,6 +6,7 @@ import { StageTable } from "@/components/dashboard/stage-table";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
+import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { startDashboardLoad } from "@/lib/dal/dashboard";
 import { applicantsPath, billingPath, jobsPath, notificationSettingsPath } from "@/lib/routes";
@@ -46,10 +47,7 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Dashboard</h1>
-        <p className="text-body text-muted-foreground wrap-anywhere">{organization.displayName}</p>
-      </header>
+      <PageHeader title="Dashboard" description={organization.displayName} />
 
       <Panel promise={plan} errorTitle="The plan could not be loaded" quiet>
         {(value) => <PlanAlerts plan={value} now={now} slug={slug} billingHref={billingHref} />}

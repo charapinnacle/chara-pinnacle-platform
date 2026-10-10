@@ -9,7 +9,7 @@ type StageTableProps = { lang: string; slug: string; applications: DashboardAppl
 export function StageTable({ lang, slug, applications }: StageTableProps) {
   return (
     <section aria-labelledby="stage-heading" className="grid gap-3 rounded-xl border bg-card p-5 shadow-card">
-      <h2 id="stage-heading" className="text-lg font-semibold">
+      <h2 id="stage-heading" className="text-h2">
         Applicants by stage
       </h2>
       <table aria-labelledby="stage-heading" className="w-full text-body">

@@ -11,8 +11,8 @@ export function SummaryCard({ label, hint, value, href }: SummaryCardProps) {
       className="grid min-h-11 content-start gap-1 rounded-xl border bg-card p-5 shadow-card hover:border-primary/40"
     >
       <span className="text-body font-medium text-muted-foreground">{label}</span>
-      <span className="text-3xl font-semibold tabular-nums">{value}</span>
-      {hint ? <span className="text-sm text-muted-foreground">{hint}</span> : null}
+      <span className="text-figure tabular-nums">{value}</span>
+      {hint ? <span className="text-small text-muted-foreground">{hint}</span> : null}
     </Link>
   );
 }

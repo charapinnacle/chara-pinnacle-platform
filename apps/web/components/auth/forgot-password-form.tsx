@@ -40,7 +40,7 @@ export function ForgotPasswordForm() {
           <Notice tone="info" role="status">
             If an account exists for this email, we have sent a reset link.
           </Notice>
-          <p className="text-sm text-muted-foreground">Wait a minute before asking for another.</p>
+          <p className="text-small text-muted-foreground">Wait a minute before asking for another.</p>
         </>
       ) : null}
       {formState.errors.root?.server ? (

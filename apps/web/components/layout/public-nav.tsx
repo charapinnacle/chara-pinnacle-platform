@@ -4,7 +4,7 @@ import { headerLinks } from "@/lib/public/navigation";
 import { cn } from "@/lib/utils";
 
 const linkClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-accent";
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium hover:bg-accent";
 
 export function PublicNav({ lang }: { lang: string }) {
   return (

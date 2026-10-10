@@ -135,7 +135,7 @@ describe("the list", () => {
     const html = await render({ job });
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="([^"]+)"[^>]*>Export CSV/);
     const id = /aria-describedby="([^"]+)"/.exec(html)?.[1];
-    expect(html).toContain(`<p id="${id}" class="text-sm text-muted-foreground">Your plan does not include the CSV export.</p>`);
+    expect(html).toContain(`<p id="${id}" class="text-small text-muted-foreground">Your plan does not include the CSV export.</p>`);
     expect(html).not.toContain("disabled until a plan is chosen");
   });
 

@@ -26,7 +26,7 @@ export function LogoutButton() {
   }
 
   return (
-    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className="min-w-38 px-4 text-sm">
+    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className="min-w-38 px-4 text-small">
       {pending ? "Logging out..." : "Log out"}
     </FormButton>
   );

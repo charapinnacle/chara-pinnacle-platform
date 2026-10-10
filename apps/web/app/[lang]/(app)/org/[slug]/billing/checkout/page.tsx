@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/billing/checkout-form";
 import { TextLink } from "@/components/forms/text-link";
+import { PageHeader } from "@/components/layout/page-header";
 import { checkoutDisclosures, formatPrice, type SoldPlan } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, listSoldPlans, type BillingState } from "@/lib/dal/billing";
 import { getLegalDocument } from "@/lib/dal/legal";
@@ -43,15 +44,13 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
   const trialDays = state.trial_used ? 0 : plan.trialDays;
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-8">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Confirm your plan</h1>
-        <p className="text-body text-muted-foreground">
-          {organization.displayName} · {plan.name}, {formatPrice(plan.priceMinor, plan.currency)} per {plan.interval}
-        </p>
-      </header>
+      <PageHeader
+        title="Confirm your plan"
+        description={`${organization.displayName} · ${plan.name}, ${formatPrice(plan.priceMinor, plan.currency)} per ${plan.interval}`}
+      />
 
       <section aria-labelledby="terms-heading" className="grid gap-3 rounded-xl border bg-card p-4">
-        <h2 id="terms-heading" className="text-lg font-semibold">
+        <h2 id="terms-heading" className="text-h2">
           Before you continue
         </h2>
         <dl className="grid gap-3">
@@ -62,7 +61,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
             </div>
           ))}
         </dl>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-small text-muted-foreground">
           You enter your card on the page of our payment provider. CHARA never sees or stores your card details.
         </p>
       </section>

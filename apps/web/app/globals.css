@@ -72,6 +72,7 @@
 
 /* The type scale: display and h1 step up at the sm breakpoint (the :root override in the base layer below), and the
    headings carry their weight and tracking, so a heading is one utility: text-display, text-h1, text-h2, text-h3.
+   text-figure is the size of a number shown on its own (a count, a price tile).
    text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the gap
    between the blocks of a page. docs/runbooks/design-system.md documents each token. */
 @theme {
@@ -89,6 +90,9 @@
   --text-h3: 1rem;
   --text-h3--line-height: 1.5;
   --text-h3--font-weight: 600;
+  --text-figure: 1.875rem;
+  --text-figure--line-height: 1.2;
+  --text-figure--font-weight: 600;
   --text-body: 0.9375rem;
   --text-small: 0.875rem;
   --text-small--line-height: 1.43;

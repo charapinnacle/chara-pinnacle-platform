@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalExportButton } from "@/components/admin/legal-export-button";
 import { LegalForm } from "@/components/admin/legal-form";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { TextLink } from "@/components/forms/text-link";
 import { Section } from "@/components/layout/section";
@@ -20,7 +20,7 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
 
   return (
     <div className="grid gap-6">
-      <PageHeading title="Legal documents" />
+      <PageHeader title="Legal documents" />
       <Section id="current" title="Current versions" description="Version 0 is the draft placeholder until the first approved text is published.">
         <ResultsTable caption="Current versions of the legal documents" columns={["Document", "Title", "Version", "Status", "Published", "New version"]}>
           {documents.map((document) => (

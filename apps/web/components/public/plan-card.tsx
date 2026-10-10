@@ -15,10 +15,10 @@ export function PlanCard({ card, link }: { card: Card; link: Link | null }) {
   const [headline, ...terms] = card.trial;
   return (
     <li className="grid content-start gap-3 rounded-xl border bg-card p-4">
-      <h3 className="text-lg font-semibold">{card.name}</h3>
+      <h3 className="text-h2">{card.name}</h3>
       {card.price ? (
         <p>
-          <span className="text-2xl font-semibold">{card.price}</span>{" "}
+          <span className="text-h1">{card.price}</span>{" "}
           <span className="text-muted-foreground">{card.per} excl. VAT</span>
         </p>
       ) : (

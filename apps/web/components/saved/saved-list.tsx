@@ -13,7 +13,7 @@ import { formatDate } from "@/lib/i18n/format";
 import { SAVED_HEADING_ID } from "@/lib/jobs/saved";
 import { applicationPath, applyPath } from "@/lib/routes";
 
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-medium text-accent-foreground";
+const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-small font-medium text-accent-foreground";
 
 type SavedRowProps = { job: SavedJob; lang: string; applied: ApplicationState | null; onRemove: (id: string) => void };
 
@@ -35,7 +35,7 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
     <li className="grid gap-2 rounded-xl border bg-card p-4">
       {job.available ? (
         <>
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-h2">
             {open ? (
               <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
                 {job.title}
@@ -51,9 +51,9 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
           </p>
         </>
       ) : (
-        <h2 className="text-lg font-semibold">This vacancy is no longer available</h2>
+        <h2 className="text-h2">This vacancy is no longer available</h2>
       )}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         Saved <time dateTime={job.savedAt}>{formatDate(job.savedAt)}</time>
       </p>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">

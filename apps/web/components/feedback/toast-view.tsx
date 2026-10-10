@@ -37,9 +37,9 @@ export default function ToastView({
           className={toastVariants({ variant })}
         >
           <div className="grid gap-1">
-            <Toast.Title className="text-sm font-medium">{title}</Toast.Title>
+            <Toast.Title className="text-small font-medium">{title}</Toast.Title>
             {description ? (
-              <Toast.Description className="text-sm text-muted-foreground">
+              <Toast.Description className="text-small text-muted-foreground">
                 {description}
               </Toast.Description>
             ) : null}

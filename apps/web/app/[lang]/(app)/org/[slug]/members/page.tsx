@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { z } from "zod";
+import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
@@ -54,13 +55,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Team</h1>
-          <p className="text-body text-muted-foreground">{organization.displayName}</p>
-        </div>
-        {!onlyOwner ? invite : null}
-      </header>
+      <PageHeader title="Team" description={organization.displayName} actions={!onlyOwner ? invite : null} />
 
       {transfer?.toUserId === user.id ? (
         <Notice tone="info" role="status" className="grid gap-3">
@@ -89,7 +84,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
       ) : null}
 
       <section aria-labelledby="members-heading" className="grid gap-3">
-        <h2 id="members-heading" className="text-lg font-semibold">
+        <h2 id="members-heading" className="text-h2">
           Members
         </h2>
         <ul className="grid gap-3">
@@ -99,10 +94,10 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
                 <div className="min-w-0">
                   <p className="font-medium break-words">{displayName(member)}</p>
                   {member.name && member.email ? (
-                    <p className="text-sm break-all text-muted-foreground">{member.email}</p>
+                    <p className="text-small break-all text-muted-foreground">{member.email}</p>
                   ) : null}
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-small text-muted-foreground">
                   <span className="font-medium text-foreground">{roleLabels[member.role]}</span>
                   {manager ? <> · Two-step verification: {mfaStatus(member)}</> : null}
                 </p>
@@ -127,7 +122,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
 
       {manager && invitations.length > 0 ? (
         <section aria-labelledby="invitations-heading" className="grid gap-3">
-          <h2 id="invitations-heading" className="text-lg font-semibold">
+          <h2 id="invitations-heading" className="text-h2">
             Invitations
           </h2>
           <ul className="grid gap-3">
@@ -135,7 +130,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
               <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
                 <div className="min-w-0">
                   <p className="font-medium break-all">{invitation.email}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-small text-muted-foreground">
                     {roleLabels[invitation.role]} ·{" "}
                     {invitation.expired
                       ? "Expired"
@@ -155,7 +150,7 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
 
       {organization.role === "owner" && candidates.length > 0 && !transfer ? (
         <section aria-labelledby="ownership-heading" className="grid gap-3">
-          <h2 id="ownership-heading" className="text-lg font-semibold">
+          <h2 id="ownership-heading" className="text-h2">
             Ownership
           </h2>
           <p className="text-body text-muted-foreground">

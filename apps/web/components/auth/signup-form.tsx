@@ -167,7 +167,7 @@ export function SignupForm({ documents, attestationWording, invitation }: SignUp
                   >
                     {document.title}
                   </LegalLink>
-                  <span className="block text-sm text-muted-foreground">
+                  <span className="block text-small text-muted-foreground">
                     (version {document.version}, published {formatLegalDate(document.publishedAt)})
                   </span>
                 </span>

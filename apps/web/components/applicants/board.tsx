@@ -136,10 +136,10 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
               >
                 <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-base font-semibold">
                   {applicationStatusLabels[column.status]}
-                  <span className="rounded-full border bg-card px-2 text-sm font-medium">{column.total}</span>
+                  <span className="rounded-full border bg-card px-2 text-small font-medium">{column.total}</span>
                 </h2>
                 {column.rows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No applicants</p>
+                  <p className="text-small text-muted-foreground">No applicants</p>
                 ) : (
                   <ul className="grid gap-2">
                     {column.rows.map((row) => (
@@ -157,7 +157,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
                   </ul>
                 )}
                 {column.total > column.rows.length ? (
-                  <TextLink href={applicantsPath(lang, slug, { job: jobId, stage: column.status })} className="text-sm">
+                  <TextLink href={applicantsPath(lang, slug, { job: jobId, stage: column.status })} className="text-small">
                     Show all {column.total} in the list
                   </TextLink>
                 ) : null}

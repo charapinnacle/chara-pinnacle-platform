@@ -109,7 +109,7 @@ export function CheckoutForm({
       <ConsentPanel>
         <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
           <h2 className="text-base font-semibold tracking-tight">{termsTitle}</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-small text-muted-foreground">
             Version {termsVersion}, published {formatDate(termsPublishedAt)}
           </p>
           <LegalLink

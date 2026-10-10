@@ -44,7 +44,7 @@ export function ExportButton({ action, jobId, stage, disabled, hint }: ExportBut
         Export CSV
       </FormButton>
       {hint ? (
-        <p id={hintId} className="text-sm text-muted-foreground">
+        <p id={hintId} className="text-small text-muted-foreground">
           {hint}
         </p>
       ) : null}

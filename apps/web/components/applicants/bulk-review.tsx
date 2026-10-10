@@ -16,7 +16,7 @@ export function BulkReviewBody({ review, busy, onCancel, onConfirm }: BulkReview
   return (
     <>
       <div className="grid gap-1.5">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-small text-muted-foreground">
           {rows.length} {rows.length === 1 ? "applicant" : "applicants"}
         </p>
         <ul className="grid max-h-56 gap-1 overflow-y-auto rounded-lg border p-3">
@@ -30,11 +30,11 @@ export function BulkReviewBody({ review, busy, onCancel, onConfirm }: BulkReview
       </div>
       <dl className="grid gap-3">
         <div className="grid gap-0.5">
-          <dt className="text-sm text-muted-foreground">New stage</dt>
+          <dt className="text-small text-muted-foreground">New stage</dt>
           <dd className="font-medium">{applicationStatusLabels[values.status]}</dd>
         </div>
         <div className="grid gap-0.5">
-          <dt className="text-sm text-muted-foreground">Visible to the candidate</dt>
+          <dt className="text-small text-muted-foreground">Visible to the candidate</dt>
           <dd className="wrap-anywhere whitespace-pre-line">{values.note === "" ? "No note" : values.note}</dd>
         </div>
       </dl>

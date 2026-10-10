@@ -14,7 +14,7 @@ export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
       <h2 id="plan-heading" className="text-body font-medium text-muted-foreground">
         Plan
       </h2>
-      <p className="text-3xl font-semibold">{plan.planName}</p>
+      <p className="text-figure">{plan.planName}</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
         <dt className="text-muted-foreground">Status</dt>
         <dd>{planStatusLabels[plan.status]}</dd>

@@ -68,7 +68,7 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
         <TextLink href={href}>{name}</TextLink>
         {row.status === "applied" ? <NewBadge /> : null}
       </p>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         <time dateTime={row.appliedAt}>{formatShortDate(row.appliedAt)}</time>
         {" · "}
         {row.completeness} % · {row.documents} {row.documents === 1 ? "document" : "documents"}
@@ -93,7 +93,7 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
             onClick={() => {
               if (!frozen) setOpen((value) => !value);
             }}
-            className="min-h-11 rounded-lg border border-input bg-card px-3 text-sm font-medium hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+            className="min-h-11 rounded-lg border border-input bg-card px-3 text-small font-medium hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           >
             Move
           </button>
@@ -109,7 +109,7 @@ export function BoardCard({ row, href, targets, frozen, onMove, onDragStart, onD
                   <button
                     type="button"
                     role="menuitem"
-                    className="min-h-11 w-full rounded-md px-3 text-start text-sm hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
+                    className="min-h-11 w-full rounded-md px-3 text-start text-small hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
                     onClick={() => {
                       setOpen(false);
                       onMove(row, target);

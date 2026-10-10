@@ -18,7 +18,7 @@ const typeLabels: Record<string, string> = Object.fromEntries(documentTypeOption
 // Each cell prints its own column heading. An empty cell leaves the layout and loses its heading but stays in the
 // accessibility tree, so every row keeps one cell per column header.
 const labelled =
-  "flex items-baseline gap-3 before:w-20 before:shrink-0 before:text-sm before:font-semibold before:text-muted-foreground before:content-[attr(data-label)] empty:sr-only empty:before:content-none";
+  "flex items-baseline gap-3 before:w-20 before:shrink-0 before:text-small before:font-semibold before:text-muted-foreground before:content-[attr(data-label)] empty:sr-only empty:before:content-none";
 
 export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
   const [renaming, setRenaming] = useState(false);

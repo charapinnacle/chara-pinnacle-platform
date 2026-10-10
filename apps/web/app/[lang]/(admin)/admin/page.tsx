@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { entriesFor } from "@/lib/admin/navigation";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { platformRoleLabels } from "@/lib/validation/admin";
@@ -13,9 +13,9 @@ export default async function AdminPage({ params }: PageProps<"/[lang]/admin">) 
 
   return (
     <div className="grid gap-4">
-      <PageHeading title="Administration">
+      <PageHeader title="Administration">
         <p className="text-body text-muted-foreground">{roles.map((role) => platformRoleLabels[role]).join(", ")}</p>
-      </PageHeading>
+      </PageHeader>
       <p className="text-body">
         {hasFunctions
           ? "Choose a function from the menu. Every change you make is written to the audit log with your reason."

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { DetailList } from "@/components/layout/detail-list";
 import { moderationLabels } from "@/components/admin/job-moderation-badge";
 import { ModerationForm } from "@/components/admin/moderation-form";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
@@ -20,11 +20,11 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
 
   return (
     <div className="grid gap-6">
-      <PageHeading title={organization.displayName}>
+      <PageHeader title={organization.displayName}>
         <TextLink standalone href={adminPath(lang, "organizations")}>
           Back to the organisation search
         </TextLink>
-      </PageHeading>
+      </PageHeader>
       <Section id="organisation" title="Organisation">
         <DetailList
           items={[

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { StageCounts } from "@/components/admin/stage-counts";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
@@ -33,9 +33,9 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
 
   return (
     <div className="grid gap-6">
-      <PageHeading title="Statistics">
+      <PageHeader title="Statistics">
         <p className="text-body text-muted-foreground">Applications by stage, counted only. The days are in UTC, both included, at most 366.</p>
-      </PageHeading>
+      </PageHeader>
       <form method="get" className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div className="grid gap-2">
           <Label htmlFor="stats-from">From</Label>

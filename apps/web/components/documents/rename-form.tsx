@@ -49,7 +49,7 @@ export function RenameForm({ documentId, title, onDone }: RenameFormProps) {
         }}
       />
       {error ? (
-        <p id={errorId} className="text-sm text-destructive">
+        <p id={errorId} className="text-small text-destructive">
           {error}
         </p>
       ) : null}

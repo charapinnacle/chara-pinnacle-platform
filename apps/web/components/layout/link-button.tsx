@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 // The sizes and the base of the Button primitive, which does not export them; the variants are those of FormButton.
 const linkButtonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary text-sm font-medium whitespace-nowrap text-primary-foreground transition-colors select-none hover:bg-primary/80",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary text-small font-medium whitespace-nowrap text-primary-foreground transition-colors select-none hover:bg-primary/80",
   {
     variants: { size: { default: "h-9 px-4", lg: "h-11 px-6 text-base" } },
     defaultVariants: { size: "lg" },

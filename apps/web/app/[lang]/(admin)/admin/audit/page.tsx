@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AuditSearch } from "@/components/admin/audit-search";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { requirePlatformRole } from "@/lib/dal/session";
 
 export const metadata: Metadata = { title: "Audit log — CHARA", robots: { index: false } };
@@ -10,9 +10,9 @@ export default async function AuditPage({ params }: PageProps<"/[lang]/admin/aud
   await requirePlatformRole(lang, ["admin"]);
   return (
     <div className="grid gap-6">
-      <PageHeading title="Audit log">
+      <PageHeader title="Audit log">
         <p className="text-body text-muted-foreground">Every administrative action, newest first. The times are in UTC.</p>
-      </PageHeading>
+      </PageHeader>
       <AuditSearch lang={lang} />
     </div>
   );

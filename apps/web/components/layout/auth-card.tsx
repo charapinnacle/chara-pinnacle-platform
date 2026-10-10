@@ -25,9 +25,7 @@ export function AuthCard({ title, description, icon: Icon, children, footer }: A
             </span>
           ) : null}
           {title ? (
-            <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem] sm:leading-9">
-              {title}
-            </h1>
+            <h1 className="text-h1 text-balance">{title}</h1>
           ) : null}
           {description ? (
             <p className={cn("text-body leading-relaxed text-muted-foreground", Icon ? "text-balance" : "text-pretty")}>

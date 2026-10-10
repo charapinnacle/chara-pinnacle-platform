@@ -8,7 +8,7 @@ export function DocumentReminders({ lang, reminders, today }: DocumentRemindersP
   if (reminders.length === 0) return null;
   return (
     <section aria-labelledby="document-reminders" className="grid gap-3">
-      <h2 id="document-reminders" className="text-lg font-semibold">
+      <h2 id="document-reminders" className="text-h2">
         Document reminders
       </h2>
       <ul className="grid gap-1 text-body">

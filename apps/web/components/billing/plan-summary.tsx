@@ -21,7 +21,7 @@ export function PlanSummary({ subscription, plan }: PlanSummaryProps) {
 
   return (
     <section aria-labelledby="plan-heading" className="grid gap-3 rounded-xl border bg-card p-4">
-      <h2 id="plan-heading" className="text-lg font-semibold">
+      <h2 id="plan-heading" className="text-h2">
         Current plan
       </h2>
       <DetailList items={items} />

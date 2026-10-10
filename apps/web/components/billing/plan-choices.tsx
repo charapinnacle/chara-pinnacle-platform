@@ -8,7 +8,7 @@ type PlanChoicesProps = { plans: SoldPlan[]; checkoutHref: (planCode: string) =>
 export function PlanChoices({ plans, checkoutHref, offerTrial }: PlanChoicesProps) {
   return (
     <section id="plans" aria-labelledby="plans-heading" className="grid gap-3">
-      <h2 id="plans-heading" className="text-lg font-semibold">
+      <h2 id="plans-heading" className="text-h2">
         Choose a plan
       </h2>
       <Notice tone="info" role="status">
@@ -21,8 +21,8 @@ export function PlanChoices({ plans, checkoutHref, offerTrial }: PlanChoicesProp
           return (
             <li key={plan.code} className="grid gap-1 rounded-xl border bg-card p-4">
               <h3 className="font-medium">{plan.name}</h3>
-              <p className="text-sm text-muted-foreground">{shortPriceLine(plan)}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-small text-muted-foreground">{shortPriceLine(plan)}</p>
+              <p className="text-small text-muted-foreground">
                 {trial ? `${daysText(plan.trialDays)} free trial` : "No free trial"}
               </p>
               <TextLink

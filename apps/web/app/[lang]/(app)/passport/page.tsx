@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AccessLogSection } from "@/components/access-log/access-log-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { TextLink } from "@/components/forms/text-link";
+import { PageHeader } from "@/components/layout/page-header";
 import { AuthorizationsSection } from "@/components/passport/authorizations-section";
 import { BasicsForm } from "@/components/passport/basics-form";
 import { CompletenessCard } from "@/components/passport/completeness-card";
@@ -39,15 +40,11 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Your passport</h1>
-        <p className="text-body text-muted-foreground">
-          Only you can see your passport. Each section below is saved on its own.
-        </p>
+      <PageHeader title="Your passport" description="Only you can see your passport. Each section below is saved on its own.">
         <TextLink standalone href={homePath(lang, "worker")}>
           Back to the dashboard
         </TextLink>
-      </header>
+      </PageHeader>
 
       <Section id="completeness" title="Completeness">
         <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, todayUtc())} />

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
+import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { NotificationForm } from "@/components/settings/notification-form";
 import { getEmailDelivery } from "@/lib/dal/notifications";
@@ -17,12 +18,11 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Notification settings</h1>
+      <PageHeader title="Notification settings">
         <TextLink standalone href={homePath(lang, user.accountKind)}>
           Back to the dashboard
         </TextLink>
-      </header>
+      </PageHeader>
       {delivery ? (
         <Section
           id="new-applications"

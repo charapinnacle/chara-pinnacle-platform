@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { DetailList } from "@/components/layout/detail-list";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { ModerateJobDialog } from "@/components/admin/moderate-job-dialog";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { TextLink } from "@/components/forms/text-link";
 import { Section } from "@/components/layout/section";
@@ -19,11 +19,11 @@ export async function JobModerationView({ lang, id }: { lang: string; id: string
 
   return (
     <div className="grid gap-6">
-      <PageHeading title={job.title}>
+      <PageHeader title={job.title}>
         <TextLink standalone href={adminPath(lang, "moderation")}>
           Back to the vacancy search
         </TextLink>
-      </PageHeading>
+      </PageHeader>
       <Section id="vacancy" title="Vacancy" description="As the employer wrote it. Applicants are not shown here.">
         <DetailList
           items={[

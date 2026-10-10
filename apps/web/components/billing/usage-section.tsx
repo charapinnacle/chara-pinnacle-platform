@@ -23,7 +23,7 @@ type UsageSectionProps = { usage: Usage[]; upgradeHref: string | null };
 export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
   return (
     <section aria-labelledby="usage-heading" className="grid gap-4 rounded-xl border bg-card p-4">
-      <h2 id="usage-heading" className="text-lg font-semibold">
+      <h2 id="usage-heading" className="text-h2">
         Usage
       </h2>
       <ul className="grid gap-5">
@@ -53,7 +53,7 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
                 </div>
               ) : null}
               {stateText ? (
-                <p className="text-sm font-medium">
+                <p className="text-small font-medium">
                   {stateText}
                   {upgradeHref ? (
                     <>
@@ -65,7 +65,7 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
                   ) : null}
                 </p>
               ) : null}
-              {level.state === "over_limit" ? <p className="text-sm text-muted-foreground">{OVER_LIMIT_TEXT[key]}</p> : null}
+              {level.state === "over_limit" ? <p className="text-small text-muted-foreground">{OVER_LIMIT_TEXT[key]}</p> : null}
             </li>
           );
         })}
