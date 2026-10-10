@@ -10,11 +10,11 @@ async function restricted(code: string) {
 }
 
 describe("the Zod import rule", () => {
-  it.each(['import { z } from "zod";', 'import z from "zod";'])("refuses %s in application code", async (code) => {
+  it.each(['import { z } from "zod";', 'import z from "zod";', 'import { z } from "zod/v4";', 'import z from "zod/v4/classic";'])("refuses %s in application code", async (code) => {
     expect(await restricted(code)).toHaveLength(1);
   });
 
-  it.each(['import * as z from "zod";', 'import { object, string } from "zod";'])("accepts %s", async (code) => {
+  it.each(['import * as z from "zod";', 'import * as z from "zod/v4";', 'import { object, string } from "zod";'])("accepts %s", async (code) => {
     expect(await restricted(code)).toHaveLength(0);
   });
 });

@@ -19,8 +19,8 @@ const eslintConfig = defineConfig([
       "no-restricted-syntax": [
         "error",
         {
-          selector: "ImportDeclaration[source.value='zod'] > :matches(ImportSpecifier[imported.name='z'], ImportDefaultSpecifier)",
-          message: 'Import * as z from "zod": the z export brings all the translations of "zod" into the browser bundle.',
+          selector: "ImportDeclaration[source.value=/^zod(\\/.*)?$/] > :matches(ImportSpecifier[imported.name='z'], ImportDefaultSpecifier)",
+          message: 'Import * as z from "zod" (or a subpath): the z export brings all the translations of "zod" into the browser bundle.',
         },
       ],
     },
