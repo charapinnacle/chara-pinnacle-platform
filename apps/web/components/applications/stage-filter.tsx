@@ -3,7 +3,7 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { useRouter } from "next/navigation";
 import { useId } from "react";
-import { selectClassName } from "@/components/forms/select-class";
+import { NativeSelect } from "@/components/forms/native-select";
 import { applicationStageOptions, isApplicationStatus } from "@/lib/applications/presentation";
 
 // basePath is the address of the list with everything but the stage and the page (it may carry a query).
@@ -19,11 +19,10 @@ export function StageFilter({ basePath, stage }: StageFilterProps) {
       <label htmlFor={id} className="text-small leading-snug font-medium">
         Filter by stage
       </label>
-      <select
+      <NativeSelect
         id={id}
         key={stage ?? "all"}
         defaultValue={stage ?? ""}
-        className={selectClassName}
         onChange={(event) => {
           const value = event.currentTarget.value;
           router.push(isApplicationStatus(value) ? `${basePath}${basePath.includes("?") ? "&" : "?"}stage=${value}` : basePath);
@@ -35,7 +34,7 @@ export function StageFilter({ basePath, stage }: StageFilterProps) {
             {label}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </div>
   );
 }

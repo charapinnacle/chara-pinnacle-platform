@@ -5,6 +5,8 @@ import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { Spinner } from "@/components/feedback/spinner";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
+import { controlClassName } from "@/components/forms/control-class";
+import { NativeSelect } from "@/components/forms/native-select";
 import { Notice } from "@/components/forms/notice";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
@@ -244,5 +246,31 @@ describe("the badges of the admin console", () => {
     expect(html(<JobModerationBadge state="visible" />)).toMatch(/bg-success-background[^>]*>Visible</);
     expect(html(<JobModerationBadge state="hidden" />)).toMatch(/bg-danger-background[^>]*>Hidden</);
     expect(html(<JobModerationBadge state="org_suspended" />)).toContain("Hidden with the suspension");
+  });
+});
+
+describe("NativeSelect (DS-03)", () => {
+  const markup = html(
+    <NativeSelect id="country" aria-invalid defaultValue="DE">
+      <option value="">Choose a country</option>
+      <option value="DE">Germany</option>
+    </NativeSelect>,
+  );
+
+  it("is a native select with its options and attributes, so type-ahead and mobile pickers keep working", () => {
+    expect(markup).toMatch(/<select [^>]*id="country"[^>]*aria-invalid="true"/);
+    expect(markup).toContain('<option value="DE" selected="">Germany</option>');
+  });
+
+  it("has the height, inset and chevron of the text input and the combobox", () => {
+    expect(markup).toContain("h-11");
+    expect(controlClassName).toContain("px-3.5");
+    expect(markup).toContain("ps-3.5");
+    expect(markup).toMatch(/<svg[^>]*lucide-chevron-down[^>]*aria-hidden="true"/);
+    expect(markup).toContain("appearance-none");
+  });
+
+  it("lets the caller add classes", () => {
+    expect(html(<NativeSelect className="sm:max-w-xs" />)).toContain("sm:max-w-xs");
   });
 });
