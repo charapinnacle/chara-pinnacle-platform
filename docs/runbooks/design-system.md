@@ -66,6 +66,8 @@ Contrast, computed by the WCAG formula from the tokens (`tests/unit/support/toke
 |---|---|---|
 | foreground on background / card | 18.68 / 19.67 | 17.51 / 16.44 |
 | muted-foreground on background / card | 6.48 / 6.83 | 8.53 / 8.01 |
+| muted-foreground on accent (the trial terms of a plan card) | 5.99 | 6.55 |
+| secondary-foreground on background / card (the fact tags of a result card) | 14.31 / 15.07 | 15.53 / 14.57 |
 | primary-foreground on primary / hover / active | 18.58 / 14.64 / 11.43 | 9.75 / 11.60 / 13.69 |
 | destructive-foreground on destructive / hover / active | 6.47 / 8.06 / 10.11 | 7.88 / 9.42 / 11.80 |
 | brand-ink on background / card / accent | 6.57 / 6.92 / 6.07 | 10.47 / 9.83 / 8.03 |
