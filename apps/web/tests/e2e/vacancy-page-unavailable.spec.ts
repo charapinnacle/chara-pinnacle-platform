@@ -17,12 +17,11 @@ function normalised(html: string, id: string): string {
   return withoutNonce.replaceAll(id, "ID");
 }
 
-// The header of a signed-in person differs from that of a visitor (Go to my area, Log out) and the page data repeats it, so
-// the pages of a signed-in person are compared by what the page itself says: its title and its main area.
-function pageOwnContent(html: string, id: string): string {
-  const title = /<title>[^<]*<\/title>/.exec(html)?.[0] ?? "";
-  const main = /<main[\s\S]*?<\/main>/.exec(html)?.[0] ?? "";
-  return normalised(title + main, id);
+// The page data in the scripts is numbered in the order in which the parts of the page finish, and the header of a signed-in
+// person finishes at a different moment for an id that exists than for one that does not. The markup is compared as a whole,
+// scripts left out; the page data is checked for what must not appear in it.
+function markup(html: string, id: string): string {
+  return normalised(html.replace(/<script[\s\S]*?<\/script>/g, ""), id);
 }
 
 test.describe("the public vacancy page when a vacancy is not available", () => {
@@ -92,16 +91,20 @@ test.describe("the public vacancy page when a vacancy is not available", () => {
       seedJob(company, { title: "Own paused", status: "paused" }),
       seedJob(company, { title: "Own hidden", status: "open", moderation: "hidden" }),
     ];
-    const anonymous = pageOwnContent((await bodyOf(page, publicUrl(ids[0]))).html, ids[0]);
+    const unknown = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 
-    for (const user of [company.owner, member]) {
+    // The header of a signed-in person differs from that of a visitor, so each viewer is compared with the page that same
+    // viewer gets for an id that does not exist, as a whole: head, header, main and footer.
+    for (const user of [null, company.owner, member]) {
       await context.clearCookies();
-      await signInBrowser(context, user);
+      if (user) await signInBrowser(context, user);
+      const baseline = markup((await bodyOf(page, publicUrl(unknown))).html, unknown);
       for (const id of ids) {
         const { status, html } = await bodyOf(page, publicUrl(id));
         expect(status, id).toBe(404);
         expect(html, id).not.toContain("Own ");
-        expect(pageOwnContent(html, id), id).toBe(anonymous);
+        expect(html, id).not.toContain(company.slug);
+        expect(markup(html, id), id).toBe(baseline);
       }
     }
   });

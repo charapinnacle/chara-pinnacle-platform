@@ -4,6 +4,7 @@ import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { overflow } from "./support/login-page";
+import { registerOrganization, uniqueName } from "./support/organizations";
 import { addMember, newTeam } from "./support/team";
 import { expect, test } from "./support/test";
 
@@ -41,6 +42,32 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await page.keyboard.press("Escape");
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(menu).toBeFocused();
+    await context.close();
+  });
+
+  test("below 768 px an owner of two organisations sees the five links and both organisations in the menu and moves to the other one", async ({ browser }) => {
+    const first = uniqueName("First Bau");
+    const second = uniqueName("Second Bau");
+    const team = await newTeam(first);
+    await registerOrganization(team.owner, `${second} GmbH`, second);
+    const { context, page } = await signedInPage(browser, team.owner, PHONE);
+    await page.goto(`/en/dashboard/employer?org=${team.slug}`);
+    const menu = page.getByRole("button", { name: "Menu" });
+    await waitForHydration(menu);
+    await menu.click();
+
+    expect(await linkLabels(mainNavigation(page))).toEqual(["Organisation", "Vacancies", "Applicants", "Team", "Billing"]);
+    await expect(page.getByText("Your organisations")).toBeVisible();
+    const organisations = page.locator("div", { has: page.getByText("Your organisations") }).last();
+    await expect(organisations.getByRole("link", { name: first, exact: true })).toHaveAttribute("aria-current", "true");
+    await expect(page.getByText("Owner", { exact: true }).filter({ visible: true })).toBeVisible();
+    await expectNoAxeViolations(page);
+
+    await organisations.getByRole("link", { name: second, exact: true }).click();
+    await expect(page).toHaveURL(/\/en\/dashboard\/employer\?org=.*second-bau/);
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
+    await menu.click();
+    await expect(organisations.getByRole("link", { name: second, exact: true })).toHaveAttribute("aria-current", "true");
     await context.close();
   });
 
