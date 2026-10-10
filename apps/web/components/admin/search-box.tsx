@@ -15,7 +15,7 @@ export function SearchBox({ label, description, busy, onSearch }: SearchBoxProps
   });
 
   return (
-    <form noValidate className="grid items-start gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleSubmit(({ term }) => onSearch(term))}>
+    <form noValidate className="grid max-w-3xl items-start gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleSubmit(({ term }) => onSearch(term))}>
       <InputField control={control} name="term" label={label} description={description} maxLength={100} autoComplete="off" />
       <FormButton type="submit" busy={busy} className="w-full sm:mt-7 sm:w-auto">
         Search

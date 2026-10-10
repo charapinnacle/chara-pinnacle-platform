@@ -25,7 +25,7 @@ export default async function JobPreviewPage({ params }: PageProps<"/[lang]/org/
   if (!job) notFound();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-page">
+    <div className="grid w-full max-w-3xl gap-page">
       <Breadcrumbs
         items={[
           organizationCrumb(lang, organization),

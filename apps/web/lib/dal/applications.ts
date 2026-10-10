@@ -4,6 +4,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { cache } from "react";
 import * as z from "zod";
 import { type EventActorRole, eventActorLabels, isApplicationStatus } from "@/lib/applications/presentation";
+import { stageTotals, type StageTotals } from "@/lib/dashboard/stage-counts";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplyLimits } from "@/lib/validation/application";
 
@@ -19,7 +20,7 @@ export type ApplyDocument = { id: string; title: string; type: "cv" | "certifica
 
 export type ApplicationState = { id: string; status: ApplicationStatus; createdAt: string };
 
-type MyApplication = {
+export type MyApplication = {
   id: string;
   jobTitle: string;
   employerName: string;
@@ -170,17 +171,38 @@ export async function listMyApplications(
     p_offset: (page - 1) * APPLICATIONS_PAGE_SIZE,
   });
   if (error) throw new Error("The applications could not be loaded", { cause: error });
+  return { applications: data.slice(0, APPLICATIONS_PAGE_SIZE).map(toMyApplication), hasNext: data.length > APPLICATIONS_PAGE_SIZE };
+}
+
+type MyApplicationRow = Database["public"]["Functions"]["my_applications"]["Returns"][number];
+
+function toMyApplication(row: MyApplicationRow): MyApplication {
   return {
-    applications: data.slice(0, APPLICATIONS_PAGE_SIZE).map((row) => ({
-      id: row.id,
-      jobTitle: row.job_title,
-      employerName: row.employer_display_name,
-      status: row.status,
-      appliedAt: row.applied_at,
-      lastEventAt: row.last_event_at,
-    })),
-    hasNext: data.length > APPLICATIONS_PAGE_SIZE,
+    id: row.id,
+    jobTitle: row.job_title,
+    employerName: row.employer_display_name,
+    status: row.status,
+    appliedAt: row.applied_at,
+    lastEventAt: row.last_event_at,
   };
+}
+
+const RECENT_APPLICATIONS = 3;
+
+// The candidate's applications with the latest change first, for the dashboard.
+export async function getRecentApplications(): Promise<MyApplication[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_applications", { p_limit: RECENT_APPLICATIONS });
+  if (error) throw new Error("The recent applications could not be loaded", { cause: error });
+  return data.map(toMyApplication);
+}
+
+// Every stage with the number of the candidate's applications in it; the function returns all eight.
+export async function getMyStageCounts(): Promise<StageTotals> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_application_stage_counts");
+  if (error) throw new Error("The applications could not be counted", { cause: error });
+  return stageTotals(data);
 }
 
 // No row for an application of somebody else, whatever the id: the page answers it as it answers an unknown id.

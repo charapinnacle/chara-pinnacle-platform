@@ -46,7 +46,9 @@ export function FormButton({
       size="lg"
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={cn(formButtonVariants({ variant, busy }), className)}
+      // A long label ("Save experience and availability") wraps instead of making its card, and so the page, wider than
+      // a 320 or 360 px screen; min-h-11 keeps the 44 px target of a one-line button.
+      className={cn("h-auto min-h-11 py-2.5 text-center whitespace-normal", formButtonVariants({ variant, busy }), className)}
       {...props}
     >
       {busy ? <Spinner /> : null}

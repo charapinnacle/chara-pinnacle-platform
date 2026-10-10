@@ -4,6 +4,8 @@ import GlobalError from "@/app/global-error";
 import AppError from "@/app/[lang]/(app)/error";
 import AuthError from "@/app/[lang]/(auth)/error";
 
+vi.mock("@/lib/fonts", () => ({ geist: { variable: "font-geist-variable" } }));
+
 describe("the error boundaries of the signed-in area, the sign-in area and the whole app", () => {
   const error = Object.assign(new Error("relation secret_table detail"), { digest: "d9" });
 
@@ -21,7 +23,7 @@ describe("the error boundaries of the signed-in area, the sign-in area and the w
 
   it("brings its own document with a language and a title for the global one", () => {
     const html = renderToStaticMarkup(<GlobalError error={error} retry={vi.fn()} />);
-    expect(html).toMatch(/^<html lang="en">/);
+    expect(html).toMatch(/^<html lang="en" class="font-geist-variable">/);
     expect(html).toContain("<title>Something went wrong");
   });
 });

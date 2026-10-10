@@ -25,7 +25,7 @@ export function AuditSearch({ lang }: { lang: string }) {
 
   return (
     <div className="grid gap-page">
-      <form noValidate className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit(search)}>
+      <form noValidate className="grid max-w-3xl gap-4 sm:grid-cols-2" onSubmit={handleSubmit(search)}>
         <InputField control={control} name="actor" label="Actor (user id)" autoComplete="off" />
         <InputField control={control} name="action" label="Action" description="For example user.suspend" autoComplete="off" maxLength={100} />
         <InputField control={control} name="entityType" label="Entity type" description="For example profile" autoComplete="off" maxLength={100} />

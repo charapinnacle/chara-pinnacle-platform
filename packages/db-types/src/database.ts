@@ -850,6 +850,11 @@ isOneToOne: false
               "action": string,"actor_id": string,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_name": string,"target_type": string
             }[]
                            },
+"admin_moderation_counts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "hidden_vacancies": number,"suspended_organizations": number,"suspended_users": number
+            }[]
+                           },
 "admin_search_audit":
 { Args: { "p_action"?: string,"p_actor"?: string,"p_after_at"?: string,"p_after_id"?: number,"p_entity_id"?: string,"p_entity_type"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: {
               "action": string,"actor_id": string,"created_at": string,"entity_id": string,"entity_type": string,"id": number,"ip": unknown,"metadata": Json
@@ -869,6 +874,9 @@ isOneToOne: false
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number,"p_term": string }; Returns: {
               "account_kind": Database["public"]['Enums']["account_kind"],"created_at": string,"display_name": string,"email": string,"id": string,"status": Database["public"]['Enums']["profile_status"]
             }[]
+                           },
+"admin_staff_count":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
@@ -995,6 +1003,11 @@ isOneToOne: false
               "recent": number,"status": Database["public"]['Enums']["application_status"],"total": number
             }[]
                            },
+"get_dashboard_first_steps":
+{ Args: { "p_organization_id": string }; Returns: {
+              "plan_chosen": boolean,"team_invited": boolean,"vacancy_published": boolean
+            }[]
+                           },
 "get_dashboard_plan":
 { Args: { "p_organization_id": string }; Returns: {
               "current_period_end": string,"past_due_since": string,"plan_name": string,"status": string,"subscription_ended": boolean,"trial_ends_at": string
@@ -1066,6 +1079,11 @@ isOneToOne: false
                            },
 "moderate_job":
 { Args: { "p_action": string,"p_job": string,"p_reason": string }; Returns: undefined
+                           },
+"my_application_stage_counts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "status": Database["public"]['Enums']["application_status"],"total": number
+            }[]
                            },
 "my_applications":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_stage"?: Database["public"]['Enums']["application_status"] }; Returns: {

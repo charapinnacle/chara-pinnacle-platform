@@ -34,6 +34,15 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ["destructive-foreground", "destructive"],
     ["destructive-foreground", "destructive-hover"],
     ["destructive-foreground", "destructive-active"],
+    ["brand-ink", "background"],
+    ["brand-ink", "card"],
+    ["brand-ink", "muted"],
+    ["brand-ink", "accent"],
+    ["accent-foreground", "background"],
+    ["accent-foreground", "card"],
+    ["inverse-foreground", "inverse"],
+    ["inverse-muted", "inverse"],
+    ["brand", "inverse"],
     ...STATUSES.flatMap((status) =>
       ["background", "card", "muted", `${status}-background`].map((surface) => [`${status}-foreground`, surface]),
     ),
@@ -54,6 +63,7 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ["input", "background"],
     ["input", "card"],
     ["input", "muted"],
+    ["brand", "inverse"],
   ])("component boundary %s against %s is at least 3:1", (foreground, background) => {
     expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(3);
   });
@@ -88,7 +98,7 @@ describe("the type scale and spacing tokens (DS-02)", () => {
   });
 
   it("steps display and h1 up from the sm breakpoint", () => {
-    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 1\.75rem;/);
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 2rem;/);
   });
 
   it.each(["card-sm", "card", "card-lg", "page", "section"])("declares the %s spacing", (name) => {
@@ -115,5 +125,10 @@ describe("visible focus (NFR-U1)", () => {
     expect(rule?.[1]).toMatch(/button/);
     expect(rule?.[2]).toMatch(/outline:\s*var\(--focus-ring\)/);
     expect(declared("light", "focus-ring")).toBe("2px solid var(--ring)");
+  });
+
+  it("draws it in gold on the near-black surfaces, where the bronze ring is under 3:1", () => {
+    expect(contrast("light", "ring", "inverse")).toBeLessThan(3);
+    expect(css).toMatch(/:where\(\.bg-inverse\)\s*\{\s*--ring: var\(--brand\);\s*--focus-ring: 2px solid var\(--ring\);\s*\}/);
   });
 });

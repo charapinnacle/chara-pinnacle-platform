@@ -1,15 +1,12 @@
 import "server-only";
-import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
-import { pipelineStages } from "@/lib/applications/presentation";
 import { logDashboardLoad } from "@/lib/dashboard/load-log";
 import { type PlanStatus, planStatuses } from "@/lib/dashboard/plan-status";
+import { stageTotals, sumOf, type StageTotals } from "@/lib/dashboard/stage-counts";
 import { createClient } from "@/lib/supabase/server";
 
-type ApplicationStatus = Database["public"]["Enums"]["application_status"];
-
 export type DashboardApplications = {
-  byStage: Record<ApplicationStatus, number>;
+  byStage: StageTotals;
   total: number;
   recent: number;
 };
@@ -43,6 +40,8 @@ function readFailed(read: string, message: string, error: { code?: string; messa
 
 const toDate = (value: string | null) => (value ? new Date(value) : null);
 
+export type FirstSteps = { vacancyPublished: boolean; teamInvited: boolean; planChosen: boolean };
+
 // Everything on the dashboard is read again on each load; nothing is stored or cached. The rights of the member decide
 // what each read returns (FR-D5 for the applications, the vacancy policy for the vacancies).
 
@@ -51,13 +50,8 @@ async function getDashboardApplications(organizationId: string): Promise<Dashboa
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_dashboard_applications", { p_organization_id: organizationId });
   if (error) throw readFailed("applications", "The applications could not be counted", error);
-  const byStage = Object.fromEntries(pipelineStages.map((status) => [status, 0])) as Record<ApplicationStatus, number>;
-  let recent = 0;
-  for (const row of data) {
-    byStage[row.status] = row.total;
-    recent += row.recent;
-  }
-  return { byStage, total: Object.values(byStage).reduce((sum, count) => sum + count, 0), recent };
+  const byStage = stageTotals(data);
+  return { byStage, total: sumOf(byStage), recent: data.reduce((sum, row) => sum + row.recent, 0) };
 }
 
 // The vacancies that are open and not deleted, and whether the organisation has had any vacancy.
@@ -91,6 +85,15 @@ async function getDashboardPlan(organizationId: string): Promise<DashboardPlan> 
     pastDueSince: toDate(row.past_due_since),
     subscriptionEnded: row.subscription_ended,
   };
+}
+
+// What the organisation has done of its first steps, as the database holds it; no row (not a member) is nothing done.
+export async function getFirstSteps(organizationId: string): Promise<FirstSteps> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_dashboard_first_steps", { p_organization_id: organizationId });
+  if (error) throw readFailed("first steps", "The first steps could not be loaded", error);
+  const [row] = data;
+  return { vacancyPublished: row?.vacancy_published ?? false, teamInvited: row?.team_invited ?? false, planChosen: row?.plan_chosen ?? false };
 }
 
 // Starts the reads together, so that a slow one does not delay the others, and logs the load time once all are done. The

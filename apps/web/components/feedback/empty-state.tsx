@@ -22,14 +22,14 @@ export function EmptyState({
   children,
 }: EmptyStateProps) {
   return (
-    <Empty className="border">
+    <Empty className="animate-rise border border-solid bg-card px-6 py-12">
       <EmptyHeader>
         {Icon ? (
-          <EmptyMedia variant="icon">
+          <EmptyMedia variant="icon" className="size-11 rounded-xl bg-accent text-brand-ink [&_svg:not([class*='size-'])]:size-5">
             <Icon aria-hidden />
           </EmptyMedia>
         ) : null}
-        <EmptyTitle role="heading" aria-level={2}>
+        <EmptyTitle role="heading" aria-level={2} className="text-h3">
           {title}
         </EmptyTitle>
         {description ? <EmptyDescription>{description}</EmptyDescription> : null}

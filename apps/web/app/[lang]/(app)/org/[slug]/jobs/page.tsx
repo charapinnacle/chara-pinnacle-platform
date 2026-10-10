@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Plus } from "lucide-react";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Card } from "@/components/layout/card";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
@@ -27,13 +28,14 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
   const [page, ended] = await Promise.all([listJobs(organization.id, cursor, status), isSubscriptionEnded(organization.id)]);
   const canCreate = organization.role !== "member";
   const newJob = canCreate ? (
-    <TextLink standalone href={`${jobsPath(lang, slug)}/new`}>
+    <LinkButton href={`${jobsPath(lang, slug)}/new`} size="default" className="gap-2">
+      <Plus aria-hidden className="size-4" />
       Create vacancy
-    </TextLink>
+    </LinkButton>
   ) : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-section">
+    <div className="grid w-full gap-section">
       <PageHeader
         title="Vacancies"
         description={organization.displayName}

@@ -28,7 +28,7 @@ test.describe("the public pages without JavaScript", () => {
     }
   });
 
-  test("FR-H1 AC1: at 360 px without JavaScript the eight header links are visible and the Menu button is not", async ({
+  test("FR-H1 AC1: at 360 px without JavaScript the four header links are visible and the Menu button is not", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 800 });
@@ -211,7 +211,7 @@ test.describe("the public pages at 360 px", () => {
 
     await page.goto("/en");
     const menu = page.getByRole("button", { name: "Menu" });
-    const pricing = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Pricing" });
+    const pricing = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" });
     await waitForHydration(menu);
     await expect(pricing).toBeHidden();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -240,9 +240,9 @@ test.describe("the public pages at 360 px", () => {
     const menu = page.getByRole("button", { name: "Menu" });
     await waitForHydration(menu);
     await menu.click();
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "About" }).click();
-    await expect(page.getByRole("heading", { name: "About CHARA", level: 1 })).toBeVisible();
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" }).click();
+    await expect(page).toHaveURL("/en/how-it-works");
     await expect(menu).toHaveAttribute("aria-expanded", "false");
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Pricing" })).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" })).toBeHidden();
   });
 });

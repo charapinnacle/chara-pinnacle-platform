@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 const standaloneBase = "inline-flex min-h-11 items-center justify-self-start text-body";
 
 const textLinkVariants = cva(
-  "-mx-0.5 rounded-sm px-0.5 font-medium underline underline-offset-4",
+  "-mx-0.5 rounded-sm px-0.5 font-medium underline decoration-[1.5px] underline-offset-4 transition-colors duration-150",
   {
     variants: {
       tone: {
-        primary: "text-primary decoration-primary/40 hover:decoration-primary",
+        primary: "text-foreground decoration-brand hover:decoration-foreground",
         destructive: "text-destructive decoration-destructive/40 hover:decoration-destructive",
       },
       standalone: {

@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { Briefcase } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import { PlanAlerts } from "@/components/dashboard/plan-alerts";
 import { PlanCard } from "@/components/dashboard/plan-card";
+import { StageBar } from "@/components/dashboard/stage-bar";
 import { StageTable } from "@/components/dashboard/stage-table";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import type { DashboardPlan } from "@/lib/dal/dashboard";
@@ -113,18 +115,30 @@ describe("an organization without a paid plan (FR-E5 AC8)", () => {
 
 describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
   it("makes the whole card a link whose name carries the number", () => {
-    const html = renderToStaticMarkup(<SummaryCard label="Open vacancies" value={2} href="/en/org/acme/jobs?status=open" />);
+    const html = renderToStaticMarkup(<SummaryCard label="Open vacancies" value={2} href="/en/org/acme/jobs?status=open" icon={Briefcase} />);
     expect(html).toContain('href="/en/org/acme/jobs?status=open"');
     expect(html).toContain('aria-label="Open vacancies: 2"');
-    const hinted = renderToStaticMarkup(<SummaryCard label="New applications" hint="in the last 7 days" value={3} href="/x" />);
+    const hinted = renderToStaticMarkup(<SummaryCard label="New applications" hint="in the last 7 days" value={3} href="/x" icon={Briefcase} />);
     expect(hinted).toContain('aria-label="New applications in the last 7 days: 3"');
+    const described = renderToStaticMarkup(<SummaryCard label="My applications" detail="2 in progress" value={4} href="/x" icon={Briefcase} />);
+    expect(described).toContain('aria-label="My applications: 4"');
+    const id = /aria-describedby="([^"]+)"/.exec(described)?.[1];
+    expect(described).toContain(`id="${id}"`);
+    expect(described).toMatch(/>2 in progress</);
+    const large = renderToStaticMarkup(<SummaryCard label="Applications" value={45210} href="/x" icon={Briefcase} />);
+    expect(large).toContain('aria-label="Applications: 45,210"');
+    expect(large).toMatch(/>45,210</);
   });
 
   it("lists the eight stages in pipeline order, zeros included, with column headers, a total and a link per stage", () => {
     const byStage = { applied: 3, viewed: 2, shortlisted: 1, interview: 1, offer: 0, hired: 1, rejected: 1, withdrawn: 1 };
-    const html = renderToStaticMarkup(<StageTable lang="en" slug="acme" applications={{ byStage, total: 10, recent: 0 }} />);
+    const table = (hrefFor?: (stage: string) => string) =>
+      renderToStaticMarkup(
+        <StageTable id="stages" title="Applicants by stage" description="All" countLabel="Applicants" totals={byStage} total={10} hrefFor={hrefFor} />,
+      );
+    const html = table((stage) => `/en/org/acme/applicants?stage=${stage}`);
     expect(html.match(/<th scope="col"/g)).toHaveLength(2);
-    const rows = [...html.matchAll(/<th scope="row"[^>]*>(?:<a [^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>)?<\/th><td[^>]*>(\d+)<\/td>/g)].map((m) => [m[2], m[3], m[1]]);
+    const rows = [...html.matchAll(/<th scope="row"[^>]*>(?:<a [^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>)?<\/th><td[^>]*>(?:.*?<span class="min-w-8[^"]*">)?([\d,]+)(?:<\/span><\/span>)?<\/td>/g)].map((m) => [m[2], m[3], m[1]]);
     expect(rows).toEqual([
       ["Applied", "3", "/en/org/acme/applicants?stage=applied"],
       ["Viewed", "2", "/en/org/acme/applicants?stage=viewed"],
@@ -136,5 +150,16 @@ describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
       ["Withdrawn", "1", "/en/org/acme/applicants?stage=withdrawn"],
       ["Total", "10", undefined],
     ]);
+    expect(html).toContain('aria-labelledby="stages"');
+    expect(table()).not.toContain("<a ");
+  });
+
+  it("draws each bar as a share of the largest stage, hidden from assistive technology, and no bar for a stage with none", () => {
+    const html = renderToStaticMarkup(<StageBar value={1} max={4} />);
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('width="25"');
+    expect(renderToStaticMarkup(<StageBar value={0} max={4} />).match(/<rect/g)).toHaveLength(1);
+    expect(renderToStaticMarkup(<StageBar value={0} max={0} />).match(/<rect/g)).toHaveLength(1);
+    expect(renderToStaticMarkup(<StageBar value={1} max={100} />)).toContain('width="3"');
   });
 });

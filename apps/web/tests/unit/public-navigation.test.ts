@@ -1,36 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { footerGroups, guestLinks, legalSlugs, siteLinks } from "@/lib/public/navigation";
+import { aboutLinks, footerGroups, guestLinks, legalSlugs, siteLinks } from "@/lib/public/navigation";
 
 const headerLinks = [...siteLinks, ...guestLinks];
 const footerLinks = footerGroups.flatMap(({ links }) => links);
 
 describe("the navigation of the public pages (FR-H1 AC3)", () => {
-  it("has the header links in the order of the requirement", () => {
-    expect(headerLinks.map(({ label }) => label)).toEqual([
-      "Find Jobs",
-      "Pricing",
-      "How CHARA Works",
-      "Trust & Safety",
-      "About",
-      "Contact",
-      "Log in",
-      "Sign up",
-    ]);
-    expect(headerLinks.map(({ path }) => path)).toEqual([
-      "jobs",
-      "pricing",
-      "how-it-works",
-      "trust-safety",
-      "about",
-      "contact",
-      "login",
-      "signup",
-    ]);
+  it("keeps the header to the two ways in and the account links, as the owner decided (OPEN_QUESTIONS.md, 2026-10-10)", () => {
+    expect(headerLinks.map(({ label }) => label)).toEqual(["Find Jobs", "How CHARA Works", "Log in", "Sign up"]);
+    expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "how-it-works", "login", "signup"]);
+    expect(headerLinks.map(({ label }) => label)).not.toContain("Pricing");
   });
 
   it("splits the header into the links of everybody and the two that only a visitor needs", () => {
-    expect(siteLinks.map(({ label }) => label)).toEqual(["Find Jobs", "Pricing", "How CHARA Works", "Trust & Safety", "About", "Contact"]);
+    expect(siteLinks.map(({ label }) => label)).toEqual(["Find Jobs", "How CHARA Works"]);
     expect(guestLinks.map(({ label }) => label)).toEqual(["Log in", "Sign up"]);
+  });
+
+  it("puts Pricing, How CHARA Works, Trust & Safety, About and Contact in the CHARA group of the footer", () => {
+    expect(aboutLinks.map(({ label }) => label)).toEqual(["Pricing", "How CHARA Works", "Trust & Safety", "About", "Contact"]);
+    expect(aboutLinks.map(({ path }) => path)).toEqual(["pricing", "how-it-works", "trust-safety", "about", "contact"]);
   });
 
   it("has the Imprint and the ten legal pages in the footer, in three short groups", () => {

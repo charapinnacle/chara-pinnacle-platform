@@ -22,7 +22,7 @@ export default async function NewJobPage({ params }: PageProps<"/[lang]/org/[slu
   ]);
 
   return (
-    <div className="mx-auto grid w-full max-w-2xl gap-section">
+    <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title="New vacancy"
         description={`${organization.displayName}. The vacancy is saved as a draft and is not public.`}

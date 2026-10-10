@@ -52,7 +52,7 @@ describe("the usage bars (FR-G5 AC7, AC12)", () => {
     expect(text(html)).toContain("5 of 3 Over the limit");
     expect(text(html)).toContain("Existing vacancies stay open. No more can be opened until usage is below the limit.");
     expect(html).toContain('aria-valuemax="3" aria-valuenow="3"');
-    expect(html).toContain("width:100%");
+    expect(html).toContain('<rect width="100"');
   });
 
   it("shows Unlimited as text without a bar", () => {

@@ -77,12 +77,12 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     await page.goto("/en");
     expect(await sizeOf("The Global Workforce Network")).toBe("48px");
     await page.goto("/en/jobs");
-    expect(await sizeOf("Find jobs")).toBe("28px");
+    expect(await sizeOf("Find jobs")).toBe("32px");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/en");
     expect(await sizeOf("The Global Workforce Network")).toBe("36px");
     await page.goto("/en/jobs");
-    expect(await sizeOf("Find jobs")).toBe("24px");
+    expect(await sizeOf("Find jobs")).toBe("26px");
   });
 
   test("DS-01: the home links are link-buttons of the button height, and a click follows the link", async ({ page }) => {

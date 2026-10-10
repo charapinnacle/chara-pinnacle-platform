@@ -1,3 +1,4 @@
+import { CreditCard } from "lucide-react";
 import { DateText } from "@/components/dashboard/date-text";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
@@ -12,18 +13,25 @@ type PlanCardProps = { plan: DashboardPlan; now: Date; billingHref: string | nul
 export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
   const free = plan.status === "free";
   return (
-    <Card as="section" aria-labelledby="plan-heading" padding="lg" elevated className="content-start">
-      <CardHeader>
-        <h2 id="plan-heading" className="text-body font-medium text-muted-foreground">
-          Plan
-        </h2>
-        <p className="text-figure">{plan.planName}</p>
+    <Card as="section" aria-labelledby="plan-heading" padding="lg" elevated className="h-full content-start gap-4">
+      <CardHeader className="flex items-start justify-between gap-3">
+        <div className="grid gap-1">
+          <h2 id="plan-heading" className="text-small font-medium text-foreground">
+            Plan
+          </h2>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-figure">{plan.planName}</span>
+            <StatusBadge status={planStatusTones[plan.status]}>
+              <span className="sr-only">Status: </span>
+              {planStatusLabels[plan.status]}
+            </StatusBadge>
+          </p>
+        </div>
+        <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-brand-ink">
+          <CreditCard className="size-4" strokeWidth={1.75} />
+        </span>
       </CardHeader>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
-        <dt className="text-muted-foreground">Status</dt>
-        <dd>
-          <StatusBadge status={planStatusTones[plan.status]}>{planStatusLabels[plan.status]}</StatusBadge>
-        </dd>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-small empty:hidden">
         {plan.status === "trialing" && plan.trialEndsAt ? (
           <>
             <dt className="text-muted-foreground">Trial ends</dt>
@@ -43,12 +51,12 @@ export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
       </dl>
       {billingHref ? (
         <CardFooter>
-          <TextLink standalone href={billingHref}>
+          <TextLink standalone="flush" href={billingHref} className="text-small">
             {free ? "Choose a plan" : "Manage billing"}
           </TextLink>
         </CardFooter>
       ) : free ? (
-        <p className="text-body text-muted-foreground">Contact an owner or admin of your company to choose a plan.</p>
+        <p className="text-small text-muted-foreground">Contact an owner or admin of your company to choose a plan.</p>
       ) : null}
     </Card>
   );

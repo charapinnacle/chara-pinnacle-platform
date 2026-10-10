@@ -185,6 +185,7 @@ Documents under L5: Terms of Service; Privacy Policy; Cookie Policy; Platform Ru
 | P15 | At what time is the employer's daily summary of new applications sent? | Once a day at 08:00 Central European local time (Europe/Berlin: CET in winter, CEST in summer). | Week 3 (notifications) | open |
 | P16 | Does a Paused vacancy accept new applications? | No: a Paused vacancy is hidden from search and closed to new applications; existing applications continue through the pipeline. | Week 2 (vacancies) | open |
 | P17 | May an employer move an applicant back from Shortlisted (to Applied or Viewed)? | No. From Shortlisted the transition table (SDD §4.2) allows only Interview, Offer or Not selected; there is no move back. | Week 3 (applications) | open |
+| P18 | Which links does the public header carry? FR-H1 AC3 lists Find Jobs, Pricing, How CHARA Works, Trust & Safety, About, Contact, Log in and Sign up in the header. | The owner (2026-10-10): the header carries only the logo, Find Jobs, How CHARA Works and Log in / Sign up (Go to my area / Log out when signed in); Pricing, How CHARA Works, Trust & Safety, About and Contact form the first footer group, "CHARA". This overrides the header order of FR-H1 AC3; the footer still holds the Imprint and the ten legal pages (U59, `lib/public/navigation.ts`). | U59 | decided (owner, 2026-10-10) |
 
 ## 4. Needed from the owner to finish week 1
 
@@ -195,7 +196,7 @@ Documents under L5: Terms of Service; Privacy Policy; Cookie Policy; Platform Ru
 | W3 | Branch protection on `main`. Only the repository owner account can enable it. | Enforcing the pull-request workflow (R17). | Followed by convention. | No |
 | W4 | Repository visibility: public or private. | Private would allow the client documents to be committed (R19). | `docs/phase-1/client/` and `docs/spec/` stay gitignored. | No |
 | W5 | Which PDF is the source product specification. | Tracing requirements and page content to one document. | `docs/phase-1/requirements.js` is the working catalogue. | No |
-| W6 | Brand assets: logo, colours. | Layout, design primitives, email templates. | Neutral placeholder styling. | No |
+| W6 | Brand assets: logo, colours. | Layout, design primitives, email templates. | Answered in part (2026-10-10): the owner supplied the gold CP monogram on black; the palette (near-black, warm off-white, gold) is derived from it in `docs/runbooks/design-system.md` (U59). Email templates still use the neutral styling. | No |
 | W7 | Legal texts v1 (see L5, L7). | Sign-up consent (FR-A8) and legal pages. | `legal_documents` rows are DRAFT placeholders. | No |
 | W8 | Security contact address. | `SECURITY.md` and vulnerability reports. | No contact address is published. | No |
 
@@ -251,3 +252,4 @@ Source: the owner's decisions reply (2026-10-02; client document, not in git). O
 | R18 | Naming: repository, package and project identifiers use `chara-pinnacle`. The product brand "CHARA" and brand-derived identifiers (`CHARA_FORBIDDEN`, `x-chara-signature`, `chara_match`) are unchanged. |
 | R19 | Client-facing Word and Excel documents and the spec PDFs are not in git; `docs/phase-1/client/` and `docs/spec/` are gitignored. Revisit only with W4. |
 | R32 | 2026-10-03: the Phase 1 requirement catalogue (`docs/phase-1/requirements.js`), the SOP data (`docs/phase-1/sops.json`) and the handoff (`docs/phase-1/HANDOFF.md`) were updated to the owner's decisions reply. Unresolved points are carried there as "to be confirmed by CHARA". |
+| R33 | 2026-10-10: the public header holds Find Jobs, How CHARA Works and the account links only; the pages about CHARA moved to the footer (P18). The CHARA Pinnacle monogram is the brand mark of the web app (W6, in part). |

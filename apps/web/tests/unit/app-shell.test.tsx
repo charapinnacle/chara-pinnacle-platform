@@ -29,7 +29,7 @@ function nav(props: Partial<Parameters<typeof AppNav>[0]> = {}, pathname = "/en/
 }
 
 const mainLabels = (html: string) => {
-  const main = /<nav aria-label="Main">(.*?)<\/nav>/.exec(html)?.[1] ?? "";
+  const main = /<nav aria-label="Main"[^>]*>(.*?)<\/nav>/.exec(html)?.[1] ?? "";
   return [...main.matchAll(/<a [^>]*>([^<]*)<\/a>/g)].map((match) => match[1]);
 };
 

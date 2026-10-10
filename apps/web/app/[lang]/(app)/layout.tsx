@@ -1,7 +1,7 @@
 import { AppNav } from "@/components/layout/app-nav";
+import { AppShell } from "@/components/layout/app-shell";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FooterLinks } from "@/components/layout/footer-links";
-import { PageContainer } from "@/components/layout/page-container";
-import { SiteShell } from "@/components/layout/site-shell";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
 import { BILLING_TERMS_PATH } from "@/lib/public/navigation";
@@ -27,29 +27,29 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
   const user = await getCurrentUser();
   const accountKind = user && !user.suspended ? user.accountKind : null;
   const organizations = user && accountKind === "company" ? await organizationsOrNone(user.id) : [];
+  const navigation = user
+    ? {
+        lang,
+        email: user.email,
+        accountKind,
+        organizations: organizations.map(({ slug, displayName, role, suspended }) => ({
+          slug,
+          displayName,
+          role,
+          roleLabel: roleLabels[role],
+          suspended,
+        })),
+      }
+    : null;
 
   return (
-    <SiteShell
+    <AppShell
       homeHref={accountKind ? homePath(lang, accountKind) : "/"}
-      headerActions={
-        user ? (
-          <AppNav
-            lang={lang}
-            email={user.email}
-            accountKind={accountKind}
-            organizations={organizations.map(({ slug, displayName, role, suspended }) => ({
-              slug,
-              displayName,
-              role,
-              roleLabel: roleLabels[role],
-              suspended,
-            }))}
-          />
-        ) : null
-      }
+      headerActions={navigation ? <AppNav {...navigation} /> : null}
+      sidebar={navigation ? <AppSidebar {...navigation} /> : null}
       footerLinks={<FooterLinks lang={lang} hidePaths={accountKind === "company" ? [] : [BILLING_TERMS_PATH]} />}
     >
-      <PageContainer layout="centered">{children}</PageContainer>
-    </SiteShell>
+      {children}
+    </AppShell>
   );
 }

@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MemberRole } from "@/lib/validation/team";
 
@@ -18,12 +18,18 @@ const notFoundMock = vi.hoisted(() =>
 );
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock, useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/organizations", () => ({ getMyOrganizations: organizationsMock }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
-vi.mock("@/lib/dal/documents", () => ({ getDocumentReminders: vi.fn(), hasUsableCv: vi.fn() }));
-vi.mock("@/lib/dal/passport", () => ({ getPassport: vi.fn() }));
+const firstStepsMock = vi.hoisted(() => vi.fn());
+const passportMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/dal/documents", () => ({ getDocumentReminders: vi.fn(async () => []), hasUsableCv: vi.fn(async () => false) }));
+vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
+vi.mock("@/lib/dal/dashboard", () => ({ getFirstSteps: firstStepsMock }));
+vi.mock("@/components/dashboard/worker-dashboard", () => ({
+  WorkerDashboard: (props: { firstName: string; completeness: { percent: number } }) => `WORKER ${props.firstName} ${props.completeness.percent}`,
+}));
 vi.mock("@/components/dashboard/employer-dashboard", () => ({
   EmployerDashboard: (props: { organization: { slug: string; role: string } }) =>
     `FIGURES ${props.organization.slug} ${props.organization.role}`,
@@ -35,7 +41,11 @@ const acme = { id: "org-a", slug: "acme-bau", displayName: "Acme Bau", role: "ow
 const beta = { id: "org-b", slug: "beta-works", displayName: "Beta Works", role: "member" as MemberRole };
 const props = (kind: string, query: Record<string, string> = {}) =>
   ({ params: Promise.resolve({ lang: "en", kind }), searchParams: Promise.resolve(query) }) as Parameters<typeof DashboardPage>[0];
-const render = async (kind = "employer", query?: Record<string, string>) => renderToStaticMarkup(await DashboardPage(props(kind, query)));
+// prerender waits for the async parts (Panel) as the server does; the comments it puts between text nodes are dropped.
+const render = async (kind = "employer", query?: Record<string, string>) => {
+  const { prelude } = await prerender(await DashboardPage(props(kind, query)));
+  return (await new Response(prelude).text()).replaceAll("<!-- -->", "");
+};
 const access = (over: Partial<typeof acme & { suspended: boolean }> = {}) => ({
   user: { id: "user-1" },
   organization: { ...acme, suspended: false, ...over },
@@ -47,6 +57,7 @@ beforeEach(() => {
   organizationsMock.mockResolvedValue([acme, beta]);
   twoStepMock.mockResolvedValue(true);
   requireOrgRoleMock.mockResolvedValue(access());
+  firstStepsMock.mockResolvedValue({ vacancyPublished: false, teamInvited: false, planChosen: false });
 });
 
 describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
@@ -107,6 +118,27 @@ describe("what each role sees", () => {
     }
   });
 
+  it("ticks the first steps at aal1 from the database: a done step is text, an open one is the link that does it", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1" });
+    firstStepsMock.mockResolvedValue({ vacancyPublished: true, teamInvited: false, planChosen: true });
+    const html = await render();
+    expect(firstStepsMock).toHaveBeenCalledWith("org-a");
+    expect(html).toContain("4 of 5 done");
+    expect(html).toContain("Publish your first vacancy<span class=\"sr-only\"> (done)</span>");
+    expect(html).toContain("Choose a plan<span class=\"sr-only\"> (done)</span>");
+    expect(html).toMatch(/<a [^>]*href="\/en\/org\/acme-bau\/members"[^>]*>.*Invite a team member/);
+    expect(html).not.toMatch(/href="\/en\/org\/acme-bau\/billing"/);
+  });
+
+  it("shows an error in place of the first steps at aal1 when they cannot be read, and keeps the rest of the page", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1" });
+    firstStepsMock.mockRejectedValue(new Error("The first steps could not be loaded"));
+    const html = await render();
+    expect(html).toContain("The first steps could not be loaded");
+    expect(html).toContain("Enter your code");
+    expect(html).not.toContain("Get set up");
+  });
+
   it("tells an owner at aal1 without a device to set one up, with no link to enter a code", async () => {
     requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1" });
     twoStepMock.mockResolvedValue(false);
@@ -126,5 +158,24 @@ describe("what each role sees", () => {
     const html = await render();
     expect(html).not.toContain("beta-works");
     expect(html).not.toContain("You also belong to");
+  });
+});
+
+describe("the candidate dashboard (UX-03)", () => {
+  it("sends a candidate without a passport to the onboarding and shows the others their dashboard with the completeness", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "worker", aal: "aal1" });
+    passportMock.mockResolvedValue(null);
+    await expect(render("worker")).rejects.toThrow("REDIRECT:/en/onboarding");
+    passportMock.mockResolvedValue({
+      firstName: "Ana",
+      headline: null,
+      occupationId: null,
+      yearsExperience: null,
+      availability: null,
+      skills: [],
+      languages: [],
+      authorizations: [],
+    });
+    expect(await render("worker")).toBe("WORKER Ana 10");
   });
 });

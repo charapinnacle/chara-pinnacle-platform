@@ -11,8 +11,23 @@ import {
 } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
-// match is the address the link stands for: the page and everything below it, or only the page when exact is set.
-export type NavLink = { label: string; href: string; match: string; exact?: true };
+export type NavIcon =
+  | "dashboard"
+  | "jobs"
+  | "saved"
+  | "applications"
+  | "passport"
+  | "organisation"
+  | "vacancies"
+  | "applicants"
+  | "team"
+  | "billing"
+  | "settings"
+  | "notifications";
+
+// match is the address the link stands for: the page and everything below it, or only the page when exact is set. icon
+// names the picture the sidebar draws next to the label.
+export type NavLink = { label: string; href: string; match: string; icon: NavIcon; exact?: true };
 
 export type Crumb = { label: string; href?: string };
 
@@ -28,11 +43,11 @@ export type NavOrganization = {
 export function workerLinks(lang: string): NavLink[] {
   const dashboard = homePath(lang, "worker");
   return [
-    { label: "Dashboard", href: dashboard, match: dashboard },
-    { label: "Find jobs", href: `/${lang}/jobs`, match: `/${lang}/jobs` },
-    { label: "Saved", href: `/${lang}/saved`, match: `/${lang}/saved` },
-    { label: "Applications", href: applicationsPath(lang), match: `/${lang}/applications` },
-    { label: "Passport", href: `/${lang}/passport`, match: `/${lang}/passport` },
+    { label: "Dashboard", href: dashboard, match: dashboard, icon: "dashboard" },
+    { label: "Find jobs", href: `/${lang}/jobs`, match: `/${lang}/jobs`, icon: "jobs" },
+    { label: "Saved", href: `/${lang}/saved`, match: `/${lang}/saved`, icon: "saved" },
+    { label: "Applications", href: applicationsPath(lang), match: `/${lang}/applications`, icon: "applications" },
+    { label: "Passport", href: `/${lang}/passport`, match: `/${lang}/passport`, icon: "passport" },
   ];
 }
 
@@ -41,21 +56,26 @@ export function workerLinks(lang: string): NavLink[] {
 export function organizationLinks(lang: string, { slug, role, suspended }: Pick<NavOrganization, "slug" | "role" | "suspended">): NavLink[] {
   if (suspended) return [];
   const links: NavLink[] = [
-    { label: "Organisation", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer` },
-    { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs` },
-    { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants` },
-    { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug) },
+    { label: "Organisation", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "organisation" },
+    { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
+    { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
+    { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" },
   ];
-  if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug) });
+  if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });
   return links;
 }
 
 // Account deletion belongs to candidates (an employer is sent away from that page); the notification settings to everyone.
 // orgSlug is given to a person in several organisations, so that the page keeps the header of the one they work in.
 export function accountLinks(lang: string, accountKind: "worker" | "company", orgSlug?: string): NavLink[] {
-  const notifications: NavLink = { label: "Notification settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang) };
+  const notifications: NavLink = {
+    label: "Notification settings",
+    href: notificationSettingsPath(lang, orgSlug),
+    match: notificationSettingsPath(lang),
+    icon: "notifications",
+  };
   if (accountKind !== "worker") return [notifications];
-  return [{ label: "Settings", href: settingsPath(lang), match: settingsPath(lang), exact: true }, notifications];
+  return [{ label: "Settings", href: settingsPath(lang), match: settingsPath(lang), icon: "settings", exact: true }, notifications];
 }
 
 // The onboarding and consent pages exist to finish a step that every other page waits for, so the header offers no links there.
