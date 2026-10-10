@@ -10,8 +10,9 @@ type GuidedStepsProps = { lang: string; organizationSlug: string; twoStepDone: b
 // does it, a done one is plain text. The trial is offered on the billing page, not here, because whether a new
 // organisation may have one is decided at checkout (FR-E5, open point C14).
 export function GuidedSteps({ lang, organizationSlug, twoStepDone, steps }: GuidedStepsProps) {
-  const list = [
-    { label: "Create your organisation", done: true, href: `/${lang}/onboarding` },
+  // An organisation exists by the time this list shows, so its first step is always done and needs no link.
+  const list: { label: string; done: boolean; href?: string }[] = [
+    { label: "Create your organisation", done: true },
     { label: "Set up two-step verification", done: twoStepDone, href: mfaPath(lang) },
     { label: "Publish your first vacancy", done: steps.vacancyPublished, href: `${jobsPath(lang, organizationSlug)}/new` },
     { label: "Invite a team member", done: steps.teamInvited, href: membersPath(lang, organizationSlug) },
@@ -40,7 +41,7 @@ export function GuidedSteps({ lang, organizationSlug, twoStepDone, steps }: Guid
       <ol className="grid gap-1 text-body">
         {list.map((step) => (
           <li key={step.label}>
-            {step.done ? (
+            {step.done || !step.href ? (
               <span className="flex min-h-11 items-center gap-3 px-2 text-muted-foreground">
                 <CircleCheck aria-hidden className="size-5 shrink-0 text-brand-ink" strokeWidth={1.75} />
                 <span>
