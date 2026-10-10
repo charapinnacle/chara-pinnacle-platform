@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { TextLink } from "@/components/forms/text-link";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
+import { staticPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Trust & Safety — CHARA",
-  description: "How CHARA treats vacancies, documents and complaints.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/trust-safety">): Promise<Metadata> {
+  return staticPageMetadata("trustSafety", (await params).lang);
+}
 
 export default async function TrustSafetyPage({ params }: PageProps<"/[lang]/trust-safety">) {
   const { lang } = await params;

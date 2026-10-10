@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { TextLink } from "@/components/forms/text-link";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
+import { staticPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "About — CHARA",
-  description: "What CHARA is and who stands behind it.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/about">): Promise<Metadata> {
+  return staticPageMetadata("about", (await params).lang);
+}
 
 export default async function AboutPage({ params }: PageProps<"/[lang]/about">) {
   const { lang } = await params;

@@ -7,8 +7,11 @@ import { JobSearchForm } from "@/components/jobs/job-search-form";
 import { PageContainer } from "@/components/layout/page-container";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { parseSearchParams, searchQuery } from "@/lib/jobs/search-params";
+import { staticPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = { title: "Find jobs — CHARA" };
+export async function generateMetadata({ params }: PageProps<"/[lang]/jobs">): Promise<Metadata> {
+  return staticPageMetadata("jobs", (await params).lang);
+}
 
 export default async function FindJobsPage({ params, searchParams }: PageProps<"/[lang]/jobs">) {
   const [{ lang }, rawParams] = await Promise.all([params, searchParams]);
