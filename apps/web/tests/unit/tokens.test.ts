@@ -43,6 +43,8 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
     ["inverse-foreground", "inverse"],
     ["inverse-muted", "inverse"],
     ["brand", "inverse"],
+    ["inverse", "brand"],
+    ["inverse", "brand-highlight"],
     ...STATUSES.flatMap((status) =>
       ["background", "card", "muted", `${status}-background`].map((surface) => [`${status}-foreground`, surface]),
     ),
@@ -93,12 +95,21 @@ describe("the contrast helper", () => {
 });
 
 describe("the type scale and spacing tokens (DS-02)", () => {
-  it.each(["display", "h1", "h2", "h3", "body", "small", "caption"])("declares the %s size", (size) => {
+  it.each(["hero", "display", "h1", "h2", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
     expect(css).toMatch(new RegExp(`--text-${size}:\\s*[\\d.]+rem;`));
   });
 
   it("steps display and h1 up from the sm breakpoint", () => {
     expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 2rem;/);
+  });
+
+  it("steps the hero headline up from the sm and the lg breakpoint", () => {
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-hero: 3.5rem;/);
+    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4rem;/);
+  });
+
+  it("draws the brand gradient from the highlight to the solid gold, the only two golds it uses", () => {
+    expect(css).toMatch(/@utility bg-brand-gradient\s*\{\s*background-image: linear-gradient\(135deg, var\(--brand-highlight\), var\(--brand\)\);/);
   });
 
   it.each(["card-sm", "card", "card-lg", "page", "section"])("declares the %s spacing", (name) => {
