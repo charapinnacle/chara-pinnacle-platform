@@ -2,9 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { addInternalNote } from "@/lib/actions/applicant-review";
@@ -21,7 +21,6 @@ export function NoteForm({ slug, applicationId }: { slug: string; applicationId:
   const { control, formState, handleSubmit, reset } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The note was not added" });
   const length = useWatch({ control, name: "body" }).length;
-  const error = formState.errors.body?.message;
 
   function add(values: NoteInput) {
     return submit(
@@ -31,7 +30,7 @@ export function NoteForm({ slug, applicationId }: { slug: string; applicationId:
           reset();
           toast({ title: "Note added" });
         } else if (result.message) {
-          toast({ variant: "error", title: "The note was not added", description: result.message });
+          toastError("The note was not added", result.message);
         }
       },
     );
@@ -39,11 +38,7 @@ export function NoteForm({ slug, applicationId }: { slug: string; applicationId:
 
   return (
     <form noValidate className="grid gap-3" onSubmit={handleSubmit(add)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={error ? [{ key: "body", message: error, targetId: NOTE_ID }] : []}
-        onSelect={() => form.setFocus("body")}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={{ body: NOTE_ID }} />
       <TextareaField
         control={control}
         name="body"

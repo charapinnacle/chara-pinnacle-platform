@@ -2,9 +2,12 @@ import { FileText } from "lucide-react";
 import type { Metadata } from "next";
 import { StageFilter } from "@/components/applications/stage-filter";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
-import { applicationStatusLabels } from "@/lib/applications/presentation";
+import { Card } from "@/components/layout/card";
+import { PageHeader } from "@/components/layout/page-header";
+import { applicationStatusLabels, applicationStatusTones } from "@/lib/applications/presentation";
 import { logTrackerView } from "@/lib/applications/tracker-log";
 import { listMyApplications } from "@/lib/dal/applications";
 import { requireCandidate } from "@/lib/dal/session";
@@ -13,8 +16,6 @@ import { applicationPath, applicationsPath } from "@/lib/routes";
 import { parseApplicationListParams } from "@/lib/validation/application";
 
 export const metadata: Metadata = { title: "My applications — CHARA", robots: { index: false } };
-
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-medium text-accent-foreground";
 
 export default async function ApplicationsPage({ params, searchParams }: PageProps<"/[lang]/applications">) {
   const { lang } = await params;
@@ -26,11 +27,8 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
   logTrackerView("list");
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">My applications</h1>
-        <p className="text-body text-muted-foreground">The vacancies you applied to, with the latest change first.</p>
-      </header>
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
+      <PageHeader title="My applications" description="The vacancies you applied to, with the latest change first." />
       {firstUse ? null : <StageFilter basePath={applicationsPath(lang)} stage={stage} />}
       {applications.length === 0 ? (
         firstUse ? (
@@ -62,21 +60,21 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
         <div className="grid gap-4">
           <ul className="grid gap-3">
             {applications.map((application) => (
-              <li key={application.id} className="grid gap-2 rounded-xl border bg-card p-4">
-                <h2 className="text-lg font-semibold">
+              <Card as="li" key={application.id} className="gap-2">
+                <h2 className="text-h2">
                   <TextLink href={applicationPath(lang, application.id)} className="wrap-anywhere">
                     {application.jobTitle}
                   </TextLink>
                 </h2>
                 <p className="font-medium wrap-anywhere">{application.employerName}</p>
                 <p>
-                  <span className={badgeClassName}>{applicationStatusLabels[application.status]}</span>
+                  <StatusBadge status={applicationStatusTones[application.status]}>{applicationStatusLabels[application.status]}</StatusBadge>
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-small text-muted-foreground">
                   Applied <time dateTime={application.appliedAt}>{formatShortDate(application.appliedAt)}</time>
                   {" · "}Last update <time dateTime={application.lastEventAt}>{formatShortDate(application.lastEventAt)}</time>
                 </p>
-              </li>
+              </Card>
             ))}
           </ul>
           {page > 1 || hasNext ? (

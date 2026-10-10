@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { UserSearch } from "@/components/admin/user-search";
 import { requirePlatformRole } from "@/lib/dal/session";
 
@@ -9,8 +9,8 @@ export default async function UsersPage({ params }: PageProps<"/[lang]/admin/use
   const { lang } = await params;
   await requirePlatformRole(lang, ["admin", "trust_safety"]);
   return (
-    <div className="grid gap-6">
-      <PageHeading title="Users" />
+    <div className="grid gap-page">
+      <PageHeader title="Users" />
       <UserSearch lang={lang} />
     </div>
   );

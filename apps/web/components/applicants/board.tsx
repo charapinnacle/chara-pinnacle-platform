@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BoardCard, moveButtonId } from "@/components/applicants/board-card";
 import { StageChangeDialog } from "@/components/applicants/stage-change";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
+import { Card } from "@/components/layout/card";
 import { changeApplicantStage, readBoardCounts } from "@/lib/actions/applicants";
 import { moveCard } from "@/lib/applicants/board";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
@@ -43,7 +45,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
   const [declining, setDeclining] = useState<ApplicantRow | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const focusAfter = useRef<string | null>(null);
-  const call = useTeamCall("The stage was not changed");
+  const call = useActionCall("The stage was not changed");
   if (source !== columns) {
     setSource(columns);
     setShown(columns);
@@ -113,8 +115,9 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
           {shown.map((column) => {
             const accepts = dragging !== null && targetsOf(dragging).includes(column.status);
             return (
-              <div
+              <Card
                 key={column.status}
+                padding="sm"
                 role="group"
                 aria-labelledby={`column-${column.status}`}
                 onDragOver={(event) => {
@@ -129,17 +132,14 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
                   if (dragging && accepts) move(dragging, column.status);
                   setDragging(null);
                 }}
-                className={cn(
-                  "grid w-64 shrink-0 gap-3 rounded-xl border bg-muted/40 p-3",
-                  over === column.status && "border-primary ring-2 ring-primary/30",
-                )}
+                className={cn("w-64 shrink-0 bg-muted/40", over === column.status && "border-primary ring-2 ring-primary/30")}
               >
-                <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-base font-semibold">
+                <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-h3">
                   {applicationStatusLabels[column.status]}
-                  <span className="rounded-full border bg-card px-2 text-sm font-medium">{column.total}</span>
+                  <StatusBadge className="bg-card py-0">{column.total}</StatusBadge>
                 </h2>
                 {column.rows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No applicants</p>
+                  <p className="text-small text-muted-foreground">No applicants</p>
                 ) : (
                   <ul className="grid gap-2">
                     {column.rows.map((row) => (
@@ -157,11 +157,11 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
                   </ul>
                 )}
                 {column.total > column.rows.length ? (
-                  <TextLink href={applicantsPath(lang, slug, { job: jobId, stage: column.status })} className="text-sm">
+                  <TextLink href={applicantsPath(lang, slug, { job: jobId, stage: column.status })} className="text-small">
                     Show all {column.total} in the list
                   </TextLink>
                 ) : null}
-              </div>
+              </Card>
             );
           })}
         </div>

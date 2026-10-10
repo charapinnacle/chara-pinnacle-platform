@@ -1,39 +1,10 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { contrast, contrastOf, css, declared, type Theme } from "./support/tokens";
 
-const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
-const rootBlock = /:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+const themes: Theme[] = ["light", "dark"];
+const STATUSES = ["success", "warning", "danger", "info", "neutral"] as const;
 
-function token(name: string): [number, number, number] {
-  const match = new RegExp(
-    `--${name}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)(?:\\s+([\\d.]+))?\\)`,
-  ).exec(rootBlock);
-  if (!match) throw new Error(`token --${name} is missing or not an oklch colour`);
-  return [Number(match[1]), Number(match[2]), Number(match[3] ?? 0)];
-}
-
-function luminance([lightness, chroma, hue]: [number, number, number]) {
-  const a = chroma * Math.cos((hue * Math.PI) / 180);
-  const b = chroma * Math.sin((hue * Math.PI) / 180);
-  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  const clamp = (value: number) => Math.min(1, Math.max(0, value));
-  const r = clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s);
-  const g = clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s);
-  const bl = clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
-}
-
-function contrast(foreground: string, background: string) {
-  const [lighter, darker] = [
-    luminance(token(foreground)),
-    luminance(token(background)),
-  ].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
+describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (NFR-U1)", (theme) => {
   it.each([
     ["foreground", "background"],
     ["foreground", "card"],
@@ -60,8 +31,18 @@ describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
     ["destructive", "card"],
     ["destructive", "muted"],
     ["destructive", "destructive-surface"],
+    ["destructive-foreground", "destructive"],
+    ["destructive-foreground", "destructive-hover"],
+    ["destructive-foreground", "destructive-active"],
+    ...STATUSES.flatMap((status) =>
+      ["background", "card", "muted", `${status}-background`].map((surface) => [`${status}-foreground`, surface]),
+    ),
+    ...STATUSES.flatMap((status) => [
+      ["foreground", `${status}-background`],
+      ["muted-foreground", `${status}-background`],
+    ]),
   ])("text %s on %s is at least 4.5:1", (foreground, background) => {
-    expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(4.5);
   });
 
   it.each([
@@ -74,11 +55,44 @@ describe("design tokens meet WCAG 2.2 AA contrast (NFR-U1)", () => {
     ["input", "card"],
     ["input", "muted"],
   ])("component boundary %s against %s is at least 3:1", (foreground, background) => {
-    expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3);
+    expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(3);
   });
 
-  it("computes the known black on white ratio", () => {
-    expect(contrast("foreground", "background")).toBeGreaterThan(18);
+  it.each(STATUSES)("the %s border stays visible against its own background and the page", (status) => {
+    expect(contrast(theme, `${status}-border`, `${status}-background`)).toBeGreaterThanOrEqual(1.5);
+    expect(contrast(theme, `${status}-border`, "card")).toBeGreaterThanOrEqual(1.5);
+  });
+});
+
+describe("the contrast helper", () => {
+  it("computes the known ratio of black on white and of a colour on itself", () => {
+    expect(contrastOf([0, 0, 0], [1, 0, 0])).toBeCloseTo(21, 1);
+    expect(contrastOf([0.5, 0.1, 200], [0.5, 0.1, 200])).toBeCloseTo(1, 5);
+  });
+
+  it("reads the tokens of both themes and follows var() references", () => {
+    expect(declared("light", "danger-foreground")).toBe(declared("light", "destructive"));
+    expect(declared("dark", "danger-foreground")).toBe(declared("dark", "destructive"));
+    expect(declared("dark", "background")).not.toBe(declared("light", "background"));
+    expect(contrast("light", "foreground", "background")).toBeGreaterThan(18);
+  });
+
+  it("fails for a token that does not exist, so a typo in the list above cannot pass", () => {
+    expect(() => contrast("light", "foreground", "no-such-token")).toThrow(/not declared/);
+  });
+});
+
+describe("the type scale and spacing tokens (DS-02)", () => {
+  it.each(["display", "h1", "h2", "h3", "body", "small", "caption"])("declares the %s size", (size) => {
+    expect(css).toMatch(new RegExp(`--text-${size}:\\s*[\\d.]+rem;`));
+  });
+
+  it("steps display and h1 up from the sm breakpoint", () => {
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 1\.75rem;/);
+  });
+
+  it.each(["card-sm", "card", "card-lg", "page", "section"])("declares the %s spacing", (name) => {
+    expect(css).toMatch(new RegExp(`--spacing-${name}:\\s*[\\d.]+rem;`));
   });
 });
 
@@ -99,6 +113,7 @@ describe("visible focus (NFR-U1)", () => {
     expect(rule?.[1]).toMatch(/input/);
     expect(rule?.[1]).toMatch(/textarea/);
     expect(rule?.[1]).toMatch(/button/);
-    expect(rule?.[2]).toMatch(/outline:\s*2px solid var\(--ring\)/);
+    expect(rule?.[2]).toMatch(/outline:\s*var\(--focus-ring\)/);
+    expect(declared("light", "focus-ring")).toBe("2px solid var(--ring)");
   });
 });

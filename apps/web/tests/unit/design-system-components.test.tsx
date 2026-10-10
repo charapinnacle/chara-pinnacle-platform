@@ -1,0 +1,275 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
+import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
+import { Spinner } from "@/components/feedback/spinner";
+import { StatusBadge } from "@/components/feedback/status-badge";
+import { FormButton } from "@/components/forms/form-button";
+import { controlClassName } from "@/components/forms/control-class";
+import { NativeSelect } from "@/components/forms/native-select";
+import { Notice } from "@/components/forms/notice";
+import { Card, CardFooter, CardHeader } from "@/components/layout/card";
+import { LinkButton } from "@/components/layout/link-button";
+import { PageHeader } from "@/components/layout/page-header";
+import { accountStatusLabels, accountStatusTones } from "@/lib/admin/status";
+import { applicationStatusLabels, applicationStatusTones } from "@/lib/applications/presentation";
+import { subscriptionStatusLabels, subscriptionStatusTones } from "@/lib/billing/presentation";
+import { planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
+import { jobStatusTone } from "@/lib/jobs/presentation";
+import type { StatusTone } from "@/lib/status-tone";
+import { declared } from "./support/tokens";
+
+const html = renderToStaticMarkup;
+const tones: StatusTone[] = ["success", "warning", "danger", "info", "neutral"];
+
+describe("Card", () => {
+  it("is a bordered surface on the card padding scale", () => {
+    expect(html(<Card>Body</Card>)).toMatch(/<div class="[^"]*rounded-xl border bg-card[^"]*p-card[ "]/);
+    expect(html(<Card padding="sm">x</Card>)).toContain("p-card-sm");
+    expect(html(<Card padding="lg">x</Card>)).toContain("p-card-lg");
+    expect(html(<Card padding="lg">x</Card>)).not.toContain("p-card ");
+  });
+
+  it("raises with the one shadow only when asked", () => {
+    expect(html(<Card>x</Card>)).not.toContain("shadow-card");
+    expect(html(<Card elevated>x</Card>)).toContain("shadow-card");
+  });
+
+  it("renders as the element asked for and keeps its attributes, so a list or a labelled region stays valid", () => {
+    expect(html(<Card as="li">x</Card>)).toMatch(/^<li /);
+    const section = html(<Card as="section" aria-labelledby="heading-id">x</Card>);
+    expect(section).toMatch(/^<section /);
+    expect(section).toContain('aria-labelledby="heading-id"');
+  });
+
+  it("lets the caller replace the gap and the layout", () => {
+    const flex = html(<Card className="flex gap-1">x</Card>);
+    expect(flex).toContain("flex");
+    expect(flex).not.toContain("grid");
+    expect(flex).toContain("gap-1");
+    expect(flex).not.toContain("gap-3");
+  });
+
+  it("has header, body and footer slots", () => {
+    const markup = html(
+      <Card>
+        <CardHeader>Header</CardHeader>
+        <div>Body</div>
+        <CardFooter>Footer</CardFooter>
+      </Card>,
+    );
+    expect(markup).toMatch(/Header<\/div><div>Body<\/div><div class="flex flex-wrap[^"]*">Footer/);
+  });
+});
+
+describe("StatusBadge", () => {
+  it.each(tones)("colours the %s status with its three tokens", (status) => {
+    const markup = html(<StatusBadge status={status}>Label</StatusBadge>);
+    expect(markup).toContain(`border-${status}-border`);
+    expect(markup).toContain(`bg-${status}-background`);
+    expect(markup).toContain(`text-${status}-foreground`);
+    for (const part of ["foreground", "background", "border"]) {
+      expect(declared("light", `${status}-${part}`)).toBeTruthy();
+      expect(declared("dark", `${status}-${part}`)).toBeTruthy();
+    }
+  });
+
+  it("says the status in words, so colour is never the only signal", () => {
+    expect(html(<StatusBadge status="danger">Suspended</StatusBadge>)).toMatch(/>Suspended<\/span>$/);
+  });
+
+  it("is neutral without a status and takes extra classes", () => {
+    const markup = html(<StatusBadge className="ms-2">Applied</StatusBadge>);
+    expect(markup).toContain("bg-neutral-background");
+    expect(markup).toContain("ms-2");
+  });
+});
+
+describe("PageHeader", () => {
+  it("renders the title as the h1 with the description under it", () => {
+    const markup = html(<PageHeader title="Vacancies" description="Acme" />);
+    expect(markup.match(/<h1/g)).toHaveLength(1);
+    expect(markup).toMatch(/<h1 class="wrap-anywhere text-h1">Vacancies<\/h1><p class="text-muted-foreground wrap-anywhere text-body">Acme<\/p>/);
+  });
+
+  it("puts the breadcrumb before the title and the actions after the text", () => {
+    const markup = html(
+      <PageHeader title="Team" breadcrumb={<nav aria-label="Breadcrumb">Home</nav>} actions={<button type="button">Invite</button>} />,
+    );
+    expect(markup.indexOf("Breadcrumb")).toBeLessThan(markup.indexOf("<h1"));
+    expect(markup.indexOf("</h1>")).toBeLessThan(markup.indexOf("Invite"));
+    expect(markup).toContain("justify-between");
+  });
+
+  it("does not lay out a row when there are no actions", () => {
+    expect(html(<PageHeader title="Team" />)).not.toContain("justify-between");
+  });
+
+  it("gives the display size a roomier description and lets the caller change the gap", () => {
+    const markup = html(<PageHeader title="About" description="Lead" size="display" className="gap-5" />);
+    expect(markup).toContain("text-lead");
+    expect(markup).toContain("gap-5");
+    expect(markup).not.toContain("gap-3");
+  });
+
+  it("uses the display size for marketing pages and passes heading attributes through", () => {
+    const markup = html(<PageHeader title="Home" size="display" titleProps={{ id: "page-title", tabIndex: -1, className: "ps-2" }} />);
+    expect(markup).toContain("text-display");
+    expect(markup).toContain('id="page-title"');
+    expect(markup).toContain('tabindex="-1"');
+    expect(markup).toContain("ps-2");
+    expect(markup).not.toContain("text-h1");
+  });
+
+  it("renders further lines under the description", () => {
+    expect(html(<PageHeader title="Settings"><p>Back to the dashboard</p></PageHeader>)).toContain("<p>Back to the dashboard</p>");
+  });
+});
+
+describe("LinkButton", () => {
+  it("is an anchor with the accessible name of its text", () => {
+    const markup = html(<LinkButton href="/en/jobs">Browse vacancies</LinkButton>);
+    expect(markup).toMatch(/^<a [^>]*href="\/en\/jobs"[^>]*>Browse vacancies<\/a>$/);
+  });
+
+  it("uses the button sizes: lg is the default and matches FormButton", () => {
+    expect(html(<LinkButton href="/">x</LinkButton>)).toMatch(/h-11 px-6 text-base/);
+    expect(html(<LinkButton href="/" size="default">x</LinkButton>)).toMatch(/h-9 px-4/);
+  });
+
+  it("styles the primary, secondary and destructive variants and is never full width", () => {
+    expect(html(<LinkButton href="/">x</LinkButton>)).toContain("hover:bg-primary-hover");
+    expect(html(<LinkButton href="/" variant="secondary">x</LinkButton>)).toContain("bg-card");
+    const destructive = html(<LinkButton href="/" variant="destructive">x</LinkButton>);
+    expect(destructive).toContain("bg-destructive");
+    expect(destructive).toContain("text-destructive-foreground");
+    expect(destructive).not.toContain("w-full");
+    expect(html(<LinkButton href="/">x</LinkButton>)).not.toContain("w-full");
+  });
+
+  it("lets the caller change a size", () => {
+    const markup = html(<LinkButton href="/" size="default" className="min-h-11 px-3">x</LinkButton>);
+    expect(markup).toContain("px-3");
+    expect(markup).not.toContain("px-4");
+  });
+});
+
+describe("FormButton destructive variant", () => {
+  it("is a button with the destructive tokens and full width like the primary one", () => {
+    const markup = html(<FormButton variant="destructive">Remove member</FormButton>);
+    expect(markup).toMatch(/^<button[^>]*>Remove member<\/button>$/);
+    expect(markup).toContain("bg-destructive text-destructive-foreground");
+    expect(markup).toContain("hover:bg-destructive-hover");
+  });
+
+  it("shows a spinning icon and aria-busy while busy, and is disabled", () => {
+    const markup = html(<FormButton variant="destructive" busy>Remove member</FormButton>);
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup).toContain("disabled");
+    expect(markup).toContain("animate-spin");
+    expect(markup).toContain("disabled:bg-destructive-active");
+  });
+
+  it("keeps the other variants unchanged", () => {
+    expect(html(<FormButton>Save</FormButton>)).toContain("w-full");
+    expect(html(<FormButton variant="secondary">Cancel</FormButton>)).not.toContain("bg-destructive");
+  });
+});
+
+describe("Spinner", () => {
+  it("is decorative, turns, and stops for people who ask for reduced motion", () => {
+    const markup = html(<Spinner />);
+    expect(markup).toContain('aria-hidden="true"');
+    expect(markup).toContain("animate-spin");
+    expect(markup).toContain("motion-reduce:animate-none");
+  });
+});
+
+describe("Notice tones", () => {
+  it.each([
+    ["warning", "bg-warning-background"],
+    ["error", "bg-danger-background"],
+    ["info", "bg-info-background"],
+  ] as const)("the %s tone uses its status tokens", (tone, background) => {
+    expect(html(<Notice tone={tone}>Message</Notice>)).toContain(background);
+  });
+
+  it.each(["warning", "error"] as const)("the %s tone has a hidden icon beside the text", (tone) => {
+    const markup = html(<Notice tone={tone}>Message</Notice>);
+    expect(markup).toContain('aria-hidden="true"');
+    expect(markup).toContain("Message");
+  });
+
+  it("keeps the role and the text the caller gives", () => {
+    expect(html(<Notice tone="error" role="alert">Wrong password</Notice>)).toMatch(/role="alert"[^>]*>.*Wrong password/);
+    expect(html(<Notice tone="info">Plain</Notice>)).not.toContain("<svg");
+  });
+});
+
+describe("the status tone maps", () => {
+  it("give every application stage a tone and keep the final stages apart from the live ones", () => {
+    expect(Object.keys(applicationStatusTones).sort()).toEqual(Object.keys(applicationStatusLabels).sort());
+    expect(applicationStatusTones.hired).toBe("success");
+    expect(applicationStatusTones.rejected).toBe("neutral");
+    expect(applicationStatusTones.applied).toBe("info");
+  });
+
+  it("colours a vacancy by what a visitor can see: hidden is danger whatever the status", () => {
+    expect(jobStatusTone("open", "visible")).toBe("success");
+    expect(jobStatusTone("open", "hidden")).toBe("danger");
+    expect(jobStatusTone("open", "org_suspended")).toBe("danger");
+    expect(jobStatusTone("paused", "visible")).toBe("warning");
+    expect(jobStatusTone("draft", "visible")).toBe("neutral");
+    expect(jobStatusTone("closed", "visible")).toBe("neutral");
+  });
+
+  it("give every plan, subscription and account status a tone and a label", () => {
+    expect(Object.keys(planStatusTones).sort()).toEqual(Object.keys(planStatusLabels).sort());
+    expect(Object.keys(subscriptionStatusTones).sort()).toEqual(Object.keys(subscriptionStatusLabels).sort());
+    expect(Object.keys(accountStatusTones).sort()).toEqual(Object.keys(accountStatusLabels).sort());
+    expect(planStatusTones.past_due).toBe("danger");
+    expect(subscriptionStatusTones.active).toBe("success");
+  });
+});
+
+describe("the badges of the admin console", () => {
+  it("say the account status in words and colour it by tone", () => {
+    const suspended = html(<AccountStatusBadge status="suspended" />);
+    expect(suspended).toContain("Suspended");
+    expect(suspended).toContain("bg-danger-background");
+    expect(html(<AccountStatusBadge status="active" />)).toContain("bg-success-background");
+    expect(html(<AccountStatusBadge status="deletion_pending" />)).toContain("bg-warning-background");
+  });
+
+  it("say the visibility of a vacancy in words and colour it by tone", () => {
+    expect(html(<JobModerationBadge state="visible" />)).toMatch(/bg-success-background[^>]*>Visible</);
+    expect(html(<JobModerationBadge state="hidden" />)).toMatch(/bg-danger-background[^>]*>Hidden</);
+    expect(html(<JobModerationBadge state="org_suspended" />)).toContain("Hidden with the suspension");
+  });
+});
+
+describe("NativeSelect (DS-03)", () => {
+  const markup = html(
+    <NativeSelect id="country" aria-invalid defaultValue="DE">
+      <option value="">Choose a country</option>
+      <option value="DE">Germany</option>
+    </NativeSelect>,
+  );
+
+  it("is a native select with its options and attributes, so type-ahead and mobile pickers keep working", () => {
+    expect(markup).toMatch(/<select [^>]*id="country"[^>]*aria-invalid="true"/);
+    expect(markup).toContain('<option value="DE" selected="">Germany</option>');
+  });
+
+  it("has the height, inset and chevron of the text input and the combobox", () => {
+    expect(markup).toContain("h-11");
+    expect(controlClassName).toContain("px-3.5");
+    expect(markup).toContain("ps-3.5");
+    expect(markup).toMatch(/<svg[^>]*lucide-chevron-down[^>]*aria-hidden="true"/);
+    expect(markup).toContain("appearance-none");
+  });
+
+  it("lets the caller add classes", () => {
+    expect(html(<NativeSelect className="sm:max-w-xs" />)).toContain("sm:max-w-xs");
+  });
+});

@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { StatusBadge } from "@/components/feedback/status-badge";
+import { Card } from "@/components/layout/card";
+import { PageHeader } from "@/components/layout/page-header";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { isJobStatus, jobDateText, jobStatusText, statusLabels } from "@/lib/jobs/presentation";
+import { isJobStatus, jobDateText, jobStatusText, jobStatusTone, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { index: false } };
@@ -28,14 +31,8 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
   ) : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Vacancies</h1>
-          <p className="text-body text-muted-foreground">{organization.displayName}</p>
-        </div>
-        {page.jobs.length > 0 ? newJob : null}
-      </header>
+    <div className="mx-auto grid w-full max-w-3xl gap-section">
+      <PageHeader title="Vacancies" description={organization.displayName} actions={page.jobs.length > 0 ? newJob : null} />
 
       <ReadOnlyPlanNotice ended={ended} billingHref={organization.role === "member" ? null : billingPath(lang, slug)} />
 
@@ -56,14 +53,14 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
       ) : (
         <ul className="grid gap-3">
           {page.jobs.map((job) => (
-            <li key={job.id} className="grid gap-1 rounded-xl border bg-card p-4">
+            <Card as="li" key={job.id} className="gap-1">
               <TextLink href={jobPath(lang, slug, job.id)} className="break-words">
                 {job.title}
               </TextLink>
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <span className="rounded-full border bg-accent px-2 py-0.5 font-medium text-accent-foreground">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-muted-foreground">
+                <StatusBadge status={jobStatusTone(job.status, job.moderationState)}>
                   {jobStatusText(job.status, job.moderationState)}
-                </span>
+                </StatusBadge>
                 <span>
                   {job.city}, {job.country} · {jobDateText(job)}
                 </span>
@@ -74,7 +71,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                   </LegalLink>
                 ) : null}
               </p>
-            </li>
+            </Card>
           ))}
         </ul>
       )}

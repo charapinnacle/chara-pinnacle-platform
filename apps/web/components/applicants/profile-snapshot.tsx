@@ -22,7 +22,7 @@ function availabilityText({ availability, available_from }: ApplicantSnapshot): 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-0.5">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dt className="text-small text-muted-foreground">{label}</dt>
       <dd className="font-medium wrap-anywhere">{children}</dd>
     </div>
   );
@@ -37,10 +37,10 @@ export function ProfileSnapshot({ snapshot, coverNote, submittedAt, changed, cou
   return (
     <section aria-labelledby="profile-heading" className="grid gap-3">
       <div className="grid gap-1">
-        <h2 id="profile-heading" className="text-lg font-semibold">
+        <h2 id="profile-heading" className="text-h2">
           Profile as submitted
         </h2>
-        <p className="text-sm text-muted-foreground">Submitted {formatIsoDate(submittedAt)}</p>
+        <p className="text-small text-muted-foreground">Submitted {formatIsoDate(submittedAt)}</p>
       </div>
       {changed ? (
         <Notice tone="info" role="status">
@@ -91,7 +91,7 @@ export function ProfileSnapshot({ snapshot, coverNote, submittedAt, changed, cou
       </dl>
       {coverNote ? (
         <div className="grid gap-1">
-          <h3 className="text-sm text-muted-foreground">Cover note</h3>
+          <h3 className="text-small text-muted-foreground">Cover note</h3>
           <p className="wrap-anywhere whitespace-pre-line">{coverNote}</p>
         </div>
       ) : null}

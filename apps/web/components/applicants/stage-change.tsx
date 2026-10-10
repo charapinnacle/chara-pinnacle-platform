@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { FormButton } from "@/components/forms/form-button";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import type { StageChangeProps } from "@/components/applicants/stage-change-form";
 
 // The form (React Hook Form, the resolver and the schema) is fetched when the dialog first opens, not with the page.

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { HeaderMenu } from "@/components/layout/header-menu";
+import { LinkButton } from "@/components/layout/link-button";
 import { headerLinks } from "@/lib/public/navigation";
-import { cn } from "@/lib/utils";
 
 const linkClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-accent";
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium hover:bg-accent";
 
 export function PublicNav({ lang }: { lang: string }) {
   return (
@@ -13,15 +13,15 @@ export function PublicNav({ lang }: { lang: string }) {
         <ul className="flex flex-col md:flex-row md:items-center md:gap-1">
           {headerLinks.map(({ path, label }) => (
             <li key={path}>
-              <Link
-                href={`/${lang}/${path}`}
-                className={cn(
-                  linkClassName,
-                  path === "signup" && "bg-primary text-primary-foreground hover:bg-primary-hover",
-                )}
-              >
-                {label}
-              </Link>
+              {path === "signup" ? (
+                <LinkButton href={`/${lang}/${path}`} size="default" className="min-h-11 px-3">
+                  {label}
+                </LinkButton>
+              ) : (
+                <Link href={`/${lang}/${path}`} className={linkClassName}>
+                  {label}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

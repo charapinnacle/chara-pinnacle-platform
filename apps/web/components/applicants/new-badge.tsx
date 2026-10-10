@@ -1,7 +1,9 @@
+import { StatusBadge } from "@/components/feedback/status-badge";
+
 export function NewBadge() {
   return (
-    <span className="rounded-full border border-primary/30 bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+    <StatusBadge status="info" className="text-caption font-semibold">
       New
-    </span>
+    </StatusBadge>
   );
 }

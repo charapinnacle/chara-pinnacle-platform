@@ -10,7 +10,7 @@ export function AccessLogTable({ items }: { items: AccessLogItem[] }) {
     <div className="relative overflow-x-auto rounded-lg border">
       <table className="w-full text-start text-body">
         <caption className="sr-only">Openings of your documents by organisations, newest first</caption>
-        <thead className="bg-muted/50 text-start text-sm">
+        <thead className="bg-muted/50 text-start text-small">
           <tr>
             {["Organisation", "Document", "Date and time", "Purpose"].map((heading) => (
               <th key={heading} scope="col" className="px-3 py-2 text-start font-semibold">

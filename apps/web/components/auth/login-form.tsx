@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldPath } from "react-hook-form";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { useForm } from "react-hook-form";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
@@ -25,17 +25,6 @@ export function LoginForm({ next }: { next?: string }) {
     clearOnFailure: "password",
   });
 
-  const errors = formState.errors;
-  const items: ErrorSummaryItem[] = [
-    errors.email && { key: "email", message: String(errors.email.message), targetId: ids.email },
-    errors.password && {
-      key: "password",
-      message: String(errors.password.message),
-      targetId: ids.password,
-    },
-    errors.root?.server && { key: "root", message: String(errors.root.server.message) },
-  ].filter((item): item is ErrorSummaryItem => Boolean(item));
-
   function onSubmit(values: LoginFormInput) {
     return submit(
       () => signIn({ ...values, next }),
@@ -49,12 +38,12 @@ export function LoginForm({ next }: { next?: string }) {
 
   return (
     <form noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<LoginFormInput>)}
+      <FormErrorSummary
+        form={form}
+        summaryRef={summaryRef}
+        ids={ids}
         action={
-          errors.root?.server?.type === "unconfirmed" ? (
+          formState.errors.root?.server?.type === "unconfirmed" ? (
             <TextLink standalone="flush" href={`/${defaultLocale}/verify-email`}>
               Request a new confirmation link
             </TextLink>

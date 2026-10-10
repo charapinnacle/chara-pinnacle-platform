@@ -4,9 +4,14 @@ import { X } from "lucide-react";
 import { Toast } from "radix-ui";
 import { cva } from "class-variance-authority";
 import type { ToastItem } from "@/components/feedback/toast-store";
+import { cardVariants } from "@/components/layout/card";
+import { cn } from "@/lib/utils";
 
 const toastVariants = cva(
-  "pointer-events-auto relative flex w-full items-start gap-3 rounded-xl border bg-card p-4 pe-12 text-foreground shadow-card data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-4",
+  cn(
+    cardVariants({ elevated: true }),
+    "pointer-events-auto relative flex w-full items-start pe-12 text-foreground data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-4",
+  ),
   {
     variants: {
       variant: {
@@ -37,9 +42,9 @@ export default function ToastView({
           className={toastVariants({ variant })}
         >
           <div className="grid gap-1">
-            <Toast.Title className="text-sm font-medium">{title}</Toast.Title>
+            <Toast.Title className="text-small font-medium">{title}</Toast.Title>
             {description ? (
-              <Toast.Description className="text-sm text-muted-foreground">
+              <Toast.Description className="text-small text-muted-foreground">
                 {description}
               </Toast.Description>
             ) : null}

@@ -1,4 +1,5 @@
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { classifyUsage, type UsageState } from "@/lib/billing/usage";
 import type { Usage } from "@/lib/dal/billing";
 import { cn } from "@/lib/utils";
@@ -22,8 +23,8 @@ type UsageSectionProps = { usage: Usage[]; upgradeHref: string | null };
 // Usage against the limits of the plan. The state is said in words next to the bar, so that colour is not the only cue.
 export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
   return (
-    <section aria-labelledby="usage-heading" className="grid gap-4 rounded-xl border bg-card p-4">
-      <h2 id="usage-heading" className="text-lg font-semibold">
+    <Card as="section" aria-labelledby="usage-heading" className="gap-4">
+      <h2 id="usage-heading" className="text-h2">
         Usage
       </h2>
       <ul className="grid gap-5">
@@ -53,7 +54,7 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
                 </div>
               ) : null}
               {stateText ? (
-                <p className="text-sm font-medium">
+                <p className="text-small font-medium">
                   {stateText}
                   {upgradeHref ? (
                     <>
@@ -65,11 +66,11 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
                   ) : null}
                 </p>
               ) : null}
-              {level.state === "over_limit" ? <p className="text-sm text-muted-foreground">{OVER_LIMIT_TEXT[key]}</p> : null}
+              {level.state === "over_limit" ? <p className="text-small text-muted-foreground">{OVER_LIMIT_TEXT[key]}</p> : null}
             </li>
           );
         })}
       </ul>
-    </section>
+    </Card>
   );
 }

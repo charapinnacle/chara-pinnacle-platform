@@ -107,7 +107,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
       </div>
 
       <fieldset className="grid gap-6 sm:grid-cols-3">
-        <legend className="mb-4 text-lg font-semibold">Minimum salary</legend>
+        <legend className="mb-4 text-h2">Minimum salary</legend>
         <InputField control={control} name="salary_min" id="search-salary-min" label="Salary at least" inputMode="decimal" />
         <ComboboxField
           control={control}

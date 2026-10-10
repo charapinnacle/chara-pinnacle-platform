@@ -3,9 +3,11 @@
 import { Bookmark } from "lucide-react";
 import { useOptimistic } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
+import { Card, CardFooter } from "@/components/layout/card";
 import { setSavedJob } from "@/lib/actions/saved-jobs";
 import type { ApplicationState } from "@/lib/dal/applications";
 import type { SavedJob } from "@/lib/dal/saved-jobs";
@@ -13,12 +15,10 @@ import { formatDate } from "@/lib/i18n/format";
 import { SAVED_HEADING_ID } from "@/lib/jobs/saved";
 import { applicationPath, applyPath } from "@/lib/routes";
 
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-medium text-accent-foreground";
-
 type SavedRowProps = { job: SavedJob; lang: string; applied: ApplicationState | null; onRemove: (id: string) => void };
 
 function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
-  const { pending, run } = useTeamCall("The vacancy was not removed");
+  const { pending, run } = useActionCall("The vacancy was not removed");
   const open = job.available && job.status === "open";
   const title = job.available ? job.title : null;
 
@@ -32,10 +32,10 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
   }
 
   return (
-    <li className="grid gap-2 rounded-xl border bg-card p-4">
+    <Card as="li" className="gap-2">
       {job.available ? (
         <>
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-h2">
             {open ? (
               <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
                 {job.title}
@@ -46,17 +46,21 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
           </h2>
           <p className="font-medium break-words">{job.employerName}</p>
           <p>
-            <span className={badgeClassName}>{open ? "Open" : "No longer open"}</span>
-            {applied ? <span className={`${badgeClassName} ms-2`}>Applied</span> : null}
+            <StatusBadge status={open ? "success" : "neutral"}>{open ? "Open" : "No longer open"}</StatusBadge>
+            {applied ? (
+              <StatusBadge status="info" className="ms-2">
+                Applied
+              </StatusBadge>
+            ) : null}
           </p>
         </>
       ) : (
-        <h2 className="text-lg font-semibold">This vacancy is no longer available</h2>
+        <h2 className="text-h2">This vacancy is no longer available</h2>
       )}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         Saved <time dateTime={job.savedAt}>{formatDate(job.savedAt)}</time>
       </p>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <CardFooter>
         {applied ? (
           <TextLink standalone href={applicationPath(lang, applied.id)}>
             View your application<span className="sr-only"> for {title}</span>
@@ -69,8 +73,8 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={unsave}>
           Unsave<span className="sr-only"> vacancy: {title ?? "no longer available"}</span>
         </FormButton>
-      </div>
-    </li>
+      </CardFooter>
+    </Card>
   );
 }
 

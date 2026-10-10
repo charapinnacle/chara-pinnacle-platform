@@ -2,11 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useForm, type FieldPath } from "react-hook-form";
-import { summaryItems } from "@/components/admin/summary-items";
+import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { changeStanding } from "@/lib/actions/admin-moderation";
@@ -47,11 +46,7 @@ export function ModerationForm({ target, id, standing }: ModerationFormProps) {
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={summaryItems(formState.errors, { reason: REASON_ID })}
-        onSelect={(key) => form.setFocus(key as FieldPath<ModerationValues>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={{ reason: REASON_ID }} />
       <TextareaField
         control={control}
         name="reason"
@@ -60,7 +55,7 @@ export function ModerationForm({ target, id, standing }: ModerationFormProps) {
         description={`Required, 10 to 2000 characters. ${suspending ? "The person is told the reasons by email." : "The reasons are sent by email."}`}
       />
       <div>
-        <FormButton type="submit" busy={formState.isSubmitting} className="w-full sm:w-auto">
+        <FormButton type="submit" variant={suspending ? "destructive" : "primary"} busy={formState.isSubmitting} className="w-full sm:w-auto">
           {label}
         </FormButton>
       </div>

@@ -1,6 +1,7 @@
 import { OpenDocumentButton } from "@/components/applicants/open-document-button";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
+import { Card } from "@/components/layout/card";
 import type { SharedDocument } from "@/lib/dal/applicant-review";
 import { expiryLabel, formatFileSize } from "@/lib/documents/presentation";
 import { formatDate } from "@/lib/i18n/format";
@@ -20,7 +21,7 @@ const typeLabels: Record<string, string> = Object.fromEntries(documentTypeOption
 export function SharedDocuments({ slug, applicationId, documents, shareEnded, today }: SharedDocumentsProps) {
   return (
     <section aria-labelledby="documents-heading" className="grid gap-3">
-      <h2 id="documents-heading" className="text-lg font-semibold">
+      <h2 id="documents-heading" className="text-h2">
         Documents
       </h2>
       {shareEnded ? (
@@ -34,10 +35,10 @@ export function SharedDocuments({ slug, applicationId, documents, shareEnded, to
           {documents.map((document) => {
             const expiry = expiryLabel(document.expiresOn, today);
             return (
-              <li key={document.id} className="grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <Card as="li" padding="sm" key={document.id} className="gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div className="grid min-w-0 gap-0.5">
                   <p className="font-medium wrap-anywhere">{document.title}</p>
-                  <p className="text-sm text-muted-foreground wrap-anywhere">
+                  <p className="text-small text-muted-foreground wrap-anywhere">
                     {typeLabels[document.type]} · {document.fileName} · {formatFileSize(document.sizeBytes)}
                     {document.expiresOn ? ` · ${expiry ?? `Expires ${formatDate(document.expiresOn)}`}` : ""}
                   </p>
@@ -45,9 +46,9 @@ export function SharedDocuments({ slug, applicationId, documents, shareEnded, to
                 {document.available ? (
                   <OpenDocumentButton slug={slug} applicationId={applicationId} documentId={document.id} title={document.title} />
                 ) : (
-                  <p className="text-sm text-muted-foreground">The file is still being checked</p>
+                  <p className="text-small text-muted-foreground">The file is still being checked</p>
                 )}
-              </li>
+              </Card>
             );
           })}
         </ul>

@@ -1,7 +1,9 @@
 import { DateText } from "@/components/dashboard/date-text";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
+import { Card, CardFooter, CardHeader } from "@/components/layout/card";
 import type { DashboardPlan } from "@/lib/dal/dashboard";
-import { daysLeft, daysLeftText, planStatusLabels } from "@/lib/dashboard/plan-status";
+import { daysLeft, daysLeftText, planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
 
 type PlanCardProps = { plan: DashboardPlan; now: Date; billingHref: string | null };
 
@@ -10,14 +12,18 @@ type PlanCardProps = { plan: DashboardPlan; now: Date; billingHref: string | nul
 export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
   const free = plan.status === "free";
   return (
-    <section aria-labelledby="plan-heading" className="grid content-start gap-3 rounded-xl border bg-card p-5 shadow-card">
-      <h2 id="plan-heading" className="text-body font-medium text-muted-foreground">
-        Plan
-      </h2>
-      <p className="text-3xl font-semibold">{plan.planName}</p>
+    <Card as="section" aria-labelledby="plan-heading" padding="lg" elevated className="content-start">
+      <CardHeader>
+        <h2 id="plan-heading" className="text-body font-medium text-muted-foreground">
+          Plan
+        </h2>
+        <p className="text-figure">{plan.planName}</p>
+      </CardHeader>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
         <dt className="text-muted-foreground">Status</dt>
-        <dd>{planStatusLabels[plan.status]}</dd>
+        <dd>
+          <StatusBadge status={planStatusTones[plan.status]}>{planStatusLabels[plan.status]}</StatusBadge>
+        </dd>
         {plan.status === "trialing" && plan.trialEndsAt ? (
           <>
             <dt className="text-muted-foreground">Trial ends</dt>
@@ -36,12 +42,14 @@ export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
         ) : null}
       </dl>
       {billingHref ? (
-        <TextLink standalone href={billingHref}>
-          {free ? "Choose a plan" : "Manage billing"}
-        </TextLink>
+        <CardFooter>
+          <TextLink standalone href={billingHref}>
+            {free ? "Choose a plan" : "Manage billing"}
+          </TextLink>
+        </CardFooter>
       ) : free ? (
         <p className="text-body text-muted-foreground">Contact an owner or admin of your company to choose a plan.</p>
       ) : null}
-    </section>
+    </Card>
   );
 }

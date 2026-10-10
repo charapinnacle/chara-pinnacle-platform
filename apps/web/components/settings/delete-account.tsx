@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { cancelAccountDeletion, requestAccountDeletion } from "@/lib/actions/account-closure";
 import type { DeletionStatus } from "@/lib/dal/account-closure";
 import { formatIsoDate } from "@/lib/i18n/format";
@@ -13,8 +13,8 @@ import { formatIsoDate } from "@/lib/i18n/format";
 export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays }: DeletionStatus) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const request = useTeamCall("Could not request the deletion");
-  const cancel = useTeamCall("Could not cancel the deletion");
+  const request = useActionCall("Could not request the deletion");
+  const cancel = useActionCall("Could not cancel the deletion");
   const banner = useRef<HTMLDivElement>(null);
   const focusBanner = useRef(false);
 
@@ -67,6 +67,7 @@ export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays
           </FormButton>
           <FormButton
             type="button"
+            variant="destructive"
             busy={request.pending}
             onClick={() =>
               request.run(requestAccountDeletion, "Deletion requested", () => {

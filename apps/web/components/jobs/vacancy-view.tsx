@@ -1,5 +1,7 @@
 import { Building2 } from "lucide-react";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
+import { PageHeader } from "@/components/layout/page-header";
 import type { Employer, VacancyDetails } from "@/lib/dal/hiring";
 import { formatDate } from "@/lib/i18n/format";
 import { formatSalary, publicWebsite } from "@/lib/jobs/presentation";
@@ -34,14 +36,12 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
 
   return (
     <article className="grid gap-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem] sm:leading-9">
-        {job.title}
-      </h1>
+      <PageHeader title={job.title} />
 
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {details.map(([term, value]) => (
           <div key={term} className="grid gap-0.5">
-            <dt className="text-sm text-muted-foreground">{term}</dt>
+            <dt className="text-small text-muted-foreground">{term}</dt>
             <dd className="font-medium break-words">{value}</dd>
           </div>
         ))}
@@ -50,15 +50,15 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
       {actions}
 
       <section aria-labelledby="job-description-heading" className="grid gap-2">
-        <h2 id="job-description-heading" className="text-lg font-semibold">
+        <h2 id="job-description-heading" className="text-h2">
           Description
         </h2>
         <p className="leading-7 break-words whitespace-pre-line">{job.description}</p>
       </section>
 
       {employer ? (
-        <section aria-labelledby="job-employer-heading" className="grid gap-2 rounded-xl border bg-card p-4">
-          <h2 id="job-employer-heading" className="flex items-center gap-2 text-lg font-semibold">
+        <Card as="section" aria-labelledby="job-employer-heading" className="gap-2">
+          <h2 id="job-employer-heading" className="flex items-center gap-2 text-h2">
             <Building2 aria-hidden className="size-5 text-muted-foreground" />
             {employer.displayName}
           </h2>
@@ -77,7 +77,7 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
               <span className="sr-only"> (opens in a new tab)</span>
             </TextLink>
           ) : null}
-        </section>
+        </Card>
       ) : null}
     </article>
   );

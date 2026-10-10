@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { openPortal } from "@/lib/actions/billing";
@@ -17,7 +17,7 @@ export function PortalButton({ slug, label = "Manage billing", variant }: Portal
     return submit(
       () => openPortal(slug),
       (result) => {
-        if (result.message) toast({ variant: "error", title: "Could not open billing", description: result.message });
+        if (result.message) toastError("Could not open billing", result.message);
       },
     );
   }

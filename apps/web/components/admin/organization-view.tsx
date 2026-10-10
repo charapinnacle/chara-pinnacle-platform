@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
+import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { DetailList } from "@/components/layout/detail-list";
-import { moderationLabels } from "@/components/admin/job-moderation-badge";
 import { ModerationForm } from "@/components/admin/moderation-form";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { cell, ResultsTable } from "@/components/admin/results-table";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { getOrganization } from "@/lib/dal/admin";
 import { formatShortDate } from "@/lib/i18n/format";
 import { isJobStatus, statusLabels } from "@/lib/jobs/presentation";
@@ -19,23 +19,23 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
   if (!organization) notFound();
 
   return (
-    <div className="grid gap-6">
-      <PageHeading title={organization.displayName}>
+    <div className="grid gap-page">
+      <PageHeader title={organization.displayName}>
         <TextLink standalone href={adminPath(lang, "organizations")}>
           Back to the organisation search
         </TextLink>
-      </PageHeading>
-      <PassportSection id="organisation" title="Organisation">
+      </PageHeader>
+      <Section id="organisation" title="Organisation">
         <DetailList
           items={[
             { label: "Legal name", value: organization.legalName },
             { label: "Address name", value: organization.slug },
             { label: "Organisation id", value: organization.id },
-            { label: "Status", value: <StatusBadge status={organization.status} /> },
+            { label: "Status", value: <AccountStatusBadge status={organization.status} /> },
           ]}
         />
-      </PassportSection>
-      <PassportSection id="members" title="Members">
+      </Section>
+      <Section id="members" title="Members">
         <ResultsTable caption="Members" columns={["Member", "Role", "Joined"]}>
           {organization.members.map((member) => (
             <tr key={member.userId}>
@@ -47,8 +47,8 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
             </tr>
           ))}
         </ResultsTable>
-      </PassportSection>
-      <PassportSection id="vacancies" title="Vacancies" description="The latest 100. Applicants are not shown here.">
+      </Section>
+      <Section id="vacancies" title="Vacancies" description="The latest 100. Applicants are not shown here.">
         {organization.vacancies.length === 0 ? (
           <p className="text-body">This organisation has no vacancies.</p>
         ) : (
@@ -63,14 +63,16 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
                   )}
                 </td>
                 <td className={cell}>{isJobStatus(vacancy.status) ? statusLabels[vacancy.status] : vacancy.status}</td>
-                <td className={cell}>{moderationLabels[vacancy.moderationState]}</td>
+                <td className={cell}>
+                  <JobModerationBadge state={vacancy.moderationState} />
+                </td>
               </tr>
             ))}
           </ResultsTable>
         )}
-      </PassportSection>
+      </Section>
       {roles.includes("trust_safety") ? (
-        <PassportSection
+        <Section
           id="standing"
           title={organization.status === "suspended" ? "Reinstate this organisation" : "Suspend this organisation"}
           description={
@@ -80,7 +82,7 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
           }
         >
           <ModerationForm target="organization" id={organization.id} standing={organization.status} />
-        </PassportSection>
+        </Section>
       ) : null}
     </div>
   );

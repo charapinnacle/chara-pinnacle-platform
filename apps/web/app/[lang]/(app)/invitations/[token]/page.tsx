@@ -75,7 +75,7 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/invi
         </div>
       )}
       {user ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-small text-muted-foreground">
           Not the right account? Log out and log in again with {preview.email}.
         </p>
       ) : null}

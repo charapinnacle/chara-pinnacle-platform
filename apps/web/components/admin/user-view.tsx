@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
 import { DetailList } from "@/components/layout/detail-list";
 import { ModerationForm } from "@/components/admin/moderation-form";
-import { PageHeading } from "@/components/admin/page-heading";
-import { StatusBadge } from "@/components/admin/status-badge";
+import { PageHeader } from "@/components/layout/page-header";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { getUser } from "@/lib/dal/admin";
 import { formatDateTime } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
@@ -18,26 +18,26 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
   if (!user) notFound();
 
   return (
-    <div className="grid gap-6">
-      <PageHeading title={user.displayName ?? user.email}>
+    <div className="grid gap-page">
+      <PageHeader title={user.displayName ?? user.email}>
         <TextLink standalone href={adminPath(lang, "users")}>
           Back to the user search
         </TextLink>
-      </PageHeading>
-      <PassportSection id="account" title="Account">
+      </PageHeader>
+      <Section id="account" title="Account">
         <DetailList
           items={[
             { label: "Email", value: user.email },
             { label: "User id", value: user.id },
             { label: "Account kind", value: user.accountKind ? kinds[user.accountKind] : "Not chosen yet" },
-            { label: "Status", value: <StatusBadge status={user.status} /> },
+            { label: "Status", value: <AccountStatusBadge status={user.status} /> },
             { label: "Created", value: formatDateTime(user.createdAt) },
             { label: "Applications submitted", value: user.applicationsSubmitted },
             { label: "Vacancies created", value: user.vacanciesCreated },
           ]}
         />
-      </PassportSection>
-      <PassportSection id="organisations" title="Organisations">
+      </Section>
+      <Section id="organisations" title="Organisations">
         {user.memberships.length === 0 ? (
           <p className="text-body">This user belongs to no organisation.</p>
         ) : (
@@ -50,9 +50,9 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
             ))}
           </ul>
         )}
-      </PassportSection>
+      </Section>
       {roles.includes("trust_safety") && user.status !== "deletion_pending" ? (
-        <PassportSection
+        <Section
           id="standing"
           title={user.status === "suspended" ? "Reinstate this account" : "Suspend this account"}
           description={
@@ -62,7 +62,7 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
           }
         >
           <ModerationForm target="user" id={user.id} standing={user.status} />
-        </PassportSection>
+        </Section>
       ) : null}
       {roles.includes("admin") ? (
         <TextLink standalone href={adminPath(lang, `mfa-reset?user=${user.id}`)}>

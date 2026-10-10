@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { signOut } from "@/lib/actions/login";
 import { isRedirectError } from "@/lib/redirect-error";
@@ -13,20 +13,16 @@ export function LogoutButton() {
     startTransition(async () => {
       try {
         const result = await signOut();
-        if (result) toast({ variant: "error", title: "Could not log out", description: result.message });
+        if (result) toastError("Could not log out", result.message);
       } catch (error) {
         if (isRedirectError(error)) return;
-        toast({
-          variant: "error",
-          title: "Could not log out",
-          description: "Check your connection and try again.",
-        });
+        toastNetworkError("Could not log out");
       }
     });
   }
 
   return (
-    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className="min-w-38 px-4 text-sm">
+    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className="min-w-38 px-4 text-small">
       {pending ? "Logging out..." : "Log out"}
     </FormButton>
   );

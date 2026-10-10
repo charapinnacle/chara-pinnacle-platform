@@ -3,9 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
-import { FormField, InputField, controlClassName } from "@/components/forms/form-field";
+import { controlClassName } from "@/components/forms/control-class";
+import { FormField, InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,7 @@ export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
           form.reset(emptyForm);
           setFileKey((key) => key + 1);
         } else if (result.message) {
-          toast({ variant: "error", title: "Could not upload the document", description: result.message });
+          toastError("Could not upload the document", result.message);
           setAnnouncement(result.message);
         }
       },

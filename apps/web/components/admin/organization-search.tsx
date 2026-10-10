@@ -1,9 +1,9 @@
 "use client";
 
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
 import { ResultsPanel } from "@/components/admin/results-panel";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { SearchBox } from "@/components/admin/search-box";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { usePagedSearch } from "@/components/admin/use-paged-search";
 import { TextLink } from "@/components/forms/text-link";
 import { searchOrganizationsAction } from "@/lib/actions/admin-search";
@@ -17,7 +17,7 @@ export function OrganizationSearch({ lang }: { lang: string }) {
   );
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <SearchBox
         label="Search organisations"
         description="Part of the display name, the legal name or the address name, or the organisation id."
@@ -46,7 +46,7 @@ export function OrganizationSearch({ lang }: { lang: string }) {
               <td className={`${cell} break-words`}>{organization.legalName}</td>
               <td className={`${cell} break-all`}>{organization.slug}</td>
               <td className={cell}>
-                <StatusBadge status={organization.status} />
+                <AccountStatusBadge status={organization.status} />
               </td>
             </tr>
           ))}

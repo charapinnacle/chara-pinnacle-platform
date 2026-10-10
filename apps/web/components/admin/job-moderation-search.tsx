@@ -17,7 +17,7 @@ export function JobModerationSearch({ lang }: { lang: string }) {
   const { state, page, search, next, previous, retry } = usePagedSearch<string, JobRow, NonNullable<JobCursor>>(searchJobsAction);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-page">
       <SearchBox
         label="Search vacancies"
         description="Part of the title, part of the name of the organisation, or the vacancy id."

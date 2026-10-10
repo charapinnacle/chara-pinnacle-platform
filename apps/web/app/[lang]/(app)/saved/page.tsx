@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { PageHeader } from "@/components/layout/page-header";
 import { SavedList } from "@/components/saved/saved-list";
 import { getApplicationStates } from "@/lib/dal/applications";
 import { listSavedJobs } from "@/lib/dal/saved-jobs";
@@ -24,16 +25,12 @@ export default async function SavedPage({ params, searchParams }: PageProps<"/[l
   const applications = Object.fromEntries([...states].filter(([, state]) => state.status !== "withdrawn"));
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <header className="grid gap-1">
-        <h1 id={SAVED_HEADING_ID} tabIndex={-1} className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
-          Saved vacancies
-        </h1>
-        <p className="text-body text-muted-foreground">
-          Your shortlist, newest first. A vacancy that is no longer open is flagged here and is removed from the list
-          some time after it closed.
-        </p>
-      </header>
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
+      <PageHeader
+        title="Saved vacancies"
+        titleProps={{ id: SAVED_HEADING_ID, tabIndex: -1 }}
+        description="Your shortlist, newest first. A vacancy that is no longer open is flagged here and is removed from the list some time after it closed."
+      />
       <SavedList
         lang={lang}
         jobs={jobs}

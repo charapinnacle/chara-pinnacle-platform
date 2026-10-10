@@ -1,5 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { formatDate } from "@/lib/i18n/format";
+import type { StatusTone } from "@/lib/status-tone";
 import { salaryPeriodLabels } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
@@ -14,6 +15,17 @@ export const statusLabels: Record<JobStatus, string> = {
   closed: "Closed",
   filled: "Filled",
 };
+
+export const moderationLabels = { visible: "Visible", hidden: "Hidden", org_suspended: "Hidden with the suspension" } as const satisfies Record<JobModerationState, string>;
+
+export const moderationTones = { visible: "success", hidden: "danger", org_suspended: "danger" } as const satisfies Record<JobModerationState, StatusTone>;
+
+// The tone of the status text of jobStatusText: a hidden vacancy is danger, an open one success, a paused one warning.
+export function jobStatusTone(status: JobStatus, moderationState: JobModerationState): StatusTone {
+  if (moderationState !== "visible") return "danger";
+  if (status === "open") return "success";
+  return status === "paused" ? "warning" : "neutral";
+}
 
 export function isJobStatus(value: unknown): value is JobStatus {
   return typeof value === "string" && Object.hasOwn(statusLabels, value);

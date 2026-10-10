@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { changeMemberRole, removeMember } from "@/lib/actions/team";
 import type { InvitableRole } from "@/lib/validation/team";
 
@@ -11,8 +11,8 @@ type MemberActionsProps = { slug: string; userId: string; name: string; role: In
 
 export function MemberActions({ slug, userId, name, role }: MemberActionsProps) {
   const [confirming, setConfirming] = useState(false);
-  const roleCall = useTeamCall("Could not change the role");
-  const removeCall = useTeamCall("Could not remove the member");
+  const roleCall = useActionCall("Could not change the role");
+  const removeCall = useActionCall("Could not remove the member");
   const target = role === "member" ? "admin" : "member";
 
   return (
@@ -44,6 +44,7 @@ export function MemberActions({ slug, userId, name, role }: MemberActionsProps) 
           </FormButton>
           <FormButton
             type="button"
+            variant="destructive"
             busy={removeCall.pending}
             onClick={() => removeCall.run(() => removeMember({ slug, userId }), `${name} was removed`, () => setConfirming(false))}
           >

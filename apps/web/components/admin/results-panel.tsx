@@ -30,7 +30,7 @@ export function ResultsPanel({ status, empty, failure, hasRows, page, hasNext, o
             <FormButton type="button" variant="secondary" disabled={page === 1} onClick={onPrevious}>
               Previous
             </FormButton>
-            <span className="text-sm text-muted-foreground">Page {page}</span>
+            <span className="text-small text-muted-foreground">Page {page}</span>
             <FormButton type="button" variant="secondary" disabled={!hasNext} onClick={onNext}>
               Next
             </FormButton>

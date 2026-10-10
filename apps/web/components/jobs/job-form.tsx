@@ -2,11 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type FieldErrors, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
@@ -74,22 +74,12 @@ export function JobForm({ slug, occupations, industries, countries, currencies }
   const { control, formState, handleSubmit } = form;
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not save the vacancy" });
 
-  const items: ErrorSummaryItem[] = [
-    ...(Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-      const error = formState.errors[name];
-      return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-    }),
-    ...(formState.errors.root?.server
-      ? [{ key: "root", message: String(formState.errors.root.server.message) }]
-      : []),
-  ];
-
   function onValid() {
     return submit(
       () => createJob(slug, form.getValues()),
       (result) => {
         if (result.message) {
-          toast({ variant: "error", title: "Could not save the vacancy", description: result.message });
+          toastError("Could not save the vacancy", result.message);
         }
         const [first] = Object.keys(result.errors ?? {});
         if (first) form.setFocus(first as FieldPath<JobFormInput>);
@@ -104,7 +94,7 @@ export function JobForm({ slug, occupations, industries, countries, currencies }
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onValid, onInvalid)}>
-      <ErrorSummary items={items} onSelect={(key) => form.setFocus(key as FieldPath<JobFormInput>)} />
+      <FormErrorSummary form={form} ids={ids} />
       <Notice tone="info">
         Vacancies must follow the{" "}
         <LegalLink slug="platform-rules" newTabLabel="(opens in a new tab)">
@@ -162,7 +152,7 @@ export function JobForm({ slug, occupations, industries, countries, currencies }
       />
 
       <fieldset className="grid gap-6 sm:grid-cols-2">
-        <legend className="mb-4 text-lg font-semibold">Salary (optional)</legend>
+        <legend className="mb-4 text-h2">Salary (optional)</legend>
         <InputField control={control} name="salaryMin" id={ids.salaryMin} label="Salary minimum" inputMode="decimal" />
         <InputField control={control} name="salaryMax" id={ids.salaryMax} label="Salary maximum" inputMode="decimal" />
         <ComboboxField

@@ -2,7 +2,7 @@
 
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { formatDate } from "@/lib/i18n/format";
@@ -26,7 +26,7 @@ export function InvitationLink({ path, email, role, expiresAt, onDone }: Invitat
       await navigator.clipboard.writeText(link);
       setCopied(true);
     } catch {
-      toast({ variant: "error", title: "Could not copy the link", description: "Select the link and copy it by hand." });
+      toastError("Could not copy the link", "Select the link and copy it by hand.");
     }
   }
 

@@ -23,7 +23,7 @@ export function EnrolmentForm({ enrolment, next }: EnrolmentFormProps) {
       />
       <div className="grid gap-1.5 text-body">
         <p className="text-muted-foreground">Setup key, if you cannot scan the code</p>
-        <code className="rounded-lg border bg-muted px-3 py-2 font-mono text-sm break-all select-all">
+        <code className="rounded-lg border bg-muted px-3 py-2 font-mono text-small break-all select-all">
           {enrolment.secret}
         </code>
       </div>

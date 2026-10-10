@@ -3,7 +3,7 @@
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { setSavedJob } from "@/lib/actions/saved-jobs";
 
 type SaveJobButtonProps = { jobId: string; title: string; saved: boolean };
@@ -12,7 +12,7 @@ type SaveJobButtonProps = { jobId: string; title: string; saved: boolean };
 // meanwhile is ignored. The state changes only once the database has confirmed it.
 export function SaveJobButton({ jobId, title, saved: initiallySaved }: SaveJobButtonProps) {
   const [saved, setSaved] = useState(initiallySaved);
-  const { pending, run } = useTeamCall("Your saved vacancies were not changed");
+  const { pending, run } = useActionCall("Your saved vacancies were not changed");
 
   function toggle() {
     if (pending) return;

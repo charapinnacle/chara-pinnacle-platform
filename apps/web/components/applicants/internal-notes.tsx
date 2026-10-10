@@ -3,6 +3,7 @@ import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApplicantNote } from "@/lib/dal/applicant-review";
@@ -22,10 +23,10 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
   return (
     <section aria-labelledby="notes-heading" className="grid gap-3">
       <div className="grid gap-1">
-        <h2 id="notes-heading" className="text-lg font-semibold">
+        <h2 id="notes-heading" className="text-h2">
           Internal notes
         </h2>
-        <p className="text-sm text-muted-foreground">Visible to your organization only. The candidate never sees them.</p>
+        <p className="text-small text-muted-foreground">Visible to your organization only. The candidate never sees them.</p>
       </div>
       {blocked ? (
         <div className="grid gap-3">
@@ -44,24 +45,24 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
         <NoteForm slug={slug} applicationId={applicationId} />
       )}
       {notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No internal notes yet.</p>
+        <p className="text-small text-muted-foreground">No internal notes yet.</p>
       ) : (
         <ul className="grid gap-2">
           {notes.map((note) => (
-            <li key={note.id} className="grid gap-1 rounded-xl border bg-card p-3">
-              <p className="text-sm font-medium text-muted-foreground">Internal note</p>
+            <Card as="li" padding="sm" key={note.id} className="gap-1">
+              <p className="text-small font-medium text-muted-foreground">Internal note</p>
               <p className="wrap-anywhere whitespace-pre-line">{note.body}</p>
-              <p className="text-sm text-muted-foreground wrap-anywhere">
+              <p className="text-small text-muted-foreground wrap-anywhere">
                 {note.authorName ?? "Team member"}
                 {" · "}
                 <time dateTime={note.createdAt}>{formatDateTime(note.createdAt)}</time>
               </p>
-            </li>
+            </Card>
           ))}
         </ul>
       )}
       {olderHref || newestHref ? (
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-small">
           {olderHref ? (
             <TextLink standalone href={olderHref}>
               Show older notes

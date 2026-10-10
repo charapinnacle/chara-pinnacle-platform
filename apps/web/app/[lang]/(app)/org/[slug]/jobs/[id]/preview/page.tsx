@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { PreviewActions } from "@/components/jobs/vacancy-actions";
@@ -24,7 +24,7 @@ export default async function JobPreviewPage({ params }: PageProps<"/[lang]/org/
   if (!job) notFound();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <Notice tone="info" role="status">
         Preview - not public
       </Notice>

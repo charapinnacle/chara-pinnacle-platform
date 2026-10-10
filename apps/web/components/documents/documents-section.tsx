@@ -6,7 +6,7 @@ import { DocumentTable } from "@/components/documents/document-table";
 import { UploadForm } from "@/components/documents/upload-form";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
-import { toast } from "@/components/feedback/toast-store";
+import { toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { fetchDocuments, type DocumentItem } from "@/lib/documents/fetch-documents";
 import { todayUtc } from "@/lib/validation/passport";
@@ -16,7 +16,7 @@ type Phase = "loading" | "ready" | "error";
 const SCAN_POLL_MS = 3000;
 
 function loadFailed() {
-  toast({ variant: "error", title: "Could not load your documents", description: "Check your connection and try again." });
+  toastNetworkError("Could not load your documents");
 }
 
 export function DocumentsSection() {

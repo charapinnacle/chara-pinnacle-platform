@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessLogTable } from "@/components/access-log/access-log-table";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
-import { toast } from "@/components/feedback/toast-store";
+import { toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { fetchAccessLog, type AccessLogCursor, type AccessLogItem } from "@/lib/access-log/fetch-access-log";
 
@@ -35,7 +35,7 @@ export function AccessLogSection() {
         if (!current) return;
         setPhase("error");
         setNavigating(false);
-        toast({ variant: "error", title: "Could not load the access log", description: "Check your connection and try again." });
+        toastNetworkError("Could not load the access log");
       },
     );
     return () => {

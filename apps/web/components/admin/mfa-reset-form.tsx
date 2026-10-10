@@ -1,12 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldPath } from "react-hook-form";
-import { summaryItems } from "@/components/admin/summary-items";
+import { useForm } from "react-hook-form";
 import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary } from "@/components/forms/error-summary";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { resetMfa } from "@/lib/actions/admin-staff";
@@ -36,11 +35,7 @@ export function MfaResetForm({ userId }: { userId: string }) {
 
   return (
     <form noValidate className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={summaryItems(formState.errors, ids)}
-        onSelect={(key) => form.setFocus(key as FieldPath<MfaResetValues>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField control={control} name="userId" id={ids.userId} label="User id" autoComplete="off" />
       <CheckboxField control={control} name="identityChecked" id={ids.identityChecked}>
         I have verified this person&apos;s identity

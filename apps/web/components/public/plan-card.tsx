@@ -1,5 +1,6 @@
 import { TextLink } from "@/components/forms/text-link";
-import type { Link, PlanCard as Card } from "@/lib/billing/pricing";
+import { Card } from "@/components/layout/card";
+import type { Link, PlanCard as PricedPlan } from "@/lib/billing/pricing";
 
 function Bullets({ items }: { items: readonly string[] }) {
   return (
@@ -11,14 +12,14 @@ function Bullets({ items }: { items: readonly string[] }) {
   );
 }
 
-export function PlanCard({ card, link }: { card: Card; link: Link | null }) {
+export function PlanCard({ card, link }: { card: PricedPlan; link: Link | null }) {
   const [headline, ...terms] = card.trial;
   return (
-    <li className="grid content-start gap-3 rounded-xl border bg-card p-4">
-      <h3 className="text-lg font-semibold">{card.name}</h3>
+    <Card as="li" className="content-start">
+      <h3 className="text-h2">{card.name}</h3>
       {card.price ? (
         <p>
-          <span className="text-2xl font-semibold">{card.price}</span>{" "}
+          <span className="text-h1">{card.price}</span>{" "}
           <span className="text-muted-foreground">{card.per} excl. VAT</span>
         </p>
       ) : (
@@ -41,6 +42,6 @@ export function PlanCard({ card, link }: { card: Card; link: Link | null }) {
           {link.label}
         </TextLink>
       ) : null}
-    </li>
+    </Card>
   );
 }

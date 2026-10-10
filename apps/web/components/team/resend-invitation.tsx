@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { InvitationLink } from "@/components/team/invitation-link";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { inviteMember, type InviteResult } from "@/lib/actions/team";
 import { isRedirectError } from "@/lib/redirect-error";
 import { memberLimitMessage, type InvitableRole } from "@/lib/validation/team";
@@ -29,10 +29,10 @@ export function ResendInvitation({ slug, email, role }: ResendInvitationProps) {
         const description = result.limitReached
           ? memberLimitMessage(result.limitReached.limit)
           : (result.message ?? result.errors?.email);
-        toast({ variant: "error", title: "Could not resend the invitation", description });
+        toastError("Could not resend the invitation", description);
       } catch (error) {
         if (isRedirectError(error)) return;
-        toast({ variant: "error", title: "Could not resend the invitation", description: "Check your connection and try again." });
+        toastNetworkError("Could not resend the invitation");
       }
     });
   }

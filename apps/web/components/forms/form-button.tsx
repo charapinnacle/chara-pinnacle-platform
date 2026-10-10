@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { LoaderCircle } from "lucide-react";
+import { Spinner } from "@/components/feedback/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,8 @@ export const formButtonVariants = cva(
         primary: "w-full hover:bg-primary-hover active:bg-primary-active",
         secondary:
           "border-input bg-card text-secondary-foreground hover:bg-secondary active:bg-muted",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive-hover active:bg-destructive-active",
       },
       busy: {
         true: "disabled:pointer-events-auto disabled:cursor-progress disabled:opacity-100",
@@ -20,6 +22,7 @@ export const formButtonVariants = cva(
     compoundVariants: [
       { variant: "primary", busy: true, className: "disabled:bg-primary-active" },
       { variant: "secondary", busy: true, className: "disabled:bg-secondary" },
+      { variant: "destructive", busy: true, className: "disabled:bg-destructive-active" },
     ],
     defaultVariants: { variant: "primary", busy: false },
   },
@@ -46,7 +49,7 @@ export function FormButton({
       className={cn(formButtonVariants({ variant, busy }), className)}
       {...props}
     >
-      {busy ? <LoaderCircle aria-hidden className="size-4" /> : null}
+      {busy ? <Spinner /> : null}
       {children}
     </Button>
   );

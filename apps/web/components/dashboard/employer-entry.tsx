@@ -62,7 +62,7 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
       )}
       {others.length > 0 ? (
         <nav aria-label="Your organizations" className="mx-auto grid w-full max-w-5xl gap-1">
-          <p className="text-sm text-muted-foreground">You also belong to</p>
+          <p className="text-small text-muted-foreground">You also belong to</p>
           {others.map((other) => (
             <TextLink key={other.id} href={employerDashboardPath(lang, other.slug)}>
               {other.displayName}

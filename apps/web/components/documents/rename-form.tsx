@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useId } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ export function RenameForm({ documentId, title, onDone }: RenameFormProps) {
       () => renameDocument(documentId, form.getValues()),
       (result) => {
         if (result.message) {
-          toast({ variant: "error", title: "Could not rename the document", description: result.message });
+          toastError("Could not rename the document", result.message);
         } else if (!result.errors) {
           toast({ title: "Document renamed" });
           onDone(true);
@@ -49,7 +49,7 @@ export function RenameForm({ documentId, title, onDone }: RenameFormProps) {
         }}
       />
       {error ? (
-        <p id={errorId} className="text-sm text-destructive">
+        <p id={errorId} className="text-small text-destructive">
           {error}
         </p>
       ) : null}

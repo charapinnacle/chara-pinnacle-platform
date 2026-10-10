@@ -8,13 +8,15 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
+import { controlClassName } from "@/components/forms/control-class";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-export const controlClassName =
-  "bg-card px-3.5 text-base text-foreground hover:border-muted-foreground focus-visible:ring-0 aria-invalid:ring-0 aria-invalid:hover:border-destructive md:text-base";
+// The field lays out its children at full width, which beats the 1px of sr-only, and a long description that does not wrap
+// then widens the page on a phone.
+const SR_ONLY_WIDTH = "sr-only w-px!";
 
 type ControlProps<T extends FieldValues, N extends FieldPath<T>> =
   ControllerRenderProps<T, N> & {
@@ -64,7 +66,7 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
               "aria-describedby": describedBy,
             })}
             {description ? (
-              <FieldDescription id={descriptionId} className={fieldState.error ? "sr-only" : undefined}>
+              <FieldDescription id={descriptionId} className={fieldState.error ? SR_ONLY_WIDTH : undefined}>
                 {description}
               </FieldDescription>
             ) : null}

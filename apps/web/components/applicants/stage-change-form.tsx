@@ -2,10 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
-import { useForm, useWatch, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { useForm, useWatch } from "react-hook-form";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
@@ -58,11 +58,6 @@ export function StageChangeForm({
   const declining = status === "rejected";
   const noteLabel = declining ? "Other reason (visible to the candidate)" : "Note (visible to the candidate)";
 
-  const items: ErrorSummaryItem[] = (Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-    const error = formState.errors[name];
-    return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-  });
-
   function confirm(values: StageChangeFormOutput) {
     return submit(
       () => changeApplicantStage(slug, applicationId, { status: values.status, note: values.note }),
@@ -74,7 +69,7 @@ export function StageChangeForm({
           setReview(null);
         } else if (result.message) {
           onClose();
-          toast({ variant: "error", title: "The stage was not changed", description: result.message });
+          toastError("The stage was not changed", result.message);
         }
       },
     );
@@ -86,15 +81,15 @@ export function StageChangeForm({
         <>
           <dl className="grid gap-3">
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">Applicant</dt>
+              <dt className="text-small text-muted-foreground">Applicant</dt>
               <dd className="font-medium wrap-anywhere">{applicantName}</dd>
             </div>
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">New stage</dt>
+              <dt className="text-small text-muted-foreground">New stage</dt>
               <dd className="font-medium">{applicationStatusLabels[review.status]}</dd>
             </div>
             <div className="grid gap-0.5">
-              <dt className="text-sm text-muted-foreground">
+              <dt className="text-small text-muted-foreground">
                 {review.status === "rejected" ? "Reason (visible to the candidate)" : "Note (visible to the candidate)"}
               </dt>
               <dd className="wrap-anywhere whitespace-pre-line">{review.note === "" ? "No note" : review.note}</dd>
@@ -116,11 +111,7 @@ export function StageChangeForm({
         </>
       ) : (
         <>
-          <ErrorSummary
-            ref={summaryRef}
-            items={items}
-            onSelect={(key) => form.setFocus(key as FieldPath<StageChangeFormValues>)}
-          />
+          <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
           <SelectField
             control={control}
             name="status"

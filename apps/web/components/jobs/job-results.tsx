@@ -1,7 +1,9 @@
 import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { SaveJob } from "@/components/jobs/save-job";
+import { Card } from "@/components/layout/card";
 import { searchJobs, type JobSearchResult } from "@/lib/dal/hiring";
 import { getCountries } from "@/lib/dal/reference";
 import { getSavedJobIds } from "@/lib/dal/saved-jobs";
@@ -12,14 +14,12 @@ import { searchPath, usedFilters, type JobSearchFilters } from "@/lib/jobs/searc
 import { viewerOf, type Viewer } from "@/lib/jobs/viewer";
 import { employmentTypeLabels } from "@/lib/validation/job";
 
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-medium text-accent-foreground";
-
 type ResultCardProps = { job: JobSearchResult; lang: string; countryName: string; viewer: Viewer; saved: boolean; next: string };
 
 function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardProps) {
   return (
-    <li className="grid gap-2 rounded-xl border bg-card p-4">
-      <h2 className="text-lg font-semibold">
+    <Card as="li" className="gap-2">
+      <h2 className="text-h2">
         <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
           {job.title}
         </TextLink>
@@ -33,11 +33,11 @@ function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardP
       </p>
       {job.accommodation || job.visaSupport ? (
         <p className="flex flex-wrap gap-2">
-          {job.accommodation ? <span className={badgeClassName}>Accommodation</span> : null}
-          {job.visaSupport ? <span className={badgeClassName}>Visa support</span> : null}
+          {job.accommodation ? <StatusBadge status="info">Accommodation</StatusBadge> : null}
+          {job.visaSupport ? <StatusBadge status="info">Visa support</StatusBadge> : null}
         </p>
       ) : null}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         Posted <time dateTime={job.createdAt}>{formatDate(job.createdAt)}</time>
       </p>
       {viewer === "company" ? null : (
@@ -45,7 +45,7 @@ function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardP
           <SaveJob jobId={job.id} title={job.title} viewer={viewer} saved={saved} next={next} />
         </div>
       )}
-    </li>
+    </Card>
   );
 }
 

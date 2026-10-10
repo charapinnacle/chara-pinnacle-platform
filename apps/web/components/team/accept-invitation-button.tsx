@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "@/components/feedback/toast-store";
+import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { acceptInvitation } from "@/lib/actions/team";
@@ -18,15 +18,11 @@ export function AcceptInvitationButton({ token }: { token: string }) {
         const result = await acceptInvitation(token);
         if (result) {
           setMessage(result.message);
-          toast({ variant: "error", title: "Could not accept the invitation", description: result.message });
+          toastError("Could not accept the invitation", result.message);
         }
       } catch (error) {
         if (isRedirectError(error)) return;
-        toast({
-          variant: "error",
-          title: "Could not accept the invitation",
-          description: "Check your connection and try again.",
-        });
+        toastNetworkError("Could not accept the invitation");
       }
     });
   }

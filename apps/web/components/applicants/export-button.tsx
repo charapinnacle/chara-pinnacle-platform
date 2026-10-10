@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useId } from "react";
 import { FormButton } from "@/components/forms/form-button";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 
 type ExportButtonProps = { action: string; jobId: string; stage: string | null; disabled: boolean; hint: string | null };
@@ -13,7 +13,7 @@ type ExportButtonProps = { action: string; jobId: string; stage: string | null; 
 // the screen. A redirect means the session needs a step again: the page is read again and its guards take over.
 export function ExportButton({ action, jobId, stage, disabled, hint }: ExportButtonProps) {
   const router = useRouter();
-  const call = useTeamCall("The export failed");
+  const call = useActionCall("The export failed");
   const hintId = useId();
 
   function exportCsv(event: FormEvent<HTMLFormElement>) {
@@ -44,7 +44,7 @@ export function ExportButton({ action, jobId, stage, disabled, hint }: ExportBut
         Export CSV
       </FormButton>
       {hint ? (
-        <p id={hintId} className="text-sm text-muted-foreground">
+        <p id={hintId} className="text-small text-muted-foreground">
           {hint}
         </p>
       ) : null}

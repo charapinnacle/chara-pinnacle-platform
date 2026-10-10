@@ -2,14 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
+import { useForm } from "react-hook-form";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { acceptOwnershipTransfer, cancelOwnershipTransfer, transferOwnership } from "@/lib/actions/team";
 import { transferFormSchema, type TransferFormInput } from "@/lib/validation/team";
 
@@ -37,8 +37,6 @@ function TransferForm({ slug, candidates, onClose }: { slug: string; candidates:
   });
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not start the transfer" });
-  const error = formState.errors.userId;
-  const items: ErrorSummaryItem[] = error ? [{ key: "userId", message: String(error.message), targetId: "transfer-user" }] : [];
 
   function onSubmit({ userId }: TransferFormInput) {
     const name = candidates.find((candidate) => candidate.value === userId)?.label ?? "the new owner";
@@ -47,7 +45,7 @@ function TransferForm({ slug, candidates, onClose }: { slug: string; candidates:
       (result) => {
         onClose();
         if (result.message) {
-          toast({ variant: "error", title: "Could not start the transfer", description: result.message });
+          toastError("Could not start the transfer", result.message);
           return;
         }
         toast({ title: `Waiting for ${name} to confirm`, description: "Nothing changes until they confirm." });
@@ -61,11 +59,7 @@ function TransferForm({ slug, candidates, onClose }: { slug: string; candidates:
         The person you choose must confirm within 7 days. When they do, they become the owner and you become an
         administrator.
       </p>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<TransferFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={{ userId: "transfer-user" }} />
       <SelectField
         control={control}
         name="userId"
@@ -87,7 +81,7 @@ function TransferForm({ slug, candidates, onClose }: { slug: string; candidates:
 }
 
 export function TransferResponse({ slug, mode }: { slug: string; mode: "cancel" | "accept" }) {
-  const { pending, run } = useTeamCall(mode === "cancel" ? "Could not cancel the transfer" : "Could not confirm the transfer");
+  const { pending, run } = useActionCall(mode === "cancel" ? "Could not cancel the transfer" : "Could not confirm the transfer");
   return mode === "cancel" ? (
     <FormButton type="button" variant="secondary" busy={pending} onClick={() => run(() => cancelOwnershipTransfer(slug), "The transfer was cancelled")}>
       Cancel transfer

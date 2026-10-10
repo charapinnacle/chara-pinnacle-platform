@@ -2,12 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { useForm, useWatch, type FieldPath } from "react-hook-form";
-import { toast } from "@/components/feedback/toast-store";
+import { useForm, useWatch } from "react-hook-form";
+import { toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ConsentPanel } from "@/components/forms/consent-panel";
-import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { LegalLink } from "@/components/forms/text-link";
@@ -58,30 +58,18 @@ export function CheckoutForm({
   }, [disclosedTrialDays, setValue]);
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not start the checkout" });
 
-  const items: ErrorSummaryItem[] = [
-    ...(Object.keys(ids) as (keyof typeof ids)[]).flatMap((name) => {
-      const error = formState.errors[name];
-      return error ? [{ key: name, message: String(error.message), targetId: ids[name] }] : [];
-    }),
-    ...(formState.errors.root?.server ? [{ key: "root", message: String(formState.errors.root.server.message) }] : []),
-  ];
-
   function onSubmit(values: CheckoutFormInput) {
     return submit(
       () => startCheckout({ ...values, slug, planCode, termsVersion, disclosedTrialDays }),
       (result) => {
-        if (result.message) toast({ variant: "error", title: "Could not start the checkout", description: result.message });
+        if (result.message) toastError("Could not start the checkout", result.message);
       },
     );
   }
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
-      <ErrorSummary
-        ref={summaryRef}
-        items={items}
-        onSelect={(key) => form.setFocus(key as FieldPath<CheckoutFormInput>)}
-      />
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <SelectField
         control={control}
         name="billingCountry"
@@ -108,8 +96,8 @@ export function CheckoutForm({
       />
       <ConsentPanel>
         <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
-          <h2 className="text-base font-semibold tracking-tight">{termsTitle}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-h3">{termsTitle}</h2>
+          <p className="text-small text-muted-foreground">
             Version {termsVersion}, published {formatDate(termsPublishedAt)}
           </p>
           <LegalLink

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
@@ -23,7 +23,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
   if (!job) notFound();
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    <div className="mx-auto grid w-full max-w-3xl gap-page">
       <Notice tone="info" role="status">
         {jobStatusText(job.status, job.moderationState)}
         {job.staleOpen ? ` · ${STALE_OPEN_TEXT}` : ""}

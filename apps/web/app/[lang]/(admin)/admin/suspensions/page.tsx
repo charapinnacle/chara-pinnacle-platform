@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ModerationLog } from "@/components/admin/moderation-log";
-import { PageHeading } from "@/components/admin/page-heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { requirePlatformRole } from "@/lib/dal/session";
 
@@ -13,12 +13,12 @@ export default async function SuspensionsPage({ params, searchParams }: PageProp
   const cursor = typeof after === "string" && /^\d{1,15}$/.test(after) ? Number(after) : null;
 
   return (
-    <div className="grid gap-6">
-      <PageHeading title="Suspensions and reinstatements">
+    <div className="grid gap-page">
+      <PageHeader title="Suspensions and reinstatements">
         <p className="text-body text-muted-foreground">
           Open a user or an organisation from the search to suspend or reinstate it. This is the record, newest first.
         </p>
-      </PageHeading>
+      </PageHeader>
       <Suspense key={cursor ?? "newest"} fallback={<LoadingSkeleton rows={4} />}>
         <ModerationLog lang={lang} after={cursor} />
       </Suspense>

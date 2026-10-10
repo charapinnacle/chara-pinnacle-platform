@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
 import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import { RenameForm } from "@/components/documents/rename-form";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { getDocumentDownload } from "@/lib/actions/documents";
 import { documentStatus, expiryLabel, formatFileSize } from "@/lib/documents/presentation";
 import type { DocumentItem } from "@/lib/documents/fetch-documents";
@@ -18,12 +18,12 @@ const typeLabels: Record<string, string> = Object.fromEntries(documentTypeOption
 // Each cell prints its own column heading. An empty cell leaves the layout and loses its heading but stays in the
 // accessibility tree, so every row keeps one cell per column header.
 const labelled =
-  "flex items-baseline gap-3 before:w-20 before:shrink-0 before:text-sm before:font-semibold before:text-muted-foreground before:content-[attr(data-label)] empty:sr-only empty:before:content-none";
+  "flex items-baseline gap-3 before:w-20 before:shrink-0 before:text-small before:font-semibold before:text-muted-foreground before:content-[attr(data-label)] empty:sr-only empty:before:content-none";
 
 export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
   const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const download = useTeamCall("Could not download the file");
+  const download = useActionCall("Could not download the file");
   const status = documentStatus(item.scanStatus, item.checking);
   const expiry = expiryLabel(item.expiresOn, today);
 

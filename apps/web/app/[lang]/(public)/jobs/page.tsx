@@ -5,6 +5,7 @@ import { Notice } from "@/components/forms/notice";
 import { JobResults } from "@/components/jobs/job-results";
 import { JobSearchForm } from "@/components/jobs/job-search-form";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { parseSearchParams, searchQuery } from "@/lib/jobs/search-params";
 import { staticPageMetadata } from "@/lib/seo/metadata";
@@ -25,14 +26,11 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
   const ignored = Object.values(errors);
 
   return (
-    <PageContainer layout="page" className="grid max-w-4xl gap-8">
-      <header className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Find jobs</h1>
-        <p className="text-body text-muted-foreground">Open vacancies from employers on CHARA.</p>
-      </header>
+    <PageContainer layout="page" className="grid max-w-4xl gap-section">
+      <PageHeader title="Find jobs" description="Open vacancies from employers on CHARA." />
 
       {ignored.length > 0 ? (
-        <Notice tone="error" role="alert">
+        <Notice tone="warning" role="alert">
           <p className="font-semibold">Some search options were ignored</p>
           <ul className="list-disc ps-5">
             {ignored.map((message) => (

@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { FormButton } from "@/components/forms/form-button";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { withdrawMyApplication } from "@/lib/actions/applications";
 
 type WithdrawApplicationProps = { applicationId: string; jobTitle: string; employerName: string };
 
 function WithdrawBody({ applicationId, jobTitle, employerName, onClose }: WithdrawApplicationProps & { onClose: () => void }) {
-  const withdraw = useTeamCall("The application was not withdrawn");
+  const withdraw = useActionCall("The application was not withdrawn");
   return (
     <>
       <p className="text-body leading-relaxed wrap-anywhere">
@@ -24,6 +24,7 @@ function WithdrawBody({ applicationId, jobTitle, employerName, onClose }: Withdr
         </FormButton>
         <FormButton
           type="button"
+          variant="destructive"
           busy={withdraw.pending}
           onClick={() => withdraw.run(() => withdrawMyApplication(applicationId), "Application withdrawn", onClose)}
         >
