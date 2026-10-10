@@ -4,7 +4,7 @@ import { ModerationForm } from "@/components/admin/moderation-form";
 import { PageHeading } from "@/components/admin/page-heading";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { getUser } from "@/lib/dal/admin";
 import { formatDateTime } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
@@ -24,7 +24,7 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
           Back to the user search
         </TextLink>
       </PageHeading>
-      <PassportSection id="account" title="Account">
+      <Section id="account" title="Account">
         <DetailList
           items={[
             { label: "Email", value: user.email },
@@ -36,8 +36,8 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
             { label: "Vacancies created", value: user.vacanciesCreated },
           ]}
         />
-      </PassportSection>
-      <PassportSection id="organisations" title="Organisations">
+      </Section>
+      <Section id="organisations" title="Organisations">
         {user.memberships.length === 0 ? (
           <p className="text-body">This user belongs to no organisation.</p>
         ) : (
@@ -50,9 +50,9 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
             ))}
           </ul>
         )}
-      </PassportSection>
+      </Section>
       {roles.includes("trust_safety") && user.status !== "deletion_pending" ? (
-        <PassportSection
+        <Section
           id="standing"
           title={user.status === "suspended" ? "Reinstate this account" : "Suspend this account"}
           description={
@@ -62,7 +62,7 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
           }
         >
           <ModerationForm target="user" id={user.id} standing={user.status} />
-        </PassportSection>
+        </Section>
       ) : null}
       {roles.includes("admin") ? (
         <TextLink standalone href={adminPath(lang, `mfa-reset?user=${user.id}`)}>

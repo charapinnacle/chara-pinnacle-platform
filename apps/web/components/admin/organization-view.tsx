@@ -6,7 +6,7 @@ import { PageHeading } from "@/components/admin/page-heading";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { getOrganization } from "@/lib/dal/admin";
 import { formatShortDate } from "@/lib/i18n/format";
 import { isJobStatus, statusLabels } from "@/lib/jobs/presentation";
@@ -25,7 +25,7 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
           Back to the organisation search
         </TextLink>
       </PageHeading>
-      <PassportSection id="organisation" title="Organisation">
+      <Section id="organisation" title="Organisation">
         <DetailList
           items={[
             { label: "Legal name", value: organization.legalName },
@@ -34,8 +34,8 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
             { label: "Status", value: <StatusBadge status={organization.status} /> },
           ]}
         />
-      </PassportSection>
-      <PassportSection id="members" title="Members">
+      </Section>
+      <Section id="members" title="Members">
         <ResultsTable caption="Members" columns={["Member", "Role", "Joined"]}>
           {organization.members.map((member) => (
             <tr key={member.userId}>
@@ -47,8 +47,8 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
             </tr>
           ))}
         </ResultsTable>
-      </PassportSection>
-      <PassportSection id="vacancies" title="Vacancies" description="The latest 100. Applicants are not shown here.">
+      </Section>
+      <Section id="vacancies" title="Vacancies" description="The latest 100. Applicants are not shown here.">
         {organization.vacancies.length === 0 ? (
           <p className="text-body">This organisation has no vacancies.</p>
         ) : (
@@ -68,9 +68,9 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
             ))}
           </ResultsTable>
         )}
-      </PassportSection>
+      </Section>
       {roles.includes("trust_safety") ? (
-        <PassportSection
+        <Section
           id="standing"
           title={organization.status === "suspended" ? "Reinstate this organisation" : "Suspend this organisation"}
           description={
@@ -80,7 +80,7 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
           }
         >
           <ModerationForm target="organization" id={organization.id} standing={organization.status} />
-        </PassportSection>
+        </Section>
       ) : null}
     </div>
   );

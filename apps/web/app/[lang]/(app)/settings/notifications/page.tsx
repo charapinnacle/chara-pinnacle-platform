@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { NotificationForm } from "@/components/settings/notification-form";
 import { getEmailDelivery } from "@/lib/dal/notifications";
 import { requireUser } from "@/lib/dal/session";
@@ -24,21 +24,21 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
         </TextLink>
       </header>
       {delivery ? (
-        <PassportSection
+        <Section
           id="new-applications"
           title="New applications"
           description="Choose how you hear about applications to your vacancies. This applies to you only."
         >
           <NotificationForm delivery={delivery} />
-        </PassportSection>
+        </Section>
       ) : (
-        <PassportSection
+        <Section
           id="application-updates"
           title="Application updates"
           description="We email you whenever the stage of an application changes, except when an employer opens it."
         >
           <p className="text-body">Application status emails are always sent. They cannot be switched off.</p>
-        </PassportSection>
+        </Section>
       )}
     </div>
   );

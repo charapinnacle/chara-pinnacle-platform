@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { PreviewActions } from "@/components/jobs/vacancy-actions";

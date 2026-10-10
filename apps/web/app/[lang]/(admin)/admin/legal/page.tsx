@@ -4,7 +4,7 @@ import { LegalForm } from "@/components/admin/legal-form";
 import { PageHeading } from "@/components/admin/page-heading";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { listLegalDocuments } from "@/lib/dal/admin";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { formatShortDate } from "@/lib/i18n/format";
@@ -21,7 +21,7 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
   return (
     <div className="grid gap-6">
       <PageHeading title="Legal documents" />
-      <PassportSection id="current" title="Current versions" description="Version 0 is the draft placeholder until the first approved text is published.">
+      <Section id="current" title="Current versions" description="Version 0 is the draft placeholder until the first approved text is published.">
         <ResultsTable caption="Current versions of the legal documents" columns={["Document", "Title", "Version", "Status", "Published", "New version"]}>
           {documents.map((document) => (
             <tr key={document.slug}>
@@ -41,14 +41,14 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
         <div>
           <LegalExportButton href={`${adminPath(lang, "legal")}/export`} />
         </div>
-      </PassportSection>
-      <PassportSection
+      </Section>
+      <Section
         id="publish"
         title="Publish a new version"
         description="The new version is public at once. Everyone who accepted the document gets an email and is asked to accept the new version at the next sign-in."
       >
         <LegalForm key={chosen?.slug ?? "new"} slug={chosen?.slug ?? ""} title={chosen?.title ?? ""} />
-      </PassportSection>
+      </Section>
     </div>
   );
 }

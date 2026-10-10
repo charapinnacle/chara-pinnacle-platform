@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { toast } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { deleteDocument } from "@/lib/actions/documents";
 import { fetchShareCount } from "@/lib/documents/fetch-documents";
 import { shareWarning } from "@/lib/documents/presentation";
@@ -17,7 +17,7 @@ type Shares = number | null | undefined;
 
 function DeleteBody({ id, onClose, onDeleted }: Omit<DeleteDocumentDialogProps, "title" | "open">) {
   const [shares, setShares] = useState<Shares>(undefined);
-  const remove = useTeamCall("Could not delete the document");
+  const remove = useActionCall("Could not delete the document");
 
   useEffect(() => {
     let current = true;

@@ -5,7 +5,7 @@ import { ModerateJobDialog } from "@/components/admin/moderate-job-dialog";
 import { PageHeading } from "@/components/admin/page-heading";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { getModerationJob } from "@/lib/dal/admin-jobs";
 import { formatDateTime } from "@/lib/i18n/format";
 import { statusLabels } from "@/lib/jobs/presentation";
@@ -24,7 +24,7 @@ export async function JobModerationView({ lang, id }: { lang: string; id: string
           Back to the vacancy search
         </TextLink>
       </PageHeading>
-      <PassportSection id="vacancy" title="Vacancy" description="As the employer wrote it. Applicants are not shown here.">
+      <Section id="vacancy" title="Vacancy" description="As the employer wrote it. Applicants are not shown here.">
         <DetailList
           items={[
             {
@@ -39,8 +39,8 @@ export async function JobModerationView({ lang, id }: { lang: string; id: string
             { label: "Description", value: <p className="whitespace-pre-line">{job.description}</p> },
           ]}
         />
-      </PassportSection>
-      <PassportSection id="history" title="Moderation history" description="The latest 20 decisions, newest first.">
+      </Section>
+      <Section id="history" title="Moderation history" description="The latest 20 decisions, newest first.">
         {job.history.length === 0 ? (
           <p className="text-body">This vacancy was never hidden.</p>
         ) : (
@@ -54,15 +54,15 @@ export async function JobModerationView({ lang, id }: { lang: string; id: string
             ))}
           </ResultsTable>
         )}
-      </PassportSection>
+      </Section>
       {job.moderationState === "org_suspended" ? (
-        <PassportSection id="decision" title="Hidden with the suspension">
+        <Section id="decision" title="Hidden with the suspension">
           <p className="text-body">
             The organisation is suspended, so this vacancy is not public. It becomes visible again when the organisation is reinstated.
           </p>
-        </PassportSection>
+        </Section>
       ) : (
-        <PassportSection
+        <Section
           id="decision"
           title={job.moderationState === "hidden" ? "Unhide this vacancy" : "Hide this vacancy"}
           description={
@@ -77,7 +77,7 @@ export async function JobModerationView({ lang, id }: { lang: string; id: string
             organizationName={job.organizationName}
             action={job.moderationState === "hidden" ? "unhide" : "hide"}
           />
-        </PassportSection>
+        </Section>
       )}
     </div>
   );

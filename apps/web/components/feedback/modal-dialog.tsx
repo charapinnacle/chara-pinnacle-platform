@@ -40,7 +40,7 @@ export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = 
     >
       {open ? (
         <div className="grid gap-5">
-          <h2 id={titleId} className="text-xl font-semibold tracking-tight">
+          <h2 id={titleId} className="text-h2">
             {title}
           </h2>
           {children}

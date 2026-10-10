@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { TextLink } from "@/components/forms/text-link";
 import { JobForm } from "@/components/jobs/job-form";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";

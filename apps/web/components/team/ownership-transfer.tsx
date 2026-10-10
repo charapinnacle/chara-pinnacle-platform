@@ -8,8 +8,8 @@ import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-su
 import { FormButton } from "@/components/forms/form-button";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { acceptOwnershipTransfer, cancelOwnershipTransfer, transferOwnership } from "@/lib/actions/team";
 import { transferFormSchema, type TransferFormInput } from "@/lib/validation/team";
 
@@ -87,7 +87,7 @@ function TransferForm({ slug, candidates, onClose }: { slug: string; candidates:
 }
 
 export function TransferResponse({ slug, mode }: { slug: string; mode: "cancel" | "accept" }) {
-  const { pending, run } = useTeamCall(mode === "cancel" ? "Could not cancel the transfer" : "Could not confirm the transfer");
+  const { pending, run } = useActionCall(mode === "cancel" ? "Could not cancel the transfer" : "Could not confirm the transfer");
   return mode === "cancel" ? (
     <FormButton type="button" variant="secondary" busy={pending} onClick={() => run(() => cancelOwnershipTransfer(slug), "The transfer was cancelled")}>
       Cancel transfer

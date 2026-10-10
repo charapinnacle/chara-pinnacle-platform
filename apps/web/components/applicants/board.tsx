@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { BoardCard, moveButtonId } from "@/components/applicants/board-card";
 import { StageChangeDialog } from "@/components/applicants/stage-change";
 import { TextLink } from "@/components/forms/text-link";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { changeApplicantStage, readBoardCounts } from "@/lib/actions/applicants";
 import { moveCard } from "@/lib/applicants/board";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
@@ -43,7 +43,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
   const [declining, setDeclining] = useState<ApplicantRow | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const focusAfter = useRef<string | null>(null);
-  const call = useTeamCall("The stage was not changed");
+  const call = useActionCall("The stage was not changed");
   if (source !== columns) {
     setSource(columns);
     setShown(columns);

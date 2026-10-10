@@ -7,7 +7,7 @@ import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
 import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";

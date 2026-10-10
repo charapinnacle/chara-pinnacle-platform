@@ -5,7 +5,7 @@ import { useOptimistic } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { setSavedJob } from "@/lib/actions/saved-jobs";
 import type { ApplicationState } from "@/lib/dal/applications";
 import type { SavedJob } from "@/lib/dal/saved-jobs";
@@ -18,7 +18,7 @@ const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-sm font-m
 type SavedRowProps = { job: SavedJob; lang: string; applied: ApplicationState | null; onRemove: (id: string) => void };
 
 function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
-  const { pending, run } = useTeamCall("The vacancy was not removed");
+  const { pending, run } = useActionCall("The vacancy was not removed");
   const open = job.available && job.status === "open";
   const title = job.available ? job.title : null;
 

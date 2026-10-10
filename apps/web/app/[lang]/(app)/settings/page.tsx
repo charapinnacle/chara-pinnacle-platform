@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { DeleteAccount } from "@/components/settings/delete-account";
 import { getDeletionStatus } from "@/lib/dal/account-closure";
 import { requireUser } from "@/lib/dal/session";
@@ -24,13 +24,13 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
           Back to the dashboard
         </TextLink>
       </header>
-      <PassportSection
+      <Section
         id="delete-account"
         title="Delete account"
         description="Ask us to erase your profile and documents. You have time to change your mind."
       >
         <DeleteAccount {...status} />
-      </PassportSection>
+      </Section>
     </div>
   );
 }

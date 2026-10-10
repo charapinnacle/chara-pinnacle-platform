@@ -10,7 +10,7 @@ import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { revokeRole } from "@/lib/actions/admin-staff";
 import { revokeFormSchema, type PlatformRole } from "@/lib/validation/admin";
 import type { z } from "zod";

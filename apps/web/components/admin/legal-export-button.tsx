@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { FormButton } from "@/components/forms/form-button";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 
 // The file is saved from here so that a refusal is a toast and the page stays on the screen. A redirect means the
 // session needs a step again: the page is read again and its guards take over.
 export function LegalExportButton({ href }: { href: string }) {
   const router = useRouter();
-  const call = useTeamCall("The export failed");
+  const call = useActionCall("The export failed");
 
   function exportVersions() {
     call.run(async () => {

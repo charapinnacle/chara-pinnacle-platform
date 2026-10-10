@@ -10,7 +10,7 @@ import { ExperienceForm } from "@/components/passport/experience-form";
 import { LanguagesSection } from "@/components/passport/languages-section";
 import { OccupationForm } from "@/components/passport/occupation-form";
 import { PreferredCountriesSection } from "@/components/passport/preferred-countries-section";
-import { PassportSection } from "@/components/passport/section";
+import { Section } from "@/components/layout/section";
 import { SkillsSection } from "@/components/passport/skills-section";
 import { hasUsableCv } from "@/lib/dal/documents";
 import { getPassport, getPassportLimits } from "@/lib/dal/passport";
@@ -49,10 +49,10 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
         </TextLink>
       </header>
 
-      <PassportSection id="completeness" title="Completeness">
+      <Section id="completeness" title="Completeness">
         <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, todayUtc())} />
-      </PassportSection>
-      <PassportSection id="basics" title="Your details">
+      </Section>
+      <Section id="basics" title="Your details">
         <BasicsForm
           countries={countries}
           initial={{
@@ -62,17 +62,17 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
             country: passport.country,
           }}
         />
-      </PassportSection>
-      <PassportSection id="occupation" title="Occupation">
+      </Section>
+      <Section id="occupation" title="Occupation">
         <OccupationForm occupationId={passport.occupationId} occupations={occupations} />
-      </PassportSection>
-      <PassportSection id="skills" title="Skills">
+      </Section>
+      <Section id="skills" title="Skills">
         <SkillsSection skills={passport.skills} max={limits.skillsMax} />
-      </PassportSection>
-      <PassportSection id="languages" title="Languages">
+      </Section>
+      <Section id="languages" title="Languages">
         <LanguagesSection languages={passport.languages} options={languages} />
-      </PassportSection>
-      <PassportSection id="experience" title="Experience and availability">
+      </Section>
+      <Section id="experience" title="Experience and availability">
         <ExperienceForm
           windowMonths={limits.availabilityWindowMonths}
           initial={{
@@ -81,11 +81,11 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
             availableFrom: passport.availableFrom ?? "",
           }}
         />
-      </PassportSection>
-      <PassportSection id="preferred-countries" title="Preferred countries">
+      </Section>
+      <Section id="preferred-countries" title="Preferred countries">
         <PreferredCountriesSection selected={passport.preferredCountries} countries={countries} />
-      </PassportSection>
-      <PassportSection
+      </Section>
+      <Section
         id="authorizations"
         title="Work authorisation"
         description="The countries where you may work. Add only the country and, if there is one, the date it expires."
@@ -95,21 +95,21 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
           countries={countries}
           expiryYears={limits.authorizationExpiryYears}
         />
-      </PassportSection>
-      <PassportSection
+      </Section>
+      <Section
         id="documents"
         title="Documents"
         description="Upload your CV and certificates. Only you can see them: they are stored privately and you can download, rename or delete them here."
       >
         <DocumentsSection />
-      </PassportSection>
-      <PassportSection
+      </Section>
+      <Section
         id="access-log"
         title="Access log"
         description="Every time an organisation opens one of your documents, it is recorded here with the date and time. If you do not recognise an entry, report it."
       >
         <AccessLogSection />
-      </PassportSection>
+      </Section>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { SuspendedOrganization } from "@/components/applicants/suspended-organization";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";

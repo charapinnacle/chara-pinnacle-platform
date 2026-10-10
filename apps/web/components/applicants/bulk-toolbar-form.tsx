@@ -12,7 +12,7 @@ import { FormButton } from "@/components/forms/form-button";
 import { TextareaField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { bulkChangeApplicantStage } from "@/lib/actions/applicants";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import {

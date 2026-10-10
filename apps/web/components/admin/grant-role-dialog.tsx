@@ -11,7 +11,7 @@ import { FormButton } from "@/components/forms/form-button";
 import { InputField, TextareaField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { grantRole } from "@/lib/actions/admin-staff";
 import { grantFormSchema, platformRoleLabels, type GrantForm, type GrantOutput } from "@/lib/validation/admin";
 

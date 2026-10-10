@@ -13,7 +13,7 @@ import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { InvitationLink } from "@/components/team/invitation-link";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { inviteMember, type InviteResult } from "@/lib/actions/team";
 import {
   invitableRoles,

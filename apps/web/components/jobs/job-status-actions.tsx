@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Notice } from "@/components/forms/notice";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
-import { ModalDialog } from "@/components/team/modal-dialog";
-import { useTeamCall } from "@/components/team/use-team-call";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
+import { useActionCall } from "@/components/feedback/use-action-call";
 import { changeJobStatus } from "@/lib/actions/jobs";
 import { statusActions, type LimitPrompt, type StatusAction } from "@/lib/jobs/lifecycle";
 import type { Database } from "@chara-pinnacle/db-types";
@@ -23,7 +23,7 @@ export function JobStatusActions({ slug, jobId, status, billingHref }: JobStatus
   const [confirming, setConfirming] = useState<StatusAction | null>(null);
   const [prompt, setPrompt] = useState<LimitPrompt | null>(null);
   const [running, setRunning] = useState<StatusAction["to"] | null>(null);
-  const call = useTeamCall("The status was not changed");
+  const call = useActionCall("The status was not changed");
   const actions = statusActions[status];
 
   function run(action: StatusAction) {

@@ -11,7 +11,7 @@ import { ErrorSummary } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { moderateJob } from "@/lib/actions/admin-moderation";
 import { moderationFormSchema, type ModerationForm } from "@/lib/validation/admin";
 

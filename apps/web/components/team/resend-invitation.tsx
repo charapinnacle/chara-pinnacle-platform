@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { InvitationLink } from "@/components/team/invitation-link";
-import { ModalDialog } from "@/components/team/modal-dialog";
+import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { inviteMember, type InviteResult } from "@/lib/actions/team";
 import { isRedirectError } from "@/lib/redirect-error";
 import { memberLimitMessage, type InvitableRole } from "@/lib/validation/team";
