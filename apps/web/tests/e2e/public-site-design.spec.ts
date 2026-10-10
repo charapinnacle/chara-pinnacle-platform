@@ -46,6 +46,17 @@ test.describe("the home page", () => {
     }
   });
 
+  test("the hero search with both fields empty opens the whole list without a warning or filter chips", async ({ page }) => {
+    await page.goto("/en");
+    await page.getByRole("search", { name: "Search vacancies" }).getByRole("button", { name: "Search vacancies" }).click();
+    await expect(page).toHaveURL("/en/jobs?q=&city=");
+    await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /vacanc/ })).toBeVisible();
+    await expect(page.getByText("Some search options were ignored")).toHaveCount(0);
+    await expect(page.getByText("No vacancies match your search")).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Active filters" })).toHaveCount(0);
+  });
+
   test("the sections follow the hero in order and the closing call leads to sign-up and pricing", async ({ page }) => {
     await page.goto("/en");
     await expect(page.getByRole("heading", { level: 2 })).toContainText([
