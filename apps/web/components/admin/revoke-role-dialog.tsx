@@ -73,7 +73,7 @@ function Form({ userId, role, roleLabel, person, onClose }: RevokeRoleDialogProp
         <FormButton type="button" variant="secondary" onClick={onClose}>
           Cancel
         </FormButton>
-        <FormButton type="submit" busy={formState.isSubmitting}>
+        <FormButton type="submit" variant="destructive" busy={formState.isSubmitting}>
           Revoke role
         </FormButton>
       </div>

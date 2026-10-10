@@ -52,6 +52,7 @@ function DeleteBody({ id, onClose, onDeleted }: Omit<DeleteDocumentDialogProps, 
         </FormButton>
         <FormButton
           type="button"
+          variant="destructive"
           disabled={shares === undefined}
           busy={remove.pending}
           onClick={() =>

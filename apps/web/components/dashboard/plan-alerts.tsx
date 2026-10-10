@@ -15,7 +15,7 @@ export function PlanAlerts({ plan, now, slug, billingHref }: PlanAlertsProps) {
   return (
     <>
       {trial.alert && plan.trialEndsAt ? (
-        <Notice tone="error" role="alert">
+        <Notice tone="warning" role="alert">
           <div className="grid gap-1">
             <p>
               Your free trial ends on <DateText date={plan.trialEndsAt} /> ({daysLeftText(trial.daysLeft)}).

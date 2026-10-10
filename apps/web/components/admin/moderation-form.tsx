@@ -60,7 +60,7 @@ export function ModerationForm({ target, id, standing }: ModerationFormProps) {
         description={`Required, 10 to 2000 characters. ${suspending ? "The person is told the reasons by email." : "The reasons are sent by email."}`}
       />
       <div>
-        <FormButton type="submit" busy={formState.isSubmitting} className="w-full sm:w-auto">
+        <FormButton type="submit" variant={suspending ? "destructive" : "primary"} busy={formState.isSubmitting} className="w-full sm:w-auto">
           {label}
         </FormButton>
       </div>

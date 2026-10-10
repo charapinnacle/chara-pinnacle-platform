@@ -24,6 +24,7 @@ function WithdrawBody({ applicationId, jobTitle, employerName, onClose }: Withdr
         </FormButton>
         <FormButton
           type="button"
+          variant="destructive"
           busy={withdraw.pending}
           onClick={() => withdraw.run(() => withdrawMyApplication(applicationId), "Application withdrawn", onClose)}
         >

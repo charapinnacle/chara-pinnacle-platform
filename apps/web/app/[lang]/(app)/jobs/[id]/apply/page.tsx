@@ -48,7 +48,7 @@ export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]
       {!job ? (
         <NotAcceptingNotice lang={lang} />
       ) : missing.length > 0 ? (
-        <Notice tone="error" role="alert" className="grid gap-2">
+        <Notice tone="warning" role="alert" className="grid gap-2">
           <p className="font-semibold">Complete your passport before you apply</p>
           <ul className="grid list-disc ps-5">
             {missing.map(({ label, section }) => (

@@ -44,6 +44,7 @@ export function MemberActions({ slug, userId, name, role }: MemberActionsProps) 
           </FormButton>
           <FormButton
             type="button"
+            variant="destructive"
             busy={removeCall.pending}
             onClick={() => removeCall.run(() => removeMember({ slug, userId }), `${name} was removed`, () => setConfirming(false))}
           >

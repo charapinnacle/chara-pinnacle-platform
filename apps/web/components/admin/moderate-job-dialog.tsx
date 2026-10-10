@@ -44,7 +44,7 @@ export function ModerateJobDialog(props: ModerateJobDialogProps) {
 
   return (
     <>
-      <FormButton type="button" variant={action === "hide" ? "primary" : "secondary"} className="w-full sm:w-auto" onClick={() => setOpen(true)}>
+      <FormButton type="button" variant={action === "hide" ? "destructive" : "secondary"} className="w-full sm:w-auto" onClick={() => setOpen(true)}>
         {words[action].open}
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title={words[action].title}>
@@ -89,7 +89,7 @@ function Form({ id, title, organizationName, action, onClose }: ModerateJobDialo
         <FormButton type="button" variant="secondary" onClick={onClose}>
           Cancel
         </FormButton>
-        <FormButton type="submit" busy={formState.isSubmitting}>
+        <FormButton type="submit" variant={action === "hide" ? "destructive" : "primary"} busy={formState.isSubmitting}>
           {words[action].confirm}
         </FormButton>
       </div>

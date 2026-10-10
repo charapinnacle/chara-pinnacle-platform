@@ -60,7 +60,7 @@ export function JobStatusActions({ slug, jobId, status, billingHref }: JobStatus
         ))}
       </div>
       {prompt ? (
-        <Notice tone="error" role="alert">
+        <Notice tone="warning" role="alert">
           <p className="font-medium">
             Your {prompt.planName} plan has {prompt.used} of {prompt.limit} open vacancies in use.
           </p>
@@ -82,7 +82,7 @@ export function JobStatusActions({ slug, jobId, status, billingHref }: JobStatus
           <FormButton type="button" variant="secondary" className="w-full" onClick={() => setConfirming(null)}>
             Cancel
           </FormButton>
-          <FormButton type="button" busy={call.pending} onClick={() => confirming && run(confirming)}>
+          <FormButton type="button" variant="destructive" busy={call.pending} onClick={() => confirming && run(confirming)}>
             {confirming?.confirm?.button}
           </FormButton>
         </div>

@@ -67,6 +67,7 @@ export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays
           </FormButton>
           <FormButton
             type="button"
+            variant="destructive"
             busy={request.pending}
             onClick={() =>
               request.run(requestAccountDeletion, "Deletion requested", () => {

@@ -30,7 +30,7 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
       <PageHeader title="Find jobs" description="Open vacancies from employers on CHARA." />
 
       {ignored.length > 0 ? (
-        <Notice tone="error" role="alert">
+        <Notice tone="warning" role="alert">
           <p className="font-semibold">Some search options were ignored</p>
           <ul className="list-disc ps-5">
             {ignored.map((message) => (
