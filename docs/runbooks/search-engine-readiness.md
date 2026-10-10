@@ -5,10 +5,10 @@ FR-H5, design point D75 (OPEN_QUESTIONS.md). The SOP is "Search Engine Readiness
 ## 1. What the application produces
 
 - Page metadata: the title, description, canonical address (absolute, from `NEXT_PUBLIC_SITE_URL`, never a query string) and Open Graph title and description of the eight static pages (`lib/seo/pages.ts`), the legal pages and each vacancy (`lib/seo/metadata.ts`). A vacancy title is `<title> - <employer> | CHARA` cut to 60 characters; its description is the first 155 characters of its text.
-- `app/sitemap.ts`: the eight pages, the ten legal pages that have a published version, and every open, visible, undeleted vacancy with the date of its last change. It reads the database at every request through `list_sitemap_jobs` and `published_legal_slugs`, so a vacancy that opens or leaves is listed or gone at the next request. One file, up to 50,000 URLs.
+- `app/sitemap.ts`: the eight pages, the ten legal pages that have a published version, and every open, visible, undeleted vacancy with the date of its last change. It reads the database through `list_sitemap_jobs` and a select on `legal_documents` at every request that reaches the server, and the response carries `Cache-Control: public, s-maxage=300, stale-while-revalidate=300` (`next.config.ts`), so the CDN in front of the web host serves repeat requests and a vacancy that opens or leaves is listed or gone within five minutes. Without a CDN every request costs one query per 5000 vacancies. One file, up to 50,000 URLs.
 - `app/robots.ts`: allows `/`, disallows the private areas of `lib/seo/private-routes.ts`, names `<NEXT_PUBLIC_SITE_URL>/sitemap.xml`.
 - `proxy.ts`: `X-Robots-Tag: noindex, nofollow` on every response for a private path, redirects included. The vacancy that is not available and the preview carry a robots tag of their own.
-- `lib/jobs/job-posting.ts`: the JobPosting markup of a vacancy page (title, description, `datePosted`, employer name and website, place, employment type, salary). Nothing else is copied into it and `<` is escaped.
+- `lib/jobs/job-posting.ts`: the JobPosting markup of a vacancy page (title, description, `datePosted` (the UTC date the vacancy was created), employer name and website, place, employment type, salary). Nothing else is copied into it and `<` is escaped.
 
 ## 2. Keeping private pages out (risk and control)
 
