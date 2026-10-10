@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { z } from "zod";
+import * as z from "zod";
 import { applicantsCsv } from "@/lib/applicants/csv";
 import { isApplicationStatus } from "@/lib/applications/presentation";
 import { exportApplicants, type ExportRefusal } from "@/lib/dal/applicant-list";

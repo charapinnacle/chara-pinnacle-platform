@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { identifierKindOptions, normalizeIdentifier } from "@/lib/validation/organization";
 import { slugSchema } from "@/lib/validation/team";
 

@@ -13,7 +13,7 @@ import { bodyOf, publicUrl } from "./support/vacancy-page";
 
 const newMarker = () => `zq${uniqueToken()}`;
 
-const rows = (page: Page): Locator => page.getByRole("main").locator("ul > li");
+const rows = (page: Page): Locator => page.getByRole("main").locator("ul:not([aria-label='Active filters']) > li");
 const row = (page: Page, title: string): Locator => rows(page).filter({ hasText: title });
 const saveButton = (scope: Page | Locator, title: string): Locator =>
   scope.getByRole("button", { name: `Save vacancy: ${title}` });

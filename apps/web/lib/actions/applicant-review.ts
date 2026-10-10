@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { resolveApplicantTarget } from "@/lib/actions/applicant-target";
 import { addApplicationNote, listSharedDocuments, requestDocumentLink, type NoteRefusal } from "@/lib/dal/applicant-review";

@@ -1,5 +1,5 @@
 import { isAwaitingScan } from "@/lib/documents/presentation";
-import { createClient } from "@/lib/supabase/browser";
+import { createLazyClient } from "@/lib/supabase/lazy-browser";
 
 export type DocumentItem = {
   id: string;
@@ -28,7 +28,7 @@ export async function fetchDocuments(
   keep = 0,
 ): Promise<{ items: DocumentItem[]; hasMore: boolean }> {
   const size = Math.min(Math.max(keep, PAGE_SIZE), MAX_PAGE_SIZE);
-  let query = createClient()
+  let query = (await createLazyClient())
     .from("worker_documents")
     .select("id, title, type, size_bytes, created_at, expires_on, scan_status")
     .order("created_at", { ascending: false })
@@ -56,7 +56,7 @@ export async function fetchDocuments(
 
 // The scope is jsonb, so the value is JSON text; an array would be sent as a Postgres array literal.
 export async function fetchShareCount(documentId: string): Promise<number> {
-  const { count, error } = await createClient()
+  const { count, error } = await (await createLazyClient())
     .from("passport_shares")
     .select("id", { count: "exact", head: true })
     .contains("scope", JSON.stringify([documentId]))

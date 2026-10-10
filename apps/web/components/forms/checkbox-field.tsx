@@ -44,7 +44,7 @@ export function CheckboxRow({
     <Field
       orientation="horizontal"
       data-invalid={invalid}
-      className="relative items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-card sm:p-3"
+      className="relative min-h-11 items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-card sm:p-3"
     >
       <span className="relative z-10 mt-px grid size-5 shrink-0 place-items-center">
         <input

@@ -1,5 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import { z } from "zod";
+import * as z from "zod";
 
 type JobInsertRow = Database["public"]["Tables"]["jobs"]["Insert"];
 

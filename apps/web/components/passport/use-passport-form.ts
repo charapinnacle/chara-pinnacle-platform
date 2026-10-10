@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type DefaultValues, type FieldValues } from "react-hook-form";
-import type { z } from "zod";
+import type * as z from "zod";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import type { PassportResult } from "@/lib/actions/passport";

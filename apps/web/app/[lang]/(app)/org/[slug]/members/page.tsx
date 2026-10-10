@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Users } from "lucide-react";
-import { z } from "zod";
+import * as z from "zod";
 import { Card } from "@/components/layout/card";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";

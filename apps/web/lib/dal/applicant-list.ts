@@ -1,6 +1,6 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
-import { z } from "zod";
+import * as z from "zod";
 import { isApplicationStatus, pipelineStages } from "@/lib/applications/presentation";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplicantListParams, ApplicantSort } from "@/lib/validation/applicant-list";

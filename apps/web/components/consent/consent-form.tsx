@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import * as z from "zod";
 import { toastNetworkError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ConsentPanel } from "@/components/forms/consent-panel";

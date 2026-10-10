@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/browser";
+import { createLazyClient } from "@/lib/supabase/lazy-browser";
 
 export type AccessLogItem = {
   id: number;
@@ -18,7 +18,7 @@ export const ACCESS_LOG_PAGE_SIZE = 25;
 export async function fetchAccessLog(
   after: AccessLogCursor | null,
 ): Promise<{ items: AccessLogItem[]; hasMore: boolean }> {
-  let query = createClient()
+  let query = (await createLazyClient())
     .from("v_my_document_access_log")
     .select("id, organization_name, document_title, accessed_at")
     .order("accessed_at", { ascending: false })

@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import type { SoldPlan, SubscriptionStatus } from "@/lib/billing/presentation";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { env } from "@/lib/env";

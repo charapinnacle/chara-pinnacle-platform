@@ -126,7 +126,7 @@ export async function openDocuments(page: Page, user: TestUser): Promise<void> {
 }
 
 // The live region of the upload form that announces the chosen file and the result of an upload.
-export const announcements = (page: Page) => page.locator('form [aria-live="polite"]');
+export const announcements = (page: Page) => page.locator('form p[aria-live="polite"]');
 
 export function row(page: Page, title: string) {
   return page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: title, exact: true }) });

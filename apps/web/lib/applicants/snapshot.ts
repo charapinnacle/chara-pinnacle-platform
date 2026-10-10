@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 // The profile as the application stored it (private.profile_snapshot in the database). Every key can be missing: an
 // application of a candidate who was erased has lost the name and the headline, and a snapshot is never rewritten.

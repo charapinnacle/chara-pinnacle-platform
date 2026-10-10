@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import * as z from "zod";
 import { Inbox } from "lucide-react";
 import { describe, expect, it } from "vitest";
 import { EmptyState } from "@/components/feedback/empty-state";

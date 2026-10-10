@@ -121,6 +121,8 @@ test.describe("the applicant list", () => {
 
     await page.goto(url);
     await page.getByLabel("Filter by stage").selectOption({ label: "Shortlisted" });
+    await expect(page).not.toHaveURL(/stage=/);
+    await page.getByRole("button", { name: "Apply filter" }).click();
     await expect(page).toHaveURL(/stage=shortlisted/);
     await expect(listRows(page)).toHaveCount(7);
     expect(new Set(await column(1))).toEqual(new Set(["Shortlisted"]));

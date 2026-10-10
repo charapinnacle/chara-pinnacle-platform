@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { parseSource } from "@/lib/env";
 
 // Read only on the server and never inlined into the browser bundle: the secret keys the visitor hash, the hop

@@ -12,7 +12,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Input } from "@/components/ui/input";
 import { startDocumentUpload } from "@/lib/actions/documents";
 import { formatFileSize } from "@/lib/documents/presentation";
-import { createClient } from "@/lib/supabase/browser";
+import { createLazyClient } from "@/lib/supabase/lazy-browser";
 import {
   DOCUMENT_BUCKET,
   acceptedExtensions,
@@ -42,6 +42,7 @@ export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
     submit(
       async (): Promise<Outcome> => {
         const { type: kind, title, expiresOn, file } = form.getValues();
+        const supabase = await createLazyClient();
         const ticket = await startDocumentUpload({
           type: kind,
           title,
@@ -53,8 +54,8 @@ export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
           return ticket;
         }
         const { documentId, path, token } = ticket.upload;
-        const { error } = await createClient()
-          .storage.from(DOCUMENT_BUCKET)
+        const { error } = await supabase.storage
+          .from(DOCUMENT_BUCKET)
           .uploadToSignedUrl(path, token, file, { contentType: file.type });
         if (error) onFailed(documentId);
         onChanged();

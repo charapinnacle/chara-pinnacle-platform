@@ -1,5 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import { z } from "zod";
+import * as z from "zod";
 import { parseDate } from "@/lib/validation/passport";
 
 type DocumentType = Database["public"]["Enums"]["worker_document_type"];

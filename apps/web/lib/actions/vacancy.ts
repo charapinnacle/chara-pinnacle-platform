@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { z } from "zod";
+import * as z from "zod";
 import { getCurrentUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { logVacancy } from "@/lib/jobs/vacancy-log";
