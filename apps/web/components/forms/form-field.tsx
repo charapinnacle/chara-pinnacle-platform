@@ -14,6 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+// The field lays out its children at full width, which beats the 1px of sr-only, and a long description that does not wrap
+// then widens the page on a phone.
+const SR_ONLY_WIDTH = "sr-only w-px!";
+
 type ControlProps<T extends FieldValues, N extends FieldPath<T>> =
   ControllerRenderProps<T, N> & {
     id: string;
@@ -62,7 +66,7 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
               "aria-describedby": describedBy,
             })}
             {description ? (
-              <FieldDescription id={descriptionId} className={fieldState.error ? "sr-only" : undefined}>
+              <FieldDescription id={descriptionId} className={fieldState.error ? SR_ONLY_WIDTH : undefined}>
                 {description}
               </FieldDescription>
             ) : null}
