@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { footerLinks, headerLinks } from "@/lib/public/navigation";
+import { footerGroups, footerLinks, guestLinks, headerLinks, siteLinks } from "@/lib/public/navigation";
 
 describe("the navigation of the public pages (FR-H1 AC3)", () => {
   it("has the header links in the order of the requirement", () => {
@@ -25,20 +25,29 @@ describe("the navigation of the public pages (FR-H1 AC3)", () => {
     ]);
   });
 
-  it("has the Imprint and the ten legal pages in the footer", () => {
-    expect(footerLinks.map(({ label }) => label)).toEqual([
-      "Imprint",
-      "Terms of Service",
-      "Privacy Policy",
-      "Cookie Policy",
-      "Platform Rules",
-      "Acceptable Use Policy",
-      "Subscription and Billing Terms",
-      "Employer Terms",
-      "Worker Terms",
-      "Complaints and Dispute Process",
-      "Account Suspension and Termination Rules",
-    ]);
+  it("splits the header into the links of everybody and the two that only a visitor needs", () => {
+    expect(siteLinks.map(({ label }) => label)).toEqual(["Find Jobs", "Pricing", "How CHARA Works", "Trust & Safety", "About", "Contact"]);
+    expect(guestLinks.map(({ label }) => label)).toEqual(["Log in", "Sign up"]);
+  });
+
+  it("has the Imprint and the ten legal pages in the footer, in three short groups", () => {
+    expect(footerLinks.map(({ label }) => label).sort()).toEqual(
+      [
+        "Imprint",
+        "Terms of Service",
+        "Privacy Policy",
+        "Cookie Policy",
+        "Platform Rules",
+        "Acceptable Use Policy",
+        "Subscription and Billing Terms",
+        "Employer Terms",
+        "Worker Terms",
+        "Complaints and Dispute Process",
+        "Account Suspension and Termination Rules",
+      ].sort(),
+    );
+    expect(footerGroups.map(({ title }) => title)).toEqual(["Legal", "Rules and disputes", "Billing and roles"]);
+    expect(Math.max(...footerGroups.map(({ links }) => links.length))).toBeLessThanOrEqual(4);
   });
 
   it("links the legal pages by a lower-case slug, which is how the route looks them up", () => {

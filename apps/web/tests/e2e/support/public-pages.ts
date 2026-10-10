@@ -23,11 +23,11 @@ export const FOOTER_LABELS = [
   "Cookie Policy",
   "Platform Rules",
   "Acceptable Use Policy",
+  "Complaints and Dispute Process",
+  "Account Suspension and Termination Rules",
   "Subscription and Billing Terms",
   "Employer Terms",
   "Worker Terms",
-  "Complaints and Dispute Process",
-  "Account Suspension and Termination Rules",
 ];
 
 export const SETTING_KEYS = [

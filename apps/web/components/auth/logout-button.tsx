@@ -5,8 +5,9 @@ import { toastError, toastNetworkError } from "@/components/feedback/toast-store
 import { FormButton } from "@/components/forms/form-button";
 import { signOut } from "@/lib/actions/login";
 import { isRedirectError } from "@/lib/redirect-error";
+import { cn } from "@/lib/utils";
 
-export function LogoutButton() {
+export function LogoutButton({ className }: { className?: string }) {
   const [pending, startTransition] = useTransition();
 
   function logOut() {
@@ -22,7 +23,7 @@ export function LogoutButton() {
   }
 
   return (
-    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className="min-w-38 px-4 text-small">
+    <FormButton type="button" variant="secondary" busy={pending} onClick={logOut} className={cn("min-w-38 px-4 text-small", className)}>
       {pending ? "Logging out..." : "Log out"}
     </FormButton>
   );
