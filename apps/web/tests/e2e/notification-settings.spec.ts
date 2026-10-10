@@ -118,7 +118,7 @@ test.describe("notification settings", () => {
     await signInBrowser(context, await addCompanyUser(company, "member"));
     await page.goto(`/en/dashboard/employer?org=${company.slug}`);
     await page.getByRole("link", { name: "Notification settings" }).click();
-    await expect(page).toHaveURL(SETTINGS);
+    await expect(page).toHaveURL(`${SETTINGS}?org=${company.slug}`);
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
   });
 

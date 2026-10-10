@@ -142,6 +142,15 @@ describe("member management", () => {
     await expect(acceptOwnershipTransfer("acme")).rejects.toThrow("REDIRECT:/en/mfa?next=");
   });
 
+  it("draws the header again after a change of membership, because the header shows the role of the person", async () => {
+    await acceptOwnershipTransfer("acme");
+    expect(revalidateMock).toHaveBeenCalledWith("/en", "layout");
+    revalidateMock.mockClear();
+    rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "cannot_remove_owner"));
+    await removeMember({ slug: "acme", userId });
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
   it("says that no transfer is waiting for an expired, cancelled or foreign one", async () => {
     rpcMock.mockResolvedValue(refusal("CHARA_INVALID_INPUT", "no_pending_transfer"));
     await expect(acceptOwnershipTransfer("acme")).resolves.toEqual({

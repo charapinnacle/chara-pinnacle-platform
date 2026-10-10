@@ -48,8 +48,8 @@ export function AppNav({ lang, email, accountKind, organizations }: AppNavProps)
   const offered = accountKind === "worker" ? workerLinks(lang) : organization ? organizationLinks(lang, organization) : [];
   const links = isGatePage(lang, pathname) ? [] : offered;
   const roleLabel = accountKind === "worker" ? "Worker" : accountKind === "company" ? (organization?.roleLabel ?? "Employer") : undefined;
-  const account = { email, roleLabel, links: accountKind ? accountLinks(lang, accountKind) : [] };
   const switcher = organizations.length > 1 && organization;
+  const account = { email, roleLabel, links: accountKind ? accountLinks(lang, accountKind, switcher ? switcher.slug : undefined) : [] };
 
   return (
     <HeaderMenu>

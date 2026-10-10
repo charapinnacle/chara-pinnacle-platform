@@ -1,4 +1,4 @@
-import { accountButton, linkLabels, mainNavigation, signedInPage } from "./support/app-shell";
+import { accountButton, linkLabels, mainNavigation, openAccountMenu, signedInPage } from "./support/app-shell";
 import { seedApplicationAgo, HOUR } from "./support/dashboard";
 import { seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
@@ -108,6 +108,27 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
     await expect(page).toHaveURL(/\/en\/dashboard\/employer\?org=/);
     await expect(page.getByRole("button", { name: second })).toBeVisible();
     await expect(mainNavigation(page).getByRole("link", { name: "Vacancies" })).toHaveAttribute("href", new RegExp(`/en/org/.*second-bau.*/jobs`));
+    await context.close();
+  });
+
+  test("a person in two organisations stays in the one they work in when they open the notification settings from the account menu", async ({ browser }) => {
+    const first = uniqueName("First Bau");
+    const second = uniqueName("Second Bau");
+    const team = await newTeam(first);
+    await registerOrganization(team.owner, `${second} GmbH`, second);
+    const { context, page } = await signedInPage(browser, team.owner);
+    await page.goto("/en/dashboard/employer");
+    const switcher = page.getByRole("button", { name: first });
+    await waitForHydration(switcher);
+    await switcher.click();
+    await page.getByRole("link", { name: second, exact: true }).first().click();
+    await expect(page.getByRole("button", { name: second })).toBeVisible();
+
+    await openAccountMenu(page);
+    await page.getByRole("link", { name: "Notification settings" }).first().click();
+    await expect(page).toHaveURL(/\/en\/settings\/notifications\?org=.*second-bau/);
+    await expect(page.getByRole("button", { name: second })).toBeVisible();
+    await expect(mainNavigation(page).getByRole("link", { name: "Vacancies" })).toHaveAttribute("href", new RegExp("second-bau"));
     await context.close();
   });
 

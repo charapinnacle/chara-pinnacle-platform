@@ -51,8 +51,9 @@ export function organizationLinks(lang: string, { slug, role, suspended }: Pick<
 }
 
 // Account deletion belongs to candidates (an employer is sent away from that page); the notification settings to everyone.
-export function accountLinks(lang: string, accountKind: "worker" | "company"): NavLink[] {
-  const notifications: NavLink = { label: "Notification settings", href: notificationSettingsPath(lang), match: notificationSettingsPath(lang) };
+// orgSlug is given to a person in several organisations, so that the page keeps the header of the one they work in.
+export function accountLinks(lang: string, accountKind: "worker" | "company", orgSlug?: string): NavLink[] {
+  const notifications: NavLink = { label: "Notification settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang) };
   if (accountKind !== "worker") return [notifications];
   return [{ label: "Settings", href: settingsPath(lang), match: settingsPath(lang), exact: true }, notifications];
 }

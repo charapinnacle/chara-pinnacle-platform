@@ -73,6 +73,12 @@ describe("the account links", () => {
   it("give an employer only the notification settings, because the settings page sends an employer away", () => {
     expect(labels(accountLinks("en", "company"))).toEqual(["Notification settings"]);
   });
+
+  it("carry the organisation to the notification settings, so that a person in several organisations keeps the one they work in", () => {
+    const [notifications] = accountLinks("en", "company", "acme");
+    expect(notifications.href).toBe("/en/settings/notifications?org=acme");
+    expect(isCurrent("/en/settings/notifications", notifications)).toBe(true);
+  });
 });
 
 describe("the current page", () => {

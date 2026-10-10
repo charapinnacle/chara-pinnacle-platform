@@ -78,6 +78,8 @@ describe("the header of the signed-in area", () => {
     expect(two).toMatch(/aria-current="true"[^>]*>Beta GmbH</);
     expect(two).toContain("Member");
     expect(mainLabels(two)).not.toContain("Billing");
+    expect(two).toContain('href="/en/settings/notifications?org=beta"');
+    expect(one).toContain('href="/en/settings/notifications"');
   });
 
   it("offers an employer the notification settings only", () => {
@@ -138,6 +140,21 @@ describe("the layout of the signed-in area", () => {
       { slug: "beta", displayName: "Beta GmbH", role: "admin", roleLabel: "Administrator", suspended: true },
     ]);
     expect(organizationsMock).toHaveBeenCalledWith("u1");
+  });
+
+  it("keeps the header with the account menu and Log out when the organisations cannot be read", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    userMock.mockResolvedValue({ ...user, accountKind: "company" });
+    organizationsMock.mockRejectedValue(new Error("The organizations could not be loaded"));
+    const props = await shell();
+    expect(props.homeHref).toBe("/en/dashboard/employer");
+    expect(props.headerActions?.props.organizations).toEqual([]);
+    const html = renderToStaticMarkup(props.headerActions);
+    expect(html).toContain("Account");
+    expect(html).toContain("Log out");
+    expect(mainLabels(html)).toEqual([]);
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("gives a suspended account the way out and nothing else, and the public home as home", async () => {

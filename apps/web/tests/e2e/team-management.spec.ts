@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { mainNavigation } from "./support/app-shell";
+import { accountButton, mainNavigation, openAccountMenu } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { literal, query } from "./support/db";
 import { createCommittedUser } from "./support/login";
@@ -223,6 +223,8 @@ test.describe("team membership: ownership transfer", () => {
     await expect(visitor.page.getByText(/asked you to become the owner/)).toBeVisible();
     await visitor.page.getByRole("button", { name: "Become the owner" }).click();
     await expect(visitor.page.getByText("You are now the owner", { exact: true })).toBeVisible();
+    await openAccountMenu(visitor.page);
+    await expect(accountButton(visitor.page).locator("xpath=..").getByText("Owner", { exact: true })).toBeVisible();
     expect(memberRows(team).map((entry) => [entry.user_id, entry.role]).sort()).toEqual(
       [
         [team.owner.id, "admin"],

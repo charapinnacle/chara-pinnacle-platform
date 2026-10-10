@@ -68,6 +68,7 @@ async function runTeamAction(
   const { error } = await call(await createClient(), organization.id);
   if (error) return refusal(error, slug);
   revalidatePath(membersPath(slug));
+  refreshAppShell();
   return {};
 }
 
