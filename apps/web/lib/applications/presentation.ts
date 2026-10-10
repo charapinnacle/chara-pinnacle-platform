@@ -1,4 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
+import type { StatusTone } from "@/lib/status-tone";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
@@ -12,6 +13,18 @@ export const applicationStatusLabels: Record<ApplicationStatus, string> = {
   hired: "Hired",
   rejected: "Not selected",
   withdrawn: "Withdrawn",
+};
+
+// The tone of each stage in a list, so that a reader can scan it; the label always says the stage in words.
+export const applicationStatusTones: Record<ApplicationStatus, StatusTone> = {
+  applied: "info",
+  viewed: "neutral",
+  shortlisted: "info",
+  interview: "info",
+  offer: "success",
+  hired: "success",
+  rejected: "neutral",
+  withdrawn: "neutral",
 };
 
 // The order of the pipeline, which is the order of the labels above and so of the enum: the type of the labels makes a new

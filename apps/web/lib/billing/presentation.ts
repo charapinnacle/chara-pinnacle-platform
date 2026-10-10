@@ -1,5 +1,6 @@
 import { graceEnd } from "@/lib/dashboard/plan-status";
 import { formatShortDate } from "@/lib/i18n/format";
+import type { StatusTone } from "@/lib/status-tone";
 
 export type SoldPlan = {
   code: string;
@@ -19,6 +20,14 @@ export const subscriptionStatusLabels = {
 } as const;
 
 export type SubscriptionStatus = keyof typeof subscriptionStatusLabels;
+
+export const subscriptionStatusTones = {
+  trialing: "info",
+  active: "success",
+  past_due: "danger",
+  canceled: "neutral",
+  paused: "warning",
+} as const satisfies Record<SubscriptionStatus, StatusTone>;
 
 export function formatPrice(minor: number, currency: string): string {
   const format = new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "code" });

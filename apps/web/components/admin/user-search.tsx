@@ -1,10 +1,10 @@
 "use client";
 
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
 import { ResultsPanel } from "@/components/admin/results-panel";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { SearchBox } from "@/components/admin/search-box";
 import { usePagedSearch } from "@/components/admin/use-paged-search";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { searchUsersAction } from "@/lib/actions/admin-search";
 import type { UserRow } from "@/lib/dal/admin";
@@ -45,7 +45,7 @@ export function UserSearch({ lang }: { lang: string }) {
               <td className={`${cell} break-all`}>{user.email}</td>
               <td className={cell}>{user.accountKind === "company" ? "Employer" : user.accountKind === "worker" ? "Candidate" : "Not chosen"}</td>
               <td className={cell}>
-                <StatusBadge status={user.status} />
+                <AccountStatusBadge status={user.status} />
               </td>
               <td className={cell}>{formatShortDate(user.createdAt)}</td>
             </tr>

@@ -1,16 +1,24 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
+import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { Spinner } from "@/components/feedback/spinner";
-import { StatusBadge, type StatusTone } from "@/components/feedback/status-badge";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { accountStatusLabels, accountStatusTones } from "@/lib/admin/status";
+import { applicationStatusLabels, applicationStatusTones } from "@/lib/applications/presentation";
+import { subscriptionStatusLabels, subscriptionStatusTones } from "@/lib/billing/presentation";
+import { planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
+import { jobStatusTone } from "@/lib/jobs/presentation";
+import { statusTones } from "@/lib/status-tone";
 import { declared } from "./support/tokens";
 
 const html = renderToStaticMarkup;
-const tones: StatusTone[] = ["success", "warning", "danger", "info", "neutral"];
+const tones = statusTones;
 
 describe("Card", () => {
   it("is a bordered surface on the card padding scale", () => {
@@ -194,5 +202,47 @@ describe("Notice tones", () => {
   it("keeps the role and the text the caller gives", () => {
     expect(html(<Notice tone="error" role="alert">Wrong password</Notice>)).toMatch(/role="alert"[^>]*>.*Wrong password/);
     expect(html(<Notice tone="info">Plain</Notice>)).not.toContain("<svg");
+  });
+});
+
+describe("the status tone maps", () => {
+  it("give every application stage a tone and keep the final stages apart from the live ones", () => {
+    expect(Object.keys(applicationStatusTones).sort()).toEqual(Object.keys(applicationStatusLabels).sort());
+    expect(applicationStatusTones.hired).toBe("success");
+    expect(applicationStatusTones.rejected).toBe("neutral");
+    expect(applicationStatusTones.applied).toBe("info");
+  });
+
+  it("colours a vacancy by what a visitor can see: hidden is danger whatever the status", () => {
+    expect(jobStatusTone("open", "visible")).toBe("success");
+    expect(jobStatusTone("open", "hidden")).toBe("danger");
+    expect(jobStatusTone("open", "org_suspended")).toBe("danger");
+    expect(jobStatusTone("paused", "visible")).toBe("warning");
+    expect(jobStatusTone("draft", "visible")).toBe("neutral");
+    expect(jobStatusTone("closed", "visible")).toBe("neutral");
+  });
+
+  it("give every plan, subscription and account status a tone and a label", () => {
+    expect(Object.keys(planStatusTones).sort()).toEqual(Object.keys(planStatusLabels).sort());
+    expect(Object.keys(subscriptionStatusTones).sort()).toEqual(Object.keys(subscriptionStatusLabels).sort());
+    expect(Object.keys(accountStatusTones).sort()).toEqual(Object.keys(accountStatusLabels).sort());
+    expect(planStatusTones.past_due).toBe("danger");
+    expect(subscriptionStatusTones.active).toBe("success");
+  });
+});
+
+describe("the badges of the admin console", () => {
+  it("say the account status in words and colour it by tone", () => {
+    const suspended = html(<AccountStatusBadge status="suspended" />);
+    expect(suspended).toContain("Suspended");
+    expect(suspended).toContain("bg-danger-background");
+    expect(html(<AccountStatusBadge status="active" />)).toContain("bg-success-background");
+    expect(html(<AccountStatusBadge status="deletion_pending" />)).toContain("bg-warning-background");
+  });
+
+  it("say the visibility of a vacancy in words and colour it by tone", () => {
+    expect(html(<JobModerationBadge state="visible" />)).toMatch(/bg-success-background[^>]*>Visible</);
+    expect(html(<JobModerationBadge state="hidden" />)).toMatch(/bg-danger-background[^>]*>Hidden</);
+    expect(html(<JobModerationBadge state="org_suspended" />)).toContain("Hidden with the suspension");
   });
 });

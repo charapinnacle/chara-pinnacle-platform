@@ -2,11 +2,12 @@ import { FileText } from "lucide-react";
 import type { Metadata } from "next";
 import { StageFilter } from "@/components/applications/stage-filter";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
-import { applicationStatusLabels } from "@/lib/applications/presentation";
+import { applicationStatusLabels, applicationStatusTones } from "@/lib/applications/presentation";
 import { logTrackerView } from "@/lib/applications/tracker-log";
 import { listMyApplications } from "@/lib/dal/applications";
 import { requireCandidate } from "@/lib/dal/session";
@@ -15,8 +16,6 @@ import { applicationPath, applicationsPath } from "@/lib/routes";
 import { parseApplicationListParams } from "@/lib/validation/application";
 
 export const metadata: Metadata = { title: "My applications — CHARA", robots: { index: false } };
-
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-small font-medium text-accent-foreground";
 
 export default async function ApplicationsPage({ params, searchParams }: PageProps<"/[lang]/applications">) {
   const { lang } = await params;
@@ -69,7 +68,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
                 </h2>
                 <p className="font-medium wrap-anywhere">{application.employerName}</p>
                 <p>
-                  <span className={badgeClassName}>{applicationStatusLabels[application.status]}</span>
+                  <StatusBadge status={applicationStatusTones[application.status]}>{applicationStatusLabels[application.status]}</StatusBadge>
                 </p>
                 <p className="text-small text-muted-foreground">
                   Applied <time dateTime={application.appliedAt}>{formatShortDate(application.appliedAt)}</time>

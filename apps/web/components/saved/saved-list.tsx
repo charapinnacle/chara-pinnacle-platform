@@ -3,6 +3,7 @@
 import { Bookmark } from "lucide-react";
 import { useOptimistic } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { useActionCall } from "@/components/feedback/use-action-call";
@@ -13,8 +14,6 @@ import type { SavedJob } from "@/lib/dal/saved-jobs";
 import { formatDate } from "@/lib/i18n/format";
 import { SAVED_HEADING_ID } from "@/lib/jobs/saved";
 import { applicationPath, applyPath } from "@/lib/routes";
-
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-small font-medium text-accent-foreground";
 
 type SavedRowProps = { job: SavedJob; lang: string; applied: ApplicationState | null; onRemove: (id: string) => void };
 
@@ -47,8 +46,12 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
           </h2>
           <p className="font-medium break-words">{job.employerName}</p>
           <p>
-            <span className={badgeClassName}>{open ? "Open" : "No longer open"}</span>
-            {applied ? <span className={`${badgeClassName} ms-2`}>Applied</span> : null}
+            <StatusBadge status={open ? "success" : "neutral"}>{open ? "Open" : "No longer open"}</StatusBadge>
+            {applied ? (
+              <StatusBadge status="info" className="ms-2">
+                Applied
+              </StatusBadge>
+            ) : null}
           </p>
         </>
       ) : (

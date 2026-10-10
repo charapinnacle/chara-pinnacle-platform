@@ -1,7 +1,8 @@
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
-import { planFacts, subscriptionStatusLabels, type SoldPlan } from "@/lib/billing/presentation";
+import { planFacts, subscriptionStatusLabels, subscriptionStatusTones, type SoldPlan } from "@/lib/billing/presentation";
 import type { Subscription } from "@/lib/dal/billing";
 
 type PlanSummaryProps = { subscription: Subscription | null; plan: SoldPlan | undefined };
@@ -13,7 +14,14 @@ export function PlanSummary({ subscription, plan }: PlanSummaryProps) {
   const items = live
     ? [
         { label: "Plan", value: subscription.planName ?? "Plan" },
-        { label: "Status", value: subscriptionStatusLabels[subscription.status] },
+        {
+          label: "Status",
+          value: (
+            <StatusBadge status={subscriptionStatusTones[subscription.status]}>
+              {subscriptionStatusLabels[subscription.status]}
+            </StatusBadge>
+          ),
+        },
       ]
     : [
         { label: "Plan", value: subscription ? "No active plan" : "Free plan" },

@@ -1,8 +1,9 @@
 import { DateText } from "@/components/dashboard/date-text";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import type { DashboardPlan } from "@/lib/dal/dashboard";
-import { daysLeft, daysLeftText, planStatusLabels } from "@/lib/dashboard/plan-status";
+import { daysLeft, daysLeftText, planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
 
 type PlanCardProps = { plan: DashboardPlan; now: Date; billingHref: string | null };
 
@@ -18,7 +19,9 @@ export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
       <p className="text-figure">{plan.planName}</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
         <dt className="text-muted-foreground">Status</dt>
-        <dd>{planStatusLabels[plan.status]}</dd>
+        <dd>
+          <StatusBadge status={planStatusTones[plan.status]}>{planStatusLabels[plan.status]}</StatusBadge>
+        </dd>
         {plan.status === "trialing" && plan.trialEndsAt ? (
           <>
             <dt className="text-muted-foreground">Trial ends</dt>

@@ -1,3 +1,5 @@
+import type { StatusTone } from "@/lib/status-tone";
+
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 
@@ -15,6 +17,13 @@ export const planStatusLabels: Record<PlanStatus, string> = {
   active: "Active",
   past_due: "Past due",
   free: "Free plan",
+};
+
+export const planStatusTones: Record<PlanStatus, StatusTone> = {
+  trialing: "info",
+  active: "success",
+  past_due: "danger",
+  free: "neutral",
 };
 
 // Whole days until the end, rounded up, never negative: a trial that ends in a minute has 1 day left.

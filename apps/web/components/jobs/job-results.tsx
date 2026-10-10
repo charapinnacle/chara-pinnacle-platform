@@ -1,5 +1,6 @@
 import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { SaveJob } from "@/components/jobs/save-job";
 import { Card } from "@/components/layout/card";
@@ -12,8 +13,6 @@ import { formatSalary } from "@/lib/jobs/presentation";
 import { searchPath, usedFilters, type JobSearchFilters } from "@/lib/jobs/search-params";
 import { viewerOf, type Viewer } from "@/lib/jobs/viewer";
 import { employmentTypeLabels } from "@/lib/validation/job";
-
-const badgeClassName = "rounded-full border bg-accent px-2 py-0.5 text-small font-medium text-accent-foreground";
 
 type ResultCardProps = { job: JobSearchResult; lang: string; countryName: string; viewer: Viewer; saved: boolean; next: string };
 
@@ -34,8 +33,8 @@ function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardP
       </p>
       {job.accommodation || job.visaSupport ? (
         <p className="flex flex-wrap gap-2">
-          {job.accommodation ? <span className={badgeClassName}>Accommodation</span> : null}
-          {job.visaSupport ? <span className={badgeClassName}>Visa support</span> : null}
+          {job.accommodation ? <StatusBadge status="info">Accommodation</StatusBadge> : null}
+          {job.visaSupport ? <StatusBadge status="info">Visa support</StatusBadge> : null}
         </p>
       ) : null}
       <p className="text-small text-muted-foreground">

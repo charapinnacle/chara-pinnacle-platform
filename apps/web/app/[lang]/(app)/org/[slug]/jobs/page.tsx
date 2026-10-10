@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Briefcase } from "lucide-react";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
@@ -10,7 +11,7 @@ import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
-import { isJobStatus, jobDateText, jobStatusText, statusLabels } from "@/lib/jobs/presentation";
+import { isJobStatus, jobDateText, jobStatusText, jobStatusTone, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { index: false } };
@@ -57,9 +58,9 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                 {job.title}
               </TextLink>
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-muted-foreground">
-                <span className="rounded-full border bg-accent px-2 py-0.5 font-medium text-accent-foreground">
+                <StatusBadge status={jobStatusTone(job.status, job.moderationState)}>
                   {jobStatusText(job.status, job.moderationState)}
-                </span>
+                </StatusBadge>
                 <span>
                   {job.city}, {job.country} · {jobDateText(job)}
                 </span>

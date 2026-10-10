@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
 import { DetailList } from "@/components/layout/detail-list";
 import { ModerationForm } from "@/components/admin/moderation-form";
 import { PageHeader } from "@/components/layout/page-header";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { Section } from "@/components/layout/section";
 import { getUser } from "@/lib/dal/admin";
@@ -30,7 +30,7 @@ export async function UserView({ lang, id, roles }: { lang: string; id: string; 
             { label: "Email", value: user.email },
             { label: "User id", value: user.id },
             { label: "Account kind", value: user.accountKind ? kinds[user.accountKind] : "Not chosen yet" },
-            { label: "Status", value: <StatusBadge status={user.status} /> },
+            { label: "Status", value: <AccountStatusBadge status={user.status} /> },
             { label: "Created", value: formatDateTime(user.createdAt) },
             { label: "Applications submitted", value: user.applicationsSubmitted },
             { label: "Vacancies created", value: user.vacanciesCreated },

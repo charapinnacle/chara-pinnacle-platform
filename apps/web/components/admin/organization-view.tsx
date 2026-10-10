@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
+import { AccountStatusBadge } from "@/components/admin/account-status-badge";
+import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { DetailList } from "@/components/layout/detail-list";
-import { moderationLabels } from "@/components/admin/job-moderation-badge";
 import { ModerationForm } from "@/components/admin/moderation-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { cell, ResultsTable } from "@/components/admin/results-table";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { Section } from "@/components/layout/section";
 import { getOrganization } from "@/lib/dal/admin";
@@ -31,7 +31,7 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
             { label: "Legal name", value: organization.legalName },
             { label: "Address name", value: organization.slug },
             { label: "Organisation id", value: organization.id },
-            { label: "Status", value: <StatusBadge status={organization.status} /> },
+            { label: "Status", value: <AccountStatusBadge status={organization.status} /> },
           ]}
         />
       </Section>
@@ -63,7 +63,9 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
                   )}
                 </td>
                 <td className={cell}>{isJobStatus(vacancy.status) ? statusLabels[vacancy.status] : vacancy.status}</td>
-                <td className={cell}>{moderationLabels[vacancy.moderationState]}</td>
+                <td className={cell}>
+                  <JobModerationBadge state={vacancy.moderationState} />
+                </td>
               </tr>
             ))}
           </ResultsTable>

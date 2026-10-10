@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BoardCard, moveButtonId } from "@/components/applicants/board-card";
 import { StageChangeDialog } from "@/components/applicants/stage-change";
+import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { Card } from "@/components/layout/card";
@@ -135,7 +136,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
               >
                 <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-base font-semibold">
                   {applicationStatusLabels[column.status]}
-                  <span className="rounded-full border bg-card px-2 text-small font-medium">{column.total}</span>
+                  <StatusBadge className="bg-card py-0">{column.total}</StatusBadge>
                 </h2>
                 {column.rows.length === 0 ? (
                   <p className="text-small text-muted-foreground">No applicants</p>
