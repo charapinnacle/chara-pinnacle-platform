@@ -134,7 +134,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
                 }}
                 className={cn("w-64 shrink-0 bg-muted/40", over === column.status && "border-primary ring-2 ring-primary/30")}
               >
-                <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-base font-semibold">
+                <h2 id={`column-${column.status}`} className="flex items-center justify-between gap-2 text-h3">
                   {applicationStatusLabels[column.status]}
                   <StatusBadge className="bg-card py-0">{column.total}</StatusBadge>
                 </h2>

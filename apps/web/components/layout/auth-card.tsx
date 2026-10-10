@@ -14,7 +14,7 @@ export const cardDividerClassName = "border-t pt-6";
 
 export function AuthCard({ title, description, icon: Icon, children, footer }: AuthCardProps) {
   return (
-    <Card elevated className="mx-auto w-full max-w-md gap-6 rounded-2xl p-6 sm:p-8">
+    <Card elevated padding="xl" className="mx-auto w-full max-w-md gap-6 rounded-2xl">
       {title || Icon ? (
         <div className={cn("grid gap-2", Icon && "justify-items-center text-center")}>
           {Icon ? (

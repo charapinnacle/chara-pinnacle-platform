@@ -12,7 +12,7 @@ const titleVariants = cva("wrap-anywhere", {
 });
 
 const descriptionVariants = cva("text-muted-foreground wrap-anywhere", {
-  variants: { size: { default: "text-body", display: "text-lg leading-8" } },
+  variants: { size: { default: "text-body", display: "text-lead" } },
   defaultVariants: { size: "default" },
 });
 

@@ -36,7 +36,7 @@ export function ModalDialog({ open, onClose, title, children, closeOnBackdrop = 
           event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
         if (outside) event.currentTarget.close();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border bg-card p-6 text-foreground shadow-card backdrop:bg-black/50 sm:p-8"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border bg-card p-card-xl text-foreground shadow-card backdrop:bg-black/50 sm:p-card-2xl"
     >
       {open ? (
         <div className="grid gap-5">

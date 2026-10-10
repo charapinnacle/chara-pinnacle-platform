@@ -80,7 +80,7 @@ export function ConsentForm({
         <ConsentPanel as="section" key={document.slug}>
           {document.slug === AGE_ATTESTATION_SLUG ? null : (
             <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
-              <h2 className="text-base font-semibold tracking-tight">{document.title}</h2>
+              <h2 className="text-h3">{document.title}</h2>
               <p className="text-small text-muted-foreground">
                 Version {document.version}, published {formatLegalDate(document.publishedAt)}
               </p>

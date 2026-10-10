@@ -23,8 +23,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   return (
     <PageContainer layout="page" className="grid max-w-4xl gap-12">
       <PageHeader size="display" title="The Global Workforce Network" className="gap-5">
-        <p className="text-xl text-muted-foreground">Your Workforce. Your Network. One Platform.</p>
-        <p className="max-w-[65ch] text-lg leading-8">
+        <p className="text-lead text-muted-foreground">Your Workforce. Your Network. One Platform.</p>
+        <p className="max-w-[65ch] text-lead">
           CHARA brings workers and employers together. Workers keep one profile and apply to open vacancies. Employers
           publish vacancies and manage the applications they receive.
         </p>

@@ -5,7 +5,7 @@ import type { StatisticTile } from "@/lib/statistics/tiles";
 export function StatisticsBlock({ tiles }: { tiles: StatisticTile[] }) {
   return (
     <section aria-labelledby="platform-statistics-heading" className="grid gap-4">
-      <h2 id="platform-statistics-heading" className="text-h1">
+      <h2 id="platform-statistics-heading" className="text-h2">
         CHARA in numbers
       </h2>
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">

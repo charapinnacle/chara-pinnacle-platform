@@ -11,7 +11,7 @@ type SectionProps = {
 
 export function Section({ id, title, description, className, children }: SectionProps) {
   return (
-    <Card as="section" id={id} padding="lg" elevated className={cn("scroll-mt-6 gap-4 rounded-2xl sm:p-6", className)}>
+    <Card as="section" id={id} padding="lg" elevated className={cn("scroll-mt-6 gap-4 rounded-2xl", className)}>
       <div className="grid gap-1">
         <h2 className="text-h2">{title}</h2>
         {description ? <p className="text-body text-muted-foreground">{description}</p> : null}

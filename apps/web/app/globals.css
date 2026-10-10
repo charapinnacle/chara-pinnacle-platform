@@ -90,6 +90,8 @@
   --text-h3: 1rem;
   --text-h3--line-height: 1.5;
   --text-h3--font-weight: 600;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.75;
   --text-figure: 1.875rem;
   --text-figure--line-height: 1.2;
   --text-figure--font-weight: 600;
@@ -101,6 +103,8 @@
   --spacing-card-sm: 0.75rem;
   --spacing-card: 1rem;
   --spacing-card-lg: 1.25rem;
+  --spacing-card-xl: 1.5rem;
+  --spacing-card-2xl: 2rem;
   --spacing-page: 1.5rem;
   --spacing-section: 2rem;
 }
