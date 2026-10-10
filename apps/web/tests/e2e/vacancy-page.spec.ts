@@ -61,7 +61,7 @@ test.describe("the public vacancy page", () => {
       ["Accommodation", "Yes"],
       ["Visa support", "Yes"],
       ["Recruitment", "Local and international candidates"],
-      ["Published", "March 4, 2026"],
+      ["Published", "4 March 2026"],
     ]) {
       await expect(details.locator("div").filter({ has: page.getByText(term, { exact: true }) })).toContainText(value);
     }

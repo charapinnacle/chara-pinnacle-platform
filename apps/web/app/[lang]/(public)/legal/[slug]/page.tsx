@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SettingDetails } from "@/components/public/setting-details";
 import { getLegalDocument } from "@/lib/dal/legal";
 import { getPublicSettings } from "@/lib/dal/settings";
-import { formatLegalDate } from "@/lib/i18n/format";
+import { formatDate } from "@/lib/i18n/format";
 import { parseLegalBody } from "@/lib/public/legal-body";
 import { PRIVACY_FIELDS, PRIVACY_POLICY_SLUG, settingRows } from "@/lib/public/setting-rows";
 import { legalPageMetadata } from "@/lib/seo/metadata";
@@ -67,7 +67,7 @@ export default async function LegalPage({
       >
         <PageHeader size="display" title={document.title} className="gap-2 border-b pb-6 lg:col-start-1">
           <p className="text-small text-muted-foreground">
-            Version {document.version} · Published {formatLegalDate(document.publishedAt)}
+            Version {document.version} · Published {formatDate(document.publishedAt)}
           </p>
           <p className="text-small leading-6">
             <span className="font-medium">What changed:</span> {document.changeSummary}
@@ -107,7 +107,7 @@ export default async function LegalPage({
               {document.changeLog.map((entry) => (
                 <li key={entry.version} className="grid gap-1">
                   <p className="text-small font-medium">
-                    Version {entry.version} · {formatLegalDate(entry.publishedAt)}
+                    Version {entry.version} · {formatDate(entry.publishedAt)}
                     {entry.isDraft ? " · Draft" : ""}
                   </p>
                   <p className="text-small leading-6 text-muted-foreground">{entry.changeSummary}</p>

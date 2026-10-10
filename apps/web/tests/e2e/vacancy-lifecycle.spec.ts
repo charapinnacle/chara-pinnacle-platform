@@ -27,7 +27,7 @@ async function offered(page: Page): Promise<string[]> {
 }
 
 const longDate = (daysAgo: number) =>
-  new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" }).format(new Date(Date.now() - daysAgo * 86_400_000));
+  new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(Date.now() - daysAgo * 86_400_000));
 
 test.describe("vacancy lifecycle", () => {
   test("FR-C2 AC8: each state offers its actions to an admin and none to a member, and the badge says the state in words", async ({

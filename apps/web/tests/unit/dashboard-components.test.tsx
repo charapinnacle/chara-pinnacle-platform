@@ -34,7 +34,7 @@ describe("the trial on the plan card and in the alert (FR-E5 AC5)", () => {
     const html = card(trial(10 * DAY + 5 * HOUR));
     expect(html).toContain("Basic");
     expect(html).toContain("Trial");
-    expect(html).toContain("October 18, 2026");
+    expect(html).toContain("18 October 2026");
     expect(html).toContain("11 days left");
     expect(alerts(trial(10 * DAY + 5 * HOUR))).toBe("");
   });
@@ -42,7 +42,7 @@ describe("the trial on the plan card and in the alert (FR-E5 AC5)", () => {
   it("raises an alert with the end date and 2 days left, and a billing link for an owner or an admin only", () => {
     const owner = alerts(trial(2 * DAY));
     expect(owner).toContain('role="alert"');
-    expect(owner).toContain("October 10, 2026");
+    expect(owner).toContain("10 October 2026");
     expect(owner).toContain("2 days left");
     expect(owner).toContain(`href="${billing}"`);
     const member = alerts(trial(2 * DAY), null);
@@ -58,7 +58,7 @@ describe("an active plan and a failed payment (FR-E5 AC5, AC7)", () => {
     expect(html).toContain("Professional");
     expect(html).toContain("Active");
     expect(html).toContain("Next billing date");
-    expect(html).toContain("November 3, 2026");
+    expect(html).toContain("3 November 2026");
     expect(html).not.toMatch(/stripe|provider|cus_|sub_/i);
     expect(alerts({ currentPeriodEnd: new Date("2026-11-03T00:00:00Z") })).toBe("");
   });

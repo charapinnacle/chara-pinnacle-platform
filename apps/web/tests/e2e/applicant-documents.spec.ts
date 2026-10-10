@@ -28,7 +28,7 @@ test.describe("the documents of the applicant detail page", () => {
     await expect(section.getByRole("listitem").first()).toContainText("CV · ana-cv.pdf · 1.2 MB");
     await expect(section.getByRole("listitem").nth(1)).toContainText("Welding certificate");
     await expect(section.getByRole("listitem").nth(1)).toContainText("Certificate · weld.pdf");
-    await expect(section.getByRole("listitem").nth(1)).toContainText("Expires January 1, 2030");
+    await expect(section.getByRole("listitem").nth(1)).toContainText("Expires 1 January 2030");
     await expect(page.getByText(later.title)).toHaveCount(0);
     expect(accessLog(cv.id)).toEqual([]);
 

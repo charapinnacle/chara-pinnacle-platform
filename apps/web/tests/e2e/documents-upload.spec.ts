@@ -15,7 +15,7 @@ import {
 import { createCommittedUser } from "./support/login";
 import { daysFromToday } from "./support/passport";
 
-const today = new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" }).format(new Date());
+const today = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date());
 
 async function fillUpload(
   page: Page,

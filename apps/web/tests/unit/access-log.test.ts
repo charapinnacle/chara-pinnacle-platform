@@ -82,7 +82,7 @@ describe("fetchAccessLog", () => {
 
 describe("formatDateTime", () => {
   it("states the time zone, always UTC", () => {
-    expect(formatDateTime("2026-10-05T14:03:09+00:00")).toBe("October 5, 2026 at 2:03 PM UTC");
-    expect(formatDateTime("2026-10-05T23:30:00+02:00")).toBe("October 5, 2026 at 9:30 PM UTC");
+    expect(formatDateTime("2026-10-05T14:03:09+00:00")).toBe("5 October 2026 at 14:03 UTC");
+    expect(formatDateTime("2026-10-05T23:30:00+02:00")).toBe("5 October 2026 at 21:30 UTC");
   });
 });
