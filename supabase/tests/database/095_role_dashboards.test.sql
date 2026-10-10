@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(37);
 
 \ir status_fixture.inc
 
@@ -114,6 +114,12 @@ select is(
   'a vacancy that has left draft (here closed again) counts as the first vacancy published'
 );
 
+insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by, created_at, expires_at)
+values (:'lone', 'lapsed@example.test', 'member', repeat('b', 64), :'lone_owner', now() - interval '10 days', now() - interval '3 days');
+select is(
+  pg_temp.steps(:'lone_owner', :'lone') -> 0 -> 'team_invited', 'false'::jsonb,
+  'an invitation that expired unaccepted is not the team step done'
+);
 insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by, expires_at)
 values (:'lone', 'invitee@example.test', 'member', repeat('a', 64), :'lone_owner', now() + interval '7 days');
 select is(
@@ -145,9 +151,8 @@ select is(
 );
 
 select is(
-  pg_temp.steps('00000000-0000-0000-0000-0000000e0001', :'lone2'),
-  '[{"plan_chosen": false, "team_invited": true, "vacancy_published": false}]'::jsonb,
-  'a plain member reads the steps of their organisation'
+  pg_temp.steps('00000000-0000-0000-0000-0000000e0001', :'lone2'), '[]'::jsonb,
+  'a plain member gets no row (only owners and admins see the checklist)'
 );
 select is(pg_temp.steps(:'lone2_owner', :'lone'), '[]'::jsonb, 'the owner of another organisation gets no row');
 select is(pg_temp.steps(:'pending', current_setting('t.a')::uuid), '[]'::jsonb, 'a person whose invitation is not accepted gets no row');
@@ -167,18 +172,23 @@ update public.profiles set status = 'suspended' where id = :'lone_owner';
 select is(pg_temp.steps(:'lone_owner', :'lone'), '[]'::jsonb, 'a suspended user is a member of nothing and gets no row');
 update public.profiles set status = 'active' where id = :'lone_owner';
 
--- admin_staff_count: the active platform roles, for an administrator at aal2 only.
+-- admin_staff_count: the people with an active platform role, for an administrator at aal2 only.
+create function pg_temp.staff_count() returns int
+language sql as $$ select pg_temp.value_as(current_setting('t.st_admin')::uuid, 'select public.admin_staff_count()')::int $$;
+select set_config('t.st_admin', :'st_admin', false) is not null as cfg \gset
+select pg_temp.staff_count() as staff0 \gset
+
+insert into public.platform_staff (user_id, role) values (:'st_admin', 'trust_safety');
+select is(pg_temp.staff_count(), :staff0, 'a person with a second active role is counted once');
+update public.platform_staff set revoked_at = now() where user_id = :'st_admin' and role = 'trust_safety';
+select is(pg_temp.staff_count(), :staff0, 'revoking that second role leaves the person counted');
+select is(pg_temp.value_as(:'st_review', 'select public.admin_staff_count()'), 'P0001|CHARA_FORBIDDEN|', 'a Verification Reviewer is refused');
 select is(
-  pg_temp.value_as(:'st_admin', 'select public.admin_staff_count()'),
-  (select count(*)::text from public.platform_staff where revoked_at is null),
-  'an administrator at aal2 gets the number of active staff roles'
+  pg_temp.value_as(:'st_review', 'select (c.*)::text from public.admin_moderation_counts() c'), 'P0001|CHARA_FORBIDDEN|',
+  'a Verification Reviewer is refused the moderation counts too'
 );
 update public.platform_staff set revoked_at = now() where user_id = :'st_review';
-select is(
-  pg_temp.value_as(:'st_admin', 'select public.admin_staff_count()'),
-  (select count(*)::text from public.platform_staff where revoked_at is null),
-  'a revoked role is no longer counted'
-);
+select is(pg_temp.staff_count(), :staff0 - 1, 'a person whose only role is revoked is no longer counted');
 select is(pg_temp.value_as(:'st_admin', 'select public.admin_staff_count()', 'aal1'), 'P0001|CHARA_FORBIDDEN|aal2_required', 'an administrator at aal1 is refused');
 select is(pg_temp.value_as(:'st_trust', 'select public.admin_staff_count()'), 'P0001|CHARA_FORBIDDEN|', 'a Trust & Safety Administrator is refused');
 select is(
@@ -186,33 +196,39 @@ select is(
   '42501|permission denied for function admin_staff_count|', 'the anonymous role is refused at the privilege check'
 );
 
--- admin_moderation_counts: suspended accounts and organisations and hidden vacancies, for Trust & Safety at aal2 only.
-create function pg_temp.moderation_truth() returns text
-language sql as $$
-  select format('(%s,%s,%s)',
-    (select count(*) from public.profiles where status = 'suspended'),
-    (select count(*) from public.organizations where status = 'suspended'),
-    (select count(*) from public.jobs where moderation_state = 'hidden'))
-$$;
+-- admin_moderation_counts: suspended accounts and organisations and hidden live vacancies, for Trust & Safety at aal2 only.
+create function pg_temp.moderation(p_user uuid, p_aal text default 'aal2') returns text
+language sql as $$ select pg_temp.value_as(p_user, 'select row_to_json(c)::text from public.admin_moderation_counts() c', p_aal) $$;
+select pg_temp.moderation(:'st_trust') as mod0 \gset
 
-select is(
-  pg_temp.value_as(:'st_trust', 'select (c.*)::text from public.admin_moderation_counts() c'),
-  pg_temp.moderation_truth(),
-  'a Trust & Safety Administrator gets the suspended accounts, the suspended organisations and the hidden vacancies'
-);
 update public.profiles set status = 'suspended' where id = :'wa';
 update public.organizations set status = 'suspended' where id = :'lone2';
 select pg_temp.seed_job('{"title": "Hidden one", "status": "open", "moderation_state": "hidden"}', :'lone') is not null as hidden_job \gset
 select is(
-  pg_temp.value_as(:'st_trust', 'select (c.*)::text from public.admin_moderation_counts() c'),
-  pg_temp.moderation_truth(),
-  'each count follows the database: one more suspended account, organisation and hidden vacancy'
+  pg_temp.moderation(:'st_trust')::jsonb,
+  (select jsonb_build_object(
+    'suspended_users', (m ->> 'suspended_users')::int + 1,
+    'suspended_organizations', (m ->> 'suspended_organizations')::int + 1,
+    'hidden_vacancies', (m ->> 'hidden_vacancies')::int + 1) from (select :'mod0'::jsonb as m) b),
+  'one more suspended account, suspended organisation and hidden vacancy each add exactly one'
 );
-select is(pg_temp.value_as(:'st_admin', 'select (c.*)::text from public.admin_moderation_counts() c'), 'P0001|CHARA_FORBIDDEN|', 'a Platform Administrator is refused');
+select pg_temp.moderation(:'st_trust') as mod1 \gset
+select pg_temp.seed_job(
+  '{"title": "Hidden and deleted", "status": "closed", "moderation_state": "hidden", "deleted_at": "2026-01-01T00:00:00Z"}', :'lone'
+) is not null as hidden_gone \gset
+select is(
+  pg_temp.moderation(:'st_trust')::jsonb, :'mod1'::jsonb,
+  'a deleted hidden vacancy is not counted (the moderation page cannot show it)'
+);
+select is(pg_temp.moderation(:'st_trust', 'aal1'), 'P0001|CHARA_FORBIDDEN|aal2_required', 'a Trust & Safety Administrator at aal1 is refused');
+select is(pg_temp.moderation(:'st_admin'), 'P0001|CHARA_FORBIDDEN|', 'a Platform Administrator is refused');
 select is(
   pg_temp.call_as(null, 'anon', 'select * from public.admin_moderation_counts()'),
   '42501|permission denied for function admin_moderation_counts|', 'the anonymous role is refused at the privilege check'
 );
+update public.platform_staff set revoked_at = now() where user_id in (:'st_admin', :'st_trust');
+select is(pg_temp.moderation(:'st_trust'), 'P0001|CHARA_FORBIDDEN|', 'a Trust & Safety Administrator whose role is revoked is refused');
+select is(pg_temp.value_as(:'st_admin', 'select public.admin_staff_count()'), 'P0001|CHARA_FORBIDDEN|', 'an administrator whose role is revoked is refused');
 
 select * from finish();
 rollback;

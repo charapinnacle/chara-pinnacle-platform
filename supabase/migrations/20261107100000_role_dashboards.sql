@@ -33,12 +33,12 @@ revoke all on function public.my_application_stage_counts() from public, anon, a
 grant execute on function public.my_application_stage_counts() to authenticated;
 
 -- The first steps of an organisation, from what the database holds: a vacancy that has left draft (it was published at
--- least once), a member other than the first or an invitation sent, and a live subscription (the statuses of
--- private.org_plan_code). Three yes/no facts and no billing or applicant data, so a member and an owner at aal1 read them
--- too: the owner at aal1 sees the checklist that leads to two-step verification. No row for an organisation the caller is
--- not an accepted member of (a suspended user is a member of nothing). The lookups use jobs_organization_created_idx,
--- organization_invitations_org, the primary key of organization_members and subscriptions_organization_idx. Errors:
--- CHARA_FORBIDDEN (detail company_account_required).
+-- least once), a member besides the owner or an invitation that was accepted or can still be, and a live subscription (the
+-- statuses of private.org_plan_code). Only owners and admins see the checklist, so only they get a row; three yes/no facts
+-- and no billing or applicant data, so they read them at aal1 too: the owner at aal1 sees the checklist that leads to
+-- two-step verification. No row for anybody else (a suspended user is a member of nothing). The lookups use
+-- jobs_organization_created_idx, organization_invitations_org, the primary key of organization_members and
+-- subscriptions_organization_idx. Errors: CHARA_FORBIDDEN (detail company_account_required).
 create function public.get_dashboard_first_steps(p_organization_id uuid) returns table (
   vacancy_published boolean,
   team_invited boolean,
@@ -53,7 +53,7 @@ begin
   if (select auth.uid()) is null or private.account_kind() is distinct from 'company' then
     raise exception 'CHARA_FORBIDDEN' using detail = 'company_account_required';
   end if;
-  if not private.is_org_member(p_organization_id) then
+  if not private.is_org_member(p_organization_id, 'admin') then
     return;
   end if;
 
@@ -63,8 +63,11 @@ begin
       select 1 from public.jobs j
       where j.organization_id = p_organization_id and j.deleted_at is null and (j.published_at is not null or j.status <> 'draft')
     ),
-    exists (select 1 from public.organization_invitations i where i.organization_id = p_organization_id)
-      or (select count(*) from public.organization_members m where m.organization_id = p_organization_id) > 1,
+    exists (
+      select 1 from public.organization_invitations i
+      where i.organization_id = p_organization_id and (i.accepted_at is not null or i.expires_at > now())
+    )
+      or exists (select 1 from public.organization_members m where m.organization_id = p_organization_id and m.role <> 'owner'),
     exists (
       select 1 from billing.subscriptions s
       where s.organization_id = p_organization_id and s.status in ('trialing', 'active', 'past_due')
@@ -75,8 +78,8 @@ $$;
 revoke all on function public.get_dashboard_first_steps(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.get_dashboard_first_steps(uuid) to authenticated;
 
--- The console landing of a Platform Administrator: the platform staff roles that are active now. platform_staff is a
--- table of a few rows. Errors: CHARA_FORBIDDEN (not an administrator at aal2, private.assert_staff).
+-- The console landing of a Platform Administrator: the people who hold at least one active platform staff role now (one
+-- person with two roles counts once). platform_staff is a table of a few rows. Errors: CHARA_FORBIDDEN (not an administrator at aal2, private.assert_staff).
 create function public.admin_staff_count() returns bigint
 language plpgsql
 stable
@@ -85,19 +88,20 @@ set search_path = ''
 as $$
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
-  return (select count(*) from public.platform_staff s where s.revoked_at is null);
+  return (select count(distinct s.user_id) from public.platform_staff s where s.revoked_at is null);
 end;
 $$;
 
 revoke all on function public.admin_staff_count() from public, anon, authenticated, service_role;
 grant execute on function public.admin_staff_count() to authenticated;
 
--- The console landing of a Trust & Safety Administrator: what is suspended or hidden now. Each count reads a partial index
--- that holds only those rows, so it stays small however many accounts and vacancies there are. Errors: CHARA_FORBIDDEN
+-- The console landing of a Trust & Safety Administrator: what is suspended or hidden now. A deleted vacancy is left out, as
+-- on the moderation page the figure links to (admin_search_jobs). Each count reads a partial index that holds only those
+-- rows, so it stays small however many accounts and vacancies there are. Errors: CHARA_FORBIDDEN
 -- (not a Trust & Safety Administrator at aal2).
 create index profiles_suspended_idx on public.profiles (id) where status = 'suspended';
 create index organizations_suspended_idx on public.organizations (id) where status = 'suspended';
-create index jobs_moderation_hidden_idx on public.jobs (id) where moderation_state = 'hidden';
+create index jobs_moderation_hidden_idx on public.jobs (id) where moderation_state = 'hidden' and deleted_at is null;
 
 create function public.admin_moderation_counts() returns table (
   suspended_users bigint,
@@ -115,7 +119,7 @@ begin
   select
     (select count(*) from public.profiles p where p.status = 'suspended'),
     (select count(*) from public.organizations o where o.status = 'suspended'),
-    (select count(*) from public.jobs j where j.moderation_state = 'hidden');
+    (select count(*) from public.jobs j where j.moderation_state = 'hidden' and j.deleted_at is null);
 end;
 $$;
 
