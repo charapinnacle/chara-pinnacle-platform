@@ -36,6 +36,8 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     await opener.click();
 
     const dialog = page.getByRole("dialog", { name: "Remove Max Member?" });
+    // The pointer is where the opener was; the dialog may open under it, and a hovered button has its own colour.
+    await page.mouse.move(0, 0);
     const confirm = dialog.getByRole("button", { name: "Remove member" });
     await expect.poll(() => backgroundOf(confirm)).toBe(await tokenColour(page, "--destructive"));
     await expect
