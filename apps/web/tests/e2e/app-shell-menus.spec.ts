@@ -83,6 +83,26 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await context.close();
   });
 
+  test("the account menu closes when Tab leaves its last item", async ({ browser }) => {
+    const worker = await createCommittedUser("worker");
+    const { context, page } = await signedInPage(browser, worker);
+    await page.goto("/en/dashboard/worker");
+    const button = accountButton(page);
+    await waitForHydration(button);
+    await button.focus();
+    await page.keyboard.press("Enter");
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    const panel = await panelOf(page);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(panel.getByRole("button", { name: "Log out" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await expect(panel).toBeHidden();
+    await context.close();
+  });
+
   test("the account menu opens with the keyboard, is entered with Tab, closes with Escape and follows a link", async ({ browser }) => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
