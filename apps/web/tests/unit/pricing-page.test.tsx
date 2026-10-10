@@ -82,6 +82,15 @@ describe("the pricing page (FR-H2)", () => {
     expect(html).toContain("Workers never pay");
   });
 
+  it("marks only the configured plan as recommended, and nothing when that plan is not public", async () => {
+    const html = renderToStaticMarkup(await PricingPage(props));
+    expect(html.match(/Recommended/g)).toHaveLength(1);
+    expect(html.indexOf("Recommended")).toBeGreaterThan(html.indexOf("Professional"));
+
+    plans = [plan({})];
+    expect(renderToStaticMarkup(await PricingPage(props))).not.toContain("Recommended");
+  });
+
   it("does not catch a failed read, so that the error page shows", async () => {
     failure = new Error("The plans could not be loaded");
     await expect(PricingPage(props)).rejects.toThrow("The plans could not be loaded");
