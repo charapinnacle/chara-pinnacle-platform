@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { TextLink } from "@/components/forms/text-link";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { DeleteAccount } from "@/components/settings/delete-account";
@@ -19,11 +19,10 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-page">
-      <PageHeader title="Settings">
-        <TextLink standalone href={homePath(lang, "worker")}>
-          Back to the dashboard
-        </TextLink>
-      </PageHeader>
+      <PageHeader
+        title="Settings"
+        breadcrumb={<Breadcrumbs items={[{ label: "Dashboard", href: homePath(lang, "worker") }, { label: "Settings" }]} />}
+      />
       <Section
         id="delete-account"
         title="Delete account"

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { z } from "zod";
 import { Card } from "@/components/layout/card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -11,6 +12,7 @@ import { InviteDialog } from "@/components/team/invite-dialog";
 import { MemberActions } from "@/components/team/member-actions";
 import { ResendInvitation } from "@/components/team/resend-invitation";
 import { TransferOwnership, TransferResponse } from "@/components/team/ownership-transfer";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { getAllowance, getInvitations, getMembers, getPendingTransfer, type TeamMember } from "@/lib/dal/team";
 import { requireOrgRole, roleRank } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
@@ -56,7 +58,12 @@ export default async function MembersPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-section">
-      <PageHeader title="Team" description={organization.displayName} actions={!onlyOwner ? invite : null} />
+      <PageHeader
+        title="Team"
+        description={organization.displayName}
+        actions={!onlyOwner ? invite : null}
+        breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Team" }]} />}
+      />
 
       {transfer?.toUserId === user.id ? (
         <Notice tone="info" role="status" className="grid gap-3">

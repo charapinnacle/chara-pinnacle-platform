@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
@@ -24,6 +26,9 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-page">
+      <Breadcrumbs
+        items={[organizationCrumb(lang, organization), { label: "Vacancies", href: jobsPath(lang, slug) }, { label: job.title }]}
+      />
       <Notice tone="info" role="status">
         {jobStatusText(job.status, job.moderationState)}
         {job.staleOpen ? ` · ${STALE_OPEN_TEXT}` : ""}
@@ -48,9 +53,6 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
         </TextLink>
         <TextLink standalone href={`${jobPath(lang, slug, job.id)}/preview`}>
           Preview as candidates see it
-        </TextLink>
-        <TextLink standalone href={jobsPath(lang, slug)}>
-          Back to vacancies
         </TextLink>
       </div>
     </div>

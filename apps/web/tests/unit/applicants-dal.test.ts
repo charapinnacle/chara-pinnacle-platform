@@ -50,7 +50,7 @@ describe("getApplicant", () => {
       error: null,
     };
     expect(await getApplicant(id)).toEqual({
-      id, organizationId: "o", jobTitle: "Welder", applicantName: "Amina Okafor", status: "viewed",
+      id, organizationId: "o", jobId: "j", jobTitle: "Welder", applicantName: "Amina Okafor", status: "viewed",
       appliedAt: "2026-10-01T10:00:00Z", shortlistingAvailable: true, stageChangeBlocked: null, noteMaxChars: 1000,
     });
     expect(calls).toEqual([["get_applicant", { p_application_id: id }]]);

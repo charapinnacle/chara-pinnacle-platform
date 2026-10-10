@@ -1,3 +1,4 @@
+import { mainNavigation } from "./support/app-shell";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import {
   applicantsUrl,
@@ -177,13 +178,13 @@ test.describe("the applicant list", () => {
     const { context, page } = await memberSession(browser, company);
 
     await page.goto(`/en/org/${company.slug}/jobs/${job}`);
-    await page.getByRole("link", { name: "Applicants" }).click();
+    await page.getByRole("main").getByRole("link", { name: "Applicants" }).click();
     await expect(page).toHaveURL(new RegExp(`/applicants\\?job=${job}$`));
-    await expect(page.getByRole("link", { name: "Linked welder" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Linked welder" }).first()).toBeVisible();
     await expect(listRows(page)).toHaveCount(1);
 
-    await page.goto(`/en/org/${company.slug}`);
-    await page.getByRole("link", { name: "Applicants" }).click();
+    await page.goto(`/en/dashboard/employer?org=${company.slug}`);
+    await mainNavigation(page).getByRole("link", { name: "Applicants" }).click();
     await expect(page).toHaveURL(new RegExp(`/applicants$`));
     await expect(page.getByRole("columnheader")).toHaveText(["Select", "Candidate", "Vacancy", "Stage", "Applied", "Completeness (%)", "Documents"]);
     await context.close();

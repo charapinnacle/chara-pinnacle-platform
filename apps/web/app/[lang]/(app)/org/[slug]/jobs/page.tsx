@@ -4,10 +4,12 @@ import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Card } from "@/components/layout/card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-link";
 import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole } from "@/lib/dal/session";
 import { billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
@@ -32,7 +34,12 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-section">
-      <PageHeader title="Vacancies" description={organization.displayName} actions={page.jobs.length > 0 ? newJob : null} />
+      <PageHeader
+        title="Vacancies"
+        description={organization.displayName}
+        actions={page.jobs.length > 0 ? newJob : null}
+        breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Vacancies" }]} />}
+      />
 
       <ReadOnlyPlanNotice ended={ended} billingHref={organization.role === "member" ? null : billingPath(lang, slug)} />
 

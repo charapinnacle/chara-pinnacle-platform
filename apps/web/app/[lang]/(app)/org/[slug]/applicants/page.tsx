@@ -8,6 +8,7 @@ import { BulkToolbar } from "@/components/applicants/bulk-toolbar";
 import { ExportButton } from "@/components/applicants/export-button";
 import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrade";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { StageFilter } from "@/components/applications/stage-filter";
@@ -23,6 +24,7 @@ import {
 } from "@/lib/dal/applicant-list";
 import { FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { getJob, isSubscriptionEnded } from "@/lib/dal/hiring";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { applicantsExportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { parseApplicantListParams } from "@/lib/validation/applicant-list";
@@ -71,6 +73,15 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         title="Applicants"
         description={
           job ? <TextLink href={jobPath(lang, slug, job.id)}>{job.title}</TextLink> : `All vacancies of ${organization.displayName}`
+        }
+        breadcrumb={
+          <Breadcrumbs
+            items={[
+              organizationCrumb(lang, organization),
+              ...(job ? [{ label: "Vacancies", href: jobsPath(lang, slug) }, { label: job.title, href: jobPath(lang, slug, job.id) }] : []),
+              { label: "Applicants" },
+            ]}
+          />
         }
       />
 

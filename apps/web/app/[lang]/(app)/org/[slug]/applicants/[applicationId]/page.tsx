@@ -8,6 +8,7 @@ import { ShortlistingUpgrade } from "@/components/applicants/shortlisting-upgrad
 import { SharedDocuments } from "@/components/applicants/shared-documents";
 import { StageChange } from "@/components/applicants/stage-change";
 import { Card } from "@/components/layout/card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
@@ -23,9 +24,10 @@ import {
 import { getApplicant, listApplicantEvents, markApplicationViewed } from "@/lib/dal/applicants";
 import { isSubscriptionEnded } from "@/lib/dal/hiring";
 import { getCountries, getLanguages } from "@/lib/dal/reference";
+import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
-import { applicantPath, billingPath, homePath } from "@/lib/routes";
+import { applicantPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
@@ -75,7 +77,20 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-page">
-      <PageHeader title={name}>
+      <PageHeader
+        title={name}
+        breadcrumb={
+          <Breadcrumbs
+            items={[
+              organizationCrumb(lang, organization),
+              { label: "Vacancies", href: jobsPath(lang, slug) },
+              { label: applicant.jobTitle, href: jobPath(lang, slug, applicant.jobId) },
+              { label: "Applicants", href: applicantsPath(lang, slug, { job: applicant.jobId }) },
+              { label: name },
+            ]}
+          />
+        }
+      >
         <p className="text-body font-medium wrap-anywhere">{applicant.jobTitle}</p>
       </PageHeader>
 
