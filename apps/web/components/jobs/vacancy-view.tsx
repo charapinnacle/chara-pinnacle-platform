@@ -37,79 +37,81 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
   const website = publicWebsite(employer?.website ?? null);
 
   return (
-    <article className={cn("grid gap-8", actions && "lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-x-12")}>
-      <PageHeader title={job.title} className="animate-rise gap-3 lg:col-start-1">
-        <p className="flex flex-wrap gap-x-5 gap-y-1 text-body text-muted-foreground">
-          {employer ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Building2 aria-hidden className="size-4" />
-              {employer.displayName}
-            </span>
-          ) : null}
-          <span className="inline-flex items-center gap-1.5">
-            <MapPin aria-hidden className="size-4" />
-            {job.city}, {job.country}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Clock aria-hidden className="size-4" />
-            {employmentTypeLabels[job.employmentType]}
-          </span>
-        </p>
-      </PageHeader>
-
-      {actions ? (
-        <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <Card elevated padding="lg" className="animate-rise gap-4 lg:sticky lg:top-8">
-            <div className="grid gap-0.5">
-              <p className="text-small text-muted-foreground">Salary</p>
-              <p className={salary ? "text-h2 tabular-nums" : "text-body"}>{salary ?? "Not stated"}</p>
-            </div>
-            <div className="border-t pt-4">{actions}</div>
-          </Card>
-        </div>
-      ) : null}
-
-      <div className="grid content-start gap-10 lg:col-start-1">
-        <dl className="grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 sm:[&>:last-child:nth-child(odd)]:col-span-2">
-          {details.map(([term, value]) => (
-            <div key={term} className="grid content-start gap-0.5 bg-card p-card">
-              <dt className="text-small text-muted-foreground">{term}</dt>
-              <dd className="font-medium break-words">{value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <section aria-labelledby="job-description-heading" className="grid gap-3">
-          <h2 id="job-description-heading" className="text-h2">
-            Description
-          </h2>
-          <p className="max-w-[65ch] leading-7 break-words whitespace-pre-line">{job.description}</p>
-        </section>
-
-        {employer ? (
-          <Card as="section" aria-labelledby="job-employer-heading" padding="lg" className="gap-2">
-            <h2 id="job-employer-heading" className="flex items-center gap-2 text-h2">
-              <Building2 aria-hidden className="size-5 text-brand-ink" />
-              {employer.displayName}
-            </h2>
-            <p className="text-body text-muted-foreground">Based in {employer.country}</p>
-            {employer.industry ? <p className="text-body text-muted-foreground">Industry: {employer.industry}</p> : null}
-            {website ? (
-              <TextLink
-                standalone
-                href={website.href}
-                target="_blank"
-                rel="nofollow noopener noreferrer"
-                prefetch={false}
-                className="break-all"
-              >
-                {website.label}
-                <span className="sr-only"> (opens in a new tab)</span>
-              </TextLink>
+    <div className="@container">
+      <article className={cn("grid gap-8", actions && "@4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:gap-x-12")}>
+        <PageHeader title={job.title} className="animate-rise gap-3 @4xl:col-start-1">
+          <p aria-hidden className="flex flex-wrap gap-x-5 gap-y-1 text-body text-muted-foreground">
+            {employer ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Building2 aria-hidden className="size-4" />
+                {employer.displayName}
+              </span>
             ) : null}
-          </Card>
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin aria-hidden className="size-4" />
+              {job.city}, {job.country}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock aria-hidden className="size-4" />
+              {employmentTypeLabels[job.employmentType]}
+            </span>
+          </p>
+        </PageHeader>
+
+        {actions ? (
+          <div className="@4xl:col-start-2 @4xl:row-span-2 @4xl:row-start-1">
+            <Card elevated padding="lg" className="animate-rise gap-4 @4xl:sticky @4xl:top-8">
+              <div className="grid gap-0.5">
+                <p className="text-small text-muted-foreground">Salary</p>
+                <p className={salary ? "text-h2 tabular-nums" : "text-body"}>{salary ?? "Not stated"}</p>
+              </div>
+              <div className="border-t pt-4">{actions}</div>
+            </Card>
+          </div>
         ) : null}
-      </div>
-    </article>
+
+        <div className="grid content-start gap-10 @4xl:col-start-1">
+          <dl className="grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 sm:[&>:last-child:nth-child(odd)]:col-span-2">
+            {details.map(([term, value]) => (
+              <div key={term} className="grid content-start gap-0.5 bg-card p-card">
+                <dt className="text-small text-muted-foreground">{term}</dt>
+                <dd className="font-medium break-words">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <section aria-labelledby="job-description-heading" className="grid gap-3">
+            <h2 id="job-description-heading" className="text-h2">
+              Description
+            </h2>
+            <p className="max-w-[65ch] leading-7 break-words whitespace-pre-line">{job.description}</p>
+          </section>
+
+          {employer ? (
+            <Card as="section" aria-labelledby="job-employer-heading" padding="lg" className="gap-2">
+              <h2 id="job-employer-heading" className="flex items-center gap-2 text-h2">
+                <Building2 aria-hidden className="size-5 text-brand-ink" />
+                {employer.displayName}
+              </h2>
+              <p className="text-body text-muted-foreground">Based in {employer.country}</p>
+              {employer.industry ? <p className="text-body text-muted-foreground">Industry: {employer.industry}</p> : null}
+              {website ? (
+                <TextLink
+                  standalone
+                  href={website.href}
+                  target="_blank"
+                  rel="nofollow noopener noreferrer"
+                  prefetch={false}
+                  className="break-all"
+                >
+                  {website.label}
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </TextLink>
+              ) : null}
+            </Card>
+          ) : null}
+        </div>
+      </article>
+    </div>
   );
 }

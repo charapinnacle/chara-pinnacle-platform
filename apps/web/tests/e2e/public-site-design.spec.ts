@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal } from "./support/db";
-import { newCompany, seedJob } from "./support/jobs";
+import { addCompanyUser, newCompany, previewUrl, seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { overflow } from "./support/login-page";
 import { uniqueToken } from "./support/organizations";
@@ -109,6 +109,26 @@ test.describe("the vacancy page", () => {
     expect(applyBox!.y).toBeGreaterThan(titleBox!.y);
     expect(applyBox!.y).toBeLessThan(detailsBox!.y);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe("the vacancy preview", () => {
+  test("keeps one column in the narrow page of the signed-in area, with the panel between the title and the facts", async ({
+    browser,
+  }) => {
+    const company = await newCompany();
+    const id = seedJob(company, { title: "Preview panel welder" });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await signInBrowser(context, await addCompanyUser(company, "member"));
+    const page = await context.newPage();
+    await page.goto(previewUrl(company.slug, id));
+    const titleBox = (await page.getByRole("heading", { level: 1, name: "Preview panel welder" }).boundingBox())!;
+    const panelBox = (await page.getByRole("button", { name: "Apply" }).boundingBox())!;
+    const detailsBox = (await page.locator("article dl").boundingBox())!;
+    expect(panelBox.y).toBeGreaterThan(titleBox.y);
+    expect(panelBox.y).toBeLessThan(detailsBox.y);
+    expect(panelBox.x).toBeLessThan(detailsBox.x + detailsBox.width / 2);
+    await context.close();
   });
 });
 
