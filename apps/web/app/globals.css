@@ -38,7 +38,25 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-active: var(--destructive-active);
   --color-destructive-surface: var(--destructive-surface);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-background: var(--success-background);
+  --color-success-border: var(--success-border);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-background: var(--warning-background);
+  --color-warning-border: var(--warning-border);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-background: var(--danger-background);
+  --color-danger-border: var(--danger-border);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-background: var(--info-background);
+  --color-info-border: var(--info-border);
+  --color-neutral-foreground: var(--neutral-foreground);
+  --color-neutral-background: var(--neutral-background);
+  --color-neutral-border: var(--neutral-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -49,8 +67,37 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --shadow-card:
     0 1px 2px oklch(0.2 0.03 265 / 0.04), 0 12px 32px -12px oklch(0.2 0.05 265 / 0.12);
-  --text-body: 0.9375rem;
   --shadow-focus: 0 0 0 4px color-mix(in oklch, var(--ring) 22%, transparent);
+}
+
+/* The type scale: display and h1 step up at the sm breakpoint (the :root override in the base layer below), and the
+   headings carry their weight and tracking, so a heading is one utility: text-display, text-h1, text-h2, text-h3.
+   text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the gap
+   between the blocks of a page. docs/runbooks/design-system.md documents each token. */
+@theme {
+  --text-display: 2.25rem;
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.025em;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 1.25;
+  --text-h1--font-weight: 600;
+  --text-h1--letter-spacing: -0.025em;
+  --text-h2: 1.125rem;
+  --text-h2--line-height: 1.55;
+  --text-h2--font-weight: 600;
+  --text-h3: 1rem;
+  --text-h3--line-height: 1.5;
+  --text-h3--font-weight: 600;
+  --text-body: 0.9375rem;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.43;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.33;
+  --spacing-card-sm: 0.75rem;
+  --spacing-card: 1rem;
+  --spacing-card-lg: 1.25rem;
+  --spacing-page: 1.5rem;
 }
 
 /* Placeholder until the CHARA brand colours and logo exist (OPEN_QUESTIONS W6).
@@ -70,11 +117,67 @@
   --accent: oklch(0.955 0.03 265);
   --accent-foreground: oklch(0.3 0.1 265);
   --destructive: oklch(0.5 0.21 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --destructive-hover: oklch(0.44 0.2 27);
+  --destructive-active: oklch(0.38 0.18 27);
   --destructive-surface: oklch(0.975 0.014 20);
+  --success-foreground: oklch(0.4 0.11 155);
+  --success-background: oklch(0.97 0.035 155);
+  --success-border: oklch(0.72 0.13 155);
+  --warning-foreground: oklch(0.42 0.09 65);
+  --warning-background: oklch(0.97 0.05 90);
+  --warning-border: oklch(0.74 0.13 80);
+  --danger-foreground: var(--destructive);
+  --danger-background: var(--destructive-surface);
+  --danger-border: oklch(0.75 0.12 25);
+  --info-foreground: var(--accent-foreground);
+  --info-background: var(--accent);
+  --info-border: oklch(0.78 0.08 265);
+  --neutral-foreground: var(--secondary-foreground);
+  --neutral-background: oklch(0.955 0.006 265);
+  --neutral-border: oklch(0.8 0.01 265);
   --border: oklch(0.91 0.008 265);
   --input: oklch(0.62 0.015 265);
   --ring: oklch(0.46 0.19 264);
+  --focus-ring: 2px solid var(--ring);
+  --focus-ring-offset: 2px;
   --radius: 0.625rem;
+}
+
+/* The dark set is complete and tested, and is applied by putting the dark class on the root element; nothing does that
+   yet (no theme switch exists), so the interface is unchanged. */
+.dark {
+  --background: oklch(0.17 0.02 265);
+  --foreground: oklch(0.96 0.006 265);
+  --card: oklch(0.21 0.02 265);
+  --primary: oklch(0.72 0.14 264);
+  --primary-foreground: oklch(0.16 0.03 265);
+  --primary-hover: oklch(0.78 0.13 264);
+  --primary-active: oklch(0.84 0.1 264);
+  --secondary: oklch(0.25 0.02 265);
+  --secondary-foreground: oklch(0.92 0.01 265);
+  --muted: oklch(0.25 0.02 265);
+  --muted-foreground: oklch(0.74 0.02 265);
+  --accent: oklch(0.28 0.06 265);
+  --accent-foreground: oklch(0.88 0.06 265);
+  --destructive: oklch(0.74 0.16 27);
+  --destructive-foreground: oklch(0.16 0.03 27);
+  --destructive-hover: oklch(0.8 0.14 27);
+  --destructive-active: oklch(0.86 0.1 27);
+  --destructive-surface: oklch(0.26 0.06 25);
+  --success-foreground: oklch(0.85 0.14 155);
+  --success-background: oklch(0.27 0.06 155);
+  --success-border: oklch(0.45 0.1 155);
+  --warning-foreground: oklch(0.88 0.12 85);
+  --warning-background: oklch(0.28 0.06 80);
+  --warning-border: oklch(0.5 0.1 80);
+  --neutral-background: oklch(0.27 0.01 265);
+  --neutral-border: oklch(0.4 0.015 265);
+  --danger-border: oklch(0.5 0.14 25);
+  --info-border: oklch(0.5 0.1 265);
+  --border: oklch(0.32 0.02 265);
+  --input: oklch(0.62 0.02 265);
+  --ring: oklch(0.72 0.14 264);
 }
 
 @layer base {
@@ -86,6 +189,12 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  @media (min-width: 40rem) {
+    :root {
+      --text-display: 3rem;
+      --text-h1: 1.75rem;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -101,6 +210,6 @@
 /* Unlayered on purpose: the shadcn primitives set outline-none in the utilities layer, which
    would beat a base-layer rule and leave form controls with only a faint ring. */
 :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
