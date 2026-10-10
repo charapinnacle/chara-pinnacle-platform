@@ -122,7 +122,7 @@ test.describe("vacancy lifecycle", () => {
     const listed = async () => {
       await anonymous.goto(searchUrl);
       await expect(anonymous.getByRole("heading", { name: "Find jobs", level: 1 })).toBeVisible();
-      return anonymous.locator("ul > li").filter({ hasText: marker });
+      return anonymous.locator("ul:not([aria-label='Active filters']) > li").filter({ hasText: marker });
     };
 
     await logIn(page, acme.owner, jobUrl(acme.slug, id));

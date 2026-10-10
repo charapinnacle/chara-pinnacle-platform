@@ -9,7 +9,7 @@ import { expect, test } from "./support/test";
 // The shared database holds the vacancies of every other test, so each test searches for a word of its own.
 const newMarker = () => `zq${uniqueToken()}`;
 
-const cards = (page: Page, marker: string): Locator => page.locator("ul > li").filter({ hasText: marker });
+const cards = (page: Page, marker: string): Locator => page.locator("ul:not([aria-label='Active filters']) > li").filter({ hasText: marker });
 const status = (page: Page, text: string): Locator => page.getByRole("status").filter({ hasText: text });
 const params = (page: Page) => Object.fromEntries(new URL(page.url()).searchParams);
 
