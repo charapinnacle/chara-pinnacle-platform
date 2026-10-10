@@ -38,6 +38,11 @@ describe("FormErrorSummary (CODE-01)", () => {
     );
   });
 
+  it("still lists a field whose error has no message", () => {
+    const markup = render({ email: { type: "required" } });
+    expect(markup).toMatch(/href="#login-email"[^>]*>This field is not valid</);
+  });
+
   it("lists the refusal of the server after the fields, without a link", () => {
     const markup = render({ root: { server: error("Email or password is incorrect.") }, email: error("Enter your email.") });
     expect(markup.indexOf("Enter your email.")).toBeLessThan(markup.indexOf("Email or password is incorrect."));
