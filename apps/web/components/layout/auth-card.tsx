@@ -8,13 +8,16 @@ type AuthCardProps = {
   icon?: LucideIcon;
   children?: React.ReactNode;
   footer?: React.ReactNode;
+  // Where the person is in a flow of several steps, shown above the title.
+  progress?: React.ReactNode;
 };
 
 export const cardDividerClassName = "border-t pt-6";
 
-export function AuthCard({ title, description, icon: Icon, children, footer }: AuthCardProps) {
+export function AuthCard({ title, description, icon: Icon, children, footer, progress }: AuthCardProps) {
   return (
     <Card elevated padding="xl" className="mx-auto w-full max-w-md gap-6 rounded-2xl">
+      {progress}
       {title || Icon ? (
         <div className={cn("grid gap-2", Icon && "justify-items-center text-center")}>
           {Icon ? (

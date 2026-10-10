@@ -6,9 +6,9 @@ export default function AuthLayout({ children }: LayoutProps<"/[lang]">) {
   return (
     <SiteShell>
       <PageContainer layout="centered">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start xl:gap-20">
           <AuthBrandPanel />
-          <div className="animate-rise">{children}</div>
+          <div className="animate-rise lg:flex lg:min-h-[34rem] lg:flex-col lg:justify-center">{children}</div>
         </div>
       </PageContainer>
     </SiteShell>
