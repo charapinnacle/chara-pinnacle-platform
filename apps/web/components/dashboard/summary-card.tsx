@@ -2,6 +2,7 @@ import { ArrowRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";
 import { cardVariants } from "@/components/layout/card";
+import { formatCount } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 
 // hint belongs to the label and is part of the name ("New applications in the last 7 days"); detail is a further line
@@ -15,7 +16,7 @@ export function SummaryCard({ label, hint, detail, value, href, icon: Icon }: Su
   return (
     <Link
       href={href}
-      aria-label={`${hint ? `${label} ${hint}` : label}: ${value}`}
+      aria-label={`${hint ? `${label} ${hint}` : label}: ${formatCount(value)}`}
       aria-describedby={detail ? detailId : undefined}
       className={cn(
         cardVariants({ padding: "lg", elevated: true }),
@@ -37,7 +38,7 @@ export function SummaryCard({ label, hint, detail, value, href, icon: Icon }: Su
         </span>
       </span>
       <span className="flex items-end justify-between gap-3">
-        <span className="text-figure tabular-nums">{value}</span>
+        <span className="text-figure tabular-nums">{formatCount(value)}</span>
         <span aria-hidden className="inline-flex items-center gap-1 text-small font-medium text-muted-foreground transition-colors duration-150 group-hover:text-foreground">
           View all
           <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />

@@ -125,6 +125,9 @@ describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
     const id = /aria-describedby="([^"]+)"/.exec(described)?.[1];
     expect(described).toContain(`id="${id}"`);
     expect(described).toMatch(/>2 in progress</);
+    const large = renderToStaticMarkup(<SummaryCard label="Applications" value={45210} href="/x" icon={Briefcase} />);
+    expect(large).toContain('aria-label="Applications: 45,210"');
+    expect(large).toMatch(/>45,210</);
   });
 
   it("lists the eight stages in pipeline order, zeros included, with column headers, a total and a link per stage", () => {
@@ -135,7 +138,7 @@ describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
       );
     const html = table((stage) => `/en/org/acme/applicants?stage=${stage}`);
     expect(html.match(/<th scope="col"/g)).toHaveLength(2);
-    const rows = [...html.matchAll(/<th scope="row"[^>]*>(?:<a [^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>)?<\/th><td[^>]*>(?:.*?<span class="w-8[^"]*">)?(\d+)(?:<\/span><\/span>)?<\/td>/g)].map((m) => [m[2], m[3], m[1]]);
+    const rows = [...html.matchAll(/<th scope="row"[^>]*>(?:<a [^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>)?<\/th><td[^>]*>(?:.*?<span class="min-w-8[^"]*">)?([\d,]+)(?:<\/span><\/span>)?<\/td>/g)].map((m) => [m[2], m[3], m[1]]);
     expect(rows).toEqual([
       ["Applied", "3", "/en/org/acme/applicants?stage=applied"],
       ["Viewed", "2", "/en/org/acme/applicants?stage=viewed"],

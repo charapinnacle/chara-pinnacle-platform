@@ -1,3 +1,10 @@
+const countFormat = new Intl.NumberFormat("en");
+
+// A count with digit grouping, as 45,210; every figure the pages show uses it.
+export function formatCount(count: number): string {
+  return countFormat.format(count);
+}
+
 const dateFormat = new Intl.DateTimeFormat("en", {
   dateStyle: "long",
   timeZone: "UTC",

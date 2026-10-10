@@ -4,6 +4,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { applicationStatusLabels, pipelineStages } from "@/lib/applications/presentation";
 import type { StageTotals } from "@/lib/dashboard/stage-counts";
+import { formatCount } from "@/lib/i18n/format";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
@@ -50,7 +51,7 @@ export function StageTable({ id, title, description, countLabel, totals, total, 
               <td className="py-2.5">
                 <span className="flex items-center justify-end gap-4">
                   <StageBar value={totals[stage]} max={max} />
-                  <span className="w-8 text-end tabular-nums">{totals[stage]}</span>
+                  <span className="min-w-8 text-end tabular-nums">{formatCount(totals[stage])}</span>
                 </span>
               </td>
             </tr>
@@ -61,7 +62,7 @@ export function StageTable({ id, title, description, countLabel, totals, total, 
             <th scope="row" className="pt-3 text-start font-medium">
               Total
             </th>
-            <td className="pt-3 text-end font-medium tabular-nums">{total}</td>
+            <td className="pt-3 text-end font-medium tabular-nums">{formatCount(total)}</td>
           </tr>
         </tfoot>
       </table>
