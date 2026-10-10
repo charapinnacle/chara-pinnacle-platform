@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { openStages, stageTotals, sumOf } from "@/lib/dashboard/stage-counts";
-import { formatRelative } from "@/lib/i18n/format";
+import { openStages } from "@/lib/applications/stage-machine";
+import { stageTotals, sumOf } from "@/lib/dashboard/stage-counts";
+import { formatCount, formatRelative } from "@/lib/i18n/format";
 import { lastThirtyDays } from "@/lib/validation/admin";
 
 type Result = { data: unknown; error: unknown; count?: number | null };
@@ -72,6 +73,17 @@ describe("the relative time beside a date (UX-03)", () => {
   });
 });
 
+describe("a figure of a dashboard", () => {
+  it.each([
+    [0, "0"],
+    [999, "999"],
+    [45210, "45,210"],
+    [1234567, "1,234,567"],
+  ])("%d is shown as %s", (count, text) => {
+    expect(formatCount(count)).toBe(text);
+  });
+});
+
 describe("the range of the console statistics", () => {
   it("is the last 30 UTC days, today included", () => {
     expect(lastThirtyDays(new Date("2026-10-10T23:30:00.000Z"))).toEqual({ from: "2026-09-11", to: "2026-10-10" });
@@ -135,7 +147,7 @@ describe("the reads of the candidate dashboard (UX-03)", () => {
 });
 
 describe("the reads of the console landing (UX-10)", () => {
-  it("returns the active staff roles and the moderation counts", async () => {
+  it("returns the staff members and the moderation counts", async () => {
     rpcResults.value.admin_staff_count = { data: 4, error: null };
     rpcResults.value.admin_moderation_counts = { data: [{ suspended_users: 2, suspended_organizations: 1, hidden_vacancies: 3 }], error: null };
     await expect(staffCount()).resolves.toBe(4);

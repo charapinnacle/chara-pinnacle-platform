@@ -17,7 +17,9 @@ const employerMoves: Record<ApplicationStatus, readonly ApplicationStatus[]> = {
   withdrawn: [],
 };
 
-const withdrawable: readonly ApplicationStatus[] = ["applied", "viewed", "shortlisted", "interview", "offer"];
+// The stages in which a candidate still waits for a decision: neither decided (hired, not selected) nor withdrawn. These
+// are the ones a candidate can withdraw from.
+export const openStages: readonly ApplicationStatus[] = ["applied", "viewed", "shortlisted", "interview", "offer"];
 
 // The database guard is the authority; this decides what a person is offered.
 export function allowedTargets(
@@ -25,6 +27,6 @@ export function allowedTargets(
   role: StageRole,
   features: { shortlisting: boolean },
 ): ApplicationStatus[] {
-  if (role === "candidate") return withdrawable.includes(status) ? ["withdrawn"] : [];
+  if (role === "candidate") return openStages.includes(status) ? ["withdrawn"] : [];
   return employerMoves[status].filter((target) => target !== "shortlisted" || features.shortlisting);
 }

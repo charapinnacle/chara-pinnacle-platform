@@ -32,6 +32,31 @@ async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<bool
   );
 }
 
+type Loads = ReturnType<typeof startDashboardLoad>;
+
+// The three figures, each linked to the list it counts (FR-E5 AC1 to AC3).
+function EmployerFigures({ lang, slug, loads, billingHref, now }: { lang: string; slug: string; loads: Omit<Loads, "empty">; billingHref: string | null; now: Date }) {
+  return (
+    <div className="animate-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <Panel promise={loads.vacancies} errorTitle="The open vacancies could not be counted">
+        {({ open }) => (
+          <SummaryCard label="Open vacancies" detail="Accepting applications now" value={open} href={jobsPath(lang, slug, { status: "open" })} icon={BriefcaseBusiness} />
+        )}
+      </Panel>
+      <Panel promise={loads.applications} errorTitle="The new applications could not be counted">
+        {({ recent }) => (
+          <SummaryCard label="New applications" hint="in the last 7 days" value={recent} href={applicantsPath(lang, slug, { sort: "applied", dir: "desc" })} icon={Users} />
+        )}
+      </Panel>
+      <div className="sm:col-span-2 xl:col-span-1">
+        <Panel promise={loads.plan} errorTitle="The plan could not be loaded">
+          {(value) => <PlanCard plan={value} now={now} billingHref={billingHref} />}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
 // The summary of the hiring of one organisation for a member, or for an owner or admin at aal2. The reads start together;
 // each part shows its own when it is ready, or its own error. An owner or admin also sees the first steps until they are
 // all done, then the quick actions; a member sees the quick actions.
@@ -71,31 +96,9 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
         {(value) => <PlanAlerts plan={value} now={now} slug={slug} billingHref={billingHref} />}
       </Panel>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Panel promise={vacancies} errorTitle="The open vacancies could not be counted">
-          {({ open }) => (
-            <SummaryCard label="Open vacancies" detail="Accepting applications now" value={open} href={jobsPath(lang, slug, { status: "open" })} icon={BriefcaseBusiness} />
-          )}
-        </Panel>
-        <Panel promise={applications} errorTitle="The new applications could not be counted">
-          {({ recent }) => (
-            <SummaryCard
-              label="New applications"
-              hint="in the last 7 days"
-              value={recent}
-              href={applicantsPath(lang, slug, { sort: "applied", dir: "desc" })}
-              icon={Users}
-            />
-          )}
-        </Panel>
-        <div className="sm:col-span-2 xl:col-span-1">
-          <Panel promise={plan} errorTitle="The plan could not be loaded">
-            {(value) => <PlanCard plan={value} now={now} billingHref={billingHref} />}
-          </Panel>
-        </div>
-      </div>
+      <EmployerFigures lang={lang} slug={slug} loads={{ applications, vacancies, plan }} billingHref={billingHref} now={now} />
 
-      <div className="grid items-start gap-6 lg:grid-cols-12">
+      <div className="animate-stagger grid items-start gap-6 lg:grid-cols-12">
         <div className="grid gap-6 lg:col-span-7 xl:col-span-8">
           <Suspense fallback={null}>
             <NoVacanciesYet empty={empty} lang={lang} slug={slug} role={role} />
