@@ -108,6 +108,11 @@ test.describe("sitemap.xml", () => {
     expect(entries.filter((entry) => !vacancies.includes(entry)).every((entry) => entry.lastmod === null)).toBe(true);
   });
 
+  test("FR-H5 AC3: the answer may be kept by a shared cache for five minutes, so that a polling crawler is not a query each time", async ({ request }) => {
+    const response = await request.get("/sitemap.xml");
+    expect(response.headers()["cache-control"]).toBe("public, s-maxage=300, stale-while-revalidate=300");
+  });
+
   test("FR-H5 AC4: a vacancy enters the sitemap when it is published and leaves it when it is paused or hidden, with no rebuild", async ({
     page,
     request,

@@ -10,7 +10,9 @@ export async function proxy(request: NextRequest) {
   if (redirectPath) {
     const url = request.nextUrl.clone();
     url.pathname = redirectPath;
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    if (isPrivatePath(redirectPath)) redirect.headers.set("x-robots-tag", "noindex, nofollow");
+    return redirect;
   }
 
   const nonce = btoa(crypto.randomUUID());

@@ -42,6 +42,19 @@ describe("proxy", () => {
     expect(response.headers.get("location")).toBe(`${origin}/en`);
   });
 
+  it("FR-H5 AC7: marks the language redirect of a private path noindex, and that of a public path not", async () => {
+    for (const path of ["/dashboard", "/login", "/org/acme/jobs"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.status, path).toBe(307);
+      expect(response.headers.get("x-robots-tag"), path).toBe("noindex, nofollow");
+    }
+    for (const path of ["/", "/jobs", "/pricing"]) {
+      const response = await proxy(new NextRequest(`${origin}${path}`));
+      expect(response.status, path).toBe(307);
+      expect(response.headers.get("x-robots-tag"), path).toBeNull();
+    }
+  });
+
   it("sets a nonce CSP on the response and passes the same one to the page", async () => {
     const response = await proxy(new NextRequest(`${origin}/en`));
     const csp = response.headers.get("content-security-policy") ?? "";
