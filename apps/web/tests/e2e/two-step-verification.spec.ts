@@ -55,9 +55,9 @@ test.describe("two-step verification: enrolment", () => {
     await expect(page).toHaveURL(/\/en\/mfa$/);
     await enterCode(page, await beginSetup(page));
     await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
-    await expect(page.getByRole("main").getByRole("listitem").first()).toHaveText(
-      "Set up two-step verification (done)",
-    );
+    await expect(
+      page.getByRole("main").getByRole("listitem").filter({ hasText: "Set up two-step verification" }),
+    ).toHaveText("Set up two-step verification (done)");
     expect((await sessionClaims(page.context())).aal).toBe("aal2");
   });
 
