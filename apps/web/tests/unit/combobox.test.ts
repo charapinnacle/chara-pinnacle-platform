@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMBOBOX_LIMIT, matchOptions, moveActive, resultsAnnouncement } from "@/lib/combobox";
+import { COMBOBOX_LIMIT, listStart, matchOptions, moveActive, resultsAnnouncement } from "@/lib/combobox";
 
 const countries = Array.from({ length: 255 }, (_, n) => ({ value: `C${n}`, label: `Country ${n}` }));
 const occupations = [
@@ -31,8 +31,28 @@ describe("matchOptions", () => {
     expect(matchOptions(occupations, "astronaut")).toEqual({ shown: [], total: 0 });
   });
 
+  it("starts the list at a chosen option that lies beyond the limit, unless text is typed", () => {
+    const { shown, total } = matchOptions(countries, "", 200);
+    expect(shown).toHaveLength(COMBOBOX_LIMIT);
+    expect(shown[0].value).toBe("C200");
+    expect(total).toBe(255);
+    expect(matchOptions(countries, "", 20).shown[0].value).toBe("C0");
+    expect(matchOptions(countries, "", 250).shown).toHaveLength(COMBOBOX_LIMIT);
+    expect(matchOptions(countries, "", 250).shown.map(({ value }) => value)).toContain("C250");
+    expect(matchOptions(countries, "country 1", 200).shown[0].value).toBe("C1");
+  });
+
   it("does not cut a list that is short enough", () => {
     expect(matchOptions(countries.slice(0, COMBOBOX_LIMIT), "")).toMatchObject({ total: COMBOBOX_LIMIT });
+  });
+});
+
+describe("listStart", () => {
+  it("starts at the top, at a chosen option beyond the limit, or as far down as still fills the list", () => {
+    expect(listStart(255, -1)).toBe(0);
+    expect(listStart(255, 49)).toBe(0);
+    expect(listStart(255, 50)).toBe(50);
+    expect(listStart(255, 254)).toBe(205);
   });
 });
 
@@ -64,7 +84,7 @@ describe("resultsAnnouncement", () => {
 
   it("says that the list is cut and asks to narrow it", () => {
     expect(resultsAnnouncement(matchOptions(countries, ""), "No match")).toBe(
-      "255 results available, the first 50 are listed. Type to narrow the list.",
+      "255 results available, 50 are listed. Type to narrow the list.",
     );
   });
 

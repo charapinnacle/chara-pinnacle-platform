@@ -5,15 +5,22 @@ export const COMBOBOX_LIMIT = 50;
 
 export type ComboboxMatches = { shown: readonly ComboboxOption[]; total: number };
 
-export function matchOptions(options: readonly ComboboxOption[], query: string, limit = COMBOBOX_LIMIT): ComboboxMatches {
+// Where the list starts when no text is typed: at the top, or, for a chosen option beyond the limit, at that option (or as
+// far down as still fills the list), so a reopened list shows the current choice.
+export function listStart(total: number, chosenIndex: number): number {
+  return chosenIndex < COMBOBOX_LIMIT ? 0 : Math.min(chosenIndex, total - COMBOBOX_LIMIT);
+}
+
+export function matchOptions(options: readonly ComboboxOption[], query: string, chosenIndex = -1): ComboboxMatches {
   const needle = query.trim().toLowerCase();
   const found = needle
     ? options.filter((option) => `${option.label} ${option.keywords ?? ""}`.toLowerCase().includes(needle))
     : options;
-  return { shown: found.slice(0, limit), total: found.length };
+  const start = needle ? 0 : listStart(found.length, chosenIndex);
+  return { shown: found.slice(start, start + COMBOBOX_LIMIT), total: found.length };
 }
 
-export type ActiveKey = "ArrowDown" | "ArrowUp" | "Home" | "End";
+type ActiveKey = "ArrowDown" | "ArrowUp" | "Home" | "End";
 
 // The index of the highlighted option after a key, in a list of count options; -1 means none. The list stops at its ends.
 export function moveActive(key: ActiveKey, active: number, count: number): number {
@@ -27,5 +34,5 @@ export function moveActive(key: ActiveKey, active: number, count: number): numbe
 export function resultsAnnouncement({ shown, total }: ComboboxMatches, emptyText: string): string {
   if (total === 0) return emptyText;
   const results = `${total} ${total === 1 ? "result" : "results"} available`;
-  return total > shown.length ? `${results}, the first ${shown.length} are listed. Type to narrow the list.` : results;
+  return total > shown.length ? `${results}, ${shown.length} are listed. Type to narrow the list.` : results;
 }

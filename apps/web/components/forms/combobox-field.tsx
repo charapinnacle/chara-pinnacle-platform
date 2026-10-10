@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import type { FieldPath, FieldValues } from "react-hook-form";
 import { controlClassName } from "@/components/forms/control-class";
 import { FormField } from "@/components/forms/form-field";
+import { NativeSelect } from "@/components/forms/native-select";
 import { Input } from "@/components/ui/input";
 import {
-  COMBOBOX_LIMIT,
+  listStart,
   matchOptions,
   moveActive,
   resultsAnnouncement,
@@ -24,6 +25,7 @@ type ComboboxFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   options: readonly ComboboxOption[];
   emptyText?: string;
   freeText?: boolean;
+  noScriptSelect?: boolean;
 };
 
 type ComboboxProps = {
@@ -35,6 +37,7 @@ type ComboboxProps = {
   options: readonly ComboboxOption[];
   emptyText: string;
   freeText: boolean;
+  noScriptSelect: boolean;
   inputRef: React.Ref<HTMLInputElement>;
   onChange: (value: string) => void;
   onBlur: () => void;
@@ -51,6 +54,8 @@ const NO_MATCHES: ComboboxMatches = { shown: [], total: 0 };
 // Choosing mode: the value is the code of one option and typed text only filters. Free-text mode: the value is the text
 // itself, the options are suggestions, and Enter without an arrowed-to suggestion keeps the typed text. The list is only
 // in the page while it is open, and holds at most COMBOBOX_LIMIT options; typing narrows what the whole list offers.
+// React Hook Form reads the value from state, so the visible input has no name; a form that must submit without
+// JavaScript sets noScriptSelect, and a native select with the code as value then takes its place.
 function Combobox({
   id,
   name,
@@ -60,6 +65,7 @@ function Combobox({
   options,
   emptyText,
   freeText,
+  noScriptSelect,
   inputRef,
   onChange,
   onBlur,
@@ -72,12 +78,14 @@ function Combobox({
 
   const selected = freeText ? undefined : options.find((option) => option.value === value);
   const text = freeText ? value : (query ?? selected?.label ?? "");
-  const matches = open ? matchOptions(options, freeText ? value : (query ?? "")) : NO_MATCHES;
+  const selectedIndex = selected ? options.indexOf(selected) : -1;
+  const matches = open
+    ? matchOptions(options, freeText ? value : (query ?? ""), query === null ? selectedIndex : -1)
+    : NO_MATCHES;
   const count = matches.shown.length;
   const active = Math.min(activeIndex, count - 1);
   const listed = open && !(freeText && matches.total === 0);
-  const selectedIndex = selected ? options.indexOf(selected) : -1;
-  const startIndex = selectedIndex < COMBOBOX_LIMIT ? selectedIndex : -1;
+  const startIndex = selectedIndex < 0 ? -1 : selectedIndex - listStart(options.length, selectedIndex);
 
   useEffect(() => {
     if (open && active >= 0) document.getElementById(optionId(id, active))?.scrollIntoView({ block: "nearest" });
@@ -123,16 +131,15 @@ function Combobox({
       <Input
         {...aria}
         id={id}
-        name={name}
         ref={inputRef}
         role="combobox"
         autoComplete="off"
         placeholder={placeholder}
         aria-autocomplete="list"
-        aria-expanded={open}
+        aria-expanded={listed}
         aria-controls={listed ? `${id}-listbox` : undefined}
         aria-activedescendant={listed && active >= 0 ? optionId(id, active) : undefined}
-        className={cn("h-11 pe-11", controlClassName)}
+        className={cn("h-11 pe-11", controlClassName, noScriptSelect && "noscript:hidden")}
         value={text}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -153,7 +160,10 @@ function Combobox({
         type="button"
         tabIndex={-1}
         aria-label={`Show ${label} options`}
-        className="absolute end-0 top-0 grid h-11 w-11 place-items-center rounded-e-lg text-muted-foreground"
+        className={cn(
+          "absolute end-0 top-0 grid h-11 w-11 place-items-center rounded-e-lg text-muted-foreground",
+          noScriptSelect && "noscript:hidden",
+        )}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
           document.getElementById(id)?.focus();
@@ -163,6 +173,18 @@ function Combobox({
       >
         <ChevronDown aria-hidden className="size-4" />
       </button>
+      {noScriptSelect ? (
+        <noscript>
+          <NativeSelect name={name} aria-label={label} defaultValue={value}>
+            <option value="">{placeholder}</option>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </noscript>
+      ) : null}
       <div aria-live="polite" aria-atomic className="sr-only">
         {listed ? resultsAnnouncement(matches, emptyText) : null}
       </div>
@@ -196,7 +218,7 @@ function Combobox({
           </ul>
           {matches.total > count ? (
             <p className="border-t px-3.5 py-2 text-small text-muted-foreground">
-              Showing the first {count} of {matches.total}. Type to narrow the list.
+              Showing {count} of {matches.total}. Type to narrow the list.
             </p>
           ) : null}
         </div>
@@ -210,6 +232,7 @@ export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
   options,
   emptyText = "No match",
   freeText = false,
+  noScriptSelect = false,
   ...fieldProps
 }: ComboboxFieldProps<T, N>) {
   return (
@@ -224,6 +247,7 @@ export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
           options={options}
           emptyText={emptyText}
           freeText={freeText}
+          noScriptSelect={noScriptSelect}
         />
       )}
     </FormField>

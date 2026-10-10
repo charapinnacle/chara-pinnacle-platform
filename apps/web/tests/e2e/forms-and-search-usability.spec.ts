@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { PHONE, signedInPage } from "./support/app-shell";
+import { signIn } from "./support/passport";
 import { newApplicant, seedApplication } from "./support/applications";
 import { seedListApplicant, subscribe } from "./support/applicant-list";
 import { expectNoAxeViolations } from "./support/axe";
@@ -28,8 +29,8 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await combobox(page, "Country").click();
     await expect(combobox(page, "Country")).toHaveAttribute("aria-expanded", "true");
     await expect(optionNodes(page)).toHaveCount(50);
-    await expect(page.getByText(/^Showing the first 50 of \d+\. Type to narrow the list\.$/)).toBeVisible();
-    await expect(announcement(page)).toHaveText(/^\d+ results available, the first 50 are listed\. Type to narrow the list\.$/);
+    await expect(page.getByText(/^Showing 50 of \d+\. Type to narrow the list\.$/)).toBeVisible();
+    await expect(announcement(page)).toHaveText(/^\d+ results available, 50 are listed\. Type to narrow the list\.$/);
 
     await page.keyboard.press("Escape");
     await expect(optionNodes(page)).toHaveCount(0);
@@ -44,14 +45,15 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await combobox(page, "Country").fill("germ");
     await expect(optionNodes(page)).toHaveText(["Germany"]);
     await expect(announcement(page)).toHaveText("1 result available");
-    await expect(page.getByText(/Showing the first/)).toHaveCount(0);
+    await expect(page.getByText(/^Showing \d+ of/)).toHaveCount(0);
 
     await page.getByRole("option", { name: "Germany" }).click();
     await expect(combobox(page, "Country")).toHaveValue("Germany");
     await expect(optionNodes(page)).toHaveCount(0);
 
     await combobox(page, "Country").click();
-    await expect(page.getByRole("option", { name: "Germany" })).toHaveCount(0);
+    await expect(optionNodes(page).first()).toHaveText("Germany");
+    await expect(optionNodes(page).first()).toHaveAttribute("aria-selected", "true");
     await combobox(page, "Country").fill("zzzz");
     await expect(optionNodes(page)).toHaveText(["No match"]);
     await expect(announcement(page)).toHaveText("No match");
@@ -120,6 +122,75 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await expect(country).toHaveValue("France");
   });
 
+  test("UX-02: Home and End move the text cursor until an arrow key is used, and ArrowUp opens the list", async ({ page }) => {
+    await openJobs(page);
+    const country = combobox(page, "Country");
+    await country.click();
+    await page.keyboard.type("germany");
+    await page.keyboard.press("Home");
+    await page.keyboard.type("x");
+    await expect(country).toHaveValue("xgermany");
+    await expect(country).not.toHaveAttribute("aria-activedescendant");
+    await page.keyboard.press("End");
+    await expect(country).not.toHaveAttribute("aria-activedescendant");
+    await page.keyboard.press("Escape");
+
+    await country.focus();
+    await page.keyboard.press("ArrowUp");
+    await expect(country).toHaveAttribute("aria-expanded", "true");
+    await expect(optionNodes(page)).toHaveCount(50);
+  });
+
+  test("UX-02: a chosen option beyond the first 50 is listed and highlighted when the list opens again", async ({ page }) => {
+    await openJobs(page);
+    const country = combobox(page, "Country");
+    await country.fill("zimbabwe");
+    await page.getByRole("option", { name: "Zimbabwe" }).click();
+    await expect(country).toHaveValue("Zimbabwe");
+
+    await country.click();
+    await expect(optionNodes(page)).toHaveCount(50);
+    await expect(optionNodes(page).last()).toHaveText("Zimbabwe");
+    await expect(optionNodes(page).last()).toHaveAttribute("aria-selected", "true");
+    await expect(country).toHaveAttribute("aria-activedescendant", /-option-49$/);
+  });
+
+  test("UX-02: the list has no accessibility violation when it is open, on a wide screen and on a phone", async ({ page, browser }) => {
+    await openJobs(page);
+    await combobox(page, "Country").click();
+    await expect(optionNodes(page)).toHaveCount(50);
+    await page.keyboard.press("ArrowDown");
+    await expectNoAxeViolations(page);
+
+    const context = await browser.newContext(PHONE);
+    const phone = await context.newPage();
+    await openJobs(phone);
+    await combobox(phone, "Country").click();
+    await phone.keyboard.press("ArrowDown");
+    await expect(optionNodes(phone)).toHaveCount(50);
+    await expectNoAxeViolations(phone);
+    await context.close();
+  });
+
+  test("UX-02: a free-text field opens its suggestions on a click and keeps the typed text on Enter", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    await signIn(page, user);
+    await page.goto("/en/passport");
+    const skills = combobox(page, "Skills");
+    await waitForHydration(skills);
+
+    await skills.click();
+    await expect(optionNodes(page)).toHaveCount(50);
+    await expect(skills).toHaveAttribute("aria-expanded", "true");
+    await skills.fill("Zzz own skill");
+    await expect(optionNodes(page)).toHaveCount(0);
+    await expect(skills).toHaveAttribute("aria-expanded", "false");
+    await expect(skills).not.toHaveAttribute("aria-controls");
+    await page.keyboard.press("Enter");
+    await expect(skills).toHaveValue("Zzz own skill");
+    await expect(page.getByText("Skill added", { exact: true })).toBeVisible();
+  });
+
   test("UX-02: a tap opens the list and a tap on an option chooses it", async ({ browser }) => {
     const context = await browser.newContext({ ...PHONE, hasTouch: true, isMobile: true });
     const page = await context.newPage();
@@ -172,7 +243,7 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     const occupation = combobox(page, "Occupation");
     await occupation.click();
     await expect(optionNodes(page)).toHaveCount(50);
-    await expect(page.getByText(/^Showing the first 50 of \d+\./)).toBeVisible();
+    await expect(page.getByText(/^Showing 50 of \d+\./)).toBeVisible();
     await page.keyboard.type("7212");
     await expect(optionNodes(page)).toHaveText([/^7212 · Welders and flame cutters$/]);
     await page.keyboard.press("Enter");
@@ -183,6 +254,34 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await expect(optionNodes(page)).toHaveCount(50);
     await expectNoAxeViolations(page);
     await context.close();
+  });
+
+  test("UX-02: the occupation of the vacancy form opens by tap", async ({ browser }) => {
+    const company = await newCompany();
+    const { context, page } = await signedInPage(browser, company.owner, { ...PHONE, hasTouch: true });
+    await page.goto(newJobUrl(company.slug));
+    await waitForHydration(page.getByLabel("Title", { exact: true }));
+    await combobox(page, "Occupation").tap();
+    await expect(optionNodes(page)).toHaveCount(50);
+    await combobox(page, "Occupation").fill("7212");
+    await page.getByRole("option", { name: /^7212 · / }).tap();
+    await expect(combobox(page, "Occupation")).toHaveValue(/^7212 · Welders and flame cutters$/);
+    await context.close();
+  });
+});
+
+test.describe("UX-02: the country of the vacancy search without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("a native select takes the place of the combobox and the form searches by the country code", async ({ page }) => {
+    await page.goto("/en/jobs");
+    await expect(page.locator("#search-country")).toBeHidden();
+    await page.locator("select[name=country]").selectOption({ label: "Germany" });
+    await page.getByLabel("Keyword", { exact: true }).fill("welder");
+    await page.getByRole("button", { name: "Search vacancies" }).click();
+    await expect(page).toHaveURL(/[?&]country=DE(&|$)/);
+    await expect(page).toHaveURL(/[?&]q=welder(&|$)/);
+    await expect(page.getByRole("link", { name: "Remove filter Country: Germany" })).toBeVisible();
   });
 });
 
@@ -270,7 +369,9 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     await expect(combobox(page, "Currency")).toHaveValue("");
 
     for (const name of ["Keyword: welder", "Employment type: Full time", "Accommodation provided"]) {
-      await page.getByRole("link", { name: `Remove filter ${name}` }).click();
+      const chip = page.getByRole("link", { name: `Remove filter ${name}` });
+      await chip.click();
+      await expect(chip).toHaveCount(0);
     }
     await expect(page).toHaveURL(/\/en\/jobs$/);
     await expect(page.getByRole("list", { name: "Active filters" })).toHaveCount(0);

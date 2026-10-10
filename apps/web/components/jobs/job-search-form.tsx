@@ -72,6 +72,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         label="Country"
         placeholder="Any country"
         options={toOptions(countries)}
+        noScriptSelect
       />
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
