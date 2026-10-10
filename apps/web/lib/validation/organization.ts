@@ -1,4 +1,4 @@
-import * as z from "@/lib/zod";
+import * as z from "zod";
 
 export const identifierKindOptions = [
   { value: "registration_number", label: "Company registration number" },

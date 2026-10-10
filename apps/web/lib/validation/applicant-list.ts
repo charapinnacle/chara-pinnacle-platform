@@ -1,5 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { isApplicationStatus } from "@/lib/applications/presentation";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];

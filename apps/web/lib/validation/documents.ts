@@ -1,5 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { parseDate } from "@/lib/validation/passport";
 
 type DocumentType = Database["public"]["Enums"]["worker_document_type"];
@@ -56,7 +56,7 @@ const CHOOSE_FILE = "Choose a file.";
 
 type FileInfo = { name: string; size: number; type: string };
 
-function checkFile(context: z.ParsePayload<FileInfo>) {
+function checkFile(context: z.core.ParsePayload<FileInfo>) {
   const { name, size, type } = context.value;
   const extension = name.slice(name.lastIndexOf(".") + 1).toLowerCase();
   const issue = (message: string) => context.issues.push({ code: "custom", input: context.value, message });

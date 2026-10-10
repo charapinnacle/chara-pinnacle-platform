@@ -1,5 +1,5 @@
 import "server-only";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { publicPlanSchema, type PricingViewer, type PublicPlan } from "@/lib/billing/pricing";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser, roleRank } from "@/lib/dal/session";

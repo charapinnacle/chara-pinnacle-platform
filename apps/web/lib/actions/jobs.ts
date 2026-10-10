@@ -3,7 +3,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { getJobLimit } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";

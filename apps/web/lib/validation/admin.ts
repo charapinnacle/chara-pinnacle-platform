@@ -1,5 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { emailSchema } from "@/lib/validation/sign-up";
 
 export type PlatformRole = Database["public"]["Enums"]["platform_role"];

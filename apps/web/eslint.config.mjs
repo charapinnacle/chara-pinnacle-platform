@@ -15,11 +15,13 @@ const eslintConfig = defineConfig([
   ]),
   {
     files: ["app/**", "components/**", "lib/**", "emails/**"],
-    ignores: ["lib/zod.ts"],
     rules: {
-      "no-restricted-imports": [
+      "no-restricted-syntax": [
         "error",
-        { paths: [{ name: "zod", message: 'Import * as z from "@/lib/zod": the namespace of "zod" brings all its translations into the browser bundle.' }] },
+        {
+          selector: "ImportDeclaration[source.value='zod'] > :matches(ImportSpecifier[imported.name='z'], ImportDefaultSpecifier)",
+          message: 'Import * as z from "zod": the z export brings all the translations of "zod" into the browser bundle.',
+        },
       ],
     },
   },

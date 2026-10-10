@@ -2,7 +2,7 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { cache } from "react";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { type EventActorRole, eventActorLabels, isApplicationStatus } from "@/lib/applications/presentation";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplyLimits } from "@/lib/validation/application";

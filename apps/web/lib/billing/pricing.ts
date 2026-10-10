@@ -1,4 +1,4 @@
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { daysText, formatPrice, oneTrialRule, trialConversion } from "@/lib/billing/presentation";
 import { billingPath } from "@/lib/routes";
 

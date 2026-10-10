@@ -1,4 +1,4 @@
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { employmentTypes, salaryPeriods } from "@/lib/validation/job";
 
 // The limits below repeat those of public.search_jobs, which stays the authority and clamps or refuses again:

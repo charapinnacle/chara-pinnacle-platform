@@ -1,6 +1,6 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { adminClient, failure, paged, type Page } from "@/lib/dal/admin";
 import { ADMIN_PAGE_SIZE, type JobCursor } from "@/lib/validation/admin";
 

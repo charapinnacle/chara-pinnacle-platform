@@ -1,7 +1,7 @@
 import "server-only";
 import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { clientAddress } from "@/lib/visitor-address";

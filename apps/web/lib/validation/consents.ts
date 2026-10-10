@@ -1,4 +1,4 @@
-import * as z from "@/lib/zod";
+import * as z from "zod";
 
 export const AGE_ATTESTATION_SLUG = "age-18-plus";
 

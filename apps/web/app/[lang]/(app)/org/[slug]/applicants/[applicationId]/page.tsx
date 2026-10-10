@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { InternalNotes } from "@/components/applicants/internal-notes";
 import { ProfileSnapshot } from "@/components/applicants/profile-snapshot";
 import { ReadOnlyButton } from "@/components/applicants/read-only-button";

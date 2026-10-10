@@ -1,4 +1,4 @@
-import * as z from "@/lib/zod";
+import * as z from "zod";
 
 const emailDeliveries = ["immediate", "daily_summary"] as const;
 

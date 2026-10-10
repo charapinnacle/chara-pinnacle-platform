@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { applyToJob, getApplyLimits, getMyApplication, withdrawApplication, type ApplyRefusal } from "@/lib/dal/applications";
 import { requireUser } from "@/lib/dal/session";

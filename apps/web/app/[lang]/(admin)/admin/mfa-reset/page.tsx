@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { MfaResetForm } from "@/components/admin/mfa-reset-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";

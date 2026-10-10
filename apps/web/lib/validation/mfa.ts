@@ -1,4 +1,4 @@
-import * as z from "@/lib/zod";
+import * as z from "zod";
 
 export const MAX_TOTP_FACTORS = 2;
 export const WRONG_CODE = "That code is incorrect or has expired. Try again.";

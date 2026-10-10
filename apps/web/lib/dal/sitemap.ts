@@ -1,5 +1,5 @@
 import "server-only";
-import * as z from "@/lib/zod";
+import * as z from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { SitemapVacancy } from "@/lib/seo/sitemap";
 
