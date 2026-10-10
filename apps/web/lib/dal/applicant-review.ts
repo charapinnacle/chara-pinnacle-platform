@@ -1,6 +1,6 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
-import { z } from "zod";
+import * as z from "@/lib/zod";
 import { parseSnapshot, type ApplicantSnapshot } from "@/lib/applicants/snapshot";
 import { env } from "@/lib/env";
 import { serverEnv } from "@/lib/env.server";

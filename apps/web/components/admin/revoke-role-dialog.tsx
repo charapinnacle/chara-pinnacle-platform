@@ -12,7 +12,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { revokeRole } from "@/lib/actions/admin-staff";
 import { revokeFormSchema, type PlatformRole } from "@/lib/validation/admin";
-import type { z } from "zod";
+import type * as z from "@/lib/zod";
 
 type RevokeValues = z.input<typeof revokeFormSchema>;
 

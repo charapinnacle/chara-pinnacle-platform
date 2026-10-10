@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "@/lib/zod";
 
 export const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
 

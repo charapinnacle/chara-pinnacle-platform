@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { z } from "zod";
+import * as z from "@/lib/zod";
 import { WithdrawApplication } from "@/components/applications/withdraw-application";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";

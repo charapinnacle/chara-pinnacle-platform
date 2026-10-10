@@ -1,6 +1,6 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
-import { z } from "zod";
+import * as z from "@/lib/zod";
 import { pipelineStages } from "@/lib/applications/presentation";
 import { logDashboardLoad } from "@/lib/dashboard/load-log";
 import { type PlanStatus, planStatuses } from "@/lib/dashboard/plan-status";

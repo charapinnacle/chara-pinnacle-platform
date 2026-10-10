@@ -1,7 +1,7 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import { cache } from "react";
-import { z } from "zod";
+import * as z from "@/lib/zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   AGE_ATTESTATION_SLUG,
