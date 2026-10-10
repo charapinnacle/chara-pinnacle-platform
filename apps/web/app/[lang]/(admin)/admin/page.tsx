@@ -10,6 +10,7 @@ import { applicationCounts, listLegalDocuments } from "@/lib/dal/admin";
 import { moderationCounts, staffCount } from "@/lib/dal/admin-overview";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { stageTotals, sumOf } from "@/lib/dashboard/stage-counts";
+import { formatCount } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 import { lastThirtyDays, platformRoleLabels } from "@/lib/validation/admin";
 
@@ -43,7 +44,7 @@ function AdministratorOverview({ lang }: { lang: string }) {
             {(documents) => (
               <SummaryCard
                 label="Legal documents in draft"
-                detail={`Of ${documents.length} documents`}
+                detail={`Out of ${formatCount(documents.length)} in all`}
                 value={documents.filter((document) => document.isDraft).length}
                 href={adminPath(lang, "legal")}
                 icon={FileText}
