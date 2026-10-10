@@ -6,7 +6,7 @@ NFR-U1 (usability), audit findings UX-01, UX-08, UX-10 and REL-01 (unit U57). Th
 
 | Area | Header | Footer |
 |---|---|---|
-| Public (`(public)`) | The links of `lib/public/navigation.ts` behind the Menu button below 768 px. A visitor sees Log in and Sign up; a signed-in person sees **Go to my area** (the dashboard of the account kind) and **Log out**. The session is read behind `Suspense`, so the page does not wait for it and the first paint is the visitor's header. | Imprint and the ten legal pages in three short groups (`footerGroups`) |
+| Public (`(public)`) | The links of `lib/public/navigation.ts` behind the Menu button below 768 px. A visitor sees Log in and Sign up; a signed-in person sees **Go to my area** (the dashboard of the account kind) and **Log out**. The session is read behind `Suspense`, so the page does not wait for it; until it is known the header reserves the space of the two items and offers nothing, so a signed-in person never sees Log in or Sign up. The log-out in this header is a plain form around the `signOut` server action (no client component, so visitors download no log-out code and it works without JavaScript); a failed sign-out only reloads the page, the toast of `LogoutButton` belongs to the signed-in area. | Imprint and the ten legal pages in three short groups (`footerGroups`) |
 | Auth (`(auth)`) | Logo only | none |
 | Signed-in (`(app)`) | `components/layout/app-nav.tsx`: logo to the dashboard of the account kind, the primary links, the organisation switcher (only with more than one organisation), the Account menu | the same legal links |
 | Console (`(admin)/admin`) | Logo to `/admin` and the Account menu with the platform roles; the sidebar of `lib/admin/navigation.ts` stays, as a two or three column grid below `lg` | none |
@@ -27,7 +27,11 @@ The links are an offer, not a guard: every page still calls `requireUser`, `requ
 
 ## 3. The layout does not run again
 
-The `(app)` layout reads the account kind and the organisations once per full render. An action that changes them calls `refreshAppShell()` (`lib/app/refresh-shell.ts`, `revalidatePath` of the layout) before it redirects: `commitAccountKind`, `chooseAccountKind`, `createOrganization`, `createPassport` and `acceptInvitation`. Without it a new employer would see an empty header until the next full page load (the browser test "a new employer has the links of the header as soon as the organisation exists" fails without it). A new action that changes the kind, the memberships or the status of an organisation needs the same call.
+The `(app)` layout reads the account kind and the organisations once per full render. An action that changes them calls `refreshAppShell()` (`lib/app/refresh-shell.ts`, `revalidatePath` of the layout) before it redirects: `commitAccountKind`, `chooseAccountKind`, `createOrganization`, `createPassport`, `acceptInvitation` and every team action (`runTeamAction`: the role label and the Billing link of the person who accepts a transfer, or is given another role, change at once). Without it a new employer would see an empty header until the next full page load (the browser test "a new employer has the links of the header as soon as the organisation exists" fails without it). A new action that changes the kind, the memberships or the status of an organisation needs the same call.
+
+The `(app)` and `(admin)` layouts await the session at the top level, which ADR 0004 decision 4 advises against: the logo target, the header and the footer of a candidate depend on it, and every page awaits it anyway. This is a recorded departure; enabling Cache Components later means moving these reads behind `Suspense` with a static header. The read of the organisations in the `(app)` layout does not fail the page: on an error the header is drawn without organisation links, with the Account menu and Log out, and the error is in the server log (an `error.tsx` does not catch an error of the layout of its own segment).
+
+Known limit: the organisation a person works in is read from the address (`/org/<slug>/...` or `?org=`). The Notification settings links carry `?org=` for a person in several organisations; the other pages without an organisation in the address (`/mfa`, `/onboarding`, `/consent`) show the first organisation.
 
 ## 4. Breadcrumbs
 
@@ -48,4 +52,4 @@ The error text never contains the cause: the page says what failed and nothing e
 
 ## 7. Measured
 
-First-load JavaScript of the `(app)` routes grew by about 35 KB uncompressed (36 KB for the pages with the most client code), the public routes by 23.6 KB (the log-out button), the console routes by about 27 KB, from the `route-bundle-stats.json` of two builds. The weight is the header client code and the log-out button's dependencies; no dependency was added.
+First-load JavaScript of the `(app)` routes grew by about 35 KB uncompressed (36 KB for the pages with the most client code), the console routes by about 27 KB, from the `route-bundle-stats.json` of two builds. The weight is the header client code and the log-out button's dependencies; no dependency was added. The public routes carry none of it, because their log-out is a form.
