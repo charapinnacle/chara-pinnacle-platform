@@ -8,7 +8,7 @@ import { FormButton } from "@/components/forms/form-button";
 import { controlClassName } from "@/components/forms/control-class";
 import { NativeSelect } from "@/components/forms/native-select";
 import { Notice } from "@/components/forms/notice";
-import { Card, CardBody, CardFooter, CardHeader } from "@/components/layout/card";
+import { Card, CardFooter, CardHeader } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { accountStatusLabels, accountStatusTones } from "@/lib/admin/status";
@@ -16,11 +16,11 @@ import { applicationStatusLabels, applicationStatusTones } from "@/lib/applicati
 import { subscriptionStatusLabels, subscriptionStatusTones } from "@/lib/billing/presentation";
 import { planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
 import { jobStatusTone } from "@/lib/jobs/presentation";
-import { statusTones } from "@/lib/status-tone";
+import type { StatusTone } from "@/lib/status-tone";
 import { declared } from "./support/tokens";
 
 const html = renderToStaticMarkup;
-const tones = statusTones;
+const tones: StatusTone[] = ["success", "warning", "danger", "info", "neutral"];
 
 describe("Card", () => {
   it("is a bordered surface on the card padding scale", () => {
@@ -54,11 +54,11 @@ describe("Card", () => {
     const markup = html(
       <Card>
         <CardHeader>Header</CardHeader>
-        <CardBody>Body</CardBody>
+        <div>Body</div>
         <CardFooter>Footer</CardFooter>
       </Card>,
     );
-    expect(markup).toMatch(/Header<\/div><div class="grid gap-2">Body<\/div><div class="flex flex-wrap[^"]*">Footer/);
+    expect(markup).toMatch(/Header<\/div><div>Body<\/div><div class="flex flex-wrap[^"]*">Footer/);
   });
 });
 
@@ -107,7 +107,7 @@ describe("PageHeader", () => {
 
   it("gives the display size a roomier description and lets the caller change the gap", () => {
     const markup = html(<PageHeader title="About" description="Lead" size="display" className="gap-5" />);
-    expect(markup).toContain("text-lg leading-8");
+    expect(markup).toContain("text-lead");
     expect(markup).toContain("gap-5");
     expect(markup).not.toContain("gap-3");
   });
@@ -187,7 +187,6 @@ describe("Spinner", () => {
 
 describe("Notice tones", () => {
   it.each([
-    ["success", "bg-success-background"],
     ["warning", "bg-warning-background"],
     ["error", "bg-danger-background"],
     ["info", "bg-info-background"],
@@ -195,7 +194,7 @@ describe("Notice tones", () => {
     expect(html(<Notice tone={tone}>Message</Notice>)).toContain(background);
   });
 
-  it.each(["success", "warning", "error"] as const)("the %s tone has a hidden icon beside the text", (tone) => {
+  it.each(["warning", "error"] as const)("the %s tone has a hidden icon beside the text", (tone) => {
     const markup = html(<Notice tone={tone}>Message</Notice>);
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain("Message");

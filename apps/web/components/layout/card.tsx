@@ -3,15 +3,15 @@ import { cn } from "@/lib/utils";
 
 export const cardVariants = cva("grid gap-3 rounded-xl border bg-card", {
   variants: {
-    padding: { none: "", sm: "p-card-sm", md: "p-card", lg: "p-card-lg" },
-    elevated: { true: "shadow-card", false: "" },
+    padding: { none: "", sm: "p-card-sm", md: "p-card", lg: "p-card-lg", xl: "p-card-xl sm:p-card-2xl" },
+    elevated: { true: "shadow-card" },
   },
-  defaultVariants: { padding: "md", elevated: false },
+  defaultVariants: { padding: "md" },
 });
 
 type CardProps = React.HTMLAttributes<HTMLElement> &
   VariantProps<typeof cardVariants> & {
-    as?: "div" | "section" | "article" | "li";
+    as?: "div" | "section" | "li";
   };
 
 // The one bordered surface of the interface. The padding comes from the card scale and the optional shadow is the
@@ -22,10 +22,6 @@ export function Card({ as: Tag = "div", padding, elevated, className, ...props }
 
 export function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return <div className={cn("grid gap-1", className)} {...props} />;
-}
-
-export function CardBody({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("grid gap-2", className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: React.ComponentProps<"div">) {

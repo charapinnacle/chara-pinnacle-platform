@@ -1,7 +1,7 @@
 import { DateText } from "@/components/dashboard/date-text";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
-import { Card, CardBody, CardFooter, CardHeader } from "@/components/layout/card";
+import { Card, CardFooter, CardHeader } from "@/components/layout/card";
 import type { DashboardPlan } from "@/lib/dal/dashboard";
 import { daysLeft, daysLeftText, planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
 
@@ -19,30 +19,28 @@ export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
         </h2>
         <p className="text-figure">{plan.planName}</p>
       </CardHeader>
-      <CardBody>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
-          <dt className="text-muted-foreground">Status</dt>
-          <dd>
-            <StatusBadge status={planStatusTones[plan.status]}>{planStatusLabels[plan.status]}</StatusBadge>
-          </dd>
-          {plan.status === "trialing" && plan.trialEndsAt ? (
-            <>
-              <dt className="text-muted-foreground">Trial ends</dt>
-              <dd>
-                <DateText date={plan.trialEndsAt} /> ({daysLeftText(daysLeft(plan.trialEndsAt, now))})
-              </dd>
-            </>
-          ) : null}
-          {plan.status === "active" && plan.currentPeriodEnd ? (
-            <>
-              <dt className="text-muted-foreground">Next billing date</dt>
-              <dd>
-                <DateText date={plan.currentPeriodEnd} />
-              </dd>
-            </>
-          ) : null}
-        </dl>
-      </CardBody>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
+        <dt className="text-muted-foreground">Status</dt>
+        <dd>
+          <StatusBadge status={planStatusTones[plan.status]}>{planStatusLabels[plan.status]}</StatusBadge>
+        </dd>
+        {plan.status === "trialing" && plan.trialEndsAt ? (
+          <>
+            <dt className="text-muted-foreground">Trial ends</dt>
+            <dd>
+              <DateText date={plan.trialEndsAt} /> ({daysLeftText(daysLeft(plan.trialEndsAt, now))})
+            </dd>
+          </>
+        ) : null}
+        {plan.status === "active" && plan.currentPeriodEnd ? (
+          <>
+            <dt className="text-muted-foreground">Next billing date</dt>
+            <dd>
+              <DateText date={plan.currentPeriodEnd} />
+            </dd>
+          </>
+        ) : null}
+      </dl>
       {billingHref ? (
         <CardFooter>
           <TextLink standalone href={billingHref}>

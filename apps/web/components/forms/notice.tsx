@@ -1,12 +1,11 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
+import { CircleAlert, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const noticeVariants = cva("rounded-xl border p-4 text-small leading-relaxed", {
   variants: {
     tone: {
       info: "border-info-border bg-info-background text-info-foreground",
-      success: "flex gap-3 border-success-border bg-success-background text-foreground",
       warning: "flex gap-3 border-warning-border bg-warning-background text-foreground",
       error: "flex gap-3 border-danger-border bg-danger-background text-foreground",
     },
@@ -14,7 +13,6 @@ const noticeVariants = cva("rounded-xl border p-4 text-small leading-relaxed", {
 });
 
 const icons = {
-  success: { Icon: CircleCheck, className: "text-success-foreground" },
   warning: { Icon: TriangleAlert, className: "text-warning-foreground" },
   error: { Icon: CircleAlert, className: "text-danger-foreground" },
 } as const;
