@@ -190,7 +190,7 @@ function Combobox({
       </div>
       {listed ? (
         <div
-          className="absolute inset-x-0 z-10 mt-1 overflow-hidden rounded-control border border-input bg-card text-base shadow-md"
+          className="absolute inset-x-0 z-20 mt-1 overflow-hidden rounded-control border border-input bg-card text-base shadow-md"
           onMouseDown={(event) => event.preventDefault()}
         >
           <ul id={`${id}-listbox`} role="listbox" aria-label={label} className="max-h-60 overflow-auto py-1">
