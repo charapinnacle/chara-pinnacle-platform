@@ -21,6 +21,7 @@ export function filterChips(lang: string, filters: JobSearchFilters, names: Name
   if (filters.q) add("q", `Keyword: ${filters.q}`);
   if (filters.country) add("country", `Country: ${names.countries.get(filters.country) ?? filters.country}`);
   if (filters.city) add("city", `City: ${filters.city}`);
+  if (filters.employer) add("employer", `Employer: ${filters.employer}`);
   if (filters.occupation) add("occupation", `Occupation: ${names.occupations.get(filters.occupation) ?? filters.occupation}`);
   if (filters.industry) add("industry", `Industry: ${names.industries.get(filters.industry) ?? filters.industry}`);
   if (filters.employment_type) add("employment_type", `Employment type: ${employmentTypeLabels[filters.employment_type]}`);

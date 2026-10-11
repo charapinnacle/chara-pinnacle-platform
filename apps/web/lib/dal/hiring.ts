@@ -313,6 +313,7 @@ export async function searchJobs(
     p_accommodation: filters.accommodation,
     p_visa_support: filters.visa_support,
     p_recruitment: filters.recruitment,
+    p_employer: filters.employer,
     p_cursor: filters.cursor,
     p_limit: filters.limit,
   });

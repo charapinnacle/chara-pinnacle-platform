@@ -201,6 +201,7 @@ describe("getPublicJob", () => {
     employer_country: "Germany",
     employer_industry: null,
     employer_website: "https://acme.example",
+    employer_description: "We build halls.\nSince 1999.",
   };
 
   it("asks the public function for the vacancy and reads no table, so a member's session sees no more than a visitor's", async () => {
@@ -230,8 +231,19 @@ describe("getPublicJob", () => {
       recruitmentPreference: "both",
       publishedAt: "2026-10-06T10:00:00+00:00",
       createdAt: "2026-10-04T08:00:00+00:00",
-      employer: { displayName: "Acme Bau", country: "Germany", industry: null, website: "https://acme.example" },
+      employer: {
+        displayName: "Acme Bau",
+        country: "Germany",
+        industry: null,
+        website: "https://acme.example",
+        description: "We build halls.\nSince 1999.",
+      },
     });
+  });
+
+  it("gives null for the description of an employer that wrote none", async () => {
+    result = { data: [{ ...publicRow, employer_description: null }], error: null };
+    await expect(getPublicJob(row.id)).resolves.toMatchObject({ employer: { description: null } });
   });
 
   it("gives null when the function returns no row, whatever the reason", async () => {
@@ -329,11 +341,12 @@ describe("listJobs", () => {
 });
 
 describe("getEmployer", () => {
-  it("reads the name, the country, the industry and the website of the organization", async () => {
+  it("reads the name, the country, the industry, the website and the description of the organization", async () => {
     result = {
       data: {
         display_name: "Acme Bau",
         website: "https://acme.example",
+        description: "We build halls.",
         countries: { name: "Germany" },
         industries: { name: "Construction" },
       },
@@ -344,6 +357,7 @@ describe("getEmployer", () => {
       country: "Germany",
       industry: "Construction",
       website: "https://acme.example",
+      description: "We build halls.",
     });
   });
 });
@@ -419,6 +433,7 @@ describe("searchJobs", () => {
       q: "welder",
       country: "DE",
       city: "Hamburg",
+      employer: "Acme",
       occupation: "7212",
       industry: "C",
       employment_type: "full_time",
@@ -447,6 +462,7 @@ describe("searchJobs", () => {
           p_accommodation: true,
           p_visa_support: true,
           p_recruitment: "local",
+          p_employer: "Acme",
           p_cursor: "0|2026-10-07T10:00:00.000000Z|6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
           p_limit: 10,
         },

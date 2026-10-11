@@ -2,11 +2,13 @@ import * as z from "zod";
 import { employmentTypes, salaryPeriods } from "@/lib/validation/job";
 
 // The limits below repeat those of public.search_jobs, which stays the authority and clamps or refuses again:
-// 20 and 50 are its v_limit, 100 its p_q and p_city length, 9,999,999.99 its p_salary_min ceiling.
+// 20 and 50 are its v_limit, 100 its p_q and p_city length, 2 to 100 its p_employer length, 9,999,999.99 its p_salary_min
+// ceiling.
 const SEARCH_DEFAULT_LIMIT = 20;
 const SEARCH_MAX_LIMIT = 50;
 
 const MAX_TEXT = 100;
+const MIN_EMPLOYER = 2;
 const MAX_SALARY = 9_999_999.99;
 const SALARY_FORMAT = "Enter an amount above 0 and up to 9,999,999.99, for example 2800 or 2800.50.";
 
@@ -36,6 +38,11 @@ const filterFields = {
   country: optional(z.string().toUpperCase().regex(/^[A-Z]{2}$/, { error: "Select a country from the list." })),
   city: optional(
     z.string().refine((value) => characters(value) <= MAX_TEXT, { error: "Use 100 characters or fewer in the city." }),
+  ),
+  employer: optional(
+    z.string().refine((value) => characters(value) >= MIN_EMPLOYER && characters(value) <= MAX_TEXT, {
+      error: "Use 2 to 100 characters in the employer.",
+    }),
   ),
   occupation: optional(z.string().regex(/^\d{4}$/, { error: "Select an occupation from the list." })),
   industry: optional(z.string().toUpperCase().regex(/^[A-Z]$/, { error: "Select an industry from the list." })),
@@ -82,6 +89,7 @@ export type JobSearchFilters = {
   q?: string;
   country?: string;
   city?: string;
+  employer?: string;
   occupation?: string;
   industry?: string;
   employment_type?: Exclude<SearchFormValues["employment_type"], "">;
@@ -106,6 +114,7 @@ export function formFilters(values: Partial<SearchFormValues>): JobSearchFilters
     q: values.q || undefined,
     country: values.country || undefined,
     city: values.city || undefined,
+    employer: values.employer || undefined,
     occupation: values.occupation || undefined,
     industry: values.industry || undefined,
     employment_type: values.employment_type || undefined,
@@ -171,7 +180,7 @@ export function parseSearchParams(raw: RawParams): { filters: JobSearchFilters; 
 }
 
 const QUERY_ORDER = [
-  "q", "country", "city", "occupation", "industry", "employment_type", "salary_min", "salary_currency", "salary_period",
+  "q", "country", "city", "employer", "occupation", "industry", "employment_type", "salary_min", "salary_currency", "salary_period",
   "accommodation", "visa_support", "recruitment", "cursor",
 ] as const satisfies readonly (keyof JobSearchFilters)[];
 
@@ -203,6 +212,7 @@ export function formDefaults(query: string): SearchFormInput {
     q: filters.q ?? "",
     country: filters.country ?? "",
     city: filters.city ?? "",
+    employer: filters.employer ?? "",
     occupation: filters.occupation ?? "",
     industry: filters.industry ?? "",
     employment_type: filters.employment_type ?? "",

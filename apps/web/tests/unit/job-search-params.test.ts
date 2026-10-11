@@ -29,6 +29,18 @@ describe("parseSearchParams", () => {
     expect(Object.keys(parse({ city: "\u{1F600}".repeat(101) }).errors)).toEqual(["city"]);
   });
 
+  it("keeps the employer of 2 to 100 characters, trimmed, and refuses one character or 101", () => {
+    expect(parse({ employer: "  Acme  " }).filters.employer).toBe("Acme");
+    expect(parse({ employer: "ac" }).errors).toEqual({});
+    expect(parse({ employer: "a".repeat(100) }).errors).toEqual({});
+    const short = parse({ employer: " a " });
+    expect(Object.keys(short.errors)).toEqual(["employer"]);
+    expect(short.filters.employer).toBeUndefined();
+    expect(Object.keys(parse({ employer: "a".repeat(101) }).errors)).toEqual(["employer"]);
+    expect(parse({ employer: "   " }).filters.employer).toBeUndefined();
+    expect(parse({ employer: "   " }).errors).toEqual({});
+  });
+
   it("trims the keyword and treats an empty one as not set", () => {
     expect(parse({ q: "  welder  " }).filters.q).toBe("welder");
     const blank = parse({ q: "   ", city: "" });
@@ -170,6 +182,7 @@ describe("searchQuery", () => {
     q: "welder",
     country: "DE",
     city: "München",
+    employer: "Acme & Söhne",
     occupation: "7212",
     industry: "C",
     employment_type: "full_time",
@@ -235,7 +248,7 @@ describe("usedFilters", () => {
 describe("formDefaults", () => {
   it("shows the filters of an address in the form and leaves the rest empty", () => {
     expect(formDefaults("country=DE&salary_min=3000&salary_currency=EUR&salary_period=month&visa_support=true")).toEqual({
-      q: "", country: "DE", city: "", occupation: "", industry: "", employment_type: "", salary_min: "3000",
+      q: "", country: "DE", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "3000",
       salary_currency: "EUR", salary_period: "month", accommodation: false, visa_support: true, recruitment: "",
     });
   });
@@ -248,7 +261,7 @@ describe("formDefaults", () => {
 
 describe("searchFormSchema", () => {
   const empty = {
-    q: "", country: "", city: "", occupation: "", industry: "", employment_type: "", salary_min: "",
+    q: "", country: "", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "",
     salary_currency: "", salary_period: "", accommodation: false, visa_support: false, recruitment: "",
   };
 

@@ -16,18 +16,19 @@ describe("filterChips", () => {
   });
 
   it("names each filter in words and links to the same search without it", () => {
-    const chips = chipsOf({ q: "welder", country: "DE", city: "Hamburg", occupation: "7212", industry: "F", employment_type: "full_time", recruitment: "local" });
+    const chips = chipsOf({ q: "welder", country: "DE", city: "Hamburg", employer: "Acme", occupation: "7212", industry: "F", employment_type: "full_time", recruitment: "local" });
     expect(chips.map(({ label }) => label)).toEqual([
       "Keyword: welder",
       "Country: Germany",
       "City: Hamburg",
+      "Employer: Acme",
       "Occupation: 7212 · Welders and flame cutters",
       "Industry: Construction",
       "Employment type: Full time",
       "Recruitment: Local candidates",
     ]);
     const country = chips.find(({ name }) => name === "country");
-    expect(country?.href).toBe("/en/jobs?q=welder&city=Hamburg&occupation=7212&industry=F&employment_type=full_time&recruitment=local");
+    expect(country?.href).toBe("/en/jobs?q=welder&city=Hamburg&employer=Acme&occupation=7212&industry=F&employment_type=full_time&recruitment=local");
   });
 
   it("removes the minimum salary with its currency and pay period, and the flags one at a time", () => {
