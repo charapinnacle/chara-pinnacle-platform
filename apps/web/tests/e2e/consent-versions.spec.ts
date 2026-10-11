@@ -31,7 +31,7 @@ test("FR-A8 AC5: a version superseded before confirmation is accepted first and 
   await confirmFromLink(page, user.confirmPath);
   await expect(page).toHaveURL(/\/en\/onboarding$/);
   await expect(page.getByRole("heading", { name: /^Set up your Worker account/ })).toBeVisible();
-  await expect(page.getByText(`Version ${newVersion}, published`)).toBeVisible();
+  await expect(page.getByText(new RegExp(`^Version ${newVersion} · `))).toBeVisible();
   await expect(page.getByText("Adds the new retention periods.")).toBeVisible();
   const box = page.getByRole("checkbox", { name: /I accept the .*Privacy Policy/ });
   await expect(box).not.toBeChecked();
@@ -77,7 +77,7 @@ test("FR-A8 AC9: a changed document gates the next sign-in, not the open session
     await next.goto("/en/onboarding");
     await expect(next).toHaveURL(/\/en\/consent\?next=%2Fen%2Fonboarding$/);
     await expect(next.getByRole("heading", { name: /Employer Terms/ })).toBeVisible();
-    await expect(next.getByText(`Version ${version}, published`)).toBeVisible();
+    await expect(next.getByText(new RegExp(`^Version ${version} · `))).toBeVisible();
     await expect(next.getByText("Adds the data processing annex.")).toBeVisible();
     await expect(next.getByRole("link", { name: /Read the full text/ })).toHaveAttribute(
       "href",
@@ -176,7 +176,7 @@ test("FR-H3 AC9: a candidate and an employer owner with an older acceptance are 
         await expect(page, path).toHaveURL(new RegExp(`/en/consent\\?next=${encodeURIComponent(path)}$`));
       }
       await expect(page.getByRole("heading", { name: /Terms of Service/ })).toBeVisible();
-      await expect(page.getByText(`Version ${version}, published`)).toBeVisible();
+      await expect(page.getByText(new RegExp(`^Version ${version} · `))).toBeVisible();
       await expect(page.getByText("Adds the clause on the liability of the platform.")).toBeVisible();
       await expect(page.getByRole("link", { name: /Read the full text/ })).toHaveAttribute("href", "/en/legal/terms-of-service");
       await expect(page.getByRole("checkbox")).toHaveCount(1);

@@ -5,13 +5,12 @@ import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toastNetworkError } from "@/components/feedback/toast-store";
-import { CheckboxField } from "@/components/forms/checkbox-field";
-import { ConsentPanel } from "@/components/forms/consent-panel";
+import { ConsentCheckbox } from "@/components/forms/consent-checkbox";
+import { ConsentList } from "@/components/forms/consent-list";
+import { ConsentSection } from "@/components/forms/consent-section";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
-import { LegalLink } from "@/components/forms/text-link";
 import type { ConsentActionResult } from "@/lib/actions/consents";
-import { formatDate } from "@/lib/i18n/format";
 import { isRedirectError } from "@/lib/redirect-error";
 import {
   acceptedSchema,
@@ -76,36 +75,28 @@ export function ConsentForm({
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      {documents.map((document) => (
-        <ConsentPanel as="section" key={document.slug}>
-          {document.slug === AGE_ATTESTATION_SLUG ? null : (
-            <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
-              <h2 className="text-h3">{document.title}</h2>
-              <p className="text-small text-muted-foreground">
-                Version {document.version}, published {formatDate(document.publishedAt)}
-              </p>
-              <p className="text-small leading-relaxed">{document.changeSummary}</p>
-              <LegalLink
-                slug={document.slug}
-                newTabLabel={`of the ${document.title} (opens in a new tab)`}
-                standalone
-                className="-mt-1.5 -mb-2.5"
-              >
-                Read the full text
-              </LegalLink>
-            </div>
-          )}
-          <CheckboxField
-            control={control}
-            name={`accepted.${document.slug}`}
-            id={checkboxId(document.slug)}
-          >
-            {document.slug === AGE_ATTESTATION_SLUG
-              ? (attestationWording ?? "I am 18 or older")
-              : `I accept the ${document.title}`}
-          </CheckboxField>
-        </ConsentPanel>
-      ))}
+      <ConsentList>
+        {documents.map((document) =>
+          document.slug === AGE_ATTESTATION_SLUG ? (
+            <ConsentCheckbox
+              key={document.slug}
+              control={control}
+              name={`accepted.${document.slug}`}
+              id={checkboxId(document.slug)}
+              document={document}
+              attestationWording={attestationWording}
+            />
+          ) : (
+            <ConsentSection
+              key={document.slug}
+              control={control}
+              name={`accepted.${document.slug}`}
+              id={checkboxId(document.slug)}
+              document={document}
+            />
+          ),
+        )}
+      </ConsentList>
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : submitLabel}
       </FormButton>

@@ -21,6 +21,7 @@ import {
 } from "./support/signup-page";
 import { captureActionRequests } from "./support/server-action";
 import { createTestUser, deleteTestUser } from "./support/test-user";
+import { displayTitle } from "@/lib/validation/consents";
 
 const authUrl = `${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`;
 const apikey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -159,8 +160,10 @@ test.describe("sign-up form", () => {
       const box = documentBox(page, title);
       await expect(box).not.toBeChecked();
       const label = page.locator("label", { has: page.locator(`a[href="/en/legal/${slug}"]`) });
-      await expect(label).toContainText(`version ${version}, published`);
+      await expect(label).toContainText(`I accept the ${displayTitle(title)}`);
+      await expect(label).not.toContainText("DRAFT");
       await expect(label.getByRole("link")).toHaveAttribute("href", `/en/legal/${slug}`);
+      await expect(box).toHaveAccessibleDescription(new RegExp(`^Version ${version} · \\d{1,2} \\w+ \\d{4}`));
     }
     await ageBox(page).check();
     await documentBox(page, workerDocuments[0].title).check();
@@ -242,7 +245,7 @@ test.describe("sign-up form", () => {
     const calls = captureActionRequests(page);
 
     for (const [skipped, message] of [
-      ["privacy-policy", new RegExp(`Accept the ${privacy.title} to continue`)],
+      ["privacy-policy", new RegExp(`Accept the ${displayTitle(privacy.title)} to continue`)],
       ["age-18-plus", /Confirm that you are 18 or older to create an account/],
     ] as const) {
       const email = newEmail();
@@ -252,9 +255,8 @@ test.describe("sign-up form", () => {
       await expect(summary(page)).toBeFocused();
       await expect(summary(page)).toContainText(message);
       const box = skipped === "age-18-plus" ? ageBox(page) : documentBox(page, privacy.title);
-      const describedBy = await box.getAttribute("aria-describedby");
-      expect(describedBy).toBeTruthy();
-      await expect(page.locator(`[id="${describedBy}"]`)).toContainText(message);
+      await expect(box).toHaveAccessibleDescription(message);
+      await expect(box).toHaveAttribute("aria-invalid", "true");
       await expect(page).toHaveURL(/\/en\/signup$/);
       expect(userByEmail(email)).toEqual([]);
       expect(calls).toHaveLength(0);

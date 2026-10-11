@@ -5,6 +5,7 @@ import {
   type LegalDocumentSummary,
 } from "@/lib/validation/consents";
 
+export const PASSWORD_MIN_LENGTH = 12;
 const MAX_PASSWORD_BYTES = 72;
 
 export const accountKindSchema = z.enum(["worker", "company"], {
@@ -23,7 +24,7 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string({ error: "Enter a password." })
-  .min(12, { error: "Password must be at least 12 characters." })
+  .min(PASSWORD_MIN_LENGTH, { error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.` })
   .refine(
     (value) => new TextEncoder().encode(value).length <= MAX_PASSWORD_BYTES,
     { error: "Password is too long: use at most 72 characters." },

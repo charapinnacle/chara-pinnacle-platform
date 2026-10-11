@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
+import { PasswordField } from "@/components/forms/password-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { resetPassword } from "@/lib/actions/recovery";
 import { resetPasswordFormSchema, type ResetPasswordFormInput } from "@/lib/validation/login";
@@ -45,14 +46,13 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
   return (
     <form noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <InputField
+      <PasswordField
         control={control}
         name="password"
         id={ids.password}
         label="New password"
-        description="At least 12 characters."
-        type="password"
         autoComplete="new-password"
+        checklist
       />
       {needsCode ? (
         <InputField

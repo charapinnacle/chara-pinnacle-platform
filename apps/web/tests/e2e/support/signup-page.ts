@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
+import { displayTitle } from "@/lib/validation/consents";
 import { currentDocuments } from "./accounts";
 
 export const PASSWORD = "Valid-Passw0rd";
@@ -18,14 +19,17 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// The stored title keeps its DRAFT: prefix; the form shows the plain title.
 export function documentBox(page: Page, title: string) {
   return page.getByRole("checkbox", {
-    name: new RegExp(`I accept the ${escapeRegExp(title)}`),
+    name: new RegExp(`^I accept the ${escapeRegExp(displayTitle(title))}`),
   });
 }
 
+export const AGE_LABEL = "I confirm that I am at least 18 years old.";
+
 export function ageBox(page: Page) {
-  return page.getByRole("checkbox", { name: /I am 18 or older/ });
+  return page.getByRole("checkbox", { name: AGE_LABEL, exact: true });
 }
 
 export async function fillSignup(
