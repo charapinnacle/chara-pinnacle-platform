@@ -29,6 +29,7 @@ const publicPages = (jobId: string): Pages => ({
   "/[lang]/imprint": "/en/imprint",
   "/[lang]/jobs": "/en/jobs",
   "/[lang]/jobs/[id]": `/en/jobs/${jobId}`,
+  "/[lang]/report": `/en/report?type=job&job=${jobId}`,
   "/[lang]/legal": "/en/legal",
   "/[lang]/legal/[slug]": "/en/legal/terms-of-service",
   "/[lang]/pricing": "/en/pricing",
@@ -52,6 +53,7 @@ const workerPages = (applyJobId: string, applicationId: string): Pages => ({
   "/[lang]/applications/[id]": `/en/applications/${applicationId}`,
   "/[lang]/jobs/[id]/apply": `/en/jobs/${applyJobId}/apply`,
   "/[lang]/saved": "/en/saved",
+  "/[lang]/reports": "/en/reports",
   "/[lang]/settings": "/en/settings",
   "/[lang]/settings/notifications": "/en/settings/notifications",
   "/[lang]/forbidden": "/en/forbidden",
@@ -69,11 +71,12 @@ const employerPages = (slug: string, jobId: string, applicationId: string): Page
   "/[lang]/org/[slug]/jobs/[id]/preview": `/en/org/${slug}/jobs/${jobId}/preview`,
   "/[lang]/org/[slug]/applicants": `/en/org/${slug}/applicants?job=${jobId}`,
   "/[lang]/org/[slug]/applicants/[applicationId]": `/en/org/${slug}/applicants/${applicationId}`,
+  "/[lang]/org/[slug]/applicants/[applicationId]/report": `/en/org/${slug}/applicants/${applicationId}/report`,
   "/[lang]/org/[slug]/billing": `/en/org/${slug}/billing`,
   "/[lang]/org/[slug]/billing/checkout": `/en/org/${slug}/billing/checkout?plan=employer_starter`,
 });
 
-const adminPages = (userId: string, organizationId: string): Pages => ({
+const adminPages = (userId: string, organizationId: string, reportId: number): Pages => ({
   "/[lang]/admin": "/en/admin",
   "/[lang]/admin/users": "/en/admin/users",
   "/[lang]/admin/users/[id]": `/en/admin/users/${userId}`,
@@ -84,6 +87,8 @@ const adminPages = (userId: string, organizationId: string): Pages => ({
   "/[lang]/admin/audit": "/en/admin/audit",
   "/[lang]/admin/staff": "/en/admin/staff",
   "/[lang]/admin/mfa-reset": "/en/admin/mfa-reset",
+  "/[lang]/admin/reports": "/en/admin/reports",
+  "/[lang]/admin/reports/[id]": `/en/admin/reports/${reportId}`,
 });
 
 const trustSafetyPages = (jobId: string): Pages => ({
@@ -127,7 +132,7 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
       ...Object.keys(authPages("", "", "")),
       ...Object.keys(workerPages("", "")),
       ...Object.keys(employerPages("", "", "")),
-      ...Object.keys(adminPages("", "")),
+      ...Object.keys(adminPages("", "", 0)),
       ...Object.keys(trustSafetyPages("")),
       ...accountStatePages,
     ]);
@@ -244,8 +249,10 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
   test("administration pages, as a platform administrator", async ({ page }) => {
     const team = await newTeam();
     seedJob(team, { title: "Listed welder", status: "open" });
+    const listed = seedJob(team, { title: "Reported welder", status: "open" });
+    const reportId = Number(execute(`insert into public.reports (target_type, job_id, category, details, good_faith_confirmed) values ('job', ${literal(listed)}, 'other', 'A report seeded for the sweep of the pages.', true) returning id`).trim().split("\n")[0]);
     const { user } = await signInStaff(page, "admin");
-    await sweep(page, adminPages(user.id, team.id));
+    await sweep(page, adminPages(user.id, team.id, reportId));
   });
 
   test("moderation and suspension pages, as trust and safety", async ({ page }) => {

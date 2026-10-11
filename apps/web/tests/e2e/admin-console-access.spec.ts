@@ -7,8 +7,8 @@ import { enterCode, newOwner, staffUser } from "./support/mfa";
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
-const ADMIN_ENTRIES = ["Users", "Organisations", "Statistics", "Legal documents", "Audit log", "Staff", "MFA reset"];
-const TRUST_ENTRIES = ["Users", "Organisations", "Vacancy moderation", "Suspensions and reinstatements"];
+const ADMIN_ENTRIES = ["Users", "Organisations", "Statistics", "Legal documents", "Audit log", "Staff", "MFA reset", "Reports"];
+const TRUST_ENTRIES = ["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions and reinstatements"];
 
 async function entries(page: Page): Promise<string[]> {
   return page.getByRole("navigation", { name: "Administration" }).getByRole("link").allInnerTexts();
@@ -79,7 +79,7 @@ test.describe("the administration console: who gets in and what each role sees",
     await expect(page.getByRole("heading", { name: "Audit log", level: 1 })).toBeVisible();
   });
 
-  test("FR-F1 AC1: the Platform Administrator has seven entries, none for plans, limits or settings, and no page of the Trust & Safety role", async ({
+  test("FR-F1 AC1: the Platform Administrator has eight entries, the reports among them and none for plans, limits or settings, and no page of the Trust & Safety role", async ({
     page,
   }) => {
     await signInStaff(page, "admin");
@@ -91,7 +91,7 @@ test.describe("the administration console: who gets in and what each role sees",
     for (const path of ["/en/admin/moderation", "/en/admin/suspensions", "/en/admin/plans", "/en/admin/settings"]) {
       await expectNotFound(page, path);
     }
-    for (const path of ["users", "organizations", "statistics", "legal", "audit", "staff", "mfa-reset"]) {
+    for (const path of ["users", "organizations", "statistics", "legal", "audit", "staff", "mfa-reset", "reports"]) {
       const response = await page.goto(`/en/admin/${path}`);
       expect(response?.status(), path).toBe(200);
     }
@@ -105,7 +105,7 @@ test.describe("the administration console: who gets in and what each role sees",
     for (const path of ["audit", "statistics", "legal", "staff", "mfa-reset"]) {
       await expectNotFound(page, `/en/admin/${path}`);
     }
-    for (const path of ["users", "organizations", "moderation", "suspensions"]) {
+    for (const path of ["users", "organizations", "reports", "moderation", "suspensions"]) {
       const response = await page.goto(`/en/admin/${path}`);
       expect(response?.status(), path).toBe(200);
     }

@@ -98,6 +98,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
     await expect(panel.getByRole("button", { name: "Log out" })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(button).toHaveAttribute("aria-expanded", "false");
@@ -120,7 +121,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(panel).toBeVisible();
     await expect(panel).toContainText(worker.email);
     await expect(panel).toContainText("Worker");
-    expect(await linkLabels(panel)).toEqual(["Edit profile", "Settings"]);
+    expect(await linkLabels(panel)).toEqual(["Edit profile", "Settings", "My reports"]);
     await expect(panel.getByRole("button", { name: "Log out" })).toBeVisible();
     await expectNoAxeViolations(page);
 
@@ -163,7 +164,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await page.goto("/en/dashboard/employer");
     await openAccountMenu(page);
     const panel = await panelOf(page);
-    expect(await linkLabels(panel)).toEqual(["Settings"]);
+    expect(await linkLabels(panel)).toEqual(["Settings", "My reports"]);
     await expect(panel).toContainText("Member");
     await expect(panel).toContainText(member.user.email);
     await logOut(page);
@@ -228,7 +229,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
   test("the console keeps its own navigation, has the account menu in the header and wraps without overflow on a phone", async ({ page }) => {
     await signInStaff(page, "admin");
     const administration = page.getByRole("navigation", { name: "Administration" });
-    await expect(administration.getByRole("link")).toHaveCount(7);
+    await expect(administration.getByRole("link")).toHaveCount(8);
     await expect(page.getByRole("link", { name: "CHARA" })).toHaveAttribute("href", "/en/admin");
     await openAccountMenu(page);
     await expect(await panelOf(page)).toContainText("Platform Administrator");
