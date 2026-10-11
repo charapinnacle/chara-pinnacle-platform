@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { waitForHydration } from "./hydration";
 import { createCommittedUser } from "./login";
 import { execute, literal, query } from "./db";
 import { organizationRows, registerOrganization, uniqueName } from "./organizations";
@@ -56,6 +57,14 @@ export const FIELD_LABELS = [
 export async function chooseFromList(page: Page, label: string, search: string, option: string | RegExp): Promise<void> {
   await page.getByRole("combobox", { name: label, exact: true }).fill(search);
   await page.getByRole("option", { name: option }).first().click();
+}
+
+// The More filters disclosure of Find Jobs (salary, accommodation and visa support): closed until it is opened.
+export async function openMoreFilters(page: Page): Promise<void> {
+  await waitForHydration(page.getByLabel("Keyword", { exact: true }));
+  const details = page.locator("details").filter({ hasText: "More filters" });
+  if ((await details.getAttribute("open")) === null) await details.getByText("More filters", { exact: true }).click();
+  await expect(details).toHaveAttribute("open", "");
 }
 
 export interface JobDetails {

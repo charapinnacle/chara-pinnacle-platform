@@ -12,8 +12,8 @@ import { expect, test } from "./support/test";
 const combobox = (page: Page, name: string): Locator => page.getByRole("combobox", { name, exact: true });
 const optionNodes = (page: Page): Locator => page.locator("[role=option]");
 const announcement = (page: Page): Locator => page.locator("[aria-live=polite]").filter({ hasText: /result|match/i });
-const filtersToggle = (page: Page): Locator => page.getByRole("button", { name: "Filters", exact: true });
-const filtersRegion = (page: Page): Locator => page.getByRole("group", { name: "Filters", exact: true });
+const filtersRow = (page: Page): Locator => page.getByRole("group", { name: "Filters", exact: true });
+const moreFilters = (page: Page): Locator => page.locator("details").filter({ hasText: "More filters" });
 
 async function openJobs(page: Page): Promise<void> {
   await page.goto("/en/jobs");
@@ -77,7 +77,7 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
 
   test("UX-02: opening the list moves nothing on the page", async ({ page }) => {
     await openJobs(page);
-    const next = page.getByRole("button", { name: "Search vacancies" });
+    const next = page.getByRole("button", { name: "Search jobs" });
     const before = await next.boundingBox();
     await combobox(page, "Country").click();
     await expect(optionNodes(page)).toHaveCount(50);
@@ -278,7 +278,7 @@ test.describe("UX-02: the country of the vacancy search without JavaScript", () 
     await expect(page.locator("#search-country")).toBeHidden();
     await page.locator("select[name=country]").selectOption({ label: "Germany" });
     await page.getByLabel("Keyword", { exact: true }).fill("welder");
-    await page.getByRole("button", { name: "Search vacancies" }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
     await expect(page).toHaveURL(/[?&]country=DE(&|$)/);
     await expect(page).toHaveURL(/[?&]q=welder(&|$)/);
     await expect(page.getByRole("link", { name: "Remove filter Country: Germany" })).toBeVisible();
@@ -286,7 +286,7 @@ test.describe("UX-02: the country of the vacancy search without JavaScript", () 
 });
 
 test.describe("UX-06: the vacancy search puts the results first", () => {
-  test("a phone sees the keyword, the country and the results, and opens the filters with a button", async ({ browser }) => {
+  test("a phone sees the keyword, the city, the country, the row of filters and the results, and opens More filters with a disclosure", async ({ browser }) => {
     const company = await newCompany();
     const marker = `zq${Date.now().toString(36)}`;
     seedJob(company, { title: `Welder ${marker}`, status: "open" });
@@ -295,47 +295,54 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     await page.goto(`/en/jobs?q=${marker}`);
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
 
-    await expect(filtersToggle(page)).toHaveAttribute("aria-expanded", "false");
-    await expect(filtersRegion(page)).toBeHidden();
+    await expect(moreFilters(page)).not.toHaveAttribute("open", "");
     await expect(page.getByLabel("Keyword", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("City", { exact: true })).toBeVisible();
     await expect(combobox(page, "Country")).toBeVisible();
+    await expect(filtersRow(page)).toBeVisible();
+    await expect(page.getByLabel("Salary at least")).toBeHidden();
     const card = page.getByRole("heading", { name: `Welder ${marker}` });
     await expect(card).toBeVisible();
-    expect((await card.boundingBox())?.y).toBeLessThan(812);
+    expect((await card.boundingBox())?.y).toBeLessThan(900);
 
-    await filtersToggle(page).click();
-    await expect(filtersToggle(page)).toHaveAttribute("aria-expanded", "true");
-    await expect(filtersRegion(page)).toBeVisible();
-    for (const label of ["City", "Occupation", "Industry", "Employment type", "Recruitment", "Salary at least", "Currency", "Pay period"]) {
+    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await expect(moreFilters(page)).toHaveAttribute("open", "");
+    for (const label of ["Salary at least", "Currency", "Pay period"]) {
       await expect(page.getByLabel(label, { exact: true }).first(), label).toBeVisible();
     }
     await expectNoAxeViolations(page);
-    await filtersToggle(page).click();
-    await expect(filtersRegion(page)).toBeHidden();
+    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await expect(page.getByLabel("Salary at least")).toBeHidden();
     await context.close();
   });
 
-  test("a wide screen shows the filters beside the results and no toggle", async ({ page }) => {
+  test("a wide screen shows the four dropdowns in one row under the search bar and the results below them", async ({ page }) => {
     await openJobs(page);
-    await expect(filtersRegion(page)).toBeVisible();
-    await expect(filtersToggle(page)).toBeHidden();
+    await expect(filtersRow(page)).toBeVisible();
+    const boxes = await Promise.all(
+      ["Occupation", "Industry"].map((name) => combobox(page, name).boundingBox()),
+    );
+    const selects = await Promise.all(["Employment type", "Recruitment"].map((name) => page.getByLabel(name, { exact: true }).boundingBox()));
+    const tops = [...boxes, ...selects].map((box) => Math.round(box?.y ?? -1));
+    expect(new Set(tops).size).toBe(1);
     const keyword = await page.getByLabel("Keyword", { exact: true }).boundingBox();
     const results = await page.getByRole("status").filter({ hasText: /vacanc/ }).boundingBox();
-    expect(results?.x).toBeGreaterThan((keyword?.x ?? 0) + (keyword?.width ?? 0));
-    expect(results?.y).toBeLessThan((keyword?.y ?? 0) + 100);
+    expect(tops[0]).toBeGreaterThan((keyword?.y ?? 0) + (keyword?.height ?? 0));
+    expect(results?.y).toBeGreaterThan(tops[0]);
+    expect(results?.width).toBeGreaterThan(300);
     await expectNoAxeViolations(page);
   });
 
-  test("a filter that the form refuses opens the closed filters and names the problem", async ({ browser }) => {
+  test("a filter that the form refuses opens the closed More filters and names the problem", async ({ browser }) => {
     const context = await browser.newContext(PHONE);
     const page = await context.newPage();
     await openJobs(page);
-    await filtersToggle(page).click();
+    await moreFilters(page).getByText("More filters", { exact: true }).click();
     await page.getByLabel("Salary at least").fill("2800");
-    await filtersToggle(page).click();
+    await moreFilters(page).getByText("More filters", { exact: true }).click();
     await expect(page.getByLabel("Salary at least")).toBeHidden();
-    await page.getByRole("button", { name: "Search vacancies" }).click();
-    await expect(filtersRegion(page)).toBeVisible();
+    await page.getByRole("button", { name: "Search jobs" }).click();
+    await expect(moreFilters(page)).toHaveAttribute("open", "");
     await expect(page.getByText("Select a currency for the minimum salary.")).toBeVisible();
     await context.close();
   });
@@ -366,7 +373,7 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     await page.getByRole("link", { name: /^Remove filter Minimum salary/ }).click();
     await expect(page).toHaveURL(/\/en\/jobs\?q=welder&employment_type=full_time&accommodation=true$/);
     await expect(page.getByLabel("Salary at least")).toHaveValue("");
-    await expect(combobox(page, "Currency")).toHaveValue("");
+    await expect(page.locator("#search-salary-currency")).toHaveValue("");
 
     for (const name of ["Keyword: welder", "Employment type: Full time", "Accommodation provided"]) {
       const chip = page.getByRole("link", { name: `Remove filter ${name}` });
@@ -381,7 +388,7 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     const context = await browser.newContext(PHONE);
     const page = await context.newPage();
     await openJobs(page);
-    await filtersToggle(page).click();
+    await moreFilters(page).getByText("More filters", { exact: true }).click();
     for (const name of ["Accommodation provided", "Visa support offered"]) {
       const row = page.getByRole("checkbox", { name }).locator("xpath=ancestor::*[@data-slot='field'][1]");
       expect((await row.boundingBox())?.height, name).toBeGreaterThanOrEqual(44);

@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
-import { chooseFromList, newCompany, seedJob, type Company } from "./support/jobs";
+import { chooseFromList, newCompany, openMoreFilters, seedJob, type Company } from "./support/jobs";
 import { logIn, overflow } from "./support/login-page";
 import { organizationRows, uniqueToken } from "./support/organizations";
 import { expect, test } from "./support/test";
@@ -38,10 +38,11 @@ test.describe("public vacancy search", () => {
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
     await chooseFromList(page, "Country", "Germany", /^Germany$/);
     await page.getByLabel("Employment type").selectOption("full_time");
+    await openMoreFilters(page);
     await page.getByLabel("Salary at least").fill("3000");
     await chooseFromList(page, "Currency", "EUR", /^EUR /);
     await page.getByLabel("Pay period").selectOption("month");
-    await page.getByRole("button", { name: "Search vacancies" }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
 
     await expect
       .poll(() => params(page))
@@ -77,7 +78,7 @@ test.describe("public vacancy search", () => {
     await expect(page.getByLabel("Salary at least")).toHaveValue("3000");
 
     await page.getByLabel("City", { exact: true }).fill("Hamburg");
-    await page.getByRole("button", { name: "Search vacancies" }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
     await expect.poll(() => params(page).city).toBe("Hamburg");
     await expect(cards(page, marker)).toHaveCount(20);
     await page.goBack();
@@ -97,7 +98,7 @@ test.describe("public vacancy search", () => {
     }
   });
 
-  test("FR-C3 AC9: a result card shows the key facts of a vacancy and no person, and every filter has a visible label", async ({
+  test("FR-C3 AC9: a result row shows the title, employer, place, salary and date and no person, and every filter has a label", async ({
     page,
   }) => {
     const company = await newCompany();
@@ -119,20 +120,26 @@ test.describe("public vacancy search", () => {
     await expect(card.getByRole("link", { name: `Welder ${marker}` })).toHaveAttribute("href", `/en/jobs/${id}`);
     await expect(card).toContainText(organization.display_name);
     await expect(card).toContainText("Hamburg, Germany");
-    await expect(card).toContainText("Full time");
     await expect(card).toContainText("EUR 2,800 to 3,400, per month");
-    await expect(card.getByText("Accommodation", { exact: true })).toBeVisible();
-    await expect(card.getByText("Visa support", { exact: true })).toBeVisible();
     await expect(card).toContainText(/Posted \d{1,2} [A-Z][a-z]+ \d{4}/);
+    await expect(card.locator("svg:not(button svg)")).toHaveCount(0);
+    await expect(card.getByText("Accommodation", { exact: true })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: `Apply now: Welder ${marker}` })).toBeVisible();
+    await expect(card.getByRole("button", { name: `Save job: Welder ${marker}` })).toBeVisible();
     await expect(status(page, "1 vacancy shown")).toBeVisible();
     const text = (await page.locator("body").innerText()) + (await page.content());
     expect(text).not.toContain(organization.legal_name);
     expect(text).not.toContain(company.owner.email);
 
-    for (const label of ["Country", "Occupation", "Industry", "Currency"]) {
+    for (const label of ["Country", "Occupation", "Industry"]) {
       await expect(page.getByRole("combobox", { name: label, exact: true }), label).toBeVisible();
     }
-    for (const label of ["Keyword", "City", "Employment type", "Recruitment", "Salary at least", "Pay period", "Accommodation provided", "Visa support offered"]) {
+    for (const label of ["Keyword", "City", "Employment type", "Recruitment"]) {
+      await expect(page.getByLabel(label, { exact: true }), label).toBeVisible();
+    }
+    await openMoreFilters(page);
+    await expect(page.getByRole("combobox", { name: "Currency", exact: true })).toBeVisible();
+    for (const label of ["Salary at least", "Pay period", "Accommodation provided", "Visa support offered"]) {
       await expect(page.getByLabel(label, { exact: true }), label).toBeVisible();
     }
   });
@@ -149,10 +156,13 @@ test.describe("public vacancy search", () => {
     await keyword.focus();
     await page.keyboard.type(marker);
     await page.keyboard.press("Tab");
+    await expect(page.getByLabel("City", { exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(page.getByRole("combobox", { name: "Country", exact: true })).toBeFocused();
     await page.keyboard.type("Germany");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveValue("Germany");
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await expect(keyword).toBeFocused();
     await page.keyboard.press("Enter");
@@ -178,7 +188,7 @@ test.describe("public vacancy search", () => {
     await page.goto("/en/jobs");
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
-    await page.getByRole("button", { name: "Search vacancies" }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
 
     const empty = page.getByRole("status").filter({ has: page.getByRole("heading", { name: "No vacancies match your search" }) });
     await expect(empty).toBeVisible();
@@ -263,9 +273,9 @@ test.describe("public vacancy search", () => {
 
   test("FR-C3: the form refuses a minimum salary without its currency and pay period and names what is missing", async ({ page }) => {
     await page.goto("/en/jobs");
-    await waitForHydration(page.getByLabel("Salary at least"));
+    await openMoreFilters(page);
     await page.getByLabel("Salary at least").fill("3000");
-    await page.getByRole("button", { name: "Search vacancies" }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
     await expect(page.getByText("Select a currency for the minimum salary.")).toBeVisible();
     await expect(page.getByText("Select a pay period for the minimum salary.")).toBeVisible();
     await expect(page).toHaveURL("/en/jobs");

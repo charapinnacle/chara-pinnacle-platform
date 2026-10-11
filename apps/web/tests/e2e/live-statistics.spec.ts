@@ -40,6 +40,19 @@ test.describe("live statistics on the home page", () => {
     await expectNoAxeViolations(page);
   });
 
+  test("D81: the block comes after How CHARA works and before the closing call", async ({ page }) => {
+    showSnapshot({ jobs: 15, employers: 8, workers: 30, countries: 6 });
+    await openHome(page);
+
+    await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText([
+      "Who are you?",
+      "One professional profile. Multiple opportunities.",
+      "How CHARA works",
+      "Global Workforce Network",
+      "Your Workforce. Your Network. One Platform.",
+    ]);
+  });
+
   test("FR-H4 AC1: the block is part of the served page, so it shows without JavaScript", async ({ browser }) => {
     showSnapshot({ jobs: 15, employers: 8, workers: 30, countries: 6 });
     const context = await browser.newContext({ javaScriptEnabled: false });

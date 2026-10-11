@@ -1,9 +1,8 @@
-import { Briefcase, Building2, Clock, MapPin } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { StatusBadge } from "@/components/feedback/status-badge";
 import { TextLink } from "@/components/forms/text-link";
+import { ApplyButton } from "@/components/jobs/apply-button";
 import { SaveJob } from "@/components/jobs/save-job";
-import { Card } from "@/components/layout/card";
 import { searchJobs, type JobSearchResult } from "@/lib/dal/hiring";
 import { getCountries } from "@/lib/dal/reference";
 import { getSavedJobIds } from "@/lib/dal/saved-jobs";
@@ -12,61 +11,39 @@ import { formatDate } from "@/lib/i18n/format";
 import { formatSalary } from "@/lib/jobs/presentation";
 import { searchPath, usedFilters, type JobSearchFilters } from "@/lib/jobs/search-params";
 import { viewerOf, type Viewer } from "@/lib/jobs/viewer";
-import { employmentTypeLabels } from "@/lib/validation/job";
 
-type ResultCardProps = { job: JobSearchResult; lang: string; countryName: string; viewer: Viewer; saved: boolean; next: string };
+type ResultRowProps = { job: JobSearchResult; lang: string; countryName: string; viewer: Viewer; saved: boolean; next: string };
 
-const tagClassName = "inline-flex min-h-7 items-center gap-1.5 rounded-full border bg-background px-2.5 text-small text-secondary-foreground";
-
-function ResultCard({ job, lang, countryName, viewer, saved, next }: ResultCardProps) {
+// A row says what a person decides on: the title, the employer, the place, the pay and the date. The facts of the vacancy
+// page (employment type, accommodation, visa support) are filters of the search and stay there.
+function ResultRow({ job, lang, countryName, viewer, saved, next }: ResultRowProps) {
   const salary = formatSalary(job);
   return (
-    <Card
-      as="li"
-      padding="lg"
-      className="gap-4 transition-colors duration-200 ease-brand hover:border-foreground/20"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <div className="grid min-w-0 flex-1 gap-1">
-          <h2 className="text-h2">
-            <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
-              {job.title}
-            </TextLink>
-          </h2>
-          <p className="flex items-center gap-1.5 text-body break-words text-muted-foreground">
-            <Building2 aria-hidden className="size-4 shrink-0" />
-            {job.employerName}
-          </p>
-        </div>
-        {viewer === "company" ? null : <SaveJob jobId={job.id} title={job.title} viewer={viewer} saved={saved} next={next} />}
-      </div>
-      <ul aria-label="Key facts" className="flex flex-wrap gap-2">
-        <li className={tagClassName}>
-          <MapPin aria-hidden className="size-3.5 text-muted-foreground" />
-          {job.city}, {countryName}
-        </li>
-        <li className={tagClassName}>
-          <Clock aria-hidden className="size-3.5 text-muted-foreground" />
-          {employmentTypeLabels[job.employmentType]}
-        </li>
-        {job.accommodation ? (
-          <li>
-            <StatusBadge status="info">Accommodation</StatusBadge>
-          </li>
-        ) : null}
-        {job.visaSupport ? (
-          <li>
-            <StatusBadge status="info">Visa support</StatusBadge>
-          </li>
-        ) : null}
-      </ul>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t pt-4">
-        <p className={salary ? "text-h3 tabular-nums" : "text-body text-muted-foreground"}>{salary ?? "Salary not stated"}</p>
-        <p className="text-small text-muted-foreground">
-          Posted <time dateTime={job.createdAt}>{formatDate(job.createdAt)}</time>
+    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4 py-6">
+      <div className="grid min-w-0 flex-1 gap-1">
+        <h2 className="text-h2">
+          <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
+            {job.title}
+          </TextLink>
+        </h2>
+        <p className="text-body break-words text-muted-foreground">
+          {job.employerName} · {job.city}, {countryName}
+        </p>
+        <p className="text-body">
+          {salary ? <span className="tabular-nums">{salary}</span> : null}
+          {salary ? " · " : null}
+          <span className="text-muted-foreground">
+            Posted <time dateTime={job.createdAt}>{formatDate(job.createdAt)}</time>
+          </span>
         </p>
       </div>
-    </Card>
+      {viewer === "company" ? null : (
+        <div className="flex flex-wrap gap-3">
+          <ApplyButton jobId={job.id} title={job.title} lang={lang} viewer={viewer} next={next} variant="secondary" />
+          <SaveJob jobId={job.id} title={job.title} viewer={viewer} saved={saved} next={next} />
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -107,9 +84,9 @@ export async function JobResults({ lang, filters }: { lang: string; filters: Job
       <p role="status" aria-live="polite" className="text-body text-muted-foreground">
         {countText(results.length, nextCursor !== null)}
       </p>
-      <ul className="grid animate-stagger gap-3">
+      <ul className="animate-stagger divide-y border-y">
         {results.map((job) => (
-          <ResultCard
+          <ResultRow
             key={job.id}
             job={job}
             lang={lang}

@@ -69,10 +69,10 @@ test.describe("smoke: the five main journeys end to end", () => {
     await mainNavigation(page).getByRole("link", { name: "Find jobs" }).click();
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
-    await page.getByRole("button", { name: "Search vacancies" }).click();
-    await page.getByRole("link", { name: title }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
+    await page.getByRole("link", { name: title, exact: true }).click();
     await expect(page).toHaveURL(`/en/jobs/${jobId}`);
-    await page.getByRole("link", { name: "Apply", exact: true }).click();
+    await page.getByRole("link", { name: /^Apply now/ }).click();
     await waitForHydration(page.getByLabel("Cover note (optional)"));
     await page.getByLabel("Cover note (optional)").fill("Six years of MIG welding.");
     await page.getByLabel(/I agree to share the selected documents with/).check();

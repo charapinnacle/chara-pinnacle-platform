@@ -77,29 +77,26 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     await page.goto("/en");
     expect(await sizeOf("The Global Workforce Network")).toBe("64px");
     await page.goto("/en/jobs");
-    expect(await sizeOf("Find jobs")).toBe("32px");
+    expect(await sizeOf("Find Your Next Opportunity")).toBe("32px");
     await page.goto("/en/pricing");
     expect(await sizeOf("Pricing")).toBe("48px");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/en");
     expect(await sizeOf("The Global Workforce Network")).toBe("40px");
     await page.goto("/en/jobs");
-    expect(await sizeOf("Find jobs")).toBe("26px");
+    expect(await sizeOf("Find Your Next Opportunity")).toBe("26px");
   });
 
-  test("DS-01: the search of the hero is the primary action, the home links are secondary link-buttons of the button height, and a click follows the link", async ({ page }) => {
+  test("DS-01: the search of the hero is the primary action, Post a Job is a secondary link-button of the button height, and a click follows the link", async ({ page }) => {
     await page.goto("/en");
-    const search = page.getByRole("search", { name: "Search vacancies" }).getByRole("button", { name: "Search vacancies" });
-    const browse = page.getByRole("link", { name: "Browse vacancies" });
-    const create = page.getByRole("link", { name: "Create an account" });
-    expect((await browse.boundingBox())?.height).toBeGreaterThanOrEqual(44);
-    expect((await create.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    const search = page.getByRole("search", { name: "Search jobs" }).getByRole("button", { name: "Search jobs" });
+    const post = page.getByRole("main").getByRole("link", { name: "Post a Job" });
+    expect((await post.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     expect(await backgroundOf(search)).toBe(await tokenColour(page, "--primary"));
-    expect(await backgroundOf(browse)).toBe(await tokenColour(page, "--card"));
-    expect(await backgroundOf(create)).toBe(await tokenColour(page, "--card"));
-    await browse.click();
-    await expect(page).toHaveURL("/en/jobs");
-    await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+    expect(await backgroundOf(post)).toBe(await tokenColour(page, "--card"));
+    await post.click();
+    await expect(page).toHaveURL("/en/signup?kind=company");
+    await expect(page.getByRole("heading", { level: 1, name: "Create your account" })).toBeVisible();
   });
 
   test("DS-02: the stage badges of a candidate's applications say the stage and colour it by status", async ({ page }) => {

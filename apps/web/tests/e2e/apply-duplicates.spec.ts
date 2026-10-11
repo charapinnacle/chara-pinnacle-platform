@@ -107,8 +107,8 @@ test.describe("one application per vacancy", () => {
     await expect(page.getByText("You applied on 3 Oct 2026, stage Shortlisted")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await expect(page.getByRole("link", { name: "View your application" })).toHaveAttribute("href", applicationUrl(id));
-    await expect(page.getByRole("link", { name: "Apply", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Apply" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Apply now/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Apply now/ })).toHaveCount(0);
 
     await page.goto(applyUrl(jobId));
     await expect(page).toHaveURL(`${applicationUrl(id)}?existing=1`);

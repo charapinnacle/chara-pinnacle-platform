@@ -75,8 +75,8 @@ test.describe("the public vacancy page", () => {
     await expect(website).toHaveAttribute("target", "_blank");
     await expect(website).toHaveAttribute("rel", "nofollow noopener noreferrer");
 
-    await expect(page.getByRole("button", { name: "Apply" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Save vacancy: Welder MIG/MAG" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: /^Apply now/ })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Save job: Welder MIG/MAG" })).toBeEnabled();
 
     const { html } = await bodyOf(page, publicUrl(id));
     expect(jsonLd(html)).toEqual({
@@ -127,10 +127,10 @@ test.describe("the public vacancy page", () => {
     const next = `/en/jobs/${id}`;
 
     await page.goto(publicUrl(id));
-    await page.getByRole("button", { name: "Apply" }).click();
+    await page.getByRole("button", { name: /^Apply now/ }).click();
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(`${next}/apply`)}`);
     await page.goBack();
-    await page.getByRole("button", { name: "Save vacancy: Login welder" }).click();
+    await page.getByRole("button", { name: "Save job: Login welder" }).click();
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(next)}`);
 
     await page.getByLabel("Email", { exact: true }).fill(candidate.email);
@@ -138,9 +138,9 @@ test.describe("the public vacancy page", () => {
     await page.getByRole("button", { name: "Log in" }).click();
     await expect(page).toHaveURL(next);
     await expect(page.getByRole("heading", { name: "Login welder", level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Apply", exact: true })).toHaveAttribute("href", `${next}/apply`);
-    await expect(page.getByRole("button", { name: "Save vacancy: Login welder" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Save vacancy: Login welder" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByRole("link", { name: /^Apply now/ })).toHaveAttribute("href", `${next}/apply`);
+    await expect(page.getByRole("button", { name: "Save job: Login welder" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Save job: Login welder" })).toHaveAttribute("aria-pressed", "false");
     await expectNoAxeViolations(page);
 
     for (const hostile of ["//evil.example", "https://evil.example"]) {
@@ -164,7 +164,7 @@ test.describe("the public vacancy page", () => {
       const response = await page.goto(publicUrl(id));
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { name: "Company welder", level: 1 })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Apply" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /^Apply now/ })).toHaveCount(0);
       await expect(page.getByRole("button", { name: /^Save/ })).toHaveCount(0);
       await expect(page.getByText("Only candidates can apply for vacancies or save them.")).toBeVisible();
     }
@@ -248,8 +248,8 @@ test.describe("the public vacancy page", () => {
     await expectNoAxeViolations(page);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
-    const apply = page.getByRole("button", { name: "Apply" });
-    const save = page.getByRole("button", { name: "Save vacancy: Keyboard welder" });
+    const apply = page.getByRole("button", { name: /^Apply now/ });
+    const save = page.getByRole("button", { name: "Save job: Keyboard welder" });
     await apply.focus();
     await expect(apply).toBeFocused();
     expect(await apply.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("solid");
@@ -260,7 +260,7 @@ test.describe("the public vacancy page", () => {
     await page.keyboard.press("Space");
     await expect(page).toHaveURL(/\/en\/login\?next=/);
     await page.goBack();
-    await page.getByRole("button", { name: "Apply" }).focus();
+    await page.getByRole("button", { name: /^Apply now/ }).focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/en\/login\?next=/);
   });

@@ -36,7 +36,7 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
 
     await mainNavigation(page).getByRole("link", { name: "Find jobs" }).click();
     await expect(page).toHaveURL("/en/jobs");
-    await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
     await expect(mainNavigation(page).getByRole("link", { name: "Go to my area" })).toHaveAttribute("href", "/en/dashboard/worker");
     await context.close();
   });

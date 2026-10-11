@@ -1,13 +1,12 @@
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
+import { ApplyButton } from "@/components/jobs/apply-button";
 import { SaveJob } from "@/components/jobs/save-job";
-import { LinkButton } from "@/components/layout/link-button";
-import { requireLogin } from "@/lib/actions/vacancy";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import type { ApplicationState } from "@/lib/dal/applications";
 import { formatShortDate } from "@/lib/i18n/format";
 import type { Viewer } from "@/lib/jobs/viewer";
-import { applicationPath, applyPath } from "@/lib/routes";
+import { applicationPath } from "@/lib/routes";
 
 type VacancyActionsProps = {
   job: { id: string; title: string };
@@ -25,20 +24,20 @@ export function PreviewActions() {
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-3">
         <FormButton disabled className="w-auto">
-          Apply
+          Apply now
         </FormButton>
         <FormButton disabled variant="secondary" className="w-auto">
-          Save
+          Save job
         </FormButton>
       </div>
-      <p className={noteClassName}>Apply and Save work once the vacancy is published.</p>
+      <p className={noteClassName}>Apply now and Save job work once the vacancy is published.</p>
     </div>
   );
 }
 
-// What a candidate can do about applying: Apply while there is no application or only a withdrawn one (Apply again after
-// a withdrawal), or the date and stage of the application with a link to it.
-function CandidateApply({ jobId, lang, application }: { jobId: string; lang: string; application: ApplicationState | null }) {
+// What a candidate can do about applying: Apply now while there is no application or only a withdrawn one (Apply again
+// after a withdrawal), or the date and stage of the application with a link to it.
+function CandidateApply({ job, lang, next, application }: { job: { id: string; title: string }; lang: string; next: string; application: ApplicationState | null }) {
   if (application && application.status !== "withdrawn") {
     return (
       <div className="grid gap-1">
@@ -54,7 +53,14 @@ function CandidateApply({ jobId, lang, application }: { jobId: string; lang: str
   return (
     <div className="flex flex-wrap items-center gap-3">
       {application ? <p className="font-medium">You withdrew your application</p> : null}
-      <LinkButton href={applyPath(lang, jobId)}>{application ? "Apply again" : "Apply"}</LinkButton>
+      <ApplyButton
+        jobId={job.id}
+        title={job.title}
+        lang={lang}
+        viewer="candidate"
+        next={next}
+        label={application ? "Apply again" : "Apply now"}
+      />
     </div>
   );
 }
@@ -70,11 +76,9 @@ export function VacancyActions({ job, lang, viewer, saved, application }: Vacanc
     <div className="grid gap-2">
       <div className="flex flex-wrap items-center gap-3">
         {viewer === "candidate" ? (
-          <CandidateApply jobId={job.id} lang={lang} application={application} />
+          <CandidateApply job={job} lang={lang} next={next} application={application} />
         ) : (
-          <form action={requireLogin.bind(null, "apply", job.id, next)}>
-            <FormButton className="w-auto">Apply</FormButton>
-          </form>
+          <ApplyButton jobId={job.id} title={job.title} lang={lang} viewer={viewer} next={next} />
         )}
         <SaveJob jobId={job.id} title={job.title} viewer={viewer} saved={saved} next={next} />
       </div>

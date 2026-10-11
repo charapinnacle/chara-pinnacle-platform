@@ -44,7 +44,7 @@ test.describe("notify: transactional emails through the mail catcher", () => {
     const note = "Private cover note 4711";
 
     await logIn(page, candidate, publicUrl(jobId));
-    await page.getByRole("link", { name: "Apply", exact: true }).click();
+    await page.getByRole("link", { name: /^Apply now/ }).click();
     await expect(page).toHaveURL(applyUrl(jobId));
     await waitForHydration(page.getByLabel("Cover note (optional)"));
     await page.getByLabel("Cover note (optional)").fill(note);

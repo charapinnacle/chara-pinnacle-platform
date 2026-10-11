@@ -35,11 +35,11 @@ export function SaveJobButton({ jobId, title, saved: initiallySaved }: SaveJobBu
       className="w-auto"
       aria-busy={pending || undefined}
       aria-pressed={saved}
-      aria-label={`Save vacancy: ${title}`}
+      aria-label={`Save job: ${title}`}
       onClick={toggle}
     >
       <Icon aria-hidden className="size-4" />
-      {saved ? "Saved" : "Save"}
+      {saved ? "Saved" : "Save job"}
     </FormButton>
   );
 }

@@ -42,7 +42,7 @@ test.describe("apply to a vacancy", () => {
     const note = "A".repeat(200);
 
     await logIn(page, candidate, publicUrl(jobId));
-    await page.getByRole("link", { name: "Apply", exact: true }).click();
+    await page.getByRole("link", { name: /^Apply now/ }).click();
     await expect(page).toHaveURL(applyUrl(jobId));
     await waitForHydration(page.getByLabel("Cover note (optional)"));
     await page.getByLabel("Cover note (optional)").fill(note);
@@ -114,7 +114,7 @@ test.describe("apply to a vacancy", () => {
     const candidate = await newApplicant();
 
     await page.goto(publicUrl(jobId));
-    await page.getByRole("button", { name: "Apply" }).click();
+    await page.getByRole("button", { name: /^Apply now/ }).click();
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent(applyUrl(jobId))}`);
     await page.getByLabel("Email", { exact: true }).fill(candidate.email);
     await page.getByLabel("Password", { exact: true }).fill(candidate.password);

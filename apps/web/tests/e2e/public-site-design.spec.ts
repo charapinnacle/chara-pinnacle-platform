@@ -36,7 +36,7 @@ test.describe("the home page", () => {
       if (javaScriptEnabled) await search.getByRole("button", { name: "Search jobs" }).click();
       else await search.getByLabel("City", { exact: true }).press("Enter");
       await expect(page).toHaveURL(`/en/jobs?q=${marker}&city=Hamburg`);
-      await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
       // The results of Find Jobs stream in behind a skeleton, which needs JavaScript to be swapped in (as before this page).
       if (javaScriptEnabled) {
         await expect(page.getByRole("heading", { level: 2 })).toHaveText([`Hero welder ${marker}`]);
@@ -50,7 +50,7 @@ test.describe("the home page", () => {
     await page.goto("/en");
     await page.getByRole("search", { name: "Search jobs" }).getByRole("button", { name: "Search jobs" }).click();
     await expect(page).toHaveURL("/en/jobs?q=&city=");
-    await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: /vacanc/ })).toBeVisible();
     await expect(page.getByText("Some search options were ignored")).toHaveCount(0);
     await expect(page.getByText("No vacancies match your search")).toHaveCount(0);
@@ -62,11 +62,10 @@ test.describe("the home page", () => {
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { level: 1 })).toHaveText("The Global Workforce Network");
     await expect(main.getByText("Connect with the people and companies that can build your workforce.")).toBeVisible();
-    await expect(main.getByRole("heading", { level: 2 })).toHaveText([
+    await expect(main.locator("h2:not(#platform-statistics-heading)")).toHaveText([
       "Who are you?",
       "One professional profile. Multiple opportunities.",
       "How CHARA works",
-      "Global Workforce Network",
       "Your Workforce. Your Network. One Platform.",
     ]);
     const headingOrder = await main.locator("h1, h2").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top));
@@ -138,7 +137,7 @@ test.describe("the vacancy page", () => {
     });
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`/en/jobs/${id}`);
-    const apply = page.getByRole("button", { name: "Apply" });
+    const apply = page.getByRole("button", { name: /^Apply now/ });
     await expect(apply).toBeVisible();
     await page.getByText("Line 40 of a long description").scrollIntoViewIfNeeded();
     await expect(apply).toBeInViewport();
@@ -146,7 +145,7 @@ test.describe("the vacancy page", () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`/en/jobs/${id}`);
-    const applyBox = await page.getByRole("button", { name: "Apply" }).boundingBox();
+    const applyBox = await page.getByRole("button", { name: /^Apply now/ }).boundingBox();
     const titleBox = await page.getByRole("heading", { level: 1 }).boundingBox();
     const detailsBox = await page.locator("dl").boundingBox();
     expect(applyBox!.y).toBeGreaterThan(titleBox!.y);
@@ -166,7 +165,7 @@ test.describe("the vacancy preview", () => {
     const page = await context.newPage();
     await page.goto(previewUrl(company.slug, id));
     const titleBox = (await page.getByRole("heading", { level: 1, name: "Preview panel welder" }).boundingBox())!;
-    const panelBox = (await page.getByRole("button", { name: "Apply" }).boundingBox())!;
+    const panelBox = (await page.getByRole("button", { name: /^Apply now/ }).boundingBox())!;
     const detailsBox = (await page.locator("article dl").boundingBox())!;
     expect(panelBox.y).toBeGreaterThan(titleBox.y);
     expect(panelBox.y).toBeLessThan(detailsBox.y);
