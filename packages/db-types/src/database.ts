@@ -402,13 +402,13 @@ isOneToOne: false
                   ]
                 },"organizations": {
                   Row: {
-                    "based_in_country": string,"created_at": string,"display_name": string,"id": string,"industry_code": string | null,"legal_entity_identifier": string | null,"legal_entity_identifier_kind": string | null,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website": string | null
+                    "based_in_country": string,"created_at": string,"description": string | null,"display_name": string,"id": string,"industry_code": string | null,"legal_entity_identifier": string | null,"legal_entity_identifier_kind": string | null,"legal_name": string,"slug": string,"status": Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website": string | null
                   }
                   Insert: {
-                    "based_in_country": string,"created_at"?: string,"display_name": string,"id"?: string,"industry_code"?: string | null,"legal_entity_identifier"?: string | null,"legal_entity_identifier_kind"?: string | null,"legal_name": string,"slug": string,"status"?: Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website"?: string | null
+                    "based_in_country": string,"created_at"?: string,"description"?: string | null,"display_name": string,"id"?: string,"industry_code"?: string | null,"legal_entity_identifier"?: string | null,"legal_entity_identifier_kind"?: string | null,"legal_name": string,"slug": string,"status"?: Database["public"]['Enums']["organization_status"],"type": Database["public"]['Enums']["organization_type"],"website"?: string | null
                   }
                   Update: {
-                    "based_in_country"?: string,"created_at"?: string,"display_name"?: string,"id"?: string,"industry_code"?: string | null,"legal_entity_identifier"?: string | null,"legal_entity_identifier_kind"?: string | null,"legal_name"?: string,"slug"?: string,"status"?: Database["public"]['Enums']["organization_status"],"type"?: Database["public"]['Enums']["organization_type"],"website"?: string | null
+                    "based_in_country"?: string,"created_at"?: string,"description"?: string | null,"display_name"?: string,"id"?: string,"industry_code"?: string | null,"legal_entity_identifier"?: string | null,"legal_entity_identifier_kind"?: string | null,"legal_name"?: string,"slug"?: string,"status"?: Database["public"]['Enums']["organization_status"],"type"?: Database["public"]['Enums']["organization_type"],"website"?: string | null
                   }
                   Relationships: [
                     {
@@ -504,6 +504,49 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "languages"
       referencedColumns: ["code"]
+    }
+                  ]
+                },"reports": {
+                  Row: {
+                    "application_id": string | null,"category": Database["public"]['Enums']["report_category"],"content_path": string | null,"created_at": string,"details": string,"good_faith_confirmed": boolean,"handled_at": string | null,"handled_by": string | null,"id": number,"job_id": string | null,"organization_id": string | null,"reporter_email": string | null,"reporter_user_id": string | null,"resolution_note": string | null,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
+                  }
+                  Insert: {
+                    "application_id"?: string | null,"category": Database["public"]['Enums']["report_category"],"content_path"?: string | null,"created_at"?: string,"details": string,"good_faith_confirmed": boolean,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: never,"job_id"?: string | null,"organization_id"?: string | null,"reporter_email"?: string | null,"reporter_user_id"?: string | null,"resolution_note"?: string | null,"status"?: Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
+                  }
+                  Update: {
+                    "application_id"?: string | null,"category"?: Database["public"]['Enums']["report_category"],"content_path"?: string | null,"created_at"?: string,"details"?: string,"good_faith_confirmed"?: boolean,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: never,"job_id"?: string | null,"organization_id"?: string | null,"reporter_email"?: string | null,"reporter_user_id"?: string | null,"resolution_note"?: string | null,"status"?: Database["public"]['Enums']["report_status"],"target_type"?: Database["public"]['Enums']["report_target_type"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reports_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "job_applications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "v_job_applicants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     }
                   ]
                 },"saved_jobs": {
@@ -835,6 +878,11 @@ isOneToOne: false
               "display_name": string,"id": string,"legal_name": string,"members": Json,"slug": string,"status": Database["public"]['Enums']["organization_status"],"vacancies": Json
             }[]
                            },
+"admin_get_report":
+{ Args: { "p_id": number }; Returns: {
+              "category": Database["public"]['Enums']["report_category"],"content_path": string,"created_at": string,"details": string,"handled_at": string,"id": number,"job_id": string,"job_moderation_state": Database["public"]['Enums']["job_moderation_state"],"job_status": Database["public"]['Enums']["job_status"],"job_title": string,"organization_id": string,"organization_name": string,"organization_status": Database["public"]['Enums']["organization_status"],"reference": string,"reporter_email": string,"reporter_kind": string,"resolution_note": string,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
+            }[]
+                           },
 "admin_get_user":
 { Args: { "p_user_id": string }; Returns: {
               "account_kind": Database["public"]['Enums']["account_kind"],"applications_submitted": number,"created_at": string,"display_name": string,"email": string,"id": string,"memberships": Json,"status": Database["public"]['Enums']["profile_status"],"vacancies_created": number
@@ -848,6 +896,11 @@ isOneToOne: false
 "admin_list_moderation_actions":
 { Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
               "action": string,"actor_id": string,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_name": string,"target_type": string
+            }[]
+                           },
+"admin_list_reports":
+{ Args: { "p_after_id"?: number,"p_limit"?: number,"p_status"?: string,"p_type"?: Database["public"]['Enums']["report_target_type"] }; Returns: {
+              "category": Database["public"]['Enums']["report_category"],"created_at": string,"handled_at": string,"id": number,"reference": string,"status": Database["public"]['Enums']["report_status"],"target_label": string,"target_type": Database["public"]['Enums']["report_target_type"]
             }[]
                            },
 "admin_moderation_counts":
@@ -874,6 +927,9 @@ isOneToOne: false
 { Args: { "p_after_id"?: string,"p_after_name"?: string,"p_limit"?: number,"p_term": string }; Returns: {
               "account_kind": Database["public"]['Enums']["account_kind"],"created_at": string,"display_name": string,"email": string,"id": string,"status": Database["public"]['Enums']["profile_status"]
             }[]
+                           },
+"admin_set_report_status":
+{ Args: { "p_id": number,"p_note"?: string,"p_status": Database["public"]['Enums']["report_status"] }; Returns: undefined
                            },
 "admin_staff_count":
 { Args: Record<PropertyKey, never>; Returns: number
@@ -1023,7 +1079,7 @@ isOneToOne: false
                            },
 "get_public_job":
 { Args: { "p_id": string }; Returns: {
-              "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_country": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
+              "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_country": string,"employer_description": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
             }[]
                            },
 "get_public_settings":
@@ -1052,6 +1108,11 @@ isOneToOne: false
 "list_application_notes":
 { Args: { "p_application_id": string,"p_before_id"?: number }; Returns: {
               "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
+            }[]
+                           },
+"list_my_reports":
+{ Args: { "p_after_created"?: string,"p_after_id"?: number,"p_limit"?: number }; Returns: {
+              "category": Database["public"]['Enums']["report_category"],"created_at": string,"handled_at": string,"id": number,"reference": string,"resolution_note": string,"status": Database["public"]['Enums']["report_status"],"target_label": string,"target_type": Database["public"]['Enums']["report_target_type"]
             }[]
                            },
 "list_organization_invitations":
@@ -1148,7 +1209,7 @@ isOneToOne: false
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
 "search_jobs":
-{ Args: { "p_accommodation"?: boolean,"p_city"?: string,"p_country"?: string,"p_cursor"?: string,"p_employment_type"?: Database["public"]['Enums']["employment_type"],"p_industry"?: string,"p_limit"?: number,"p_occupation"?: string,"p_q"?: string,"p_recruitment"?: Database["public"]['Enums']["recruitment_preference"],"p_salary_currency"?: string,"p_salary_min"?: number,"p_salary_period"?: Database["public"]['Enums']["salary_period"],"p_visa_support"?: boolean }; Returns: {
+{ Args: { "p_accommodation"?: boolean,"p_city"?: string,"p_country"?: string,"p_cursor"?: string,"p_employer"?: string,"p_employment_type"?: Database["public"]['Enums']["employment_type"],"p_industry"?: string,"p_limit"?: number,"p_occupation"?: string,"p_q"?: string,"p_recruitment"?: Database["public"]['Enums']["recruitment_preference"],"p_salary_currency"?: string,"p_salary_min"?: number,"p_salary_period"?: Database["public"]['Enums']["salary_period"],"p_visa_support"?: boolean }; Returns: {
               "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"employer_display_name": string,"employer_slug": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"next_cursor": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
             }[]
                            },
@@ -1169,6 +1230,11 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
+"submit_report":
+{ Args: { "p_application": string,"p_category": Database["public"]['Enums']["report_category"],"p_details": string,"p_email": string,"p_good_faith": boolean,"p_job": string,"p_key": string,"p_path": string,"p_proof"?: string,"p_target_type": Database["public"]['Enums']["report_target_type"] }; Returns: {
+              "is_duplicate": boolean,"reference": string
+            }[]
+                           },
 "suspend_organization":
 { Args: { "p_org": string,"p_reason": string }; Returns: undefined
                            },
@@ -1184,7 +1250,7 @@ isOneToOne: false
 { Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
                            },
 "update_organization_profile":
-{ Args: { "p_based_in_country": string,"p_display_name": string,"p_industry_code": string,"p_legal_name": string,"p_org": string,"p_website"?: string }; Returns: Json
+{ Args: { "p_based_in_country": string,"p_description"?: string,"p_display_name": string,"p_industry_code": string,"p_legal_name": string,"p_org": string,"p_website"?: string }; Returns: Json
                            },
 "withdraw_application":
 { Args: { "p_application_id": string }; Returns: undefined
@@ -1194,7 +1260,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "account_kind": "worker"|"company","application_status": "applied"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","employment_type": "full_time"|"part_time"|"contract"|"temporary"|"seasonal","job_moderation_state": "visible"|"hidden"|"org_suspended","job_status": "draft"|"open"|"paused"|"closed"|"filled","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","recruitment_preference": "local"|"international"|"both","salary_period": "hour"|"month"|"year","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate"
+            "account_kind": "worker"|"company","application_status": "applied"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","employment_type": "full_time"|"part_time"|"contract"|"temporary"|"seasonal","job_moderation_state": "visible"|"hidden"|"org_suspended","job_status": "draft"|"open"|"paused"|"closed"|"filled","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","recruitment_preference": "local"|"international"|"both","report_category": "illegal_content"|"misleading_or_fraud"|"discrimination"|"fee_demanded_from_worker"|"harassment"|"privacy_violation"|"other","report_status": "new"|"in_review"|"actioned"|"dismissed","report_target_type": "job"|"company"|"profile"|"content","salary_period": "hour"|"month"|"year","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1310,7 +1376,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "account_kind": ["worker", "company"],"application_status": ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"employment_type": ["full_time", "part_time", "contract", "temporary", "seasonal"],"job_moderation_state": ["visible", "hidden", "org_suspended"],"job_status": ["draft", "open", "paused", "closed", "filled"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"recruitment_preference": ["local", "international", "both"],"salary_period": ["hour", "month", "year"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"]
+            "account_kind": ["worker", "company"],"application_status": ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"employment_type": ["full_time", "part_time", "contract", "temporary", "seasonal"],"job_moderation_state": ["visible", "hidden", "org_suspended"],"job_status": ["draft", "open", "paused", "closed", "filled"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"recruitment_preference": ["local", "international", "both"],"report_category": ["illegal_content", "misleading_or_fraud", "discrimination", "fee_demanded_from_worker", "harassment", "privacy_violation", "other"],"report_status": ["new", "in_review", "actioned", "dismissed"],"report_target_type": ["job", "company", "profile", "content"],"salary_period": ["hour", "month", "year"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"]
           }
         }
 } as const
