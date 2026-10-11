@@ -179,14 +179,14 @@ revoke all on function private.report_target_label(public.report_target_type, te
 -- address never enter the audit row.
 create function public.submit_report(
   p_target_type public.report_target_type,
-  p_job uuid,
-  p_application uuid,
-  p_path text,
   p_category public.report_category,
   p_details text,
   p_good_faith boolean,
-  p_email text,
   p_key text,
+  p_job uuid default null,
+  p_application uuid default null,
+  p_path text default null,
+  p_email text default null,
   p_proof text default null
 ) returns table (reference text, is_duplicate boolean)
 language plpgsql
@@ -299,10 +299,10 @@ end;
 $$;
 
 revoke all on function public.submit_report(
-  public.report_target_type, uuid, uuid, text, public.report_category, text, boolean, text, text, text
+  public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text
 ) from public, anon, authenticated, service_role;
 grant execute on function public.submit_report(
-  public.report_target_type, uuid, uuid, text, public.report_category, text, boolean, text, text, text
+  public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text
 ) to anon, authenticated;
 
 -- The reports of the caller, newest first in keyset pages of (created_at, id), with the status and, once closed, the

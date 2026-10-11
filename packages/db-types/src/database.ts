@@ -1231,7 +1231,7 @@ isOneToOne: false
             }[]
                            },
 "submit_report":
-{ Args: { "p_application": string,"p_category": Database["public"]['Enums']["report_category"],"p_details": string,"p_email": string,"p_good_faith": boolean,"p_job": string,"p_key": string,"p_path": string,"p_proof"?: string,"p_target_type": Database["public"]['Enums']["report_target_type"] }; Returns: {
+{ Args: { "p_application"?: string,"p_category": Database["public"]['Enums']["report_category"],"p_details": string,"p_email"?: string,"p_good_faith": boolean,"p_job"?: string,"p_key": string,"p_path"?: string,"p_proof"?: string,"p_target_type": Database["public"]['Enums']["report_target_type"] }; Returns: {
               "is_duplicate": boolean,"reference": string
             }[]
                            },
