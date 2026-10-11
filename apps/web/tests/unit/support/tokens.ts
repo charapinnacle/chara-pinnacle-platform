@@ -7,7 +7,8 @@ type Oklch = [number, number, number];
 
 function declarations(selector: string): Map<string, string> {
   const found = new Map<string, string>();
-  const pattern = new RegExp(`(?:^|\\n)\\s*${selector.replace(".", "\\.")}\\s*\\{([^}]*)\\}`, "g");
+  // The selector may be one of a list (":root, .light").
+  const pattern = new RegExp(`(?:^|\\n)\\s*(?:[^{}]*,\\s*)?${selector.replace(".", "\\.")}\\s*(?:,[^{}]*)?\\{([^}]*)\\}`, "g");
   for (const block of css.matchAll(pattern)) {
     for (const [, name, value] of block[1].matchAll(/--([\w-]+):\s*([^;]+);/g)) found.set(name, value.trim());
   }

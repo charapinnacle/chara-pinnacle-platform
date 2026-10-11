@@ -25,6 +25,7 @@
 @theme inline {
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
+  --font-serif: var(--font-newsreader), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -78,15 +79,25 @@
 
 /* The type scale: display and h1 step up at the sm breakpoint (the :root override in the base layer below), and the
    headings carry their weight and tracking, so a heading is one utility: text-display, text-h1, text-h2, text-h3.
-   text-figure is the size of a number shown on its own (a count, a price tile). text-hero is the one headline of the home page
-   (it steps up at sm and lg), text-eyebrow the small upper-case label above a section heading.
+   text-figure is the size of a number shown on its own (a count, a price tile). text-eyebrow is the small upper-case label above
+   a section heading. The serif (--font-serif, Newsreader, one weight) is for the display headings of the home page only and
+   never for body text or controls: text-hero is its one headline (it steps up at sm and lg), text-section its section
+   headings and the numbers of the steps, text-numeral its large figures; all three are weight 400, the weight that is loaded.
    text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the two gaps
    between the blocks of a page (page, and section for a page of several sections). docs/runbooks/design-system.md documents each token. */
 @theme {
-  --text-hero: 2.5rem;
-  --text-hero--line-height: 1.05;
-  --text-hero--font-weight: 600;
-  --text-hero--letter-spacing: -0.04em;
+  --text-hero: 2.75rem;
+  --text-hero--line-height: 1.04;
+  --text-hero--font-weight: 400;
+  --text-hero--letter-spacing: -0.025em;
+  --text-section: 1.875rem;
+  --text-section--line-height: 1.15;
+  --text-section--font-weight: 400;
+  --text-section--letter-spacing: -0.02em;
+  --text-numeral: 3rem;
+  --text-numeral--line-height: 1;
+  --text-numeral--font-weight: 400;
+  --text-numeral--letter-spacing: -0.03em;
   --text-display: 2.25rem;
   --text-display--line-height: 1.15;
   --text-display--font-weight: 600;
@@ -129,11 +140,19 @@
   --ease-brand: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-rise: rise 240ms var(--ease-brand) both;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-reveal: reveal 700ms var(--ease-brand) both;
 
   @keyframes rise {
     from {
       opacity: 0;
       transform: translateY(6px);
+    }
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(1.5rem);
     }
   }
 
@@ -172,8 +191,10 @@
 
 /* The CHARA Pinnacle palette, derived from the gold-on-black monogram: near-black ink, warm off-white surfaces and gold as
    the single accent. Gold is never text on a light surface: --brand-ink, a deep bronze, is. Status colours are semantic
-   only. Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. */
-:root {
+   only. Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. .light puts the light
+   set back inside a dark surface (the white search bar and the passport card of the home page). */
+:root,
+.light {
   --background: oklch(0.982 0.004 85);
   --foreground: oklch(0.15 0.003 85);
   --card: oklch(1 0 0);
@@ -221,9 +242,11 @@
   --radius: 0.625rem;
 }
 
-/* The dark set is complete and tested, and is applied by putting the dark class on the root element; nothing does that
-   yet (no theme switch exists), so the interface is unchanged. Gold becomes the primary there, as on the brand tile. */
-.dark {
+/* The dark set is complete and tested. It is applied by the dark class on a surface, as on the dark bands of the home page
+   and its footer, and on the header over the dark hero; the page itself stays light (no theme switch exists). Gold becomes the
+   primary there, as on the brand tile. */
+.dark,
+.site-header:has(~ main [data-hero]) {
   --background: oklch(0.15 0.003 85);
   --foreground: oklch(0.96 0.004 85);
   --card: oklch(0.19 0.004 85);
@@ -259,6 +282,7 @@
   --border: oklch(0.3 0.005 85);
   --input: oklch(0.62 0.008 85);
   --ring: oklch(0.78 0.11 82);
+  --focus-ring: 2px solid var(--ring);
 }
 
 @layer base {
@@ -273,14 +297,18 @@
   }
   @media (min-width: 40rem) {
     :root {
-      --text-hero: 3.5rem;
+      --text-hero: 3.75rem;
+      --text-section: 2.25rem;
+      --text-numeral: 4rem;
       --text-display: 3rem;
       --text-h1: 2rem;
     }
   }
   @media (min-width: 64rem) {
     :root {
-      --text-hero: 4rem;
+      --text-hero: 4.75rem;
+      --text-section: 2.5rem;
+      --text-numeral: 4.5rem;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -307,4 +335,112 @@
 :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
+}
+
+/* The home page. The header lies over the dark hero (the page marks it with data-hero): solid where scroll-driven animation
+   is not available or the menu is open, transparent at the top and solid after 5 rem of scrolling where it is, and solid at
+   once under reduced motion. The same selector gives it the dark token set above. */
+.site-header:has(~ main [data-hero]) {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 30;
+  color: var(--foreground);
+  border-color: transparent;
+  background-color: color-mix(in oklch, var(--background) 96%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+html:has([data-hero]) {
+  scroll-padding-top: 5rem;
+}
+
+@keyframes header-solid {
+  to {
+    border-color: var(--border);
+    background-color: color-mix(in oklch, var(--background) 96%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header:has(~ main [data-hero]):not(:has([aria-expanded="true"])) {
+      background-color: transparent;
+      backdrop-filter: none;
+      animation: header-solid linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 5rem;
+    }
+  }
+}
+
+/* The texture of the dark bands: a faint gold glow and a fine grid, both fading out downwards; no image. */
+@utility band-texture {
+  background-image:
+    radial-gradient(56rem 30rem at 82% -8%, color-mix(in oklch, var(--brand) 17%, transparent), transparent 70%),
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 5.5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 5.5%, transparent) 1px, transparent 1px);
+  background-size: auto, 4rem 4rem, 4rem 4rem;
+  mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
+}
+
+/* The sections below the fold are shown by a client component only when it can rise them in (data-reveal is "pending" for a
+   moment, then "shown"); without JavaScript or under reduced motion nothing is ever hidden. */
+[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(1.5rem);
+}
+
+[data-reveal="shown"] {
+  animation: var(--animate-reveal);
+}
+
+@utility lift {
+  @media (prefers-reduced-motion: no-preference) and (hover: hover) {
+    transition:
+      transform 200ms var(--ease-brand),
+      box-shadow 200ms var(--ease-brand);
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
+    }
+  }
+}
+
+/* The preview of the journey tracker in the hero draws itself once: the line to the current step, then the step. */
+@keyframes draw-line {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes draw-ring {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+@layer components {
+  .journey-line {
+    transform-origin: top;
+    animation: draw-line 600ms var(--ease-brand) 350ms both;
+  }
+  .journey-line-second {
+    animation-delay: 850ms;
+  }
+  .journey-current {
+    animation: pop-in 450ms var(--ease-brand) 1250ms both;
+  }
+  .passport-ring {
+    stroke-dasharray: 100;
+    animation: draw-ring 900ms var(--ease-brand) 300ms both;
+  }
 }

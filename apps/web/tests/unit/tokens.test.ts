@@ -78,6 +78,42 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
   });
 });
 
+describe("the dark bands of the home page (NFR-U1)", () => {
+  it.each([
+    ["foreground", "background"],
+    ["muted-foreground", "background"],
+    ["muted-foreground", "card"],
+    ["muted-foreground", "inverse"],
+    ["foreground", "inverse"],
+    ["brand", "background"],
+    ["brand", "card"],
+    ["brand", "inverse"],
+    ["brand-ink", "background"],
+    ["primary-foreground", "primary"],
+    ["primary-foreground", "primary-hover"],
+    ["inverse", "brand"],
+  ])("text %s on %s is at least 4.5:1 inside a dark band, the footer or the header over the hero", (foreground, background) => {
+    expect(contrast("dark", foreground, background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["input", "card"],
+    ["brand", "card"],
+    ["ring", "background"],
+    ["ring", "inverse"],
+  ])("the boundary %s against %s is at least 3:1 on a dark band", (foreground, background) => {
+    expect(contrast("dark", foreground, background)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps the light card of the hero search and the passport preview readable: the light set is put back inside it", () => {
+    expect(declared("light", "card")).toBe("oklch(1 0 0)");
+    expect(css).toMatch(/:root,\s*\.light\s*\{/);
+    for (const [foreground, background] of [["foreground", "card"], ["muted-foreground", "card"], ["brand-ink", "card"]]) {
+      expect(contrast("light", foreground, background)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 describe("the contrast helper", () => {
   it("computes the known ratio of black on white and of a colour on itself", () => {
     expect(contrastOf([0, 0, 0], [1, 0, 0])).toBeCloseTo(21, 1);
@@ -97,7 +133,7 @@ describe("the contrast helper", () => {
 });
 
 describe("the type scale and spacing tokens (DS-02)", () => {
-  it.each(["hero", "display", "h1", "h2", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
+  it.each(["hero", "section", "numeral", "display", "h1", "h2", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
     expect(css).toMatch(new RegExp(`--text-${size}:\\s*[\\d.]+rem;`));
   });
 
@@ -105,9 +141,18 @@ describe("the type scale and spacing tokens (DS-02)", () => {
     expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 2rem;/);
   });
 
-  it("steps the hero headline up from the sm and the lg breakpoint", () => {
-    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-hero: 3.5rem;/);
-    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4rem;/);
+  it("steps the serif display sizes up from the sm and the lg breakpoint", () => {
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-hero: 3.75rem;[^}]*--text-section: 2.25rem;[^}]*--text-numeral: 4rem;/);
+    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4.75rem;\s*--text-section: 2.5rem;\s*--text-numeral: 4.5rem;/);
+  });
+
+  it.each(["hero", "section", "numeral"])("sets the %s size in weight 400, the one weight of the serif that is loaded, so no bold is synthesised", (size) => {
+    expect(css).toMatch(new RegExp(`--text-${size}--font-weight:\\s*400;`));
+  });
+
+  it("declares the serif as a token that falls back to a system serif, and keeps the body in the sans", () => {
+    expect(css).toMatch(/--font-serif:\s*var\(--font-newsreader\),[^;]*\bserif;/);
+    expect(css).toMatch(/--font-heading:\s*var\(--font-sans\);/);
   });
 
   it("draws the brand gradient from the highlight to the solid gold, the only two golds it uses", () => {
