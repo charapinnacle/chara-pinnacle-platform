@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import type { OrganizationProfileInput } from "@/lib/validation/organization";
 import type { MemberRole } from "@/lib/validation/team";
 
 type Organization = { id: string; slug: string; displayName: string; role: MemberRole; suspended: boolean };
@@ -40,16 +41,8 @@ export async function getOrganizationSlug(organizationId: string): Promise<strin
   return data?.slug ?? null;
 }
 
-export type OrganizationProfile = {
-  legalName: string;
-  displayName: string;
-  country: string;
-  industry: string;
-  website: string;
-};
-
 // The company details as the profile form edits them: codes for the lists and an empty string for a missing website.
-export async function getOrganizationProfile(organizationId: string): Promise<OrganizationProfile | null> {
+export async function getOrganizationProfile(organizationId: string): Promise<OrganizationProfileInput | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
