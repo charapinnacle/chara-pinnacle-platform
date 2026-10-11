@@ -7,7 +7,7 @@ import { openStages } from "@/lib/applications/stage-machine";
 import { isStaleOpen, type LimitPrompt } from "@/lib/jobs/lifecycle";
 import { logSearch } from "@/lib/jobs/search-log";
 import type { JobSearchFilters } from "@/lib/jobs/search-params";
-import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
+import { formatJobCursor, type JobCursor, type JobFormInput } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -117,6 +117,27 @@ function toJob(row: JobRow): Job {
     statusChangedAt: row.status_changed_at,
     staleOpen: isStaleOpen(row.status, row.status_changed_at, new Date()),
     createdAt: row.created_at,
+  };
+}
+
+// The saved vacancy as the values of the form, so that the edit form starts from what is stored.
+export function toJobFormInput(job: Job): JobFormInput {
+  const amount = (value: number | null) => (value === null ? "" : String(value));
+  return {
+    title: job.title,
+    description: job.description,
+    occupation: job.occupationId,
+    industry: job.industryCode,
+    country: job.countryCode,
+    city: job.city,
+    employmentType: job.employmentType,
+    salaryMin: amount(job.salaryMin),
+    salaryMax: amount(job.salaryMax),
+    salaryCurrency: job.salaryCurrency ?? "",
+    salaryPeriod: job.salaryPeriod ?? "",
+    accommodation: job.accommodation,
+    visaSupport: job.visaSupport,
+    recruitmentPreference: job.recruitmentPreference,
   };
 }
 

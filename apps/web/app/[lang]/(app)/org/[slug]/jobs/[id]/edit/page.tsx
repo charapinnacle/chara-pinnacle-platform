@@ -7,12 +7,12 @@ import { COMPLAINTS_SLUG, LegalLink, TextLink } from "@/components/forms/text-li
 import { Notice } from "@/components/forms/notice";
 import { JobForm } from "@/components/jobs/job-form";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getJob } from "@/lib/dal/hiring";
+import { getJob, toJobFormInput } from "@/lib/dal/hiring";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { requireOrgRole } from "@/lib/dal/session";
 import { jobStatusText } from "@/lib/jobs/presentation";
 import { jobPath, jobsPath } from "@/lib/routes";
-import { jobIdSchema, toJobFormInput } from "@/lib/validation/job";
+import { jobIdSchema } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Edit vacancy — CHARA", robots: { index: false } };
 

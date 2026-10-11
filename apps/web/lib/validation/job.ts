@@ -1,6 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
-import type { Job } from "@/lib/dal/hiring";
 
 type JobInsertRow = Database["public"]["Tables"]["jobs"]["Insert"];
 
@@ -182,27 +181,6 @@ export function toJobUpdate(values: JobFormValues): JobUpdate {
 
 export function toJobInsert(values: JobFormValues, organizationId: string): JobInsert {
   return { organization_id: organizationId, ...toJobUpdate(values) };
-}
-
-// The saved vacancy as the values of the form, so that the edit form starts from what is stored.
-export function toJobFormInput(job: Job): JobFormInput {
-  const amount = (value: number | null) => (value === null ? "" : String(value));
-  return {
-    title: job.title,
-    description: job.description,
-    occupation: job.occupationId,
-    industry: job.industryCode,
-    country: job.countryCode,
-    city: job.city,
-    employmentType: job.employmentType,
-    salaryMin: amount(job.salaryMin),
-    salaryMax: amount(job.salaryMax),
-    salaryCurrency: job.salaryCurrency ?? "",
-    salaryPeriod: job.salaryPeriod ?? "",
-    accommodation: job.accommodation,
-    visaSupport: job.visaSupport,
-    recruitmentPreference: job.recruitmentPreference,
-  };
 }
 
 export const jobIdSchema = z.uuid();

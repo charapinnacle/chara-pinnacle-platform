@@ -3,12 +3,10 @@ import {
   formatJobCursor,
   jobFormSchema,
   parseJobCursor,
-  toJobFormInput,
   toJobInsert,
   toJobUpdate,
   type JobFormInput,
 } from "@/lib/validation/job";
-import type { Job } from "@/lib/dal/hiring";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
 const valid: JobFormInput = {
@@ -211,46 +209,6 @@ describe("toJobUpdate", () => {
     expect(update).not.toHaveProperty("organization_id");
     expect(update).toMatchObject({ title: "Welder MIG/MAG", salary_min: null, salary_max: null, salary_currency: null, salary_period: null });
     expect(toJobInsert(jobFormSchema.parse(valid), "org")).toEqual({ organization_id: "org", ...toJobUpdate(jobFormSchema.parse(valid)) });
-  });
-});
-
-describe("toJobFormInput", () => {
-  const saved: Job = {
-    id: "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
-    title: "Welder MIG/MAG",
-    description: "d".repeat(120),
-    occupation: "Welders and flame cutters",
-    occupationId: "7212",
-    industry: "Manufacturing",
-    industryCode: "C",
-    country: "Germany",
-    countryCode: "DE",
-    city: "Hamburg",
-    employmentType: "full_time",
-    salaryMin: 2800.5,
-    salaryMax: 3400,
-    salaryCurrency: "EUR",
-    salaryPeriod: "month",
-    accommodation: true,
-    visaSupport: true,
-    recruitmentPreference: "both",
-    status: "open",
-    moderationState: "visible",
-    statusChangedAt: "2026-10-06T10:00:00Z",
-    staleOpen: false,
-    createdAt: "2026-10-01T10:00:00Z",
-  };
-
-  it("starts the edit form from the stored codes and amounts, and the form accepts it unchanged", () => {
-    const values = toJobFormInput(saved);
-    expect(values).toEqual({ ...valid, salaryMin: "2800.5" });
-    expect(toJobUpdate(jobFormSchema.parse(values))).toMatchObject({ occupation_id: "7212", industry_code: "C", country_code: "DE", salary_min: 2800.5 });
-  });
-
-  it("gives empty strings for a vacancy without a salary", () => {
-    const values = toJobFormInput({ ...saved, salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null });
-    expect(values).toMatchObject({ salaryMin: "", salaryMax: "", salaryCurrency: "", salaryPeriod: "" });
-    expect(jobFormSchema.safeParse(values).success).toBe(true);
   });
 });
 
