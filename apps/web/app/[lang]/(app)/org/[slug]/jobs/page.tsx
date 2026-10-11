@@ -13,7 +13,7 @@ import { isSubscriptionEnded, listJobs } from "@/lib/dal/hiring";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole } from "@/lib/dal/session";
 import { billingPath, jobPath, jobsPath } from "@/lib/routes";
-import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
+import { isEditable, STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { isJobStatus, jobDateText, jobStatusText, jobStatusTone, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
@@ -79,7 +79,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                     How to appeal
                   </LegalLink>
                 ) : null}
-                {canCreate ? (
+                {canCreate && isEditable(job.status) ? (
                   <TextLink href={`${jobPath(lang, slug, job.id)}/edit`}>
                     Edit<span className="sr-only"> {job.title}</span>
                   </TextLink>

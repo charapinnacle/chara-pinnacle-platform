@@ -106,6 +106,7 @@ test.describe("vacancy lifecycle", () => {
     expect(statusAudit(toFill)).toEqual([{ actor_id: admin.id, metadata: { from: "open", to: "filled" } }]);
     await page.reload();
     expect(await offered(page)).toEqual([]);
+    await expect(page.getByRole("link", { name: "Edit vacancy" })).toHaveCount(0);
   });
 
   test("FR-C2 AC9: closing or filling with applications in progress names them and links to them first, and changes none of them", async ({

@@ -241,6 +241,12 @@ describe("updateJob", () => {
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
+  it("says that a filled vacancy is final when the database refuses the edit", async () => {
+    maybeSingleMock.mockResolvedValue(refusal("CHARA_INVALID_TRANSITION", "P0001", "filled"));
+    await expect(updateJob("acme-bau", jobId, input)).resolves.toEqual({ message: "A filled vacancy is final and cannot be changed." });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
   it("says the vacancy was not found when no row matched, and not allowed when the organization is suspended", async () => {
     maybeSingleMock.mockResolvedValue({ data: null, error: null });
     await expect(updateJob("acme-bau", jobId, input)).resolves.toEqual({ message: "This vacancy could not be found." });

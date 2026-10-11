@@ -152,4 +152,25 @@ test.describe("vacancy edit", () => {
     await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
     expect(query<{ n: number }>(`select count(*)::int as n from audit.log where action = 'job.updated' and entity_id = ${literal(id)}`)[0].n).toBe(1);
   });
+
+  test("FR-C2: a filled vacancy is final, so it offers no edit link and its edit page shows no form", async ({ page }) => {
+    const acme = await newCompany();
+    const filled = seedJob(acme, { title: "Filled welder", status: "filled" });
+    seedJob(acme, { title: "Closed welder", status: "closed" });
+
+    await logIn(page, acme.owner, jobsUrl(acme.slug));
+    await expect(page.getByRole("link", { name: "Edit Closed welder" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Edit Filled welder" })).toHaveCount(0);
+    await page.goto(jobUrl(acme.slug, filled));
+    await expect(page.getByRole("status").filter({ hasText: "Filled - not public" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Edit vacancy" })).toHaveCount(0);
+
+    await page.goto(editUrl(acme.slug, filled));
+    await expect(page.getByRole("status").filter({ hasText: "A filled vacancy is final, so it can no longer be changed." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+    await expect(page.getByLabel("Title", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Go back to the vacancy" })).toHaveAttribute("href", jobUrl(acme.slug, filled));
+    await expectNoAxeViolations(page);
+    expect(jobAudit(acme.id, "job.updated")).toEqual([]);
+  });
 });

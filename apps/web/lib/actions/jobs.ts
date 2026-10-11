@@ -21,6 +21,7 @@ type JobActionResult = { errors?: FieldErrors; message?: string; limitReached?: 
 const CHECK_VALUE = "Check this value.";
 const NOT_ALLOWED = "You are not allowed to create or edit vacancies for this company.";
 const NOT_FOUND = "This vacancy could not be found.";
+const FILLED = "A filled vacancy is final and cannot be changed.";
 
 // The constraints a value the schema let through can still fail, each with the field it belongs to.
 const fieldByConstraint: Record<string, [field: keyof JobFormInput, message: string]> = {
@@ -94,7 +95,8 @@ export async function createJob(slug: string, input: JobFormInput): Promise<JobA
 
 // As createJob, with the vacancy id from the address. Only the content columns are sent, so the status, the moderation
 // state and the organization stay as they are; the policy refuses a suspended organization and every non-manager, which
-// leaves no row to update. A refused edit is not reported for the validation error rate: that rate is of new vacancies.
+// leaves no row to update, and the trigger jobs_guard_filled refuses a filled vacancy. A refused edit is not reported for
+// the validation error rate: that rate is of new vacancies.
 export async function updateJob(slug: string, id: string, input: JobFormInput): Promise<JobActionResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   const parsedId = jobIdSchema.safeParse(id);
@@ -115,6 +117,7 @@ export async function updateJob(slug: string, id: string, input: JobFormInput): 
     .is("deleted_at", null)
     .select("id")
     .maybeSingle();
+  if (error?.message === "CHARA_INVALID_TRANSITION" && error.details === "filled") return { message: FILLED };
   if (error) return refusal(error);
   if (!data) return { message: organization.suspended ? NOT_ALLOWED : NOT_FOUND };
   revalidatePath(jobsPath(defaultLocale, organization.slug));

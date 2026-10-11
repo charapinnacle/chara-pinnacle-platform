@@ -42,6 +42,11 @@ export const statusActions: Record<JobStatus, StatusAction[]> = {
   filled: [],
 };
 
+// FR-C2: a Filled vacancy is final, its text included; the trigger jobs_guard_filled is the authority.
+export function isEditable(status: JobStatus): boolean {
+  return status !== "filled";
+}
+
 const STALE_AFTER_DAYS = 90;
 const DAY_MS = 86_400_000;
 export const STALE_OPEN_TEXT = `Open for more than ${STALE_AFTER_DAYS} days`;

@@ -10,7 +10,7 @@ import { VacancyView } from "@/components/jobs/vacancy-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { countApplicationsInProgress, getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
+import { isEditable, STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
@@ -62,7 +62,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
       ) : null}
       <VacancyView job={job} />
       <div className="flex flex-wrap gap-3">
-        {manager ? (
+        {manager && isEditable(job.status) ? (
           <LinkButton href={`${jobPath(lang, slug, job.id)}/edit`} variant="secondary" size="default">
             Edit vacancy
           </LinkButton>

@@ -10,14 +10,16 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { getJob, toJobFormInput } from "@/lib/dal/hiring";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { requireOrgRole } from "@/lib/dal/session";
+import { isEditable } from "@/lib/jobs/lifecycle";
 import { jobStatusText } from "@/lib/jobs/presentation";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { jobIdSchema } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Edit vacancy — CHARA", robots: { index: false } };
 
-// Owners and admins correct a vacancy in any status with the form it was created with; a member is sent to the forbidden
-// page, as on the new-vacancy page. Saving changes the text only: the status and the moderation state stay as they are.
+// Owners and admins correct a vacancy with the form it was created with, in any status but Filled, which is final (FR-C2);
+// a member is sent to the forbidden page, as on the new-vacancy page. Saving changes the text only: the status and the
+// moderation state stay as they are.
 export default async function EditJobPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/[id]/edit">) {
   const { lang, slug, id } = await params;
   const { organization } = await requireOrgRole(lang, slug, "admin", { mfa: false, hideFromOutsiders: true });
@@ -34,12 +36,17 @@ export default async function EditJobPage({ params }: PageProps<"/[lang]/org/[sl
   if (!job) notFound();
   const jobHref = jobPath(lang, slug, job.id);
   const isPublic = job.status === "open" && job.moderationState === "visible";
+  const editable = isEditable(job.status);
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title="Edit vacancy"
-        description={`${job.title}. Status: ${jobStatusText(job.status, job.moderationState)}. Saving keeps the status${isPublic ? ", and the public page shows the changes at once" : ""}.`}
+        description={
+          editable
+            ? `${job.title}. Status: ${jobStatusText(job.status, job.moderationState)}. Saving keeps the status${isPublic ? ", and the public page shows the changes at once" : ""}.`
+            : job.title
+        }
         breadcrumb={
           <Breadcrumbs
             items={[
@@ -51,7 +58,11 @@ export default async function EditJobPage({ params }: PageProps<"/[lang]/org/[sl
           />
         }
       />
-      {job.moderationState === "hidden" ? (
+      {!editable ? (
+        <Notice tone="info" role="status">
+          This vacancy is filled. A filled vacancy is final, so it can no longer be changed.
+        </Notice>
+      ) : job.moderationState === "hidden" ? (
         <Notice tone="info" role="status">
           Our moderators hid this vacancy. Saving your changes does not make it public again; to appeal, follow the route on the{" "}
           <LegalLink slug={COMPLAINTS_SLUG} newTabLabel="(opens in a new tab)">
@@ -60,16 +71,18 @@ export default async function EditJobPage({ params }: PageProps<"/[lang]/org/[sl
           page.
         </Notice>
       ) : null}
-      <JobForm
-        slug={slug}
-        occupations={occupations}
-        industries={industries}
-        countries={countries}
-        currencies={currencies}
-        edit={{ jobId: job.id, values: toJobFormInput(job), jobHref }}
-      />
+      {editable ? (
+        <JobForm
+          slug={slug}
+          occupations={occupations}
+          industries={industries}
+          countries={countries}
+          currencies={currencies}
+          edit={{ jobId: job.id, values: toJobFormInput(job), jobHref }}
+        />
+      ) : null}
       <TextLink standalone href={jobHref}>
-        Cancel and go back to the vacancy
+        {editable ? "Cancel and go back to the vacancy" : "Go back to the vacancy"}
       </TextLink>
     </div>
   );
