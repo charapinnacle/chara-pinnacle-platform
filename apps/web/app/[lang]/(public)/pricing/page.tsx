@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Bullets, PlanCard } from "@/components/public/plan-card";
 import { planCard, planLink, RECOMMENDED_PLAN_CODE, viewerNote, type PricingViewer } from "@/lib/billing/pricing";
 import { getPricingViewer, listPublicPlans } from "@/lib/dal/pricing";
+import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/pricing">): Promise<Metadata> {
@@ -29,7 +30,7 @@ function WorkersCard({ lang, viewer }: { lang: string; viewer: PricingViewer }) 
           <Bullets items={workerFeatures} />
         </div>
         {viewer.kind === "visitor" ? (
-          <LinkButton href={`/${lang}/signup?kind=worker`} className="bg-brand-gradient text-inverse transition-opacity duration-150 hover:opacity-90">
+          <LinkButton href={signUpPath(lang, "worker")} className="bg-brand-gradient text-inverse transition-opacity duration-150 hover:opacity-90">
             Create worker profile
           </LinkButton>
         ) : null}
@@ -74,7 +75,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
             </ul>
           ) : (
             <EmptyState title="Pricing is currently unavailable" description="Contact us for the current plans and prices.">
-              {viewer.kind === "visitor" ? <LinkButton href={`/${lang}/signup?kind=company`}>Start hiring</LinkButton> : null}
+              {viewer.kind === "visitor" ? <LinkButton href={signUpPath(lang, "company")}>Start hiring</LinkButton> : null}
               <TextLink standalone href={`/${lang}/contact`}>
                 Contact us
               </TextLink>

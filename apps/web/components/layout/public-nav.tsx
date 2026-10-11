@@ -3,10 +3,10 @@ import { FormButton } from "@/components/forms/form-button";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { LinkButton } from "@/components/layout/link-button";
 import { signOut } from "@/lib/actions/login";
-import { getMyOrganizations } from "@/lib/dal/organizations";
+import { getMyOrganizations, publishingOrganization } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
 import { guestLinks, siteLinks } from "@/lib/public/navigation";
-import { homePath } from "@/lib/routes";
+import { homePath, signUpPath } from "@/lib/routes";
 
 const linkClassName =
   "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground";
@@ -16,11 +16,11 @@ const linkClassName =
 // member who cannot publish are offered nothing. Not behind a Suspense boundary, like the account items below.
 async function postJobHref(lang: string): Promise<string | null> {
   const user = await getCurrentUser();
-  if (!user) return `/${lang}/signup?kind=company`;
+  if (!user) return signUpPath(lang, "company");
   if (user.suspended || user.accountKind !== "company") return null;
   try {
     const organizations = await getMyOrganizations(user.id);
-    const mayPublish = organizations.length === 0 || organizations.some(({ role, suspended }) => role !== "member" && !suspended);
+    const mayPublish = organizations.length === 0 || publishingOrganization(organizations) !== undefined;
     return mayPublish ? `/${lang}/post-job` : null;
   } catch (error) {
     console.error("The organisations of the header could not be loaded", error);

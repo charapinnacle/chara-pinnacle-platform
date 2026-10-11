@@ -9,6 +9,7 @@ import { SectionHeading } from "@/components/public/section-heading";
 import { StepList } from "@/components/public/step-list";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
 import { employerSteps, workerSteps } from "@/lib/public/steps";
+import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
@@ -19,8 +20,6 @@ async function Statistics() {
   const tiles = await getPlatformStatistics();
   return tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null;
 }
-
-const signUpPath = (lang: string, kind: "worker" | "company") => `/${lang}/signup?kind=${kind}`;
 
 // Only what exists today: the later phases of the client's structure (recruitment and staffing accounts, workforce
 // requirements, matching) are not offered here (D81).

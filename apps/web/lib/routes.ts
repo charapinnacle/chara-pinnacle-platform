@@ -26,6 +26,11 @@ export function employerDashboardPath(lang: string, slug?: string): string {
   return slug ? `/${lang}/dashboard/employer?org=${encodeURIComponent(slug)}` : `/${lang}/dashboard/employer`;
 }
 
+// The sign-up page, optionally with the account type preselected (the person can still change it).
+export function signUpPath(lang: string, kind?: "worker" | "company"): string {
+  return kind ? `/${lang}/signup?kind=${kind}` : `/${lang}/signup`;
+}
+
 export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }

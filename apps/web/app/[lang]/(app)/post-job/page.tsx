@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getMyOrganizations } from "@/lib/dal/organizations";
+import { getMyOrganizations, publishingOrganization } from "@/lib/dal/organizations";
 import { requireUser } from "@/lib/dal/session";
 import { homePath, jobsPath } from "@/lib/routes";
 
@@ -12,6 +12,6 @@ export default async function PostJobPage({ params }: PageProps<"/[lang]/post-jo
   const user = await requireUser(lang);
   if (user.accountKind !== "company") redirect(homePath(lang, user.accountKind));
   const organizations = await getMyOrganizations(user.id);
-  const publisher = organizations.find(({ role, suspended }) => role !== "member" && !suspended);
+  const publisher = publishingOrganization(organizations);
   redirect(publisher ? `${jobsPath(lang, publisher.slug)}/new` : homePath(lang, "company"));
 }
