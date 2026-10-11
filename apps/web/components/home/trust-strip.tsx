@@ -11,7 +11,6 @@ const statements = [
   { text: "Two-step verification for employer admins", icon: ShieldCheck },
 ] as const;
 
-// Four short statements in one row: no box, no card, hairlines between them.
 export function TrustStrip() {
   return (
     <section aria-label="What you can rely on" className="bg-background">

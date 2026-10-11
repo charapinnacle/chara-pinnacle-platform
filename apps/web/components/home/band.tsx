@@ -13,8 +13,6 @@ const bandVariants = cva("relative isolate overflow-hidden", {
 
 type BandProps = React.ComponentProps<"section"> & VariantProps<typeof bandVariants> & { textured?: boolean };
 
-// One full-width band of the home page: the colour runs edge to edge, the content sits in the 72 rem column and rises in as
-// it enters the screen (data-reveal, see RevealOnScroll). A dark band can carry the glow and the fine grid of the hero.
 export function Band({ tone = "light", textured = false, className, children, ...props }: BandProps) {
   return (
     <section className={bandVariants({ tone })} {...props}>

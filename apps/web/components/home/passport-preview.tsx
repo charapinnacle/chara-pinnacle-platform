@@ -2,8 +2,7 @@ import { UserRound } from "lucide-react";
 
 const fields = ["Occupation", "Skills", "Languages", "Availability"] as const;
 
-// A placeholder of the CHARA Passport: the fields it holds with empty bars where the values go, and a ring that fills once.
-// Nothing here is a person or a number; it is decoration, hidden from assistive technology.
+// Decoration, hidden from assistive technology: no person and no number.
 export function PassportPreview() {
   return (
     <div aria-hidden className="light w-full max-w-md justify-self-center rounded-3xl border bg-card p-8 text-foreground shadow-[0_32px_64px_-32px_rgb(0_0_0/0.7)] lg:justify-self-end">

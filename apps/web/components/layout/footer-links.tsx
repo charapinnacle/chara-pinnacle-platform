@@ -6,7 +6,6 @@ import { publicFooterColumns } from "@/lib/public/navigation";
 const linkClassName =
   "inline-flex min-h-11 items-center rounded-sm underline-offset-4 transition-colors duration-150 hover:text-foreground hover:underline sm:min-h-8 sm:pointer-coarse:min-h-11";
 
-// One line of links that wraps, shown in the footer of the signed-in area.
 export function FooterLinks({ lang, label, links }: { lang: string; label: string; links: readonly { path: string; label: string }[] }) {
   return (
     <nav aria-label={label}>
@@ -23,8 +22,7 @@ export function FooterLinks({ lang, label, links }: { lang: string; label: strin
   );
 }
 
-// The three columns of the public footer, on the dark foot: Platform, Company and Legal. The titles are not headings, so
-// the footer adds nothing to the outline of a page.
+// The titles of the columns are not headings, so the footer adds nothing to the outline of a page.
 export function FooterColumns({ lang }: { lang: string }) {
   return (
     <nav aria-label="Footer" className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-3 lg:gap-x-14">

@@ -8,9 +8,8 @@ const fields = [
 ] as const;
 
 // A plain GET form to Find Jobs: it works without JavaScript and loads none, and Find Jobs validates the address it
-// receives as it does every other (the 100 characters below are its limit too). One bar: the two fields and the button
-// share one white pill, which stands out on the dark hero (the light token set is put back inside it); the labels are for
-// assistive technology, the placeholders say it to everyone else.
+// receives as it does every other (the 100 characters below are its limit too). The light token set is put back inside
+// the pill so that it stands out on the dark hero.
 export function HeroSearch({ lang }: { lang: string }) {
   return (
     <form

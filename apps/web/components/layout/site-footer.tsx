@@ -1,8 +1,7 @@
 import { BrandMark, Wordmark } from "@/components/layout/brand";
 import { PageContainer } from "@/components/layout/page-container";
 
-// The dark foot of the public pages, the sign-in pages and the global pages, where the monogram sits on its own black: the
-// logo, the links of the area (three columns on the public pages) and one quiet line under a hairline.
+// Dark because the monogram sits only on black (design-system.md section 0).
 export function SiteFooter({ links }: { links?: React.ReactNode }) {
   return (
     <footer className="dark bg-inverse text-small text-muted-foreground">
