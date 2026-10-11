@@ -178,14 +178,44 @@ describe("notification templates", () => {
 
   it("trial_ending shows the end date and the price after the trial", async () => {
     const email = await renderEmail("trial_ending", SAMPLES.trial_ending, SITE);
-    expect(email.subject).toBe("Your CHARA trial ends on 2026-11-01");
-    expect(email.text).toContain("ends on 2026-11-01");
+    expect(email.subject).toBe("Your CHARA trial ends on 1 November 2026");
+    expect(email.text).toContain("ends on 1 November 2026");
     expect(email.text).toContain("Employer starter");
     expect(email.text).toContain("€39.00");
     const yen = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, amount_minor: 5000, currency: "JPY" }, SITE);
     expect(yen.text).toContain("¥5,000");
     const noPrice = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, currency: "euro" }, SITE);
     expect(noPrice.text).not.toContain("costs");
+  });
+
+  it("trial_ending shows the plan name, the long UTC date and the price per month excluding VAT", async () => {
+    const email = await renderEmail(
+      "trial_ending",
+      { ...SAMPLES.trial_ending, trial_ends_at: "2026-11-10T16:32:25.527Z", plan_code: "employer_starter", plan_name: "Basic" },
+      SITE,
+    );
+    expect(email.subject).toBe("Your CHARA trial ends on 10 November 2026");
+    expect(email.text).toContain("Your free trial of the Basic plan ends on 10 November 2026.");
+    expect(email.text).toContain("After that the plan costs €39.00 per month, excluding VAT, charged to your payment method.");
+    expect(email.text).not.toContain("Employer starter");
+    expect(email.text).not.toContain("2026-11-10");
+    expect(email.text).not.toContain("billing period");
+    const late = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, trial_ends_at: "2026-11-10T23:30:00-05:00" }, SITE);
+    expect(late.subject).toBe("Your CHARA trial ends on 11 November 2026");
+    const database = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, trial_ends_at: "2026-11-10 16:32:25.527+00" }, SITE);
+    expect(database.subject).toBe("Your CHARA trial ends on 10 November 2026");
+  });
+
+  it("trial_ending falls back when the date is missing or not a date and when the plan name is missing", async () => {
+    for (const trial_ends_at of [undefined, "", "soon", "2026-13-45"]) {
+      const email = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, trial_ends_at }, SITE);
+      expect(email.subject).toBe("Your CHARA trial ends on soon");
+      expect(email.text).toContain("ends on the date shown in your billing page.");
+    }
+    const noPlan = await renderEmail("trial_ending", { org_slug: "acme-bau" }, SITE);
+    expect(noPlan.text).toContain("Your free trial ends on");
+    const blankName = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, plan_name: "" }, SITE);
+    expect(blankName.text).toContain("Employer starter");
   });
 
   it("deletion_requested shows the date of the erasure", async () => {
