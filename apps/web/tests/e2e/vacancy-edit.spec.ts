@@ -1,8 +1,10 @@
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
+import { waitForHydration } from "./support/hydration";
 import { alertText, logIn } from "./support/login-page";
 import { addCompanyUser, expectNotFound, jobAudit, jobRows, jobsUrl, jobUrl, newCompany, seedJob, statusAudit } from "./support/jobs";
+import { captureActionRequests } from "./support/server-action";
 import { publicUrl } from "./support/vacancy-page";
 
 const editUrl = (slug: string, id: string) => `${jobUrl(slug, id)}/edit`;
@@ -151,6 +153,38 @@ test.describe("vacancy edit", () => {
     await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended, so its vacancies are not available." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
     expect(query<{ n: number }>(`select count(*)::int as n from audit.log where action = 'job.updated' and entity_id = ${literal(id)}`)[0].n).toBe(1);
+  });
+
+  test("FR-C1 AC12 in edit mode: a save without changes sends nothing, and a double click on Save changes writes one edit", async ({
+    page,
+  }) => {
+    const acme = await newCompany();
+    const id = seedJob(acme, { title: "Steady welder", status: "open" });
+    const before = updatedAt(id);
+
+    await logIn(page, acme.owner, editUrl(acme.slug, id));
+    const save = page.getByRole("button", { name: "Save changes" });
+    await waitForHydration(save);
+    const calls = captureActionRequests(page);
+    await save.click();
+    await expect(page).toHaveURL(jobUrl(acme.slug, id));
+    await expect(page.getByText("No changes to save", { exact: true })).toBeVisible();
+    expect(calls).toHaveLength(0);
+    expect(updatedAt(id)).toBe(before);
+    expect(jobAudit(acme.id, "job.updated")).toEqual([]);
+
+    await page.goto(editUrl(acme.slug, id));
+    await waitForHydration(save);
+    await page.route(`**${editUrl(acme.slug, id)}`, async (route) => {
+      if (route.request().method() === "POST") await new Promise((resolve) => setTimeout(resolve, 1_500));
+      await route.continue();
+    });
+    await page.getByLabel("City", { exact: true }).fill("Lübeck");
+    await save.dblclick();
+    await expect(page.getByRole("button", { name: "Saving vacancy..." })).toBeDisabled();
+    await expect(page).toHaveURL(jobUrl(acme.slug, id));
+    expect(calls).toHaveLength(1);
+    expect(jobAudit(acme.id, "job.updated")).toEqual([expect.objectContaining({ metadata: { organization_id: acme.id, changed_fields: ["city"] } })]);
   });
 
   test("FR-C2: a filled vacancy is final, so it offers no edit link and its edit page shows no form", async ({ page }) => {

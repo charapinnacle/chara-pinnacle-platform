@@ -74,10 +74,18 @@ export function JobForm({ slug, occupations, industries, countries, currencies, 
     defaultValues: edit?.values ?? defaultValues,
   });
   const { control, formState, handleSubmit } = form;
+  // Read during render: the formState proxy only tracks isDirty once it has been read here.
+  const { isDirty } = formState;
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not save the vacancy" });
   const router = useRouter();
 
   function onValid() {
+    // An update stamps jobs.updated_at, the sitemap lastmod of an open vacancy, so a save without changes sends nothing.
+    if (edit && !isDirty) {
+      toast({ title: "No changes to save" });
+      router.push(edit.jobHref);
+      return;
+    }
     return submit(
       () => (edit ? updateJob(slug, edit.jobId, form.getValues()) : createJob(slug, form.getValues())),
       (result) => {
