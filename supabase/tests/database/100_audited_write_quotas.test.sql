@@ -2,7 +2,7 @@
 -- organisation make at most a daily number of the writes that reach storage and the immutable audit log. Platform staff,
 -- billing and scheduled jobs are never counted.
 begin;
-select plan(29);
+select plan(33);
 
 \ir status_fixture.inc
 
@@ -16,7 +16,7 @@ $$;
 create function pg_temp.docs_of(p_user uuid) returns bigint
 language sql as $$ select count(*) from public.worker_documents where worker_user_id = p_user and deleted_at is null $$;
 create function pg_temp.reset_quotas() returns void
-language sql as $$ delete from private.rate_limit_hits where action in ('user:audited_write', 'user:org_audited_write') $$;
+language sql as $$ delete from private.rate_limit_hits where action in ('user:audited_write', 'org:audited_write') $$;
 
 -- The settings and their defaults.
 select results_eq(
@@ -52,6 +52,18 @@ values ('00000000-0000-0000-0000-0000000f0001', :'wa', 'cv', 'Restored', :'wa' |
 select is(pg_temp.docs_of(:'wa'), 51::bigint, 'the database owner is not held to the limit (no signed-in user)');
 update private.settings set value = '50' where key = 'worker_documents_max';
 
+-- A missing setting names itself instead of refusing every upload as if the cap were reached.
+delete from private.settings where key = 'worker_documents_max';
+select is(pg_temp.doc_as(:'wb', 1100), 'P0001|CHARA_SETTING_MISSING|worker_documents_max', 'without the cap setting an upload names the setting');
+insert into private.settings (key, value) values ('worker_documents_max', '50');
+delete from private.settings where key = 'rate_limit_org_audited_write_seconds';
+select is(pg_temp.doc_as(:'wb', 1101), 'P0001|CHARA_SETTING_MISSING|rate_limit_audited_write', 'and so does a write without a quota setting');
+insert into private.settings (key, value) values ('rate_limit_org_audited_write_seconds', '86400');
+select is(
+  (select count(*) from public.worker_documents where id in ('00000000-0000-0000-0000-000000001100', '00000000-0000-0000-0000-000000001101')),
+  0::bigint, 'and neither was added'
+);
+
 -- The daily quota of a user: inserts and real renames count, a rename to the same title does not.
 select pg_temp.reset_quotas();
 update private.settings set value = '3' where key = 'rate_limit_audited_write_max';
@@ -72,7 +84,7 @@ select is(
 select is((select title from public.worker_documents where id = '00000000-0000-0000-0000-000000001003'), 'Renamed', 'which changed nothing');
 select is(
   (select hits from private.rate_limit_hits where action = 'user:audited_write'
-     and bucket = ((hashtextextended(:'wb'::text, 0) & 2147483647) % 1048576)::integer),
+     and bucket = (hashtextextended(:'wb'::text, 0) & 2147483647)::integer),
   3, 'the refused writes were rolled back with their count'
 );
 select is(
@@ -102,6 +114,10 @@ select is(
 );
 select is((select count(*) from public.jobs where title like 'Quota%'), 2::bigint, 'only the two vacancies exist');
 select is(pg_temp.insert_as(:'own2', '{"title": "Beta quota"}', current_setting('t.b')::uuid), 'ok', 'another organisation has a quota of its own');
+select is(
+  (select count(*) from private.rate_limit_hits where action = 'org:audited_write' and bucket = (hashtextextended(current_setting('t.a'), 0) & 2147483647)::integer),
+  1::bigint, 'the organisation''s counter is a row of its own, by the whole hash of its id, apart from the users'''
+);
 
 -- Staff and scheduled work are not counted, so a spent quota never stops a control.
 select pg_temp.seed_job('{"title": "Quota open", "status": "open"}') as quota_job \gset
