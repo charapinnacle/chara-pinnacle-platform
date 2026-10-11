@@ -20,6 +20,7 @@ const dal = await import("@/lib/dal/admin");
 const jobs = await import("@/lib/dal/admin-jobs");
 
 const ID = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
+const OTHER = "0a1b2c3d-0000-4000-8000-000000000001";
 
 function userRow(n: number) {
   return {
@@ -343,5 +344,85 @@ describe("the log of suspensions and the staff", () => {
       { slug: "worker-terms", version: 0, title: "Worker terms draft", publishedAt: "2026-01-01T00:00:00Z", isDraft: true },
     ]);
     expect(rpcMock).toHaveBeenCalledWith("admin_list_legal_documents");
+  });
+});
+
+describe("the reports of Trust & Safety", () => {
+  const reports = async () => await import("@/lib/dal/admin-reports");
+  const row = (n: number) => ({
+    id: n,
+    reference: `R-${String(n).padStart(6, "0")}`,
+    target_type: n % 2 ? "job" : "profile",
+    target_label: n % 2 ? `Welder ${n}` : "Candidate profile",
+    category: "harassment",
+    status: "new",
+    created_at: "2026-10-01T10:00:00+00:00",
+    handled_at: null,
+  });
+
+  it("lists a status and a kind in pages of 25, with the id of the last row shown as the cursor", async () => {
+    const { listReports } = await reports();
+    rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
+    const page = await listReports({ status: "open", type: "job" }, 40);
+
+    expect(rpcMock).toHaveBeenCalledWith("admin_list_reports", { p_status: "open", p_type: "job", p_limit: 26, p_after_id: 40 });
+    expect(page.rows).toHaveLength(25);
+    expect(page.next).toBe(25);
+    expect(page.rows[1]).toEqual({
+      id: 2,
+      reference: "R-000002",
+      targetType: "profile",
+      targetLabel: "Candidate profile",
+      category: "harassment",
+      status: "new",
+      createdAt: "2026-10-01T10:00:00+00:00",
+      handledAt: null,
+    });
+  });
+
+  it("fails loudly when the queue cannot be read", async () => {
+    const { listReports } = await reports();
+    rpcMock.mockResolvedValue({ data: null, error: { message: "secret detail" } });
+    await expect(listReports({ status: "open" }, null)).rejects.toThrow("The reports could not be loaded");
+  });
+
+  it("reads one report with the vacancy and the organisation it is about, and nothing of a candidate", async () => {
+    const { getReport } = await reports();
+    rpcMock.mockResolvedValue({
+      data: [
+        {
+          id: 7, reference: "R-000007", target_type: "company", category: "illegal_content", details: "Text of the report.", status: "in_review",
+          reporter_kind: "visitor", reporter_email: "v@example.test", content_path: null, job_id: ID, job_title: "Welder", job_status: "open",
+          job_moderation_state: "visible", organization_id: OTHER, organization_name: "Acme Bau", organization_status: "active",
+          resolution_note: null, handled_at: "2026-10-02T10:00:00+00:00", created_at: "2026-10-01T10:00:00+00:00",
+        },
+      ],
+      error: null,
+    });
+    expect(await getReport(7)).toEqual({
+      id: 7,
+      reference: "R-000007",
+      targetType: "company",
+      category: "illegal_content",
+      details: "Text of the report.",
+      status: "in_review",
+      reporterKind: "visitor",
+      reporterEmail: "v@example.test",
+      contentPath: null,
+      job: { id: ID, title: "Welder", status: "open", moderationState: "visible" },
+      organization: { id: OTHER, name: "Acme Bau", status: "active" },
+      resolutionNote: null,
+      handledAt: "2026-10-02T10:00:00+00:00",
+      createdAt: "2026-10-01T10:00:00+00:00",
+    });
+    expect(rpcMock).toHaveBeenCalledWith("admin_get_report", { p_id: 7 });
+  });
+
+  it("gives null for a report that does not exist and throws for any other failure", async () => {
+    const { getReport } = await reports();
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "CHARA_NOT_FOUND" } });
+    expect(await getReport(7)).toBeNull();
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    await expect(getReport(7)).rejects.toThrow("The report could not be loaded");
   });
 });
