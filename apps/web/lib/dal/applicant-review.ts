@@ -4,6 +4,7 @@ import * as z from "zod";
 import { parseSnapshot, type ApplicantSnapshot } from "@/lib/applicants/snapshot";
 import { env } from "@/lib/env";
 import { serverEnv } from "@/lib/env.server";
+import { reportQuotaRefused } from "@/lib/quota-refused";
 import { createClient } from "@/lib/supabase/server";
 
 type DocumentType = Database["public"]["Enums"]["worker_document_type"];
@@ -24,7 +25,7 @@ export type ApplicantNote = { id: number; authorName: string | null; body: strin
 
 type NotesPage = { notes: ApplicantNote[]; hasMore: boolean };
 
-export type NoteRefusal = "not_found" | "read_only_free_plan" | "organization_suspended" | "invalid" | "failed";
+export type NoteRefusal = "not_found" | "read_only_free_plan" | "organization_suspended" | "invalid" | "rate_limited" | "failed";
 
 type DocumentLink =
   | { url: string }
@@ -91,6 +92,10 @@ export async function addApplicationNote(applicationId: string, organizationId: 
   if (error.message === "CHARA_FORBIDDEN") return "organization_suspended";
   if (error.code === "23503" || error.code === "42501") return "not_found";
   if (error.code === "23514") return "invalid";
+  if (error.message === "CHARA_RATE_LIMITED") {
+    reportQuotaRefused("audited_write", "note");
+    return "rate_limited";
+  }
   console.error("Adding a note failed", { code: error.code, message: error.message });
   return "failed";
 }

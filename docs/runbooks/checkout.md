@@ -38,10 +38,10 @@ A sold plan without a stored price makes the checkout answer `plan_not_synced`. 
 ```sh
 psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
 DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs --export > plans.json
-npm run go-live:check -- settings.json plans.json
+npm run go-live:check -- settings.json plans.json release.json
 ```
 
-It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true. Delete the two files afterwards.
+`release.json` is the export of the release facts in `docs/runbooks/security-checklist.md` section 2. It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true (and for the failures of that section). Delete the three files afterwards.
 
 ## 4. The free-trial rule
 

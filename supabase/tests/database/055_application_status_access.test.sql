@@ -16,8 +16,8 @@ begin
   return v_result || '#' || pg_temp.status_of(v_app);
 end;
 $$;
-select is(pg_temp.try_as(:'own1'), 'ok#interview', 'AC3: the owner succeeds');
-select is(pg_temp.try_as(:'adm'), 'ok#interview', 'AC3: an admin succeeds');
+select is(pg_temp.try_as(:'own1', 'authenticated', 'aal2'), 'ok#interview', 'AC3: the owner succeeds');
+select is(pg_temp.try_as(:'adm', 'authenticated', 'aal2'), 'ok#interview', 'AC3: an admin succeeds');
 select is(pg_temp.try_as(:'mem'), 'ok#interview', 'AC3: a member succeeds');
 select is(pg_temp.try_as(:'own2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: the owner of another organisation gets CHARA_NOT_FOUND');
 select is(pg_temp.try_as(:'adm2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: an admin of another organisation gets CHARA_NOT_FOUND');

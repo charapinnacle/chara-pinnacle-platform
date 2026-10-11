@@ -960,6 +960,9 @@ isOneToOne: false
 "choose_account_kind":
 { Args: { "p_consents"?: Json,"p_kind": Database["public"]['Enums']["account_kind"] }; Returns: Database["public"]['Enums']["account_kind"]
                            },
+"count_applications_in_progress":
+{ Args: { "p_job_id": string }; Returns: number
+                           },
 "create_organization":
 { Args: { "p_based_in_country": string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
                            },
@@ -1113,7 +1116,7 @@ isOneToOne: false
 { Args: { "p_body": string,"p_change_summary": string,"p_is_draft"?: boolean,"p_slug": string,"p_title": string }; Returns: number
                            },
 "rate_limit_attempt":
-{ Args: { "p_action": string,"p_key": string }; Returns: {
+{ Args: { "p_action": string,"p_key": string,"p_proof"?: string }; Returns: {
               "allowed": boolean,"retry_after_seconds": number
             }[]
                            },

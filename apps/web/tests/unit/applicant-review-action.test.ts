@@ -69,6 +69,7 @@ describe("addInternalNote", () => {
     ["organization_suspended", "Your organization is suspended, so notes cannot be added."],
     ["not_found", "This applicant could not be found."],
     ["invalid", "The note could not be saved. Check it and try again."],
+    ["rate_limited", "Too many changes were made today. Try again tomorrow."],
     ["failed", "We could not complete this request. Try again."],
   ])("answers the refusal %s with a message and no database text, and refreshes nothing", async (refusal, message) => {
     addNoteMock.mockResolvedValue(refusal);

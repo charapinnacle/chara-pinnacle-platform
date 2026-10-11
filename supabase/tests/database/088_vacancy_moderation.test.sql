@@ -168,7 +168,7 @@ select is(
   pg_temp.scalar_as('anon', null, format('select count(*) from public.get_public_job(%L)', :'v1')), '0', 'AC4: nor the vacancy page'
 );
 select is(pg_temp.apply_as(:'wnew', :'v1'), 'P0001|CHARA_JOB_NOT_OPEN|', 'AC4: a second candidate cannot apply');
-select is(pg_temp.set_as(:'own1', :'app_move', 'interview'), 'ok', 'AC4: the employer still moves the existing application');
+select is(pg_temp.set_as(:'own1', :'app_move', 'interview', null, 'aal2'), 'ok', 'AC4: the employer still moves the existing application');
 select is(pg_temp.status_of(:'app_move'), 'interview', 'AC4: and it is in the interview stage');
 select is(
   pg_temp.call_as(:'wb', 'authenticated', format('select public.withdraw_application(%L)', :'app_withdraw'), 'aal1'), 'ok',

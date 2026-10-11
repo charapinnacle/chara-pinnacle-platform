@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { clientAddress, visitorKey } from "@/lib/visitor-address";
+import { attemptProof, clientAddress, visitorKey } from "@/lib/visitor-address";
 
 describe("clientAddress", () => {
   it("takes the entry the single trusted proxy appended, however many the client sent before it", () => {
@@ -81,5 +81,25 @@ describe("visitorKey", () => {
     expect(visitorKey(secret, null)).toBe(visitorKey(secret, null));
     expect(visitorKey(secret, null)).not.toBe(visitorKey(secret, "198.51.100.7"));
     expect(visitorKey(secret, null)).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("attemptProof", () => {
+  const secret = "test-visitor-hash-secret-0123456789abcdef";
+  const key = "a".repeat(64);
+  const minute = 29_000_000 * 60_000;
+
+  it("is the HMAC of action|key|minute under the key derived from the secret, the vector pgTAP 098 checks", () => {
+    expect(attemptProof(secret, "login", key, minute)).toBe("0401f0c986731525401aa92864cdb1f055fcfef17483a440138a7929747bef87");
+    expect(attemptProof(secret, "login", key, minute + 59_999)).toBe(attemptProof(secret, "login", key, minute));
+  });
+
+  it("differs by minute, action, key and secret, and is not keyed with the secret itself", () => {
+    const proof = attemptProof(secret, "login", key, minute);
+    expect(attemptProof(secret, "login", key, minute + 60_000)).not.toBe(proof);
+    expect(attemptProof(secret, "signup", key, minute)).not.toBe(proof);
+    expect(attemptProof(secret, "login", "b".repeat(64), minute)).not.toBe(proof);
+    expect(attemptProof(`${secret}x`, "login", key, minute)).not.toBe(proof);
+    expect(createHmac("sha256", secret).update(`login|${key}|29000000`).digest("hex")).not.toBe(proof);
   });
 });

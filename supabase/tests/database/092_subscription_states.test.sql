@@ -266,9 +266,9 @@ select pg_temp.seed_app('applied', (select org from t_l)) as l_applied \gset
 select pg_temp.seed_app('interview', (select org from t_l)) as l_interview \gset
 select pg_temp.seed_app('hired', (select org from t_l)) as l_hired \gset
 insert into public.application_notes (application_id, organization_id, author_id, body) values (:'l_applied', (select org from t_l), :'l_member', 'Earlier note');
-create function pg_temp.note_as(p_user uuid, p_app uuid, p_org uuid) returns text
+create function pg_temp.note_as(p_user uuid, p_app uuid, p_org uuid, p_aal text default 'aal1') returns text
 language sql as $$
-  select pg_temp.call_as(p_user, 'authenticated', format('insert into public.application_notes (application_id, organization_id, body) values (%L, %L, %L)', p_app, p_org, 'New note'), 'aal1')
+  select pg_temp.call_as(p_user, 'authenticated', format('insert into public.application_notes (application_id, organization_id, body) values (%L, %L, %L)', p_app, p_org, 'New note'), p_aal)
 $$;
 create function pg_temp.withdraw_as(p_user uuid, p_app uuid) returns text
 language sql as $$ select pg_temp.call_as(p_user, 'authenticated', format('select public.withdraw_application(%L)', p_app), 'aal1') $$;
@@ -278,11 +278,11 @@ select pg_temp.lapse_counts() as l_before \gset
 select is(private.org_plan_code((select org from t_l)), 'free_employer', 'AC7: setup: the organisation is lapsed');
 select is((select (value #>> '{}')::boolean from private.settings where key = 'entitlements_enforced'), false, 'AC7: setup: entitlements_enforced is false');
 select is(pg_temp.set_as(:'l_member', :'l_applied', 'shortlisted'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC7: a member is refused a status change');
-select is(pg_temp.set_as(:'l_owner', :'l_applied', 'shortlisted'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC7: the owner is refused a status change');
+select is(pg_temp.set_as(:'l_owner', :'l_applied', 'shortlisted', null, 'aal2'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC7: the owner is refused a status change');
 select is(pg_temp.bulk_as(:'l_member', array[:'l_applied'::uuid], 'shortlisted'), to_jsonb('P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan'::text), 'AC7: a member is refused a bulk call');
 select is(pg_temp.bulk_as(:'l_owner', array[:'l_applied'::uuid], 'shortlisted'), to_jsonb('P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan'::text), 'AC7: the owner is refused a bulk call');
 select is(pg_temp.note_as(:'l_member', :'l_applied', (select org from t_l)), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC7: a member is refused a note');
-select is(pg_temp.note_as(:'l_owner', :'l_applied', (select org from t_l)), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC7: the owner is refused a note');
+select is(pg_temp.note_as(:'l_owner', :'l_applied', (select org from t_l), 'aal2'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC7: the owner is refused a note');
 select is(pg_temp.viewed_as(:'l_member', :'l_applied'), 'ok', 'AC7: opening the applied application raises nothing');
 select is(pg_temp.status_of(:'l_applied'), 'applied', 'AC7: and does not set viewed');
 select is(pg_temp.lapse_counts(), :'l_before', 'AC7: the refused calls wrote no application event, no email, no note and no audit row');
@@ -316,11 +316,11 @@ create function pg_temp.invite_as(p_user uuid, p_org uuid, p_email text) returns
 language sql as $$ select pg_temp.call_as(p_user, 'authenticated', format('select public.invite_member(%L, %L, ''member'')', p_org, p_email), 'aal2') $$;
 select is(pg_temp.set_status(:'l8_owner', :'l8_job', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'AC8: with the setting false the lapsed owner cannot reopen the paused vacancy');
 select is(pg_temp.invite_as(:'l8_owner', (select org from t_l8), 'l8@example.test'), 'P0001|CHARA_LIMIT_REACHED|members', 'AC8: nor invite a member');
-select is(pg_temp.set_as(:'n8_owner', :'n8_app1', 'shortlisted'), 'ok', 'AC8: with the setting false the owner of the organisation that never subscribed shortlists');
+select is(pg_temp.set_as(:'n8_owner', :'n8_app1', 'shortlisted', null, 'aal2'), 'ok', 'AC8: with the setting false the owner of the organisation that never subscribed shortlists');
 select is(pg_temp.set_status(:'n8_owner', :'n8_job1', 'open'), 'ok', 'AC8: opens a vacancy');
 select is(pg_temp.invite_as(:'n8_owner', (select org from t_n8), 'n8a@example.test'), 'ok', 'AC8: and invites a member');
 update private.settings set value = 'true' where key = 'entitlements_enforced';
-select is(pg_temp.set_as(:'n8_owner', :'n8_app2', 'shortlisted'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC8: with the setting true the same owner is refused a status change');
+select is(pg_temp.set_as(:'n8_owner', :'n8_app2', 'shortlisted', null, 'aal2'), 'P0001|CHARA_FEATURE_NOT_IN_PLAN|read_only_free_plan', 'AC8: with the setting true the same owner is refused a status change');
 select is(pg_temp.set_status(:'n8_owner', :'n8_job2', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'AC8: is refused a vacancy');
 select is(pg_temp.invite_as(:'n8_owner', (select org from t_n8), 'n8b@example.test'), 'P0001|CHARA_LIMIT_REACHED|members', 'AC8: and an invitation');
 update private.settings set value = 'false' where key = 'entitlements_enforced';

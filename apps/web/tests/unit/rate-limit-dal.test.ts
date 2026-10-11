@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -9,7 +9,7 @@ vi.mock("next/headers", () => ({ headers: headersMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
 const { isThrottled } = await import("@/lib/dal/rate-limit");
-const { visitorKey } = await import("@/lib/visitor-address");
+const { attemptProof, visitorKey } = await import("@/lib/visitor-address");
 
 const secret = "test-visitor-hash-secret-0123456789abcdef";
 
@@ -19,17 +19,24 @@ function request(forwardedFor: string | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers({ now: new Date("2026-11-09T10:00:30Z"), toFake: ["Date"] });
   request("203.0.113.99, 198.51.100.7");
   rpcMock.mockResolvedValue({ data: [{ allowed: true, retry_after_seconds: 0 }], error: null });
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("isThrottled", () => {
-  it("counts the attempt under the keyed hash of the trusted address, never the address itself", async () => {
+  it("counts the attempt under the keyed hash of the trusted address with the proof of this minute, never the address", async () => {
     expect(await isThrottled("login")).toBe(false);
     expect(rpcMock).toHaveBeenCalledOnce();
+    const key = visitorKey(secret, "198.51.100.7");
     expect(rpcMock).toHaveBeenCalledWith("rate_limit_attempt", {
       p_action: "login",
-      p_key: visitorKey(secret, "198.51.100.7"),
+      p_key: key,
+      p_proof: attemptProof(secret, "login", key, Date.parse("2026-11-09T10:00:00Z")),
     });
     expect(JSON.stringify(rpcMock.mock.calls)).not.toContain("198.51.100.7");
     expect(JSON.stringify(rpcMock.mock.calls)).not.toContain("203.0.113.99");
@@ -60,6 +67,7 @@ describe("isThrottled", () => {
     expect(rpcMock).toHaveBeenCalledWith("rate_limit_attempt", {
       p_action: "resend",
       p_key: visitorKey(secret, null),
+      p_proof: attemptProof(secret, "resend", visitorKey(secret, null), Date.now()),
     });
   });
 

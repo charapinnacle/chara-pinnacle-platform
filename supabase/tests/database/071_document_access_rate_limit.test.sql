@@ -36,9 +36,9 @@ select is(pg_temp.refused(:'adm', 40), 'P0002|CHARA_NOT_FOUND|', 'forty requests
 select is(pg_temp.grant_as(:'adm', :'d1', 'application_review', 'aal2'), 'ok', 'and the allowance is still whole');
 select is(pg_temp.grant_as(:'wa', :'d1', 'owner_download', 'aal1'), 'ok', 'the owner of the document is counted too, and is within the allowance');
 
--- The counters of a person are out of reach of the public function: rate_limit_attempt accepts the action name
--- 'document_access' (it has settings) but counts it under another row, so an anonymous burst aimed at the bucket number
--- of a known user id leaves that user's allowance alone.
+-- The counters of a person are out of reach of the public function: rate_limit_attempt accepts only the web tier's
+-- actions (D79), so an anonymous burst aimed at the bucket number of a known user id is refused and leaves that user's
+-- allowance alone.
 update private.rate_limit_hits set expires_at = now() - interval '1 second' where action = 'user:document_access';
 select ((hashtextextended(:'mem'::text, 0) & 2147483647) % (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_user_buckets')) as ub \gset
 select is(
@@ -46,11 +46,11 @@ select is(
     null, 'anon',
     format($f$select count(*) from (select public.rate_limit_attempt('document_access', %L) from generate_series(1, 40)) calls$f$, lpad(to_hex(:ub % 16384), 8, '0') || repeat('0', 56))
   ),
-  'ok', 'an anonymous caller can count a web-tier action named document_access'
+  'P0001|CHARA_INVALID_INPUT|p_action', 'an anonymous caller cannot count the action document_access'
 );
 select is(
-  (select hits from private.rate_limit_hits where action = 'document_access' and bucket = :ub % 16384), 31,
-  'and it stops at the limit plus one in the row of that action'
+  (select count(*) from private.rate_limit_hits where action in ('document_access', 'keys:document_access', 'shared:document_access')), 0::bigint,
+  'and no row of that action exists'
 );
 select is(pg_temp.grant_as(:'mem', :'d1'), 'ok', 'but the member is granted: the burst did not reach the counter of the person');
 select is((select hits from private.rate_limit_hits where action = 'user:document_access' and bucket = :ub), 1, 'which holds one hit, from this request');

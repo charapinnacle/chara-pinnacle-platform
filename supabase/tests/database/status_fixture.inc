@@ -82,7 +82,7 @@ language sql as $$
 $$;
 
 -- The rows of a query as one jsonb array, for the caller p_user; a refusal is the text 'sqlstate|message|detail'.
-create function pg_temp.json_as(p_user uuid, p_sql text) returns jsonb
+create function pg_temp.json_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns jsonb
 language plpgsql as $$
 declare
   v_result jsonb;
@@ -90,7 +90,7 @@ declare
   v_message text;
   v_detail text;
 begin
-  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated', 'aal', p_aal)::text, true);
   set local role authenticated;
   begin
     execute format('select coalesce(jsonb_agg(to_jsonb(s)), ''[]'') from (%s) s', p_sql) into v_result;
@@ -105,9 +105,9 @@ end;
 $$;
 
 -- bulk_set_application_status as p_user: the result rows as jsonb ordered by id, or the refusal text.
-create function pg_temp.bulk_as(p_user uuid, p_ids uuid[], p_status text, p_note text default null) returns jsonb
+create function pg_temp.bulk_as(p_user uuid, p_ids uuid[], p_status text, p_note text default null, p_aal text default 'aal1') returns jsonb
 language sql as $$
-  select pg_temp.json_as(p_user, format('select * from public.bulk_set_application_status(%L::uuid[], %L, %L) order by application_id', p_ids, p_status, p_note))
+  select pg_temp.json_as(p_user, format('select * from public.bulk_set_application_status(%L::uuid[], %L, %L) order by application_id', p_ids, p_status, p_note), p_aal)
 $$;
 
 create function pg_temp.status_of(p_app uuid) returns text

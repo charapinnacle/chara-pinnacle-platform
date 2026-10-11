@@ -29,7 +29,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
   // Only the Close and Mark as filled dialogs show the count, so it is read only when one of them is offered.
   const inProgress =
     manager && statusActions[job.status].some((action) => action.confirm)
-      ? await countApplicationsInProgress(organization.id, job.id)
+      ? await countApplicationsInProgress(job.id)
       : 0;
   const applicantsHref = applicantsPath(lang, slug, { job: job.id });
 

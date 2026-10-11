@@ -40,9 +40,9 @@ Before every release that changes a page or a text, and before go-live:
 1. CHARA has approved the text of Home, How CHARA Works, Trust & Safety, About, Contact and Imprint, and legal review has cleared them. Record the approver, the date and the release in the go-live checklist.
 2. `legal_entity_name`, `legal_entity_address`, `privacy_contact` and `data_protection_contact` are set in production. The gate fails while one is empty:
    ```sh
-   npm run go-live:check -- settings.json plans.json
+   npm run go-live:check -- settings.json plans.json release.json
    ```
-   (`settings.json` is the export of `private.settings` of `docs/runbooks/plan-limits.md`; the same gate checks the plan limits and the sold plans.)
+   (`settings.json` is the export of `private.settings` of `docs/runbooks/plan-limits.md`, `release.json` that of `docs/runbooks/security-checklist.md` section 2; the same gate checks the plan limits, the sold plans, the administrators and the legal texts.)
 3. The Trust & Safety page still says that paying for a plan does not make an organisation verified or move its vacancies up in search results (a Vitest test, `public-pages.test.tsx`, fails when the sentence goes).
 4. The published Cookie Policy says that only strictly necessary cookies are used (no analytics, no advertising; the site sets no cookie for a visitor without a session, a browser test checks it), and no page promises a feature of a later phase. Both are read by the reviewer; the legal texts are FR-H3.
 5. The CI job `e2e` is green: `public-pages.spec.ts` (all pages server-rendered, locale redirect and unknown pages, shared layout, keyboard, 360 px, no cookie, open vacancies only), `public-pages-content.spec.ts` (settings on the pages, axe on the 19 pages) and `public-pages-failure.spec.ts` (failed read of the settings).

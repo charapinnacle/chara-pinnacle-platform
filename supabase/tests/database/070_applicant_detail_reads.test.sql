@@ -33,9 +33,9 @@ select current_setting('t.app') as a4 \gset
 select pg_temp.doc('00000000-0000-0000-0000-0000000d0003', :'wa');
 update public.worker_documents set deleted_at = now() where id = :'d4';
 
-create function pg_temp.reads_as(p_user uuid, p_fn text, p_app uuid) returns text
+create function pg_temp.reads_as(p_user uuid, p_fn text, p_app uuid, p_aal text default 'aal1') returns text
 language sql as $$
-  select coalesce(pg_temp.json_as(p_user, format('select * from public.%s(%L)', p_fn, p_app))::text, 'null')
+  select coalesce(pg_temp.json_as(p_user, format('select * from public.%s(%L)', p_fn, p_app), p_aal)::text, 'null')
 $$;
 create function pg_temp.changed_as(p_user uuid, p_app uuid) returns text
 language sql as $$
@@ -72,8 +72,8 @@ select is(
   array['id', 'title', 'type', 'file_name', 'size_bytes', 'expires_on', 'available'],
   'AC6: the list has no bucket and no storage path'
 );
-select is(pg_temp.reads_as(:'own1', 'application_documents', :'a1')::jsonb -> 0 ->> 'id', :'d1', 'an owner of the organisation reads the list too');
-select is(jsonb_array_length(pg_temp.json_as(:'adm', format('select * from public.application_documents(%L)', :'a1'))), 3, 'and an admin');
+select is(pg_temp.reads_as(:'own1', 'application_documents', :'a1', 'aal2')::jsonb -> 0 ->> 'id', :'d1', 'an owner of the organisation reads the list too');
+select is(jsonb_array_length(pg_temp.json_as(:'adm', format('select * from public.application_documents(%L)', :'a1'), 'aal2')), 3, 'and an admin');
 
 -- AC6: errors.
 select is(pg_temp.reads_as(:'own2', 'application_documents', :'a1'), '"P0002|CHARA_NOT_FOUND|"', 'AC6: a member of another organisation gets CHARA_NOT_FOUND');
@@ -153,7 +153,7 @@ select pg_temp.call_as(:'adm', 'authenticated', format($$insert into public.appl
 update public.profiles set display_name = 'Mia Member' where id = :'mem';
 update public.application_notes set created_at = now() - interval '1 hour' where body = 'Call on Monday';
 select is(
-  pg_temp.json_as(:'own1', format('select author_name, body from public.list_application_notes(%L)', :'a1')),
+  pg_temp.json_as(:'own1', format('select author_name, body from public.list_application_notes(%L)', :'a1'), 'aal2'),
   '[{"body": "Second note", "author_name": null}, {"body": "Call on Monday", "author_name": "Mia Member"}]'::jsonb,
   'AC7: the notes are listed newest first with the name of the author'
 );

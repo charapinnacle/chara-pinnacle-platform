@@ -40,8 +40,10 @@ Limit enforcement (`private.settings.entitlements_enforced`) is `false` until th
 ```sh
 psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
 DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs --export > plans.json
-npm run go-live:check -- settings.json plans.json
+npm run go-live:check -- settings.json plans.json release.json
 ```
+
+The third file is the export of the release facts (`docs/runbooks/security-checklist.md` section 2).
 
 The second file is the export of the sold plans with their limits, stored price and the amount Stripe holds (docs/runbooks/checkout.md, section 3); the same check fails when a sold plan is not mirrored. Run it in the release checklist. Delete both files afterwards: they hold no secret, but they are configuration of the production database.
 

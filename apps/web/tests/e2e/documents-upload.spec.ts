@@ -12,6 +12,8 @@ import {
   row,
   runScanDocument,
 } from "./support/documents";
+import { execute, literal } from "./support/db";
+import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { daysFromToday } from "./support/passport";
 
@@ -136,6 +138,27 @@ test.describe("candidate documents: upload", () => {
     await upload(page).click();
     await expect(page.getByText("The file is empty.", { exact: true })).toBeVisible();
     expect(documentRows(user.id)).toEqual([]);
+  });
+
+  test("SA-06: a candidate who keeps the most documents allowed is told so, and no row or file is added", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    await openDocuments(page, user);
+    execute(
+      `insert into public.worker_documents (id, worker_user_id, type, title, storage_path, file_name, mime, size_bytes, scan_status)
+       select d.id, ${literal(user.id)}, 'cv', 'Kept ' || d.i, ${literal(user.id)} || '/' || d.id || '/cv.pdf', 'cv.pdf', 'application/pdf', 1000, 'skipped'
+       from (select gen_random_uuid() as id, i from generate_series(1, 50) i) d`,
+    );
+    await page.reload();
+    await waitForHydration(page.getByLabel("Type", { exact: true }));
+    await fillUpload(page, {
+      type: "CV",
+      title: "One too many",
+      file: { name: "cv.pdf", mimeType: "application/pdf", buffer: pdfBytes(1_000) },
+    });
+    await upload(page).click();
+    await expect(announcements(page)).toHaveText("You have reached the maximum number of documents. Delete one before you add another.");
+    expect(documentRows(user.id)).toHaveLength(50);
+    expect(objectNames(user.id)).toEqual([]);
   });
 
   test("FR-B2 AC5: a text file declared as a PDF is rejected and one whose upload never finished stays pending, neither is usable", async ({

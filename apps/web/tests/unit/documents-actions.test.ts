@@ -122,6 +122,27 @@ describe("startDocumentUpload", () => {
     expect(signUploadMock).not.toHaveBeenCalled();
   });
 
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  beforeEach(() => warn.mockClear());
+
+  it("says so when the candidate already keeps the most documents allowed, and signs nothing", async () => {
+    outcome = { data: null, error: { message: "CHARA_LIMIT_REACHED", code: "P0001", details: "worker_documents" } };
+    expect(await actions.startDocumentUpload(input)).toEqual({
+      message: "You have reached the maximum number of documents. Delete one before you add another.",
+    });
+    expect(signUploadMock).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledExactlyOnceWith('{"alert":"quota_refused","quota":"worker_documents","flow":"document"}');
+  });
+
+  it("says so when the daily number of changes is spent, and records the refusal without personal data", async () => {
+    outcome = { data: null, error: { message: "CHARA_RATE_LIMITED", code: "P0001", details: null } };
+    expect(await actions.startDocumentUpload(input)).toEqual({ message: "You have made too many changes today. Try again tomorrow." });
+    expect(signUploadMock).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledExactlyOnceWith('{"alert":"quota_refused","quota":"audited_write","flow":"document"}');
+  });
+
   it("answers generically, and logs only a code and message, when the database refuses", async () => {
     outcome = { data: null, error: { message: "new row violates row-level security policy", code: "42501", details: "secret" } };
     expect(await actions.startDocumentUpload(input)).toEqual({ message: GENERIC });

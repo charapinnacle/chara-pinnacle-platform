@@ -110,20 +110,15 @@ describe("getJob", () => {
 });
 
 describe("countApplicationsInProgress", () => {
-  it("counts the applications of the vacancy that still wait for a decision, without reading them", async () => {
-    result = { data: null, error: null, count: 4 };
-    await expect(countApplicationsInProgress("org-1", row.id)).resolves.toBe(4);
-    expect(calls).toEqual([
-      ["job_applications.select", "id", { count: "exact", head: true }],
-      ["job_applications.eq", "organization_id", "org-1"],
-      ["job_applications.eq", "job_id", row.id],
-      ["job_applications.in", "status", ["applied", "viewed", "shortlisted", "interview", "offer"]],
-    ]);
+  it("counts the applications of the vacancy that still wait for a decision through the function, without reading them", async () => {
+    result = { data: 4, error: null };
+    await expect(countApplicationsInProgress(row.id)).resolves.toBe(4);
+    expect(calls).toEqual([["rpc.count_applications_in_progress", { p_job_id: row.id }]]);
   });
 
   it("fails loudly, without the database text, when the count cannot be read", async () => {
-    result = { data: null, error: { message: "secret detail" }, count: null };
-    await expect(countApplicationsInProgress("org-1", row.id)).rejects.toThrow("The applications in progress could not be counted");
+    result = { data: null, error: { message: "secret detail" } };
+    await expect(countApplicationsInProgress(row.id)).rejects.toThrow("The applications in progress could not be counted");
   });
 });
 

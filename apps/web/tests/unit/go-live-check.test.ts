@@ -41,17 +41,34 @@ const ENTITY = {
 const settings = (enforced: unknown, entity: Record<string, unknown> = ENTITY) =>
   JSON.stringify({ entitlements_enforced: enforced, ...entity });
 
-function run(exported: string | null, plans: Plan[] | string | null = MIRRORED) {
-  const args = [script];
-  if (exported !== null) {
-    const file = path.join(dir, "settings.json");
-    writeFileSync(file, exported);
-    args.push(file);
-    if (plans !== null) {
-      const plansFile = path.join(dir, "plans.json");
-      writeFileSync(plansFile, typeof plans === "string" ? plans : JSON.stringify({ plans }));
-      args.push(plansFile);
-    }
+type Release = { active_administrators?: unknown; current_legal_documents?: unknown; rate_limit_proof_key_set?: unknown };
+
+const PUBLISHED: Release = {
+  active_administrators: 2,
+  rate_limit_proof_key_set: true,
+  current_legal_documents: [
+    { slug: "privacy-policy", version: 1, is_draft: false },
+    { slug: "terms-of-service", version: 2, is_draft: false },
+  ],
+};
+
+// The settings, plans and release facts as files, in that order; a null file and every file after it are left out.
+function run(
+  exported: string | null,
+  plans: Plan[] | string | null = MIRRORED,
+  release: Release | string | null = PUBLISHED,
+  flags: string[] = [],
+) {
+  const args = [script, ...flags];
+  const files: [string, string | null][] = [
+    ["settings.json", exported],
+    ["plans.json", plans === null || typeof plans === "string" ? plans : JSON.stringify({ plans })],
+    ["release.json", release === null || typeof release === "string" ? release : JSON.stringify(release)],
+  ];
+  for (const [name, content] of files) {
+    if (content === null) break;
+    writeFileSync(path.join(dir, name), content);
+    args.push(path.join(dir, name));
   }
   return spawnSync(process.execPath, args, { encoding: "utf8" });
 }
@@ -166,5 +183,80 @@ describe("the go-live gate for the legal-entity details (FR-H1 AC12)", () => {
     for (const key of Object.keys(ENTITY)) expect(result.stderr).toContain(`${key} must not be empty`);
     expect(result.stderr).toContain("entitlements_enforced must be true");
     expect(result.stderr).toContain("plan employer_starter: Stripe holds 3800");
+  });
+});
+
+describe("the go-live gate for the administrators and the legal texts (security review SA-08)", () => {
+  const ENFORCED = settings(true);
+
+  it("passes with an active administrator and published legal texts, and points to the checks made by hand", () => {
+    const result = run(ENFORCED);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("an administrator is active");
+    expect(result.stdout).toContain("docs/runbooks/security-checklist.md section 3");
+  });
+
+  it.each([
+    ["no administrator", 0, "found: 0"],
+    ["a count that is not a number", "2", 'found: "2"'],
+    ["no count at all", undefined, "found: null"],
+  ])("fails with %s", (_, administrators, found) => {
+    const result = run(ENFORCED, MIRRORED, { ...PUBLISHED, active_administrators: administrators });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`the platform needs an active administrator (${found})`);
+  });
+
+  it.each([
+    ["is not set", false],
+    ["is not reported", undefined],
+    ["is reported as text", "true"],
+  ])("fails while the throttle proof key %s (SA-02)", (_, keySet) => {
+    const result = run(ENFORCED, MIRRORED, { ...PUBLISHED, rate_limit_proof_key_set: keySet });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("the Vault secret rate_limit_proof_key is not set");
+  });
+
+  it("fails and names every draft while a current legal text is a draft", () => {
+    const result = run(ENFORCED, MIRRORED, {
+      ...PUBLISHED,
+      current_legal_documents: [
+        { slug: "privacy-policy", version: 0, is_draft: true },
+        { slug: "terms-of-service", version: 2, is_draft: false },
+        { slug: "cookie-policy", version: 1, is_draft: true },
+      ],
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("legal documents are drafts: privacy-policy v0, cookie-policy v1");
+    expect(result.stderr).not.toContain("terms-of-service");
+  });
+
+  it("lets the drafts pass with the explicit flag, and still names them", () => {
+    const release = { ...PUBLISHED, current_legal_documents: [{ slug: "privacy-policy", version: 0, is_draft: true }] };
+    const result = run(ENFORCED, MIRRORED, release, ["--allow-draft-legal"]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Draft legal documents allowed by --allow-draft-legal: privacy-policy v0");
+  });
+
+  it("does not let the flag pass anything else", () => {
+    const result = run(settings(false), MIRRORED, { active_administrators: 0, current_legal_documents: [] }, ["--allow-draft-legal"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("entitlements_enforced must be true");
+    expect(result.stderr).toContain("the platform needs an active administrator");
+    expect(result.stderr).toContain("no legal document is published");
+  });
+
+  it("fails while plans are sold with enforcement off, whatever the other facts say", () => {
+    const result = run(settings(false), MIRRORED, PUBLISHED);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("entitlements_enforced must be true (found: false)");
+  });
+
+  it("fails with a usage error when the release facts are missing or not an export of them", () => {
+    expect(run(ENFORCED, MIRRORED, null).status).toBe(2);
+    expect(run(ENFORCED, MIRRORED, null).stderr).toContain("Usage");
+    expect(run(ENFORCED, MIRRORED, "not json").stderr).toContain("release.json is not a readable JSON export");
+    expect(run(ENFORCED, MIRRORED, { active_administrators: 1 }).status).toBe(2);
   });
 });

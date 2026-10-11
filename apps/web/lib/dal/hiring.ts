@@ -3,7 +3,6 @@ import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { openStages } from "@/lib/applications/stage-machine";
 import { isStaleOpen, type LimitPrompt } from "@/lib/jobs/lifecycle";
 import { logSearch } from "@/lib/jobs/search-log";
 import type { JobSearchFilters } from "@/lib/jobs/search-params";
@@ -231,18 +230,13 @@ export async function listJobs(
   };
 }
 
-// The applications of a vacancy that still wait for a decision, for the prompt before it is closed or filled (FR-C2). The
-// policy shows them to the members of the organization; job_applications_job_status_idx (job_id, status) answers the count.
-export async function countApplicationsInProgress(organizationId: string, jobId: string): Promise<number> {
+// The applications of a vacancy that still wait for a decision, for the prompt before it is closed or filled (FR-C2). A
+// function, not the table: an owner or admin at aal1 may open the vacancy page but not read the applications (FR-A4).
+export async function countApplicationsInProgress(jobId: string): Promise<number> {
   const supabase = await createClient();
-  const { count, error } = await supabase
-    .from("job_applications")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", organizationId)
-    .eq("job_id", jobId)
-    .in("status", [...openStages]);
+  const { data, error } = await supabase.rpc("count_applications_in_progress", { p_job_id: jobId });
   if (error) throw new Error("The applications in progress could not be counted", { cause: error });
-  return count ?? 0;
+  return data;
 }
 
 export async function getEmployer(organizationId: string): Promise<Employer | null> {
