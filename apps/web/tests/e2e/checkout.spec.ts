@@ -60,7 +60,8 @@ test.describe("checkout: the owner starts a trial through the hosted page (FR-G2
     await expect(page).toHaveURL(new RegExp(`^${HOSTED_ORIGIN}/checkout/null_cs_`));
     expect(hosted.visits).toHaveLength(1);
     expect(hosted.visits[0].searchParams.get("success_url")).toBe(`http://localhost:3100${billingPath(team.slug)}`);
-    expect(requests.some((entry) => /card|cvc|cc-/i.test(entry))).toBe(false);
+    // \bcc- matches the autocomplete names of card fields (cc-number, cc-exp, cc-csc) but not a UUID with "cc" before a dash.
+    expect(requests.some((entry) => /card|cvc|\bcc-/i.test(entry))).toBe(false);
 
     expect(customerRows(team)).toEqual([
       { provider: "null", customer_ref: null, billing_country: "DE", vat_id: identifiers.vat, registration_number: identifiers.registrationStored },
