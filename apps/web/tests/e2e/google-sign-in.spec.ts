@@ -14,7 +14,7 @@ import {
   authCookies,
   decodeSession,
   LOGIN_FAILED,
-  RESET_SENT,
+  requestReset,
   RESET_SUBJECT,
   rpcWithToken,
   sessionClaims,
@@ -271,10 +271,7 @@ test.describe("Continue with Google switched on", () => {
     expect(authCookies(await page.context().cookies())).toEqual([]);
     await expect(page.getByText(GOOGLE_NOTE_LOGIN)).toBeVisible();
 
-    await page.goto("/en/forgot-password");
-    await page.getByLabel("Email", { exact: true }).fill(user.email);
-    await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByText(RESET_SENT)).toBeVisible();
+    await requestReset(page, user.email);
     const message = await waitForMessage(user.email, { subject: RESET_SUBJECT });
     expect(message.Text).toContain("Continue with Google");
     expect(message.Text).not.toMatch(/password stays as it is/i);

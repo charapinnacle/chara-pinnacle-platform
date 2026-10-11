@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
 
 const config = readFileSync(
   path.join(import.meta.dirname, "../../../../supabase/config.toml"),
@@ -35,6 +37,11 @@ describe("Auth configuration that FR-A1 and FR-A8 rely on", () => {
   it("keeps a confirmation link valid for at least 24 hours and throttles resends to one a minute", () => {
     expect(Number(value("auth.email", "otp_expiry"))).toBeGreaterThanOrEqual(86_400);
     expect(value("auth.email", "max_frequency")).toBe('"60s"');
+  });
+
+  it("holds the cooldown of the Resend button to the interval Auth enforces, so the button never opens before Auth would send", async () => {
+    const { RESEND_COOLDOWN_SECONDS } = await import("@/lib/pending-email");
+    expect(`"${RESEND_COOLDOWN_SECONDS}s"`).toBe(value("auth.email", "max_frequency"));
   });
 
   it("sends the confirmation link to the confirm page with the token hash", () => {

@@ -16,6 +16,9 @@ const userMock = vi.hoisted(() => vi.fn());
 const freshMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
+const rememberMock = vi.hoisted(() => vi.fn());
+const forgetMock = vi.hoisted(() => vi.fn());
+const resendPendingMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
@@ -25,6 +28,11 @@ vi.mock("@/lib/dal/recovery", () => ({
   hasRecoverySession: sessionMock,
 }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
+vi.mock("@/lib/pending-email", () => ({
+  rememberPendingEmail: rememberMock,
+  forgetPendingEmail: forgetMock,
+  resendPending: resendPendingMock,
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: {
@@ -37,7 +45,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { requestPasswordReset, resetPassword } = await import("@/lib/actions/recovery");
+const { requestPasswordReset, resendResetEmail, resetPassword } = await import("@/lib/actions/recovery");
 
 const input = { tokenHash: "abc_DEF-123", password: "a long enough password" };
 
@@ -56,9 +64,12 @@ beforeEach(() => {
 });
 
 describe("requestPasswordReset", () => {
-  it("normalises the address and answers that a link was sent", async () => {
-    expect(await requestPasswordReset({ email: " Ana@Example.COM " })).toEqual({ sent: true });
+  it("normalises the address, keeps it for the check-your-email page and goes there", async () => {
+    await expect(requestPasswordReset({ email: " Ana@Example.COM " })).rejects.toThrow(
+      "REDIRECT:/en/forgot-password/check-email",
+    );
     expect(resetMock).toHaveBeenCalledWith("ana@example.com");
+    expect(rememberMock).toHaveBeenCalledWith("recovery", "ana@example.com");
   });
 
   it("answers alike for the per-address interval, an unknown address and an unexpected failure", async () => {
@@ -74,8 +85,9 @@ describe("requestPasswordReset", () => {
     resetMock.mockResolvedValueOnce({ data: {}, error: new AuthApiError("gone", 400, "user_not_found") });
     resetMock.mockResolvedValueOnce({ data: {}, error: new AuthApiError("smtp down", 500, "unexpected_failure") });
     for (const email of ["a@example.test", "b@example.test", "c@example.test"]) {
-      expect(await requestPasswordReset({ email })).toEqual({ sent: true });
+      await expect(requestPasswordReset({ email })).rejects.toThrow("REDIRECT:/en/forgot-password/check-email");
     }
+    expect(rememberMock.mock.calls.map(([, email]) => email)).toEqual(["a@example.test", "b@example.test", "c@example.test"]);
     expect(logged).toHaveBeenCalledTimes(2);
     logged.mockRestore();
   });
@@ -88,17 +100,19 @@ describe("requestPasswordReset", () => {
     expect(await requestPasswordReset({ email: "a@example.test" })).toEqual({
       message: "Too many attempts. Try again in a few minutes.",
     });
+    expect(rememberMock).not.toHaveBeenCalled();
   });
 
   it("refuses an invalid address without calling Auth", async () => {
     const result = await requestPasswordReset({ email: "nope" });
-    expect(result.errors?.email).toBe("Enter a valid email address.");
+    expect(result?.errors?.email).toBe("Enter a valid email address.");
+    expect(rememberMock).not.toHaveBeenCalled();
     expect(resetMock).not.toHaveBeenCalled();
     expect(throttledMock).not.toHaveBeenCalled();
   });
 
   it("counts the attempt as a reset request before Auth is called", async () => {
-    await requestPasswordReset({ email: "a@example.test" });
+    await expect(requestPasswordReset({ email: "a@example.test" })).rejects.toThrow("REDIRECT:");
     expect(throttledMock).toHaveBeenCalledWith("forgot_password");
     expect(throttledMock.mock.invocationCallOrder[0]).toBeLessThan(resetMock.mock.invocationCallOrder[0]);
   });
@@ -107,12 +121,26 @@ describe("requestPasswordReset", () => {
     throttledMock.mockResolvedValue(true);
     expect(await requestPasswordReset({ email: "a@example.test" })).toEqual({ message: "Too many attempts. Try again in a few minutes." });
     expect(resetMock).not.toHaveBeenCalled();
+    expect(rememberMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("resendResetEmail", () => {
+  it("resends through the shared routine to the address it is given, as a reset request under the forgot_password limit", async () => {
+    resendPendingMock.mockImplementation(async (_purpose, _action, _path, send: (email: string) => Promise<unknown>) => {
+      expect(await send("ana@example.test")).toBeNull();
+      return { cooldown: 60, sent: true };
+    });
+    expect(await resendResetEmail()).toEqual({ cooldown: 60, sent: true });
+    expect(resendPendingMock).toHaveBeenCalledWith("recovery", "forgot_password", "/forgot-password", expect.any(Function));
+    expect(resetMock).toHaveBeenCalledWith("ana@example.test");
   });
 });
 
 describe("resetPassword", () => {
   it("verifies the link, saves the password, ends the other sessions and lands on the dashboard", async () => {
     await expect(resetPassword(input)).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    expect(forgetMock).toHaveBeenCalledOnce();
     expect(verifyOtpMock).toHaveBeenCalledWith({ type: "recovery", token_hash: "abc_DEF-123" });
     expect(updateUserMock).toHaveBeenCalledWith({ password: "a long enough password" });
     expect(signOutMock).toHaveBeenCalledWith({ scope: "others" });

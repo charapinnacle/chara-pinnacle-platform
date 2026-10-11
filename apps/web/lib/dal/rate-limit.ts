@@ -25,12 +25,17 @@ export async function visitorProof(action: ThrottledAction): Promise<{ key: stri
   return { key, proof: attemptProof(VISITOR_HASH_SECRET, action, key, Date.now()) };
 }
 
-// Counts one attempt of this visitor and says whether it is over the limit (limits are settings in the database).
-// Called before every Auth call, because Auth's own limits count the web server's one address (OPEN_QUESTIONS.md, D20).
-export async function isThrottled(action: ThrottledAction): Promise<boolean> {
+// Counts one attempt of this visitor and gives the seconds to wait when it is over the limit, 0 when it is allowed (limits
+// are settings in the database). Called before every Auth call, because Auth's own limits count the web server's one address
+// (OPEN_QUESTIONS.md, D20).
+export async function throttleWait(action: ThrottledAction): Promise<number> {
   const { key, proof } = await visitorProof(action);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("rate_limit_attempt", { p_action: action, p_key: key, p_proof: proof });
   if (error || data?.length !== 1) throw new Error("The attempt could not be counted");
-  return !data[0].allowed;
+  return data[0].allowed ? 0 : data[0].retry_after_seconds;
+}
+
+export async function isThrottled(action: ThrottledAction): Promise<boolean> {
+  return (await throttleWait(action)) > 0;
 }

@@ -16,6 +16,7 @@ import { isThrottled } from "@/lib/dal/rate-limit";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
 import { getCurrentUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
+import { forgetPendingEmail, rememberPendingEmail, resendPending, type ResendAnswer } from "@/lib/pending-email";
 import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -27,7 +28,7 @@ import {
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-type RequestResult = { errors?: FieldErrors; message?: string; sent?: true };
+type RequestResult = { errors?: FieldErrors; message?: string };
 type ResetResult = { errors?: FieldErrors; message?: string; needsCode?: true };
 
 const SAME_PASSWORD = "Choose a password different from your current one.";
@@ -35,7 +36,7 @@ const WRONG_CODE = "The code is incorrect or has expired.";
 const OTHER_SESSIONS_KEPT =
   "Your password was changed, but we could not sign out your other devices. Request a new reset link and change it again to end them.";
 
-export async function requestPasswordReset(input: ForgotPasswordInput): Promise<RequestResult> {
+export async function requestPasswordReset(input: ForgotPasswordInput): Promise<RequestResult | undefined> {
   const parsed = forgotPasswordSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   if (await isThrottled("forgot_password")) return { message: RATE_LIMITED };
@@ -45,8 +46,18 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
   if (error && isRateLimit(error)) return { message: RATE_LIMITED };
   if (error && !isAddressThrottle(error)) logAuthFailure("Password reset request", error);
   // Every other outcome, including an unknown address and the per-address minimum interval,
-  // answers alike so the form reveals nothing.
-  return { sent: true };
+  // answers alike so the page reveals nothing.
+  await rememberPendingEmail("recovery", parsed.data.email);
+  redirect(`/${defaultLocale}/forgot-password/check-email`);
+}
+
+// The Resend button of the page after the request: the address is the one the request kept in its cookie.
+export async function resendResetEmail(): Promise<ResendAnswer> {
+  return resendPending("recovery", "forgot_password", "/forgot-password", async (email) => {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    return error;
+  });
 }
 
 async function endOtherSessions(supabase: Supabase): Promise<boolean> {
@@ -98,6 +109,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ResetRes
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return updateRefusal(error);
+  await forgetPendingEmail();
 
   if (!(await endOtherSessions(supabase))) return { message: OTHER_SESSIONS_KEPT };
 

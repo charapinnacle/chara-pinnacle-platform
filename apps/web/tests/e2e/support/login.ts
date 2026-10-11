@@ -1,4 +1,4 @@
-import type { BrowserContext, Cookie, Response as PageResponse } from "@playwright/test";
+import { expect, type BrowserContext, type Cookie, type Page, type Response as PageResponse } from "@playwright/test";
 import { env } from "@/lib/env";
 import { callAs, pendingConsents } from "./accounts";
 import { execute, literal, query } from "./db";
@@ -7,12 +7,31 @@ import { adminRequest, createTestUser, type TestUser } from "./test-user";
 import { totpCode } from "./totp";
 
 export const LOGIN_FAILED = "Email or password is incorrect.";
-export const RESET_SENT = "If an account exists for this email, we have sent a reset link.";
+export const RESET_SENT =
+  "If an account exists for this address, we have sent a link to choose a new password. The link is valid for 1 hour and works once.";
+export const RESET_PATH = /\/en\/forgot-password\/check-email$/;
 export const LINK_EXPIRED = "This link has expired or was already used";
 export const RESET_SUBJECT = "Reset your CHARA password";
 export const CHANGED_SUBJECT = "Your CHARA password was changed";
 
 const AUTH_COOKIE = /^sb-.*-auth-token(\.\d+)?$/;
+
+// The form, the answer of the server and the page every address is sent to: the status of the answer, for the tests that
+// compare what a known and an unknown address are told.
+export async function requestReset(page: Page, email: string): Promise<number> {
+  await page.goto("/en/forgot-password");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  const response = page.waitForResponse((r) => r.request().method() === "POST");
+  await page.getByRole("button", { name: "Send reset link" }).click();
+  await expect(page).toHaveURL(RESET_PATH);
+  await expect(page.getByText(RESET_SENT)).toBeVisible();
+  return (await response).status();
+}
+
+// What the page after a request says, without the masked address, which is the one thing that differs between requests.
+export async function checkEmailText(page: Page): Promise<string> {
+  return (await page.locator("main").innerText()).replace(/Sent to \S+/, "Sent to");
+}
 
 export function authCookies(cookies: Cookie[]): Cookie[] {
   return cookies.filter((cookie) => AUTH_COOKIE.test(cookie.name));

@@ -7,7 +7,7 @@ import { seedDetailedApplication } from "./support/applicants";
 import { expectAccessibleAtBothWidths, newApplicant, seedApplication } from "./support/applications";
 import { execute, literal } from "./support/db";
 import { newCompany, seedJob } from "./support/jobs";
-import { createCommittedUser, generateRecoveryPath, suspendProfile } from "./support/login";
+import { createCommittedUser, generateRecoveryPath, requestReset, suspendProfile } from "./support/login";
 import { logIn } from "./support/login-page";
 import { enterCode } from "./support/mfa";
 import { expectSecurityHeaders } from "./support/security-headers";
@@ -40,6 +40,7 @@ const authPages = (confirmPath: string, resetPath: string, invitationToken: stri
   "/[lang]/login": "/en/login",
   "/[lang]/signup": "/en/signup",
   "/[lang]/forgot-password": "/en/forgot-password",
+  "/[lang]/forgot-password/check-email": "/en/forgot-password/check-email",
   "/[lang]/verify-email": "/en/verify-email",
   "/[lang]/confirm-email": confirmPath,
   "/[lang]/reset-password": resetPath,
@@ -149,6 +150,8 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
     const recovering = await createCommittedUser("worker");
     const team = await newTeam();
     const token = seedInvitation(team, `invitee-${team.slug}@example.test`);
+    // The page after a reset request is only shown to a visitor who made the request.
+    await requestReset(page, recovering.email);
     await sweep(page, authPages(unconfirmed.confirmPath, await generateRecoveryPath(recovering.email), token));
   });
 

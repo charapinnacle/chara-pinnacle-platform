@@ -16,6 +16,7 @@ import { getSignupDocuments } from "@/lib/dal/legal";
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { rememberInvitation } from "@/lib/invitation-cookie";
+import { forgetPendingEmail, rememberPendingEmail, resendPending, type ResendAnswer } from "@/lib/pending-email";
 import { createClient } from "@/lib/supabase/server";
 import { invitationTokenSchema } from "@/lib/validation/team";
 import {
@@ -83,6 +84,7 @@ export async function signUp(
   }
   const token = invitationTokenSchema.safeParse(invitation);
   if (token.success && kind === "company") await rememberInvitation(token.data);
+  await rememberPendingEmail("signup", email);
   redirect(`/${defaultLocale}/verify-email`);
 }
 
@@ -117,6 +119,15 @@ export async function resendConfirmation(input: {
   return { sent: true };
 }
 
+// The Resend button of the page after sign-up: the address is the one the sign-up kept in its cookie.
+export async function resendSignupEmail(): Promise<ResendAnswer> {
+  return resendPending("signup", "resend", "/verify-email", async (email) => {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    return error;
+  });
+}
+
 // The link only opens the confirm page: the single-use token is spent here, by a click, so that mail scanners
 // which fetch links in advance cannot use it up.
 export async function confirmEmail(formData: FormData): Promise<void> {
@@ -127,7 +138,10 @@ export async function confirmEmail(formData: FormData): Promise<void> {
       type: "signup",
       token_hash: parsed.data,
     });
-    if (!error) redirect(`/${defaultLocale}/onboarding`);
+    if (!error) {
+      await forgetPendingEmail();
+      redirect(`/${defaultLocale}/onboarding`);
+    }
   }
   redirect(`/${defaultLocale}/verify-email?error=invalid_link`);
 }

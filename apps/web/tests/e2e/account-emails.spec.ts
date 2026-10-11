@@ -9,6 +9,7 @@ import {
   emailedResetPath,
   LINK_EXPIRED,
   passwordLoginStatus,
+  requestReset,
   RESET_SENT,
   RESET_SUBJECT,
 } from "./support/login";
@@ -33,15 +34,6 @@ async function confirmationPath(email: string): Promise<string> {
   const link = extractLinks(message).find((url) => url.includes("/en/confirm-email?token_hash="));
   if (!link) throw new Error("The confirmation email has no link");
   return `${new URL(link).pathname}${new URL(link).search}`;
-}
-
-async function requestReset(page: Page, email: string): Promise<number> {
-  await page.goto("/en/forgot-password");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  const response = page.waitForResponse((r) => r.request().method() === "POST");
-  await page.getByRole("button", { name: "Send reset link" }).click();
-  await expect(page.getByRole("status")).toHaveText(RESET_SENT);
-  return (await response).status();
 }
 
 async function freshPage(browser: Browser) {
@@ -114,7 +106,7 @@ test.describe("FR-I1: account emails through the mail catcher", () => {
     const known = await requestReset(page, user.email);
     const missing = await requestReset(page, unknown);
     expect(known).toBe(missing);
-    expect(await page.getByRole("status").innerText()).toBe(RESET_SENT);
+    await expect(page.getByText(RESET_SENT)).toBeVisible();
 
     await waitForMessage(user.email, { subject: RESET_SUBJECT, timeoutMs: 60_000 });
     await page.waitForTimeout(1_500);
@@ -169,7 +161,7 @@ test.describe("FR-I1: account emails through the mail catcher", () => {
     await waitForMessage(user.email, { subject: RESET_SUBJECT, timeoutMs: 60_000 });
 
     await requestReset(page, user.email);
-    await expect(page.getByText("Wait a minute before asking for another.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Resend in \d+ s$/ })).toHaveAttribute("aria-disabled", "true");
     await page.waitForTimeout(1_500);
     expect(await messageCount(user.email)).toBe(1);
   });
