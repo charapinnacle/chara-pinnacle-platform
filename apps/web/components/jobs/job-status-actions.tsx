@@ -7,7 +7,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { changeJobStatus } from "@/lib/actions/jobs";
-import { statusActions, type LimitPrompt, type StatusAction } from "@/lib/jobs/lifecycle";
+import { inProgressText, statusActions, type LimitPrompt, type StatusAction } from "@/lib/jobs/lifecycle";
 import type { Database } from "@chara-pinnacle/db-types";
 
 type JobStatusActionsProps = {
@@ -15,11 +15,14 @@ type JobStatusActionsProps = {
   jobId: string;
   status: Database["public"]["Enums"]["job_status"];
   billingHref: string;
+  // The applications that still wait for a decision, counted when the page was drawn, and the list of them.
+  inProgress: number;
+  applicantsHref: string;
 };
 
 // The action revalidates the page, so the buttons follow the new status; only the upgrade prompt of a refused
 // publish or reopen is local state, since it belongs to that attempt.
-export function JobStatusActions({ slug, jobId, status, billingHref }: JobStatusActionsProps) {
+export function JobStatusActions({ slug, jobId, status, billingHref, inProgress, applicantsHref }: JobStatusActionsProps) {
   const [confirming, setConfirming] = useState<StatusAction | null>(null);
   const [prompt, setPrompt] = useState<LimitPrompt | null>(null);
   const [running, setRunning] = useState<StatusAction["to"] | null>(null);
@@ -78,6 +81,15 @@ export function JobStatusActions({ slug, jobId, status, billingHref }: JobStatus
       ) : null}
       <ModalDialog open={confirming !== null} onClose={() => setConfirming(null)} title={confirming?.confirm?.title ?? ""}>
         <p className="text-body leading-relaxed">{confirming?.confirm?.body}</p>
+        {inProgress > 0 ? (
+          <Notice tone="warning" role="status">
+            <p className="font-medium">{inProgressText(inProgress)}.</p>
+            <p>
+              Their stages do not change. <TextLink href={applicantsHref}>Review the applicants of this vacancy</TextLink> to
+              give each one a final update.
+            </p>
+          </Notice>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <FormButton type="button" variant="secondary" className="w-full" onClick={() => setConfirming(null)}>
             Cancel

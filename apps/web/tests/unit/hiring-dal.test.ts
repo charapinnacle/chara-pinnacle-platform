@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Call = [method: string, ...args: unknown[]];
 
 const calls: Call[] = [];
-let result: { data: unknown; error: unknown } = { data: null, error: null };
+let result: { data: unknown; error: unknown; count?: number | null } = { data: null, error: null };
 
 function builder(table: string) {
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "is", "order", "limit", "or"]) {
+  for (const method of ["select", "eq", "is", "in", "order", "limit", "or"]) {
     chain[method] = (...args: unknown[]) => {
       calls.push([`${table}.${method}`, ...args]);
       return chain;
@@ -30,7 +30,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("@/lib/jobs/search-log", () => ({ logSearch: vi.fn() }));
 
-const { getEmployer, getJob, getJobLimit, getPublicJob, isSubscriptionEnded, JOBS_PAGE_SIZE, listJobs, searchJobs } = await import(
+const { countApplicationsInProgress, getEmployer, getJob, getJobLimit, getPublicJob, isSubscriptionEnded, JOBS_PAGE_SIZE, listJobs, searchJobs } = await import(
   "@/lib/dal/hiring"
 );
 const { logSearch } = await import("@/lib/jobs/search-log");
@@ -92,6 +92,24 @@ describe("getJob", () => {
   it("fails loudly, without the database text, when the vacancy cannot be read", async () => {
     result = { data: null, error: { message: "secret detail" } };
     await expect(getJob("org-1", row.id)).rejects.toThrow("The vacancy could not be loaded");
+  });
+});
+
+describe("countApplicationsInProgress", () => {
+  it("counts the applications of the vacancy that still wait for a decision, without reading them", async () => {
+    result = { data: null, error: null, count: 4 };
+    await expect(countApplicationsInProgress("org-1", row.id)).resolves.toBe(4);
+    expect(calls).toEqual([
+      ["job_applications.select", "id", { count: "exact", head: true }],
+      ["job_applications.eq", "organization_id", "org-1"],
+      ["job_applications.eq", "job_id", row.id],
+      ["job_applications.in", "status", ["applied", "viewed", "shortlisted", "interview", "offer"]],
+    ]);
+  });
+
+  it("fails loudly, without the database text, when the count cannot be read", async () => {
+    result = { data: null, error: { message: "secret detail" }, count: null };
+    await expect(countApplicationsInProgress("org-1", row.id)).rejects.toThrow("The applications in progress could not be counted");
   });
 });
 

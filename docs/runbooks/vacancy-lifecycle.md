@@ -48,7 +48,11 @@ from public.jobs
 where deleted_at is null;
 ```
 
-## 3. Cost
+## 3. Close or fill with applications in progress
+
+The Close and Mark as filled dialogs of the vacancy page count the applications of the vacancy that still wait for a decision (stage applied, viewed, shortlisted, interview or offer; `countApplicationsInProgress`, a head-only count answered by the indexes on `job_applications.job_id` and `organization_id`, about 0.2 ms for a vacancy among 200,000 applications) when the page is drawn. When there is at least one, the dialog says "N applications are still in progress" and links to the applicant list filtered to the vacancy (`/org/[slug]/applicants?job=<id>`) before the change is confirmed (FR-C2 AC9, D78). Confirming changes the status only: no application changes stage and no email is queued. Without applications in progress the dialog has no prompt.
+
+## 4. Cost
 
 Both queries are monthly, offline and read the whole of `public.jobs` or the `job.status_changed` rows of `audit.log`, which grow by a few rows per vacancy; run them outside peak hours when either has millions of rows. The employer-facing flag is computed from the rows the list and the page already read, so it adds no query.
 

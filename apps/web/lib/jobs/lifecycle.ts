@@ -52,3 +52,9 @@ export function isStaleOpen(status: JobStatus, statusChangedAt: string, now: Dat
 }
 
 export type LimitPrompt = { planName: string; limit: number; used: number };
+
+// The prompt of the close and fill dialogs when applications still wait for a decision (FR-C2): closing or filling does
+// not change their stage, so the employer is pointed to them before confirming.
+export function inProgressText(count: number): string {
+  return count === 1 ? "1 application is still in progress" : `${count} applications are still in progress`;
+}
