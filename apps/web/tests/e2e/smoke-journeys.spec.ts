@@ -55,7 +55,7 @@ test.describe("smoke: the five main journeys end to end", () => {
     await page.getByLabel("First name", { exact: true }).fill("Amina");
     await page.getByLabel("Last name", { exact: true }).fill("Okafor");
     await choose(page, "Current country", "Nigeria");
-    await page.getByRole("button", { name: "Create my passport" }).click();
+    await page.getByRole("button", { name: "Create CHARA Passport" }).click();
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
 
     await mainNavigation(page).getByRole("link", { name: "Passport" }).click();

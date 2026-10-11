@@ -36,7 +36,7 @@ test.describe("a page that fails to load (REL-01)", () => {
 
     execute(`grant execute on function ${PASSPORT_LIMITS} to authenticated`);
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Your passport" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "CHARA Worker Passport" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
     await context.close();
   });

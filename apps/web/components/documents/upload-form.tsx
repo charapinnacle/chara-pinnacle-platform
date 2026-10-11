@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
@@ -21,22 +21,27 @@ import {
   type UploadFormInput,
 } from "@/lib/validation/documents";
 
-const emptyForm = { type: "", title: "", expiresOn: "" };
 type Outcome = { errors?: Record<string, string>; message?: string; uploaded?: string };
 
 const SEND_FAILED = "The file could not be sent. Delete the unfinished upload from the list and try again.";
 
-type UploadFormProps = { onChanged: () => void; onFailed: (documentId: string) => void };
+type UploadFormProps = { initialType: "cv" | "certificate"; onChanged: () => void; onFailed: (documentId: string) => void };
 
 // Metadata first, then the bytes: the Server Action creates the row and the signed upload URL, and the browser sends the
-// file straight to Storage, so no file passes through a Next.js request.
-export function UploadForm({ onChanged, onFailed }: UploadFormProps) {
+// file straight to Storage, so no file passes through a Next.js request. The form opens when the person presses Upload CV
+// or Add certificate, with that type chosen, and the focus goes to its first field.
+export function UploadForm({ initialType, onChanged, onFailed }: UploadFormProps) {
+  const emptyForm = { type: initialType, title: "", expiresOn: "" };
   const form = useForm<UploadFormInput>({ resolver: zodResolver(uploadFormSchema), defaultValues: emptyForm });
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not upload the document" });
   const [announcement, setAnnouncement] = useState("");
   const [fileKey, setFileKey] = useState(0);
   const { control, formState } = form;
   const type = useWatch({ control, name: "type" });
+
+  useEffect(() => {
+    form.setFocus("title");
+  }, [form]);
 
   const onSubmit = form.handleSubmit(() =>
     submit(

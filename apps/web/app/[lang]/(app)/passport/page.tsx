@@ -20,7 +20,7 @@ import { computeCompleteness } from "@/lib/passport/completeness";
 import { homePath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
-export const metadata: Metadata = { title: "Your passport — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "CHARA Worker Passport — CHARA", robots: { index: false } };
 
 export default async function PassportPage({ params }: PageProps<"/[lang]/passport">) {
   const { lang } = await params;
@@ -39,7 +39,7 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
 
   return (
     <div className="grid w-full gap-section">
-      <PageHeader title="Your passport" description="Only you can see your passport. Each section below is saved on its own." />
+      <PageHeader title="CHARA Worker Passport" />
 
       <div className="grid items-start gap-page xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Section id="completeness" title="Completeness" className="xl:sticky xl:top-24 xl:col-start-2 xl:row-start-1">
@@ -92,8 +92,8 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
           </Section>
           <Section
             id="documents"
-            title="Documents"
-            description="Upload your CV and certificates. Only you can see them: they are stored privately and you can download, rename or delete them here."
+            title="Manage documents"
+            description="Only you can see your documents: they are stored privately and you can download, rename or delete them here."
           >
             <DocumentsSection />
           </Section>

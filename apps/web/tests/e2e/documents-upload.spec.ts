@@ -8,6 +8,7 @@ import {
   documentRows,
   objectNames,
   openDocuments,
+  openUploadForm,
   pdfBytes,
   row,
   runScanDocument,
@@ -23,7 +24,9 @@ async function fillUpload(
   page: Page,
   { type, title, file }: { type: "CV" | "Certificate"; title: string; file?: { name: string; mimeType: string; buffer: Buffer } },
 ) {
-  await page.getByLabel("Type", { exact: true }).selectOption({ label: type });
+  const select = page.getByLabel("Type", { exact: true });
+  const wanted = type === "CV" ? "cv" : "certificate";
+  if (!(await select.isVisible()) || (await select.inputValue()) !== wanted) await openUploadForm(page, type === "CV" ? "Upload CV" : "Add certificate");
   await page.getByLabel("Title", { exact: true }).fill(title);
   if (file) await page.getByLabel("File", { exact: true }).setInputFiles(file);
 }
@@ -96,11 +99,15 @@ test.describe("candidate documents: upload", () => {
   test("FR-B2 AC1: a certificate asks for an expiry date, a CV does not", async ({ page }) => {
     const user = await createCommittedUser("worker");
     await openDocuments(page, user);
+    await expect(page.getByLabel("Title", { exact: true })).toHaveCount(0);
+    await openUploadForm(page, "Upload CV");
     await expect(page.getByLabel("Expiry date (optional)")).toHaveCount(0);
     await page.getByLabel("Type", { exact: true }).selectOption({ label: "Certificate" });
     await expect(page.getByLabel("Expiry date (optional)")).toBeVisible();
     await page.getByLabel("Type", { exact: true }).selectOption({ label: "CV" });
     await expect(page.getByLabel("Expiry date (optional)")).toHaveCount(0);
+    await openUploadForm(page, "Add certificate");
+    await expect(page.getByLabel("Expiry date (optional)")).toBeVisible();
 
     await fillUpload(page, {
       type: "Certificate",
@@ -118,10 +125,15 @@ test.describe("candidate documents: upload", () => {
   test("FR-B2 AC2: the browser refuses a missing file, a wrong type and a file over 15 MB before any row is made", async ({ page }) => {
     const user = await createCommittedUser("worker");
     await openDocuments(page, user);
+    await openUploadForm(page, "Upload CV");
     await upload(page).click();
-    for (const message of ["Choose a type.", "Enter a title.", "Choose a file."]) {
+    for (const message of ["Enter a title.", "Choose a file."]) {
       await expect(page.getByText(message, { exact: true })).toBeVisible();
     }
+    await page.getByLabel("Type", { exact: true }).selectOption("");
+    await upload(page).click();
+    await expect(page.getByText("Choose a type.", { exact: true })).toBeVisible();
+    await page.getByLabel("Type", { exact: true }).selectOption({ label: "CV" });
 
     await fillUpload(page, {
       type: "CV",
@@ -149,7 +161,7 @@ test.describe("candidate documents: upload", () => {
        from (select gen_random_uuid() as id, i from generate_series(1, 50) i) d`,
     );
     await page.reload();
-    await waitForHydration(page.getByLabel("Type", { exact: true }));
+    await waitForHydration(page.getByRole("button", { name: "Upload CV", exact: true }));
     await fillUpload(page, {
       type: "CV",
       title: "One too many",

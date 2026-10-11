@@ -55,7 +55,7 @@ test.describe("FR-G6: no pricing or payment element in the candidate area", () =
     await expect(page).toHaveURL("/en/dashboard/worker");
     const pages: [string, string][] = [
       ["/en/dashboard/worker", "Dashboard"],
-      ["/en/passport", "Your passport"],
+      ["/en/passport", "CHARA Worker Passport"],
       ["/en/applications", "My applications"],
       [applicationUrl(application), "Welder for the FR-G6 scan"],
       ["/en/settings", "Settings"],

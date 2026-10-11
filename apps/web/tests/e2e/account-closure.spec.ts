@@ -44,7 +44,7 @@ test.describe("candidate account closure: settings page", () => {
     await page.reload();
     await expect(banner).toBeVisible();
     await page.goto("/en/passport");
-    await expect(page.getByRole("heading", { name: "Your passport" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CHARA Worker Passport" })).toBeVisible();
   });
 
   test("FR-B6 AC5: Cancel deletion clears the request, writes one audit row and queues no email; a new request starts again", async ({

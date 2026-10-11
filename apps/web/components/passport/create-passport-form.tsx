@@ -30,7 +30,7 @@ export function CreatePassportForm({ countries }: { countries: ReferenceItem[] }
         options={toOptions(countries)}
       />
       <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Creating your passport..." : "Create my passport"}
+        {formState.isSubmitting ? "Creating your passport..." : "Create CHARA Passport"}
       </FormButton>
     </form>
   );

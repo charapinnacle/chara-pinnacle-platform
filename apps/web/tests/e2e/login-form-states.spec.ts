@@ -43,7 +43,7 @@ test.describe("login form", () => {
     await page.keyboard.type(user.password);
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/en\/passport$/);
-    await expect(page.getByRole("heading", { name: "Your passport" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CHARA Worker Passport" })).toBeVisible();
   });
 
   test("FR-A3 AC12: an external next value is ignored and the user lands on their own dashboard", async ({

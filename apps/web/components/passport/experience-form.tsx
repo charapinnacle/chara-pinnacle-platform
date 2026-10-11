@@ -31,7 +31,7 @@ export function ExperienceForm({ initial, windowMonths }: { initial: ExperienceI
         <InputField control={control} name="availableFrom" label="Available from" type="date" />
       ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Saving..." : "Save experience and availability"}
+        {formState.isSubmitting ? "Saving..." : "Set availability"}
       </FormButton>
     </form>
   );

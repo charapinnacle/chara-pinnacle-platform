@@ -43,7 +43,7 @@ test.describe("candidate passport: sections", () => {
     await page.getByLabel("Years of experience", { exact: true }).fill("6");
     await page.getByLabel("Availability", { exact: true }).selectOption({ label: "From a date" });
     await page.getByLabel("Available from", { exact: true }).fill(from);
-    await page.getByRole("button", { name: "Save experience and availability" }).click();
+    await page.getByRole("button", { name: "Set availability" }).click();
     await expect(page.getByText("Your experience and availability were saved", { exact: true })).toBeVisible();
 
     await choose(page, "Preferred countries", "Germany");
@@ -136,13 +136,13 @@ test.describe("candidate passport: sections", () => {
 
     await page.getByLabel("Availability", { exact: true }).selectOption({ label: "From a date" });
     await page.getByLabel("Available from", { exact: true }).fill(daysFromToday(900));
-    await page.getByRole("button", { name: "Save experience and availability" }).click();
+    await page.getByRole("button", { name: "Set availability" }).click();
     await expect(page.getByText("Choose a date from today to 24 months ahead.")).toBeVisible();
     expect(profileRows(user.id)[0].availability).toBeNull();
 
     await page.getByLabel("Availability", { exact: true }).selectOption({ label: "Available now" });
     await expect(page.getByLabel("Available from", { exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Save experience and availability" }).click();
+    await page.getByRole("button", { name: "Set availability" }).click();
     await expect(page.getByText("Your experience and availability were saved", { exact: true })).toBeVisible();
     expect(profileRows(user.id)[0]).toMatchObject({ availability: "now", available_from: null });
   });
