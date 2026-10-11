@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { parseCsp } from "./support/security-headers";
+import { expectSecurityHeaders, parseCsp } from "./support/security-headers";
 
 test("home page renders at /en", async ({ page }) => {
   const problems: string[] = [];
@@ -29,32 +29,13 @@ test("an unknown address shows the not-found page with no accessibility violatio
   await expectNoAxeViolations(page);
 });
 
-test("built server sends security headers and a nonce CSP (NFR-S5)", async ({
-  request,
-}) => {
+test("built server sends security headers and a nonce CSP (NFR-S5)", async ({ request }) => {
   const response = await request.get("/en");
   const headers = response.headers();
 
   expect(response.status()).toBe(200);
-  expect(headers["strict-transport-security"]).toContain("max-age=63072000");
-  expect(headers["x-content-type-options"]).toBe("nosniff");
-  expect(headers["x-frame-options"]).toBe("DENY");
-  expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
-  expect(headers["strict-transport-security"]).toContain("includeSubDomains");
-  expect(headers["permissions-policy"]).toContain("camera=()");
-  expect(headers["x-powered-by"]).toBeUndefined();
-
-  const csp = parseCsp(headers["content-security-policy"]);
-  const nonce = /'nonce-([^']+)'/.exec(csp["script-src"] ?? "")?.[1];
-  expect(nonce).toBeTruthy();
-  expect(csp["script-src"]).toContain("'strict-dynamic'");
-  expect(csp["script-src"]).not.toContain("'unsafe-inline'");
-  expect(csp["script-src"]).not.toContain("'unsafe-eval'");
-  expect(csp["style-src"]).toContain(`'nonce-${nonce}'`);
-  expect(csp["default-src"]).toBe("'self'");
-  expect(csp["object-src"]).toBe("'none'");
-  expect(csp["base-uri"]).toBe("'self'");
-  expect(csp["frame-ancestors"]).toBe("'none'");
+  expectSecurityHeaders(headers, "/en");
+  const nonce = /'nonce-([^']+)'/.exec(parseCsp(headers["content-security-policy"])["script-src"] ?? "")?.[1];
   expect(await response.text()).toContain(`nonce="${nonce}"`);
 
   const other = await request.get("/en");

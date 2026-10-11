@@ -21,10 +21,14 @@ export function expectSecurityHeaders(headers: Record<string, string>, pathname:
   expect(headers["x-powered-by"], pathname).toBeUndefined();
 
   const csp = parseCsp(headers["content-security-policy"] ?? "");
-  expect(csp["script-src"], pathname).toMatch(/'nonce-[^']+' 'strict-dynamic'$/);
+  const nonce = /'nonce-([^']+)' 'strict-dynamic'$/.exec(csp["script-src"] ?? "")?.[1];
+  expect(nonce, pathname).toBeTruthy();
   expect(csp["script-src"], pathname).not.toMatch(/unsafe-(inline|eval)/);
+  expect(csp["style-src"], pathname).toBe(`'self' 'nonce-${nonce}'`);
   expect(csp["default-src"], pathname).toBe("'self'");
   expect(csp["object-src"], pathname).toBe("'none'");
+  expect(csp["base-uri"], pathname).toBe("'self'");
+  expect(csp["form-action"], pathname).toBe("'self'");
   expect(csp["frame-ancestors"], pathname).toBe("'none'");
 
   const cacheControl = (headers["cache-control"] ?? "").split(/,\s*/);
