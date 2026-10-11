@@ -50,3 +50,16 @@ export function visitorKey(secret: string, address: string | null): string {
     .update(address ?? UNKNOWN)
     .digest("hex");
 }
+
+// The database counts an attempt only with this proof (SA-02): an HMAC over the action, the key and the minute. Its key
+// is derived from the secret, and only the derived key is in Vault (rate_limit_proof_key), so the database can check a
+// proof without being able to compute the key of an address.
+function proofKey(secret: string): string {
+  return createHmac("sha256", secret).update("rate_limit_attempt").digest("hex");
+}
+
+export function attemptProof(secret: string, action: string, key: string, nowMs: number): string {
+  return createHmac("sha256", proofKey(secret))
+    .update(`${action}|${key}|${Math.floor(nowMs / 60_000)}`)
+    .digest("hex");
+}

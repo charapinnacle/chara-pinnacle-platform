@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
-import { clientAddress, visitorKey } from "@/lib/visitor-address";
+import { attemptProof, clientAddress, visitorKey } from "@/lib/visitor-address";
 
 type ThrottledAction =
   | "signup"
@@ -20,10 +20,12 @@ export async function isThrottled(action: ThrottledAction): Promise<boolean> {
   if (address === null) {
     console.error("Visitor address missing from X-Forwarded-For", { hops: TRUSTED_PROXY_HOPS });
   }
+  const key = visitorKey(VISITOR_HASH_SECRET, address);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("rate_limit_attempt", {
     p_action: action,
-    p_key: visitorKey(VISITOR_HASH_SECRET, address),
+    p_key: key,
+    p_proof: attemptProof(VISITOR_HASH_SECRET, action, key, Date.now()),
   });
   if (error || data?.length !== 1) throw new Error("The attempt could not be counted");
   return !data[0].allowed;

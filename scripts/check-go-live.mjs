@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Go-live gate: fails when plan limits are not enforced (FR-C6), when a plan that is sold cannot be bought as stated
 // (FR-G1 AC11), when the legal-entity name, its address or one of the two privacy contacts that the public pages show
-// is empty (FR-H1 AC12), when the platform has no active administrator, or when a current legal document is still a
-// draft (security review SA-08), in the environment that is about to go live.
+// is empty (FR-H1 AC12), when the platform has no active administrator, when a current legal document is still a draft,
+// or when the Vault secret that makes the visitor throttle check its proof is not set (security review SA-08, SA-02), in
+// the environment that is about to go live.
 // Usage: node scripts/check-go-live.mjs [--allow-draft-legal] <settings.json> <plans.json> <release.json>, where the
 // first file is the production export of private.settings as one JSON object, the second is the output of
 // `node scripts/sync-stripe-plans.mjs --export` (docs/runbooks/plan-limits.md section 3, docs/runbooks/checkout.md) and
@@ -86,6 +87,9 @@ const administrators = release.active_administrators;
 if (!Number.isInteger(administrators) || administrators < 1) {
   failures.push(`the platform needs an active administrator (found: ${JSON.stringify(administrators ?? null)})`);
 }
+if (release.rate_limit_proof_key_set !== true) {
+  failures.push("the Vault secret rate_limit_proof_key is not set: anyone can spend the visitor throttles (security-checklist.md item 10)");
+}
 if (legalDocuments.length === 0) {
   failures.push("no legal document is published");
 }
@@ -99,7 +103,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 process.stdout.write(
-  "Go-live check passed: entitlements_enforced is on, every sold plan is mirrored at Stripe, the legal-entity details are set and an administrator is active\n",
+  "Go-live check passed: entitlements_enforced is on, every sold plan is mirrored at Stripe, the legal-entity details are set, an administrator is active and the throttle proof key is set\n",
 );
 if (drafts.length > 0) {
   process.stdout.write(`Draft legal documents allowed by ${ALLOW_DRAFT_LEGAL}: ${drafts.join(", ")}\n`);

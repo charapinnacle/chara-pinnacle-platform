@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(61);
 
 \set a 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 \set b 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
@@ -48,19 +48,19 @@ select results_eq(
 );
 
 -- Shape and privileges
-select is_definer('public', 'rate_limit_attempt', array['text', 'text'], 'the function is SECURITY DEFINER');
+select is_definer('public', 'rate_limit_attempt', array['text', 'text', 'text'], 'the function is SECURITY DEFINER');
 select is(
-  (select proconfig from pg_proc where oid = 'public.rate_limit_attempt(text, text)'::regprocedure),
+  (select proconfig from pg_proc where oid = 'public.rate_limit_attempt(text, text, text)'::regprocedure),
   array['search_path=""'],
   'the function sets search_path to empty'
 );
 select ok(
-  has_function_privilege('anon', 'public.rate_limit_attempt(text, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.rate_limit_attempt(text, text)', 'execute'),
+  has_function_privilege('anon', 'public.rate_limit_attempt(text, text, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.rate_limit_attempt(text, text, text)', 'execute'),
   'anon and authenticated can count an attempt'
 );
 select ok(
-  not has_function_privilege('service_role', 'public.rate_limit_attempt(text, text)', 'execute'),
+  not has_function_privilege('service_role', 'public.rate_limit_attempt(text, text, text)', 'execute'),
   'service_role has no use for the function and no grant'
 );
 select columns_are('private', 'rate_limit_hits', array['action', 'bucket', 'hits', 'expires_at'], 'the table holds no address, no hash and no account');
@@ -182,6 +182,14 @@ select throws_ok(
 select throws_ok(
   $$select * from public.rate_limit_attempt('logout', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
   'P0001', 'CHARA_INVALID_INPUT', 'an action without limits is refused'
+);
+select throws_ok(
+  $$select * from public.rate_limit_attempt('document_access', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'an internal counter with settings of its own is not a web-tier action'
+);
+select throws_ok(
+  $$select * from public.rate_limit_attempt('audited_write', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'nor is a daily quota (SA-06)'
 );
 select throws_ok(
   $$select * from public.rate_limit_attempt(null, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,

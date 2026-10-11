@@ -1116,7 +1116,7 @@ isOneToOne: false
 { Args: { "p_body": string,"p_change_summary": string,"p_is_draft"?: boolean,"p_slug": string,"p_title": string }; Returns: number
                            },
 "rate_limit_attempt":
-{ Args: { "p_action": string,"p_key": string }; Returns: {
+{ Args: { "p_action": string,"p_key": string,"p_proof"?: string }; Returns: {
               "allowed": boolean,"retry_after_seconds": number
             }[]
                            },

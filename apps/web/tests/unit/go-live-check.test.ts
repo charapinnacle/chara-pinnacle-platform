@@ -41,10 +41,11 @@ const ENTITY = {
 const settings = (enforced: unknown, entity: Record<string, unknown> = ENTITY) =>
   JSON.stringify({ entitlements_enforced: enforced, ...entity });
 
-type Release = { active_administrators?: unknown; current_legal_documents?: unknown };
+type Release = { active_administrators?: unknown; current_legal_documents?: unknown; rate_limit_proof_key_set?: unknown };
 
 const PUBLISHED: Release = {
   active_administrators: 2,
+  rate_limit_proof_key_set: true,
   current_legal_documents: [
     { slug: "privacy-policy", version: 1, is_draft: false },
     { slug: "terms-of-service", version: 2, is_draft: false },
@@ -204,6 +205,16 @@ describe("the go-live gate for the administrators and the legal texts (security 
     const result = run(ENFORCED, MIRRORED, { ...PUBLISHED, active_administrators: administrators });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(`the platform needs an active administrator (${found})`);
+  });
+
+  it.each([
+    ["is not set", false],
+    ["is not reported", undefined],
+    ["is reported as text", "true"],
+  ])("fails while the throttle proof key %s (SA-02)", (_, keySet) => {
+    const result = run(ENFORCED, MIRRORED, { ...PUBLISHED, rate_limit_proof_key_set: keySet });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("the Vault secret rate_limit_proof_key is not set");
   });
 
   it("fails and names every draft while a current legal text is a draft", () => {
