@@ -1,11 +1,12 @@
 begin;
-select plan(14);
+select plan(15);
 
 \ir jobs_fixture.inc
 
 -- FR-C1 AC11 and FR-C2 as the edit page uses them (OPEN_QUESTIONS.md D78): an owner or admin corrects the content of a
--- vacancy in any status; the edit keeps the status, its dates and the moderation state, is audited as job.updated, and
--- an open vacancy shows the new text to the public at once with a new lastmod for the sitemap.
+-- vacancy in any status but Filled; the edit keeps the status, its dates and the moderation state, is audited as
+-- job.updated, and an open vacancy shows the new text to the public at once with a new lastmod for the sitemap. The
+-- refusals of members, other organisations and the moderation columns are in 037_jobs_access.
 
 create function pg_temp.seed(p_status text, p_moderation text default 'visible') returns uuid
 language plpgsql as $$
@@ -26,8 +27,9 @@ alter table public.jobs disable trigger jobs_touch_updated_at;
 select pg_temp.seed('open') as open_job \gset
 select pg_temp.seed('open', 'hidden') as hidden_job \gset
 select pg_temp.seed('paused') as paused_job \gset
+select pg_temp.seed('filled') as filled_job \gset
 alter table public.jobs enable always trigger jobs_touch_updated_at;
-select count(*) as audit_base from audit.log where entity_id in (:'open_job', :'hidden_job', :'paused_job') \gset
+select count(*) as audit_base from audit.log where entity_id in (:'open_job', :'hidden_job', :'paused_job', :'filled_job') \gset
 
 -- An admin corrects an open vacancy
 select is(
@@ -69,14 +71,10 @@ select is(
 );
 select is((select status::text from public.jobs where id = :'paused_job'), 'paused', 'the paused vacancy stays paused');
 
--- A vacancy hidden by moderation: the content can be corrected, the moderation state cannot
+-- A vacancy hidden by moderation: the content can be corrected, and it stays hidden
 select is(
   pg_temp.affected_as(:'adm', 'authenticated', format($$update public.jobs set title = 'Welder corrected wording' where id = %L$$, :'hidden_job')),
   1::bigint, 'an admin corrects the wording of a hidden vacancy'
-);
-select is(
-  pg_temp.state_as(:'adm', format($$update public.jobs set moderation_state = 'visible' where id = %L$$, :'hidden_job')), '42501',
-  'the admin cannot change its moderation state'
 );
 select is(
   (select format('%s|%s', moderation_state, status) from public.jobs where id = :'hidden_job'), 'hidden|open',
@@ -87,14 +85,21 @@ select is(
   'the corrected hidden vacancy is still not public'
 );
 
--- A member and another organisation's admin change nothing
+-- A Filled vacancy is final: its content cannot change either (FR-C2)
 select is(
-  pg_temp.affected_as(:'mem', 'authenticated', format($$update public.jobs set title = 'Member edit' where id = %L$$, :'open_job'))
-    + pg_temp.affected_as(:'adm2', 'authenticated', format($$update public.jobs set title = 'Beta edit' where id = %L$$, :'open_job')),
-  0::bigint, 'a member and the admin of another organisation update no row'
+  pg_temp.call_as(:'own1', 'authenticated', format($$update public.jobs set title = 'Welder after the hire' where id = %L$$, :'filled_job'), 'aal1'),
+  'P0001|CHARA_INVALID_TRANSITION|filled', 'the owner cannot edit a filled vacancy'
 );
 select is(
-  (select count(*) from audit.log where entity_id in (:'open_job', :'hidden_job', :'paused_job')), :audit_base + 3::bigint,
+  pg_temp.call_as(:'adm', 'authenticated', format($$update public.jobs set visa_support = false, city = 'Kiel' where id = %L$$, :'filled_job'), 'aal1'),
+  'P0001|CHARA_INVALID_TRANSITION|filled', 'nor can an admin, for any content column'
+);
+select is(
+  (select format('%s|%s|%s', title, city, status) from public.jobs where id = :'filled_job'), 'Welder MIG/MAG|Hamburg|filled',
+  'the filled vacancy is unchanged'
+);
+select is(
+  (select count(*) from audit.log where entity_id in (:'open_job', :'hidden_job', :'paused_job', :'filled_job')), :audit_base + 3::bigint,
   'exactly the three accepted edits were audited'
 );
 
