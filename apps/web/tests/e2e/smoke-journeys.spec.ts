@@ -25,7 +25,7 @@ import { extractLinks, waitForMessage } from "./support/mailpit";
 import { beginSetup, enterCode } from "./support/mfa";
 import { fillCompany, organizationRows, uniqueName, uniqueToken } from "./support/organizations";
 import { fillSignup, newEmail, PASSWORD } from "./support/signup-page";
-import { newTeam } from "./support/team";
+import { newTeam, newVisitor } from "./support/team";
 import { expect, test } from "./support/test";
 
 // NFR-O3: the five main journeys of Phase 1 from the first click to the stored result, in the normal browser run. Each one
@@ -112,9 +112,10 @@ test.describe("smoke: the five main journeys end to end", () => {
     expect(organization).toMatchObject({ display_name: display, role: "owner", status: "active" });
     const [job] = jobRows(organization.id);
     expect(job).toMatchObject({ title, status: "open", created_by: user.id });
-    const visitor = await (await browser.newContext()).newPage();
-    expect((await visitor.goto(`/en/jobs/${job.id}`))?.status()).toBe(200);
-    await expect(visitor.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+    const visitor = await newVisitor(browser);
+    expect((await visitor.page.goto(`/en/jobs/${job.id}`))?.status()).toBe(200);
+    await expect(visitor.page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+    await visitor.context.close();
   });
 
   test("a member moves an applicant to Interview and the candidate's email is queued", async ({ page }) => {

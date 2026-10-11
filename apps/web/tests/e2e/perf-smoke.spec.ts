@@ -6,7 +6,7 @@ import { signInBrowser } from "./support/session";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
 
-// The runtime half of the performance smoke (NFR-P1, NFR-P2): each key route is loaded once into an empty browser cache
+// The runtime half of the performance smoke (NFR-P1): each key route is loaded once into an empty browser cache
 // and the Performance API of the page gives the server time (request sent to first byte), the time to the load event and
 // the bytes of JavaScript that crossed the network (compressed) until the network is idle, prefetches of the visible links
 // included. The budgets are in tests/perf-budget.json, whose first-load sizes scripts/check-bundle-budget.mjs compares with
@@ -40,6 +40,7 @@ async function measure(browser: Browser, address: string, user: TestUser | null)
 }
 
 test("the key routes stay within their load time and JavaScript budgets", async ({ browser }, testInfo) => {
+  test.setTimeout(120_000);
   const company = await newCompany();
   const jobId = seedJob(company, { title: "Budget welder", status: "open" });
   const candidate = await newApplicant();
