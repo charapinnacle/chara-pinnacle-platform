@@ -4,7 +4,7 @@ select plan(38);
 \ir status_fixture.inc
 
 -- FR-D2 AC3: only an accepted member of the job's organisation may change a status. A fresh application of Acme for each call.
-create function pg_temp.try_as(p_user uuid, p_role text default 'authenticated', p_aal text default 'aal2') returns text
+create function pg_temp.try_as(p_user uuid, p_role text default 'authenticated', p_aal text default 'aal1') returns text
 language plpgsql as $$
 declare
   v_app uuid := pg_temp.seed_app('applied');
@@ -16,8 +16,8 @@ begin
   return v_result || '#' || pg_temp.status_of(v_app);
 end;
 $$;
-select is(pg_temp.try_as(:'own1'), 'ok#interview', 'AC3: the owner succeeds');
-select is(pg_temp.try_as(:'adm'), 'ok#interview', 'AC3: an admin succeeds');
+select is(pg_temp.try_as(:'own1', 'authenticated', 'aal2'), 'ok#interview', 'AC3: the owner succeeds');
+select is(pg_temp.try_as(:'adm', 'authenticated', 'aal2'), 'ok#interview', 'AC3: an admin succeeds');
 select is(pg_temp.try_as(:'mem'), 'ok#interview', 'AC3: a member succeeds');
 select is(pg_temp.try_as(:'own2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: the owner of another organisation gets CHARA_NOT_FOUND');
 select is(pg_temp.try_as(:'adm2'), 'P0002|CHARA_NOT_FOUND|#applied', 'AC3: an admin of another organisation gets CHARA_NOT_FOUND');

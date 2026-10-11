@@ -93,12 +93,12 @@ select is(
 create temp table t_open as select pg_temp.seed_app('applied') as id;
 select set_config('t.open', (select id::text from t_open), true) as keep \gset
 create temp table t_before2 as select pg_temp.status_counts() as c;
-select is(pg_temp.set_as(:'own1', current_setting('t.open')::uuid, 'viewed'), 'P0001|CHARA_INVALID_TRANSITION|applied to viewed', 'AC2: an owner cannot select Viewed');
-select is(pg_temp.set_as(:'adm', current_setting('t.open')::uuid, 'viewed'), 'P0001|CHARA_INVALID_TRANSITION|applied to viewed', 'AC2: an admin cannot select Viewed');
+select is(pg_temp.set_as(:'own1', current_setting('t.open')::uuid, 'viewed', null, 'aal2'), 'P0001|CHARA_INVALID_TRANSITION|applied to viewed', 'AC2: an owner cannot select Viewed');
+select is(pg_temp.set_as(:'adm', current_setting('t.open')::uuid, 'viewed', null, 'aal2'), 'P0001|CHARA_INVALID_TRANSITION|applied to viewed', 'AC2: an admin cannot select Viewed');
 select is(pg_temp.set_as(:'mem', current_setting('t.open')::uuid, 'viewed'), 'P0001|CHARA_INVALID_TRANSITION|applied to viewed', 'AC2: a member cannot select Viewed');
 select is(pg_temp.viewed_as(:'wa', current_setting('t.open')::uuid), 'P0001|CHARA_FORBIDDEN|company_account_required', 'AC2: the candidate cannot mark an application viewed');
 select is(pg_temp.status_counts(), (select c from t_before2), 'AC2: the refused calls changed nothing');
-select is(pg_temp.viewed_as(:'own1', current_setting('t.open')::uuid), 'ok', 'AC2: the first open by a member succeeds');
+select is(pg_temp.viewed_as(:'own1', current_setting('t.open')::uuid, 'aal2'), 'ok', 'AC2: the first open by a member succeeds');
 select is(pg_temp.status_of(current_setting('t.open')::uuid), 'viewed', 'AC2: the application is Viewed');
 select is(
   (select count(*) from public.application_events e where e.application_id = current_setting('t.open')::uuid
@@ -106,7 +106,7 @@ select is(
   1::bigint, 'AC2: one event applied to viewed with no actor'
 );
 select is(pg_temp.queued_for(current_setting('t.open')::uuid), 0::bigint, 'AC2: no status_changed message for a move to Viewed');
-select is(pg_temp.viewed_as(:'adm', current_setting('t.open')::uuid), 'ok', 'AC2: a second open is no error');
+select is(pg_temp.viewed_as(:'adm', current_setting('t.open')::uuid, 'aal2'), 'ok', 'AC2: a second open is no error');
 select is(pg_temp.event_count(current_setting('t.open')::uuid), 2::bigint, 'AC2: a second open wrote no event');
 create temp table t_short as select pg_temp.seed_app('shortlisted') as id;
 select pg_temp.viewed_as(:'mem', (select id from t_short)) as opened \gset

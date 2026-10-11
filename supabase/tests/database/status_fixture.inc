@@ -71,18 +71,18 @@ end;
 $$;
 
 -- set_application_status as p_user: 'ok' or 'sqlstate|message|detail'.
-create function pg_temp.set_as(p_user uuid, p_app uuid, p_status text, p_note text default null, p_aal text default 'aal2') returns text
+create function pg_temp.set_as(p_user uuid, p_app uuid, p_status text, p_note text default null, p_aal text default 'aal1') returns text
 language sql as $$
   select pg_temp.call_as(p_user, 'authenticated', format('select public.set_application_status(%L, %L, %L)', p_app, p_status, p_note), p_aal)
 $$;
 
-create function pg_temp.viewed_as(p_user uuid, p_app uuid, p_aal text default 'aal2') returns text
+create function pg_temp.viewed_as(p_user uuid, p_app uuid, p_aal text default 'aal1') returns text
 language sql as $$
   select pg_temp.call_as(p_user, 'authenticated', format('select public.mark_application_viewed(%L)', p_app), p_aal)
 $$;
 
 -- The rows of a query as one jsonb array, for the caller p_user; a refusal is the text 'sqlstate|message|detail'.
-create function pg_temp.json_as(p_user uuid, p_sql text, p_aal text default 'aal2') returns jsonb
+create function pg_temp.json_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns jsonb
 language plpgsql as $$
 declare
   v_result jsonb;
@@ -105,7 +105,7 @@ end;
 $$;
 
 -- bulk_set_application_status as p_user: the result rows as jsonb ordered by id, or the refusal text.
-create function pg_temp.bulk_as(p_user uuid, p_ids uuid[], p_status text, p_note text default null, p_aal text default 'aal2') returns jsonb
+create function pg_temp.bulk_as(p_user uuid, p_ids uuid[], p_status text, p_note text default null, p_aal text default 'aal1') returns jsonb
 language sql as $$
   select pg_temp.json_as(p_user, format('select * from public.bulk_set_application_status(%L::uuid[], %L, %L) order by application_id', p_ids, p_status, p_note), p_aal)
 $$;

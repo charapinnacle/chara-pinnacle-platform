@@ -6,7 +6,7 @@ select plan(46);
 -- FR-D5: the internal notes and the refusal of direct writes. note_as inserts a note as a caller and returns 'ok' or
 -- 'sqlstate|message|detail'; n_as counts the rows a query returns for a caller.
 create function pg_temp.note_as(
-  p_user uuid, p_app uuid, p_org uuid, p_body text default 'Call on Monday', p_author uuid default null
+  p_user uuid, p_app uuid, p_org uuid, p_body text default 'Call on Monday', p_author uuid default null, p_aal text default 'aal1'
 ) returns text
 language sql as $$
   select pg_temp.call_as(
@@ -15,11 +15,11 @@ language sql as $$
       then format('insert into public.application_notes (application_id, organization_id, body) values (%L, %L, %L)', p_app, p_org, p_body)
       else format('insert into public.application_notes (application_id, organization_id, author_id, body) values (%L, %L, %L, %L)', p_app, p_org, p_author, p_body)
     end,
-    'aal2'
+    p_aal
   )
 $$;
 
-create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal2') returns text
+create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns text
 language sql as $$ select pg_temp.val_as(p_user, p_aal, 'select count(*) from (' || p_sql || ') q') $$;
 
 create function pg_temp.fixed_state() returns text
@@ -76,11 +76,11 @@ select is(
 select is(pg_temp.note_as(pg_temp.member_of((select org from t_beta)), :'x', (select org from t_beta)), '23503|insert or update on table "application_notes" violates foreign key constraint "application_notes_application_id_organization_id_fkey"|Key is not present in table "job_applications".', 'AC6: a member of B cannot attach a note to an application of A under B');
 select is(pg_temp.note_as(:'mem', :'x', (select org from t_beta)), '42501|new row violates row-level security policy for table "application_notes"|', 'AC6: a member of A cannot file a note under B');
 select is(pg_temp.note_as(:'mem', :'x', current_setting('t.a')::uuid, 'Another author', :'adm'), '42501|new row violates row-level security policy for table "application_notes"|', 'AC6: a member cannot write a note under another author');
-select is(pg_temp.note_as(:'adm', :'x', current_setting('t.a')::uuid, 'Weak English'), 'ok', 'AC6: an admin adds a note');
+select is(pg_temp.note_as(:'adm', :'x', current_setting('t.a')::uuid, 'Weak English', null, 'aal2'), 'ok', 'AC6: an admin adds a note');
 select is((select count(*) from public.application_notes), 2::bigint, 'AC6: two notes exist, the refused ones left none');
 
-select is(pg_temp.n_as(:'own1', 'select 1 from public.application_notes'), '2', 'AC5: the owner of A reads the notes');
-select is(pg_temp.n_as(:'adm', 'select 1 from public.application_notes'), '2', 'AC5: an admin of A reads them');
+select is(pg_temp.n_as(:'own1', 'select 1 from public.application_notes', 'aal2'), '2', 'AC5: the owner of A reads the notes');
+select is(pg_temp.n_as(:'adm', 'select 1 from public.application_notes', 'aal2'), '2', 'AC5: an admin of A reads them');
 select is(pg_temp.n_as(:'mem', 'select 1 from public.application_notes'), '2', 'AC5: a member of A reads them');
 select is(pg_temp.n_as(:'own2', 'select 1 from public.application_notes') || pg_temp.n_as(pg_temp.member_of((select org from t_beta)), 'select 1 from public.application_notes'), '00', 'AC5: members of B read none');
 select is(pg_temp.n_as(:'wa', 'select 1 from public.application_notes'), '0', 'AC5: the candidate who owns the application reads none');

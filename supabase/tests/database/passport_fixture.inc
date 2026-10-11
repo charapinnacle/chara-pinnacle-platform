@@ -15,11 +15,11 @@ update public.profiles set account_kind = intended_account_kind where id in (:'w
 update public.profiles set status = 'suspended' where id = :'wsus';
 
 -- The SQLSTATE of a statement run as an authenticated user, or 'ok'.
-create function pg_temp.state_as(p_user uuid, p_sql text, p_aal text default 'aal2') returns text
+create function pg_temp.state_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns text
 language sql as $$ select split_part(pg_temp.call_as(p_user, 'authenticated', p_sql, p_aal), '|', 1) $$;
 
 -- The number of rows a statement affects when it runs as p_role for p_user.
-create function pg_temp.affected_as(p_user uuid, p_role text, p_sql text, p_aal text default 'aal2') returns bigint
+create function pg_temp.affected_as(p_user uuid, p_role text, p_sql text, p_aal text default 'aal1') returns bigint
 language plpgsql as $$
 declare
   v_rows bigint;

@@ -17,8 +17,8 @@ select is(
   pg_temp.json_as(:'mem', format('select organization_id from public.get_applicant(%L)', :'app_id')),
   jsonb_build_array(jsonb_build_object('organization_id', current_setting('t.a'))), 'the row names the organisation of the application'
 );
-select is(jsonb_array_length(pg_temp.json_as(:'own1', format('select * from public.get_applicant(%L)', :'app_id'))), 1, 'the owner reads it too');
-select is(jsonb_array_length(pg_temp.json_as(:'adm', format('select * from public.get_applicant(%L)', :'app_id'))), 1, 'and an admin');
+select is(jsonb_array_length(pg_temp.json_as(:'own1', format('select * from public.get_applicant(%L)', :'app_id'), 'aal2')), 1, 'the owner reads it too');
+select is(jsonb_array_length(pg_temp.json_as(:'adm', format('select * from public.get_applicant(%L)', :'app_id'), 'aal2')), 1, 'and an admin');
 select is(pg_temp.json_as(:'own2', format('select * from public.get_applicant(%L)', :'app_id')), '[]'::jsonb, 'a member of another organisation gets no row');
 select is(pg_temp.json_as(:'pending', format('select * from public.get_applicant(%L)', :'app_id')), '[]'::jsonb, 'a member whose invitation is not accepted gets no row');
 select is(pg_temp.json_as(:'st_admin', format('select * from public.get_applicant(%L)', :'app_id')), '[]'::jsonb, 'a platform administrator gets no row');
@@ -55,9 +55,9 @@ select is(
 
 -- list_applicant_events: the history, oldest first, with who made each move and no id.
 create temp table t_hist as select pg_temp.seed_app('applied') as id;
-select pg_temp.viewed_as(:'own1', (select id from t_hist)) as v \gset
+select pg_temp.viewed_as(:'own1', (select id from t_hist), 'aal2') as v \gset
 select pg_temp.set_as(:'mem', (select id from t_hist), 'shortlisted', 'Strong welding record') as s1 \gset
-select pg_temp.set_as(:'adm', (select id from t_hist), 'interview') as s2 \gset
+select pg_temp.set_as(:'adm', (select id from t_hist), 'interview', null, 'aal2') as s2 \gset
 select is(
   pg_temp.json_as(:'mem', format('select from_status, to_status, actor_kind, actor_name, note from public.list_applicant_events(%L)', (select id from t_hist))),
   '[{"note": null, "to_status": "applied", "actor_kind": "candidate", "actor_name": null, "from_status": null},

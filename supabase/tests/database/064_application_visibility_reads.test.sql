@@ -5,7 +5,7 @@ select plan(45);
 
 -- FR-D5: who reads job_applications and application_events. n_as counts the rows a query returns for a caller; refused is
 -- the refusal text of a query for a role without a grant.
-create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal2') returns text
+create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns text
 language sql as $$ select pg_temp.val_as(p_user, p_aal, 'select count(*) from (' || p_sql || ') q') $$;
 
 create function pg_temp.ids_of(p_apps uuid[]) returns text
@@ -46,7 +46,7 @@ select is(pg_temp.n_as(:'st_admin', 'select 1 from public.job_applications', 'aa
 select is(pg_temp.n_as(:'st_trust', 'select 1 from public.job_applications', 'aal2') || pg_temp.n_as(:'st_trust', 'select 1 from public.application_events', 'aal2') || pg_temp.n_as(:'st_trust', 'select 1 from public.application_notes', 'aal2'), '000', 'AC1: trust and safety at aal2 reads no row');
 select is(pg_temp.n_as(:'st_review', 'select 1 from public.job_applications', 'aal2') || pg_temp.n_as(:'st_review', 'select 1 from public.application_events', 'aal2') || pg_temp.n_as(:'st_review', 'select 1 from public.application_notes', 'aal2'), '000', 'AC1: a verification reviewer at aal2 reads no row');
 select is(pg_temp.n_as(:'own1', 'select 1 from public.job_applications') || pg_temp.n_as(:'own2', 'select 1 from public.job_applications'), '00', 'AC1: the owners of two other organisations read none of them');
-select is(pg_temp.n_as(pg_temp.owner_of((select org from t_c)), 'select 1 from public.job_applications'), '5', 'AC1: the owner of the organisation they were made to reads all five');
+select is(pg_temp.n_as(pg_temp.owner_of((select org from t_c)), 'select 1 from public.job_applications', 'aal2'), '5', 'AC1: the owner of the organisation they were made to reads all five');
 
 -- AC3: Acme has six applications, one to a vacancy in each state; Beta two. Another candidate (wnew) made them.
 create temp table t_b as select pg_temp.org_on() as org;
@@ -63,18 +63,18 @@ create temp table t_beta as select pg_temp.seed_app('applied', (select org from 
 select array_agg(id) as beta_ids from t_beta \gset
 select array_agg(id) as acme_ids from t_acme \gset
 
-select is(pg_temp.n_as(:'own1', 'select 1 from public.job_applications'), '6', 'AC3: the owner of Acme reads the six applications, whatever the state of the vacancy');
-select is(pg_temp.n_as(:'adm', 'select 1 from public.job_applications'), '6', 'AC3: an admin reads the six');
+select is(pg_temp.n_as(:'own1', 'select 1 from public.job_applications', 'aal2'), '6', 'AC3: the owner of Acme reads the six applications, whatever the state of the vacancy');
+select is(pg_temp.n_as(:'adm', 'select 1 from public.job_applications', 'aal2'), '6', 'AC3: an admin reads the six');
 select is(pg_temp.n_as(:'mem', 'select 1 from public.job_applications'), '6', 'AC3: a member reads the six');
-select is(pg_temp.n_as(:'own1', 'select 1 from public.application_events'), '6', 'AC3: the owner reads their six events');
-select is(pg_temp.n_as(:'adm', 'select 1 from public.application_events'), '6', 'AC3: an admin reads their six events');
+select is(pg_temp.n_as(:'own1', 'select 1 from public.application_events', 'aal2'), '6', 'AC3: the owner reads their six events');
+select is(pg_temp.n_as(:'adm', 'select 1 from public.application_events', 'aal2'), '6', 'AC3: an admin reads their six events');
 select is(pg_temp.n_as(:'mem', 'select 1 from public.application_events'), '6', 'AC3: a member reads their six events');
 select is(
   pg_temp.n_as(:'mem', 'select 1 from public.job_applications where ' || pg_temp.ids_of(:'beta_ids')) || pg_temp.n_as(:'mem', 'select 1 from public.application_events where application_id = any (' || quote_literal(:'beta_ids') || '::uuid[])'),
   '00', 'AC3: and none of Beta''s, with a filter on their ids'
 );
 select is(pg_temp.n_as(:'own2', 'select 1 from public.job_applications') || pg_temp.n_as(:'adm2', 'select 1 from public.application_events'), '00', 'AC3: Beta''s owner and admin, who have no application, read none of Acme''s');
-select is(pg_temp.n_as(pg_temp.owner_of((select org from t_b)), 'select 1 from public.job_applications'), '2', 'AC3: the owner of the other organisation reads its two');
+select is(pg_temp.n_as(pg_temp.owner_of((select org from t_b)), 'select 1 from public.job_applications', 'aal2'), '2', 'AC3: the owner of the other organisation reads its two');
 select is(pg_temp.n_as(pg_temp.member_of((select org from t_b)), 'select 1 from public.job_applications where ' || pg_temp.ids_of(:'acme_ids')), '0', 'AC3: and none of Acme''s');
 select is(pg_temp.n_as(pg_temp.member_of((select org from t_b)), 'select 1 from public.application_events'), '2', 'AC3: its member reads only its two events');
 select is(pg_temp.n_as(:'wnew', 'select 1 from public.job_applications'), '8', 'AC3: the candidate who applied to both reads all eight of their own');

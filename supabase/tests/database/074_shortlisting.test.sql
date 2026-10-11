@@ -42,7 +42,7 @@ begin
   v_calls := array[
     pg_temp.set_as(v_member, v_a1, 'shortlisted', 'Strong profile'),
     pg_temp.set_as(v_member, v_a2, 'shortlisted', 'Strong profile'),
-    pg_temp.set_as(pg_temp.owner_of(v_org), v_a3, 'shortlisted')
+    pg_temp.set_as(pg_temp.owner_of(v_org), v_a3, 'shortlisted', null, 'aal2')
   ];
   return jsonb_build_object(
     'calls', to_jsonb(v_calls),
