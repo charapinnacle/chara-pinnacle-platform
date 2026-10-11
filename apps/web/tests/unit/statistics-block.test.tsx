@@ -18,20 +18,20 @@ async function renderHome(): Promise<string> {
 describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
   it("puts each label and its value in the same group of a description list", () => {
     const html = renderToStaticMarkup(
-      <StatisticsBlock tiles={[{ label: "Vacancies", value: "15" }, { label: "Candidates", value: "1,230" }]} />,
+      <StatisticsBlock tiles={[{ label: "Workers", value: "1,230" }, { label: "Active jobs", value: "15" }]} />,
     );
-    expect(html).toContain("CHARA in numbers");
+    expect(html).toContain("Global Workforce Network");
     expect(html).toContain("<dt");
-    expect(html).toMatch(/<div[^>]*><dt[^>]*>Vacancies<\/dt><dd[^>]*>15<\/dd><\/div>/);
-    expect(html).toMatch(/<div[^>]*><dt[^>]*>Candidates<\/dt><dd[^>]*>1,230<\/dd><\/div>/);
+    expect(html).toMatch(/<div[^>]*><dt[^>]*>Active jobs<\/dt><dd[^>]*>15<\/dd><\/div>/);
+    expect(html).toMatch(/<div[^>]*><dt[^>]*>Workers<\/dt><dd[^>]*>1,230<\/dd><\/div>/);
     expect(html).not.toContain("Employers");
   });
 
   it("is on the home page when there is a tile", async () => {
-    getPlatformStatistics.mockResolvedValue([{ label: "Vacancies", value: "15" }]);
+    getPlatformStatistics.mockResolvedValue([{ label: "Active jobs", value: "15" }]);
     const html = await renderHome();
     expect(html).toContain("The Global Workforce Network");
-    expect(html).toContain("CHARA in numbers");
+    expect(html).toContain('id="platform-statistics-heading"');
     expect(html).toContain("<dd");
   });
 
@@ -40,7 +40,7 @@ describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
     const html = await renderHome();
     expect(html).toContain("The Global Workforce Network");
     expect(html).toContain("Your Workforce. Your Network. One Platform.");
-    expect(html).not.toContain("CHARA in numbers");
+    expect(html).not.toContain("platform-statistics-heading");
     expect(html).not.toContain("<dl");
   });
 });
