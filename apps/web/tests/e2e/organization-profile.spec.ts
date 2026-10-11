@@ -7,6 +7,7 @@ import { expectNotFound, seedJob } from "./support/jobs";
 import { alertText, logIn } from "./support/login-page";
 import { enterCode } from "./support/mfa";
 import { organizationAudit, organizationRows, SIMILAR_NAME_NOTICE } from "./support/organizations";
+import { captureActionRequests } from "./support/server-action";
 import { addMember, newTeam, signInAtAal2, subscribe } from "./support/team";
 import { publicUrl } from "./support/vacancy-page";
 
@@ -148,6 +149,43 @@ test.describe("organisation profile", () => {
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
     expect(organizationRows(team.owner.id)[0]).toMatchObject({ legal_name: rivalRow.legal_name.toUpperCase(), display_name: "Locked Bau" });
+    await expectNoAxeViolations(page);
+  });
+
+  test("FR-A2 AC12: a failed save keeps the values with a toast, a double click saves once, and a suspended organisation gets a notice", async ({
+    page,
+  }) => {
+    const team = await newTeam();
+    await signInAtAal2(page, team.owner, team.ownerSecret, profileUrl(team.slug));
+    const [before] = organizationRows(team.owner.id);
+    const save = page.getByRole("button", { name: "Save profile" });
+    await waitForHydration(save);
+
+    await page.route(`**${profileUrl(team.slug)}`, (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
+    await page.getByLabel("Display name (optional)").fill("Offline Bau");
+    await save.click();
+    await expect(page.getByText("Could not save the company profile", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Display name (optional)")).toHaveValue("Offline Bau");
+    expect(organizationRows(team.owner.id)[0].display_name).toBe(before.display_name);
+    expect(updates(team.id)).toEqual([]);
+
+    await page.unroute(`**${profileUrl(team.slug)}`);
+    const calls = captureActionRequests(page);
+    await page.route(`**${profileUrl(team.slug)}`, async (route) => {
+      if (route.request().method() === "POST") await new Promise((resolve) => setTimeout(resolve, 1_500));
+      await route.continue();
+    });
+    await save.dblclick();
+    await expect(page.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
+    expect(calls).toHaveLength(1);
+    expect(updates(team.id)).toHaveLength(1);
+    expect(organizationRows(team.owner.id)[0].display_name).toBe("Offline Bau");
+
+    execute(`update public.organizations set status = 'suspended' where id = ${literal(team.id)}`);
+    await page.reload();
+    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended, so its details are not available." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
     await expectNoAxeViolations(page);
   });
 
