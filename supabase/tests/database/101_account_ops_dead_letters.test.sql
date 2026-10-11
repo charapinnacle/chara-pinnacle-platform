@@ -1,7 +1,8 @@
--- SA-14 (security review): an abandoned delete_object job keeps its bucket and path as a dead letter, and the
--- reconciliation queries of docs/runbooks/platform-staff.md find every candidate file whose removal did not happen.
+-- SA-14 (security review): an abandoned delete_object job keeps its bucket and path as a dead letter, the
+-- reconciliation queries of docs/runbooks/platform-staff.md find every candidate file whose removal did not happen, and
+-- the erasure of a candidate deletes the candidate's dead letters (FR-B6, NFR-C1).
 begin;
-select plan(10);
+select plan(14);
 
 \ir passport_fixture.inc
 
@@ -80,6 +81,29 @@ select is(
   (select format('%s|%s', message ->> 'action', message ->> 'path') from pgmq.q_account_ops where message ->> 'reason' = 'reconcile'),
   format('delete_object|%s/%s/cv.pdf', :'wa', :'d1'), 'with the bucket and the path of the document'
 );
+
+-- The requeue statement of the runbook takes at most 100 documents a run and leaves out those with a job waiting.
+select is(
+  (select count(*) from (
+     select pgmq.send('account_ops', jsonb_build_object(
+       'action', 'delete_object', 'user_id', d.worker_user_id, 'bucket_id', d.bucket_id, 'path', d.storage_path,
+       'reason', 'reconcile'))
+     from public.worker_documents d
+     join storage.objects o on o.bucket_id = d.bucket_id and o.name = d.storage_path
+     where d.deleted_at is not null and d.deleted_at < now() - interval '1 hour'
+       and not exists (select 1 from pgmq.q_account_ops q where q.message ->> 'path' = d.storage_path)
+     order by d.deleted_at
+     limit 100) q),
+  0::bigint, 'run again, the runbook statement queues no second job for the same file'
+);
+
+-- Erasure: the dead letters of the erased candidate go, another user's stay.
+select pgmq.archive('account_ops', pgmq.send('account_ops', jsonb_build_object(
+  'action', 'delete_object', 'user_id', :'wb', 'bucket_id', 'passport-documents', 'path', :'wb' || '/x/cv.pdf'))) as other_archived \gset
+update public.profiles set deleted_at = now() - interval '31 days' where id = :'wa';
+select is(pg_temp.call_as(null, 'service_role', format('select public.erase_user(%L)', :'wa')), 'ok', 'the candidate is erased');
+select is((select count(*) from pgmq.a_account_ops where message ->> 'user_id' = :'wa'), 0::bigint, 'and the candidate''s dead letter is gone');
+select is((select count(*) from pgmq.a_account_ops where message ->> 'user_id' = :'wb'), 1::bigint, 'another user''s dead letter stays');
 
 select * from finish();
 rollback;
