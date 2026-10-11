@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
+import { reportQuotaRefused } from "@/lib/quota-refused";
 import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -29,8 +30,14 @@ const TOO_MANY_CHANGES = "You have made too many changes today. Try again tomorr
 
 function refusal(error: PostgrestError): DocumentResult {
   if (error.message === "CHARA_INVALID_INPUT" && error.details === "expires_on") return { errors: { expiresOn: FAR_AHEAD } };
-  if (error.message === "CHARA_LIMIT_REACHED" && error.details === "worker_documents") return { message: TOO_MANY_DOCUMENTS };
-  if (error.message === "CHARA_RATE_LIMITED") return { message: TOO_MANY_CHANGES };
+  if (error.message === "CHARA_LIMIT_REACHED" && error.details === "worker_documents") {
+    reportQuotaRefused("worker_documents", "document");
+    return { message: TOO_MANY_DOCUMENTS };
+  }
+  if (error.message === "CHARA_RATE_LIMITED") {
+    reportQuotaRefused("audited_write", "document");
+    return { message: TOO_MANY_CHANGES };
+  }
   console.error("Document action failed", { code: error.code, message: error.message });
   return { message: GENERIC_FAILURE };
 }

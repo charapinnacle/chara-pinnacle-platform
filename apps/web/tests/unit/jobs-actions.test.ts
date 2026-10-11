@@ -191,6 +191,36 @@ describe("createJob", () => {
   });
 });
 
+describe("vacancy writes beyond the daily quota (SA-06)", () => {
+  const quotaRefused = '{"alert":"quota_refused","quota":"audited_write","flow":"vacancy"}';
+  const spent = refusal("CHARA_RATE_LIMITED", "P0001");
+
+  it.each([
+    ["creating", async () => {
+      singleMock.mockResolvedValue(spent);
+      return createJob("acme-bau", input);
+    }],
+    ["editing", async () => {
+      maybeSingleMock.mockResolvedValue(spent);
+      return updateJob("acme-bau", jobId, input);
+    }],
+    ["changing the status of", async () => {
+      maybeSingleMock.mockResolvedValue(spent);
+      return changeJobStatus("acme-bau", jobId, "paused");
+    }],
+  ])("says when %s a vacancy is refused for today, records it and logs no failure", async (_, act) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(act()).resolves.toEqual({ message: "Too many changes were made today. Try again tomorrow." });
+    expect(warn).toHaveBeenCalledExactlyOnceWith(quotaRefused);
+    expect(error).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+    warn.mockRestore();
+    error.mockRestore();
+  });
+});
+
 describe("updateJob", () => {
   it("checks the role of the slug, updates only the content columns of that organization's live vacancy and revalidates", async () => {
     await expect(updateJob("acme-bau", jobId, { ...input, salaryMin: "", salaryMax: "" })).resolves.toEqual({ saved: true });

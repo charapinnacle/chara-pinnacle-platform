@@ -10,6 +10,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import type { LimitPrompt } from "@/lib/jobs/lifecycle";
 import { statusLabels } from "@/lib/jobs/presentation";
+import { reportQuotaRefused } from "@/lib/quota-refused";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { jobFormSchema, jobIdSchema, toJobInsert, toJobUpdate, type JobFormInput } from "@/lib/validation/job";
@@ -22,6 +23,7 @@ const CHECK_VALUE = "Check this value.";
 const NOT_ALLOWED = "You are not allowed to create or edit vacancies for this company.";
 const NOT_FOUND = "This vacancy could not be found.";
 const FILLED = "A filled vacancy is final and cannot be changed.";
+const TOO_MANY_CHANGES = "Too many changes were made today. Try again tomorrow.";
 
 // The constraints a value the schema let through can still fail, each with the field it belongs to.
 const fieldByConstraint: Record<string, [field: keyof JobFormInput, message: string]> = {
@@ -40,11 +42,18 @@ const fieldByConstraint: Record<string, [field: keyof JobFormInput, message: str
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
+// The daily quota of the member or of the organization (SA-06) is spent: an expected refusal, not a failure.
+function quotaRefusal(): JobActionResult {
+  reportQuotaRefused("audited_write", "vacancy");
+  return { message: TOO_MANY_CHANGES };
+}
+
 function refusal(error: PostgrestError): JobActionResult {
   const constraint = /constraint "([^"]+)"/.exec(error.message)?.[1];
   const known = constraint ? fieldByConstraint[constraint] : undefined;
   if (known) return { errors: { [known[0]]: known[1] } };
   if (error.code === "42501") return { message: NOT_ALLOWED };
+  if (error.message === "CHARA_RATE_LIMITED") return quotaRefusal();
   console.error("Saving the vacancy failed", { code: error.code, message: error.message });
   return { message: GENERIC_FAILURE };
 }
@@ -171,6 +180,7 @@ async function statusRefusal(
     return { message: data ? `${CHANGED_ELSEWHERE} It is now ${statusLabels[data.status]}.` : CHANGED_ELSEWHERE };
   }
   if (error.code === "42501") return { message: "You are not allowed to change the status of this vacancy." };
+  if (error.message === "CHARA_RATE_LIMITED") return quotaRefusal();
   console.error("Change vacancy status failed", { code: error.code, message: error.message });
   return { message: GENERIC_FAILURE };
 }

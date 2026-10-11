@@ -144,6 +144,16 @@ describe("addApplicationNote", () => {
     tableResult = { data: null, error };
     expect(await addApplicationNote(id, "org-1", "x")).toBe(expected);
   });
+
+  it("maps a spent daily quota to rate_limited and records the refusal instead of logging a failure", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.mocked(console.error).mockClear();
+    tableResult = { data: null, error: failure("CHARA_RATE_LIMITED", "P0001") };
+    expect(await addApplicationNote(id, "org-1", "x")).toBe("rate_limited");
+    expect(warn).toHaveBeenCalledExactlyOnceWith('{"alert":"quota_refused","quota":"audited_write","flow":"note"}');
+    expect(console.error).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });
 
 describe("requestDocumentLink", () => {
