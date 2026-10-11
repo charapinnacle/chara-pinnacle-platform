@@ -1180,6 +1180,9 @@ isOneToOne: false
 "transfer_ownership":
 { Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
                            },
+"update_organization_profile":
+{ Args: { "p_based_in_country": string,"p_display_name": string,"p_industry_code": string,"p_legal_name": string,"p_org": string,"p_website"?: string }; Returns: Json
+                           },
 "withdraw_application":
 { Args: { "p_application_id": string }; Returns: undefined
                            },
