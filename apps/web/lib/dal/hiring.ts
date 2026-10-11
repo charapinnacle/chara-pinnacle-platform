@@ -232,7 +232,7 @@ export async function listJobs(
 }
 
 // The applications of a vacancy that still wait for a decision, for the prompt before it is closed or filled (FR-C2). The
-// policy shows them to the members of the organization; the indexes on job_id and organization_id answer the count.
+// policy shows them to the members of the organization; job_applications_job_status_idx (job_id, status) answers the count.
 export async function countApplicationsInProgress(organizationId: string, jobId: string): Promise<number> {
   const supabase = await createClient();
   const { count, error } = await supabase

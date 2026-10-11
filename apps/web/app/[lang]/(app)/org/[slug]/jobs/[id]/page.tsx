@@ -10,7 +10,7 @@ import { VacancyView } from "@/components/jobs/vacancy-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { countApplicationsInProgress, getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { isEditable, STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
+import { isEditable, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
 import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
@@ -23,12 +23,14 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
   if (organization.suspended) return <SuspendedOrganization title="Vacancy" subject="vacancies" />;
   const parsedId = jobIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const manager = organization.role !== "member";
-  const [job, inProgress] = await Promise.all([
-    getJob(organization.id, parsedId.data),
-    manager ? countApplicationsInProgress(organization.id, parsedId.data) : 0,
-  ]);
+  const job = await getJob(organization.id, parsedId.data);
   if (!job) notFound();
+  const manager = organization.role !== "member";
+  // Only the Close and Mark as filled dialogs show the count, so it is read only when one of them is offered.
+  const inProgress =
+    manager && statusActions[job.status].some((action) => action.confirm)
+      ? await countApplicationsInProgress(organization.id, job.id)
+      : 0;
   const applicantsHref = applicantsPath(lang, slug, { job: job.id });
 
   return (
