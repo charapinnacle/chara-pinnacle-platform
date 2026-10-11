@@ -13,8 +13,14 @@ const SECTION_HEADINGS = [
 async function scrollThrough(page: Page): Promise<void> {
   const height = await page.evaluate(() => document.documentElement.scrollHeight);
   for (let top = 0; top <= height; top += 300) {
-    await page.evaluate((y) => window.scrollTo(0, y), top);
-    await page.waitForTimeout(60);
+    await page.evaluate(
+      (y) =>
+        new Promise<void>((resolve) => {
+          window.scrollTo(0, y);
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+      top,
+    );
   }
 }
 
@@ -50,6 +56,7 @@ test.describe("the premium home page (U66)", () => {
     const page = await context.newPage();
     await page.goto("/en");
     await expect(page.locator("main header h1")).toBeVisible();
+    // Asserts that nothing happens: the observer would have marked a band by now, so the time is the point of the check.
     await page.waitForTimeout(500);
     expect(await page.locator('[data-reveal="pending"]').count()).toBe(0);
     const durations = await page.locator(".journey-line, .journey-current, .passport-ring, main header h1 >> xpath=..").evaluateAll((nodes) =>
@@ -86,7 +93,9 @@ test.describe("the premium home page (U66)", () => {
     await scrollThrough(page);
     await expect(page.locator('[data-reveal="pending"]')).toHaveCount(0);
     await expect(page.locator('[data-reveal="shown"]')).toHaveCount(pending);
-    await page.waitForTimeout(900);
+    await expect
+      .poll(() => page.evaluate(() => document.getAnimations().filter((animation) => animation.timeline === document.timeline && animation.playState === "running").length))
+      .toBe(0);
     for (const opacity of await page.locator("[data-reveal]").evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).opacity))) {
       expect(opacity).toBe("1");
     }
@@ -96,7 +105,7 @@ test.describe("the premium home page (U66)", () => {
     await expectNoAxeViolations(page);
   });
 
-  test("the header lies transparent over the dark hero and turns solid when the page is scrolled or the menu is open", async ({ page }) => {
+  test("from 768 px the header lies transparent over the dark hero and turns solid when the page is scrolled or the menu is open; below it is solid and in the flow", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/en");
     const header = page.locator("body > div > header");
@@ -107,11 +116,42 @@ test.describe("the premium home page (U66)", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Find Jobs" })).toBeVisible();
 
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setViewportSize({ width: 800, height: 800 });
     await expect.poll(() => alpha(page)).toBe(0);
+    await page.setViewportSize({ width: 375, height: 800 });
+    await expect(header).toHaveCSS("position", "static");
+    expect(await alpha(page)).toBe(1);
     await page.getByRole("button", { name: "Menu" }).click();
-    await expect.poll(() => alpha(page)).toBeGreaterThan(0.9);
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Find Jobs" })).toBeVisible();
+    await page.setViewportSize({ width: 800, height: 800 });
+    await expect.poll(() => alpha(page)).toBeGreaterThan(0.9);
+  });
+
+  test("without JavaScript on a phone the header stays in the flow above the headline and scrolls away", async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 375, height: 812 } });
+    const page = await context.newPage();
+    await page.goto("/en");
+    const header = page.locator("body > div > header");
+    await expect(header).toHaveCSS("position", "static");
+    const box = await header.boundingBox();
+    const h1 = await page.locator("main header h1").boundingBox();
+    expect(h1?.y ?? 0).toBeGreaterThanOrEqual((box?.y ?? 0) + (box?.height ?? 0));
+    await page.evaluate(() => window.scrollTo(0, 600));
+    expect((await header.boundingBox())?.y ?? 0).toBeLessThan(0);
+    await context.close();
+  });
+
+  test("on a phone the open menu is part of the page: axe passes and its last link can be scrolled to, even at 320 by 256 px", async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto("/en");
+    await page.getByRole("button", { name: "Menu" }).click();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Find Jobs" })).toBeVisible();
+    await expectNoAxeViolations(page);
+
+    await page.setViewportSize({ width: 320, height: 256 });
+    const last = page.getByRole("navigation", { name: "Main" }).getByRole("link").last();
+    await last.scrollIntoViewIfNeeded();
+    await expect(last).toBeInViewport();
   });
 
   test("other public pages keep the light header in the page flow", async ({ page }) => {
@@ -128,6 +168,11 @@ test.describe("the premium home page (U66)", () => {
     const tops = await items.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().top)));
     expect(new Set(tops).size).toBe(1);
     expect(await items.nth(1).evaluate((node) => getComputedStyle(node).borderInlineStartWidth)).toBe("1px");
+    const strip = await page.getByRole("region", { name: "What you can rely on" }).boundingBox();
+    const hero = await page.locator("main header").first().boundingBox();
+    const who = await page.getByRole("heading", { level: 2, name: "Who are you?" }).boundingBox();
+    expect(strip?.y ?? 0).toBeGreaterThanOrEqual((hero?.y ?? 0) + (hero?.height ?? 0) - 1);
+    expect(strip?.y ?? Infinity).toBeLessThan(who?.y ?? 0);
     await page.setViewportSize({ width: 768, height: 900 });
     const rows = await items.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().top)));
     expect(new Set(rows).size).toBe(2);
@@ -213,7 +258,7 @@ test.describe("the premium home page (U66)", () => {
       await target.focus();
       await expect(target).toBeFocused();
       // A field fades its outline colour in over 150 ms.
-      await page.waitForTimeout(300);
+      await expect.poll(() => target.evaluate((node) => node.getAnimations().length)).toBe(0);
       const found = await ring(target);
       expect(found.style).toBe("solid");
       expect(found.width).toBe("2px");
@@ -236,8 +281,11 @@ test.describe("the premium home page (U66)", () => {
       const panel = page.getByRole("region", { name: "Worker", exact: true });
       await panel.scrollIntoViewIfNeeded();
       await panel.hover();
-      await page.waitForTimeout(500);
-      expect(await panel.evaluate((node) => getComputedStyle(node).transform), reducedMotion).toBe(expected);
+      if (reducedMotion === "reduce") {
+        // Asserts that nothing happens: the lift would be over within 200 ms, so the time is the point of the check.
+        await page.waitForTimeout(500);
+      }
+      await expect(panel).toHaveCSS("transform", expected);
       await context.close();
     }
   });

@@ -184,7 +184,7 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
 
     await page.goto("/en/pricing");
     await expect(page.getByRole("heading", { name: "This page could not be loaded" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Find Jobs" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Find Jobs" })).toBeVisible();
     expect(await page.locator("body").innerText()).not.toMatch(/permission denied|v_plans|^\s+at /m);
   });
 });
