@@ -503,7 +503,7 @@
 
 ### Open points and assumed defaults
 
-- D8 (adopted): database aal2 gates cover invitations, platform_staff, member-management RPCs and billing reads only; applicant pages for owners and admins are protected by the page guard (requireAal2), not by a database policy.
+- D8 (adopted): database aal2 gates cover invitations, platform_staff, member-management RPCs and billing reads only; applicant pages for owners and admins are protected by the page guard (requireAal2), not by a database policy. Widened by D79 (security review SA-04): the database also refuses applicant data, documents, exports, stage changes and notes to owners and admins at aal1.
 - D17 (adopted): no recovery codes; one backup TOTP factor; lost device reset by a Platform Administrator after an identity check. The reason length of 10 to 500 characters and the 2-minute execution time are team defaults; D17 says only that the reason is mandatory.
 - P7 (open): members and workers are not required to enrol. Default assumed.
 - O6 (open): staff names. With a single named Platform Administrator nobody can reset that person's factors (self-reset is refused); default assumed: at least two named administrators before go-live, otherwise a ticketed database action is the fallback.
