@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 const standaloneBase = "inline-flex min-h-11 items-center justify-self-start text-body";
 
-const textLinkVariants = cva(
+export const textLinkVariants = cva(
   "-mx-0.5 rounded-sm px-0.5 font-medium underline decoration-[1.5px] underline-offset-4 transition-colors duration-150",
   {
     variants: {

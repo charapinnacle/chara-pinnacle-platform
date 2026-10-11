@@ -18,6 +18,7 @@ const sessionMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
 const rememberMock = vi.hoisted(() => vi.fn());
 const forgetMock = vi.hoisted(() => vi.fn());
+const offerMock = vi.hoisted(() => vi.fn());
 const resendPendingMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
@@ -32,6 +33,7 @@ vi.mock("@/lib/pending-email", () => ({
   rememberPendingEmail: rememberMock,
   forgetPendingEmail: forgetMock,
   resendPending: resendPendingMock,
+  offerPendingEmailAgain: offerMock,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -45,7 +47,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { requestPasswordReset, resendResetEmail, resetPassword } = await import("@/lib/actions/recovery");
+const { changeRecoveryAddress, requestPasswordReset, resendResetEmail, resetPassword } = await import("@/lib/actions/recovery");
 
 const input = { tokenHash: "abc_DEF-123", password: "a long enough password" };
 
@@ -134,6 +136,13 @@ describe("resendResetEmail", () => {
     expect(await resendResetEmail()).toEqual({ cooldown: 60, sent: true });
     expect(resendPendingMock).toHaveBeenCalledWith("recovery", "forgot_password", "/forgot-password", expect.any(Function));
     expect(resetMock).toHaveBeenCalledWith("ana@example.test");
+  });
+});
+
+describe("changeRecoveryAddress", () => {
+  it("offers the address for the form for a minute, then goes to the form without the address in the URL", async () => {
+    await expect(changeRecoveryAddress()).rejects.toThrow("REDIRECT:/en/forgot-password");
+    expect(offerMock).toHaveBeenCalledWith("recovery");
   });
 });
 

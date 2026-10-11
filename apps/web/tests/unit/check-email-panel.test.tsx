@@ -10,7 +10,7 @@ const render = (initialCooldown: number) =>
       maskedEmail="a*****6@gmail.com"
       initialCooldown={initialCooldown}
       resend={async () => ({ cooldown: 60, sent: true })}
-      differentAddressHref="/en/signup"
+      changeAddress={async () => undefined}
     />,
   );
 
@@ -21,7 +21,8 @@ describe("CheckEmailPanel (U67)", () => {
     expect(html).toMatch(/<button[^>]*type="button"[^>]*>Resend email<\/button>/);
     expect(html).not.toContain("<input");
     expect(html).toContain("Not there? Check your spam or promotions folder.");
-    expect(html).toMatch(/<a[^>]*href="\/en\/signup"[^>]*>Use a different address<\/a>/);
+    expect(html).toMatch(/<form[^>]*><button type="submit"[^>]*>Use a different address<\/button><\/form>/);
+    expect(html).not.toContain("href=");
   });
 
   it("shows the cooldown on the button and keeps the button focusable for the keyboard (aria-disabled, never disabled)", () => {

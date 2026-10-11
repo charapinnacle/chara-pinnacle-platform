@@ -3,7 +3,7 @@ import { Mail } from "lucide-react";
 import { CheckEmailPanel } from "@/components/auth/check-email-panel";
 import { ResendForm } from "@/components/auth/resend-form";
 import { AuthCard, cardDividerClassName } from "@/components/layout/auth-card";
-import { resendSignupEmail } from "@/lib/actions/auth";
+import { changeSignupAddress, resendSignupEmail } from "@/lib/actions/auth";
 import { cooldownLeft, maskEmail, pendingEmail } from "@/lib/pending-email";
 
 export const metadata: Metadata = { title: "Check your email — CHARA" };
@@ -13,11 +13,8 @@ const SENT =
 
 // After sign-up the address comes from the cookie the sign-up set, so the page offers a plain Resend button; a person who
 // arrives without it (a bookmark, another browser, an expired link) is asked for the address, as before.
-export default async function VerifyEmailPage({
-  params,
-  searchParams,
-}: PageProps<"/[lang]/verify-email">) {
-  const [{ lang }, { error }] = await Promise.all([params, searchParams]);
+export default async function VerifyEmailPage({ searchParams }: PageProps<"/[lang]/verify-email">) {
+  const { error } = await searchParams;
   const invalidLink = error === "invalid_link";
   const pending = invalidLink ? null : await pendingEmail("signup");
   if (pending) {
@@ -27,7 +24,7 @@ export default async function VerifyEmailPage({
           maskedEmail={maskEmail(pending.email)}
           initialCooldown={cooldownLeft(pending.sentAt)}
           resend={resendSignupEmail}
-          differentAddressHref={`/${lang}/signup`}
+          changeAddress={changeSignupAddress}
         />
       </AuthCard>
     );

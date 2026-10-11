@@ -16,7 +16,13 @@ import { isThrottled } from "@/lib/dal/rate-limit";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
 import { getCurrentUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { forgetPendingEmail, rememberPendingEmail, resendPending, type ResendAnswer } from "@/lib/pending-email";
+import {
+  forgetPendingEmail,
+  offerPendingEmailAgain,
+  rememberPendingEmail,
+  resendPending,
+  type ResendAnswer,
+} from "@/lib/pending-email";
 import { homePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -58,6 +64,12 @@ export async function resendResetEmail(): Promise<ResendAnswer> {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     return error;
   });
+}
+
+// "Use a different address" on the page after the request: back to the form with the address filled in for a minute.
+export async function changeRecoveryAddress(): Promise<void> {
+  await offerPendingEmailAgain("recovery");
+  redirect(`/${defaultLocale}/forgot-password`);
 }
 
 async function endOtherSessions(supabase: Supabase): Promise<boolean> {

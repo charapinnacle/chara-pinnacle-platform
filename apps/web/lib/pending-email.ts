@@ -11,12 +11,14 @@ import { emailSchema } from "@/lib/validation/sign-up";
 
 const NAME = "chara_pending_email";
 const LIFETIME_SECONDS = 30 * 60;
+const PREFILL_NAME = "chara_prefill_email";
+const PREFILL_LIFETIME_SECONDS = 60;
 
 // The shortest time between two emails to one address: the same 60 s as max_frequency of Auth (supabase/config.toml, the
 // hosted project), which answers a faster request without sending.
 export const RESEND_COOLDOWN_SECONDS = 60;
 
-export type PendingPurpose = "signup" | "recovery";
+type PendingPurpose = "signup" | "recovery";
 
 const pendingSchema = z.object({
   purpose: z.enum(["signup", "recovery"]),
@@ -24,26 +26,22 @@ const pendingSchema = z.object({
   sentAt: z.number().int().positive(),
 });
 
-export type PendingEmail = z.infer<typeof pendingSchema>;
+type PendingEmail = z.infer<typeof pendingSchema>;
 
 export type ResendAnswer = { cooldown: number; sent?: true; message?: string };
 
-// The address a confirmation or reset link was sent to is kept here, not in the address of a page: the check-your-email page
-// shows it masked and resends to it, and the form it came from is filled with it again. The cookie is not readable by scripts, is
-// sent only to the pages of the site's own language, lives 30 minutes and is removed when the link is used.
-export async function rememberPendingEmail(purpose: PendingPurpose, email: string): Promise<void> {
-  const value: PendingEmail = { purpose, email, sentAt: Date.now() };
-  (await cookies()).set(NAME, JSON.stringify(value), {
+function cookieOptions(maxAge: number) {
+  return {
     httpOnly: true,
     sameSite: "lax",
     secure: env.NEXT_PUBLIC_SITE_URL.startsWith("https:"),
     path: `/${defaultLocale}`,
-    maxAge: LIFETIME_SECONDS,
-  });
+    maxAge,
+  } as const;
 }
 
-export async function pendingEmail(purpose: PendingPurpose): Promise<PendingEmail | null> {
-  const raw = (await cookies()).get(NAME)?.value;
+async function readCookie(name: string, purpose: PendingPurpose): Promise<PendingEmail | null> {
+  const raw = (await cookies()).get(name)?.value;
   if (!raw) return null;
   try {
     const parsed = pendingSchema.safeParse(JSON.parse(raw));
@@ -53,12 +51,41 @@ export async function pendingEmail(purpose: PendingPurpose): Promise<PendingEmai
   }
 }
 
+// The address a confirmation or reset link was sent to is kept here, not in the address of a page: the check-your-email page
+// shows it masked and resends to it. The cookie is not readable by scripts, is sent only to the pages of the site's own
+// language (the pages that read it have no longer path in common), lives 30 minutes and is removed when the link is used.
+// It is not signed: a person who edits their own copy changes only their own cooldown display and its pre-check, and the real
+// limits stay with the throttle (rate_limit_attempt) and the minimum interval of Auth.
+export async function rememberPendingEmail(purpose: PendingPurpose, email: string): Promise<void> {
+  const value: PendingEmail = { purpose, email, sentAt: Date.now() };
+  const store = await cookies();
+  store.set(NAME, JSON.stringify(value), cookieOptions(LIFETIME_SECONDS));
+  store.delete({ name: PREFILL_NAME, path: `/${defaultLocale}` });
+}
+
+export function pendingEmail(purpose: PendingPurpose): Promise<PendingEmail | null> {
+  return readCookie(NAME, purpose);
+}
+
+// The form is filled with the address again only for the minute after the person chose "Use a different address", so that
+// the next visitor of a shared computer does not find it there.
+export async function offerPendingEmailAgain(purpose: PendingPurpose): Promise<void> {
+  const pending = await pendingEmail(purpose);
+  if (pending) (await cookies()).set(PREFILL_NAME, JSON.stringify(pending), cookieOptions(PREFILL_LIFETIME_SECONDS));
+}
+
+export async function prefilledEmail(purpose: PendingPurpose): Promise<string | undefined> {
+  return (await readCookie(PREFILL_NAME, purpose))?.email;
+}
+
 export async function forgetPendingEmail(): Promise<void> {
-  (await cookies()).delete({ name: NAME, path: `/${defaultLocale}` });
+  const store = await cookies();
+  store.delete({ name: NAME, path: `/${defaultLocale}` });
+  store.delete({ name: PREFILL_NAME, path: `/${defaultLocale}` });
 }
 
 export function cooldownLeft(sentAt: number, now = Date.now()): number {
-  return Math.max(0, Math.ceil((sentAt + RESEND_COOLDOWN_SECONDS * 1000 - now) / 1000));
+  return Math.max(0, Math.ceil((Math.min(sentAt, now) + RESEND_COOLDOWN_SECONDS * 1000 - now) / 1000));
 }
 
 // "a*****6@gmail.com": the first and the last character of the name, five stars between so that its length is not shown.
@@ -71,9 +98,9 @@ export function maskEmail(email: string): string {
 
 type Send = (email: string) => Promise<AuthError | null>;
 
-// The Resend button of the check-your-email pages: no address is asked for, the one in the cookie is used. It goes through
-// the same throttle as the form, and answers an address that cannot be used as it answers any other (as Auth does), so the
-// page reveals nothing about the account.
+// The Resend button of the check-your-email pages: no address is asked for, the one in the cookie is used. The cooldown check
+// here is a courtesy (the cookie is the person's own copy); the limits are the throttle of the form and the minimum interval of
+// Auth. An address that cannot be used is answered as any other (as Auth does), so the page reveals nothing about the account.
 export async function resendPending(
   purpose: PendingPurpose,
   action: "resend" | "forgot_password",

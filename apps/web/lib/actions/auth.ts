@@ -16,7 +16,13 @@ import { getSignupDocuments } from "@/lib/dal/legal";
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { rememberInvitation } from "@/lib/invitation-cookie";
-import { forgetPendingEmail, rememberPendingEmail, resendPending, type ResendAnswer } from "@/lib/pending-email";
+import {
+  forgetPendingEmail,
+  offerPendingEmailAgain,
+  rememberPendingEmail,
+  resendPending,
+  type ResendAnswer,
+} from "@/lib/pending-email";
 import { createClient } from "@/lib/supabase/server";
 import { invitationTokenSchema } from "@/lib/validation/team";
 import {
@@ -126,6 +132,12 @@ export async function resendSignupEmail(): Promise<ResendAnswer> {
     const { error } = await supabase.auth.resend({ type: "signup", email });
     return error;
   });
+}
+
+// "Use a different address" on the page after sign-up: back to the form with the address filled in for a minute.
+export async function changeSignupAddress(): Promise<void> {
+  await offerPendingEmailAgain("signup");
+  redirect(`/${defaultLocale}/signup`);
 }
 
 // The link only opens the confirm page: the single-use token is spent here, by a click, so that mail scanners

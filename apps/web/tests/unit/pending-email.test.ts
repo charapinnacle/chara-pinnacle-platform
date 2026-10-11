@@ -31,7 +31,17 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-const { cooldownLeft, forgetPendingEmail, maskEmail, pendingEmail, rememberPendingEmail, resendPending, RESEND_COOLDOWN_SECONDS } =
+const {
+  cooldownLeft,
+  forgetPendingEmail,
+  maskEmail,
+  offerPendingEmailAgain,
+  pendingEmail,
+  prefilledEmail,
+  rememberPendingEmail,
+  resendPending,
+  RESEND_COOLDOWN_SECONDS,
+} =
   await import("@/lib/pending-email");
 
 const NOW = Date.parse("2026-10-12T10:00:00Z");
@@ -69,6 +79,10 @@ describe("cooldownLeft", () => {
     expect(cooldownLeft(NOW - 60_000, NOW)).toBe(0);
     expect(cooldownLeft(NOW - 600_000, NOW)).toBe(0);
   });
+
+  it("does not let a time in the future in an edited cookie make the wait longer than a minute", () => {
+    expect(cooldownLeft(NOW + 86_400_000, NOW)).toBe(60);
+  });
 });
 
 describe("the pending address cookie", () => {
@@ -104,7 +118,40 @@ describe("the pending address cookie", () => {
     await rememberPendingEmail("signup", "ana@example.test");
     await forgetPendingEmail();
     expect(deleteMock).toHaveBeenCalledWith({ name: "chara_pending_email", path: "/en" });
+    expect(deleteMock).toHaveBeenCalledWith({ name: "chara_prefill_email", path: "/en" });
     expect(await pendingEmail("signup")).toBeNull();
+  });
+});
+
+describe("the address offered to a form again", () => {
+  it("is not given to a form just because the address is pending: the form sees it only after Use a different address", async () => {
+    await rememberPendingEmail("signup", "ana@example.test");
+    expect(await prefilledEmail("signup")).toBeUndefined();
+  });
+
+  it("is kept for 60 seconds under its own cookie, with the same flags, for its own purpose only", async () => {
+    await rememberPendingEmail("signup", "ana@example.test");
+    setMock.mockClear();
+    await offerPendingEmailAgain("signup");
+    const [name, , options] = setMock.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(name).toBe("chara_prefill_email");
+    expect(options).toEqual({ httpOnly: true, sameSite: "lax", secure: false, path: "/en", maxAge: 60 });
+    expect(await prefilledEmail("signup")).toBe("ana@example.test");
+    expect(await prefilledEmail("recovery")).toBeUndefined();
+  });
+
+  it("offers nothing when there is no pending address for that purpose", async () => {
+    await rememberPendingEmail("recovery", "ana@example.test");
+    await offerPendingEmailAgain("signup");
+    expect(setMock).toHaveBeenCalledTimes(1);
+    expect(await prefilledEmail("signup")).toBeUndefined();
+  });
+
+  it("is removed when a new address is sent a link", async () => {
+    await rememberPendingEmail("signup", "ana@example.test");
+    await offerPendingEmailAgain("signup");
+    await rememberPendingEmail("signup", "bo@example.test");
+    expect(await prefilledEmail("signup")).toBeUndefined();
   });
 });
 

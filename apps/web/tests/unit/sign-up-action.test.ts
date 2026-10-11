@@ -16,6 +16,7 @@ const rememberMock = vi.hoisted(() => vi.fn());
 const rememberEmailMock = vi.hoisted(() => vi.fn());
 const forgetEmailMock = vi.hoisted(() => vi.fn());
 const resendPendingMock = vi.hoisted(() => vi.fn());
+const offerEmailMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
@@ -25,6 +26,7 @@ vi.mock("@/lib/pending-email", () => ({
   rememberPendingEmail: rememberEmailMock,
   forgetPendingEmail: forgetEmailMock,
   resendPending: resendPendingMock,
+  offerPendingEmailAgain: offerEmailMock,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -32,7 +34,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { confirmEmail, resendConfirmation, resendSignupEmail, signUp } = await import("@/lib/actions/auth");
+const { changeSignupAddress, confirmEmail, resendConfirmation, resendSignupEmail, signUp } = await import("@/lib/actions/auth");
 
 const documents: LegalDocumentSummary[] = ["terms-of-service", "worker-terms", "age-18-plus"].map(
   (slug) => ({
@@ -310,6 +312,13 @@ describe("resendSignupEmail action", () => {
     expect(await resendSignupEmail()).toEqual({ cooldown: 60, sent: true });
     expect(resendPendingMock).toHaveBeenCalledWith("signup", "resend", "/verify-email", expect.any(Function));
     expect(resendMock).toHaveBeenCalledWith({ type: "signup", email: "ana@example.test" });
+  });
+});
+
+describe("changeSignupAddress action", () => {
+  it("offers the address for the form for a minute, then goes to the sign-up form without the address in the URL", async () => {
+    await expect(changeSignupAddress()).rejects.toThrow("REDIRECT:/en/signup");
+    expect(offerEmailMock).toHaveBeenCalledWith("signup");
   });
 });
 
