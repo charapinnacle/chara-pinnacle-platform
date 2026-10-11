@@ -53,7 +53,7 @@ export async function sendReport(page: Page): Promise<string> {
   await page.getByRole("button", { name: "Send report" }).click();
   const received = page.getByRole("status").filter({ hasText: "Your report was received" });
   await expect(received).toBeVisible();
-  const text = (await received.innerText()).match(/R-\d{6}/);
+  const text = (await received.innerText()).match(/R-\d{6,}/);
   if (!text) throw new Error("No reference number on the page");
   return text[0];
 }

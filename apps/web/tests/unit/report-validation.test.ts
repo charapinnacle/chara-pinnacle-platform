@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { fieldErrors } from "@/lib/validation/sign-up";
 import {
-  reportCloseInputSchema,
+  reportMoveInputSchema,
+  reportListStatuses,
+  reportListStatusLabels,
+  reportReferenceSchema,
   reportCursorSchema,
   reportFormSchemaFor,
   reportInputSchema,
@@ -49,6 +52,13 @@ describe("the report form", () => {
     expect(Object.keys(errorsOf("job", true, { details: "y".repeat(2001) }))).toEqual(["details"]);
   });
 
+  it("counts characters as the database does: ten emoji are ten characters, too few", () => {
+    expect(Object.keys(errorsOf("job", true, { details: "😀".repeat(10) }))).toEqual(["details"]);
+    expect(errorsOf("job", true, { details: "😀".repeat(20) })).toEqual({});
+    expect(errorsOf("job", true, { details: "😀".repeat(2000) })).toEqual({});
+    expect(Object.keys(errorsOf("job", true, { details: "😀".repeat(2001) }))).toEqual(["details"]);
+  });
+
   it("makes the email optional but valid when given", () => {
     expect(errorsOf("job", true, { email: "  " })).toEqual({});
     expect(errorsOf("job", true, { email: "reporter@example.test" })).toEqual({});
@@ -76,24 +86,28 @@ describe("the input of the action", () => {
   });
 });
 
-describe("closing a report", () => {
-  it("needs a note of 10 to 2000 characters, as every statement of reasons", () => {
-    const close = { id: 7, status: "dismissed", reason: "Nothing in it breaks the rules." };
-    expect(reportCloseInputSchema.safeParse(close).success).toBe(true);
-    expect(reportCloseInputSchema.safeParse({ ...close, reason: "short" }).success).toBe(false);
-    expect(reportCloseInputSchema.safeParse({ ...close, reason: "n".repeat(2001) }).success).toBe(false);
+describe("moving a report", () => {
+  it("needs a reason of 10 to 2000 characters, as every statement of reasons", () => {
+    const move = { id: 7, status: "dismissed", reason: "Nothing in it breaks the rules." };
+    expect(reportMoveInputSchema.safeParse(move).success).toBe(true);
+    expect(reportMoveInputSchema.safeParse({ ...move, status: "in_review" }).success).toBe(true);
+    expect(reportMoveInputSchema.safeParse({ ...move, reason: "short" }).success).toBe(false);
+    expect(reportMoveInputSchema.safeParse({ ...move, reason: "n".repeat(2001) }).success).toBe(false);
   });
 
-  it("closes as actioned or dismissed only, for a report that has an id", () => {
-    const close = { id: 7, status: "actioned", reason: "The vacancy was hidden." };
-    expect(reportCloseInputSchema.safeParse(close).success).toBe(true);
-    expect(reportCloseInputSchema.safeParse({ ...close, status: "in_review" }).success).toBe(false);
-    expect(reportCloseInputSchema.safeParse({ ...close, status: "new" }).success).toBe(false);
-    expect(reportCloseInputSchema.safeParse({ ...close, id: 0 }).success).toBe(false);
+  it("moves to review, actioned or dismissed only, for a report that has an id", () => {
+    const move = { id: 7, status: "actioned", reason: "The vacancy was hidden." };
+    expect(reportMoveInputSchema.safeParse(move).success).toBe(true);
+    expect(reportMoveInputSchema.safeParse({ ...move, status: "new" }).success).toBe(false);
+    expect(reportMoveInputSchema.safeParse({ ...move, id: 0 }).success).toBe(false);
   });
 });
 
 describe("the filters and the cursor of the lists", () => {
+  it("names every status of the filter once, in words", () => {
+    expect(Object.keys(reportListStatusLabels)).toEqual([...reportListStatuses]);
+  });
+
   it("falls back to the open reports for a status it does not know, and drops an unknown kind", () => {
     expect(reportListFilterSchema.parse({})).toEqual({ status: "open" });
     expect(reportListFilterSchema.parse({ status: "bogus", type: "account" })).toEqual({ status: "open" });
@@ -105,5 +119,13 @@ describe("the filters and the cursor of the lists", () => {
     expect(reportCursorSchema.safeParse({ at: "yesterday", id: "42" }).success).toBe(false);
     expect(reportCursorSchema.safeParse({ at: "2026-10-11T10:00:00+00:00", id: "-1" }).success).toBe(false);
     expect(reportCursorSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("the reference of a report", () => {
+  it("has six digits or more, so that a reference past a million is not cut", () => {
+    expect(reportReferenceSchema.safeParse({ reference: "R-000042", is_duplicate: false }).success).toBe(true);
+    expect(reportReferenceSchema.safeParse({ reference: "R-1234567", is_duplicate: true }).success).toBe(true);
+    expect(reportReferenceSchema.safeParse({ reference: "R-42", is_duplicate: false }).success).toBe(false);
   });
 });

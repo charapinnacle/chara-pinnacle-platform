@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { characters } from "@/lib/utils";
 import { employmentTypes, salaryPeriods } from "@/lib/validation/job";
 
 // The limits below repeat those of public.search_jobs, which stays the authority and clamps or refuses again:
@@ -23,8 +24,6 @@ function isCursor(value: string): boolean {
   const parsed = new Date(`${seconds}Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(seconds);
 }
-
-const characters = (value: string) => Array.from(value).length;
 
 // A text field of the form or the address: surrounding spaces go, and an empty value means "not set".
 function optional<Output extends string>(schema: z.ZodType<Output, string>) {

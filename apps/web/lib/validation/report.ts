@@ -3,6 +3,7 @@ import * as z from "zod";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
 import { moderationFormSchema } from "@/lib/validation/admin";
 import type { StatusTone } from "@/lib/status-tone";
+import { characters } from "@/lib/utils";
 import { emailSchema } from "@/lib/validation/sign-up";
 
 type Enums = Database["public"]["Enums"];
@@ -53,8 +54,8 @@ const categorySchema = z.string({ error: "Choose a category." }).pipe(
 const detailsSchema = z
   .string({ error: "Describe what you are reporting." })
   .trim()
-  .min(DETAILS_MIN_CHARS, { error: `Describe it in at least ${DETAILS_MIN_CHARS} characters.` })
-  .max(DETAILS_MAX_CHARS, { error: `Use at most ${DETAILS_MAX_CHARS} characters.` });
+  .refine((value) => characters(value) >= DETAILS_MIN_CHARS, { error: `Describe it in at least ${DETAILS_MIN_CHARS} characters.` })
+  .refine((value) => characters(value) <= DETAILS_MAX_CHARS, { error: `Use at most ${DETAILS_MAX_CHARS} characters.` });
 
 const optionalEmailSchema = z
   .string()
@@ -101,23 +102,32 @@ export const reportInputSchema = z.object({
 
 export type ReportInput = z.input<typeof reportInputSchema>;
 
-export const reportReferenceSchema = z.object({ reference: z.string().regex(/^R-\d{6}$/), is_duplicate: z.boolean() });
+export const reportReferenceSchema = z.object({ reference: z.string().regex(/^R-\d{6,}$/), is_duplicate: z.boolean() });
 
 export const reportIdSchema = z.number().int().positive();
 
 // The cursor of the list of a reporter's own reports, as the address carries it (afterAt and afterId).
 export const reportCursorSchema = z.object({ at: z.iso.datetime({ offset: true }), id: z.coerce.number().int().positive() });
 
-// Closing a report takes the statement of reasons of every administrative action as its note to the reporter.
-export const reportCloseInputSchema = moderationFormSchema.extend({
+// Every move of a report takes the statement of reasons of every administrative action. The reason of a closing is also
+// the note that a signed-in reporter reads.
+export const reportMoveInputSchema = moderationFormSchema.extend({
   id: reportIdSchema,
-  status: z.enum(["actioned", "dismissed"] as const satisfies readonly Enums["report_status"][]),
+  status: z.enum(["in_review", "actioned", "dismissed"] as const satisfies readonly Enums["report_status"][]),
 });
 
-export type ReportCloseInput = z.input<typeof reportCloseInputSchema>;
+export type ReportMoveInput = z.input<typeof reportMoveInputSchema>;
+
+export const reportListStatuses = ["open", "new", "in_review", "actioned", "dismissed", "all"] as const;
+
+export const reportListStatusLabels = {
+  open: "Open (new and in review)",
+  ...reportStatusLabels,
+  all: "All",
+} as const satisfies Record<(typeof reportListStatuses)[number], string>;
 
 export const reportListFilterSchema = z.object({
-  status: z.enum(["open", "new", "in_review", "actioned", "dismissed", "all"]).catch("open"),
+  status: z.enum(reportListStatuses).catch("open"),
   type: z.enum(reportTargetTypes).optional().catch(undefined),
 });
 

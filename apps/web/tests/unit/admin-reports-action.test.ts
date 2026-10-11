@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/session", () => ({ requirePlatformRole: requireRoleMock }));
 vi.mock("@/lib/dal/admin", () => ({ adminClient: async () => ({ rpc: rpcMock }) }));
 
-const { closeReport, startReportReview } = await import("@/lib/actions/admin-reports");
+const { moveReport } = await import("@/lib/actions/admin-reports");
 
 const failure = (message: string, details = "") => ({ data: null, error: { message, details, code: "P0001" } });
 
@@ -26,54 +26,42 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
-describe("startReportReview", () => {
-  it("asks for the Trust & Safety role, puts the report in review and redraws its page", async () => {
-    expect(await startReportReview(7)).toEqual({ done: true });
+describe("moveReport", () => {
+  it("asks for the Trust & Safety role, sends the trimmed reason and redraws the page of the report", async () => {
+    expect(await moveReport({ id: 7, status: "actioned", reason: "  The vacancy was hidden.  " })).toEqual({ done: true });
     expect(requireRoleMock).toHaveBeenCalledWith("en", ["trust_safety"]);
-    expect(rpcMock).toHaveBeenCalledWith("admin_set_report_status", { p_id: 7, p_status: "in_review" });
-    expect(revalidateMock).toHaveBeenCalledWith("/en/admin/reports/7");
-  });
-
-  it("calls nothing for an id that is no report id", async () => {
-    expect(await startReportReview(0)).toEqual({ message: "This report no longer exists." });
-    expect(requireRoleMock).not.toHaveBeenCalled();
-    expect(rpcMock).not.toHaveBeenCalled();
-  });
-
-  it("says another staff member moved the report first, and sends a staff member below aal2 to confirm it", async () => {
-    rpcMock.mockResolvedValueOnce(failure("CHARA_INVALID_STATE", "in_review"));
-    expect(await startReportReview(7)).toEqual({ message: "This report was moved by someone else. Reload the page." });
-    rpcMock.mockResolvedValueOnce(failure("CHARA_FORBIDDEN", "aal2_required"));
-    await expect(startReportReview(7)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Fadmin%2Freports%2F7");
-  });
-});
-
-describe("closeReport", () => {
-  it("sends the trimmed note as the note of the closing", async () => {
-    expect(await closeReport({ id: 7, status: "actioned", reason: "  The vacancy was hidden.  " })).toEqual({ done: true });
     expect(rpcMock).toHaveBeenCalledWith("admin_set_report_status", { p_id: 7, p_status: "actioned", p_note: "The vacancy was hidden." });
     expect(revalidateMock).toHaveBeenCalledWith("/en/admin/reports/7");
   });
 
-  it("refuses a short note with the field error and calls nothing", async () => {
-    const result = await closeReport({ id: 7, status: "dismissed", reason: "short" });
-    expect(result.errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+  it("puts a report in review with a reason, like every other move", async () => {
+    expect(await moveReport({ id: 7, status: "in_review", reason: "Reading the report now." })).toEqual({ done: true });
+    expect(rpcMock).toHaveBeenCalledWith("admin_set_report_status", { p_id: 7, p_status: "in_review", p_note: "Reading the report now." });
+  });
+
+  it("refuses a short reason with the field error and calls nothing", async () => {
+    for (const status of ["in_review", "dismissed"] as const) {
+      const result = await moveReport({ id: 7, status, reason: "short" });
+      expect(result.errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+    }
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("does not close as in review or new", async () => {
-    const result = await closeReport({ id: 7, status: "in_review" as "actioned", reason: "A reason that is long enough." });
+  it("does not move a report back to new, or one that has no id", async () => {
+    const result = await moveReport({ id: 7, status: "new" as "actioned", reason: "A reason that is long enough." });
     expect(result.errors).toHaveProperty("status");
+    expect(await moveReport({ id: 0, status: "actioned", reason: "A reason that is long enough." })).toHaveProperty("errors");
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("explains a closed report and hides the text of any other refusal", async () => {
+  it("says another staff member moved the report first, sends a staff member below aal2 to confirm it and hides the text of any other refusal", async () => {
+    const input = { id: 7, status: "dismissed", reason: "A reason that is long enough." } as const;
     rpcMock.mockResolvedValueOnce(failure("CHARA_INVALID_STATE", "actioned"));
-    expect((await closeReport({ id: 7, status: "dismissed", reason: "A reason that is long enough." })).message).toContain("moved by someone else");
+    expect((await moveReport(input)).message).toContain("moved by someone else");
+    rpcMock.mockResolvedValueOnce(failure("CHARA_FORBIDDEN", "aal2_required"));
+    await expect(moveReport(input)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Fadmin%2Freports%2F7");
     rpcMock.mockResolvedValueOnce(failure("duplicate key value violates unique constraint"));
-    expect(await closeReport({ id: 7, status: "dismissed", reason: "A reason that is long enough." })).toEqual({
-      message: "We could not complete this request. Try again.",
-    });
+    expect(await moveReport(input)).toEqual({ message: "We could not complete this request. Try again." });
   });
 });

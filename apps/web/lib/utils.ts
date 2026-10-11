@@ -9,6 +9,9 @@ const twMerge = extendTailwindMerge({
   },
 });
 
+// The length the database counts (char_length): a character outside the basic plane is one, not two as in string.length.
+export const characters = (value: string) => Array.from(value).length;
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

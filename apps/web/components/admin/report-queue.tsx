@@ -10,20 +10,12 @@ import { formatDate } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 import {
   reportCategoryLabels,
+  reportListStatusLabels,
   reportStatusLabels,
   reportStatusTones,
   reportTargetLabels,
   type ReportListFilter,
 } from "@/lib/validation/report";
-
-const statusOptions = [
-  { value: "open", label: "Open (new and in review)" },
-  { value: "new", label: "New" },
-  { value: "in_review", label: "In review" },
-  { value: "actioned", label: "Actioned" },
-  { value: "dismissed", label: "Dismissed" },
-  { value: "all", label: "All" },
-] as const;
 
 function Filters({ lang, filter }: { lang: string; filter: ReportListFilter }) {
   return (
@@ -33,7 +25,7 @@ function Filters({ lang, filter }: { lang: string; filter: ReportListFilter }) {
           Status
         </label>
         <NativeSelect id="report-status-filter" name="status" defaultValue={filter.status}>
-          {statusOptions.map(({ value, label }) => (
+          {Object.entries(reportListStatusLabels).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>

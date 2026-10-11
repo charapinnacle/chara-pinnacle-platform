@@ -5,52 +5,40 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
-import { toast, toastError, toastNetworkError } from "@/components/feedback/toast-store";
+import { toast } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { closeReport, startReportReview } from "@/lib/actions/admin-reports";
+import { moveReport } from "@/lib/actions/admin-reports";
 import { moderationFormSchema, type ModerationForm } from "@/lib/validation/admin";
 
 type ReportDecisionProps = { id: number; status: "new" | "in_review"; reference: string; signedIn: boolean };
 
-type Outcome = "actioned" | "dismissed";
+type Outcome = "in_review" | "actioned" | "dismissed";
 
 const words = {
+  in_review: { open: "Mark in review", title: "Put the report in review", confirm: "Mark in review", done: "The report is in review" },
   actioned: { open: "Mark actioned", title: "Mark the report actioned", confirm: "Mark actioned", done: "The report is marked actioned" },
   dismissed: { open: "Dismiss", title: "Dismiss the report", confirm: "Dismiss report", done: "The report is dismissed" },
 } as const;
 
 const NOTE_ID = "report-note";
 
-export function ReportDecision({ id, status, reference, signedIn }: ReportDecisionProps) {
-  const router = useRouter();
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const [starting, setStarting] = useState(false);
+function audience(outcome: Outcome, signedIn: boolean, reference: string): string {
+  if (outcome === "in_review") return "It is kept in the audit record; the reporter does not read it.";
+  if (signedIn) return `The reporter reads it with the outcome under My reports (${reference}).`;
+  return "The reporter is not an account, so it is kept in the record only.";
+}
 
-  async function review() {
-    setStarting(true);
-    try {
-      const result = await startReportReview(id);
-      if (result.done) {
-        toast({ title: "The report is in review" });
-        router.refresh();
-      } else if (result.message) {
-        toastError("The report was not moved", result.message);
-      }
-    } catch {
-      toastNetworkError("The report was not moved");
-    } finally {
-      setStarting(false);
-    }
-  }
+export function ReportDecision({ id, status, reference, signedIn }: ReportDecisionProps) {
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   return (
     <div className="flex flex-wrap gap-3">
       {status === "new" ? (
-        <FormButton type="button" variant="secondary" className="w-full sm:w-auto" busy={starting} onClick={review}>
-          Mark in review
+        <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setOutcome("in_review")}>
+          {words.in_review.open}
         </FormButton>
       ) : null}
       <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setOutcome("dismissed")}>
@@ -74,11 +62,11 @@ function NoteForm({ id, outcome, reference, signedIn, onClose }: { id: number; o
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit } = form;
-  const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The report was not closed" });
+  const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The report was not moved" });
 
   function onSubmit(values: ModerationForm) {
     return submit(
-      () => closeReport({ ...values, id, status: outcome }),
+      () => moveReport({ ...values, id, status: outcome }),
       (result) => {
         if (!result.done) return;
         onClose();
@@ -95,8 +83,8 @@ function NoteForm({ id, outcome, reference, signedIn, onClose }: { id: number; o
         control={control}
         name="reason"
         id={NOTE_ID}
-        label="Note"
-        description={`Required, 10 to 2000 characters. ${signedIn ? `The reporter reads it with the outcome under My reports (${reference}).` : "The reporter is not an account, so it is kept in the record only."}`}
+        label={outcome === "in_review" ? "Reason" : "Note"}
+        description={`Required, 10 to 2000 characters. ${audience(outcome, signedIn, reference)}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>

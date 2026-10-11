@@ -13,6 +13,7 @@ import { expect, test } from "./support/test";
 import { publicUrl } from "./support/vacancy-page";
 
 const NOTE = "The vacancy was hidden and the employer was told.";
+const REVIEW_REASON = "Reading the report and the vacancy it names.";
 const DISMISS_NOTE = "Nothing in it breaks the platform rules.";
 
 function auditOf(reportId: number) {
@@ -96,6 +97,11 @@ test.describe("working the reports queue", () => {
     const review = staff.page.getByRole("button", { name: "Mark in review" });
     await waitForHydration(review);
     await review.click();
+    const reviewDialog = staff.page.getByRole("dialog", { name: "Put the report in review" });
+    await reviewDialog.getByRole("button", { name: "Mark in review" }).click();
+    await expect(reviewDialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await reviewDialog.getByLabel("Reason").fill(REVIEW_REASON);
+    await reviewDialog.getByRole("button", { name: "Mark in review" }).click();
     await expect(staff.page.getByText("The report is in review", { exact: true })).toBeVisible();
     await expect(staff.page.locator("#report").getByText("In review", { exact: true })).toBeVisible();
     await expect(review).toHaveCount(0);
@@ -122,6 +128,7 @@ test.describe("working the reports queue", () => {
     const audit = auditOf(mine.id);
     expect(audit.map(({ action }) => action)).toEqual(["report.submitted", "report.in_review", "report.actioned"]);
     expect(audit[0].actor_id).toBe(reporter.id);
+    expect(audit[1].metadata).toMatchObject({ from: "new", to: "in_review", reason: REVIEW_REASON });
     expect(audit[2].actor_id).toBe(trust.id);
     expect(audit[2].metadata).toMatchObject({ from: "in_review", to: "actioned", reason: NOTE });
     expect(audit[2].metadata.request_id).toMatch(/^[0-9a-f-]{36}$/);
