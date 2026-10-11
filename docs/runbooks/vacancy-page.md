@@ -2,6 +2,8 @@
 
 FR-C4, design point D50 (OPEN_QUESTIONS.md). The SOP (Vacancy Page Presentation, semi-annual review) names one KPI, the Apply click-through rate, one risk (outdated content, broken actions) and two controls (server rendering from live data, tests). The page stores nothing. The only record is one line per page view and per press of Apply or Save in the log of the web server.
 
+The employer card shows the description the company wrote (U65, D82, up to 2000 characters, edited on the company profile) as plain text with its line breaks and spaces, and never as markup. Under the page are the two text links Report this vacancy and Report this company (`reports.md`); neither is shown on the preview of the employer.
+
 ## 1. The log lines
 
 ```json
