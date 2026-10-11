@@ -359,8 +359,8 @@ select is(
   'and no longer waits in the queue'
 );
 select is(
-  (select count(*) from pgmq.a_account_ops where message ->> 'reason' = 'test-attempts'), 0::bigint,
-  'and is not archived'
+  (select count(*) from pgmq.a_account_ops where message ->> 'reason' = 'test-attempts'), 1::bigint,
+  'and is kept as a dead letter (SA-14)'
 );
 
 select pgmq.send('account_ops', jsonb_build_object('action', 'sign_out', 'user_id', :'nobody', 'reason', 'test-backoff'));
