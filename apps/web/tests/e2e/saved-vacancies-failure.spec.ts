@@ -46,7 +46,7 @@ test.describe("saved vacancies when the database fails", () => {
     const candidate = await createCommittedUser("worker");
     const id = seedJob(company, { title: "Failing save welder", status: "open" });
     await logIn(page, candidate, publicUrl(id));
-    const save = page.getByRole("button", { name: "Save vacancy: Failing save welder" });
+    const save = page.getByRole("button", { name: /^(Save job|Saved): Failing save welder$/ });
     await waitForHydration(save);
     execute(`revoke ${INSERT} from authenticated`);
 

@@ -206,7 +206,7 @@ test.describe("vacancy lifecycle", () => {
     const searchUrl = `/en/jobs?q=${marker}`;
     const listed = async () => {
       await anonymous.goto(searchUrl);
-      await expect(anonymous.getByRole("heading", { name: "Find jobs", level: 1 })).toBeVisible();
+      await expect(anonymous.getByRole("heading", { name: "Find Your Next Opportunity", level: 1 })).toBeVisible();
       return anonymous.locator("ul:not([aria-label='Active filters']) > li").filter({ hasText: marker });
     };
 

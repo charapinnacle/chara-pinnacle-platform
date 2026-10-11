@@ -63,7 +63,7 @@ export function AccessLogSection() {
     <div className="grid min-w-0 gap-4">
       {phase === "loading" ? <LoadingSkeleton rows={3} /> : null}
       {phase === "error" ? (
-        <EmptyState title="Your access log could not be loaded">
+        <EmptyState flat title="Your access log could not be loaded">
           <FormButton
             type="button"
             variant="secondary"
@@ -90,6 +90,7 @@ export function AccessLogSection() {
       ) : null}
       {phase === "ready" && items.length === 0 ? (
         <EmptyState
+          flat
           title="No organisation has opened your documents yet"
           description="When an organisation opens a document you shared with an application, it is listed here."
         />

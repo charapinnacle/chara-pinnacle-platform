@@ -29,6 +29,7 @@ const publicPages = (jobId: string): Pages => ({
   "/[lang]/imprint": "/en/imprint",
   "/[lang]/jobs": "/en/jobs",
   "/[lang]/jobs/[id]": `/en/jobs/${jobId}`,
+  "/[lang]/legal": "/en/legal",
   "/[lang]/legal/[slug]": "/en/legal/terms-of-service",
   "/[lang]/pricing": "/en/pricing",
   "/[lang]/trust-safety": "/en/trust-safety",
@@ -92,7 +93,8 @@ const trustSafetyPages = (jobId: string): Pages => ({
 });
 
 // The pages that belong to a state of the account rather than to a role.
-const accountStatePages = ["/[lang]/onboarding", "/[lang]/consent", "/[lang]/suspended", "/[lang]/mfa"];
+// /post-job only redirects (to the new-vacancy page or the dashboard), so it renders nothing to sweep.
+const accountStatePages = ["/[lang]/onboarding", "/[lang]/consent", "/[lang]/suspended", "/[lang]/mfa", "/[lang]/post-job"];
 
 async function expectPage(page: Page, address: string): Promise<void> {
   const response = await page.goto(address);

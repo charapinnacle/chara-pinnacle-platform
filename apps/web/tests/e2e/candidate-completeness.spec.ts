@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { documentRows, openDocuments, pdfBytes, runScanDocument, seedDocument } from "./support/documents";
+import { documentRows, openDocuments, openUploadForm, pdfBytes, runScanDocument, seedDocument } from "./support/documents";
 import { createCommittedUser } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
 import { messageCount } from "./support/mailpit";
@@ -121,7 +121,7 @@ test.describe("candidate passport: completeness", () => {
     await seedDocument(user.id, { title: "Rejected CV", scanStatus: "rejected", object: false });
     await openDocuments(page, user);
     await expectMeter(page, 85, "CV");
-    await page.getByLabel("Type", { exact: true }).selectOption({ label: "CV" });
+    await openUploadForm(page, "Upload CV");
     await page.getByLabel("Title", { exact: true }).fill("Fresh CV");
     await page
       .getByLabel("File", { exact: true })

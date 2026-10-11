@@ -55,7 +55,7 @@ test.describe("smoke: the five main journeys end to end", () => {
     await page.getByLabel("First name", { exact: true }).fill("Amina");
     await page.getByLabel("Last name", { exact: true }).fill("Okafor");
     await choose(page, "Current country", "Nigeria");
-    await page.getByRole("button", { name: "Create my passport" }).click();
+    await page.getByRole("button", { name: "Create CHARA Passport" }).click();
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
 
     await mainNavigation(page).getByRole("link", { name: "Passport" }).click();
@@ -69,10 +69,10 @@ test.describe("smoke: the five main journeys end to end", () => {
     await mainNavigation(page).getByRole("link", { name: "Find jobs" }).click();
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
-    await page.getByRole("button", { name: "Search vacancies" }).click();
-    await page.getByRole("link", { name: title }).click();
+    await page.getByRole("button", { name: "Search jobs" }).click();
+    await page.getByRole("link", { name: title, exact: true }).click();
     await expect(page).toHaveURL(`/en/jobs/${jobId}`);
-    await page.getByRole("link", { name: "Apply", exact: true }).click();
+    await page.getByRole("link", { name: /^Apply now/ }).click();
     await waitForHydration(page.getByLabel("Cover note (optional)"));
     await page.getByLabel("Cover note (optional)").fill("Six years of MIG welding.");
     await page.getByLabel(/I agree to share the selected documents with/).check();
@@ -99,7 +99,7 @@ test.describe("smoke: the five main journeys end to end", () => {
     await enterCode(page, await beginSetup(page));
     await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
 
-    await page.getByRole("link", { name: "New vacancy" }).click();
+    await page.getByRole("link", { name: "Post job" }).click();
     await waitForHydration(page.getByLabel("Title", { exact: true }));
     await fillJob(page, { title });
     await page.getByRole("button", { name: "Save vacancy" }).click();

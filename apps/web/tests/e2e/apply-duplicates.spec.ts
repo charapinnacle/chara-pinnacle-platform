@@ -107,8 +107,8 @@ test.describe("one application per vacancy", () => {
     await expect(page.getByText("You applied on 3 Oct 2026, stage Shortlisted")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await expect(page.getByRole("link", { name: "View your application" })).toHaveAttribute("href", applicationUrl(id));
-    await expect(page.getByRole("link", { name: "Apply", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Apply" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Apply now/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Apply now/ })).toHaveCount(0);
 
     await page.goto(applyUrl(jobId));
     await expect(page).toHaveURL(`${applicationUrl(id)}?existing=1`);
@@ -119,6 +119,23 @@ test.describe("one application per vacancy", () => {
     await expectAccessibleAtBothWidths(page);
     expect(applicationRows(candidate.id)).toHaveLength(1);
     expect(auditCount("application.duplicate_attempt", id)).toBe(0);
+  });
+
+  test("FR-C4 AC5: a result row of Find Jobs links the application instead of offering Apply now once the candidate applied", async ({ page }) => {
+    const company = await newCompany();
+    const marker = `zr${Date.now().toString(36)}`;
+    const applied = seedJob(company, { title: `Applied welder ${marker}`, status: "open" });
+    seedJob(company, { title: `Open welder ${marker}`, status: "open" });
+    const candidate = await newApplicant();
+    const id = seedApplication(candidate.id, applied, company.id);
+
+    await logIn(page, candidate, `/en/jobs?q=${marker}`);
+    const rows = page.getByRole("main").locator("ul:not([aria-label='Active filters']) > li");
+    await expect(rows).toHaveCount(2);
+    const appliedRow = rows.filter({ hasText: `Applied welder ${marker}` });
+    await expect(appliedRow.getByRole("link", { name: `View application: Applied welder ${marker}` })).toHaveAttribute("href", applicationUrl(id));
+    await expect(appliedRow.getByRole("link", { name: /^Apply now/ })).toHaveCount(0);
+    await expect(rows.filter({ hasText: `Open welder ${marker}` }).getByRole("link", { name: `Apply now: Open welder ${marker}` })).toBeVisible();
   });
 
   test("FR-D7 AC6, FR-C4 AC5, FR-D7 AC3: after a withdrawal the page offers Apply again, and a new application is made while the vacancy is open", async ({

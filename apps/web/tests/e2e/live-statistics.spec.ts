@@ -18,8 +18,8 @@ test.afterEach(() => {
   execute(`${SCHEDULED_REFRESH}true)`);
 });
 
-const heading = (page: Page) => page.getByRole("heading", { name: "CHARA in numbers" });
-const block = (page: Page) => page.getByRole("region", { name: "CHARA in numbers" });
+const heading = (page: Page) => page.getByRole("heading", { name: "Global Workforce Network", level: 2 });
+const block = (page: Page) => page.getByRole("region", { name: "Global Workforce Network" });
 const groups = (page: Page) => block(page).locator("dl > div");
 
 async function openHome(page: Page): Promise<void> {
@@ -34,10 +34,23 @@ test.describe("live statistics on the home page", () => {
     await openHome(page);
 
     await expect(heading(page)).toBeVisible();
-    await expect(groups(page)).toHaveText([/^Vacancies\s*15$/, /^Employers\s*8$/, /^Candidates\s*30$/, /^Countries\s*6$/]);
-    await expect(page.getByRole("term")).toHaveText(["Vacancies", "Employers", "Candidates", "Countries"]);
-    await expect(page.getByRole("definition")).toHaveText(["15", "8", "30", "6"]);
+    await expect(groups(page)).toHaveText([/^Workers\s*30$/, /^Employers\s*8$/, /^Active jobs\s*15$/, /^Countries\s*6$/]);
+    await expect(page.getByRole("term")).toHaveText(["Workers", "Employers", "Active jobs", "Countries"]);
+    await expect(page.getByRole("definition")).toHaveText(["30", "8", "15", "6"]);
     await expectNoAxeViolations(page);
+  });
+
+  test("D81: the block comes after How CHARA works and before the closing call", async ({ page }) => {
+    showSnapshot({ jobs: 15, employers: 8, workers: 30, countries: 6 });
+    await openHome(page);
+
+    await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText([
+      "Who are you?",
+      "One professional profile. Multiple opportunities.",
+      "How CHARA works",
+      "Global Workforce Network",
+      "Your Workforce. Your Network. One Platform.",
+    ]);
   });
 
   test("FR-H4 AC1: the block is part of the served page, so it shows without JavaScript", async ({ browser }) => {
@@ -51,18 +64,18 @@ test.describe("live statistics on the home page", () => {
     await context.close();
   });
 
-  test("FR-H4 AC2, AC7, AC12: a count of 5 is shown, the candidate count is rounded to the nearest 10 and a thousand has a separator", async ({ page }) => {
+  test("FR-H4 AC2, AC7, AC12: a count of 5 is shown, the worker count is rounded to the nearest 10 and a thousand has a separator", async ({ page }) => {
     showSnapshot({ jobs: 5, employers: 5, workers: 1234, countries: 1234 });
     await openHome(page);
 
-    await expect(groups(page)).toHaveText([/^Vacancies\s*5$/, /^Employers\s*5$/, /^Candidates\s*1,230$/, /^Countries\s*1,234$/]);
+    await expect(groups(page)).toHaveText([/^Workers\s*1,230$/, /^Employers\s*5$/, /^Active jobs\s*5$/, /^Countries\s*1,234$/]);
   });
 
   test("FR-H4 AC3: a single low value is left out without a label, a zero, a dash or an empty tile", async ({ page }) => {
     showSnapshot({ jobs: 15, employers: 3, workers: 30, countries: 6 });
     await openHome(page);
 
-    await expect(groups(page)).toHaveText([/^Vacancies\s*15$/, /^Candidates\s*30$/, /^Countries\s*6$/]);
+    await expect(groups(page)).toHaveText([/^Workers\s*30$/, /^Active jobs\s*15$/, /^Countries\s*6$/]);
     await expect(block(page).getByText("Employers")).toHaveCount(0);
     await expect(block(page)).not.toContainText(/\b0\b|[-–—]|\b3\b/);
   });
@@ -125,7 +138,7 @@ test.describe("live statistics on the home page", () => {
     expect(after.active_jobs).not.toBe(before.active_jobs);
 
     await openHome(page);
-    await expect(groups(page).filter({ hasText: "Vacancies" })).toHaveText(new RegExp(`^Vacancies\\s*${after.active_jobs}$`));
+    await expect(groups(page).filter({ hasText: "Active jobs" })).toHaveText(new RegExp(`^Active jobs\\s*${after.active_jobs}$`));
     await expect(groups(page).filter({ hasText: "Employers" })).toHaveText(new RegExp(`^Employers\\s*${after.employers}$`));
   });
 });

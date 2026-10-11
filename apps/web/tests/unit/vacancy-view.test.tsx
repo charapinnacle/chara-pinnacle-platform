@@ -77,11 +77,11 @@ const actions = (viewer: "visitor" | "candidate" | "company", saved = false, app
   );
 
 describe("VacancyActions", () => {
-  it("offers a visitor Apply and Save as buttons that submit a form", () => {
+  it("offers a visitor Apply now and Save job as buttons that submit a form", () => {
     const html = actions("visitor");
     expect(html.match(/<form/g)).toHaveLength(2);
-    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*>Apply<\/button>/);
-    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-label="Save vacancy: Welder"[^>]*>.*Save<\/button>/);
+    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-label="Apply now: Welder"[^>]*>Apply now<\/button>/);
+    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-label="Save job: Welder"[^>]*>.*Save job<\/button>/);
   });
 
   it("offers a company user neither button and says why", () => {
@@ -90,19 +90,24 @@ describe("VacancyActions", () => {
     expect(html).toContain("Only candidates can apply");
   });
 
-  it("gives a candidate with no application an Apply link to the application step and a working Save", () => {
+  it("gives a candidate with no application an Apply now link to the application step and a working Save job", () => {
     const html = actions("candidate");
-    expect(html).toMatch(new RegExp(`<a[^>]*href="/en/jobs/${jobId}/apply"[^>]*>Apply</a>`));
+    expect(html).toMatch(new RegExp(`<a[^>]*aria-label="Apply now: Welder"[^>]*href="/en/jobs/${jobId}/apply"[^>]*>Apply now</a>`));
     expect(html).not.toContain("<form");
-    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-pressed="false"[^>]*aria-label="Save vacancy: Welder"[^>]*>.*Save<\/button>/);
+    expect(html).toMatch(/<button(?![^>]*\sdisabled=)[^>]*aria-pressed="false"[^>]*aria-label="Save job: Welder"[^>]*>.*Save job<\/button>/);
     expect(html).not.toContain("Applying opens soon");
   });
 
-  it("shows the date and stage of a non-withdrawn application with a link to it and no Apply", () => {
+  it("names a saved vacancy's button with its visible text, so that the visible label is part of the accessible name", () => {
+    const html = actions("candidate", true);
+    expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*aria-label="Saved: Welder"[^>]*>.*Saved<\/button>/);
+  });
+
+  it("shows the date and stage of a non-withdrawn application with a link to it and no Apply now", () => {
     const html = actions("candidate", false, { id: "app-1", status: "shortlisted", createdAt: "2026-10-03T09:00:00+00:00" });
     expect(html).toContain("You applied on 3 Oct 2026, stage Shortlisted");
     expect(html).toMatch(/<a[^>]*href="\/en\/applications\/app-1"[^>]*>View your application<\/a>/);
-    expect(html).not.toContain(">Apply<");
+    expect(html).not.toContain("Apply now");
     expect(html).not.toContain("Apply again");
   });
 
@@ -115,7 +120,7 @@ describe("VacancyActions", () => {
   it("offers Apply again after a withdrawal", () => {
     const html = actions("candidate", false, { id: "app-1", status: "withdrawn", createdAt: "2026-10-03T09:00:00+00:00" });
     expect(html).toContain("You withdrew your application");
-    expect(html).toMatch(new RegExp(`<a[^>]*href="/en/jobs/${jobId}/apply"[^>]*>Apply again</a>`));
+    expect(html).toMatch(new RegExp(`<a[^>]*aria-label="Apply again: Welder"[^>]*href="/en/jobs/${jobId}/apply"[^>]*>Apply again</a>`));
     expect(html).not.toContain("View your application");
   });
 

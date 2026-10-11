@@ -1,6 +1,6 @@
 import { execute, literal } from "./support/db";
 import { expect, test } from "./support/test";
-import { announcements, documentRows, openDocuments, removalJobs, row, auditActions, seedDocument } from "./support/documents";
+import { announcements, documentRows, openDocuments, openUploadForm, removalJobs, row, auditActions, seedDocument } from "./support/documents";
 import { createCommittedUser } from "./support/login";
 import { messageCount } from "./support/mailpit";
 import { daysFromToday } from "./support/passport";
@@ -16,7 +16,9 @@ test.describe("candidate documents: the list", () => {
     const user = await createCommittedUser("worker");
     await openDocuments(page, user);
     await expect(page.getByText("You have not uploaded any documents yet")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Upload CV", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add certificate", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Upload", exact: true })).toHaveCount(0);
 
     await seedDocument(user.id, { title: "Amina Okafor CV 2026", createdAt: isoAgo(0) });
     await seedDocument(user.id, { title: "Welding certificate", type: "certificate", expiresOn: daysFromToday(20), createdAt: isoAgo(1) });
@@ -75,6 +77,7 @@ test.describe("candidate documents: the list", () => {
     await openDocuments(page, user);
     await expect(row(page, "Amina Okafor CV 2026")).toBeVisible();
 
+    await openUploadForm(page, "Upload CV");
     const file = page.getByLabel("File", { exact: true });
     await expect(page.getByText("File", { exact: true })).toBeVisible();
     for (const key of ["Enter", "Space"]) {

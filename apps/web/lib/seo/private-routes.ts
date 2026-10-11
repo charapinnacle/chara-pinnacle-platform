@@ -17,6 +17,7 @@ export const privateSegments = [
   "onboarding",
   "org",
   "passport",
+  "post-job",
   "reset-password",
   "saved",
   "settings",

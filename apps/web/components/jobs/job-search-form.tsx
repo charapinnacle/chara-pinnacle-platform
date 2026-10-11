@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -9,7 +10,6 @@ import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
-import { TextLink } from "@/components/forms/text-link";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import {
   formDefaults,
@@ -19,7 +19,6 @@ import {
   type SearchFormInput,
 } from "@/lib/jobs/search-params";
 import { toOptions } from "@/lib/reference-options";
-import { cn } from "@/lib/utils";
 import { employmentTypeOptions, recruitmentPreferenceLabels, salaryPeriodOptions } from "@/lib/validation/job";
 
 type JobSearchFormProps = {
@@ -41,7 +40,7 @@ const recruitmentOptions = [
 export function JobSearchForm({ lang, query, occupations, industries, countries, currencies }: JobSearchFormProps) {
   const router = useRouter();
   const [searching, startSearch] = useTransition();
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const form = useForm<SearchFormInput>({
     resolver: zodResolver(searchFormSchema),
     defaultValues: formDefaults(query),
@@ -60,117 +59,113 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
     <form
       noValidate
       role="search"
-      aria-label="Search vacancies"
-      className="grid gap-5"
-      onSubmit={handleSubmit(search, () => setFiltersOpen(true))}
+      aria-label="Search jobs"
+      className="grid gap-4"
+      onSubmit={handleSubmit(search, () => setMoreOpen(true))}
     >
-      <InputField control={control} name="q" id="search-q" label="Keyword" autoComplete="off" />
-      <ComboboxField
-        control={control}
-        name="country"
-        id="search-country"
-        label="Country"
-        placeholder="Any country"
-        options={toOptions(countries)}
-        noScriptSelect
-      />
-
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <FormButton type="submit" busy={searching} className="w-auto">
-          {searching ? "Searching..." : "Search vacancies"}
-        </FormButton>
-        <TextLink standalone href={`/${lang}/jobs`}>
-          Clear filters
-        </TextLink>
-      </div>
-
-      <FormButton
-        type="button"
-        variant="secondary"
-        aria-expanded={filtersOpen}
-        aria-controls="search-filters"
-        className="lg:hidden"
-        onClick={() => setFiltersOpen((open) => !open)}
-      >
-        Filters
-      </FormButton>
-
-      <div id="search-filters" role="group" aria-label="Filters" className={cn("grid gap-5", !filtersOpen && "max-lg:hidden")}>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
-          <InputField control={control} name="city" id="search-city" label="City" autoComplete="off" />
-          <ComboboxField
-            control={control}
-            name="occupation"
-            id="search-occupation"
-            label="Occupation"
-            placeholder="Any occupation"
-            emptyText="No matching occupation"
-            options={occupations.map(({ code, label, synonyms }) => ({
-              value: code,
-              label: `${code} · ${label}`,
-              keywords: synonyms.join(" "),
-            }))}
-          />
-          <ComboboxField
-            control={control}
-            name="industry"
-            id="search-industry"
-            label="Industry"
-            placeholder="Any industry"
-            options={toOptions(industries)}
-          />
-          <SelectField
-            control={control}
-            name="employment_type"
-            id="search-employment-type"
-            label="Employment type"
-            placeholder="Any employment type"
-            options={employmentTypeOptions}
-          />
-          <SelectField
-            control={control}
-            name="recruitment"
-            id="search-recruitment"
-            label="Recruitment"
-            placeholder="Local and international"
-            options={recruitmentOptions}
-          />
-        </div>
-
-        <fieldset className="grid gap-5 sm:grid-cols-3 lg:grid-cols-1">
-          <legend className="mb-4 text-h2">Minimum salary</legend>
-          <InputField control={control} name="salary_min" id="search-salary-min" label="Salary at least" inputMode="decimal" />
-          <ComboboxField
-            control={control}
-            name="salary_currency"
-            id="search-salary-currency"
-            label="Currency"
-            placeholder="Choose a currency"
-            options={currencies.map(({ code, name }) => ({ value: code, label: `${code} · ${name}` }))}
-          />
-          <SelectField
-            control={control}
-            name="salary_period"
-            id="search-salary-period"
-            label="Pay period"
-            placeholder="Choose a pay period"
-            options={salaryPeriodOptions}
-          />
-        </fieldset>
-
-        <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
-          <CheckboxField control={control} name="accommodation" id="search-accommodation">
-            Accommodation provided
-          </CheckboxField>
-          <CheckboxField control={control} name="visa_support" id="search-visa-support">
-            Visa support offered
-          </CheckboxField>
-        </div>
-
-        <FormButton type="submit" variant="secondary" busy={searching} className="w-auto self-start lg:hidden">
-          Show results
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
+        <InputField control={control} name="q" id="search-q" label="Keyword" hideLabel placeholder="Job title or skill" autoComplete="off" />
+        <InputField control={control} name="city" id="search-city" label="City" hideLabel placeholder="City" autoComplete="off" />
+        <ComboboxField
+          control={control}
+          name="country"
+          id="search-country"
+          label="Country"
+          hideLabel
+          placeholder="Any country"
+          options={toOptions(countries)}
+          noScriptSelect
+        />
+        <FormButton type="submit" busy={searching} className="md:w-auto md:px-8">
+          {searching ? "Searching..." : "Search jobs"}
         </FormButton>
       </div>
+
+      <div role="group" aria-label="Filters" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ComboboxField
+          control={control}
+          name="occupation"
+          id="search-occupation"
+          label="Occupation"
+          hideLabel
+          placeholder="Any occupation"
+          emptyText="No matching occupation"
+          options={occupations.map(({ code, label, synonyms }) => ({
+            value: code,
+            label: `${code} · ${label}`,
+            keywords: synonyms.join(" "),
+          }))}
+        />
+        <ComboboxField
+          control={control}
+          name="industry"
+          id="search-industry"
+          label="Industry"
+          hideLabel
+          placeholder="Any industry"
+          options={toOptions(industries)}
+        />
+        <SelectField
+          control={control}
+          name="employment_type"
+          id="search-employment-type"
+          label="Employment type"
+          hideLabel
+          placeholder="Any employment type"
+          options={employmentTypeOptions}
+        />
+        <SelectField
+          control={control}
+          name="recruitment"
+          id="search-recruitment"
+          label="Recruitment"
+          hideLabel
+          placeholder="Local and international"
+          options={recruitmentOptions}
+        />
+      </div>
+
+      <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 text-body font-medium">
+          More filters
+          <ChevronDown aria-hidden className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
+        </summary>
+        <div className="grid gap-5 pt-3">
+          <fieldset className="grid gap-3 sm:grid-cols-3">
+            <legend className="mb-3 text-h3">Minimum salary</legend>
+            <InputField control={control} name="salary_min" id="search-salary-min" label="Salary at least" inputMode="decimal" />
+            <ComboboxField
+              control={control}
+              name="salary_currency"
+              id="search-salary-currency"
+              label="Currency"
+              placeholder="Choose a currency"
+              options={currencies.map(({ code, name }) => ({ value: code, label: `${code} · ${name}` }))}
+            />
+            <SelectField
+              control={control}
+              name="salary_period"
+              id="search-salary-period"
+              label="Pay period"
+              placeholder="Choose a pay period"
+              options={salaryPeriodOptions}
+            />
+          </fieldset>
+
+          <div className="grid gap-1 sm:grid-cols-2">
+            <CheckboxField control={control} name="accommodation" id="search-accommodation">
+              Accommodation provided
+            </CheckboxField>
+            <CheckboxField control={control} name="visa_support" id="search-visa-support">
+              Visa support offered
+            </CheckboxField>
+          </div>
+
+          <FormButton type="submit" variant="secondary" busy={searching} className="w-auto self-start md:hidden">
+            Show results
+          </FormButton>
+        </div>
+      </details>
     </form>
   );
 }

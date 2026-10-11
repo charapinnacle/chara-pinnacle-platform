@@ -5,9 +5,9 @@ type PlatformCounts = Database["public"]["Views"]["v_platform_counts"]["Row"];
 export type StatisticTile = { label: string; value: string };
 
 const columns = [
-  ["active_jobs", "Vacancies"],
+  ["workers", "Workers"],
   ["employers", "Employers"],
-  ["workers", "Candidates"],
+  ["active_jobs", "Active jobs"],
   ["countries", "Countries"],
 ] as const;
 

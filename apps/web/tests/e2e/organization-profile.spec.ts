@@ -25,7 +25,7 @@ test.describe("organisation profile", () => {
     await page.getByRole("link", { name: "Enter your code" }).click();
     await enterCode(page, team.ownerSecret);
     await expect(page).toHaveURL(dashboard);
-    await page.getByRole("region", { name: "Quick actions" }).getByRole("link", { name: "Edit company profile" }).click();
+    await page.getByRole("link", { name: "Company profile" }).click();
     await expect(page).toHaveURL(profileUrl(team.slug));
     const [before] = organizationRows(team.owner.id);
     await expect(page.getByLabel("Legal company name")).toHaveValue(before.legal_name);

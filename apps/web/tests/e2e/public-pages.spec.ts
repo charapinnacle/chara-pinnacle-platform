@@ -3,7 +3,7 @@ import { newCompany, seedJob } from "./support/jobs";
 import { overflow } from "./support/login-page";
 import { waitForHydration } from "./support/hydration";
 import { uniqueToken } from "./support/organizations";
-import { FOOTER_LABELS, HEADER_LABELS, legalPaths, openVacancyId, sitePaths } from "./support/public-pages";
+import { FOOTER_LABELS, HEADER_LABELS, LEGAL_SLUGS, legalPaths, openVacancyId, sitePaths } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
 test.describe("the public pages without JavaScript", () => {
@@ -28,7 +28,7 @@ test.describe("the public pages without JavaScript", () => {
     }
   });
 
-  test("FR-H1 AC1: at 360 px without JavaScript the four header links are visible and the Menu button is not", async ({
+  test("FR-H1 AC1: at 360 px without JavaScript the header links are visible and the Menu button is not", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 800 });
@@ -100,6 +100,27 @@ test.describe("the public pages", () => {
       const response = await page.request.get(target);
       expect(response.status(), target).toBe(200);
     }
+  });
+
+  test("FR-H3 AC1: every legal document is two clicks from a public page: the footer opens the index, which lists the Imprint and the ten documents with their versions", async ({ page }) => {
+    for (const start of ["/en", "/en/pricing", "/en/about"]) {
+      await page.goto(start);
+      await page.getByRole("contentinfo").getByRole("link", { name: "All legal documents" }).click();
+      await expect(page).toHaveURL("/en/legal");
+      await expect(page.getByRole("heading", { name: "All legal documents", level: 1 })).toBeVisible();
+    }
+    const main = page.getByRole("main");
+    await expect(main.getByRole("link")).toHaveCount(11);
+    await expect(main.getByRole("link", { name: "Imprint" })).toHaveAttribute("href", "/en/imprint");
+    for (const slug of LEGAL_SLUGS) {
+      await expect(main.locator(`a[href="/en/legal/${slug}"]`), slug).toHaveCount(1);
+      const [row] = query<{ version: number }>(`select version from public.v_legal_current where slug = ${literal(slug)}`);
+      await expect(main.locator(`li:has(a[href="/en/legal/${slug}"])`), slug).toContainText(`Version ${row.version} · Published`);
+    }
+    await main.getByRole("link", { name: "Worker Terms" }).click();
+    await expect(page).toHaveURL("/en/legal/worker-terms");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    for (const path of legalPaths()) expect((await page.request.get(path)).status(), path).toBe(200);
   });
 
   test("FR-H1 AC5: the keyboard reaches the skip link, the main area, every header link and every footer link, each with a visible focus", async ({

@@ -26,7 +26,7 @@ test.describe("candidate passport: onboarding", () => {
     await page.getByLabel("First name", { exact: true }).fill("Amina");
     await page.getByLabel("Last name", { exact: true }).fill("Okafor");
     await choose(page, "Current country", "Nigeria");
-    await page.getByRole("button", { name: "Create my passport" }).dblclick();
+    await page.getByRole("button", { name: "Create CHARA Passport" }).dblclick();
 
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
     await expect(page.getByText("10% complete")).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("candidate passport: onboarding", () => {
     await logIn(page, user);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await page.getByLabel("Last name", { exact: true }).fill("Okafor1");
-    await page.getByRole("button", { name: "Create my passport" }).click();
+    await page.getByRole("button", { name: "Create CHARA Passport" }).click();
 
     await expect(page.getByLabel("First name", { exact: true })).toBeFocused();
     await expect(page.getByText("Enter your first name.")).toBeVisible();

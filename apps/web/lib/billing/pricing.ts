@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { daysText, formatPrice, oneTrialRule, trialConversion } from "@/lib/billing/presentation";
-import { billingPath } from "@/lib/routes";
+import { billingPath, signUpPath } from "@/lib/routes";
 
 export const publicPlanSchema = z
   .object({
@@ -89,7 +89,7 @@ export type Link = { href: string; label: string };
 // The link of a card for the person who reads it. Every label holds the plan name, so the links of a page differ.
 export function planLink(viewer: PricingViewer, card: PlanCard, lang: string): Link | null {
   if (card.contactSales) return { href: `/${lang}/contact`, label: `Contact sales about ${card.name}` };
-  if (viewer.kind === "visitor") return { href: `/${lang}/signup`, label: `Sign up for ${card.name}` };
+  if (viewer.kind === "visitor") return { href: signUpPath(lang, "company"), label: `Sign up for ${card.name}` };
   if (viewer.kind === "manager") return { href: billingPath(lang, viewer.slug), label: `Choose ${card.name}` };
   return null;
 }

@@ -16,7 +16,7 @@ const newMarker = () => `zq${uniqueToken()}`;
 const rows = (page: Page): Locator => page.getByRole("main").locator("ul:not([aria-label='Active filters']) > li");
 const row = (page: Page, title: string): Locator => rows(page).filter({ hasText: title });
 const saveButton = (scope: Page | Locator, title: string): Locator =>
-  scope.getByRole("button", { name: `Save vacancy: ${title}` });
+  scope.getByRole("button", { name: new RegExp(`^(Save job|Saved): ${title}$`) });
 
 function openJob(company: Company, title: string, createdAt = "now()"): string {
   return seedJob(company, { title, status: "open", createdAt });
@@ -44,7 +44,7 @@ test.describe("saved vacancies", () => {
     await expect(row(page, marker)).toHaveCount(2);
     const cardSave = saveButton(row(page, titleA), titleA);
     await expect(cardSave).toHaveAttribute("aria-pressed", "false");
-    await expect(cardSave).toHaveText("Save");
+    await expect(cardSave).toHaveText("Save job");
     await waitForHydration(cardSave);
     await cardSave.click();
     await expect(cardSave).toHaveAttribute("aria-pressed", "true");
@@ -90,7 +90,7 @@ test.describe("saved vacancies", () => {
     await waitForHydration(button);
     await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "false");
-    await expect(button).toHaveText("Save");
+    await expect(button).toHaveText("Save job");
     expect(savedJobIds(candidate.id)).toEqual([]);
   });
 
@@ -260,7 +260,7 @@ test.describe("saved vacancies", () => {
       if (!route.request().headers()["next-router-prefetch"]) await new Promise((resolve) => setTimeout(resolve, navigationDelay));
       await route.continue();
     });
-    await page.getByRole("link", { name: "Saved vacancies" }).click();
+    await page.getByRole("main").getByRole("link", { name: /^Saved jobs/ }).click();
     await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
     await expect(rows(page)).toHaveCount(20);
     navigationDelay = 0;

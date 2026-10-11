@@ -30,6 +30,9 @@ type FormFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   name: N;
   id?: string;
   label: string;
+  // The label stays in the page for assistive technology and leaves it for the eye: a control that says what it is by its
+  // placeholder or its first option (a search bar, a row of filters).
+  hideLabel?: boolean;
   description?: string;
   children: (props: ControlProps<T, N>) => React.ReactNode;
 };
@@ -39,6 +42,7 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
   name,
   id: idProp,
   label,
+  hideLabel,
   description,
   children,
 }: FormFieldProps<T, N>) {
@@ -58,7 +62,9 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
             .join(" ") || undefined;
         return (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={id}>{label}</FieldLabel>
+            <FieldLabel htmlFor={id} className={hideLabel ? "sr-only" : undefined}>
+              {label}
+            </FieldLabel>
             {children({
               ...field,
               id,
@@ -82,7 +88,7 @@ type InputFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   FormFieldProps<T, N>,
   "children"
 > &
-  Pick<React.ComponentProps<"input">, "type" | "autoComplete" | "inputMode" | "readOnly" | "maxLength">;
+  Pick<React.ComponentProps<"input">, "type" | "autoComplete" | "inputMode" | "readOnly" | "maxLength" | "placeholder">;
 
 export function InputField<T extends FieldValues, N extends FieldPath<T>>({
   type,
@@ -90,6 +96,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
   inputMode,
   readOnly,
   maxLength,
+  placeholder,
   ...fieldProps
 }: InputFieldProps<T, N>) {
   return (
@@ -101,6 +108,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
           inputMode={inputMode}
           readOnly={readOnly}
           maxLength={maxLength}
+          placeholder={placeholder}
           className={cn("h-11", controlClassName)}
           {...controlProps}
         />

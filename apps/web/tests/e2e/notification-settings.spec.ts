@@ -1,5 +1,5 @@
 import { DAILY_SUMMARY_TIME_TEXT } from "@/lib/validation/notifications";
-import { breadcrumbs } from "./support/app-shell";
+import { breadcrumbs, openAccountMenu } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
@@ -110,16 +110,28 @@ test.describe("notification settings", () => {
     await expect(page.getByRole("radio", { name: "Immediately" })).not.toBeChecked();
   });
 
-  test("FR-D6 AC5: a visitor goes to log in and the page of an employer is reached from the dashboard", async ({ context, page }) => {
+  test("FR-D6 AC5: a visitor goes to log in and the page of an employer is reached from the account menu", async ({ context, page }) => {
     await page.goto(SETTINGS);
     await expect(page).toHaveURL(/\/en\/login\?next=%2Fen%2Fsettings%2Fnotifications$/);
 
     const company = await newCompany();
     await signInBrowser(context, await addCompanyUser(company, "member"));
     await page.goto(`/en/dashboard/employer?org=${company.slug}`);
-    await page.getByRole("link", { name: "Notification settings" }).click();
-    await expect(page).toHaveURL(`${SETTINGS}?org=${company.slug}`);
+    await openAccountMenu(page);
+    await page.getByRole("banner").getByRole("link", { name: "Settings", exact: true }).click();
+    await expect(page).toHaveURL(SETTINGS);
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
+  });
+
+  test("FR-D6 AC5: a candidate reaches the notification settings from the Settings page, which the account menu leads to", async ({ context, page }) => {
+    await signInBrowser(context, await createCommittedUser("worker"));
+    await page.goto("/en/dashboard/worker");
+    await openAccountMenu(page);
+    await page.getByRole("banner").getByRole("link", { name: "Settings", exact: true }).click();
+    await expect(page).toHaveURL("/en/settings");
+    await page.getByRole("main").getByRole("link", { name: "Notification settings" }).click();
+    await expect(page).toHaveURL(SETTINGS);
+    await expect(page.getByRole("heading", { name: "Notification settings", level: 1 })).toBeVisible();
   });
 
   test("FR-D6 AC5: a skeleton shows while the page loads", async ({ context, page }) => {
@@ -130,7 +142,8 @@ test.describe("notification settings", () => {
       if (request.url().includes("/settings/notifications")) prefetched = true;
     });
     await page.goto(`/en/dashboard/employer?org=${company.slug}`);
-    const link = page.getByRole("link", { name: "Notification settings" });
+    await openAccountMenu(page);
+    const link = page.getByRole("banner").getByRole("link", { name: "Settings", exact: true });
     await waitForHydration(link);
     // The loading screen of a route is fetched when its link comes into view; only then can it show at once.
     await link.scrollIntoViewIfNeeded();

@@ -11,9 +11,9 @@ export function SaveJob({ jobId, title, viewer, saved, next }: SaveJobProps) {
   if (viewer === "candidate") return <SaveJobButton jobId={jobId} title={title} saved={saved} />;
   return (
     <form action={requireLogin.bind(null, "save", jobId, next)}>
-      <FormButton variant="secondary" className="w-auto" aria-label={`Save vacancy: ${title}`}>
+      <FormButton variant="secondary" className="w-auto" aria-label={`Save job: ${title}`}>
         <Bookmark aria-hidden className="size-4" />
-        Save
+        Save job
       </FormButton>
     </form>
   );

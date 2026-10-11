@@ -24,7 +24,7 @@ test.describe("public vacancy search failure", () => {
 
     execute(`grant execute on function ${SEARCH_JOBS} to anon, authenticated`);
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("heading", { name: "Find jobs" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Find Your Next Opportunity" })).toBeVisible();
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await expect(page.getByRole("heading", { name: "The vacancies could not be loaded" })).toHaveCount(0);
   });

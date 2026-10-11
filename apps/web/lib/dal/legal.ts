@@ -150,3 +150,30 @@ export const getLegalDocument = cache(async (slug: string) => {
     changeLogTruncated: log.data.length > CHANGE_LOG_LIMIT,
   };
 });
+
+const currentSummary = z.object({
+  slug: z.string(),
+  version: z.number(),
+  published_at: z.string(),
+  is_draft: z.boolean(),
+});
+
+type CurrentLegalSummary = { version: number; publishedAt: string; isDraft: boolean };
+
+// The current version of each given slug that has a published one, for the index of legal documents. The slugs are the
+// fixed list of the index, so the read is bounded by it.
+export async function listCurrentLegalDocuments(slugs: readonly string[]): Promise<Map<string, CurrentLegalSummary>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("v_legal_current")
+    .select("slug, version, published_at, is_draft")
+    .in("slug", [...slugs])
+    .limit(100);
+  if (error) throw new Error("The legal documents could not be listed", { cause: error });
+  return new Map(
+    z
+      .array(currentSummary)
+      .parse(data)
+      .map(({ slug, version, published_at, is_draft }) => [slug, { version, publishedAt: published_at, isDraft: is_draft }]),
+  );
+}

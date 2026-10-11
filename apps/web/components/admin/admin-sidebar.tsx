@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Building2, FileText, KeyRound, type LucideIcon, ScrollText, ShieldAlert, ShieldCheck, UserCog, Users, EyeOff } from "lucide-react";
+import { BarChart3, Building2, FileText, KeyRound, type LucideIcon, ScrollText, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SidebarIdentity } from "@/components/layout/sidebar-identity";
 import { SidebarLink } from "@/components/layout/sidebar-link";
@@ -34,7 +34,6 @@ export function AdminSidebar({ entries, email, roleLabel }: AdminSidebarProps) {
     <>
       {entries.length > 0 ? (
         <nav aria-label="Administration" className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-          <p className="px-3 pb-2 text-caption font-medium tracking-[0.08em] text-muted-foreground uppercase">Console</p>
           <ul className="grid gap-1">
             {entries.map(({ label, href, segment }) => (
               <li key={href}>
@@ -48,7 +47,7 @@ export function AdminSidebar({ entries, email, roleLabel }: AdminSidebarProps) {
       )}
       {email ? (
         <div className="border-t p-3">
-          <SidebarIdentity icon={ShieldCheck} title={email} detail={roleLabel} className="px-2 py-1.5" />
+          <SidebarIdentity title={email} detail={roleLabel} className="px-2 py-1.5" />
         </div>
       ) : null}
     </>

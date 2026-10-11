@@ -28,7 +28,8 @@ vi.mock("@/lib/dal/documents", () => ({ getDocumentReminders: vi.fn(async () => 
 vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
 vi.mock("@/lib/dal/dashboard", () => ({ getFirstSteps: firstStepsMock }));
 vi.mock("@/components/dashboard/worker-dashboard", () => ({
-  WorkerDashboard: (props: { firstName: string; completeness: { percent: number } }) => `WORKER ${props.firstName} ${props.completeness.percent}`,
+  WorkerDashboard: (props: { availability: string | null; availableFrom: string | null; completeness: { percent: number } }) =>
+    `WORKER ${props.availability} ${props.availableFrom} ${props.completeness.percent}`,
 }));
 vi.mock("@/components/dashboard/employer-dashboard", () => ({
   EmployerDashboard: (props: { organization: { slug: string; role: string } }) =>
@@ -162,7 +163,7 @@ describe("what each role sees", () => {
 });
 
 describe("the candidate dashboard (UX-03)", () => {
-  it("sends a candidate without a passport to the onboarding and shows the others their dashboard with the completeness", async () => {
+  it("sends a candidate without a passport to the onboarding and shows the others their dashboard with the completeness and the availability", async () => {
     requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "worker", aal: "aal1" });
     passportMock.mockResolvedValue(null);
     await expect(render("worker")).rejects.toThrow("REDIRECT:/en/onboarding");
@@ -171,11 +172,12 @@ describe("the candidate dashboard (UX-03)", () => {
       headline: null,
       occupationId: null,
       yearsExperience: null,
-      availability: null,
+      availability: "from_date",
+      availableFrom: "2026-12-01",
       skills: [],
       languages: [],
       authorizations: [],
     });
-    expect(await render("worker")).toBe("WORKER Ana 10");
+    expect(await render("worker")).toBe("WORKER from_date 2026-12-01 20");
   });
 });

@@ -23,7 +23,7 @@ import { expect, test } from "./support/test";
 const PIPELINE = ["Applied", "Viewed", "Shortlisted", "Interview", "Offer", "Hired", "Not selected", "Withdrawn"];
 
 test.describe("the employer dashboard: the figures", () => {
-  test("FR-E5 AC1: the Open vacancies card counts the open vacancies that are not deleted and links to the list filtered to Open", async ({ browser }) => {
+  test("FR-E5 AC1: the Active jobs card counts the open vacancies that are not deleted and links to the list filtered to Open", async ({ browser }) => {
     const company = await newCompany();
     seedJob(company, { title: "Open one", status: "open" });
     seedJob(company, { title: "Open two", status: "open" });
@@ -36,7 +36,7 @@ test.describe("the employer dashboard: the figures", () => {
 
     await page.goto(dashboardUrl(company.slug));
     await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
-    const open = card(page, "Open vacancies: 2");
+    const open = card(page, "Active jobs: 2");
     await expect(open).toHaveAttribute("href", `/en/org/${company.slug}/jobs?status=open`);
 
     await open.click();
@@ -90,10 +90,10 @@ test.describe("the employer dashboard: the figures", () => {
     expect(await stageRows(page)).toEqual([
       ["Applied", "3"], ["Viewed", "2"], ["Shortlisted", "1"], ["Interview", "1"], ["Offer", "0"], ["Hired", "1"], ["Not selected", "1"], ["Withdrawn", "1"],
     ]);
-    await expect(page.getByRole("table", { name: "Applicants by stage" }).locator("tfoot")).toHaveText("Total10");
+    await expect(page.getByRole("table", { name: "Applications" }).locator("tfoot")).toHaveText("Total10");
     for (const [index, label] of PIPELINE.entries()) {
       const stage = ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"][index];
-      await expect(page.getByRole("table", { name: "Applicants by stage" }).getByRole("link", { name: label, exact: true })).toHaveAttribute(
+      await expect(page.getByRole("table", { name: "Applications" }).getByRole("link", { name: label, exact: true })).toHaveAttribute(
         "href",
         `/en/org/${company.slug}/applicants?stage=${stage}`,
       );
@@ -185,7 +185,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(plan).toContainText("Past due");
     await expect(plan).toContainText("Basic");
     expect(await warning(page).evaluate((element) => element.getBoundingClientRect().top)).toBeLessThan(
-      await card(page, /^Open vacancies/).evaluate((element) => element.getBoundingClientRect().top),
+      await card(page, /^Active jobs/).evaluate((element) => element.getBoundingClientRect().top),
     );
 
     const { context, page: memberView } = await memberPage(browser, team);
@@ -208,9 +208,9 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await expect(plan).toContainText("Free plan");
     await expect(plan).not.toContainText("Trial ends");
     await expect(page.getByRole("status").filter({ hasText: "Your subscription has ended" })).toContainText("applicant changes are disabled");
-    await expect(card(page, "Open vacancies: 0")).toBeVisible();
+    await expect(card(page, "Active jobs: 0")).toBeVisible();
     expect((await stageRows(page))[0]).toEqual(["Applied", "4"]);
-    await expect(page.getByRole("table", { name: "Applicants by stage" }).locator("tfoot")).toHaveText("Total7");
+    await expect(page.getByRole("table", { name: "Applications" }).locator("tfoot")).toHaveText("Total7");
     await expect(plan.getByRole("link", { name: "Choose a plan" })).toHaveAttribute("href", `/en/org/${lapsed.slug}/billing`);
     await expect(page.getByRole("heading", { name: "Nothing here yet" })).toHaveCount(0);
     await expectNoAxeViolations(page);
@@ -218,7 +218,7 @@ test.describe("the employer dashboard: plan and payment status", () => {
     await openDashboardAtAal2(page, fresh);
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
     await expect(page.getByRole("status").filter({ hasText: "Your subscription has ended" })).toHaveCount(0);
-    await expect(card(page, "Open vacancies: 0")).toBeVisible();
+    await expect(card(page, "Active jobs: 0")).toBeVisible();
     expect((await stageRows(page)).map(([, count]) => count)).toEqual(["0", "0", "0", "0", "0", "0", "0", "0"]);
     await expect(page.getByRole("heading", { name: "Nothing here yet" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Create your first vacancy" })).toHaveAttribute("href", `/en/org/${fresh.slug}/jobs/new`);

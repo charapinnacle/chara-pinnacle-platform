@@ -1,4 +1,3 @@
-import { Building2, Clock, MapPin } from "lucide-react";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -40,21 +39,8 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
     <div className="@container">
       <article className={cn("grid gap-8", actions && "@4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:gap-x-12")}>
         <PageHeader title={job.title} className="animate-rise gap-3 @4xl:col-start-1">
-          <p aria-hidden className="flex flex-wrap gap-x-5 gap-y-1 text-body text-muted-foreground">
-            {employer ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Building2 aria-hidden className="size-4" />
-                {employer.displayName}
-              </span>
-            ) : null}
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin aria-hidden className="size-4" />
-              {job.city}, {job.country}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock aria-hidden className="size-4" />
-              {employmentTypeLabels[job.employmentType]}
-            </span>
+          <p aria-hidden className="text-body break-words text-muted-foreground">
+            {[employer?.displayName, `${job.city}, ${job.country}`, employmentTypeLabels[job.employmentType]].filter(Boolean).join(" · ")}
           </p>
         </PageHeader>
 
@@ -89,8 +75,7 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
 
           {employer ? (
             <Card as="section" aria-labelledby="job-employer-heading" padding="lg" className="gap-2">
-              <h2 id="job-employer-heading" className="flex items-center gap-2 text-h2">
-                <Building2 aria-hidden className="size-5 text-brand-ink" />
+              <h2 id="job-employer-heading" className="text-h2">
                 {employer.displayName}
               </h2>
               <p className="text-body text-muted-foreground">Based in {employer.country}</p>

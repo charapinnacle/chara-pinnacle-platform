@@ -28,15 +28,15 @@ test.describe("the home page", () => {
       const context = await browser.newContext({ javaScriptEnabled });
       const page = await context.newPage();
       await page.goto("/en");
-      const search = page.getByRole("search", { name: "Search vacancies" });
+      const search = page.getByRole("search", { name: "Search jobs" });
       await search.getByLabel("Keyword", { exact: true }).fill(marker);
       await search.getByLabel("City", { exact: true }).fill("Hamburg");
       // Without JavaScript the form is sent with Enter: the click waits for the entrance animation to settle through the
       // page's animation frames, which a context without JavaScript does not run for it.
-      if (javaScriptEnabled) await search.getByRole("button", { name: "Search vacancies" }).click();
+      if (javaScriptEnabled) await search.getByRole("button", { name: "Search jobs" }).click();
       else await search.getByLabel("City", { exact: true }).press("Enter");
       await expect(page).toHaveURL(`/en/jobs?q=${marker}&city=Hamburg`);
-      await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
       // The results of Find Jobs stream in behind a skeleton, which needs JavaScript to be swapped in (as before this page).
       if (javaScriptEnabled) {
         await expect(page.getByRole("heading", { level: 2 })).toHaveText([`Hero welder ${marker}`]);
@@ -48,34 +48,65 @@ test.describe("the home page", () => {
 
   test("the hero search with both fields empty opens the whole list without a warning or filter chips", async ({ page }) => {
     await page.goto("/en");
-    await page.getByRole("search", { name: "Search vacancies" }).getByRole("button", { name: "Search vacancies" }).click();
+    await page.getByRole("search", { name: "Search jobs" }).getByRole("button", { name: "Search jobs" }).click();
     await expect(page).toHaveURL("/en/jobs?q=&city=");
-    await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: /vacanc/ })).toBeVisible();
     await expect(page.getByText("Some search options were ignored")).toHaveCount(0);
     await expect(page.getByText("No vacancies match your search")).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Active filters" })).toHaveCount(0);
   });
 
-  test("the sections follow the hero in order and the closing call leads to sign-up and pricing", async ({ page }) => {
+  test("D81: the sections follow the hero in the order of the client's structure, reduced to what exists, and each button leads to the right sign-up", async ({ page }) => {
     await page.goto("/en");
-    await expect(page.getByRole("heading", { level: 2 })).toContainText([
-      "Four steps on each side",
-      "Built on rules you can read",
-      "Your next job or your next hire starts here.",
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText("The Global Workforce Network");
+    await expect(main.getByText("Connect with the people and companies that can build your workforce.")).toBeVisible();
+    await expect(main.locator("h2:not(#platform-statistics-heading)")).toHaveText([
+      "Who are you?",
+      "One professional profile. Multiple opportunities.",
+      "How CHARA works",
+      "Your Workforce. Your Network. One Platform.",
     ]);
-    const workers = page.getByRole("region", { name: "For workers" });
-    await expect(workers.getByRole("listitem")).toHaveCount(4);
-    await expect(workers.getByRole("heading", { level: 4 })).toHaveText([
-      "Create your profile",
-      "Search vacancies",
+    const headingOrder = await main.locator("h1, h2").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top));
+    expect(headingOrder).toEqual([...headingOrder].sort((a, b) => a - b));
+
+    const hero = main.locator("header");
+    await expect(hero.getByRole("search", { name: "Search jobs" }).getByRole("button", { name: "Search jobs" })).toBeVisible();
+    await expect(hero.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await expect(hero.getByRole("link")).toHaveCount(1);
+
+    const worker = main.getByRole("region", { name: "Worker", exact: true });
+    await expect(worker.getByRole("listitem")).toHaveText([
+      "Create your CHARA Passport",
+      "Search jobs",
       "Apply",
-      "Follow your application",
+      "Store skills and certificates",
+      "Manage availability",
+      "Track applications",
     ]);
-    await expect(page.getByRole("region", { name: "For employers" }).getByRole("listitem")).toHaveCount(4);
-    const closing = page.getByRole("region", { name: "Your next job or your next hire starts here." });
-    await expect(closing.getByRole("link", { name: "Create your account" })).toHaveAttribute("href", "/en/signup");
-    await expect(closing.getByRole("link", { name: "See pricing" })).toHaveAttribute("href", "/en/pricing");
+    await expect(worker.getByRole("link", { name: "I'm a worker" })).toHaveAttribute("href", "/en/signup?kind=worker");
+    const employer = main.getByRole("region", { name: "Employer", exact: true });
+    await expect(employer.getByRole("listitem")).toHaveText(["Post jobs", "Manage applicants", "Invite your team"]);
+    await expect(employer.getByRole("link", { name: "I'm an employer" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await expect(main.getByText("Recruitment and staffing companies join in a later phase.")).toBeVisible();
+
+    await expect(main.getByRole("link", { name: "Create CHARA Passport" })).toHaveAttribute("href", "/en/signup?kind=worker");
+    await expect(main.getByRole("region", { name: "For workers", exact: true }).getByRole("listitem")).toHaveText([
+      "1Create your profile",
+      "2Search vacancies",
+      "3Apply",
+      "4Follow your application",
+    ]);
+    await expect(main.getByRole("region", { name: "For employers", exact: true }).getByRole("listitem")).toHaveCount(4);
+    const closing = main.getByRole("region", { name: "Your Workforce. Your Network. One Platform." });
+    await expect(closing.getByRole("link", { name: "Join CHARA" })).toHaveAttribute("href", "/en/signup?kind=worker");
+    await expect(closing.getByRole("link", { name: "Start hiring" })).toHaveAttribute("href", "/en/signup?kind=company");
+
+    const text = await main.innerText();
+    for (const gone of ["Workers never pay", "Built on rules you can read", "Find Workers", "Request Workers", "Recruitment Companies |", "Find Workforce Partners"]) {
+      expect(text, gone).not.toContain(gone);
+    }
   });
 
   test("the entrance animations stop under reduced motion", async ({ browser }) => {
@@ -106,7 +137,7 @@ test.describe("the vacancy page", () => {
     });
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`/en/jobs/${id}`);
-    const apply = page.getByRole("button", { name: "Apply" });
+    const apply = page.getByRole("button", { name: /^Apply now/ });
     await expect(apply).toBeVisible();
     await page.getByText("Line 40 of a long description").scrollIntoViewIfNeeded();
     await expect(apply).toBeInViewport();
@@ -114,7 +145,7 @@ test.describe("the vacancy page", () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`/en/jobs/${id}`);
-    const applyBox = await page.getByRole("button", { name: "Apply" }).boundingBox();
+    const applyBox = await page.getByRole("button", { name: /^Apply now/ }).boundingBox();
     const titleBox = await page.getByRole("heading", { level: 1 }).boundingBox();
     const detailsBox = await page.locator("dl").boundingBox();
     expect(applyBox!.y).toBeGreaterThan(titleBox!.y);
@@ -134,7 +165,7 @@ test.describe("the vacancy preview", () => {
     const page = await context.newPage();
     await page.goto(previewUrl(company.slug, id));
     const titleBox = (await page.getByRole("heading", { level: 1, name: "Preview panel welder" }).boundingBox())!;
-    const panelBox = (await page.getByRole("button", { name: "Apply" }).boundingBox())!;
+    const panelBox = (await page.getByRole("button", { name: /^Apply now/ }).boundingBox())!;
     const detailsBox = (await page.locator("article dl").boundingBox())!;
     expect(panelBox.y).toBeGreaterThan(titleBox.y);
     expect(panelBox.y).toBeLessThan(detailsBox.y);

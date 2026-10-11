@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath } from "@/lib/routes";
+import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, signUpPath } from "@/lib/routes";
 
 describe("homePath", () => {
   it("sends each account kind to its own dashboard", () => {
@@ -9,6 +9,14 @@ describe("homePath", () => {
 
   it("keeps an account whose kind is not committed on onboarding", () => {
     expect(homePath("en", null)).toBe("/en/onboarding");
+  });
+});
+
+describe("signUpPath", () => {
+  it("preselects the account type when one is given and is the plain sign-up page otherwise", () => {
+    expect(signUpPath("en", "worker")).toBe("/en/signup?kind=worker");
+    expect(signUpPath("en", "company")).toBe("/en/signup?kind=company");
+    expect(signUpPath("en")).toBe("/en/signup");
   });
 });
 

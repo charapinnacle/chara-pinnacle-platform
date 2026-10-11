@@ -41,7 +41,17 @@ test.describe("the cards (FR-H2 AC1, AC2, AC3, AC10)", () => {
     const workers = workersSection(page);
     await expect(workers).toContainText("Workers never pay");
     await expect(workers).not.toContainText("EUR");
-    await expect(workers.getByRole("link")).toHaveCount(0);
+    await expect(workers.getByRole("listitem")).toHaveText([
+      "Worker profile",
+      "CHARA Passport",
+      "Search jobs",
+      "Apply",
+      "Save jobs",
+      "Manage applications",
+    ]);
+    await expect(workers.getByRole("link")).toHaveText("Create worker profile");
+    await expect(workers.getByRole("link")).toHaveAttribute("href", "/en/signup?kind=worker");
+    await expect(page.getByRole("heading", { level: 1, name: "Choose how you want to grow on CHARA" })).toBeVisible();
 
     const text = await page.getByRole("main").innerText();
     expect(text).toContain(VERIFIED_SENTENCE);
@@ -160,6 +170,7 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Pricing is currently unavailable" })).toBeVisible();
     await expect(page.getByRole("main").getByRole("link", { name: "Contact us" })).toHaveAttribute("href", "/en/contact");
+    await expect(page.getByRole("main").getByRole("link", { name: "Start hiring" })).toHaveAttribute("href", "/en/signup?kind=company");
     await expect(workersSection(page)).toContainText("Workers never pay");
     await expect(planCards(page)).toHaveCount(0);
 
@@ -185,7 +196,7 @@ test.describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
     await expect(links).toHaveCount(2);
     await expect(links.nth(0)).toHaveAccessibleName("Sign up for Basic");
     await expect(links.nth(1)).toHaveAccessibleName("Sign up for Professional");
-    await expect(links.nth(0)).toHaveAttribute("href", "/en/signup");
+    await expect(links.nth(0)).toHaveAttribute("href", "/en/signup?kind=company");
   });
 
   test("a worker, an owner, an admin, a member and a company user without an organisation each see what applies to them", async ({ browser }) => {

@@ -121,8 +121,15 @@ export async function runScanDocument(path: string): Promise<{ status: string }>
 export async function openDocuments(page: Page, user: TestUser): Promise<void> {
   await signIn(page, user);
   await page.goto("/en/passport");
-  await expect(page.getByRole("heading", { name: "Documents", level: 2, exact: true })).toBeVisible({ timeout: 15_000 });
-  await waitForHydration(page.getByLabel("Type", { exact: true }));
+  await expect(page.getByRole("heading", { name: "Manage documents", level: 2, exact: true })).toBeVisible({ timeout: 15_000 });
+  await waitForHydration(page.getByRole("button", { name: "Upload CV", exact: true }));
+}
+
+// The upload form opens with the type of the button pressed (Upload CV or Add certificate) and the focus in its first field.
+export async function openUploadForm(page: Page, button: "Upload CV" | "Add certificate" = "Upload CV"): Promise<void> {
+  await page.getByRole("button", { name: button, exact: true }).click();
+  await expect(page.getByLabel("Title", { exact: true })).toBeFocused();
+  await expect(page.getByLabel("Type", { exact: true })).toHaveValue(button === "Upload CV" ? "cv" : "certificate");
 }
 
 // The live region of the upload form that announces the chosen file and the result of an upload.

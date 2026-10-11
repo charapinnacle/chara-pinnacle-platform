@@ -34,6 +34,11 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
   );
 });
 
+// The organization in which the user may publish vacancies: an owner or an admin of one that is not suspended.
+export function publishingOrganization(organizations: Organization[]): Organization | undefined {
+  return organizations.find(({ role, suspended }) => role !== "member" && !suspended);
+}
+
 export async function getOrganizationSlug(organizationId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("organizations").select("slug").eq("id", organizationId).maybeSingle();

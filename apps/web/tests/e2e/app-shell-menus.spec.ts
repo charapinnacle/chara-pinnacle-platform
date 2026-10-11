@@ -4,6 +4,7 @@ import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
 import { createCommittedUser } from "./support/login";
 import { overflow } from "./support/login-page";
+import { FOOTER_LABELS } from "./support/public-pages";
 import { registerOrganization, uniqueName } from "./support/organizations";
 import { addMember, newTeam } from "./support/team";
 import { expect, test } from "./support/test";
@@ -28,7 +29,8 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(menu).toHaveAttribute("aria-expanded", "true");
     expect(await linkLabels(mainNavigation(page))).toEqual(WORKER_LINKS);
     await expect(page.getByText(worker.email).filter({ visible: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Notification settings" }).filter({ visible: true })).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Edit profile" }).filter({ visible: true })).toHaveAttribute("href", "/en/passport");
+    await expect(page.getByRole("link", { name: "Settings", exact: true }).filter({ visible: true })).toHaveAttribute("href", "/en/settings");
     await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
     await expectNoAxeViolations(page);
 
@@ -118,12 +120,12 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(panel).toBeVisible();
     await expect(panel).toContainText(worker.email);
     await expect(panel).toContainText("Worker");
-    expect(await linkLabels(panel)).toEqual(["Settings", "Notification settings"]);
+    expect(await linkLabels(panel)).toEqual(["Edit profile", "Settings"]);
     await expect(panel.getByRole("button", { name: "Log out" })).toBeVisible();
     await expectNoAxeViolations(page);
 
     await page.keyboard.press("Tab");
-    await expect(panel.getByRole("link", { name: "Settings", exact: true })).toBeFocused();
+    await expect(panel.getByRole("link", { name: "Edit profile" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(button).toHaveAttribute("aria-expanded", "false");
     await expect(button).toBeFocused();
@@ -138,7 +140,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await button.press("Enter");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL("/en/settings");
+    await expect(page).toHaveURL("/en/passport");
     await expect(button).toHaveAttribute("aria-expanded", "false");
     await context.close();
   });
@@ -154,14 +156,14 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await context.close();
   });
 
-  test("an employer's account menu offers the notification settings but not the account deletion that only a candidate has", async ({ browser }) => {
+  test("an employer's account menu offers Settings, which are the notification settings, but not the account deletion that only a candidate has", async ({ browser }) => {
     const team = await newTeam();
     const member = await addMember(team, "member");
     const { context, page } = await signedInPage(browser, member.user);
     await page.goto("/en/dashboard/employer");
     await openAccountMenu(page);
     const panel = await panelOf(page);
-    expect(await linkLabels(panel)).toEqual(["Notification settings"]);
+    expect(await linkLabels(panel)).toEqual(["Settings"]);
     await expect(panel).toContainText("Member");
     await expect(panel).toContainText(member.user.email);
     await logOut(page);
@@ -171,7 +173,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
 
   test("the header of a signed-in person on a public page has Go to my area and Log out instead of Log in and Sign up", async ({ browser, page }) => {
     await page.goto("/en/pricing");
-    await expect(mainNavigation(page).getByRole("link", { name: "Log in" })).toBeVisible();
+    await expect(mainNavigation(page).getByRole("link", { name: "Login", exact: true })).toBeVisible();
     await expect(mainNavigation(page).getByRole("link", { name: "Sign up" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Log out" })).toHaveCount(0);
 
@@ -181,7 +183,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     const navigation = mainNavigation(session.page);
     await expect(navigation.getByRole("link", { name: "Go to my area" })).toHaveAttribute("href", "/en/dashboard/worker");
     await expect(navigation.getByRole("button", { name: "Log out" })).toBeVisible();
-    await expect(navigation.getByRole("link", { name: "Log in" })).toHaveCount(0);
+    await expect(navigation.getByRole("link", { name: "Login", exact: true })).toHaveCount(0);
     await expect(navigation.getByRole("link", { name: "Sign up" })).toHaveCount(0);
     await expectNoAxeViolations(session.page);
 
@@ -193,28 +195,33 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await session.context.close();
   });
 
-  test("every area has the legal links in the footer in three short groups, and a candidate's area has none about billing", async ({ browser }) => {
+  test("the signed-in area has one small line of legal links, and the public pages the compact footer; none is about billing", async ({ browser }) => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
-    for (const [path, count] of [
-      ["/en/saved", 10],
-      ["/en/pricing", 11],
-    ] as const) {
-      await page.goto(path);
-      const legal = page.getByRole("navigation", { name: "Legal" });
-      await expect(legal.getByText("Legal", { exact: true })).toBeVisible();
-      await expect(legal.getByText("Rules and disputes", { exact: true })).toBeVisible();
-      await expect(legal.getByText("Billing and roles", { exact: true })).toBeVisible();
-      await expect(legal.getByRole("link")).toHaveCount(count);
-      await expect(legal.getByRole("link", { name: "Imprint" })).toHaveAttribute("href", "/en/imprint");
-      await expect(legal.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/en/legal/terms-of-service");
-    }
+    await page.goto("/en/saved");
+    const legal = page.getByRole("navigation", { name: "Legal" });
+    await expect(legal.getByRole("link")).toHaveText(["Terms", "Privacy", "Imprint", "All legal documents"]);
+    await expect(legal.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/en/legal/terms-of-service");
+    await expect(legal.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/en/legal/privacy-policy");
+    await expect(legal.getByRole("link", { name: "Imprint" })).toHaveAttribute("href", "/en/imprint");
+    await expect(legal.getByRole("link", { name: "All legal documents" })).toHaveAttribute("href", "/en/legal");
+    await legal.getByRole("link", { name: "All legal documents" }).click();
+    await expect(page).toHaveURL("/en/legal");
+    await expect(page.getByRole("main").getByRole("link")).toHaveCount(10);
+    await expect(page.getByRole("main").locator('a[href="/en/legal/subscription-and-billing-terms"]')).toHaveCount(0);
+
+    await page.goto("/en/pricing");
+    const footer = page.getByRole("navigation", { name: "Footer" });
+    await expect(footer.getByRole("link")).toHaveText(FOOTER_LABELS);
+    await expect(footer.getByRole("link", { name: "All legal documents" })).toHaveAttribute("href", "/en/legal");
     await context.close();
 
     const team = await newTeam();
     const employer = await signedInPage(browser, team.owner);
     await employer.page.goto("/en/dashboard/employer");
-    await expect(employer.page.getByRole("navigation", { name: "Legal" }).getByRole("link")).toHaveCount(11);
+    await expect(employer.page.getByRole("navigation", { name: "Legal" }).getByRole("link")).toHaveText(["Terms", "Privacy", "Imprint", "All legal documents"]);
+    await employer.page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "All legal documents" }).click();
+    await expect(employer.page.getByRole("main").locator('a[href="/en/legal/subscription-and-billing-terms"]')).toHaveCount(1);
     await employer.context.close();
   });
 

@@ -29,7 +29,7 @@ test.describe("the employer dashboard: who may open it", () => {
     await signInBrowser(outsider, other.owner);
     const outsiderPage = await outsider.newPage();
     await expectNotFound(outsiderPage, path);
-    await expect(outsiderPage.getByRole("link", { name: /^Open vacancies/ })).toHaveCount(0);
+    await expect(outsiderPage.getByRole("link", { name: /^Active jobs/ })).toHaveCount(0);
     await outsider.close();
 
     const staff = await browser.newContext();
@@ -40,7 +40,7 @@ test.describe("the employer dashboard: who may open it", () => {
 
     const { context, page: memberView } = await memberPage(browser, company);
     await memberView.goto(path);
-    await expect(card(memberView, /^Open vacancies/)).toBeVisible();
+    await expect(card(memberView, /^Active jobs/)).toBeVisible();
     await context.close();
   });
 
@@ -50,8 +50,8 @@ test.describe("the employer dashboard: who may open it", () => {
 
     await signInAtAal1(page, team.owner, dashboardUrl(team.slug));
     await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Open vacancies/ })).toHaveCount(0);
-    await expect(page.getByRole("table", { name: "Applicants by stage" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Active jobs/ })).toHaveCount(0);
+    await expect(page.getByRole("table", { name: "Applications" })).toHaveCount(0);
     await expect(page.getByText("Enter your two-step code to see the figures of your hiring.")).toBeVisible();
     await expectNoAxeViolations(page);
 
@@ -66,7 +66,7 @@ test.describe("the employer dashboard: who may open it", () => {
     await signInBrowser(context, user);
     const page = await context.newPage();
     await page.goto(dashboardUrl(team.slug));
-    await expect(card(page, /^Open vacancies/)).toBeVisible();
+    await expect(card(page, /^Active jobs/)).toBeVisible();
     await expect(page).not.toHaveURL(/\/mfa/);
     await context.close();
   });
@@ -82,10 +82,10 @@ test.describe("the employer dashboard: keyboard, labels and a narrow screen", ()
     await page.setViewportSize({ width: 360, height: 800 });
 
     await page.goto(dashboardUrl(company.slug));
-    await expect(card(page, "Open vacancies: 1")).toBeVisible();
-    await expect(page.getByRole("table", { name: "Applicants by stage" }).getByRole("columnheader")).toHaveText(["Stage", "Applicants"]);
+    await expect(card(page, "Active jobs: 1")).toBeVisible();
+    await expect(page.getByRole("table", { name: "Applications" }).getByRole("columnheader")).toHaveText(["Stage", "Applicants"]);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    const first = await card(page, "Open vacancies: 1").boundingBox();
+    const first = await card(page, "Active jobs: 1").boundingBox();
     const second = await card(page, "New applications in the last 7 days: 2").boundingBox();
     expect(first?.x).toBe(second?.x);
     expect(second?.y).toBeGreaterThan((first?.y ?? 0) + (first?.height ?? 0) - 1);
@@ -99,7 +99,7 @@ test.describe("the employer dashboard: keyboard, labels and a narrow screen", ()
       });
       if (name) focusOrder.push(name);
     }
-    expect(focusOrder.slice(0, 4)).toEqual(["Open vacancies: 1", "New applications in the last 7 days: 2", "Applied", "Viewed"]);
+    expect(focusOrder.slice(0, 4)).toEqual(["Active jobs: 1", "New applications in the last 7 days: 2", "Applied", "Viewed"]);
     expect(focusOrder).toContain("Withdrawn");
     await expectNoAxeViolations(page);
     await context.close();

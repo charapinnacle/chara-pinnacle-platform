@@ -12,6 +12,12 @@ import { fetchDocuments, type DocumentItem } from "@/lib/documents/fetch-documen
 import { todayUtc } from "@/lib/validation/passport";
 
 type Phase = "loading" | "ready" | "error";
+type UploadType = "cv" | "certificate";
+
+const uploadButtons = [
+  { type: "cv", label: "Upload CV" },
+  { type: "certificate", label: "Add certificate" },
+] as const;
 
 const SCAN_POLL_MS = 3000;
 
@@ -25,8 +31,10 @@ export function DocumentsSection() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [reloads, setReloads] = useState(0);
+  const [uploading, setUploading] = useState<UploadType | null>(null);
   const router = useRouter();
   const shown = useRef(0);
+  const openers = useRef<Partial<Record<UploadType, HTMLButtonElement | null>>>({});
   // Rows whose bytes this page failed to send: they are not being checked, whatever their age.
   const failed = useRef(new Set<string>());
 
@@ -90,10 +98,36 @@ export function DocumentsSection() {
 
   return (
     <div className="grid min-w-0 gap-6">
-      <UploadForm onChanged={reload} onFailed={(id) => failed.current.add(id)} />
+      <div className="flex flex-wrap gap-3">
+        {uploadButtons.map(({ type, label }) => (
+          <FormButton
+            key={type}
+            ref={(node) => {
+              openers.current[type] = node;
+            }}
+            type="button"
+            variant="secondary"
+            className="w-auto"
+            onClick={() => setUploading(type)}
+          >
+            {label}
+          </FormButton>
+        ))}
+      </div>
+      {uploading ? (
+        <UploadForm
+          presetType={uploading}
+          onChanged={reload}
+          onFailed={(id) => failed.current.add(id)}
+          onCancel={() => {
+            setUploading(null);
+            openers.current[uploading]?.focus();
+          }}
+        />
+      ) : null}
       {phase === "loading" ? <LoadingSkeleton rows={3} /> : null}
       {phase === "error" ? (
-        <EmptyState title="Your documents could not be loaded">
+        <EmptyState flat title="Your documents could not be loaded">
           <FormButton
             type="button"
             variant="secondary"
@@ -107,7 +141,7 @@ export function DocumentsSection() {
         </EmptyState>
       ) : null}
       {phase === "ready" && items.length === 0 ? (
-        <EmptyState title="You have not uploaded any documents yet" description="Add your CV or a certificate with the form above." />
+        <EmptyState flat title="You have not uploaded any documents yet" description="Upload your CV or add a certificate with the buttons above." />
       ) : null}
       {phase === "ready" && items.length > 0 ? (
         <>

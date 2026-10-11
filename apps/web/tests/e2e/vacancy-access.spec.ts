@@ -36,8 +36,8 @@ test.describe("vacancy pages: who sees what", () => {
     await expect(page.getByRole("heading", { name: "Preview welder", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: /^Vacancy Bau / })).toBeVisible();
     await expect(page.getByText("Line two of it", { exact: false })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /^Apply now/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save job", exact: true })).toBeDisabled();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expectNoAxeViolations(page);
 

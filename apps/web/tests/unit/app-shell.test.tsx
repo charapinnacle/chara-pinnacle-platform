@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppLayout from "@/app/[lang]/(app)/layout";
 import { AppNav } from "@/components/layout/app-nav";
 import { FooterLinks } from "@/components/layout/footer-links";
+import { appFooterLinks } from "@/lib/public/navigation";
 import type { NavOrganization } from "@/lib/app/navigation";
 
 const navigation = vi.hoisted(() => ({ pathname: "/en/dashboard/worker", org: null as string | null }));
@@ -41,7 +42,8 @@ describe("the header of the signed-in area", () => {
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).toContain("ana@example.test");
     expect(html).toContain("Worker");
-    expect(html).toContain("Notification settings");
+    expect(html).toMatch(/<a [^>]*href="\/en\/passport"[^>]*>Edit profile<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/en\/settings"[^>]*>Settings<\/a>/);
     expect(html).toContain("Log out");
   });
 
@@ -82,10 +84,10 @@ describe("the header of the signed-in area", () => {
     expect(one).toContain('href="/en/settings/notifications"');
   });
 
-  it("offers an employer the notification settings only", () => {
+  it("offers an employer Settings, which lead to the notification settings, and no Edit profile", () => {
     const html = nav({ accountKind: "company", organizations: [acme] });
-    expect(html).toContain("Notification settings");
-    expect(html).not.toMatch(/>Settings<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/en\/settings\/notifications"[^>]*>Settings<\/a>/);
+    expect(html).not.toContain("Edit profile");
   });
 
   it("offers nothing to a suspended organisation, and no page link on the onboarding page or to an account without a kind", () => {
@@ -172,14 +174,15 @@ describe("the layout of the signed-in area", () => {
     expect(props.headerActions?.props.accountKind).toBeNull();
   });
 
-  it("leaves the subscription terms out of the footer of a candidate (FR-G6 AC5) and keeps them for an employer", async () => {
-    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
-    expect(renderToStaticMarkup((await shell()).footerLinks)).not.toContain("billing");
-    userMock.mockResolvedValue({ ...user, accountKind: "company" });
-    organizationsMock.mockResolvedValue([]);
-    const employer = renderToStaticMarkup((await shell()).footerLinks);
-    expect(employer).toContain('href="/en/legal/subscription-and-billing-terms"');
-    expect(employer.match(/<a /g)).toHaveLength(11);
+  it("gives candidates and employers the same small line of four legal links and none about billing (FR-G6 AC5)", async () => {
+    for (const accountKind of ["worker", "company"] as const) {
+      userMock.mockResolvedValue({ ...user, accountKind });
+      organizationsMock.mockResolvedValue([]);
+      const html = renderToStaticMarkup((await shell()).footerLinks);
+      expect(html.match(/<a /g)).toHaveLength(4);
+      expect(html).not.toContain("billing");
+      expect(html).not.toContain("pricing");
+    }
   });
 
   it("has no header actions for a visitor, and the legal links in the footer for everybody", async () => {
@@ -191,12 +194,14 @@ describe("the layout of the signed-in area", () => {
 });
 
 describe("the footer links", () => {
-  const html = renderToStaticMarkup(<FooterLinks lang="en" />);
+  const html = renderToStaticMarkup(<FooterLinks lang="en" label="Legal" links={appFooterLinks} />);
 
-  it("are three named groups of the Imprint and the ten legal pages", () => {
+  it("are one named list: Terms, Privacy, Imprint and the index of all legal documents", () => {
     expect(html).toContain('aria-label="Legal"');
-    for (const title of ["Legal", "Rules and disputes", "Billing and roles"]) expect(html).toContain(`>${title}<`);
-    expect(html.match(/<a /g)).toHaveLength(11);
-    expect(html).toContain('href="/en/legal/worker-terms"');
+    expect(html.match(/<a /g)).toHaveLength(4);
+    expect(html).toContain('href="/en/legal/terms-of-service"');
+    expect(html).toContain('href="/en/legal/privacy-policy"');
+    expect(html).toContain('href="/en/imprint"');
+    expect(html).toContain('href="/en/legal">All legal documents<');
   });
 });

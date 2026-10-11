@@ -22,8 +22,7 @@ export type NavIcon =
   | "applicants"
   | "team"
   | "billing"
-  | "settings"
-  | "notifications";
+  | "settings";
 
 // match is the address the link stands for: the page and everything below it, or only the page when exact is set. icon
 // names the picture the sidebar draws next to the label.
@@ -65,17 +64,18 @@ export function organizationLinks(lang: string, { slug, role, suspended }: Pick<
   return links;
 }
 
-// Account deletion belongs to candidates (an employer is sent away from that page); the notification settings to everyone.
-// orgSlug is given to a person in several organisations, so that the page keeps the header of the one they work in.
+// What belongs to the person rather than to the organisation. A candidate edits the profile (the passport) and has the
+// settings (account deletion, with the way to the notification settings); an employer has Settings, which are the
+// notification settings (an employer is sent away from the account settings page, which is for candidates). orgSlug is
+// given to a person in several organisations, so that the page keeps the header of the one they work in.
 export function accountLinks(lang: string, accountKind: "worker" | "company", orgSlug?: string): NavLink[] {
-  const notifications: NavLink = {
-    label: "Notification settings",
-    href: notificationSettingsPath(lang, orgSlug),
-    match: notificationSettingsPath(lang),
-    icon: "notifications",
-  };
-  if (accountKind !== "worker") return [notifications];
-  return [{ label: "Settings", href: settingsPath(lang), match: settingsPath(lang), icon: "settings", exact: true }, notifications];
+  if (accountKind === "worker") {
+    return [
+      { label: "Edit profile", href: `/${lang}/passport`, match: `/${lang}/passport`, icon: "passport" },
+      { label: "Settings", href: settingsPath(lang), match: settingsPath(lang), icon: "settings", exact: true },
+    ];
+  }
+  return [{ label: "Settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang), icon: "settings" }];
 }
 
 // The onboarding and consent pages exist to finish a step that every other page waits for, so the header offers no links there.

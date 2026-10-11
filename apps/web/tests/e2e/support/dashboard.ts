@@ -46,7 +46,7 @@ export const card = (page: Page, name: string | RegExp): Locator => page.getByRo
 
 // The count of each stage in the table of the dashboard, in the order of the rows.
 export async function stageRows(page: Page): Promise<string[][]> {
-  const table = page.getByRole("table", { name: "Applicants by stage" });
+  const table = page.getByRole("table", { name: "Applications" });
   await expect(table).toBeVisible();
   return table.locator("tbody tr").evaluateAll((rows) =>
     rows.map((row) => Array.from(row.querySelectorAll("th, td")).map((cell) => (cell.textContent ?? "").trim())),
@@ -60,7 +60,7 @@ export async function openDashboardAtAal2(page: Page, team: Team): Promise<void>
   await page.getByRole("link", { name: "Enter your code" }).click();
   await enterCode(page, team.ownerSecret);
   await expect(page).toHaveURL(dashboardUrl(team.slug));
-  await expect(page.getByRole("link", { name: /^Open vacancies/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Active jobs/ })).toBeVisible();
 }
 
 // A plain member of the organization in a browser of its own.

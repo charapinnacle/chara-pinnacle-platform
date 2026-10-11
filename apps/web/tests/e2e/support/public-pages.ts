@@ -14,9 +14,9 @@ export const LEGAL_SLUGS = [
   "account-suspension-and-termination-rules",
 ] as const;
 
-// The owner keeps the header to the two ways in and the account links (OPEN_QUESTIONS.md, owner decision 2026-10-10); the
-// pages about CHARA lead the footer.
-export const HEADER_LABELS = ["Find Jobs", "How CHARA Works", "Log in", "Sign up"];
+// The owner keeps the header to the two ways in and the account links (OPEN_QUESTIONS.md, owner decision 2026-10-10), with
+// Post a Job from the client's website structure (D81); the pages about CHARA lead the footer.
+export const HEADER_LABELS = ["Find Jobs", "How CHARA Works", "Post a Job", "Login", "Sign up"];
 
 export const FOOTER_LABELS = [
   "Pricing",
@@ -25,16 +25,10 @@ export const FOOTER_LABELS = [
   "About",
   "Contact",
   "Imprint",
-  "Terms of Service",
   "Privacy Policy",
+  "Terms of Service",
   "Cookie Policy",
-  "Platform Rules",
-  "Acceptable Use Policy",
-  "Complaints and Dispute Process",
-  "Account Suspension and Termination Rules",
-  "Subscription and Billing Terms",
-  "Employer Terms",
-  "Worker Terms",
+  "All legal documents",
 ];
 
 export const SETTING_KEYS = [

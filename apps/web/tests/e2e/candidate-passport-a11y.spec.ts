@@ -25,9 +25,9 @@ test.describe("candidate passport: states and keyboard", () => {
         await route.continue();
       },
     );
-    await page.getByRole("link", { name: "Open your passport" }).click();
+    await page.getByRole("main").getByRole("link", { name: "Update passport" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Your passport", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CHARA Worker Passport", level: 1 })).toBeVisible();
 
     for (const name of ["First name", "Last name", "Headline", "Years of experience"]) {
       await expect(page.getByRole("textbox", { name, exact: true }), name).toBeVisible();

@@ -12,7 +12,7 @@ describe("HeroSearch", () => {
   it("is a GET search form to Find Jobs with labelled keyword and city fields named as the address filters", () => {
     const markup = html(<HeroSearch lang="en" />);
     const form = /^<form [^>]*>/.exec(markup)?.[0] ?? "";
-    for (const attribute of ['action="/en/jobs"', 'method="get"', 'role="search"', 'aria-label="Search vacancies"']) {
+    for (const attribute of ['action="/en/jobs"', 'method="get"', 'role="search"', 'aria-label="Search jobs"']) {
       expect(form).toContain(attribute);
     }
     for (const [id, name] of [
@@ -24,7 +24,7 @@ describe("HeroSearch", () => {
       expect(input).toContain(`name="${name}"`);
       expect(input).toContain('maxLength="100"');
     }
-    expect(markup).toMatch(/<button[^>]*type="submit"[^>]*>Search vacancies<\/button>/);
+    expect(markup).toMatch(/<button[^>]*type="submit"[^>]*>Search jobs<\/button>/);
   });
 });
 
@@ -40,6 +40,16 @@ describe("StepList", () => {
   it("sets the step titles one level under the heading of the list", () => {
     const markup = html(<StepList steps={employerSteps} titleAs="h4" />);
     expect(markup.match(/<h4/g)).toHaveLength(4);
+    expect(markup).not.toContain("<h3");
+  });
+});
+
+describe("StepList compact", () => {
+  it("keeps the numbered titles of the steps and leaves out the sentence under each", () => {
+    const markup = html(<StepList steps={workerSteps} compact />);
+    expect(markup.match(/<li/g)).toHaveLength(4);
+    expect(markup).toContain("Create your profile");
+    expect(markup).not.toContain("Create an account and fill in your profile");
     expect(markup).not.toContain("<h3");
   });
 });
