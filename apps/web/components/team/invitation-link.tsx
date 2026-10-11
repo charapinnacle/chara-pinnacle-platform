@@ -3,6 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { toastError } from "@/components/feedback/toast-store";
+import { controlClassName } from "@/components/forms/control-class";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
 import { formatDate } from "@/lib/i18n/format";
@@ -47,7 +48,7 @@ export function InvitationLink({ path, email, role, expiresAt, onDone }: Invitat
         aria-label="Invitation link"
         value={link}
         onFocus={(event) => event.currentTarget.select()}
-        className="h-11 w-full min-w-0 rounded-lg border border-input bg-card px-3.5 text-base"
+        className={`h-12 w-full min-w-0 border ${controlClassName}`}
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" className="w-full" onClick={copy}>

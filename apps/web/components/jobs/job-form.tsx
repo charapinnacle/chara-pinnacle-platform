@@ -190,12 +190,14 @@ export function JobForm({ slug, occupations, industries, countries, currencies, 
         />
       </fieldset>
 
-      <CheckboxField control={control} name="accommodation" id={ids.accommodation}>
-        Accommodation provided
-      </CheckboxField>
-      <CheckboxField control={control} name="visaSupport" id={ids.visaSupport}>
-        Visa support offered
-      </CheckboxField>
+      <div className="grid">
+        <CheckboxField control={control} name="accommodation" id={ids.accommodation}>
+          Accommodation provided
+        </CheckboxField>
+        <CheckboxField control={control} name="visaSupport" id={ids.visaSupport}>
+          Visa support offered
+        </CheckboxField>
+      </div>
       <SelectField
         control={control}
         name="recruitmentPreference"

@@ -22,17 +22,17 @@ export function ErrorSummary({ ref, items, onSelect, action }: ErrorSummaryProps
       tone="error"
       role="alert"
       tabIndex={-1}
-      className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="rounded-lg border-border border-s-4 border-s-destructive bg-card py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="grid gap-1.5">
+      <div className="grid gap-1">
         <p className="font-semibold text-destructive">There is a problem</p>
-        <ul className="grid list-disc ps-5 marker:text-destructive">
+        <ul role="list" className="grid">
           {items.map((item) => (
             <li key={item.key}>
               {item.targetId ? (
                 <TextLink
                   tone="destructive"
-                  className="block py-2.5"
+                  className="block py-2"
                   href={`#${item.targetId}`}
                   onClick={(event) => {
                     event.preventDefault();

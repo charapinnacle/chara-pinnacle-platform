@@ -163,7 +163,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
             />
           </fieldset>
 
-          <div className="grid gap-1 sm:grid-cols-2">
+          <div className="grid sm:grid-cols-2">
             <CheckboxField control={control} name="accommodation" id="search-accommodation">
               Accommodation provided
             </CheckboxField>

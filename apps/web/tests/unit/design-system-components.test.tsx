@@ -262,9 +262,10 @@ describe("NativeSelect (DS-03)", () => {
   });
 
   it("has the height, inset and chevron of the text input and the combobox", () => {
-    expect(markup).toContain("h-11");
-    expect(controlClassName).toContain("px-3.5");
-    expect(markup).toContain("ps-3.5");
+    expect(markup).toContain("h-12");
+    expect(controlClassName).toContain("px-4");
+    expect(markup).toContain("ps-4");
+    expect(markup).toContain("rounded-control");
     expect(markup).toMatch(/<svg[^>]*lucide-chevron-down[^>]*aria-hidden="true"/);
     expect(markup).toContain("appearance-none");
   });

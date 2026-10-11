@@ -23,5 +23,12 @@ describe("cn", () => {
     expect(cn("p-6", "p-card-lg")).toBe("p-card-lg");
     expect(cn("gap-page", "gap-2")).toBe("gap-2");
     expect(cn("gap-2", "gap-section")).toBe("gap-section");
+    expect(cn("p-card-xl sm:p-card-3xl", "p-4")).toBe("sm:p-card-3xl p-4");
+  });
+
+  it("lets a later radius replace an earlier one, also the radius tokens of the fields and the auth card", () => {
+    expect(cn("rounded-lg", "rounded-control")).toBe("rounded-control");
+    expect(cn("rounded-xl", "rounded-card")).toBe("rounded-card");
+    expect(cn("rounded-card", "rounded-lg")).toBe("rounded-lg");
   });
 });

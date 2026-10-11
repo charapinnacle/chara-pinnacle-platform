@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { startDocumentUpload } from "@/lib/actions/documents";
 import { formatFileSize } from "@/lib/documents/presentation";
 import { createLazyClient } from "@/lib/supabase/lazy-browser";
+import { cn } from "@/lib/utils";
 import {
   DOCUMENT_BUCKET,
   acceptedExtensions,
@@ -106,7 +107,7 @@ export function UploadForm({ presetType, onChanged, onFailed, onCancel }: Upload
             accept={acceptedExtensions}
             aria-invalid={field["aria-invalid"]}
             aria-describedby={field["aria-describedby"]}
-            className={`h-auto py-2.5 ${controlClassName}`}
+            className={cn("h-auto py-2.5", controlClassName)}
             onBlur={field.onBlur}
             onChange={(event) => {
               const file = event.target.files?.[0];

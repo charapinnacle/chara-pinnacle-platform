@@ -3,8 +3,8 @@ import { Building2, UserRound } from "lucide-react";
 export type Kind = "worker" | "company";
 
 export const kindOptions = [
-  { value: "worker", label: "I'm a worker", icon: UserRound },
-  { value: "company", label: "I'm an employer", icon: Building2 },
+  { value: "worker", label: "I'm a worker", icon: UserRound, description: "Find work and apply to vacancies." },
+  { value: "company", label: "I'm an employer", icon: Building2, description: "Publish vacancies and hire." },
 ] as const;
 
 export const KIND_IS_FINAL =
