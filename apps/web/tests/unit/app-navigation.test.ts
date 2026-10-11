@@ -66,15 +66,19 @@ describe("the header links of an organisation", () => {
 });
 
 describe("the account links", () => {
-  it("give a candidate Edit profile, which is the passport, and Settings", () => {
+  it("give a candidate Edit profile, which is the passport, Settings and My reports", () => {
     expect(accountLinks("en", "worker").map(({ label, href }) => [label, href])).toEqual([
       ["Edit profile", "/en/passport"],
       ["Settings", "/en/settings"],
+      ["My reports", "/en/reports"],
     ]);
   });
 
-  it("give an employer Settings, which are the notification settings, because the settings page sends an employer away", () => {
-    expect(accountLinks("en", "company").map(({ label, href }) => [label, href])).toEqual([["Settings", "/en/settings/notifications"]]);
+  it("give an employer Settings, which are the notification settings, and My reports, because the settings page sends an employer away", () => {
+    expect(accountLinks("en", "company").map(({ label, href }) => [label, href])).toEqual([
+      ["Settings", "/en/settings/notifications"],
+      ["My reports", "/en/reports"],
+    ]);
   });
 
   it("carry the organisation to the notification settings, so that a person in several organisations keeps the one they work in", () => {

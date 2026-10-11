@@ -30,7 +30,7 @@ select enum_has_labels('public', 'organization_type', array['employer', 'recruit
 select enum_has_labels('public', 'member_role', array['owner', 'admin', 'member'], 'the member roles exist');
 select enum_has_labels('public', 'organization_status', array['active', 'suspended'], 'the organization statuses exist');
 select columns_are('public', 'organizations',
-  array['id', 'type', 'slug', 'legal_name', 'display_name', 'based_in_country', 'website', 'status', 'created_at', 'industry_code', 'legal_entity_identifier', 'legal_entity_identifier_kind'],
+  array['id', 'type', 'slug', 'legal_name', 'display_name', 'based_in_country', 'website', 'status', 'created_at', 'industry_code', 'legal_entity_identifier', 'legal_entity_identifier_kind', 'description'],
   'organizations has the organization columns');
 select columns_are('public', 'organization_members',
   array['organization_id', 'user_id', 'role', 'invited_by', 'accepted_at'],

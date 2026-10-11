@@ -46,7 +46,7 @@ select is(pg_temp.search_titles('p_q => ''flip'''), '', 'it is not found when de
 select is(
   (select array_agg(a.name order by a.ord)
    from pg_proc p, unnest(p.proargnames, p.proargmodes) with ordinality as a (name, mode, ord)
-   where p.oid = 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, integer)'::regprocedure
+   where p.oid = 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, text, integer)'::regprocedure
      and a.mode = 't'),
   array[
     'id', 'title', 'employer_display_name', 'employer_slug', 'country_code', 'city', 'employment_type', 'salary_min',
@@ -65,9 +65,9 @@ select is(
 );
 
 -- Who may execute it, and how it runs.
-select ok(has_function_privilege('anon', 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, integer)', 'execute'), 'anon can execute search_jobs');
-select ok(has_function_privilege('authenticated', 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, integer)', 'execute'), 'authenticated can execute search_jobs');
-select ok(not has_function_privilege('service_role', 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, integer)', 'execute'), 'service_role cannot execute search_jobs');
+select ok(has_function_privilege('anon', 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, text, integer)', 'execute'), 'anon can execute search_jobs');
+select ok(has_function_privilege('authenticated', 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, text, integer)', 'execute'), 'authenticated can execute search_jobs');
+select ok(not has_function_privilege('service_role', 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, text, integer)', 'execute'), 'service_role cannot execute search_jobs');
 select is(
   (select p.prosecdef and p.provolatile = 's' and p.proconfig @> array['search_path=""']
    from pg_proc p where p.proname = 'search_jobs' and p.pronamespace = 'public'::regnamespace),

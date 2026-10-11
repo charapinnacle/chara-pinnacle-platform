@@ -131,6 +131,17 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
           <ChevronDown aria-hidden className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
         </summary>
         <div className="grid gap-5 pt-3">
+          <div className="sm:max-w-sm">
+            <InputField
+              control={control}
+              name="employer"
+              id="search-employer"
+              label="Employer"
+              description="Part of the name of the company, at least 2 characters."
+              autoComplete="off"
+            />
+          </div>
+
           <fieldset className="grid gap-3 sm:grid-cols-3">
             <legend className="mb-3 text-h3">Minimum salary</legend>
             <InputField control={control} name="salary_min" id="search-salary-min" label="Salary at least" inputMode="decimal" />

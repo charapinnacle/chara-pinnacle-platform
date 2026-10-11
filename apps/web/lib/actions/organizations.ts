@@ -27,7 +27,7 @@ export type CreateOrganizationResult = {
 
 const LIMIT_REACHED = "You have reached the number of organizations one account can own.";
 
-const fieldByConstraint: Record<string, keyof OrganizationFormInput> = {
+const fieldByConstraint: Record<string, keyof OrganizationFormInput | keyof OrganizationProfileInput> = {
   legal_name: "legalName",
   based_in_country: "country",
   organizations_legal_name_check: "legalName",
@@ -36,6 +36,7 @@ const fieldByConstraint: Record<string, keyof OrganizationFormInput> = {
   organizations_industry_code_fkey: "industry",
   organizations_based_in_country_fkey: "country",
   organizations_website_check: "website",
+  organizations_description_check: "description",
   legal_entity_identifier: "identifier",
   legal_entity_identifier_kind: "identifierKind",
 };
@@ -104,6 +105,7 @@ export async function updateOrganizationProfile(
     p_based_in_country: parsed.data.country,
     p_industry_code: parsed.data.industry,
     p_website: parsed.data.website,
+    p_description: parsed.data.description,
   });
   if (error) {
     const path = organizationProfilePath(defaultLocale, parsedSlug.data);

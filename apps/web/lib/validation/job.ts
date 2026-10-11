@@ -1,5 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
+import { characters } from "@/lib/utils";
 
 type JobInsertRow = Database["public"]["Tables"]["jobs"]["Insert"];
 
@@ -63,9 +64,6 @@ const AMOUNT_FORMAT = "Enter an amount of 0 or more, for example 2800 or 2800.50
 
 const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
 const LINE_BREAKS_AND_TABS = /[\t\n\r]/g;
-
-// The table checks count characters, not UTF-16 units, so an emoji is one character here as there.
-const characters = (value: string) => Array.from(value).length;
 
 const NO_CONTROL_CHARACTERS = "Remove the special characters.";
 

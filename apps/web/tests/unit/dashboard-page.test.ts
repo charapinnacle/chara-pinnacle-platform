@@ -27,6 +27,7 @@ const passportMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/dal/documents", () => ({ getDocumentReminders: vi.fn(async () => []), hasUsableCv: vi.fn(async () => false) }));
 vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
 vi.mock("@/lib/dal/dashboard", () => ({ getFirstSteps: firstStepsMock }));
+vi.mock("@/components/reports/report-outcomes", () => ({ ReportOutcomes: () => null }));
 vi.mock("@/components/dashboard/worker-dashboard", () => ({
   WorkerDashboard: (props: { availability: string | null; availableFrom: string | null; completeness: { percent: number } }) =>
     `WORKER ${props.availability} ${props.availableFrom} ${props.completeness.percent}`,
@@ -45,7 +46,7 @@ const props = (kind: string, query: Record<string, string> = {}) =>
 // prerender waits for the async parts (Panel) as the server does; the comments it puts between text nodes are dropped.
 const render = async (kind = "employer", query?: Record<string, string>) => {
   const { prelude } = await prerender(await DashboardPage(props(kind, query)));
-  return (await new Response(prelude).text()).replaceAll("<!-- -->", "");
+  return (await new Response(prelude).text()).replace(/<!-- -->|<!--\/?\$-->/g, "");
 };
 const access = (over: Partial<typeof acme & { suspended: boolean }> = {}) => ({
   user: { id: "user-1" },

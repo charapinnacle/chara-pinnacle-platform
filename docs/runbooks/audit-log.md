@@ -48,7 +48,7 @@ where not exists (select 1 from audit.log l where l.action = 'platform_role.gran
 select count(*) from audit.log
 where action in ('platform_role.grant', 'platform_role.revoke', 'mfa.reset', 'legal_document.publish', 'user.suspend',
                  'user.reinstate', 'organization.suspend', 'organization.reinstate', 'job.org_suspend', 'job.org_reinstate',
-                 'job.hide', 'job.unhide')
+                 'job.hide', 'job.unhide', 'report.in_review', 'report.actioned', 'report.dismissed')
   and actor_id is not null
   and char_length(coalesce(metadata ->> 'reason', '')) < 10;
 ```

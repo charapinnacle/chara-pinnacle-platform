@@ -137,7 +137,7 @@ describe("organization input schema", () => {
 });
 
 describe("organization profile schema", () => {
-  const profile = { legalName: "Acme Bau GmbH", displayName: "", country: "de", industry: "f", website: "" };
+  const profile = { legalName: "Acme Bau GmbH", displayName: "", country: "de", industry: "f", website: "", description: "" };
   const profileErrors = (overrides: Record<string, unknown>) => {
     const result = organizationProfileSchema.safeParse({ ...profile, ...overrides });
     return result.success ? {} : fieldErrors(result.error);
@@ -153,5 +153,16 @@ describe("organization profile schema", () => {
       "website",
     ]);
     expect(profileErrors({ legalName: "a".repeat(200), displayName: "d".repeat(200), website: "https://acme.example/jobs" })).toEqual({});
+  });
+
+  it("keeps the description as typed inside, trims its ends and allows it to be empty", () => {
+    const text = "We build halls.\n\n  Founded in 1999.";
+    expect(organizationProfileSchema.parse({ ...profile, description: `  \n${text}\n ` }).description).toBe(text);
+    expect(organizationProfileSchema.parse({ ...profile, description: " \n " }).description).toBe("");
+  });
+
+  it("accepts 2000 characters in the description and refuses 2001, naming the field", () => {
+    expect(profileErrors({ description: "d".repeat(2000) })).toEqual({});
+    expect(Object.keys(profileErrors({ description: "d".repeat(2001) }))).toEqual(["description"]);
   });
 });

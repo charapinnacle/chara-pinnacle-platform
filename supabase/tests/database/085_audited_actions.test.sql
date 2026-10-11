@@ -298,7 +298,7 @@ language sql as $$
     and p.proname not in ('admin_search_users', 'admin_search_organizations', 'admin_get_user', 'admin_get_organization',
       'admin_application_counts', 'admin_search_audit', 'admin_list_moderation_actions', 'admin_list_legal_documents',
       'admin_export_legal_documents', 'list_platform_staff', 'admin_search_jobs', 'admin_get_job', 'admin_staff_count',
-      'admin_moderation_counts')
+      'admin_moderation_counts', 'admin_list_reports', 'admin_get_report')
     and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation'
     and not (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
   order by p.proname
@@ -313,8 +313,8 @@ $$;
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: every staff-gated function that is not read-only calls the audit function');
 select is(
   pg_temp.audited(),
-  array['grant_platform_role', 'moderate_job', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
-  'AC8: the audited functions are the 9 that exist; the allowlist holds the read-only ones'
+  array['admin_set_report_status', 'grant_platform_role', 'moderate_job', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
+  'AC8: the audited functions are the 10 that exist; the allowlist holds the read-only ones'
 );
 create function public.unaudited_admin_function() returns void
 language plpgsql security definer set search_path = ''

@@ -8,7 +8,7 @@ const headersMock = vi.hoisted(() => vi.fn());
 vi.mock("next/headers", () => ({ headers: headersMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { isThrottled } = await import("@/lib/dal/rate-limit");
+const { isThrottled, visitorProof } = await import("@/lib/dal/rate-limit");
 const { attemptProof, visitorKey } = await import("@/lib/visitor-address");
 
 const secret = "test-visitor-hash-secret-0123456789abcdef";
@@ -76,5 +76,15 @@ describe("isThrottled", () => {
     await expect(isThrottled("login")).rejects.toThrow("The attempt could not be counted");
     rpcMock.mockResolvedValue({ data: [], error: null });
     await expect(isThrottled("login")).rejects.toThrow("The attempt could not be counted");
+  });
+});
+
+describe("visitorProof", () => {
+  it("gives the key of the trusted address and the proof of this minute for the action, and calls the database for nothing", async () => {
+    const { key, proof } = await visitorProof("report");
+    expect(key).toBe(visitorKey(secret, "198.51.100.7"));
+    expect(proof).toBe(attemptProof(secret, "report", key, Date.parse("2026-11-09T10:00:00Z")));
+    expect(proof).not.toBe(attemptProof(secret, "login", key, Date.parse("2026-11-09T10:00:00Z")));
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 });

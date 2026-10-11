@@ -115,3 +115,21 @@ export function applicantsExportPath(lang: string, slug: string): string {
 export function adminPath(lang: string, segment = ""): string {
   return segment ? `/${lang}/admin/${segment}` : `/${lang}/admin`;
 }
+
+// The form to report a vacancy, a company or a page (and the note on candidate profiles), with the target already named when the link comes from a page that
+// knows it (a vacancy by its id, a page by its path).
+export function reportPath(lang: string, type: "job" | "company" | "profile" | "content", target?: string): string {
+  const query = new URLSearchParams({ type });
+  if (target) query.set(type === "content" ? "path" : "job", target);
+  return `/${lang}/report?${query.toString()}`;
+}
+
+// A member reports an applicant of the organisation from the applicant page.
+export function applicantReportPath(lang: string, slug: string, id: string): string {
+  return `${applicantPath(lang, slug, id)}/report`;
+}
+
+export function myReportsPath(lang: string, after?: { at: string; id: number }): string {
+  if (!after) return `/${lang}/reports`;
+  return `/${lang}/reports?${new URLSearchParams({ afterAt: after.at, afterId: String(after.id) }).toString()}`;
+}

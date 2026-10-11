@@ -6,6 +6,7 @@ import {
   homePath,
   jobsPath,
   membersPath,
+  myReportsPath,
   notificationSettingsPath,
   settingsPath,
 } from "@/lib/routes";
@@ -22,6 +23,7 @@ export type NavIcon =
   | "applicants"
   | "team"
   | "billing"
+  | "reports"
   | "settings";
 
 // match is the address the link stands for: the page and everything below it, or only the page when exact is set. icon
@@ -69,13 +71,15 @@ export function organizationLinks(lang: string, { slug, role, suspended }: Pick<
 // notification settings (an employer is sent away from the account settings page, which is for candidates). orgSlug is
 // given to a person in several organisations, so that the page keeps the header of the one they work in.
 export function accountLinks(lang: string, accountKind: "worker" | "company", orgSlug?: string): NavLink[] {
+  const reports: NavLink = { label: "My reports", href: myReportsPath(lang), match: myReportsPath(lang), icon: "reports" };
   if (accountKind === "worker") {
     return [
       { label: "Edit profile", href: `/${lang}/passport`, match: `/${lang}/passport`, icon: "passport" },
       { label: "Settings", href: settingsPath(lang), match: settingsPath(lang), icon: "settings", exact: true },
+      reports,
     ];
   }
-  return [{ label: "Settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang), icon: "settings" }];
+  return [{ label: "Settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang), icon: "settings" }, reports];
 }
 
 // The onboarding and consent pages exist to finish a step that every other page waits for, so the header offers no links there.

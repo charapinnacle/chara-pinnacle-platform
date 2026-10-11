@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Building2, FileText, KeyRound, type LucideIcon, ScrollText, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
+import { BarChart3, Building2, FileText, Flag, KeyRound, type LucideIcon, ScrollText, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SidebarIdentity } from "@/components/layout/sidebar-identity";
 import { SidebarLink } from "@/components/layout/sidebar-link";
@@ -17,6 +17,7 @@ const icons: Record<Segment, LucideIcon> = {
   audit: ScrollText,
   staff: UserCog,
   "mfa-reset": KeyRound,
+  reports: Flag,
   moderation: EyeOff,
   suspensions: ShieldAlert,
 };

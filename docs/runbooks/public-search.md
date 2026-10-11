@@ -49,7 +49,7 @@ The reference lists of the form (countries, currencies, industries, occupations)
 
 ## 4. Index upkeep (quarterly)
 
-Every filter of `search_jobs` is served by an index or, for the salary, the booleans and the recruitment preference, by the newest-first scan with the filter (the list is in D49). Adding a filter means adding its index and a row in the pgTAP test `043_public_search_access.test.sql`. At the quarterly review read how often each index is used:
+Every filter of `search_jobs` is served by an index or, for the salary, the booleans and the recruitment preference, by the newest-first scan with the filter (the list is in D49). The Employer filter (U65, D82) is a substring of the display name of the organisation, 2 to 100 characters, served by the trigram index `organizations_display_name_fold_trgm_idx`; the search log line names it as `employer` and never holds its value. Adding a filter means adding its index and a row in the pgTAP test `043_public_search_access.test.sql`. At the quarterly review read how often each index is used:
 
 ```sql
 select indexrelname, idx_scan, pg_size_pretty(pg_relation_size(indexrelid)) as size

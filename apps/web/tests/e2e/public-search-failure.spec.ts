@@ -3,7 +3,7 @@ import { waitForHydration } from "./support/hydration";
 import { expect, test } from "./support/test";
 
 const SEARCH_JOBS =
-  "public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, integer)";
+  "public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, text, integer)";
 
 // The function is made unavailable to the API roles for the whole database while this file runs, so it has a project of
 // its own that follows the others (playwright.config.ts).

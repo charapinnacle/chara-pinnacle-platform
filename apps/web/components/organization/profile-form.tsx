@@ -2,18 +2,22 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
-import { InputField } from "@/components/forms/form-field";
+import { InputField, TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { updateOrganizationProfile } from "@/lib/actions/organizations";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
-import { organizationProfileSchema, type OrganizationProfileInput } from "@/lib/validation/organization";
+import {
+  DESCRIPTION_MAX_CHARS,
+  organizationProfileSchema,
+  type OrganizationProfileInput,
+} from "@/lib/validation/organization";
 
 type ProfileFormProps = {
   slug: string;
@@ -29,6 +33,7 @@ const ids = {
   country: "org-country",
   industry: "org-industry",
   website: "org-website",
+  description: "org-description",
 } as const satisfies Record<keyof OrganizationProfileInput, string>;
 
 const FAILURE = "Could not save the company profile";
@@ -42,6 +47,7 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
   });
   const { control, formState, handleSubmit, reset } = form;
   const [duplicateLegalName, setDuplicateLegalName] = useState(false);
+  const descriptionLength = useWatch({ control, name: "description" }).length;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: FAILURE });
 
   function onSubmit(values: OrganizationProfileInput) {
@@ -99,6 +105,13 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
         options={toOptions(industries)}
       />
       <InputField control={control} name="website" id={ids.website} label="Website (optional)" type="url" autoComplete="url" />
+      <TextareaField
+        control={control}
+        name="description"
+        id={ids.description}
+        label="About your company (optional)"
+        description={`Plain text, shown to candidates on your vacancies. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
+      />
       {duplicateLegalName ? (
         <Notice tone="info" role="status">
           An organisation with a similar name already exists on CHARA.

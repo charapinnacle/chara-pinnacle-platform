@@ -51,7 +51,7 @@ export async function getOrganizationProfile(organizationId: string): Promise<Or
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("legal_name, display_name, based_in_country, industry_code, website")
+    .select("legal_name, display_name, based_in_country, industry_code, website, description")
     .eq("id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The organization profile could not be loaded", { cause: error });
@@ -62,6 +62,7 @@ export async function getOrganizationProfile(organizationId: string): Promise<Or
       country: data.based_in_country,
       industry: data.industry_code ?? "",
       website: data.website ?? "",
+      description: data.description ?? "",
     }
   );
 }

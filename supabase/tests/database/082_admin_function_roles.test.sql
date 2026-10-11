@@ -24,8 +24,10 @@ select pg_temp.org_on('employer_starter') as org_active \gset
 select pg_temp.org_on() as org_suspended \gset
 select pg_temp.open_job('Matrix vacancy') as mjob \gset
 update public.organizations set status = 'suspended' where id = :'org_suspended';
+insert into public.reports (target_type, job_id, category, details, good_faith_confirmed)
+values ('job', :'mjob', 'other', 'A report seeded for the matrix of roles.', true) returning id as mreport \gset
 
--- The 19 functions of Phase 1 that the console calls: the SQL of a valid call and the roles that
+-- The 22 functions of Phase 1 that the console calls: the SQL of a valid call and the roles that
 -- may make it. The calls that change something name their own targets, so a call that is refused changes none of them.
 create temp table fns (name text primary key, sql text not null, roles text[] not null);
 insert into fns values
@@ -47,7 +49,10 @@ insert into fns values
   ('admin_search_users', $$select * from public.admin_search_users('example')$$, '{admin,trust_safety}'),
   ('admin_search_organizations', $$select * from public.admin_search_organizations('org')$$, '{admin,trust_safety}'),
   ('admin_get_user', format($$select * from public.admin_get_user(%L)$$, :'wa'), '{admin,trust_safety}'),
-  ('admin_get_organization', format($$select * from public.admin_get_organization(%L)$$, current_setting('t.a')), '{admin,trust_safety}');
+  ('admin_get_organization', format($$select * from public.admin_get_organization(%L)$$, current_setting('t.a')), '{admin,trust_safety}'),
+  ('admin_list_reports', $$select * from public.admin_list_reports()$$, '{admin,trust_safety}'),
+  ('admin_get_report', format($$select * from public.admin_get_report(%L)$$, :'mreport'), '{admin,trust_safety}'),
+  ('admin_set_report_status', format($$select public.admin_set_report_status(%L, 'in_review', 'Looking at the report.')$$, :'mreport'), '{trust_safety}');
 
 -- who: the roles the caller holds, unrevoked
 create temp table callers (name text primary key, uid uuid, db_role text not null, aal text not null, held text[] not null);
@@ -90,7 +95,7 @@ create temp table refused as
 select f.name as fn, c.name as caller, pg_temp.call_as(c.uid, c.db_role, f.sql, c.aal) as outcome
 from fns f cross join callers c
 where not (f.roles && c.held and c.aal = 'aal2');
-select is((select count(*) from refused), 167::bigint, 'AC2: each of the 19 functions was called by each of the 10 callers that may not call it');
+select is((select count(*) from refused), 192::bigint, 'AC2: each of the 22 functions was called by each of the 10 callers that may not call it');
 select is_empty(
   $$select fn, caller, outcome from refused r where outcome is distinct from pg_temp.expected(fn, caller)$$,
   'AC2: a caller without the role, at aal1, revoked or anonymous is refused with the expected error by every function'
@@ -103,7 +108,7 @@ select f.name as fn, c.name as caller, pg_temp.call_as(c.uid, c.db_role, f.sql, 
 from fns f join callers c on f.roles && c.held and c.aal = 'aal2'
 order by f.name, c.name;
 select is_empty($$select * from allowed where outcome <> 'ok'$$, 'AC2: the role named for the function, at aal2, succeeds');
-select is((select count(*) from allowed), 23::bigint, 'AC2: each of the 19 functions was called by each role it names');
+select is((select count(*) from allowed), 28::bigint, 'AC2: each of the 22 functions was called by each role it names');
 select is(
   (select count(*) from refused where fn in ('suspend_user', 'reinstate_user', 'suspend_organization', 'reinstate_organization')
      and caller in ('admin at aal2', 'admin at aal1') and outcome = 'P0001|CHARA_FORBIDDEN|'),
@@ -113,8 +118,8 @@ select is(
   (select count(*) from allowed where caller like 'verification_reviewer%'), 0::bigint, 'AC2: the Verification Reviewer can do nothing'
 );
 select is(
-  (select count(*) from refused where caller = 'verification_reviewer at aal2' and outcome = 'P0001|CHARA_FORBIDDEN|'), 19::bigint,
-  'AC2: and is refused all 19 with CHARA_FORBIDDEN'
+  (select count(*) from refused where caller = 'verification_reviewer at aal2' and outcome = 'P0001|CHARA_FORBIDDEN|'), 22::bigint,
+  'AC2: and is refused all 22 with CHARA_FORBIDDEN'
 );
 
 -- AC2: the configuration tables
