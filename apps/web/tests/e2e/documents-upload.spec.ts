@@ -96,6 +96,25 @@ test.describe("candidate documents: upload", () => {
     await expect(upload(page)).toBeEnabled();
   });
 
+  test("FR-B2 AC1: the other button changes the type of the open form and keeps what was typed; Cancel closes the form", async ({ page }) => {
+    const user = await createCommittedUser("worker");
+    await openDocuments(page, user);
+    await openUploadForm(page, "Upload CV");
+    await page.getByLabel("Title", { exact: true }).fill("Kept title");
+    await page.getByLabel("File", { exact: true }).setInputFiles({ name: "kept.pdf", mimeType: "application/pdf", buffer: pdfBytes(2_048) });
+
+    await page.getByRole("button", { name: "Add certificate", exact: true }).click();
+    await expect(page.getByLabel("Type", { exact: true })).toHaveValue("certificate");
+    await expect(page.getByLabel("Expiry date (optional)")).toBeVisible();
+    await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Kept title");
+    await expect(announcements(page)).toHaveText("Selected file: kept.pdf (2 KB)");
+
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByLabel("Title", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add certificate", exact: true })).toBeFocused();
+    expect(documentRows(user.id)).toHaveLength(0);
+  });
+
   test("FR-B2 AC1: a certificate asks for an expiry date, a CV does not", async ({ page }) => {
     const user = await createCommittedUser("worker");
     await openDocuments(page, user);

@@ -25,13 +25,19 @@ type Outcome = { errors?: Record<string, string>; message?: string; uploaded?: s
 
 const SEND_FAILED = "The file could not be sent. Delete the unfinished upload from the list and try again.";
 
-type UploadFormProps = { initialType: "cv" | "certificate"; onChanged: () => void; onFailed: (documentId: string) => void };
+type UploadFormProps = {
+  presetType: "cv" | "certificate";
+  onChanged: () => void;
+  onFailed: (documentId: string) => void;
+  onCancel: () => void;
+};
 
 // Metadata first, then the bytes: the Server Action creates the row and the signed upload URL, and the browser sends the
 // file straight to Storage, so no file passes through a Next.js request. The form opens when the person presses Upload CV
-// or Add certificate, with that type chosen, and the focus goes to its first field.
-export function UploadForm({ initialType, onChanged, onFailed }: UploadFormProps) {
-  const emptyForm = { type: initialType, title: "", expiresOn: "" };
+// or Add certificate, with that type chosen, and the focus goes to its first field. Pressing the other button while the
+// form is open changes the type and keeps what was typed.
+export function UploadForm({ presetType, onChanged, onFailed, onCancel }: UploadFormProps) {
+  const emptyForm = { type: presetType, title: "", expiresOn: "" };
   const form = useForm<UploadFormInput>({ resolver: zodResolver(uploadFormSchema), defaultValues: emptyForm });
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not upload the document" });
   const [announcement, setAnnouncement] = useState("");
@@ -40,8 +46,9 @@ export function UploadForm({ initialType, onChanged, onFailed }: UploadFormProps
   const type = useWatch({ control, name: "type" });
 
   useEffect(() => {
+    form.setValue("type", presetType);
     form.setFocus("title");
-  }, [form]);
+  }, [form, presetType]);
 
   const onSubmit = form.handleSubmit(() =>
     submit(
@@ -112,9 +119,14 @@ export function UploadForm({ initialType, onChanged, onFailed }: UploadFormProps
       <p aria-live="polite" className="min-h-6 text-body text-muted-foreground">
         {announcement}
       </p>
-      <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Uploading..." : "Upload"}
-      </FormButton>
+      <div className="flex flex-wrap gap-3">
+        <FormButton type="submit" busy={formState.isSubmitting} className="w-auto">
+          {formState.isSubmitting ? "Uploading..." : "Upload"}
+        </FormButton>
+        <FormButton type="button" variant="secondary" disabled={formState.isSubmitting} className="w-auto" onClick={onCancel}>
+          Cancel
+        </FormButton>
+      </div>
     </form>
   );
 }

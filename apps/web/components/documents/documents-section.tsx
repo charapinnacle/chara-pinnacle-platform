@@ -34,6 +34,7 @@ export function DocumentsSection() {
   const [uploading, setUploading] = useState<UploadType | null>(null);
   const router = useRouter();
   const shown = useRef(0);
+  const openers = useRef<Partial<Record<UploadType, HTMLButtonElement | null>>>({});
   // Rows whose bytes this page failed to send: they are not being checked, whatever their age.
   const failed = useRef(new Set<string>());
 
@@ -101,6 +102,9 @@ export function DocumentsSection() {
         {uploadButtons.map(({ type, label }) => (
           <FormButton
             key={type}
+            ref={(node) => {
+              openers.current[type] = node;
+            }}
             type="button"
             variant="secondary"
             className="w-auto"
@@ -111,7 +115,15 @@ export function DocumentsSection() {
         ))}
       </div>
       {uploading ? (
-        <UploadForm key={uploading} initialType={uploading} onChanged={reload} onFailed={(id) => failed.current.add(id)} />
+        <UploadForm
+          presetType={uploading}
+          onChanged={reload}
+          onFailed={(id) => failed.current.add(id)}
+          onCancel={() => {
+            setUploading(null);
+            openers.current[uploading]?.focus();
+          }}
+        />
       ) : null}
       {phase === "loading" ? <LoadingSkeleton rows={3} /> : null}
       {phase === "error" ? (
