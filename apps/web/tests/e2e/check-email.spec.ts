@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from "@playwright/test";
 import { moveConfirmationSent, userByEmail } from "./support/accounts";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
-import { createCommittedUser, requestReset, RESET_PATH, RESET_SUBJECT } from "./support/login";
+import { createCommittedUser, requestReset, RESET_PATH, RESET_SENT, RESET_SUBJECT, RESET_WAIT } from "./support/login";
 import { messageCount, waitForMessage } from "./support/mailpit";
 import { fillSignup, newEmail, PASSWORD, summary } from "./support/signup-page";
 import { expect, test } from "./support/test";
@@ -41,7 +41,7 @@ test.describe("U67: the page after sign-up and after a password reset request", 
     await expect(page.getByRole("main")).not.toContainText(email);
     await expect(page.getByRole("main").getByRole("textbox")).toHaveCount(0);
     await expect(page.getByText("Not there? Check your spam or promotions folder.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Use a different address" })).toHaveAttribute("href", "/en/signup");
+    await expect(page.getByRole("button", { name: "Use a different address" })).toBeVisible();
     expect(page.url()).not.toContain(email);
     expect(page.url()).not.toContain("@");
     expect(new URL(page.url()).search).toBe("");
@@ -100,6 +100,7 @@ test.describe("U67: the page after sign-up and after a password reset request", 
     await resend(page).click();
     await expect(live).toHaveText("We sent the email again.");
     await expect(resend(page)).toHaveText(/^Resend in \d+ s$/);
+    await expect(resend(page)).toBeFocused();
     await expect.poll(() => messageCount(email), { timeout: 30_000 }).toBe(2);
     expect(JSON.parse(decodeURIComponent((await pendingCookie(context))!.value)).sentAt).toBeGreaterThan(Date.now() - 20_000);
   });
@@ -179,13 +180,35 @@ test.describe("U67: the page after sign-up and after a password reset request", 
     await expectNoAxeViolations(page);
   });
 
-  test("Use a different address returns to the form with the address filled in, and the address is in no URL", async ({ page }) => {
+  test("Use a different address returns to the form with the address filled in for a minute, and the address is in no URL", async ({ page, context }) => {
     const email = newEmail();
     await signUp(page, email);
-    await page.getByRole("link", { name: "Use a different address" }).click();
+
+    await page.goto("/en/signup");
+    await expect(page.getByLabel("Email address")).toHaveValue("");
+    await expect(page.locator("body")).not.toContainText(email);
+    expect(await page.content()).not.toContain(email);
+
+    await page.goto("/en/verify-email");
+    await waitForHydration(page.getByRole("button", { name: "Use a different address" }));
+    await page.getByRole("button", { name: "Use a different address" }).click();
     await expect(page).toHaveURL(/\/en\/signup$/);
     await expect(page.getByLabel("Email address")).toHaveValue(email);
     expect(page.url()).not.toContain("@");
+    const prefill = (await context.cookies()).find((cookie) => cookie.name === "chara_prefill_email")!;
+    expect(prefill).toMatchObject({ httpOnly: true, sameSite: "Lax", path: "/en" });
+    expect(prefill.expires - Date.now() / 1000).toBeLessThanOrEqual(60);
+  });
+
+  test("the address is not filled in again after the next link is sent", async ({ page }) => {
+    await signUp(page, newEmail());
+    await page.getByRole("button", { name: "Use a different address" }).click();
+    const other = newEmail();
+    await fillSignup(page, { kind: "worker", email: other, password: PASSWORD });
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page).toHaveURL(/\/en\/verify-email$/);
+    await page.goto("/en/signup");
+    await expect(page.getByLabel("Email address")).toHaveValue("");
   });
 
   test("the cookie is removed when the link is used, and then /verify-email asks for an address again", async ({ page, context }) => {
@@ -218,6 +241,8 @@ test.describe("U67: after a password reset request", () => {
     const user = await createCommittedUser("worker");
     await requestReset(page, user.email);
     await expect(page).toHaveURL(RESET_PATH);
+    await expect(page.getByText(RESET_SENT, { exact: true })).toBeVisible();
+    await expect(page.getByText(RESET_WAIT)).toBeVisible();
     await expect(page.getByText(`Sent to ${masked(user.email)}`)).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(user.email);
     await expect(page.getByRole("main").getByRole("textbox")).toHaveCount(0);
@@ -230,7 +255,7 @@ test.describe("U67: after a password reset request", () => {
       await page.setViewportSize({ width, height: 900 });
       await expectNoAxeViolations(page);
     }
-    await page.getByRole("link", { name: "Use a different address" }).click();
+    await page.getByRole("button", { name: "Use a different address" }).click();
     await expect(page).toHaveURL(/\/en\/forgot-password$/);
     await expect(page.getByLabel("Email", { exact: true })).toHaveValue(user.email);
   });

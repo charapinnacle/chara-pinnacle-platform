@@ -5,6 +5,7 @@ import path from "node:path";
 import { confirmFromLink, userByEmail } from "./support/accounts";
 import { alertText, fillLogin } from "./support/login-page";
 import {
+  checkEmailText,
   createCommittedUser,
   emailedResetPath,
   LINK_EXPIRED,
@@ -12,6 +13,7 @@ import {
   requestReset,
   RESET_SENT,
   RESET_SUBJECT,
+  RESET_WAIT,
 } from "./support/login";
 import { extractLinks, messageCount, waitForMessage } from "./support/mailpit";
 import { fillSignup, newEmail, PASSWORD, summary } from "./support/signup-page";
@@ -158,10 +160,12 @@ test.describe("FR-I1: account emails through the mail catcher", () => {
   }) => {
     const user = await createCommittedUser("worker");
     await requestReset(page, user.email);
+    const first = await checkEmailText(page);
     await waitForMessage(user.email, { subject: RESET_SUBJECT, timeoutMs: 60_000 });
 
     await requestReset(page, user.email);
-    await expect(page.getByRole("button", { name: /^Resend in \d+ s$/ })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByText(RESET_WAIT)).toBeVisible();
+    expect(await checkEmailText(page)).toBe(first);
     await page.waitForTimeout(1_500);
     expect(await messageCount(user.email)).toBe(1);
   });

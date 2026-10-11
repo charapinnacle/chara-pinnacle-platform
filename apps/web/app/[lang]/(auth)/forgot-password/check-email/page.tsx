@@ -3,7 +3,7 @@ import { Mail } from "lucide-react";
 import { redirect } from "next/navigation";
 import { CheckEmailPanel } from "@/components/auth/check-email-panel";
 import { AuthCard } from "@/components/layout/auth-card";
-import { resendResetEmail } from "@/lib/actions/recovery";
+import { changeRecoveryAddress, resendResetEmail } from "@/lib/actions/recovery";
 import { cooldownLeft, maskEmail, pendingEmail } from "@/lib/pending-email";
 
 export const metadata: Metadata = { title: "Check your email — CHARA", robots: { index: false } };
@@ -16,13 +16,16 @@ export default async function ResetSentPage({ params }: PageProps<"/[lang]/forgo
     <AuthCard
       icon={Mail}
       title="Check your email"
-      description="If an account exists for this address, we have sent a link to choose a new password. The link is valid for 1 hour and works once."
+      description="If an account exists for this email, we have sent a reset link."
     >
+      <p className="text-center text-small text-muted-foreground text-balance">
+        The link is valid for 1 hour and works once. Wait a minute before asking for another.
+      </p>
       <CheckEmailPanel
         maskedEmail={maskEmail(pending.email)}
         initialCooldown={cooldownLeft(pending.sentAt)}
         resend={resendResetEmail}
-        differentAddressHref={`/${lang}/forgot-password`}
+        changeAddress={changeRecoveryAddress}
       />
     </AuthCard>
   );
