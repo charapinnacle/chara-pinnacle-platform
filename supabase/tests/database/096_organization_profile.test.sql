@@ -48,10 +48,10 @@ values (:'a', :'adm', 'admin', now()), (:'a', :'mem', 'member', now()), (:'a', :
 -- Structure and grants
 select ok(
   (select prosecdef and proconfig = array['search_path=""'] from pg_proc
-   where oid = 'public.update_organization_profile(uuid, text, text, text, text, text)'::regprocedure)
-  and has_function_privilege('authenticated', 'public.update_organization_profile(uuid, text, text, text, text, text)', 'execute')
-  and not has_function_privilege('anon', 'public.update_organization_profile(uuid, text, text, text, text, text)', 'execute')
-  and not has_function_privilege('service_role', 'public.update_organization_profile(uuid, text, text, text, text, text)', 'execute'),
+   where oid = 'public.update_organization_profile(uuid, text, text, text, text, text, text)'::regprocedure)
+  and has_function_privilege('authenticated', 'public.update_organization_profile(uuid, text, text, text, text, text, text)', 'execute')
+  and not has_function_privilege('anon', 'public.update_organization_profile(uuid, text, text, text, text, text, text)', 'execute')
+  and not has_function_privilege('service_role', 'public.update_organization_profile(uuid, text, text, text, text, text, text)', 'execute'),
   'the function is security definer with an empty search_path and runs for authenticated only'
 );
 select is(
