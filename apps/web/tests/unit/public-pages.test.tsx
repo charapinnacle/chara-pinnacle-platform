@@ -173,3 +173,17 @@ describe("the Trust & Safety page (FR-H1 AC12)", () => {
     expect(text).toContain("Paying for a plan does not make an organisation verified and does not move its vacancies up in search results");
   });
 });
+
+describe("the About page (FR-H1, D81)", () => {
+  it("has the client's title and subtitle and says only what is true today: workers and employers, the rest in a later phase", async () => {
+    const { default: AboutPage } = await import("@/app/[lang]/(public)/about/page");
+    const html = renderToStaticMarkup(await AboutPage(english as Parameters<typeof AboutPage>[0]));
+    expect(html).toContain("About CHARA");
+    expect(html).toContain("Building the Global Workforce Network");
+    expect(html).toContain("CHARA connects workers and employers.");
+    expect(html).toContain("Recruitment companies and staffing companies follow in a later phase.");
+    expect(html).not.toMatch(/four (major )?participants|exchange workforce requirements/i);
+    expect(html).toContain('href="/en/imprint"');
+    expect(html).toContain('href="/en/contact"');
+  });
+});

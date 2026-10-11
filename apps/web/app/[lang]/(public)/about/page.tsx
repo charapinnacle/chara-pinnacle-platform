@@ -10,14 +10,12 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/about">): 
 export default async function AboutPage({ params }: PageProps<"/[lang]/about">) {
   const { lang } = await params;
   return (
-    <ContentPage
-      title="About CHARA"
-      lead="CHARA is a workforce network where workers and employers meet."
-    >
-      <ContentSection heading="What we do">
+    <ContentPage title="About CHARA" lead="Building the Global Workforce Network">
+      <ContentSection heading="Who CHARA connects">
         <p>
-          We give workers one place to present themselves and apply for work, and employers one place to publish
-          vacancies and manage applicants. Workers never pay to use CHARA.
+          CHARA connects workers and employers. The platform lets them discover one another, create structured profiles,
+          find opportunities and build professional connections. Recruitment companies and staffing companies follow in
+          a later phase.
         </p>
       </ContentSection>
       <ContentSection heading="How we work">
