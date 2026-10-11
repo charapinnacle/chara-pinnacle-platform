@@ -5,6 +5,7 @@ FR-B6, design point D46 (OPEN_QUESTIONS.md). Queries are run by CHARA staff as t
 ## 1. How an account is closed
 
 1. The candidate asks on `/en/settings` (`request_account_deletion`): `profiles.deleted_at` is set, the audit row `account.deletion_requested` is written and the email `deletion_requested` is queued. Nothing else changes: the account stays active, the candidate can sign in and read their data, and organisations can no longer open their documents.
+   The retention rule `inactive_worker_data` (730 days without a sign-in, a session refresh, an application or a stage change; D79) writes the same request for an inactive candidate, with `reason` `inactivity` in the audit row's metadata and without the email; the steps below are the same.
 2. During the cooling-off period (setting `account_deletion_cooling_off_days`, 30) the candidate can cancel (`cancel_account_deletion`, audit row `account.deletion_cancelled`, no email).
 3. The pg_cron job `queue-account-erasures` (daily, 02:30 UTC, `private.queue_account_erasures()`) takes every request whose period is over:
    - without a hold it queues one `erase_user` job in the pgmq queue `account_ops` (none while one waits);
@@ -43,6 +44,7 @@ Requests, cancellations and completions per month, and how long a completed eras
 select
   date_trunc('month', created_at) as month,
   count(*) filter (where action = 'account.deletion_requested') as requests,
+  count(*) filter (where action = 'account.deletion_requested' and metadata ->> 'reason' = 'inactivity') as of_them_for_inactivity,
   count(*) filter (where action = 'account.deletion_cancelled') as cancellations,
   count(*) filter (where action = 'account.erased') as completions,
   round(avg(extract(epoch from (

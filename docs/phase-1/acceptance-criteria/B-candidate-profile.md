@@ -277,7 +277,7 @@
 
 - The antivirus vendor is not chosen (O4). Default assumed: the scan step records 'skipped' after the magic-byte check and documents are served download-only.
 - The SOP says deleting a document revokes the active shares that reference it. Default assumed: the whole share for that application is revoked (not just the one document), and the candidate is warned in the delete dialog.
-- The SOP says deletion removes the file and the metadata; ARCHITECTURE keeps worker_documents.deleted_at. Default assumed: soft delete (the row is hidden everywhere and removed at account erasure), the object removal is queued and retried through account-ops.
+- The SOP says deletion removes the file and the metadata; ARCHITECTURE keeps worker_documents.deleted_at. Default assumed: soft delete (the row is hidden everywhere and removed at account erasure), the object removal is queued and retried through account-ops. Changed by D79 (SA-13): the row is also removed 30 days after deletion once its file is gone (retention row `deleted_worker_documents`).
 - A metadata row whose upload never finished stays 'pending' until the candidate deletes it. Default assumed: no automatic cleanup job in Phase 1; object orphans are prevented by the storage insert policy.
 - The sources set no limit on the number of documents per candidate. Default assumed: none in Phase 1 beyond the 15 MB per file. Changed by D79 (security review SA-06): at most `worker_documents_max` (50) live documents per candidate.
 - The accepted document types are only CV and certificate; identity document files and verification evidence belong to a later phase.

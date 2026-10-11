@@ -63,9 +63,9 @@ select msg_id, read_ct, enqueued_at, message from pgmq.q_account_ops where enque
 select created_at, entity_id, metadata from audit.log where action = 'account_ops_abandoned' order by id desc limit 50;
 ```
 
-An abandoned job is kept as a dead letter in `pgmq.a_account_ops` (SA-14) with its whole message, a `delete_object` job with its bucket and path; the `msg_id` of the `account_ops_abandoned` row finds it, and the retention row `account_ops_archive` (90 days) removes it. Run it again once the cause is fixed (every job is idempotent): `select pgmq.send('account_ops', a.message || jsonb_build_object('reason', 'requeue, ticket <TICKET>')) from pgmq.a_account_ops a where a.msg_id = <msg_id>;`. Finished jobs are not archived, so `audit.log` (`account_ops_done`, `account_ops_abandoned`) stays the record of what was done; the audit row never holds the path, because the path holds the file name.
+An abandoned job is kept as a dead letter in `pgmq.a_account_ops` (SA-14) with its whole message, a `delete_object` job with its bucket and path; the `msg_id` of the `account_ops_abandoned` row finds it, and the retention row `account_ops_archive` (90 days) removes it. Run it again once the cause is fixed (every job is idempotent): `select pgmq.send('account_ops', a.message || jsonb_build_object('reason', 'requeue, ticket <TICKET>')) from pgmq.a_account_ops a where a.msg_id = <msg_id>;`. The erasure of a candidate deletes the candidate's dead letters with the account. Finished jobs are not archived, so `audit.log` (`account_ops_done`, `account_ops_abandoned`) stays the record of what was done; the audit row never holds the path, because the path holds the file name.
 
-Reconciliation of candidate files (weekly, and after any `delete_object` dead letter): the first query lists deleted documents whose file is still in Storage, the second files that belong to no document. Queue the removal of the first with the statement after them; a file of the second is removed with a `delete_object` job whose `user_id` is the first segment of its name, after checking that the account still exists (an erased account's folder is purged as a whole). pgTAP `101_account_ops_dead_letters` runs the same queries. A soft-deleted document row is kept until its file is gone (retention row `deleted_worker_documents`), so the first query never loses a path.
+Reconciliation of candidate files (weekly, and after any `delete_object` dead letter): the first query lists deleted documents whose file is still in Storage, the second files that belong to no document. Queue the removal of the first with the statement after them, 100 at a time (run it until it queues nothing; it skips a file whose removal is already waiting); a file of the second is removed with a `delete_object` job whose `user_id` is the first segment of its name, after checking that the account still exists (an erased account's folder is purged as a whole). pgTAP `101_account_ops_dead_letters` runs the same queries. A soft-deleted document row is kept until its file is gone (retention row `deleted_worker_documents`), so the first query never loses a path.
 
 ```sql
 select d.id, d.worker_user_id, d.storage_path, d.deleted_at
@@ -87,7 +87,10 @@ select pgmq.send('account_ops', jsonb_build_object(
   'reason', 'reconcile, ticket <TICKET>'))
 from public.worker_documents d
 join storage.objects o on o.bucket_id = d.bucket_id and o.name = d.storage_path
-where d.deleted_at is not null and d.deleted_at < now() - interval '1 hour';
+where d.deleted_at is not null and d.deleted_at < now() - interval '1 hour'
+  and not exists (select 1 from pgmq.q_account_ops q where q.message ->> 'path' = d.storage_path)
+order by d.deleted_at
+limit 100;
 ```
 
 ### scan-document (candidate documents)
