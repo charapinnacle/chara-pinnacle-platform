@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@/components/home/home.css";
 import { ClosingCall } from "@/components/home/closing-call";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";

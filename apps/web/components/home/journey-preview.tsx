@@ -8,9 +8,8 @@ const stages = [
   { label: "Interview", state: "next" },
 ] as const;
 
-// A calm, generic picture of what a candidate follows after applying: no employer, no number, no date. It is decoration
-// (hidden from assistive technology; the real tracker is on the application page), built in markup and CSS, and it draws its
-// current step once.
+// Decoration, hidden from assistive technology: the real tracker is on the application page. Generic on purpose, no employer,
+// no number, no date. The delays of its drawing follow the position of each stage (home.css).
 export function JourneyPreview() {
   return (
     <div aria-hidden className="w-full max-w-sm justify-self-center lg:justify-self-end">
@@ -37,7 +36,7 @@ export function JourneyPreview() {
               </span>
               {index < stages.length - 1 ? (
                 <span className="absolute start-[calc(0.75rem-0.5px)] top-7 bottom-1 w-px bg-border">
-                  {index < 2 ? <span className={cn("journey-line absolute inset-0 bg-brand", index === 1 && "journey-line-second")} /> : null}
+                  {stages[index + 1].state !== "next" ? <span className="journey-line absolute inset-0 bg-brand" /> : null}
                 </span>
               ) : null}
             </li>

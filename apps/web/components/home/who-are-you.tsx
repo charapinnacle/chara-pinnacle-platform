@@ -57,7 +57,7 @@ export function WhoAreYou({ lang }: { lang: string }) {
                 ))}
               </ul>
             </div>
-            <LinkButton href={signUpPath(lang, kind)} className="lift justify-self-start">
+            <LinkButton href={signUpPath(lang, kind)} className="justify-self-start">
               {button}
             </LinkButton>
           </section>
