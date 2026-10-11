@@ -24,11 +24,9 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
         title="Settings"
         breadcrumb={<Breadcrumbs items={[{ label: "Dashboard", href: homePath(lang, "worker") }, { label: "Settings" }]} />}
       />
-      <Section id="notifications" title="Notifications" description="Which emails we send you about your applications.">
-        <TextLink standalone="flush" href={notificationSettingsPath(lang)}>
-          Notification settings
-        </TextLink>
-      </Section>
+      <TextLink standalone="flush" href={notificationSettingsPath(lang)}>
+        Notification settings
+      </TextLink>
       <Section
         id="delete-account"
         title="Delete account"

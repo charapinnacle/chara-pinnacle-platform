@@ -81,7 +81,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         </FormButton>
       </div>
 
-      <div role="group" aria-label="Filters" className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+      <div role="group" aria-label="Filters" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ComboboxField
           control={control}
           name="occupation"

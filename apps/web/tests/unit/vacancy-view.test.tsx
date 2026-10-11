@@ -98,6 +98,11 @@ describe("VacancyActions", () => {
     expect(html).not.toContain("Applying opens soon");
   });
 
+  it("names a saved vacancy's button with its visible text, so that the visible label is part of the accessible name", () => {
+    const html = actions("candidate", true);
+    expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*aria-label="Saved: Welder"[^>]*>.*Saved<\/button>/);
+  });
+
   it("shows the date and stage of a non-withdrawn application with a link to it and no Apply now", () => {
     const html = actions("candidate", false, { id: "app-1", status: "shortlisted", createdAt: "2026-10-03T09:00:00+00:00" });
     expect(html).toContain("You applied on 3 Oct 2026, stage Shortlisted");

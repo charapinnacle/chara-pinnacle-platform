@@ -16,7 +16,7 @@ const newMarker = () => `zq${uniqueToken()}`;
 const rows = (page: Page): Locator => page.getByRole("main").locator("ul:not([aria-label='Active filters']) > li");
 const row = (page: Page, title: string): Locator => rows(page).filter({ hasText: title });
 const saveButton = (scope: Page | Locator, title: string): Locator =>
-  scope.getByRole("button", { name: `Save job: ${title}` });
+  scope.getByRole("button", { name: new RegExp(`^(Save job|Saved): ${title}$`) });
 
 function openJob(company: Company, title: string, createdAt = "now()"): string {
   return seedJob(company, { title, status: "open", createdAt });

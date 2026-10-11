@@ -38,7 +38,7 @@ function EmployerFigures({ lang, slug, loads }: { lang: string; slug: string; lo
   return (
     <div className="animate-stagger grid gap-4 sm:grid-cols-2">
       <Panel promise={loads.vacancies} errorTitle="The active jobs could not be counted">
-        {({ open }) => <SummaryCard label="Active jobs" detail="Accepting applications now" value={open} href={jobsPath(lang, slug, { status: "open" })} />}
+        {({ open }) => <SummaryCard label="Active jobs" value={open} href={jobsPath(lang, slug, { status: "open" })} />}
       </Panel>
       <Panel promise={loads.applications} errorTitle="The new applications could not be counted">
         {({ recent }) => (

@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { ApplyButton } from "@/components/jobs/apply-button";
 import { SaveJob } from "@/components/jobs/save-job";
+import { getApplicationStates, type ApplicationState } from "@/lib/dal/applications";
 import { searchJobs, type JobSearchResult } from "@/lib/dal/hiring";
 import { getCountries } from "@/lib/dal/reference";
 import { getSavedJobIds } from "@/lib/dal/saved-jobs";
@@ -10,12 +11,21 @@ import { formatDate } from "@/lib/i18n/format";
 import { formatSalary } from "@/lib/jobs/presentation";
 import { searchPath, usedFilters, type JobSearchFilters } from "@/lib/jobs/search-params";
 import { viewerOf, type Viewer } from "@/lib/jobs/viewer";
+import { applicationPath } from "@/lib/routes";
 
-type ResultRowProps = { job: JobSearchResult; lang: string; countryName: string; viewer: Viewer; saved: boolean; next: string };
+type ResultRowProps = {
+  job: JobSearchResult;
+  lang: string;
+  countryName: string;
+  viewer: Viewer;
+  saved: boolean;
+  application: ApplicationState | undefined;
+  next: string;
+};
 
 // A row says what a person decides on: the title, the employer, the place, the pay and the date. The facts of the vacancy
 // page (employment type, accommodation, visa support) are filters of the search and stay there.
-function ResultRow({ job, lang, countryName, viewer, saved, next }: ResultRowProps) {
+function ResultRow({ job, lang, countryName, viewer, saved, application, next }: ResultRowProps) {
   const salary = formatSalary(job);
   return (
     <li className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-6">
@@ -38,12 +48,22 @@ function ResultRow({ job, lang, countryName, viewer, saved, next }: ResultRowPro
       </div>
       {viewer === "company" ? null : (
         <div className="flex flex-wrap gap-3">
-          <ApplyButton jobId={job.id} title={job.title} lang={lang} viewer={viewer} next={next} variant="secondary" />
+          {application ? (
+            <TextLink standalone href={applicationPath(lang, application.id)} aria-label={`View application: ${job.title}`}>
+              View application
+            </TextLink>
+          ) : (
+            <ApplyButton jobId={job.id} title={job.title} lang={lang} viewer={viewer} next={next} variant="secondary" />
+          )}
           <SaveJob jobId={job.id} title={job.title} viewer={viewer} saved={saved} next={next} />
         </div>
       )}
     </li>
   );
+}
+
+function applicationOf(state: ApplicationState | undefined): ApplicationState | undefined {
+  return state && state.status !== "withdrawn" ? state : undefined;
 }
 
 function countText(count: number, hasMore: boolean): string {
@@ -55,7 +75,11 @@ function countText(count: number, hasMore: boolean): string {
 export async function JobResults({ lang, filters }: { lang: string; filters: JobSearchFilters }) {
   const [{ results, nextCursor }, countries, user] = await Promise.all([searchJobs(filters), getCountries(), getCurrentUser()]);
   const viewer = viewerOf(user);
-  const saved = viewer === "candidate" ? await getSavedJobIds(results.map((job) => job.id)) : new Set<string>();
+  const ids = results.map((job) => job.id);
+  const [saved, states] =
+    viewer === "candidate"
+      ? await Promise.all([getSavedJobIds(ids), getApplicationStates(ids)])
+      : [new Set<string>(), new Map<string, ApplicationState>()];
   const countryNames = new Map(countries.map(({ code, name }) => [code, name]));
   const filtered = usedFilters(filters).length > 0;
   const here = searchPath(lang, filters);
@@ -91,6 +115,7 @@ export async function JobResults({ lang, filters }: { lang: string; filters: Job
             countryName={countryNames.get(job.countryCode) ?? job.countryCode}
             viewer={viewer}
             saved={saved.has(job.id)}
+            application={applicationOf(states.get(job.id))}
             next={here}
           />
         ))}

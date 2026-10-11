@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 type SummaryCardProps = { label: string; hint?: string; detail?: string; value: number; href: string };
 
 // A figure of a dashboard. The whole card is the link to the list it counts; its name carries the number, as in
-// "Open vacancies: 2", so the visible "View all" is not read twice.
+// "Active jobs: 2", so the visible "View all" is not read twice.
 export function SummaryCard({ label, hint, detail, value, href }: SummaryCardProps) {
   const detailId = useId();
   return (

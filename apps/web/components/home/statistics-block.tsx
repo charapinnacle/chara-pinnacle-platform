@@ -1,6 +1,6 @@
 import type { StatisticTile } from "@/lib/statistics/tiles";
 
-// The label comes first in the document, so that a screen reader says "Vacancies 15"; the value is shown above it.
+// The label comes first in the document, so that a screen reader says "Active jobs 15"; the value is shown above it.
 export function StatisticsBlock({ tiles }: { tiles: StatisticTile[] }) {
   return (
     <section aria-labelledby="platform-statistics-heading" className="grid gap-6">
