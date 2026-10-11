@@ -277,8 +277,10 @@ end;
 $$;
 
 -- document_access_grant of 20261028100000: a third party's share is checked as before, then an owner or administrator
--- of the sharing organisation must be at aal2. document-url runs the grant with the caller's own token, so its links
--- follow. The owner's own download is unchanged.
+-- of the sharing organisation must be at aal2. Among several valid shares the one the caller may use at the current aal
+-- comes first, so a plain member of one organisation who administers another is not refused because the other's share
+-- is newer. document-url runs the grant with the caller's own token, so its links follow. The owner's own download is
+-- unchanged.
 create or replace function public.document_access_grant(p_document_id uuid, p_purpose text)
 returns table (bucket_id text, object_path text, file_name text)
 language plpgsql
@@ -309,7 +311,7 @@ begin
       and s.organization_id in (select private.member_org_ids())
       and s.scope ? v_document.id::text
       and private.share_valid(s.id)
-    order by s.created_at desc
+    order by (not private.is_aal2() and s.organization_id in (select private.member_org_ids('admin'))), s.created_at desc
     limit 1;
     if v_org is null then
       raise exception 'CHARA_FORBIDDEN' using errcode = '42501';
@@ -359,7 +361,9 @@ $$;
 
 -- The number of applications of a vacancy that still wait for a decision, for the dialogs that close or fill it
 -- (FR-C2 AC9). Vacancy pages are open to owners and administrators at aal1 (FR-A4 AC3) and a count names nobody, so it
--- stays readable there now that the applications are not. Any member of the vacancy's organisation; 0 for anybody else.
+-- stays readable there now that the applications are not. Any member of the vacancy's organisation while it is active,
+-- as under the policy the count replaces; 0 for anybody else. The open stages are those of openStages in
+-- apps/web/lib/applications/stage-machine.ts: every stage but the decisions and a withdrawal.
 create function public.count_applications_in_progress(p_job_id uuid) returns integer
 language sql
 stable
@@ -369,8 +373,10 @@ as $$
   select count(*)::integer
   from public.job_applications a
   where a.job_id = p_job_id
-    and a.organization_id in (select private.member_org_ids())
-    and a.status in ('applied', 'viewed', 'shortlisted', 'interview', 'offer')
+    and a.organization_id in (
+      select o.id from public.organizations o where o.id in (select private.member_org_ids()) and o.status = 'active'
+    )
+    and a.status not in ('hired', 'rejected', 'withdrawn')
 $$;
 
 revoke all on function public.count_applications_in_progress(uuid) from public, anon, authenticated, service_role;

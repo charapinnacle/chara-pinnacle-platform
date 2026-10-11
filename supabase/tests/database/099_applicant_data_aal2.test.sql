@@ -2,7 +2,7 @@
 -- and stage changes by the database itself; a plain member at aal1 and everybody at aal2 keep their access, and reading
 -- one's own membership, organisation and vacancies needs no aal2 (D8).
 begin;
-select plan(33);
+select plan(44);
 
 \ir status_fixture.inc
 
@@ -100,6 +100,11 @@ select is(
 select is(pg_temp.val_as(:'own1', 'aal1', format('select public.count_applications_in_progress(%L)', :'j1')), '1', 'and the number of applications in progress');
 select is(pg_temp.val_as(:'adm', 'aal1', format('select public.count_applications_in_progress(%L)', :'j1')), '1', 'so does an administrator');
 select is(pg_temp.val_as(:'own2', 'aal2', format('select public.count_applications_in_progress(%L)', :'j1')), '0', 'another organisation counts none');
+update public.organizations set status = 'suspended' where id = current_setting('t.a')::uuid;
+select is(pg_temp.val_as(:'own1', 'aal2', format('select public.count_applications_in_progress(%L)', :'j1')), '0', 'a suspended organisation counts none, as under the policy the count replaced');
+update public.organizations set status = 'active' where id = current_setting('t.a')::uuid;
+select pg_temp.force_status(:'a1', 'withdrawn');
+select is(pg_temp.val_as(:'own1', 'aal1', format('select public.count_applications_in_progress(%L)', :'j1')), '0', 'a withdrawn application is not in progress');
 select pg_temp.force_status(:'a1', 'hired');
 select is(pg_temp.val_as(:'own1', 'aal1', format('select public.count_applications_in_progress(%L)', :'j1')), '0', 'a decided application is not in progress');
 select pg_temp.force_status(:'a1', 'applied');
@@ -119,6 +124,18 @@ select is(
 );
 select is(pg_temp.n_as(:'mem', 'aal2', 'select 1 from public.job_applications'), '2', 'at aal2 it reads both');
 
+-- A plain member at aal1 also moves applications (FR-A4: members are never asked for aal2).
+select is(pg_temp.viewed_as(:'mem', :'a1', 'aal1'), 'ok', 'the member at aal1 opens the application as viewed');
+select is(pg_temp.status_of(:'a1'), 'viewed', 'and it is viewed');
+select is(pg_temp.set_as(:'mem', :'a1', 'shortlisted', null, 'aal1'), 'ok', 'the member at aal1 shortlists');
+select is(pg_temp.status_of(:'a1'), 'shortlisted', 'and it is shortlisted');
+select is(
+  pg_temp.bulk_as(:'mem', array[:'a1']::uuid[], 'interview', null, 'aal1') -> 0 -> 'ok', 'true'::jsonb,
+  'the member at aal1 moves it in a bulk change'
+);
+select is(pg_temp.status_of(:'a1'), 'interview', 'and it is at the interview stage');
+select pg_temp.force_status(:'a1', 'applied');
+
 -- At aal2 the owner and the administrator have every read and write again.
 select is(pg_temp.n_as(:'own1', 'aal2', 'select 1 from public.job_applications'), '1', 'the owner at aal2 reads the application');
 select is(pg_temp.n_as(:'own1', 'aal2', 'select 1 from public.v_job_applicants'), '1', 'and the list row');
@@ -128,6 +145,20 @@ select is(pg_temp.call_as(:'adm', 'authenticated', format('select * from public.
 select is((select count(*) from audit.document_access_log), :'logged_before'::bigint + 2, 'the two openings are logged');
 select is(pg_temp.set_as(:'own1', :'a1', 'shortlisted', null, 'aal2'), 'ok', 'the owner at aal2 shortlists');
 select is(pg_temp.status_of(:'a1'), 'shortlisted', 'and the application moved');
+
+-- The member of Acme administers Beta, and the candidate shared the document with Beta after Acme. At aal1 the grant
+-- takes Acme's share, which the member may use, instead of refusing for Beta's newer one.
+select is(pg_temp.apply_as(:'wa', pg_temp.open_job('Beta aal2 vacancy', current_setting('t.b')::uuid), null, array[:'d1']::uuid[]), 'ok', 'the candidate applies to Beta with the same document');
+update private.settings set value = '0' where key = 'document_access_repeat_seconds';
+select is(
+  pg_temp.call_as(:'mem', 'authenticated', format('select * from public.document_access_grant(%L, %L)', :'d1', 'application_review'), 'aal1'),
+  'ok', 'the member of Acme at aal1 still opens the document'
+);
+select is(
+  (select format('%s|%s', count(*), max(organization_id::text)) from audit.document_access_log where id > (select max(id) - 1 from audit.document_access_log) and accessed_by = :'mem'),
+  format('1|%s', current_setting('t.a')),
+  'and the access is logged once more, for Acme, whose share was used'
+);
 
 -- The helper is the database's own.
 select ok(
