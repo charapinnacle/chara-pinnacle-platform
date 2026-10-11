@@ -31,7 +31,6 @@ type JobFormProps = {
   industries: ReferenceItem[];
   countries: ReferenceItem[];
   currencies: ReferenceItem[];
-  // Set on the edit page: the vacancy, its saved values and the page to return to once the changes are saved.
   edit?: { jobId: string; values: JobFormInput; jobHref: string };
 };
 

@@ -15,7 +15,7 @@ type JobStatusActionsProps = {
   jobId: string;
   status: Database["public"]["Enums"]["job_status"];
   billingHref: string;
-  // The applications that still wait for a decision, counted when the page was drawn, and the list of them.
+  // Counted when the page was drawn, not when the dialog opens.
   inProgress: number;
   applicantsHref: string;
 };
