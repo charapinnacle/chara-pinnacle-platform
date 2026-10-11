@@ -11,10 +11,10 @@ select pg_temp.state_as(:'wa', $$select public.create_worker_passport('Amina', '
 select results_eq(
   $$select entity, days from private.retention_policies
     where entity in ('organization_invitations', 'deleted_worker_documents', 'login_failures', 'cron_job_run_details',
-                     'account_ops_archive', 'document_access_log', 'audit_log')
+                     'account_ops_archive', 'inactive_worker_data', 'document_access_log', 'audit_log')
     order by entity$$,
   $$values ('account_ops_archive', 90), ('audit_log', 2191), ('cron_job_run_details', 30), ('deleted_worker_documents', 30),
-           ('document_access_log', 730), ('login_failures', 30), ('organization_invitations', 90)$$,
+           ('document_access_log', 730), ('inactive_worker_data', 730), ('login_failures', 30), ('organization_invitations', 90)$$,
   'the new periods are rows of retention_policies next to the access log (24 months) and the audit log (6 years)'
 );
 
@@ -77,8 +77,8 @@ select results_eq(
   'each rule writes one audit row with its period and the number removed'
 );
 select is(
-  (select count(*) from audit.log where action = 'retention.run' and actor_id is null), 10::bigint,
-  'ten rules ran, all without an actor'
+  (select count(*) from audit.log where action = 'retention.run' and actor_id is null), 11::bigint,
+  'eleven rules ran, all without an actor'
 );
 
 -- Idempotent, configurable, and a missing row skips its rule.
@@ -123,7 +123,10 @@ select is(
 );
 select has_index('public', 'organization_invitations', 'organization_invitations_closed_at_idx', 'the invitation rule reads an index');
 select has_index('public', 'worker_documents', 'worker_documents_deleted_at_idx', 'the document rule reads an index');
-select has_index('private', 'login_failures', 'login_failures_window_started_at_idx', 'the login failure rule reads an index');
+select is(
+  (select count(*) from pg_indexes where schemaname = 'private' and tablename = 'login_failures' and indexdef ~ 'window_started_at'), 0::bigint,
+  'the login failure rule scans its small table, so failed logins stay HOT updates'
+);
 select has_index('pgmq', 'a_account_ops', 'archived_at_idx_account_ops', 'the dead letter rule reads the queue''s own index');
 select is(
   (select count(*) from cron.job where jobname = 'apply-retention' and schedule = '17 3 * * *' and command = 'select private.apply_retention()' and active),
@@ -135,8 +138,8 @@ select ok(
   'the periods stay unreadable for API roles'
 );
 select is(
-  (select count(*) from private.retention_policies), 10::bigint,
-  'eleven entities have a period, less the one removed above'
+  (select count(*) from private.retention_policies), 11::bigint,
+  'twelve entities have a period, less the one removed above'
 );
 select is(
   (select days from private.retention_policies where entity = 'document_access_log'), 730,
