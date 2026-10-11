@@ -3,10 +3,11 @@ import type { Page } from "@playwright/test";
 import { userToken } from "./support/accounts";
 import { expectNoAxeViolations } from "./support/axe";
 import { seedDocument } from "./support/documents";
-import { createCommittedUser } from "./support/login";
+import { createCommittedUser, enrollTotp } from "./support/login";
 import { overflow } from "./support/login-page";
 import { signIn } from "./support/passport";
 import { accessLog, createEmployer, requestDocumentUrl, seedOpenings, seedShare } from "./support/privacy";
+import { aal2Token } from "./support/staff";
 import { expect, test } from "./support/test";
 import type { TestUser } from "./support/test-user";
 
@@ -195,7 +196,10 @@ test.describe("document access log", () => {
     const share = seedShare(worker.id, employer.organizationId, [cv.id]);
 
     expect((await requestDocumentUrl(await userToken(employer.member), cv.id)).status).toBe(200);
-    expect((await requestDocumentUrl(await userToken(employer.owner), cv.id)).status).toBe(200);
+    // The owner opens documents only after the code (SA-04): the database refuses the password-only session.
+    expect((await requestDocumentUrl(await userToken(employer.owner), cv.id)).status).toBe(403);
+    const ownerSecret = await enrollTotp(employer.owner);
+    expect((await requestDocumentUrl(await aal2Token(employer.owner, ownerSecret), cv.id)).status).toBe(200);
     expect((await requestDocumentUrl(await userToken(stranger.member), cv.id)).status).toBe(403);
     expect(accessLog(cv.id).map((row) => [row.share_id, row.organization_id, row.purpose])).toEqual([
       [share, employer.organizationId, "application_review"],
