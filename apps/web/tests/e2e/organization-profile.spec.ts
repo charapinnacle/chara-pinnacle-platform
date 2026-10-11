@@ -2,7 +2,7 @@ import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { choose } from "./support/combobox";
 import { execute, literal } from "./support/db";
-import { seedJob } from "./support/jobs";
+import { expectNotFound, seedJob } from "./support/jobs";
 import { alertText, logIn } from "./support/login-page";
 import { enterCode } from "./support/mfa";
 import { organizationAudit, organizationRows, SIMILAR_NAME_NOTICE } from "./support/organizations";
@@ -85,7 +85,7 @@ test.describe("organisation profile", () => {
     expect(updates(team.id)).toEqual([]);
   });
 
-  test("FR-A2, FR-A5 roles: an admin at aal2 edits; an admin at aal1 is asked for a code; a member and another owner are refused", async ({
+  test("FR-A2, FR-A5 roles: an admin at aal2 edits; an admin at aal1 is asked for a code; a member is refused; another owner gets not found", async ({
     page,
     browser,
   }) => {
@@ -104,7 +104,6 @@ test.describe("organisation profile", () => {
     for (const [user, expected] of [
       [admin.user, `/en/mfa?next=${encodeURIComponent(profileUrl(team.slug))}`],
       [member.user, "/en/forbidden"],
-      [other.owner, "/en/forbidden"],
     ] as const) {
       const context = await browser.newContext();
       const visitor = await context.newPage();
@@ -112,6 +111,11 @@ test.describe("organisation profile", () => {
       await expect(visitor).toHaveURL(expected);
       await context.close();
     }
+    const outsider = await browser.newContext();
+    const outsiderPage = await outsider.newPage();
+    await signInAtAal2(outsiderPage, other.owner, other.ownerSecret, profileUrl(other.slug));
+    await expectNotFound(outsiderPage, profileUrl(team.slug));
+    await outsider.close();
     expect(organizationRows(team.owner.id)[0].display_name).toBe("Admin Bau");
     expect(updates(team.id)).toHaveLength(1);
   });

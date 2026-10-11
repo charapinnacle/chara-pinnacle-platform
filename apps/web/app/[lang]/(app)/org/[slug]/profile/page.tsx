@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Company profile — CHARA", robots: 
 // trial, and the same lock applies to it and to the legal name.
 export default async function OrganizationProfilePage({ params }: PageProps<"/[lang]/org/[slug]/profile">) {
   const { lang, slug } = await params;
-  const { organization } = await requireOrgRole(lang, slug, "admin");
+  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true });
   if (organization.suspended) return <SuspendedOrganization title="Company profile" subject="details" />;
   const [profile, billing, countries, industries] = await Promise.all([
     getOrganizationProfile(organization.id),

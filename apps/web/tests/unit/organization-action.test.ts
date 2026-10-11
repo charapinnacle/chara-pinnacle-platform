@@ -134,7 +134,7 @@ describe("updateOrganizationProfile", () => {
 
   it("checks the owner or admin role at aal2, sends the normalised values and redraws the header", async () => {
     await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true });
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { hideFromOutsiders: true });
     expect(rpcMock).toHaveBeenCalledWith("update_organization_profile", {
       p_org: orgId,
       p_legal_name: "Acme Bau AG",

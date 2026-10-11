@@ -92,7 +92,7 @@ export async function updateOrganizationProfile(
 ): Promise<UpdateOrganizationResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   if (!parsedSlug.success) return { message: GENERIC_FAILURE };
-  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin");
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", { hideFromOutsiders: true });
   const parsed = organizationProfileSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
