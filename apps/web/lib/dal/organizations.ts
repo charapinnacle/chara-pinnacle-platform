@@ -40,6 +40,34 @@ export async function getOrganizationSlug(organizationId: string): Promise<strin
   return data?.slug ?? null;
 }
 
+export type OrganizationProfile = {
+  legalName: string;
+  displayName: string;
+  country: string;
+  industry: string;
+  website: string;
+};
+
+// The company details as the profile form edits them: codes for the lists and an empty string for a missing website.
+export async function getOrganizationProfile(organizationId: string): Promise<OrganizationProfile | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("legal_name, display_name, based_in_country, industry_code, website")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) throw new Error("The organization profile could not be loaded", { cause: error });
+  return (
+    data && {
+      legalName: data.legal_name,
+      displayName: data.display_name,
+      country: data.based_in_country,
+      industry: data.industry_code ?? "",
+      website: data.website ?? "",
+    }
+  );
+}
+
 export async function getMyOrganization(userId: string): Promise<Organization | null> {
   return (await getMyOrganizations(userId))[0] ?? null;
 }

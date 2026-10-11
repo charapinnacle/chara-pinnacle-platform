@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fieldErrors } from "@/lib/validation/sign-up";
-import { organizationInputSchema, type OrganizationFormInput } from "@/lib/validation/organization";
+import { organizationInputSchema, organizationProfileSchema, type OrganizationFormInput } from "@/lib/validation/organization";
 
 const valid: OrganizationFormInput = {
   legalName: "Acme Bau GmbH",
@@ -133,5 +133,25 @@ describe("organization input schema", () => {
   it("makes an empty identifier null with a null kind, whatever the kind says", () => {
     const result = parse({ identifier: "  ", identifierKind: "vat_number" });
     expect(result.success && [result.data.identifier, result.data.identifierKind]).toEqual([null, null]);
+  });
+});
+
+describe("organization profile schema", () => {
+  const profile = { legalName: "Acme Bau GmbH", displayName: "", country: "de", industry: "f", website: "" };
+  const profileErrors = (overrides: Record<string, unknown>) => {
+    const result = organizationProfileSchema.safeParse({ ...profile, ...overrides });
+    return result.success ? {} : fieldErrors(result.error);
+  };
+
+  it("applies the registration rules to the company details and has no identifier", () => {
+    expect(organizationProfileSchema.parse({ ...profile, identifier: "DE123456789" })).toEqual({ ...profile, country: "DE", industry: "F" });
+    expect(Object.keys(profileErrors({ legalName: " A ", displayName: "d".repeat(201), country: "DEU", industry: " ", website: "ftp://x.example" })).sort()).toEqual([
+      "country",
+      "displayName",
+      "industry",
+      "legalName",
+      "website",
+    ]);
+    expect(profileErrors({ legalName: "a".repeat(200), displayName: "d".repeat(200), website: "https://acme.example/jobs" })).toEqual({});
   });
 });

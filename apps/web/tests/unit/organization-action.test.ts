@@ -8,15 +8,16 @@ const redirectMock = vi.hoisted(() =>
 );
 const rpcMock = vi.fn();
 const requireUserMock = vi.hoisted(() => vi.fn());
+const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const refreshShellMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/app/refresh-shell", () => ({ refreshAppShell: refreshShellMock }));
-vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
+vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { createOrganization } = await import("@/lib/actions/organizations");
+const { createOrganization, updateOrganizationProfile } = await import("@/lib/actions/organizations");
 
 const input: OrganizationFormInput = {
   legalName: "  Acme Bau GmbH ",
@@ -116,7 +117,78 @@ describe("createOrganization", () => {
     await expect(createOrganization(input)).resolves.toEqual({
       message: "We could not complete this request. Try again.",
     });
-    expect(log).toHaveBeenCalledWith("Create organization failed", { code: "P0001", message: "CHARA_FORBIDDEN" });
+    expect(log).toHaveBeenCalledWith("Saving the organization failed", { code: "P0001", message: "CHARA_FORBIDDEN" });
     log.mockRestore();
+  });
+});
+
+describe("updateOrganizationProfile", () => {
+  const orgId = "0a1b2c3d-0000-4000-8000-000000000001";
+  const profile = { legalName: " Acme Bau AG ", displayName: "", country: "at", industry: "c", website: "" };
+  const refused = (message: string, details: string | null = null) => ({ data: null, error: { code: "P0001", message, details } });
+
+  beforeEach(() => {
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme-bau", role: "admin" } });
+    rpcMock.mockResolvedValue({ data: { changed_fields: ["legal_name"], duplicate_legal_name: false }, error: null });
+  });
+
+  it("checks the owner or admin role at aal2, sends the normalised values and redraws the header", async () => {
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true });
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin");
+    expect(rpcMock).toHaveBeenCalledWith("update_organization_profile", {
+      p_org: orgId,
+      p_legal_name: "Acme Bau AG",
+      p_display_name: "",
+      p_based_in_country: "AT",
+      p_industry_code: "C",
+      p_website: "",
+    });
+    expect(refreshShellMock).toHaveBeenCalledOnce();
+  });
+
+  it("passes on the duplicate legal name notice", async () => {
+    rpcMock.mockResolvedValue({ data: { changed_fields: ["legal_name"], duplicate_legal_name: true }, error: null });
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true, duplicateLegalName: true });
+  });
+
+  it("returns the field errors of an invalid input without calling the database", async () => {
+    const result = await updateOrganizationProfile("acme-bau", { ...profile, legalName: "A", website: "javascript:alert(1)" });
+    expect(Object.keys(result.errors ?? {}).sort()).toEqual(["legalName", "website"]);
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the lock of the legal name next to the field", async () => {
+    rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "legal_name_locked"));
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({
+      errors: { legalName: "The legal name cannot be changed once a payment has been started for the company." },
+    });
+    expect(refreshShellMock).not.toHaveBeenCalled();
+  });
+
+  it("sends a caller below aal2 to two-step verification and back to the profile", async () => {
+    rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "aal2_required"));
+    await expect(updateOrganizationProfile("acme-bau", profile)).rejects.toThrow(
+      `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/org/acme-bau/profile")}`,
+    );
+  });
+
+  it("says a suspended organisation cannot be changed, and maps a constraint to its field", async () => {
+    rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "organization_suspended"));
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({
+      message: "This organization is suspended, so its profile cannot be changed.",
+    });
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { code: "23503", message: 'violates foreign key constraint "organizations_based_in_country_fkey"', details: null },
+    });
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ errors: { country: "Check this value." } });
+  });
+
+  it("sends nothing for a slug that is not a slug or a refused caller", async () => {
+    await expect(updateOrganizationProfile("../Acme", profile)).resolves.toEqual({ message: "We could not complete this request. Try again." });
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
+    requireOrgRoleMock.mockRejectedValue(new Error("REDIRECT:/en/forbidden"));
+    await expect(updateOrganizationProfile("acme-bau", profile)).rejects.toThrow("REDIRECT:/en/forbidden");
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 });
