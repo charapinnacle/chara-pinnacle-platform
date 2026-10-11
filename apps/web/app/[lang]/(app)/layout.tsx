@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FooterLinks } from "@/components/layout/footer-links";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
-import { BILLING_TERMS_PATH } from "@/lib/public/navigation";
+import { appFooterLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
 import { roleLabels } from "@/lib/validation/team";
 
@@ -47,7 +47,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
       homeHref={accountKind ? homePath(lang, accountKind) : "/"}
       headerActions={navigation ? <AppNav {...navigation} /> : null}
       sidebar={navigation ? <AppSidebar {...navigation} /> : null}
-      footerLinks={<FooterLinks lang={lang} hidePaths={accountKind === "company" ? [] : [BILLING_TERMS_PATH]} />}
+      footerLinks={<FooterLinks lang={lang} label="Legal" links={appFooterLinks} />}
     >
       {children}
     </AppShell>

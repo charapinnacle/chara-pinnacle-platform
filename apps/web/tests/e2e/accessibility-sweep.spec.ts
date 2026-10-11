@@ -29,6 +29,7 @@ const publicPages = (jobId: string): Pages => ({
   "/[lang]/imprint": "/en/imprint",
   "/[lang]/jobs": "/en/jobs",
   "/[lang]/jobs/[id]": `/en/jobs/${jobId}`,
+  "/[lang]/legal": "/en/legal",
   "/[lang]/legal/[slug]": "/en/legal/terms-of-service",
   "/[lang]/pricing": "/en/pricing",
   "/[lang]/trust-safety": "/en/trust-safety",

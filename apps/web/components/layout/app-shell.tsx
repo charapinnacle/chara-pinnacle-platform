@@ -13,7 +13,7 @@ const column = "mx-auto w-full max-w-content px-4 sm:px-6 lg:px-10";
 
 // The frame of the signed-in area and the console: from 1024 px a sidebar with the brand, the navigation and the
 // identity at its foot; a top bar with the account menu (below 1024 px also the brand and the links); the page in a
-// column of at most 75 rem; the legal links at the bottom.
+// column of at most 75 rem; one small line of legal links at the bottom.
 export function AppShell({ homeHref, headerActions, sidebar, footerLinks, children }: AppShellProps) {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[var(--spacing-sidebar)_minmax(0,1fr)]">
@@ -36,7 +36,7 @@ export function AppShell({ homeHref, headerActions, sidebar, footerLinks, childr
           <div className={`${column} flex flex-1 flex-col py-8 lg:py-10`}>{children}</div>
         </main>
         <footer className="border-t">
-          <div className={`${column} grid gap-4 py-8 text-small text-muted-foreground`}>
+          <div className={`${column} flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-4 text-small text-muted-foreground`}>
             {footerLinks}
             <p>&copy; CHARA</p>
           </div>

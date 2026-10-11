@@ -24,6 +24,7 @@ type SignUpFormProps = {
   documents: Record<Kind, LegalDocumentSummary[]>;
   attestationWording: string | null;
   invitation?: { token: string; email: string; organizationName: string };
+  preselectedKind?: Kind;
 };
 
 const ids = {
@@ -37,7 +38,7 @@ function acceptedDefaults(documents: readonly LegalDocumentSummary[]) {
   return Object.fromEntries(documents.map((document) => [document.slug, false]));
 }
 
-export function SignupForm({ documents, attestationWording, invitation }: SignUpFormProps) {
+export function SignupForm({ documents, attestationWording, invitation, preselectedKind }: SignUpFormProps) {
   const form = useForm<SignUpFormInput, undefined, SignUpFormOutput>({
     resolver: (values, context, options) =>
       zodResolver(signUpFormSchema(values.kind ? documents[values.kind] : []))(
@@ -47,7 +48,9 @@ export function SignupForm({ documents, attestationWording, invitation }: SignUp
       ),
     defaultValues: invitation
       ? { kind: "company", email: invitation.email, password: "", accepted: acceptedDefaults(documents.company) }
-      : { email: "", password: "", accepted: {} },
+      : preselectedKind
+        ? { kind: preselectedKind, email: "", password: "", accepted: acceptedDefaults(documents[preselectedKind]) }
+        : { email: "", password: "", accepted: {} },
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit, setValue } = form;
