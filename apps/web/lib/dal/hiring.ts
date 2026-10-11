@@ -19,8 +19,11 @@ export type Job = {
   title: string;
   description: string;
   occupation: string;
+  occupationId: string;
   industry: string;
+  industryCode: string;
   country: string;
+  countryCode: string;
   city: string;
   employmentType: Enums["employment_type"];
   salaryMin: number | null;
@@ -50,7 +53,10 @@ type JobSummary = {
 };
 
 // The fields of a vacancy that the page shows; a draft's preview and the public page both render them.
-export type VacancyDetails = Omit<Job, "status" | "moderationState" | "statusChangedAt" | "staleOpen" | "createdAt">;
+export type VacancyDetails = Omit<
+  Job,
+  "occupationId" | "industryCode" | "countryCode" | "status" | "moderationState" | "statusChangedAt" | "staleOpen" | "createdAt"
+>;
 
 // The public profile of an employer, as the SOP names it: name, country, industry and website. Never the legal name.
 export type Employer = { displayName: string; country: string; industry: string | null; website: string | null };
@@ -92,8 +98,11 @@ function toJob(row: JobRow): Job {
     title: row.title,
     description: row.description,
     occupation: row.occupations?.label ?? row.occupation_id,
+    occupationId: row.occupation_id,
     industry: row.industries?.name ?? row.industry_code,
+    industryCode: row.industry_code,
     country: row.countries?.name ?? row.country_code,
+    countryCode: row.country_code,
     city: row.city,
     employmentType: row.employment_type,
     salaryMin: row.salary_min,

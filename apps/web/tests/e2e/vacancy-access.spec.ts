@@ -144,7 +144,8 @@ test.describe("vacancy pages: who sees what", () => {
       seedJob(acme, { title: `Vacancy ${String(index).padStart(2, "0")}`, createdAt: `now() - interval '${index} minutes'` });
     }
     await logIn(page, acme.owner, jobsUrl(acme.slug));
-    const titles = page.getByRole("main").locator("li:not(nav li)").getByRole("link");
+    // Each row also has its Edit link for an owner (U60), so only the title links are counted.
+    const titles = page.getByRole("main").locator("li:not(nav li)").getByRole("link", { name: /^Vacancy \d+$/ });
     await expect(titles).toHaveCount(20);
     await expect(titles.first()).toHaveText("Vacancy 01");
     await expect(titles.last()).toHaveText("Vacancy 20");

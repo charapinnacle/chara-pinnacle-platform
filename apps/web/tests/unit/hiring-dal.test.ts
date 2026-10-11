@@ -76,6 +76,9 @@ describe("getJob", () => {
       employmentType: "full_time",
       visaSupport: false,
       status: "draft",
+      occupationId: "7212",
+      industryCode: "C",
+      countryCode: "DE",
     });
     expect(calls).toContainEqual(["jobs.eq", "id", row.id]);
     expect(calls).toContainEqual(["jobs.eq", "organization_id", "org-1"]);

@@ -62,6 +62,11 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
       ) : null}
       <VacancyView job={job} />
       <div className="flex flex-wrap gap-3">
+        {manager ? (
+          <LinkButton href={`${jobPath(lang, slug, job.id)}/edit`} variant="secondary" size="default">
+            Edit vacancy
+          </LinkButton>
+        ) : null}
         <LinkButton href={applicantsHref} variant="secondary" size="default">
           Applicants
         </LinkButton>

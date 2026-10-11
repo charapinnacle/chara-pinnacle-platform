@@ -79,6 +79,11 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[la
                     How to appeal
                   </LegalLink>
                 ) : null}
+                {canCreate ? (
+                  <TextLink href={`${jobPath(lang, slug, job.id)}/edit`}>
+                    Edit<span className="sr-only"> {job.title}</span>
+                  </TextLink>
+                ) : null}
               </p>
             </Card>
           ))}

@@ -57,7 +57,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { changeJobStatus, createJob, reportInvalidJobForm } = await import("@/lib/actions/jobs");
+const { changeJobStatus, createJob, reportInvalidJobForm, updateJob } = await import("@/lib/actions/jobs");
 
 const orgId = "0a1b2c3d-0000-4000-8000-000000000001";
 const jobId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
@@ -176,7 +176,7 @@ describe("createJob", () => {
   it("says the caller may not create vacancies when row level security refuses, and reveals nothing else", async () => {
     singleMock.mockResolvedValue(refusal('new row violates row-level security policy for table "jobs"', "42501"));
     await expect(createJob("acme-bau", input)).resolves.toEqual({
-      message: "You are not allowed to create vacancies for this company.",
+      message: "You are not allowed to create or edit vacancies for this company.",
     });
     expect(rpcMock).not.toHaveBeenCalled();
   });
@@ -188,6 +188,77 @@ describe("createJob", () => {
     expect(result).toEqual({ message: "We could not complete this request. Try again." });
     expect(JSON.stringify(result)).not.toContain("secret");
     log.mockRestore();
+  });
+});
+
+describe("updateJob", () => {
+  it("checks the role of the slug, updates only the content columns of that organization's live vacancy and revalidates", async () => {
+    await expect(updateJob("acme-bau", jobId, { ...input, salaryMin: "", salaryMax: "" })).resolves.toEqual({ saved: true });
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { mfa: false, hideFromOutsiders: true });
+    expect(updateMock).toHaveBeenCalledWith("jobs", {
+      title: "Welder MIG/MAG",
+      description: "d".repeat(120),
+      occupation_id: "7212",
+      industry_code: "C",
+      country_code: "DE",
+      city: "Hamburg",
+      employment_type: "full_time",
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      salary_period: null,
+      accommodation: true,
+      visa_support: false,
+      recruitment_preference: "both",
+    });
+    expect(eqMock).toHaveBeenCalledWith("id", jobId);
+    expect(eqMock).toHaveBeenCalledWith("organization_id", orgId);
+    expect(isMock).toHaveBeenCalledWith("deleted_at", null);
+    expect(revalidatePathMock).toHaveBeenCalledWith(`/en/org/acme-bau/jobs/${jobId}`);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/en/org/acme-bau/jobs");
+  });
+
+  it("never sends the status, the organization or the moderation state, even when the input names them", async () => {
+    await updateJob("acme-bau", jobId, { ...input, status: "open", organization_id: "x", moderation_state: "visible" } as JobFormInput);
+    const values = updateMock.mock.calls[0][1];
+    expect(values).not.toHaveProperty("status");
+    expect(values).not.toHaveProperty("organization_id");
+    expect(values).not.toHaveProperty("moderation_state");
+  });
+
+  it("returns the field errors of an invalid input without updating or reporting it", async () => {
+    const result = await updateJob("acme-bau", jobId, { ...input, title: "Weld", salaryMin: "5000", salaryMax: "4000" });
+    expect(Object.keys(result.errors ?? {}).sort()).toEqual(["salaryMin", "title"]);
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a database refusal next to its field", async () => {
+    maybeSingleMock.mockResolvedValue(refusal('new row for relation "jobs" violates check constraint "jobs_salary_terms"', "23514"));
+    await expect(updateJob("acme-bau", jobId, input)).resolves.toEqual({
+      errors: { salaryCurrency: "Select a currency and a pay period when you enter a salary." },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("says the vacancy was not found when no row matched, and not allowed when the organization is suspended", async () => {
+    maybeSingleMock.mockResolvedValue({ data: null, error: null });
+    await expect(updateJob("acme-bau", jobId, input)).resolves.toEqual({ message: "This vacancy could not be found." });
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme-bau", role: "admin", suspended: true } });
+    await expect(updateJob("acme-bau", jobId, input)).resolves.toEqual({
+      message: "You are not allowed to create or edit vacancies for this company.",
+    });
+  });
+
+  it("sends nothing for a vacancy id that is not an id, a slug that is not a slug or a refused caller", async () => {
+    await expect(updateJob("acme-bau", "1; drop table jobs", input)).resolves.toEqual({
+      message: "We could not complete this request. Try again.",
+    });
+    await updateJob("../Acme", jobId, input);
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
+    requireOrgRoleMock.mockRejectedValue(new Error("REDIRECT:/en/forbidden"));
+    await expect(updateJob("acme-bau", jobId, input)).rejects.toThrow("REDIRECT:/en/forbidden");
+    expect(updateMock).not.toHaveBeenCalled();
   });
 });
 
