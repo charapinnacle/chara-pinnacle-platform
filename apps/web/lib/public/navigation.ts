@@ -22,6 +22,9 @@ export const guestLinks = [
 
 export const LEGAL_INDEX_PATH = "legal";
 
+// The billing terms are not shown to a signed-in person who is not an employer: a candidate's pages hold no billing link (FR-G6 AC5).
+export const BILLING_TERMS_PATH = "legal/subscription-and-billing-terms";
+
 // The public footer is one compact line of links: the pages about CHARA, the four legal pages people look for most, and
 // the index that leads to the others (every legal document is two clicks away from every page).
 export const publicFooterLinks = [
@@ -66,7 +69,7 @@ export const legalGroups: readonly { title: string; links: readonly { path: stri
   {
     title: "Billing and roles",
     links: [
-      { path: "legal/subscription-and-billing-terms", label: "Subscription and Billing Terms" },
+      { path: BILLING_TERMS_PATH, label: "Subscription and Billing Terms" },
       { path: "legal/employer-terms", label: "Employer Terms" },
       { path: "legal/worker-terms", label: "Worker Terms" },
     ],

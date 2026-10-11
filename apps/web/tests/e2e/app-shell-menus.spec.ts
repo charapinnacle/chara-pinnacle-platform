@@ -205,6 +205,10 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(legal.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/en/legal/privacy-policy");
     await expect(legal.getByRole("link", { name: "Imprint" })).toHaveAttribute("href", "/en/imprint");
     await expect(legal.getByRole("link", { name: "All legal documents" })).toHaveAttribute("href", "/en/legal");
+    await legal.getByRole("link", { name: "All legal documents" }).click();
+    await expect(page).toHaveURL("/en/legal");
+    await expect(page.getByRole("main").getByRole("link")).toHaveCount(10);
+    await expect(page.getByRole("main").locator('a[href="/en/legal/subscription-and-billing-terms"]')).toHaveCount(0);
 
     await page.goto("/en/pricing");
     const footer = page.getByRole("navigation", { name: "Footer" });
@@ -216,6 +220,8 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     const employer = await signedInPage(browser, team.owner);
     await employer.page.goto("/en/dashboard/employer");
     await expect(employer.page.getByRole("navigation", { name: "Legal" }).getByRole("link")).toHaveText(["Terms", "Privacy", "Imprint", "All legal documents"]);
+    await employer.page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "All legal documents" }).click();
+    await expect(employer.page.getByRole("main").locator('a[href="/en/legal/subscription-and-billing-terms"]')).toHaveCount(1);
     await employer.context.close();
   });
 

@@ -67,6 +67,9 @@ test.describe("FR-G6: no pricing or payment element in the candidate area", () =
       await expect(page.getByRole("heading", { name: heading }).first(), path).toBeVisible();
       expect(await paymentElements(page), path).toEqual([]);
     }
+    await page.goto("/en/legal");
+    await expect(page.getByRole("heading", { name: "All legal documents", level: 1 })).toBeVisible();
+    await expect(page.locator('main a[href*="subscri"], main a[href*="billing"], main a[href*="pricing"]')).toHaveCount(0);
     expect(stripe).toEqual([]);
   });
 

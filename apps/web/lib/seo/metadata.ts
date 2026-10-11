@@ -38,6 +38,14 @@ export function staticPageMetadata(key: StaticPageKey, lang: string): Metadata {
   return pageMetadata(title, description, path ? `/${lang}/${path}` : `/${lang}`);
 }
 
+export function legalIndexMetadata(lang: string): Metadata {
+  return pageMetadata(
+    "All legal documents — CHARA",
+    "The current version of every CHARA legal document, the terms, the privacy policy and the rules, with the date it was published.",
+    `/${lang}/legal`,
+  );
+}
+
 export function legalPageMetadata(
   lang: string,
   slug: string,

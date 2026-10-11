@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { legalSlugs } from "@/lib/public/navigation";
-import { legalPageMetadata, staticPageMetadata, vacancyMetadata } from "@/lib/seo/metadata";
+import { legalIndexMetadata, legalPageMetadata, staticPageMetadata, vacancyMetadata } from "@/lib/seo/metadata";
 import { staticPages, type StaticPageKey } from "@/lib/seo/pages";
 
 const SITE = "http://localhost:3100";
@@ -46,6 +46,16 @@ describe("the metadata of the static pages (FR-H5 AC1)", () => {
       expect(openGraph?.title, key).toBe(title);
       expect(openGraph?.description, key).toBe(description);
     }
+  });
+});
+
+describe("the metadata of the legal index (FR-H5 AC1)", () => {
+  it("has a title of at most 60 characters, a description of 50 to 160 and the address of the index as its canonical", () => {
+    const metadata = legalIndexMetadata("en");
+    expect(titleOf(metadata).length).toBeLessThanOrEqual(60);
+    expect(String(metadata.description).length).toBeGreaterThanOrEqual(50);
+    expect(String(metadata.description).length).toBeLessThanOrEqual(160);
+    expect(canonicalOf(metadata)).toBe(`${SITE}/en/legal`);
   });
 });
 
