@@ -145,8 +145,8 @@ test.describe("candidate documents: upload", () => {
     await openDocuments(page, user);
     execute(
       `insert into public.worker_documents (id, worker_user_id, type, title, storage_path, file_name, mime, size_bytes, scan_status)
-       select d.id, ${literal(user.id)}, 'cv', 'Kept ' || i, ${literal(user.id)} || '/' || d.id || '/cv.pdf', 'cv.pdf', 'application/pdf', 1000, 'skipped'
-       from generate_series(1, 50) i, lateral (select gen_random_uuid() as id) d`,
+       select d.id, ${literal(user.id)}, 'cv', 'Kept ' || d.i, ${literal(user.id)} || '/' || d.id || '/cv.pdf', 'cv.pdf', 'application/pdf', 1000, 'skipped'
+       from (select gen_random_uuid() as id, i from generate_series(1, 50) i) d`,
     );
     await page.reload();
     await waitForHydration(page.getByLabel("Type", { exact: true }));
