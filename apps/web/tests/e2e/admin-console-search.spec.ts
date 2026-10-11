@@ -128,6 +128,8 @@ test.describe("the search of users, organisations and the audit log", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Search" })).toBeFocused();
     await page.keyboard.press("Tab");
+    await expect(page.getByRole("region", { name: "Users" })).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(user).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(href ?? "");
