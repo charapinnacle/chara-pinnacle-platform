@@ -4,7 +4,7 @@ import { currentDocuments } from "./support/accounts";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
 import { overflow } from "./support/login-page";
-import { AGE_LABEL, ageBox, documentBox, EMPLOYER_LABEL, newEmail, PASSWORD, summary, WORKER_LABEL } from "./support/signup-page";
+import { AGE_LABEL, ageBox, documentBox, EMPLOYER_LABEL, fillSignup, newEmail, PASSWORD, summary, WORKER_LABEL } from "./support/signup-page";
 import { newTeam, seedInvitation } from "./support/team";
 import { expect, test } from "./support/test";
 import { displayTitle } from "@/lib/validation/consents";
@@ -191,6 +191,30 @@ test.describe("U67: the password field", () => {
     }
   });
 
+  test("a refused sign-up clears the password and hides it again", async ({ page }) => {
+    const message = "We could not complete this request. Try again.";
+    await page.route("**/en/signup", (route) =>
+      route.request().method() === "POST"
+        ? route.fulfill({
+            status: 200,
+            contentType: "text/x-component",
+            body: `0:{"a":"$@1","f":"","b":"local"}\n1:${JSON.stringify({ message })}\n`,
+          })
+        : route.continue(),
+    );
+    await page.goto("/en/signup");
+    const input = page.getByLabel("Password", { exact: true });
+    await waitForHydration(input);
+    await fillSignup(page, { kind: "worker", email: newEmail(), password: PASSWORD });
+    await page.getByRole("button", { name: "Show password" }).click();
+    await expect(input).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(summary(page)).toContainText(message);
+    await expect(input).toHaveValue("");
+    await expect(input).toHaveAttribute("type", "password");
+    await expect(page.getByRole("button", { name: "Show password" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   test("the checklist turns to a check mark at 12 characters, is read out and goes back under 12", async ({ page }) => {
     await page.goto("/en/signup");
     const input = page.getByLabel("Password", { exact: true });
@@ -199,18 +223,18 @@ test.describe("U67: the password field", () => {
     const status = page.getByRole("status").filter({ hasText: "At least 12 characters" });
     await expect(item).toContainText("not met yet");
     await expect(item.locator("svg.lucide-check")).toHaveCount(0);
-    await expect(input).toHaveAccessibleDescription(/At least 12 characters: not met yet/);
+    await expect(input).toHaveAccessibleDescription(/At least 12 characters\s*: not met yet/);
 
     await input.fill("elevenchars");
     await expect(item.locator("svg.lucide-check")).toHaveCount(0);
     await input.fill("twelve chars");
     await expect(item.locator("svg.lucide-check")).toHaveCount(1);
-    await expect(status).toHaveText("At least 12 characters: met");
-    await expect(input).toHaveAccessibleDescription(/At least 12 characters: met/);
+    await expect(status).toHaveText(/^At least 12 characters\s*: met$/);
+    await expect(input).toHaveAccessibleDescription(/At least 12 characters\s*: met/);
     await expect(status).toHaveAttribute("role", "status");
     await input.fill("short");
     await expect(item.locator("svg.lucide-check")).toHaveCount(0);
-    await expect(status).toHaveText("At least 12 characters: not met yet");
+    await expect(status).toHaveText(/^At least 12 characters\s*: not met yet$/);
   });
 
   test("the reset form has the checklist and the toggle too", async ({ page }) => {

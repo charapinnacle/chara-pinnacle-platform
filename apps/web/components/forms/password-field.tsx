@@ -2,7 +2,7 @@
 
 import { Check, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { useWatch, type Control, type FieldPath, type FieldValues } from "react-hook-form";
+import { useFormState, useWatch, type Control, type FieldPath, type FieldValues } from "react-hook-form";
 import { controlClassName } from "@/components/forms/control-class";
 import { FormField } from "@/components/forms/form-field";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,8 @@ function PasswordChecklist({ id, length }: { id: string; length: number }) {
   const met = length >= PASSWORD_MIN_LENGTH;
   const requirement = `At least ${PASSWORD_MIN_LENGTH} characters`;
   return (
-    <>
-      <ul id={id} className="grid gap-1.5 text-small">
+    <div id={id} role="status">
+      <ul className="grid gap-1.5 text-small">
         <li className={cn("flex items-center gap-2 transition-colors duration-120", met ? "text-foreground" : "text-muted-foreground")}>
           <span
             aria-hidden
@@ -37,14 +37,13 @@ function PasswordChecklist({ id, length }: { id: string; length: number }) {
           >
             {met ? <Check strokeWidth={3.5} className="size-2.5" /> : null}
           </span>
-          <span aria-hidden>{requirement}</span>
-          <span className="sr-only">{`${requirement}: ${met ? "met" : "not met yet"}`}</span>
+          <span>
+            {requirement}
+            <span className="sr-only">{met ? ": met" : ": not met yet"}</span>
+          </span>
         </li>
       </ul>
-      <p role="status" className="sr-only">
-        {`${requirement}: ${met ? "met" : "not met yet"}`}
-      </p>
-    </>
+    </div>
   );
 }
 
@@ -57,6 +56,13 @@ export function PasswordField<T extends FieldValues, N extends FieldPath<T>>({
   checklist = false,
 }: PasswordFieldProps<T, N>) {
   const [visible, setVisible] = useState(false);
+  const { submitCount } = useFormState({ control });
+  const [submitted, setSubmitted] = useState(submitCount);
+  // A failed submit clears the password; the next one is typed hidden again, not shown because the last one was.
+  if (submitted !== submitCount) {
+    setSubmitted(submitCount);
+    setVisible(false);
+  }
   const value: unknown = useWatch({ control, name });
   const checklistId = `${id}-checklist`;
   return (

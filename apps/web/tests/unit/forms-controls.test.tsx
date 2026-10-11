@@ -217,8 +217,8 @@ describe("the password field (U67)", () => {
   it("describes the input by the checklist and announces a change of it politely, never on every key", () => {
     const html = password("", { checklist: true });
     expect(html).toMatch(/<input[^>]*aria-describedby="pw-checklist"/);
-    expect(html).toMatch(/<ul id="pw-checklist"/);
-    expect(html).toMatch(/<p role="status" class="sr-only">At least 12 characters: not met yet<\/p>/);
+    expect(html).toMatch(/<div id="pw-checklist" role="status"><ul/);
+    expect(html.match(/At least 12 characters/g)).toHaveLength(1);
   });
 
   it("has no checklist where a password is only entered", () => {
