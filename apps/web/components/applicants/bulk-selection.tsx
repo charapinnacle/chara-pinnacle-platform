@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
+import { Checkbox } from "@/components/forms/checkbox-field";
 import type { ApplicantRow } from "@/lib/dal/applicant-list";
 
 export type SelectableRow = { id: string; name: string; status: ApplicantRow["status"] };
@@ -46,12 +47,12 @@ export function SelectApplicant({ id, name }: { id: string; name: string }) {
   const selection = useBulkSelection();
   if (!selection) return null;
   return (
-    <input
-      type="checkbox"
-      aria-label={`Select ${name}`}
-      checked={selection.isSelected(id)}
-      onChange={(event) => selection.toggle(id, event.target.checked)}
-      className="size-5 shrink-0 cursor-pointer accent-primary"
-    />
+    <label className="-m-2 grid cursor-pointer place-items-center p-2">
+      <Checkbox
+        aria-label={`Select ${name}`}
+        checked={selection.isSelected(id)}
+        onChange={(event) => selection.toggle(id, event.target.checked)}
+      />
+    </label>
   );
 }

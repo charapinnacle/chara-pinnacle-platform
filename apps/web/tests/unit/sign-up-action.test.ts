@@ -13,18 +13,28 @@ const verifyOtpMock = vi.fn();
 const documentsMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
 const rememberMock = vi.hoisted(() => vi.fn());
+const rememberEmailMock = vi.hoisted(() => vi.fn());
+const forgetEmailMock = vi.hoisted(() => vi.fn());
+const resendPendingMock = vi.hoisted(() => vi.fn());
+const offerEmailMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/invitation-cookie", () => ({ rememberInvitation: rememberMock }));
+vi.mock("@/lib/pending-email", () => ({
+  rememberPendingEmail: rememberEmailMock,
+  forgetPendingEmail: forgetEmailMock,
+  resendPending: resendPendingMock,
+  offerPendingEmailAgain: offerEmailMock,
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signUp: signUpMock, resend: resendMock, verifyOtp: verifyOtpMock },
   }),
 }));
 
-const { confirmEmail, resendConfirmation, signUp } = await import("@/lib/actions/auth");
+const { changeSignupAddress, confirmEmail, resendConfirmation, resendSignupEmail, signUp } = await import("@/lib/actions/auth");
 
 const documents: LegalDocumentSummary[] = ["terms-of-service", "worker-terms", "age-18-plus"].map(
   (slug) => ({
@@ -80,6 +90,21 @@ describe("signUp action", () => {
         data: { intended_account_kind: "worker", pending_consents: consents },
       },
     });
+  });
+
+  it("keeps the normalised address for the check-your-email page before it redirects there", async () => {
+    await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(rememberEmailMock).toHaveBeenCalledWith("signup", "ana@example.com");
+    expect(rememberEmailMock.mock.invocationCallOrder[0]).toBeLessThan(redirectMock.mock.invocationCallOrder[0]);
+  });
+
+  it("keeps nothing when the form is refused, the visitor is over the limit or Auth fails", async () => {
+    await signUp({ ...input, email: "nope" });
+    throttledMock.mockResolvedValueOnce(true);
+    await signUp(input);
+    signUpMock.mockResolvedValue({ data: null, error: new AuthApiError("limit", 429, "over_request_rate_limit") });
+    await signUp(input);
+    expect(rememberEmailMock).not.toHaveBeenCalled();
   });
 
   it("refuses invalid input with field messages and never echoes the password or calls Auth", async () => {
@@ -156,6 +181,7 @@ describe("signUp action", () => {
   ])("answers %s like a new sign-up so no address is revealed", async (_label, error) => {
     signUpMock.mockResolvedValue({ data: {}, error });
     await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(rememberEmailMock).toHaveBeenCalledWith("signup", "ana@example.com");
   });
 
   it.each([
@@ -276,6 +302,26 @@ describe("resendConfirmation action", () => {
   });
 });
 
+describe("resendSignupEmail action", () => {
+  it("resends through the shared routine to the address it is given, as a sign-up confirmation under the resend limit", async () => {
+    resendMock.mockResolvedValue({ data: {}, error: null });
+    resendPendingMock.mockImplementation(async (_purpose, _action, _path, send: (email: string) => Promise<unknown>) => {
+      expect(await send("ana@example.test")).toBeNull();
+      return { cooldown: 60, sent: true };
+    });
+    expect(await resendSignupEmail()).toEqual({ cooldown: 60, sent: true });
+    expect(resendPendingMock).toHaveBeenCalledWith("signup", "resend", "/verify-email", expect.any(Function));
+    expect(resendMock).toHaveBeenCalledWith({ type: "signup", email: "ana@example.test" });
+  });
+});
+
+describe("changeSignupAddress action", () => {
+  it("offers the address for the form for a minute, then goes to the sign-up form without the address in the URL", async () => {
+    await expect(changeSignupAddress()).rejects.toThrow("REDIRECT:/en/signup");
+    expect(offerEmailMock).toHaveBeenCalledWith("signup");
+  });
+});
+
 describe("confirmEmail action", () => {
   function form(tokenHash: string | null): FormData {
     const data = new FormData();
@@ -287,6 +333,7 @@ describe("confirmEmail action", () => {
     verifyOtpMock.mockResolvedValue({ data: {}, error: null });
     await expect(confirmEmail(form("abc_DEF-123"))).rejects.toThrow("REDIRECT:/en/onboarding");
     expect(verifyOtpMock).toHaveBeenCalledWith({ type: "signup", token_hash: "abc_DEF-123" });
+    expect(forgetEmailMock).toHaveBeenCalledOnce();
   });
 
   it("sends a used or expired token to the invalid-link page", async () => {
@@ -295,6 +342,7 @@ describe("confirmEmail action", () => {
       error: new AuthApiError("Email link is invalid or has expired", 403, "otp_expired"),
     });
     await expect(confirmEmail(form("abc"))).rejects.toThrow("REDIRECT:/en/verify-email?error=invalid_link");
+    expect(forgetEmailMock).not.toHaveBeenCalled();
   });
 
   it.each([[null], [""], ["a b"], ["<script>"], ["x".repeat(201)]])(

@@ -5,13 +5,14 @@ import { cn } from "@/lib/utils";
 
 const standaloneBase = "inline-flex min-h-11 items-center justify-self-start text-body";
 
-const textLinkVariants = cva(
+export const textLinkVariants = cva(
   "-mx-0.5 rounded-sm px-0.5 font-medium underline decoration-[1.5px] underline-offset-4 transition-colors duration-150",
   {
     variants: {
       tone: {
         primary: "text-foreground decoration-brand hover:decoration-foreground",
         destructive: "text-destructive decoration-destructive/40 hover:decoration-destructive",
+        plain: "font-medium text-foreground decoration-1 decoration-transparent hover:decoration-foreground focus-visible:decoration-foreground",
       },
       standalone: {
         true: standaloneBase,
@@ -31,12 +32,12 @@ export function TextLink({ tone, standalone, className, ...props }: TextLinkProp
 
 export const COMPLAINTS_SLUG = "complaints-and-dispute-process";
 
-type LegalLinkProps = Pick<TextLinkProps, "standalone" | "className" | "children"> & {
+type LegalLinkProps = Pick<TextLinkProps, "standalone" | "tone" | "className" | "children"> & {
   slug: string;
   newTabLabel: string;
 };
 
-export function LegalLink({ slug, newTabLabel, standalone, className, children }: LegalLinkProps) {
+export function LegalLink({ slug, newTabLabel, standalone, tone, className, children }: LegalLinkProps) {
   return (
     <TextLink
       href={`/${defaultLocale}/legal/${slug}`}
@@ -44,6 +45,7 @@ export function LegalLink({ slug, newTabLabel, standalone, className, children }
       rel="noopener noreferrer"
       prefetch={false}
       standalone={standalone}
+      tone={tone}
       className={className}
     >
       {children}

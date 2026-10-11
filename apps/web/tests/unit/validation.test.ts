@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptedSchema,
+  AGE_CONFIRMATION,
+  ageConfirmationLabel,
   consentMessage,
+  displayTitle,
+  isDraftDocument,
   unacceptedDocuments,
   type LegalDocumentSummary,
 } from "@/lib/validation/consents";
@@ -101,6 +105,32 @@ describe("sign-up schema (FR-A1)", () => {
   it("validates the resend email the same way", () => {
     expect(resendSchema.parse({ email: " A@B.CO " }).email).toBe("a@b.co");
     expect(resendSchema.safeParse({ email: "nope" }).success).toBe(false);
+  });
+});
+
+describe("how a form names a legal document (U67)", () => {
+  it("strips the DRAFT: prefix for display and leaves the stored title alone", () => {
+    expect(displayTitle("DRAFT: Terms of Service")).toBe("Terms of Service");
+    expect(displayTitle("draft:Privacy Policy")).toBe("Privacy Policy");
+    expect(displayTitle("Terms of Service")).toBe("Terms of Service");
+    expect(displayTitle("The DRAFT: rules")).toBe("The DRAFT: rules");
+  });
+
+  it("calls a document a draft by its version 0 or its prefix", () => {
+    expect(isDraftDocument({ title: "Terms", version: 0 })).toBe(true);
+    expect(isDraftDocument({ title: "DRAFT: Terms", version: 4 })).toBe(true);
+    expect(isDraftDocument({ title: "Terms", version: 1 })).toBe(false);
+  });
+
+  it("names a missing consent by the plain title", () => {
+    expect(consentMessage({ slug: "privacy-policy", title: "DRAFT: Privacy Policy" })).toBe("Accept the Privacy Policy to continue");
+  });
+
+  it("reads the age confirmation as the plain sentence for a draft or a missing wording, and as the published wording otherwise", () => {
+    expect(ageConfirmationLabel({ title: "DRAFT: Age confirmation", version: 0 }, "I am 18 or older. (DRAFT wording)")).toBe(AGE_CONFIRMATION);
+    expect(ageConfirmationLabel({ title: "Age confirmation", version: 2 }, null)).toBe(AGE_CONFIRMATION);
+    expect(ageConfirmationLabel({ title: "Age confirmation", version: 2 }, "I am an adult.")).toBe("I am an adult.");
+    expect(AGE_CONFIRMATION).toBe("I confirm that I am at least 18 years old.");
   });
 });
 

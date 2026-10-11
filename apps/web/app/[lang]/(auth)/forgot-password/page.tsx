@@ -3,13 +3,14 @@ import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { googleSignInEnabled } from "@/lib/env";
+import { prefilledEmail } from "@/lib/pending-email";
 
 export const metadata: Metadata = { title: "Reset your password — CHARA" };
 
 export default async function ForgotPasswordPage({
   params,
 }: PageProps<"/[lang]/forgot-password">) {
-  const { lang } = await params;
+  const [{ lang }, defaultEmail] = await Promise.all([params, prefilledEmail("recovery")]);
   return (
     <AuthCard
       title="Reset your password"
@@ -20,7 +21,7 @@ export default async function ForgotPasswordPage({
         </TextLink>
       }
     >
-      <ForgotPasswordForm />
+      <ForgotPasswordForm defaultEmail={defaultEmail} />
     </AuthCard>
   );
 }

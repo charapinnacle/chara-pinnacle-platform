@@ -3,17 +3,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { kindOptions, KIND_IS_FINAL, type Kind } from "@/components/forms/account-kind-options";
-import { CheckboxField } from "@/components/forms/checkbox-field";
-import { ConsentPanel } from "@/components/forms/consent-panel";
+import { ConsentCheckbox } from "@/components/forms/consent-checkbox";
+import { ConsentList } from "@/components/forms/consent-list";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
-import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import { PasswordField } from "@/components/forms/password-field";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
-import { LegalLink } from "@/components/forms/text-link";
+import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { signUp } from "@/lib/actions/auth";
-import { formatDate } from "@/lib/i18n/format";
-import { AGE_ATTESTATION_SLUG, type LegalDocumentSummary } from "@/lib/validation/consents";
+import type { LegalDocumentSummary } from "@/lib/validation/consents";
 import {
   signUpFormSchema,
   type SignUpFormInput,
@@ -25,6 +24,7 @@ type SignUpFormProps = {
   attestationWording: string | null;
   invitation?: { token: string; email: string; organizationName: string };
   preselectedKind?: Kind;
+  defaultEmail?: string;
 };
 
 const ids = {
@@ -38,7 +38,7 @@ function acceptedDefaults(documents: readonly LegalDocumentSummary[]) {
   return Object.fromEntries(documents.map((document) => [document.slug, false]));
 }
 
-export function SignupForm({ documents, attestationWording, invitation, preselectedKind }: SignUpFormProps) {
+export function SignupForm({ documents, attestationWording, invitation, preselectedKind, defaultEmail = "" }: SignUpFormProps) {
   const form = useForm<SignUpFormInput, undefined, SignUpFormOutput>({
     resolver: (values, context, options) =>
       zodResolver(signUpFormSchema(values.kind ? documents[values.kind] : []))(
@@ -49,8 +49,8 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
     defaultValues: invitation
       ? { kind: "company", email: invitation.email, password: "", accepted: acceptedDefaults(documents.company) }
       : preselectedKind
-        ? { kind: preselectedKind, email: "", password: "", accepted: acceptedDefaults(documents[preselectedKind]) }
-        : { email: "", password: "", accepted: {} },
+        ? { kind: preselectedKind, email: defaultEmail, password: "", accepted: acceptedDefaults(documents[preselectedKind]) }
+        : { email: defaultEmail, password: "", accepted: {} },
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit, setValue } = form;
@@ -119,44 +119,27 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
         autoComplete="email"
         readOnly={invitation !== undefined}
       />
-      <InputField
+      <PasswordField
         control={control}
         name="password"
         id={ids.password}
         label="Password"
-        description="At least 12 characters."
-        type="password"
         autoComplete="new-password"
+        checklist
       />
       {shown.length > 0 ? (
-        <ConsentPanel>
+        <ConsentList>
           {shown.map((document) => (
-            <CheckboxField
+            <ConsentCheckbox
               key={document.slug}
               control={control}
               name={`accepted.${document.slug}`}
               id={ids.accepted(document.slug)}
-            >
-              {document.slug === AGE_ATTESTATION_SLUG ? (
-                (attestationWording ?? "I am 18 or older")
-              ) : (
-                <span>
-                  I accept the{" "}
-                  <LegalLink
-                    slug={document.slug}
-                    newTabLabel="(opens in a new tab)"
-                    className="relative z-10"
-                  >
-                    {document.title}
-                  </LegalLink>
-                  <span className="block text-small text-muted-foreground">
-                    (version {document.version}, published {formatDate(document.publishedAt)})
-                  </span>
-                </span>
-              )}
-            </CheckboxField>
+              document={document}
+              attestationWording={attestationWording}
+            />
           ))}
-        </ConsentPanel>
+        </ConsentList>
       ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Creating account..." : "Create account"}

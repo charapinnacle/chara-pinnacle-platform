@@ -2,51 +2,35 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
+import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
-import { Notice } from "@/components/forms/notice";
+import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { requestPasswordReset } from "@/lib/actions/recovery";
 import { forgotPasswordSchema, type ForgotPasswordInput } from "@/lib/validation/login";
 
-export function ForgotPasswordForm() {
-  const { control, handleSubmit, setError, formState } = useForm<ForgotPasswordInput>({
+const ids = { email: "forgot-email" };
+
+export function ForgotPasswordForm({ defaultEmail }: { defaultEmail?: string }) {
+  const form = useForm<ForgotPasswordInput>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: defaultEmail ?? "" },
+    shouldFocusError: false,
   });
+  const { control, formState, handleSubmit } = form;
+  const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not send the link" });
 
-  async function onSubmit(values: ForgotPasswordInput) {
-    try {
-      const result = await requestPasswordReset(values);
-      if (result.errors?.email) {
-        setError("email", { message: result.errors.email });
-      } else if (result.message) {
-        setError("root.server", { message: result.message });
-      }
-    } catch {
-      toastNetworkError("Could not send the link");
-    }
-  }
-
-  const failed = Boolean(formState.errors.root?.server || formState.errors.email);
   return (
-    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
-      {formState.isSubmitSuccessful && !failed ? (
-        <>
-          <Notice tone="info" role="status">
-            If an account exists for this email, we have sent a reset link.
-          </Notice>
-          <p className="text-small text-muted-foreground">Wait a minute before asking for another.</p>
-        </>
-      ) : null}
-      {formState.errors.root?.server ? (
-        <Notice tone="error" role="alert">
-          {formState.errors.root.server.message}
-        </Notice>
-      ) : null}
+    <form
+      noValidate
+      className="grid gap-6"
+      onSubmit={(event) => handleSubmit((values) => submit(() => requestPasswordReset(values)))(event)}
+    >
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <InputField
         control={control}
         name="email"
+        id={ids.email}
         label="Email"
         type="email"
         autoComplete="username"

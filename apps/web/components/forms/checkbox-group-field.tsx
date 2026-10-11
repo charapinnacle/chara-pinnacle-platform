@@ -3,7 +3,8 @@
 import { useId } from "react";
 import { Controller, type Control, type FieldPath, type FieldValues } from "react-hook-form";
 import { CheckboxRow } from "@/components/forms/checkbox-field";
-import { FieldError, FieldLegend, FieldSet } from "@/components/ui/field";
+import { FieldMessage } from "@/components/forms/field-message";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
 
 type Option = { value: string; label: string };
 
@@ -33,8 +34,8 @@ export function CheckboxGroupField<T extends FieldValues, N extends FieldPath<T>
       render={({ field, fieldState }) => {
         const selected: string[] = field.value;
         return (
-          <FieldSet id={id} className="gap-1" data-invalid={fieldState.invalid}>
-            <FieldLegend variant="label" className="mb-0 text-base">
+          <FieldSet id={id} className="gap-0" data-invalid={fieldState.invalid}>
+            <FieldLegend variant="label" className="mb-1">
               {legend}
             </FieldLegend>
             {options.map((option, index) => (
@@ -54,7 +55,7 @@ export function CheckboxGroupField<T extends FieldValues, N extends FieldPath<T>
                 {option.label}
               </CheckboxRow>
             ))}
-            <FieldError id={errorId} errors={[fieldState.error]} />
+            <FieldMessage id={errorId} error={fieldState.error} />
           </FieldSet>
         );
       }}

@@ -1,5 +1,6 @@
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
+import { waitForHydration } from "./support/hydration";
 import { createCommittedUser, sessionRows } from "./support/login";
 import { alertText, fillLogin, logIn, overflow } from "./support/login-page";
 import { captureActionRequests } from "./support/server-action";
@@ -36,6 +37,7 @@ test.describe("login form", () => {
   }) => {
     const user = await createCommittedUser("worker");
     await page.goto(`/en/login?next=${encodeURIComponent("/en/passport")}`);
+    await waitForHydration(page.getByLabel("Email", { exact: true }));
     await page.getByLabel("Email", { exact: true }).focus();
     await page.keyboard.type(user.email);
     await page.keyboard.press("Tab");

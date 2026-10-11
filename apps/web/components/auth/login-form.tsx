@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
+import { PasswordField } from "@/components/forms/password-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { signIn } from "@/lib/actions/login";
@@ -58,12 +59,11 @@ export function LoginForm({ next }: { next?: string }) {
         type="email"
         autoComplete="username"
       />
-      <InputField
+      <PasswordField
         control={control}
         name="password"
         id={ids.password}
         label="Password"
-        type="password"
         autoComplete="current-password"
       />
       <FormButton type="submit" busy={formState.isSubmitting}>

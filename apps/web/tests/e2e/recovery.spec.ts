@@ -17,7 +17,8 @@ import {
   LINK_EXPIRED,
   passwordLoginStatus,
   refreshStatus,
-  RESET_SENT,
+  requestReset,
+  checkEmailText,
   sessionClaims,
   sessionRows,
   verifyRecoveryStatus,
@@ -60,19 +61,13 @@ test.describe("password recovery", () => {
 
     await page.goto("/en/forgot-password");
     await expectNoAxeViolations(page);
-    await page.getByLabel("Email", { exact: true }).fill(confirmed.email);
-    await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByRole("status")).toHaveText(RESET_SENT);
+    await requestReset(page, confirmed.email);
     await expectNoAxeViolations(page);
 
     const answers = [];
     for (const email of [confirmed.email, unconfirmed.email, unknown, confirmed.email]) {
-      await page.goto("/en/forgot-password");
-      await page.getByLabel("Email", { exact: true }).fill(email);
-      const response = page.waitForResponse((r) => r.request().method() === "POST");
-      await page.getByRole("button", { name: "Send reset link" }).click();
-      await expect(page.getByRole("status")).toHaveText(RESET_SENT);
-      answers.push({ status: (await response).status(), text: await page.getByRole("status").innerText() });
+      const status = await requestReset(page, email);
+      answers.push({ status, text: await checkEmailText(page) });
     }
     expect(new Set(answers.map((answer) => JSON.stringify(answer))).size).toBe(1);
 
@@ -287,10 +282,7 @@ test.describe("password recovery", () => {
     page,
   }) => {
     const user = await createCommittedUser("worker");
-    await page.goto("/en/forgot-password");
-    await page.getByLabel("Email", { exact: true }).fill(user.email);
-    await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByRole("status")).toHaveText(RESET_SENT);
+    await requestReset(page, user.email);
 
     await page.goto(await emailedResetPath(user.email));
     await newPasswordField(page).fill(NEW_PASSWORD);

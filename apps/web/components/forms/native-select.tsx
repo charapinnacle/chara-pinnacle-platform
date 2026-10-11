@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import { controlClassName } from "@/components/forms/control-class";
 import { cn } from "@/lib/utils";
 
 // The size, inset and chevron of a text input and of the combobox, around a native select. It is apart from select-field.tsx
@@ -7,15 +8,12 @@ export function NativeSelect({ className, children, ...props }: React.ComponentP
   return (
     <div className="relative">
       <select
-        className={cn(
-          "h-11 w-full min-w-0 appearance-none rounded-lg border border-input bg-card ps-3.5 pe-10 text-base text-foreground transition-colors hover:border-muted-foreground aria-invalid:border-destructive",
-          className,
-        )}
+        className={cn(controlClassName, "h-12 w-full min-w-0 appearance-none border ps-4 pe-11", className)}
         {...props}
       >
         {children}
       </select>
-      <ChevronDown aria-hidden className="pointer-events-none absolute end-3 top-3.5 size-4 text-muted-foreground" />
+      <ChevronDown aria-hidden className="pointer-events-none absolute end-4 top-4 size-4 text-muted-foreground" />
     </div>
   );
 }

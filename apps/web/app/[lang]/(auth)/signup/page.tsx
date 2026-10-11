@@ -5,6 +5,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { getSignUpForm } from "@/lib/dal/legal";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { googleSignInEnabled } from "@/lib/env";
+import { prefilledEmail } from "@/lib/pending-email";
 import { accountKindSchema } from "@/lib/validation/sign-up";
 import { invitationTokenSchema } from "@/lib/validation/team";
 
@@ -14,9 +15,10 @@ export const metadata: Metadata = { title: "Create your account — CHARA" };
 // Continue with Google is not offered, since its sign-up cannot carry the invitation. /signup?kind=worker or
 // /signup?kind=company only preselects the account type, which the person can still change.
 export default async function SignupPage({ searchParams }: PageProps<"/[lang]/signup">) {
-  const [{ documents, attestationWording }, { invitation: token, kind }] = await Promise.all([
+  const [{ documents, attestationWording }, { invitation: token, kind }, defaultEmail] = await Promise.all([
     getSignUpForm(),
     searchParams,
+    prefilledEmail("signup"),
   ]);
   const parsed = invitationTokenSchema.safeParse(token);
   const preview = parsed.success ? await getInvitationPreview(parsed.data) : null;
@@ -35,6 +37,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/[lang]/si
         attestationWording={attestationWording}
         invitation={invitation}
         preselectedKind={preselected.success ? preselected.data : undefined}
+        defaultEmail={defaultEmail}
       />
     </AuthCard>
   );

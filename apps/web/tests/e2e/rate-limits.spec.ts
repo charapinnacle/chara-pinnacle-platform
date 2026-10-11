@@ -7,7 +7,8 @@ import {
   enrollTotp,
   generateRecoveryPath,
   LOGIN_FAILED,
-  RESET_SENT,
+  requestReset,
+  RESET_PATH,
   sessionRows,
 } from "./support/login";
 import { alertText, fillLogin, loginResponse } from "./support/login-page";
@@ -136,17 +137,14 @@ test.describe("per-visitor rate limits (D20)", () => {
     const { context, page } = await visitor(browser, visitorAddress());
 
     for (let attempt = 1; attempt <= 10; attempt += 1) {
-      await page.goto("/en/forgot-password");
-      await page.getByLabel("Email", { exact: true }).fill(attempt === 1 ? user.email : newEmail());
-      await page.getByRole("button", { name: "Send reset link" }).click();
-      await expect(page.getByRole("status")).toHaveText(RESET_SENT);
+      await requestReset(page, attempt === 1 ? user.email : newEmail());
     }
     const stranger = newEmail();
     await page.goto("/en/forgot-password");
     await page.getByLabel("Email", { exact: true }).fill(stranger);
     await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: TOO_MANY })).toBeVisible();
-    await expect(page.getByRole("status")).toHaveCount(0);
+    await expect(summary(page)).toContainText(TOO_MANY);
+    await expect(page).not.toHaveURL(RESET_PATH);
     expect(await messageCount(stranger)).toBe(0);
     await context.close();
   });

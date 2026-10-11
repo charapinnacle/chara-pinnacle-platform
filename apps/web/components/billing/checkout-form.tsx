@@ -4,17 +4,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toastError } from "@/components/feedback/toast-store";
-import { CheckboxField } from "@/components/forms/checkbox-field";
-import { ConsentPanel } from "@/components/forms/consent-panel";
+import { ConsentList } from "@/components/forms/consent-list";
+import { ConsentSection } from "@/components/forms/consent-section";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
-import { LegalLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { startCheckout } from "@/lib/actions/billing";
 import { oneTrialRule } from "@/lib/billing/presentation";
-import { formatDate } from "@/lib/i18n/format";
 import { checkoutFormSchema, type CheckoutFormInput } from "@/lib/validation/billing";
 
 type CheckoutFormProps = {
@@ -94,25 +92,19 @@ export function CheckoutForm({
         description={oneTrialRule}
         autoComplete="off"
       />
-      <ConsentPanel>
-        <div className="grid gap-1.5 px-2.5 pt-2.5 pb-1 sm:px-3 sm:pt-3">
-          <h2 className="text-h3">{termsTitle}</h2>
-          <p className="text-small text-muted-foreground">
-            Version {termsVersion}, published {formatDate(termsPublishedAt)}
-          </p>
-          <LegalLink
-            slug="subscription-and-billing-terms"
-            newTabLabel={`of the ${termsTitle} (opens in a new tab)`}
-            standalone
-            className="-mt-1.5 -mb-2.5"
-          >
-            Read the full text
-          </LegalLink>
-        </div>
-        <CheckboxField control={control} name="termsAccepted" id={ids.termsAccepted}>
-          I accept the {termsTitle}
-        </CheckboxField>
-      </ConsentPanel>
+      <ConsentList>
+        <ConsentSection
+          control={control}
+          name="termsAccepted"
+          id={ids.termsAccepted}
+          document={{
+            slug: "subscription-and-billing-terms",
+            title: termsTitle,
+            version: termsVersion,
+            publishedAt: termsPublishedAt,
+          }}
+        />
+      </ConsentList>
       <FormButton type="submit" busy={formState.isSubmitting} disabled={!accepted}>
         {formState.isSubmitting ? "Continuing to payment..." : "Continue to payment"}
       </FormButton>

@@ -118,7 +118,7 @@ describe("the list", () => {
     expect(html).toContain(">Board<");
     expect(html).toContain(`href="/en/org/acme-bau/jobs/${job}"`);
     expect(html).not.toContain(">Vacancy<");
-    expect(html).not.toMatch(/Export CSV<\/button>[^]*disabled/);
+    expect(html).not.toMatch(/Export CSV<\/button>[^]*disabled=""/);
   });
 
   it("disables the export for a plan without it and says why the changes are off for a lapsed organization", async () => {

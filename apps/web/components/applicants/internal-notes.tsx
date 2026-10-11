@@ -2,12 +2,14 @@ import { NoteForm } from "@/components/applicants/note-form";
 import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
+import { controlClassName } from "@/components/forms/control-class";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApplicantNote } from "@/lib/dal/applicant-review";
 import { formatDateTime } from "@/lib/i18n/format";
+import { cn } from "@/lib/utils";
 
 type InternalNotesProps = {
   slug: string;
@@ -35,7 +37,7 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
           </Notice>
           <div className="grid gap-1.5">
             <Label htmlFor="internal-note-read-only">Add an internal note</Label>
-            <Textarea id="internal-note-read-only" readOnly aria-disabled="true" aria-describedby={READ_ONLY_REASON_ID} rows={3} />
+            <Textarea id="internal-note-read-only" className={cn(controlClassName, "bg-muted")} readOnly aria-disabled="true" aria-describedby={READ_ONLY_REASON_ID} rows={3} />
           </div>
           <div>
             <ReadOnlyButton className="w-full sm:w-auto">Add note</ReadOnlyButton>

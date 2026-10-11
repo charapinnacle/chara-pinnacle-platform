@@ -164,6 +164,29 @@ describe("the type scale and spacing tokens (DS-02)", () => {
   });
 });
 
+describe("the form controls (U67)", () => {
+  it.each(["card-3xl"])("declares the %s spacing", (name) => {
+    expect(css).toMatch(new RegExp(`--spacing-${name}:\\s*2.5rem;`));
+  });
+
+  it("declares the 12 px radius of a field and the 16 px radius of the auth card", () => {
+    expect(css).toMatch(/--radius-control:\s*0.75rem;/);
+    expect(css).toMatch(/--radius-card:\s*1rem;/);
+  });
+
+  it.each(themes)("keeps the border of a field, the near-black border of a focused one and the fill of a checked box at 3:1 or more in the %s theme", (theme) => {
+    for (const surface of ["background", "card"]) {
+      expect(contrast(theme, "input", surface)).toBeGreaterThanOrEqual(3);
+      expect(contrast(theme, "foreground", surface)).toBeGreaterThanOrEqual(3);
+      expect(contrast(theme, "ring", surface)).toBeGreaterThanOrEqual(3);
+      expect(contrast(theme, "primary", surface)).toBeGreaterThanOrEqual(3);
+      expect(contrast(theme, "destructive", surface)).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast(theme, "primary-foreground", "primary")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(theme, "success-foreground", "card")).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe("visible focus (NFR-U1)", () => {
   it("draws the focus outline outside any cascade layer so primitives cannot remove it", () => {
     const layerStart = css.indexOf("@layer base");

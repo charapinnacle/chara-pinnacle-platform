@@ -8,7 +8,7 @@ const headersMock = vi.hoisted(() => vi.fn());
 vi.mock("next/headers", () => ({ headers: headersMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { isThrottled, visitorProof } = await import("@/lib/dal/rate-limit");
+const { isThrottled, throttleWait, visitorProof } = await import("@/lib/dal/rate-limit");
 const { attemptProof, visitorKey } = await import("@/lib/visitor-address");
 
 const secret = "test-visitor-hash-secret-0123456789abcdef";
@@ -51,6 +51,12 @@ describe("isThrottled", () => {
     const keys = rpcMock.mock.calls.map(([, args]) => args.p_key);
     expect(keys[0]).toBe(keys[1]);
     expect(keys[2]).not.toBe(keys[0]);
+  });
+
+  it("gives the seconds to wait when the attempt is over the limit and 0 when it is allowed", async () => {
+    rpcMock.mockResolvedValueOnce({ data: [{ allowed: false, retry_after_seconds: 130 }], error: null });
+    expect(await throttleWait("resend")).toBe(130);
+    expect(await throttleWait("resend")).toBe(0);
   });
 
   it("answers true when the database says the attempt is over the limit", async () => {

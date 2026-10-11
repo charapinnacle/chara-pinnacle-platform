@@ -9,7 +9,8 @@ import {
   type FieldValues,
 } from "react-hook-form";
 import { controlClassName } from "@/components/forms/control-class";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { FieldMessage } from "@/components/forms/field-message";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,7 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
             .filter(Boolean)
             .join(" ") || undefined;
         return (
-          <Field data-invalid={fieldState.invalid}>
+          <Field data-invalid={fieldState.invalid} className="data-[invalid=true]:text-foreground">
             <FieldLabel htmlFor={id} className={hideLabel ? "sr-only" : undefined}>
               {label}
             </FieldLabel>
@@ -72,11 +73,14 @@ export function FormField<T extends FieldValues, N extends FieldPath<T>>({
               "aria-describedby": describedBy,
             })}
             {description ? (
-              <FieldDescription id={descriptionId} className={fieldState.error ? SR_ONLY_WIDTH : undefined}>
+              <p
+                id={descriptionId}
+                className={cn("-mt-0.5 text-small leading-normal text-muted-foreground", fieldState.error && SR_ONLY_WIDTH)}
+              >
                 {description}
-              </FieldDescription>
+              </p>
             ) : null}
-            <FieldError id={errorId} errors={[fieldState.error]} />
+            <FieldMessage id={errorId} error={fieldState.error} className="-mt-0.5 flex items-start gap-1.5 text-small leading-snug" />
           </Field>
         );
       }}
@@ -109,7 +113,7 @@ export function InputField<T extends FieldValues, N extends FieldPath<T>>({
           readOnly={readOnly}
           maxLength={maxLength}
           placeholder={placeholder}
-          className={cn("h-11", controlClassName)}
+          className={cn("h-12", controlClassName, readOnly && "bg-muted")}
           {...controlProps}
         />
       )}

@@ -34,11 +34,11 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
       <form method="get" className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div className="grid gap-2">
           <Label htmlFor="stats-from">From</Label>
-          <Input id="stats-from" name="from" type="date" defaultValue={from} className={cn("h-11", controlClassName)} />
+          <Input id="stats-from" name="from" type="date" defaultValue={from} className={cn("h-12", controlClassName)} />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="stats-to">To</Label>
-          <Input id="stats-to" name="to" type="date" defaultValue={to} className={cn("h-11", controlClassName)} />
+          <Input id="stats-to" name="to" type="date" defaultValue={to} className={cn("h-12", controlClassName)} />
         </div>
         <FormButton type="submit" className="w-full sm:w-auto">
           Show

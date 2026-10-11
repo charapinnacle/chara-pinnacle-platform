@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 export const cardVariants = cva("grid gap-3 rounded-xl border bg-card", {
   variants: {
-    padding: { none: "", sm: "p-card-sm", md: "p-card", lg: "p-card-lg", xl: "p-card-xl sm:p-card-2xl" },
+    padding: { none: "", sm: "p-card-sm", md: "p-card", lg: "p-card-lg", xl: "p-card-xl sm:p-card-3xl" },
     elevated: { true: "shadow-card" },
   },
   defaultVariants: { padding: "md" },

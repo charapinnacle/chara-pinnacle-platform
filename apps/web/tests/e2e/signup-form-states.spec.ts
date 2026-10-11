@@ -45,6 +45,8 @@ test.describe("sign-up form states", () => {
     await expect(page.getByLabel("Email address")).toBeFocused();
 
     await page.getByLabel("Password", { exact: true }).press("Tab");
+    await expect(page.getByRole("button", { name: "Show password" })).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(page.getByRole("checkbox").first()).toBeFocused();
     await page.keyboard.press("Space");
     await expect(page.getByRole("checkbox").first()).toBeChecked();

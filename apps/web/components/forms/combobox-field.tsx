@@ -139,7 +139,7 @@ function Combobox({
         aria-expanded={listed}
         aria-controls={listed ? `${id}-listbox` : undefined}
         aria-activedescendant={listed && active >= 0 ? optionId(id, active) : undefined}
-        className={cn("h-11 pe-11", controlClassName, noScriptSelect && "noscript:hidden")}
+        className={cn(controlClassName, "h-12 pe-12", noScriptSelect && "noscript:hidden")}
         value={text}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -161,7 +161,7 @@ function Combobox({
         tabIndex={-1}
         aria-label={`Show ${label} options`}
         className={cn(
-          "absolute end-0 top-0 grid h-11 w-11 place-items-center rounded-e-lg text-muted-foreground",
+          "absolute end-0 top-0 grid h-12 w-12 place-items-center rounded-e-control text-muted-foreground",
           noScriptSelect && "noscript:hidden",
         )}
         onMouseDown={(event) => event.preventDefault()}
@@ -190,12 +190,12 @@ function Combobox({
       </div>
       {listed ? (
         <div
-          className="absolute inset-x-0 z-10 mt-1 overflow-hidden rounded-lg border border-input bg-card text-base shadow-md"
+          className="absolute inset-x-0 z-20 mt-1 overflow-hidden rounded-control border border-input bg-card text-base shadow-md"
           onMouseDown={(event) => event.preventDefault()}
         >
           <ul id={`${id}-listbox`} role="listbox" aria-label={label} className="max-h-60 overflow-auto py-1">
             {matches.total === 0 ? (
-              <li role="option" aria-disabled aria-selected={false} className="px-3.5 py-2 text-muted-foreground">
+              <li role="option" aria-disabled aria-selected={false} className="px-4 py-2 text-muted-foreground">
                 {emptyText}
               </li>
             ) : (
@@ -207,7 +207,7 @@ function Combobox({
                   aria-selected={index === active}
                   onClick={() => choose(option)}
                   className={cn(
-                    "min-h-11 cursor-pointer px-3.5 py-2.5 hover:bg-accent",
+                    "min-h-11 cursor-pointer px-4 py-2.5 hover:bg-accent",
                     index === active && "bg-accent text-accent-foreground",
                   )}
                 >
@@ -217,7 +217,7 @@ function Combobox({
             )}
           </ul>
           {matches.total > count ? (
-            <p className="border-t px-3.5 py-2 text-small text-muted-foreground">
+            <p className="border-t px-4 py-2 text-small text-muted-foreground">
               Showing {count} of {matches.total}. Type to narrow the list.
             </p>
           ) : null}

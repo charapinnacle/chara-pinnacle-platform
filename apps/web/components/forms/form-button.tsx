@@ -8,7 +8,7 @@ export const formButtonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "w-full hover:bg-primary-hover active:bg-primary-active",
+        primary: "min-h-12 w-full hover:bg-primary-hover active:bg-primary-active",
         secondary:
           "border-input bg-card text-secondary-foreground hover:bg-secondary active:bg-muted",
         destructive:
@@ -47,8 +47,8 @@ export function FormButton({
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       // A long label ("Save experience and availability") wraps instead of making its card, and so the page, wider than
-      // a 320 or 360 px screen; min-h-11 keeps the 44 px target of a one-line button.
-      className={cn("h-auto min-h-11 py-2.5 text-center whitespace-normal", formButtonVariants({ variant, busy }), className)}
+      // a 320 or 360 px screen; min-h-11 keeps the 44 px target of a one-line button; the primary button is 48 px.
+      className={cn("h-auto min-h-11 rounded-control py-2.5 text-center whitespace-normal", formButtonVariants({ variant, busy }), className)}
       {...props}
     >
       {busy ? <Spinner /> : null}

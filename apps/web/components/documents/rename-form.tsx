@@ -4,10 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useId } from "react";
 import { useForm } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
+import { controlClassName } from "@/components/forms/control-class";
 import { FormButton } from "@/components/forms/form-button";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Input } from "@/components/ui/input";
 import { renameDocument } from "@/lib/actions/documents";
+import { cn } from "@/lib/utils";
 import { renameFormSchema, type RenameInput } from "@/lib/validation/documents";
 
 type RenameFormProps = { documentId: string; title: string; onDone: (renamed: boolean) => void };
@@ -43,7 +45,7 @@ export function RenameForm({ documentId, title, onDone }: RenameFormProps) {
         aria-label={`New title for ${title}`}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className="h-11 bg-card px-3.5 text-base md:text-base"
+        className={cn("h-12", controlClassName)}
         onKeyDown={(event) => {
           if (event.key === "Escape") onDone(false);
         }}

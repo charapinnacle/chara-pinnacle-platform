@@ -6,7 +6,7 @@ import { seedDocument } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
 import { addCompanyUser, jobRows, newCompany, newJobUrl, seedJob } from "./support/jobs";
 import { signInBrowser } from "./support/session";
-import { newEmail, PASSWORD } from "./support/signup-page";
+import { ageBox, documentBox, newEmail, PASSWORD } from "./support/signup-page";
 import { expect, test } from "./support/test";
 
 // NFR-U1 (WCAG 2.1.1 Keyboard): the four main journeys done with the keyboard alone. The focus moves with Tab from where it
@@ -50,8 +50,7 @@ test.describe("the main journeys with the keyboard alone (NFR-U1)", () => {
     await typeInto(page, page.getByLabel("Email address"), email);
     await typeInto(page, page.getByLabel("Password", { exact: true }), PASSWORD);
     for (const { slug, title } of await currentDocuments("worker")) {
-      const name = slug === "age-18-plus" ? /I am 18 or older/ : new RegExp(`I accept the ${title}`);
-      await press(page, page.getByRole("checkbox", { name }), "Space");
+      await press(page, slug === "age-18-plus" ? ageBox(page) : documentBox(page, title), "Space");
     }
     await press(page, page.getByRole("button", { name: "Create account" }), "Enter");
 
