@@ -15,14 +15,16 @@ export const LEGAL_SLUGS = [
 ] as const;
 
 // The owner keeps the header to the two ways in and the account links (OPEN_QUESTIONS.md, owner decision 2026-10-10), with
-// Post a Job from the client's website structure (D81); the pages about CHARA lead the footer.
+// Post a Job from the client's website structure (D81); the pages about CHARA are in the footer.
 export const HEADER_LABELS = ["Find Jobs", "How CHARA Works", "Post a Job", "Login", "Sign up"];
 
+// The footer reads in three columns: Platform, Company and Legal.
 export const FOOTER_LABELS = [
-  "Pricing",
+  "Find Jobs",
   "How CHARA Works",
-  "Trust & Safety",
+  "Pricing",
   "About",
+  "Trust & Safety",
   "Contact",
   "Imprint",
   "Privacy Policy",

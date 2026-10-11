@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aboutLinks, appFooterLinks, guestLinks, legalGroups, legalSlugs, publicFooterLinks, siteLinks } from "@/lib/public/navigation";
+import { appFooterLinks, guestLinks, legalGroups, legalSlugs, publicFooterColumns, siteLinks } from "@/lib/public/navigation";
 
 const headerLinks = [...siteLinks, ...guestLinks];
 const footerLinks = legalGroups.flatMap(({ links }) => links);
@@ -16,25 +16,27 @@ describe("the navigation of the public pages (FR-H1 AC3)", () => {
     expect(guestLinks.map(({ label }) => label)).toEqual(["Login", "Sign up"]);
   });
 
-  it("puts Pricing, How CHARA Works, Trust & Safety, About and Contact in the CHARA group of the footer", () => {
-    expect(aboutLinks.map(({ label }) => label)).toEqual(["Pricing", "How CHARA Works", "Trust & Safety", "About", "Contact"]);
-    expect(aboutLinks.map(({ path }) => path)).toEqual(["pricing", "how-it-works", "trust-safety", "about", "contact"]);
-  });
-
-  it("keeps the public footer to one compact line that ends with the index of all legal documents (every document is two clicks away)", () => {
-    expect(publicFooterLinks.map(({ label }) => label)).toEqual([
-      "Pricing",
-      "How CHARA Works",
-      "Trust & Safety",
-      "About",
-      "Contact",
-      "Imprint",
-      "Privacy Policy",
-      "Terms of Service",
-      "Cookie Policy",
-      "All legal documents",
+  it("sets the public footer in three columns, Platform, Company and Legal, and ends it with the index of all legal documents (every document is two clicks away)", () => {
+    expect(publicFooterColumns.map(({ title }) => title)).toEqual(["Platform", "Company", "Legal"]);
+    expect(publicFooterColumns.map(({ links }) => links.map(({ label }) => label))).toEqual([
+      ["Find Jobs", "How CHARA Works", "Pricing"],
+      ["About", "Trust & Safety", "Contact"],
+      ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"],
     ]);
-    expect(publicFooterLinks.at(-1)?.path).toBe("legal");
+    expect(publicFooterColumns.flatMap(({ links }) => links.map(({ path }) => path))).toEqual([
+      "jobs",
+      "how-it-works",
+      "pricing",
+      "about",
+      "trust-safety",
+      "contact",
+      "imprint",
+      "legal/privacy-policy",
+      "legal/terms-of-service",
+      "legal/cookie-policy",
+      "legal",
+    ]);
+    expect(publicFooterColumns[2].links.at(-1)?.path).toBe("legal");
   });
 
   it("gives the signed-in area one small line of four links", () => {
