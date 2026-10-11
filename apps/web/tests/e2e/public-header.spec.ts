@@ -2,6 +2,7 @@ import { signedInPage } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { addCompanyUser, newCompany } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
+import { logIn } from "./support/login-page";
 import { HEADER_LABELS } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
@@ -28,7 +29,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81)", () => {
     const company = await newCompany();
     const { context, page } = await signedInPage(browser, company.owner);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", `/en/org/${company.slug}/jobs/new`);
+    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
+    expect(await page.content()).not.toContain(company.slug);
     await expect(nav(page).getByRole("link", { name: "Login", exact: true })).toHaveCount(0);
     await expect(nav(page).getByRole("link", { name: "Sign up" })).toHaveCount(0);
     await expectNoAxeViolations(page);
@@ -42,7 +44,9 @@ test.describe("the header of the public pages (FR-H1 AC3, D81)", () => {
     const employer = await createCommittedUser("company");
     const { context, page } = await signedInPage(browser, employer);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/dashboard/employer");
+    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
+    await nav(page).getByRole("link", { name: "Post a Job" }).click();
+    await expect(page).toHaveURL("/en/dashboard/employer");
     await context.close();
   });
 
@@ -53,6 +57,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81)", () => {
     await memberSession.page.goto("/en/about");
     await expect(nav(memberSession.page).getByRole("link", { name: "Go to my area" })).toBeVisible();
     await expect(nav(memberSession.page).getByRole("link", { name: "Post a Job" })).toHaveCount(0);
+    await memberSession.page.goto("/en/post-job");
+    await expect(memberSession.page).toHaveURL(/\/en\/dashboard\/employer/);
     await memberSession.context.close();
 
     const worker = await createCommittedUser("worker");
@@ -60,6 +66,16 @@ test.describe("the header of the public pages (FR-H1 AC3, D81)", () => {
     await page.goto("/en/about");
     await expect(nav(page).getByRole("link")).toHaveText(["Find Jobs", "How CHARA Works", "Go to my area"]);
     await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveCount(0);
+    await page.goto("/en/post-job");
+    await expect(page).toHaveURL("/en/dashboard/worker");
     await context.close();
+  });
+
+  test("a visitor who opens /post-job is sent to log in and an employer who logs in lands on the new-vacancy page", async ({ page }) => {
+    const company = await newCompany();
+    await page.goto("/en/post-job");
+    await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
+    await logIn(page, company.owner, "/en/post-job");
+    await expect(page).toHaveURL(`/en/org/${company.slug}/jobs/new`);
   });
 });

@@ -75,7 +75,7 @@ test.describe("apply to a vacancy", () => {
     expect(queuedForApplication(application.id).map(({ user_id }) => user_id).sort()).toEqual([company.owner.id, member.id].sort());
 
     await page.goto("/en/dashboard/worker");
-    await page.getByRole("link", { name: "My applications" }).click();
+    await page.getByRole("main").getByRole("link", { name: "View all applications" }).click();
     await expect(page).toHaveURL(APPLICATIONS_URL);
     await expect(page.getByRole("heading", { name: "My applications", level: 1 })).toBeVisible();
     const row = page.getByRole("main").locator("ul > li").filter({ hasText: "Welder" });

@@ -6,26 +6,25 @@ import { signOut } from "@/lib/actions/login";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
 import { guestLinks, siteLinks } from "@/lib/public/navigation";
-import { homePath, jobsPath } from "@/lib/routes";
+import { homePath } from "@/lib/routes";
 
 const linkClassName =
   "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground";
 
-// A visitor starts as an employer; a signed-in employer goes to the new-vacancy page of the first organisation in which
-// they may publish (owners and admins), or to their dashboard while they have no organisation yet. A candidate, and a
-// member who cannot publish, are offered nothing. Not behind a Suspense boundary, like the account items below.
+// A visitor starts as an employer; a signed-in employer goes through /post-job, which finds the new-vacancy page of the
+// organisation (the address of an organisation is not put on a public page). A candidate, a suspended account and a
+// member who cannot publish are offered nothing. Not behind a Suspense boundary, like the account items below.
 async function postJobHref(lang: string): Promise<string | null> {
   const user = await getCurrentUser();
   if (!user) return `/${lang}/signup?kind=company`;
   if (user.suspended || user.accountKind !== "company") return null;
   try {
     const organizations = await getMyOrganizations(user.id);
-    if (organizations.length === 0) return homePath(lang, "company");
-    const publisher = organizations.find(({ role, suspended }) => role !== "member" && !suspended);
-    return publisher ? `${jobsPath(lang, publisher.slug)}/new` : null;
+    const mayPublish = organizations.length === 0 || organizations.some(({ role, suspended }) => role !== "member" && !suspended);
+    return mayPublish ? `/${lang}/post-job` : null;
   } catch (error) {
     console.error("The organisations of the header could not be loaded", error);
-    return homePath(lang, "company");
+    return `/${lang}/post-job`;
   }
 }
 

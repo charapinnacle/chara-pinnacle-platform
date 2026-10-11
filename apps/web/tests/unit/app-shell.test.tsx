@@ -42,7 +42,8 @@ describe("the header of the signed-in area", () => {
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).toContain("ana@example.test");
     expect(html).toContain("Worker");
-    expect(html).toContain("Notification settings");
+    expect(html).toMatch(/<a [^>]*href="\/en\/passport"[^>]*>Edit profile<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/en\/settings"[^>]*>Settings<\/a>/);
     expect(html).toContain("Log out");
   });
 
@@ -83,10 +84,10 @@ describe("the header of the signed-in area", () => {
     expect(one).toContain('href="/en/settings/notifications"');
   });
 
-  it("offers an employer the notification settings only", () => {
+  it("offers an employer Settings, which lead to the notification settings, and no Edit profile", () => {
     const html = nav({ accountKind: "company", organizations: [acme] });
-    expect(html).toContain("Notification settings");
-    expect(html).not.toMatch(/>Settings<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/en\/settings\/notifications"[^>]*>Settings<\/a>/);
+    expect(html).not.toContain("Edit profile");
   });
 
   it("offers nothing to a suspended organisation, and no page link on the onboarding page or to an account without a kind", () => {

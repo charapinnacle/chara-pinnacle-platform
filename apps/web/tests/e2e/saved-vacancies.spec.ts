@@ -260,7 +260,7 @@ test.describe("saved vacancies", () => {
       if (!route.request().headers()["next-router-prefetch"]) await new Promise((resolve) => setTimeout(resolve, navigationDelay));
       await route.continue();
     });
-    await page.getByRole("link", { name: "Saved vacancies" }).click();
+    await page.getByRole("main").getByRole("link", { name: /^Saved jobs/ }).click();
     await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
     await expect(rows(page)).toHaveCount(20);
     navigationDelay = 0;

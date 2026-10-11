@@ -93,7 +93,8 @@ const trustSafetyPages = (jobId: string): Pages => ({
 });
 
 // The pages that belong to a state of the account rather than to a role.
-const accountStatePages = ["/[lang]/onboarding", "/[lang]/consent", "/[lang]/suspended", "/[lang]/mfa"];
+// /post-job only redirects (to the new-vacancy page or the dashboard), so it renders nothing to sweep.
+const accountStatePages = ["/[lang]/onboarding", "/[lang]/consent", "/[lang]/suspended", "/[lang]/mfa", "/[lang]/post-job"];
 
 async function expectPage(page: Page, address: string): Promise<void> {
   const response = await page.goto(address);
