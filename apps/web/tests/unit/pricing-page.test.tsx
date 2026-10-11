@@ -62,6 +62,17 @@ describe("the pricing page (FR-H2)", () => {
     expect(html).toContain("A paid plan does not make an organisation verified or move its vacancies up in search results.");
   });
 
+  it("has the client's heading, and a worker card that lists what a worker has and ends in Create worker profile for a visitor (D81)", async () => {
+    const html = renderToStaticMarkup(await PricingPage(props));
+    expect(html).toContain("Choose how you want to grow on CHARA");
+    const workers = html.slice(html.indexOf('id="pricing-workers"'), html.indexOf('id="pricing-employers"'));
+    for (const item of ["Worker profile", "CHARA Passport", "Search jobs", "Apply", "Save jobs", "Manage applications"]) {
+      expect(workers).toContain(`</svg>${item}</li>`);
+    }
+    expect(workers).toMatch(/<a [^>]*href="\/en\/signup\?kind=worker"[^>]*>Create worker profile<\/a>/);
+    expect(html).not.toMatch(/recruitment compan|staffing compan/i);
+  });
+
   it("shows the worker statement and no checkout link for workers", async () => {
     viewer = { kind: "worker" };
     const html = renderToStaticMarkup(await PricingPage(props));
@@ -78,6 +89,7 @@ describe("the pricing page (FR-H2)", () => {
 
     expect(html).toContain("Pricing is currently unavailable");
     expect(html).toContain('href="/en/contact"');
+    expect(html).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Start hiring<\/a>/);
     expect(html).not.toContain("<h3");
     expect(html).toContain("Workers never pay");
   });

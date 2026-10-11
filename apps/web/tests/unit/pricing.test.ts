@@ -72,7 +72,7 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
   const links = (viewer: PricingViewer) => planLink(viewer, basic, "en");
 
   it("sends a visitor to the sign-up and an owner or admin to the billing page of the organisation", () => {
-    expect(links({ kind: "visitor" })).toEqual({ href: "/en/signup", label: "Sign up for Basic" });
+    expect(links({ kind: "visitor" })).toEqual({ href: "/en/signup?kind=company", label: "Sign up for Basic" });
     expect(links({ kind: "manager", slug: "acme-bau" })).toEqual({ href: "/en/org/acme-bau/billing", label: "Choose Basic" });
   });
 
