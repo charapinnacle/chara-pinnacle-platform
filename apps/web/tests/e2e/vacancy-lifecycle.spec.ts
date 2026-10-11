@@ -111,6 +111,7 @@ test.describe("vacancy lifecycle", () => {
 
   test("FR-C2 AC9: closing or filling with applications in progress names them and links to them first, and changes none of them", async ({
     page,
+    browser,
   }) => {
     const acme = await newCompany();
     const busy = seedJob(acme, { title: "Busy welder", status: "open" });
@@ -146,9 +147,14 @@ test.describe("vacancy lifecycle", () => {
     await expectNoAxeViolations(page);
     await link.click();
     await expect(page).toHaveURL(applicantsLink);
-    await expect(page.getByRole("main").getByRole("link", { name: "Busy welder" })).toBeVisible();
-    await expect(page.getByRole("table", { name: "Applicants" }).locator("tbody tr")).toHaveCount(6);
     expect(jobStatus(busy)).toBe("open");
+    // The owner is asked to set up two-step verification there, so a member checks what the link lists.
+    const memberContext = await browser.newContext();
+    const memberPage = await memberContext.newPage();
+    await logIn(memberPage, await addCompanyUser(acme, "member"), applicantsLink);
+    await expect(memberPage.getByRole("main").getByRole("link", { name: "Busy welder" }).first()).toBeVisible();
+    await expect(memberPage.getByRole("table", { name: "Applicants" }).locator("tbody tr")).toHaveCount(6);
+    await memberContext.close();
 
     await page.goto(jobUrl(acme.slug, busy));
     await page.getByRole("button", { name: "Close", exact: true }).click();
