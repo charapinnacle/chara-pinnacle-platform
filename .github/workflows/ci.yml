@@ -27,6 +27,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Fail when a key route loads more JavaScript than its budget
+        run: node scripts/check-bundle-budget.mjs apps/web/tests/perf-budget.json apps/web/.next/diagnostics/route-bundle-stats.json
 
   db:
     runs-on: ubuntu-latest

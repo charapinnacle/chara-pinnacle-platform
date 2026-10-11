@@ -1,0 +1,10 @@
+{
+  "routes": [
+    { "route": "/[lang]", "as": "visitor", "firstLoadJsBytes": 600000, "transferredJsBytes": 270000, "serverMs": 500, "loadMs": 2500 },
+    { "route": "/[lang]/jobs", "as": "visitor", "firstLoadJsBytes": 810000, "transferredJsBytes": 290000, "serverMs": 500, "loadMs": 2500 },
+    { "route": "/[lang]/jobs/[id]", "as": "visitor", "firstLoadJsBytes": 620000, "transferredJsBytes": 280000, "serverMs": 500, "loadMs": 2500 },
+    { "route": "/[lang]/signup", "as": "visitor", "firstLoadJsBytes": 800000, "transferredJsBytes": 260000, "serverMs": 500, "loadMs": 2500 },
+    { "route": "/[lang]/dashboard/[kind]", "as": "candidate", "firstLoadJsBytes": 660000, "transferredJsBytes": 225000, "serverMs": 500, "loadMs": 2500 },
+    { "route": "/[lang]/org/[slug]/applicants", "as": "member", "firstLoadJsBytes": 640000, "transferredJsBytes": 275000, "serverMs": 500, "loadMs": 2500 }
+  ]
+}
