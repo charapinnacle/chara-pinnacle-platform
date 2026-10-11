@@ -52,7 +52,7 @@ insert into fns values
   ('admin_get_organization', format($$select * from public.admin_get_organization(%L)$$, current_setting('t.a')), '{admin,trust_safety}'),
   ('admin_list_reports', $$select * from public.admin_list_reports()$$, '{admin,trust_safety}'),
   ('admin_get_report', format($$select * from public.admin_get_report(%L)$$, :'mreport'), '{admin,trust_safety}'),
-  ('admin_set_report_status', format($$select public.admin_set_report_status(%L, 'in_review')$$, :'mreport'), '{trust_safety}');
+  ('admin_set_report_status', format($$select public.admin_set_report_status(%L, 'in_review', 'Looking at the report.')$$, :'mreport'), '{trust_safety}');
 
 -- who: the roles the caller holds, unrevoked
 create temp table callers (name text primary key, uid uuid, db_role text not null, aal text not null, held text[] not null);

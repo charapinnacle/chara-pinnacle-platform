@@ -1,5 +1,5 @@
 begin;
-select plan(106);
+select plan(108);
 
 \ir status_fixture.inc
 
@@ -106,6 +106,17 @@ select throws_ok($$insert into public.reports (target_type, application_id, cate
 select throws_ok($$insert into public.reports (target_type, content_path, category, details, good_faith_confirmed) values ('content', '//evil.example', 'other', 'Twenty characters or more of text.', true)$$, '23514', null, 'a path cannot start with two slashes');
 select throws_ok($$insert into public.reports (target_type, content_path, category, details, good_faith_confirmed, reporter_user_id, reporter_email) values ('content', '/en', 'other', 'Twenty characters or more of text.', true, gen_random_uuid(), 'a@example.test')$$, '23514', null, 'a signed-in reporter has no address of their own in the record');
 select throws_ok($$insert into public.reports (target_type, content_path, category, details, good_faith_confirmed, status) values ('content', '/en', 'other', 'Twenty characters or more of text.', true, 'dismissed')$$, '23514', null, 'a closed report needs who closed it, when and the note');
+
+select is(
+  (select array_agg(a.attname order by a.attname)
+   from pg_index i join pg_class c on c.oid = i.indexrelid join pg_attribute a on a.attrelid = i.indrelid and a.attnum = i.indkey[0]
+   where i.indrelid = 'public.reports'::regclass and c.relname in ('reports_job_idx', 'reports_organization_idx', 'reports_application_idx')),
+  array['application_id', 'job_id', 'organization_id']::name[], 'each foreign key of a report (vacancy, organisation, application) has an index led by its column'
+);
+select is(
+  private.report_reference(42) || ' ' || private.report_reference(999999) || ' ' || private.report_reference(1234567),
+  'R-000042 R-999999 R-1234567', 'a reference is six digits and grows past a million without cutting a digit'
+);
 
 -- A visitor reports a vacancy
 select (select count(*) from pgmq.q_notifications) + (select count(*) from public.notifications) as queued_before \gset

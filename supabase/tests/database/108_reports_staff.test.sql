@@ -1,5 +1,5 @@
 begin;
-select plan(67);
+select plan(69);
 
 \ir status_fixture.inc
 
@@ -177,20 +177,21 @@ select is(pg_temp.status_as(:'st_trust', :'r1', 'new'), 'P0001|CHARA_INVALID_INP
 select is(pg_temp.status_as(:'st_trust', :'r1', 'dismissed'), 'P0001|CHARA_INVALID_INPUT|reason', 'AC: dismissing needs a note');
 select is(pg_temp.status_as(:'st_trust', :'r1', 'actioned', 'too short'), 'P0001|CHARA_INVALID_INPUT|reason', 'of at least 10 characters');
 select is(pg_temp.status_as(:'st_trust', :'r1', 'actioned', repeat('n', 2001)), 'P0001|CHARA_INVALID_INPUT|reason', 'and at most 2000');
-select is(pg_temp.status_as(:'st_trust', 999999, 'in_review'), 'P0002|CHARA_NOT_FOUND|', 'an unknown report is not found');
+select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review'), 'P0001|CHARA_INVALID_INPUT|reason', 'FR-F1: putting a report in review needs a reason too');
+select is(pg_temp.status_as(:'st_trust', 999999, 'in_review', 'Looking at the report.'), 'P0002|CHARA_NOT_FOUND|', 'an unknown report is not found');
 select is(pg_temp.writes(), :'before_refused', 'the refused calls changed nothing and wrote no audit row');
 
-select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review'), 'ok', 'AC: Trust & Safety puts a report in review');
+select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review', 'Reading the report.'), 'ok', 'AC: Trust & Safety puts a report in review with a reason');
 select is(
   (select format('%s|%s|%s|%s', status, handled_by = :'st_trust', handled_at is not null, resolution_note is null) from public.reports where id = :'r1'),
-  'in_review|t|t|t', 'with who and when, and no note'
+  'in_review|t|t|t', 'with who and when, and no note on the report (the reporter reads notes of closings only)'
 );
 select is(
-  (select format('%s|%s|%s|%s|%s', actor_id = :'st_trust', entity_type, metadata ->> 'from', metadata ->> 'to', metadata ->> 'request_id')
+  (select format('%s|%s|%s|%s|%s|%s', actor_id = :'st_trust', entity_type, metadata ->> 'from', metadata ->> 'to', metadata ->> 'reason', metadata ->> 'request_id')
    from audit.log where action = 'report.in_review' and entity_id = :'r1'::text),
-  format('t|report|new|in_review|%s', :'request'), 'one audit row records the move, the actor and the request'
+  format('t|report|new|in_review|Reading the report.|%s', :'request'), 'one audit row records the move, the actor, the reason and the request'
 );
-select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review'), 'P0001|CHARA_INVALID_STATE|in_review', 'a report already in review is refused');
+select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review', 'Reading it again.'), 'P0001|CHARA_INVALID_STATE|in_review', 'a report already in review is refused');
 select is(pg_temp.call_ids(:'st_trust', 'select * from public.admin_list_reports()'), format('%s,%s,%s,%s,%s,%s,%s', :'r1', :'r2', :'r3', :'r4', :'r5', :'r6', :'r7'), 'it stays in the open queue');
 select is(pg_temp.call_ids(:'st_trust', $$select * from public.admin_list_reports('in_review')$$), :'r1'::text, 'and is the one of the filter in review');
 select is(pg_temp.call_ids(:'st_trust', $$select * from public.admin_list_reports('new')$$), format('%s,%s,%s,%s,%s,%s', :'r2', :'r3', :'r4', :'r5', :'r6', :'r7'), 'and not of the filter new');
@@ -211,7 +212,7 @@ select is(
   'in_review|actioned|The vacancy was hidden.', 'and the audit row has the move and the reason'
 );
 select is(pg_temp.status_as(:'st_trust', :'r1', 'dismissed', 'Changed my mind about it.'), 'P0001|CHARA_INVALID_STATE|actioned', 'a closed report does not change again');
-select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review'), 'P0001|CHARA_INVALID_STATE|actioned', 'and is not reopened');
+select is(pg_temp.status_as(:'st_trust', :'r1', 'in_review', 'Reopening it.'), 'P0001|CHARA_INVALID_STATE|actioned', 'and is not reopened');
 select is((select moderation_state::text from public.jobs where id = :'v2'), 'visible', 'closing a report hides nothing by itself');
 select is(pg_temp.status_as(:'st_trust', :'r2', 'dismissed', 'Nothing in it breaks the rules.'), 'ok', 'a new report is dismissed straight away with a note');
 select is(
@@ -237,10 +238,17 @@ select is(
   'another reporter does not see the outcome of a report that is not theirs'
 );
 
--- The time to resolve reports (FR-F1 KPI) is measurable from the record
-select ok(
-  (select bool_and(handled_at >= created_at) from public.reports where status in ('actioned', 'dismissed')),
-  'KPI: the time to resolve a report is handled_at less created_at, for every closed report'
+-- The time to resolve reports (FR-F1 KPI) is measurable from the record: the query of docs/runbooks/reports.md section 4
+select pg_temp.seed_report('content', p_path => '/en/kpi-closed', p_at => now() - interval '30 hours') as rk \gset
+select pg_temp.seed_report('content', p_path => '/en/kpi-open', p_at => now() - interval '90 hours') as rko \gset
+select pg_temp.status_as(:'st_trust', :'rk', 'dismissed', 'Closed to measure the time.') as kpi_closed \gset
+select is(
+  (select round(extract(epoch from handled_at - created_at) / 3600)::text from public.reports where id = :'rk' and status in ('actioned', 'dismissed')),
+  '30', 'KPI: the time to resolve a report is handled_at less created_at, here 30 hours'
+);
+select is(
+  (select count(*) from public.reports where id = :'rko' and status in ('actioned', 'dismissed')), 0::bigint,
+  'KPI: and a report that is still open is left out of it'
 );
 
 select * from finish();

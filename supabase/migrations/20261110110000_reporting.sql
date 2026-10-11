@@ -65,6 +65,11 @@ create index reports_status_idx on public.reports (status, id desc);
 create index reports_reporter_idx on public.reports (reporter_user_id, created_at desc, id desc) where reporter_user_id is not null;
 create index reports_email_idx on public.reports (reporter_email, created_at desc) where reporter_email is not null;
 create index reports_closed_idx on public.reports (handled_at) where status in ('actioned', 'dismissed');
+-- The foreign keys: a delete or a key change of a vacancy, an organisation or an application finds its reports without a
+-- scan of the table, and the reports about one vacancy are one lookup.
+create index reports_job_idx on public.reports (job_id) where job_id is not null;
+create index reports_organization_idx on public.reports (organization_id) where organization_id is not null;
+create index reports_application_idx on public.reports (application_id) where application_id is not null;
 
 alter table public.reports enable row level security;
 alter table public.reports force row level security;
@@ -144,7 +149,7 @@ create function private.report_reference(p_id bigint) returns text
 language sql
 immutable
 set search_path = ''
-as $$ select 'R-' || lpad(p_id::text, 6, '0') $$;
+as $$ select 'R-' || case when p_id < 1000000 then lpad(p_id::text, 6, '0') else p_id::text end $$;
 
 revoke all on function private.report_reference(bigint) from public, anon, authenticated, service_role;
 
@@ -480,8 +485,9 @@ revoke all on function public.admin_get_report(bigint) from public, anon, authen
 grant execute on function public.admin_get_report(bigint) to authenticated;
 
 -- A Trust & Safety Administrator at aal2 puts a new report in review, or closes a new or in-review report as actioned or
--- dismissed with a note of 10 to 2000 characters, which a signed-in reporter reads. A closed report does not change
--- again. Acting on the target (hiding the vacancy, suspending the organisation) is done with moderate_job and
+-- dismissed. Every move takes a reason of 10 to 2000 characters (FR-F1) that the audit row records; the reason of a
+-- closing is also the note that a signed-in reporter reads, and the move to review keeps no note on the report. A closed
+-- report does not change again. Acting on the target (hiding the vacancy, suspending the organisation) is done with moderate_job and
 -- suspend_organization, which this function does not repeat. The row is locked, so of two simultaneous calls one finds
 -- the new state and is refused.
 create function public.admin_set_report_status(p_id bigint, p_status public.report_status, p_note text default null)
@@ -502,9 +508,7 @@ begin
   if p_status is null or p_status = 'new' then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'status';
   end if;
-  if p_status <> 'in_review' then
-    v_note := private.statement_of_reasons(p_note);
-  end if;
+  v_note := private.statement_of_reasons(p_note);
 
   select r.status, r.target_type into v_old, v_type from public.reports r where r.id = p_id for no key update;
   if not found then
@@ -515,7 +519,8 @@ begin
   end if;
 
   update public.reports
-  set status = p_status, handled_by = v_uid, handled_at = now(), resolution_note = v_note
+  set status = p_status, handled_by = v_uid, handled_at = now(),
+      resolution_note = case when p_status = 'in_review' then null else v_note end
   where id = p_id;
   perform private.audit_admin(
     'report.' || p_status::text, 'report', p_id::text, v_note,
