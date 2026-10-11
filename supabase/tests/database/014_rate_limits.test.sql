@@ -39,12 +39,13 @@ select results_eq(
     ('rate_limit_login_max', '30'), ('rate_limit_login_seconds', '300'),
     ('rate_limit_mfa_code_max', '10'), ('rate_limit_mfa_code_seconds', '300'),
     ('rate_limit_org_audited_write_max', '2000'), ('rate_limit_org_audited_write_seconds', '86400'),
+    ('rate_limit_report_max', '10'), ('rate_limit_report_seconds', '3600'),
     ('rate_limit_resend_max', '10'), ('rate_limit_resend_seconds', '300'),
     ('rate_limit_reset_password_max', '10'), ('rate_limit_reset_password_seconds', '300'),
     ('rate_limit_signup_max', '30'), ('rate_limit_signup_seconds', '300'),
     ('rate_limit_user_buckets', '1048576'),
     ('rate_limit_visitor_keys_max', '20000')$$,
-  'the limits of the five actions, the bucket count and the cap on new visitors are settings with their defaults'
+  'the limits of the actions, the bucket count and the cap on new visitors are settings with their defaults'
 );
 
 -- Shape and privileges
