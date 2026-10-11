@@ -1,14 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
-
-function parseCsp(header: string): Record<string, string> {
-  return Object.fromEntries(
-    header.split("; ").map((directive) => {
-      const [name, ...values] = directive.split(" ");
-      return [name, values.join(" ")];
-    }),
-  );
-}
+import { parseCsp } from "./support/security-headers";
 
 test("home page renders at /en", async ({ page }) => {
   const problems: string[] = [];
