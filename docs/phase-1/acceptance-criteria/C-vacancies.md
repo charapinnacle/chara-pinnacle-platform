@@ -106,9 +106,9 @@
 
 ### Roles and permissions
 
-- Owner: may create, preview and edit vacancies of own organisation; may delete (policy jobs_delete_owner, no UI in Phase 1)
+- Owner: may create, preview and edit vacancies of own organisation (edit page org/[slug]/jobs/[id]/edit, any status, the status and moderation state are kept; U60, D78); may delete (policy jobs_delete_owner, no UI in Phase 1)
 - Admin (organisation): may create, preview and edit vacancies of own organisation; denied delete
-- Member (organisation): may read drafts and open the preview of own organisation; denied create, edit and delete
+- Member (organisation): may read drafts and open the preview of own organisation; denied create, edit and delete (no edit link; the edit page answers forbidden)
 - Admin or owner of another organisation: denied any access to the vacancy (row-level security; 404 on the pages)
 - Candidate (worker): denied create, edit and preview
 - Anonymous: denied; the draft is not public; preview redirects to login
@@ -123,7 +123,7 @@
 - RLS policies jobs_insert_admin, jobs_update_admin, jobs_delete_owner, jobs_select_member; column grants for insert and update (ARCHITECTURE 5.6)
 - proposed: row trigger on public.jobs calling audit.record() (actions job.created, job.updated)
 - private.is_org_member, private.member_org_ids
-- pages: app/[lang]/(app)/org/[slug]/jobs (list, new, [id], proposed [id]/preview); legal/[slug] (Platform Rules)
+- pages: app/[lang]/(app)/org/[slug]/jobs (list, new, [id], [id]/preview, [id]/edit); legal/[slug] (Platform Rules)
 - lib/dal/hiring.ts, lib/actions (zod, React Hook Form)
 
 ### Open points and assumed defaults
@@ -193,8 +193,8 @@
 **AC9 · Final state update prompt on close or fill** (browser test (Playwright))
 
 - Given an open vacancy with 6 applications (2 Applied, 1 Interview, 1 Offer, 1 Hired, 1 Not selected) and a second open vacancy with only Hired and Not selected applications
-- When the owner closes the first vacancy and marks the second as filled
-- Then after closing the first, a prompt "4 applications are still in progress" links to the applicant list filtered to that vacancy; no application changes state and no notification row is queued; the second vacancy shows no prompt
+- When the owner activates Close on the first vacancy, confirms, and marks the second as filled
+- Then before the close is confirmed, the confirmation dialog says "4 applications are still in progress" and links to the applicant list filtered to that vacancy (the count is of applications in an open stage, read from the database); after confirming, no application changes state and no notification row is queued; the dialog of the second vacancy shows no prompt (corrected by U60, OPEN_QUESTIONS.md D78: the prompt comes before the confirmation, not after it)
 
 **AC10 · Stale open vacancies are flagged** (unit test (Vitest))
 
