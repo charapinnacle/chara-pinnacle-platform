@@ -57,8 +57,15 @@ export type VacancyDetails = Omit<
   "occupationId" | "industryCode" | "countryCode" | "status" | "moderationState" | "statusChangedAt" | "staleOpen" | "createdAt"
 >;
 
-// The public profile of an employer, as the SOP names it: name, country, industry and website. Never the legal name.
-export type Employer = { displayName: string; country: string; industry: string | null; website: string | null };
+// The public profile of an employer, as the SOP names it: name, country, industry and website, with the description the
+// company wrote about itself. Never the legal name.
+export type Employer = {
+  displayName: string;
+  country: string;
+  industry: string | null;
+  website: string | null;
+  description: string | null;
+};
 
 // An open vacancy as a visitor sees it, with the employer, the date it was first published and the date it was created.
 export type PublicJob = VacancyDetails & { countryCode: string; publishedAt: string; createdAt: string; employer: Employer };
@@ -184,6 +191,7 @@ export const getPublicJob = cache(async (id: string): Promise<PublicJob | null> 
       country: row.employer_country,
       industry: row.employer_industry ?? null,
       website: row.employer_website ?? null,
+      description: row.employer_description ?? null,
     },
   };
 });
@@ -243,7 +251,7 @@ export async function getEmployer(organizationId: string): Promise<Employer | nu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("display_name, website, countries(name), industries(name)")
+    .select("display_name, website, description, countries(name), industries(name)")
     .eq("id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The employer could not be loaded", { cause: error });
@@ -253,6 +261,7 @@ export async function getEmployer(organizationId: string): Promise<Employer | nu
       country: data.countries?.name ?? "",
       industry: data.industries?.name ?? null,
       website: data.website,
+      description: data.description,
     }
   );
 }

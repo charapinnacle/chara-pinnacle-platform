@@ -80,6 +80,7 @@ export function VacancyView({ job, employer = null, publishedAt, actions }: Vaca
               </h2>
               <p className="text-body text-muted-foreground">Based in {employer.country}</p>
               {employer.industry ? <p className="text-body text-muted-foreground">Industry: {employer.industry}</p> : null}
+              {employer.description ? <p className="max-w-[65ch] leading-7 break-words whitespace-pre-wrap">{employer.description}</p> : null}
               {website ? (
                 <TextLink
                   standalone

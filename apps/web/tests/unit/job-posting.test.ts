@@ -21,7 +21,7 @@ const job: PublicJob = {
   recruitmentPreference: "both",
   publishedAt: "2026-10-08T10:00:00.123456+00:00",
   createdAt: "2026-10-06T10:00:00.123456+00:00",
-  employer: { displayName: "Acme", country: "Germany", industry: "Construction", website: "https://acme.example" },
+  employer: { displayName: "Acme", country: "Germany", industry: "Construction", website: "https://acme.example", description: null },
 };
 
 const parse = (value: Parameters<typeof jobPostingJsonLd>[0]) => JSON.parse(jobPostingJsonLd(value)) as Record<string, unknown>;

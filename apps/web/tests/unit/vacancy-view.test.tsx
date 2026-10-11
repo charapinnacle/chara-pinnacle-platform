@@ -29,7 +29,13 @@ const job: PublicJob = {
   recruitmentPreference: "both",
   publishedAt: "2026-10-06T10:00:00+00:00",
   createdAt: "2026-10-05T10:00:00+00:00",
-  employer: { displayName: "Acme", country: "Germany", industry: "Construction", website: "https://acme.example" },
+  employer: {
+    displayName: "Acme",
+    country: "Germany",
+    industry: "Construction",
+    website: "https://acme.example",
+    description: null,
+  },
 };
 
 const render = (value: PublicJob) =>
@@ -55,6 +61,18 @@ describe("VacancyView", () => {
     expect(html).toContain('href="https://acme.example/"');
     expect(html).toContain('rel="nofollow noopener noreferrer"');
     expect(html).toContain('target="_blank"');
+  });
+
+  it("shows the description of the employer as text with its line breaks, never as markup", () => {
+    const html = render({ ...job, employer: { ...job.employer, description: "We build halls.\n\n<b>Join</b> <script>x()</script>" } });
+    expect(html).toContain("We build halls.\n\n&lt;b&gt;Join&lt;/b&gt; &lt;script&gt;x()&lt;/script&gt;");
+    expect(html).toContain("whitespace-pre-wrap");
+    expect(html).not.toContain("<b>");
+    expect(html).not.toContain("<script");
+  });
+
+  it("shows no description paragraph for an employer without one", () => {
+    expect(render(job)).not.toContain("whitespace-pre-wrap");
   });
 
   it("does not link a website of another scheme", () => {

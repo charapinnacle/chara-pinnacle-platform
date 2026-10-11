@@ -99,7 +99,7 @@ describe("the metadata of a vacancy (FR-H5 AC2)", () => {
     id: "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
     title: overrides.title ?? "Warehouse Operator",
     description: overrides.description ?? "x".repeat(400),
-    employer: { displayName: overrides.displayName ?? "Example Logistics", country: "Germany", industry: null, website: null },
+    employer: { displayName: overrides.displayName ?? "Example Logistics", country: "Germany", industry: null, website: null, description: null },
   });
 
   it("names the vacancy and the employer, and has the canonical address of the vacancy without a query string", () => {

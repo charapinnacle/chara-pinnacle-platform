@@ -14,6 +14,9 @@ export const identifierKindLabels: Record<string, string> = Object.fromEntries(
 
 const MAX_WEBSITE_LENGTH = 2048;
 
+// The same limit as the check constraint of organizations.description.
+export const DESCRIPTION_MAX_CHARS = 2000;
+
 export function normalizeIdentifier(value: string): string {
   return value.replace(/[\s.\-/]/g, "").toUpperCase();
 }
@@ -106,7 +109,13 @@ export const organizationInputSchema = organizationFormSchema.transform((value) 
 export type OrganizationFormInput = z.input<typeof organizationFormSchema>;
 
 // The profile page edits the company details; the identifier keeps its own owner-only form on the billing page.
-export const organizationProfileSchema = z.object(companyFields);
+export const organizationProfileSchema = z.object({
+  ...companyFields,
+  description: z
+    .string()
+    .trim()
+    .max(DESCRIPTION_MAX_CHARS, { error: `The description can have at most ${DESCRIPTION_MAX_CHARS} characters.` }),
+});
 
 export type OrganizationProfileInput = z.input<typeof organizationProfileSchema>;
 

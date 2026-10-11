@@ -124,7 +124,7 @@ describe("createOrganization", () => {
 
 describe("updateOrganizationProfile", () => {
   const orgId = "0a1b2c3d-0000-4000-8000-000000000001";
-  const profile = { legalName: " Acme Bau AG ", displayName: "", country: "at", industry: "c", website: "" };
+  const profile = { legalName: " Acme Bau AG ", displayName: "", country: "at", industry: "c", website: "", description: "" };
   const refused = (message: string, details: string | null = null) => ({ data: null, error: { code: "P0001", message, details } });
 
   beforeEach(() => {
@@ -142,6 +142,7 @@ describe("updateOrganizationProfile", () => {
       p_based_in_country: "AT",
       p_industry_code: "C",
       p_website: "",
+      p_description: "",
     });
     expect(refreshShellMock).toHaveBeenCalledOnce();
   });
