@@ -18,8 +18,8 @@ type ResultRowProps = { job: JobSearchResult; lang: string; countryName: string;
 function ResultRow({ job, lang, countryName, viewer, saved, next }: ResultRowProps) {
   const salary = formatSalary(job);
   return (
-    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4 py-6">
-      <div className="grid min-w-0 flex-1 gap-1">
+    <li className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-6">
+      <div className="grid min-w-0 gap-1">
         <h2 className="text-h2">
           <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
             {job.title}

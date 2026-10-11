@@ -115,7 +115,7 @@ export function DocumentsSection() {
       ) : null}
       {phase === "loading" ? <LoadingSkeleton rows={3} /> : null}
       {phase === "error" ? (
-        <EmptyState title="Your documents could not be loaded">
+        <EmptyState flat title="Your documents could not be loaded">
           <FormButton
             type="button"
             variant="secondary"
@@ -129,7 +129,7 @@ export function DocumentsSection() {
         </EmptyState>
       ) : null}
       {phase === "ready" && items.length === 0 ? (
-        <EmptyState title="You have not uploaded any documents yet" description="Upload your CV or add a certificate with the buttons above." />
+        <EmptyState flat title="You have not uploaded any documents yet" description="Upload your CV or add a certificate with the buttons above." />
       ) : null}
       {phase === "ready" && items.length > 0 ? (
         <>
