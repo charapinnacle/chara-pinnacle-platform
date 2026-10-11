@@ -1,5 +1,5 @@
 begin;
-select plan(94);
+select plan(95);
 
 \ir organizations_fixture.inc
 \ir billing_events_fixture.inc
@@ -194,8 +194,13 @@ select is(
 select is(
   (select payload from public.notifications where user_id = :'own1' and kind = 'trial_ending' order by created_at desc limit 1),
   jsonb_build_object('org_slug', (select slug from public.organizations where id = :'m'), 'trial_ends_at', '2026-11-04T10:00:00Z',
-                     'plan_code', 'employer_starter', 'amount_minor', 3900, 'currency', 'EUR'),
+                     'plan_code', 'employer_starter', 'plan_name', (select name from billing.plans where code = 'employer_starter'),
+                     'amount_minor', 3900, 'currency', 'EUR'),
   'AC9: it carries the end of the trial and the price after it'
+);
+select is(
+  (select payload ->> 'plan_name' from public.notifications where user_id = :'own1' and kind = 'trial_ending' order by created_at desc limit 1),
+  'Basic', 'AC9: and the plan by its display name, not its code'
 );
 select is(
   pg_temp.deliver('m_trial_end', 'subscription.trial_will_end',
