@@ -22,12 +22,12 @@ Auth emails are not stored in the database. Their delivery is read in the Resend
 1. Resend, EU region: add the sending domain and publish the DNS records Resend shows (SPF, DKIM) plus a DMARC record (`_dmarc.<domain>` TXT, start with `p=none` and a `rua` address, move to `quarantine` when the reports are clean). Wait until Resend shows the domain as verified.
 2. Create two API keys with sending access limited to that domain: one for Auth (the SMTP password) and one for `notify` (`RESEND_API_KEY`). Two keys so that a rotation or a revocation of one path leaves the other working and each path's sending is visible on its own.
 3. Supabase dashboard, Authentication, Emails, SMTP Settings (these are not in `config.toml`: the local stack and CI would then send through the provider): host `smtp.resend.com`, port `465`, user `resend`, password the Auth key, sender email `no-reply@<domain>`, sender name `CHARA`. Set `EMAIL_FROM` of `notify` to a different address of the domain (for example `CHARA <notifications@<domain>>`): `notify` ignores delivery events of any other sender, which is how the events of the Auth emails (same Resend account, same webhook) are kept out of its lookup.
-4. Authentication, Emails, Templates: the subjects and bodies equal `config.toml` and `supabase/templates` (`npx supabase config diff` shows differences; `npx supabase config push` applies them, see ARCHITECTURE.md section 15.2 step 3). Authentication, Providers, Email: confirmations on, secure password change on, minimum length 12, breached-password protection on, minimum interval between emails 60 seconds.
+4. Authentication, Emails, Templates: the subjects and bodies equal `config.toml` and `supabase/templates` (`npx supabase config diff` shows differences; set them in the dashboard as in `deploy.md` section 5, never with `npx supabase config push` while `config.toml` holds the local values). Authentication, Providers, Email: confirmations on, secure password change on, minimum length 12, breached-password protection on, minimum interval between emails 60 seconds.
 5. Resend webhooks: register the `notify` URL for `email.delivered`, `email.bounced` and `email.complained` (transactional-emails.md section 2).
 
 ## 3. Go-live check of the sending domain and the wording (AC12)
 
-Run it before go-live and again after each change of wording, the domain or the SMTP settings. Platform and Operations do it together; record the result, the date and the reviewer in the go-live checklist (`docs/runbooks/deploy.md` when it exists) with these lines:
+Run it before go-live and again after each change of wording, the domain or the SMTP settings. Platform and Operations do it together; record the result, the date and the reviewer in the release record (`docs/runbooks/release-checklist.md` item 13) with these lines:
 
 | Check | How | Result, date, reviewer |
 |---|---|---|
@@ -75,7 +75,7 @@ order by organisations desc;
 
 ## 5. Rotate the provider credentials (SOP step Rotate; AC13)
 
-At the interval of the key-rotation runbook (`docs/runbooks/key-rotation.md` when the hardening unit adds it; until then at least once a year and whenever a person with access leaves).
+At the interval of the key-rotation runbook (`docs/runbooks/key-rotation.md`: at least once a year and whenever a person with access leaves).
 
 1. In Resend create the two new keys (Auth, `notify`); do not revoke the old ones yet.
 2. Supabase dashboard, Authentication, SMTP Settings: replace the password with the new Auth key and save. Sign up a test account and check that the confirmation email arrives.

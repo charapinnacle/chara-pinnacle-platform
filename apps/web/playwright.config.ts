@@ -86,6 +86,7 @@ export default defineConfig({
         "**/billing-page-failure.spec.ts",
         "**/pricing.spec.ts",
         "**/search-engine-sitemap.spec.ts",
+        "**/perf-smoke.spec.ts",
       ],
     },
     {
@@ -255,6 +256,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
       dependencies: ["billing-failure"],
+    },
+    // The load times of the performance smoke are measured when no other spec loads the server: last of all.
+    {
+      name: "perf",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/perf-smoke.spec.ts",
+      dependencies: ["sitemap"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

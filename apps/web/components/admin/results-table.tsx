@@ -5,7 +5,7 @@ export const headCell = "px-3 py-2 text-start font-medium";
 
 export function ResultsTable({ caption, columns, children }: { caption: string; columns: readonly string[]; children: React.ReactNode }) {
   return (
-    <Card padding="none" className="relative block overflow-x-auto">
+    <Card role="region" aria-label={caption} tabIndex={0} padding="none" className="relative block overflow-x-auto">
       <table className="w-full min-w-[32rem] text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>

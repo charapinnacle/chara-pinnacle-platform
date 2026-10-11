@@ -155,8 +155,8 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await expect(table).toContainText("All stages");
     await expectNoAxeViolations(page);
 
-    await page.getByLabel("From").fill("2026-12-31");
-    await page.getByLabel("To").fill("2026-01-01");
+    await page.getByLabel("From", { exact: true }).fill("2026-12-31");
+    await page.getByLabel("To", { exact: true }).fill("2026-01-01");
     await page.getByRole("button", { name: "Show" }).click();
     await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("The start date must not be after the end date");
     await page.goto("/en/admin/statistics?from=2024-01-01&to=2025-06-01");
