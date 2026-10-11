@@ -2,17 +2,18 @@ import type { Step } from "@/lib/public/steps";
 
 type StepListProps = { steps: readonly Step[]; titleAs?: "h3" | "h4"; compact?: boolean };
 
-// compact keeps the numbered titles and leaves out the sentence under each (the home page; How CHARA Works has them in full).
+// compact keeps the numbered titles and leaves out the sentence under each (the home page, where the numbers are set in the
+// serif; How CHARA Works has them in full).
 export function StepList({ steps, titleAs: Title = "h3", compact = false }: StepListProps) {
   if (compact) {
     return (
-      <ol className="grid gap-3">
+      <ol className="grid">
         {steps.map(({ title }, index) => (
-          <li key={title} className="flex items-baseline gap-4">
-            <span aria-hidden className="w-4 text-small font-semibold text-brand-ink tabular-nums">
+          <li key={title} className="flex items-center gap-5 border-t py-4 first:border-t-0">
+            <span aria-hidden className="w-10 font-serif text-section text-brand-ink tabular-nums">
               {index + 1}
             </span>
-            <span className="text-body">{title}</span>
+            <span className="text-lead">{title}</span>
           </li>
         ))}
       </ol>

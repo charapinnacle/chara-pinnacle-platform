@@ -104,7 +104,8 @@ test.describe("the home page", () => {
     await expect(closing.getByRole("link", { name: "Start hiring" })).toHaveAttribute("href", "/en/signup?kind=company");
 
     const text = await main.innerText();
-    for (const gone of ["Workers never pay", "Built on rules you can read", "Find Workers", "Request Workers", "Recruitment Companies |", "Find Workforce Partners"]) {
+    // U66 brings "Workers never pay" back as one of the four short statements of the trust strip (no Trust & Safety block).
+    for (const gone of ["Built on rules you can read", "Find Workers", "Request Workers", "Recruitment Companies |", "Find Workforce Partners"]) {
       expect(text, gone).not.toContain(gone);
     }
   });
@@ -117,7 +118,7 @@ test.describe("the home page", () => {
       const context = await browser.newContext({ reducedMotion });
       const page = await context.newPage();
       await page.goto("/en");
-      const hero = page.locator("main header").first();
+      const hero = page.locator("main header h1").locator("..");
       expect(await hero.evaluate((element) => getComputedStyle(element).animationDuration), reducedMotion).toBe(duration);
       await context.close();
     }

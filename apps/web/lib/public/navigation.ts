@@ -6,15 +6,6 @@ export const siteLinks = [
   { path: "how-it-works", label: "How CHARA Works" },
 ] as const;
 
-// The pages about CHARA itself, the first links of the public footer.
-export const aboutLinks = [
-  { path: "pricing", label: "Pricing" },
-  { path: "how-it-works", label: "How CHARA Works" },
-  { path: "trust-safety", label: "Trust & Safety" },
-  { path: "about", label: "About" },
-  { path: "contact", label: "Contact" },
-] as const;
-
 export const guestLinks = [
   { path: "login", label: "Login" },
   { path: "signup", label: "Sign up" },
@@ -25,15 +16,35 @@ export const LEGAL_INDEX_PATH = "legal";
 // The billing terms are not shown to a signed-in person who is not an employer: a candidate's pages hold no billing link (FR-G6 AC5).
 export const BILLING_TERMS_PATH = "legal/subscription-and-billing-terms";
 
-// The public footer is one compact line of links: the pages about CHARA, the four legal pages people look for most, and
-// the index that leads to the others (every legal document is two clicks away from every page).
-export const publicFooterLinks = [
-  ...aboutLinks,
-  { path: "imprint", label: "Imprint" },
-  { path: "legal/privacy-policy", label: "Privacy Policy" },
-  { path: "legal/terms-of-service", label: "Terms of Service" },
-  { path: "legal/cookie-policy", label: "Cookie Policy" },
-  { path: LEGAL_INDEX_PATH, label: "All legal documents" },
+// The public footer: three quiet columns under the logo. Every legal document is two clicks away from every page (the last
+// link leads to the index).
+export const publicFooterColumns = [
+  {
+    title: "Platform",
+    links: [
+      { path: "jobs", label: "Find Jobs" },
+      { path: "how-it-works", label: "How CHARA Works" },
+      { path: "pricing", label: "Pricing" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { path: "about", label: "About" },
+      { path: "trust-safety", label: "Trust & Safety" },
+      { path: "contact", label: "Contact" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { path: "imprint", label: "Imprint" },
+      { path: "legal/privacy-policy", label: "Privacy Policy" },
+      { path: "legal/terms-of-service", label: "Terms of Service" },
+      { path: "legal/cookie-policy", label: "Cookie Policy" },
+      { path: LEGAL_INDEX_PATH, label: "All legal documents" },
+    ],
+  },
 ] as const;
 
 // The small line at the foot of the signed-in area.

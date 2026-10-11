@@ -30,7 +30,7 @@ test.describe("the public pages when the settings cannot be read", () => {
     await expect(page.getByRole("region", { name: /Notification/ }).getByText("This page could not be loaded")).toBeVisible();
     const text = await page.locator("body").innerText();
     expect(text).not.toMatch(/permission denied|get_public_settings|^\s+at /m);
-    await expect(page.getByRole("link", { name: "Find Jobs" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Find Jobs" })).toBeVisible();
 
     execute(`grant execute on function ${GET_PUBLIC_SETTINGS} to anon, authenticated`);
     const retry = page.getByRole("button", { name: "Try again" });

@@ -75,14 +75,14 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     const sizeOf = (name: string) => page.getByRole("heading", { level: 1, name }).evaluate((heading) => getComputedStyle(heading).fontSize);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/en");
-    expect(await sizeOf("The Global Workforce Network")).toBe("64px");
+    expect(await sizeOf("The Global Workforce Network")).toBe("76px");
     await page.goto("/en/jobs");
     expect(await sizeOf("Find Your Next Opportunity")).toBe("32px");
     await page.goto("/en/pricing");
     expect(await sizeOf("Choose how you want to grow on CHARA")).toBe("48px");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/en");
-    expect(await sizeOf("The Global Workforce Network")).toBe("40px");
+    expect(await sizeOf("The Global Workforce Network")).toBe("44px");
     await page.goto("/en/jobs");
     expect(await sizeOf("Find Your Next Opportunity")).toBe("26px");
   });
@@ -93,7 +93,9 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     const post = page.getByRole("main").getByRole("link", { name: "Post a Job" });
     expect((await post.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     expect(await backgroundOf(search)).toBe(await tokenColour(page, "--primary"));
-    expect(await backgroundOf(post)).toBe(await tokenColour(page, "--card"));
+    // On the dark hero the secondary action is an outline: no fill, the border of the control token.
+    expect(await backgroundOf(post)).toBe("rgba(0, 0, 0, 0)");
+    expect(await post.evaluate((link) => getComputedStyle(link).borderTopWidth)).toBe("1px");
     await post.click();
     await expect(page).toHaveURL("/en/signup?kind=company");
     await expect(page.getByRole("heading", { level: 1, name: "Create your account" })).toBeVisible();
