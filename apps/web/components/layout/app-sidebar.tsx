@@ -4,6 +4,7 @@ import {
   Bookmark,
   BriefcaseBusiness,
   CreditCard,
+  Flag,
   IdCard,
   LayoutDashboard,
   type LucideIcon,
@@ -30,6 +31,7 @@ const icons: Record<NavIcon, LucideIcon> = {
   applicants: Users,
   team: UsersRound,
   billing: CreditCard,
+  reports: Flag,
   settings: Settings,
 };
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { TextLink } from "@/components/forms/text-link";
+import { LinkButton } from "@/components/layout/link-button";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
+import { reportPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/trust-safety">): Promise<Metadata> {
@@ -32,9 +34,35 @@ export default async function TrustSafetyPage({ params }: PageProps<"/[lang]/tru
           appeal.
         </p>
       </ContentSection>
+      <ContentSection heading="Reporting">
+        <p>
+          If a vacancy, a company or a page on CHARA is illegal, misleading or breaks our rules, tell us. You do not need an
+          account, and every report gets a reference number.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <LinkButton variant="secondary" href={reportPath(lang, "job")}>
+            Report job
+          </LinkButton>
+          <LinkButton variant="secondary" href={reportPath(lang, "company")}>
+            Report company
+          </LinkButton>
+          <LinkButton variant="secondary" href={`/${lang}/report?type=profile`}>
+            Report profile
+          </LinkButton>
+          <LinkButton variant="secondary" href={reportPath(lang, "content")}>
+            Report content
+          </LinkButton>
+        </div>
+        <p>
+          If you have an account, <TextLink href={`/${lang}/reports`}>My reports</TextLink> shows what happened to yours.
+        </p>
+      </ContentSection>
       <ContentSection heading="Rules and complaints">
         <p>The rules that apply to everyone, and the way to raise a complaint, are written down.</p>
         <ul className="grid gap-1">
+          <li>
+            <TextLink href={`/${lang}/legal/terms-of-service`}>Terms</TextLink>
+          </li>
           <li>
             <TextLink href={`/${lang}/legal/platform-rules`}>Platform Rules</TextLink>
           </li>

@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { ReadOnlyPlanNotice } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
 import { applicationStatusLabels, FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
 import {
@@ -27,7 +28,7 @@ import { getCountries, getLanguages } from "@/lib/dal/reference";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
-import { applicantPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
+import { applicantPath, applicantReportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
@@ -191,6 +192,10 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
           ))}
         </ol>
       </section>
+
+      <TextLink standalone href={applicantReportPath(lang, slug, applicant.id)}>
+        Report this profile
+      </TextLink>
     </div>
   );
 }
