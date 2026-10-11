@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(35);
 
 \ir search_fixture.inc
 
@@ -111,6 +111,11 @@ select is(
   'an anonymous caller has no execute grant'
 );
 select is(pg_temp.description(:'a'), 'Stays as it is.', 'the refused calls changed nothing');
+select throws_ok(
+  format($q$select public.update_organization_profile(%L, 'Acme Bau GmbH', 'Acme Bau', 'DE', 'F', 'https://acme.example')$q$, :'a'),
+  '42883', null, 'a call with the six arguments of the old function is an unknown function and cannot clear the description'
+);
+select is(pg_temp.description(:'a'), 'Stays as it is.', 'and the description is still there');
 
 -- The vacancy page
 select is(

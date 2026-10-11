@@ -26,7 +26,7 @@ create function pg_temp.update_as(
 ) returns text
 language sql as $$
   select pg_temp.call_as(p_user, p_role, format(
-    $f$select set_config('t.result', public.update_organization_profile(%L, %L, %L, %L, %L, %L)::text, true)$f$,
+    $f$select set_config('t.result', public.update_organization_profile(%L, %L, %L, %L, %L, %L, null)::text, true)$f$,
     p_org, p_legal, p_display, p_country, p_industry, p_website), p_aal)
 $$;
 

@@ -17,7 +17,9 @@ create index organizations_display_name_fold_trgm_idx
   on public.organizations using gin (private.fold_text(display_name) extensions.gin_trgm_ops);
 
 -- update_organization_profile of 20261108100000 with the description added. The description replaces the stored one, an
--- empty value clears it, and only the name of the field enters the audit row.
+-- empty value clears it, and only the name of the field enters the audit row. The website and the description have no
+-- default: a caller that still sends the six arguments of the old function is refused as an unknown function and cannot
+-- clear a description by leaving it out.
 drop function public.update_organization_profile(uuid, text, text, text, text, text);
 
 create function public.update_organization_profile(
@@ -26,8 +28,8 @@ create function public.update_organization_profile(
   p_display_name text,
   p_based_in_country text,
   p_industry_code text,
-  p_website text default null,
-  p_description text default null
+  p_website text,
+  p_description text
 ) returns jsonb
 language plpgsql
 security definer
