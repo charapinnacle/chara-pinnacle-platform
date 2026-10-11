@@ -10,23 +10,23 @@ FR-F4 (new requirement, proposed: OPEN_QUESTIONS.md D82, L10, L11, O12, P23), FR
 | Report company (Trust & Safety page, or Report this company on a vacancy page) | anyone | the organisation, found through one of its public vacancies (a company has no public page of its own) |
 | Report content (Trust & Safety page) | anyone | the path of a page of the site, without query or fragment |
 | Report profile (Trust & Safety page) | nobody from outside: it explains that candidate profiles are private | no form |
-| Report this profile (applicant page) | a member of the organisation of the application, at aal2 where applicant data asks for it | the application id and nothing of the candidate |
+| Report this profile (applicant page) | a member of the organisation of the application, at aal2 where applicant data asks for it | the application id and nothing of the candidate; the form tells the member not to write the candidate's name, contact details or documents, but the text is free, so it is the one place where personal data can still reach staff (D82): do not copy it elsewhere |
 
-A report has a category (illegal content, misleading or fraudulent, discrimination, a fee demanded from the worker, harassment, privacy violation, something else), a text of 20 to 2000 characters, a statement of good faith, and, for a visitor, an optional email address. The reporter gets a reference number (`R-` and six digits) on the screen. A signed-in reporter reads the status, the outcome and the note under My reports, and a notice on the dashboard for 14 days after the closing. No email is sent.
+A report has a category (illegal content, misleading or fraudulent, discrimination, a fee demanded from the worker, harassment, privacy violation, something else), a text of 20 to 2000 characters, a statement of good faith, and, for a visitor, an optional email address. The reporter gets a reference number (`R-` and the id with at least six digits) on the screen. A signed-in reporter reads the status, the outcome and the note under My reports, and a notice on the dashboard for 14 days after the closing. No email is sent.
 
-The same reporter reporting the same target in the same category within 24 hours gets the first reference and nothing new is stored. A visitor is recognised by the address they gave; without one they are not, and the limit is the throttle of 10 reports per visitor and hour (`rate_limit_report_max` and `rate_limit_report_seconds` in `private.settings`).
+The same reporter reporting the same target in the same category within 24 hours gets the first reference and nothing new is stored. A visitor is recognised by the address they gave, which is not verified (someone who types another person's address can make that person's report of the same target and category within a day a duplicate); without one they are not, and the limit is the throttle of 10 reports per visitor and hour (`rate_limit_report_max` and `rate_limit_report_seconds` in `private.settings`).
 
 ## 2. Working the queue
 
 1. Open the queue. The default is the open reports (new and in review), oldest first, 25 to a page. Filter by status and by kind; the address holds the filter.
 2. Open one report. It shows the category, the text, the reporter (a signed-in account, or the visitor and their address when given) and the target in context: the vacancy with its status and visibility, the organisation with its status, the page, or for a candidate only the vacancy applied to and the organisation. The name of a candidate and the documents are never shown (FR-F3).
-3. Mark in review when you start. It records who and when, and the report stays in the open queue.
+3. Mark in review when you start, with a reason of 10 to 2000 characters (FR-F1: every administrative action has one). It records who and when, the reason goes into the audit row only (the reporter does not read it), and the report stays in the open queue.
 4. Decide. If the vacancy must be hidden, use Open the vacancy to hide or unhide it, which is the page of `vacancy-moderation.md` (statement of reasons, email to the employer, appeal route). If the organisation must be suspended, use Open the organisation (`admin-console.md`). The report does not repeat these controls and does not check that they were used.
 5. Close the report as actioned or dismissed with a note of 10 to 2000 characters. A signed-in reporter reads the note, so write it for them; do not put personal data in it. A closed report is final.
 
 Of two simultaneous moves one wins; the other is told that the report was moved (`CHARA_INVALID_STATE`). A report about a candidate cannot lead to a suspension from the page, because staff do not see who the candidate is; if the text of the reporter identifies an account, find it with the user search and act there with its own reason.
 
-Every move is an audit row (`report.in_review`, `report.actioned`, `report.dismissed`, with the reason and the request id), and every report is an audit row `report.submitted` (kind, category and target ids; no text, no address).
+Every move is an audit row (`report.in_review`, `report.actioned`, `report.dismissed`, each with the reason and the request id; the reason KPI query of `audit-log.md` section 3 covers them), and every report is an audit row `report.submitted` (kind, category and target ids; no text, no address).
 
 ## 3. Response times (to be set by CHARA, O12)
 
