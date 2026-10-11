@@ -56,8 +56,10 @@ test.describe("candidate passport: states and keyboard", () => {
     await expect(first).toBeFocused();
     const message = page.getByText("Enter your first name.");
     await expect(message).toBeVisible();
-    const describedBy = await first.getAttribute("aria-describedby");
-    expect(describedBy).toContain((await message.getAttribute("id")) ?? "missing");
+    const described = await first.evaluate((element) =>
+      (element.getAttribute("aria-describedby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent ?? ""),
+    );
+    expect(described.join(" ")).toContain("Enter your first name.");
     await expect(first).toHaveAttribute("aria-invalid", "true");
 
     const skills = page.getByRole("combobox", { name: "Skills", exact: true });
