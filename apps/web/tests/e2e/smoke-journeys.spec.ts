@@ -99,7 +99,7 @@ test.describe("smoke: the five main journeys end to end", () => {
     await enterCode(page, await beginSetup(page));
     await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
 
-    await page.getByRole("link", { name: "New vacancy" }).click();
+    await page.getByRole("link", { name: "Post job" }).click();
     await waitForHydration(page.getByLabel("Title", { exact: true }));
     await fillJob(page, { title });
     await page.getByRole("button", { name: "Save vacancy" }).click();

@@ -125,7 +125,7 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
     await expect(page.getByRole("button", { name: second })).toBeVisible();
 
     await openAccountMenu(page);
-    await page.getByRole("link", { name: "Notification settings" }).first().click();
+    await page.getByRole("link", { name: "Settings", exact: true }).first().click();
     await expect(page).toHaveURL(/\/en\/settings\/notifications\?org=.*second-bau/);
     await expect(page.getByRole("button", { name: second })).toBeVisible();
     await expect(mainNavigation(page).getByRole("link", { name: "Vacancies" })).toHaveAttribute("href", new RegExp("second-bau"));

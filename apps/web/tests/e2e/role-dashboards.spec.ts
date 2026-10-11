@@ -46,8 +46,8 @@ async function ownerAtAal2(page: Page, team: Team): Promise<void> {
   await expect(page).toHaveURL(dashboardUrl(team.slug));
 }
 
-test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3)", () => {
-  test("shows the counts of the database, the three latest applications with their stage, and links to each list", async ({ browser }) => {
+test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3, D81)", () => {
+  test("shows the saved jobs and the stages of the database once, the three latest applications with their stage, the availability and the three actions", async ({ browser }) => {
     const team = await newTeam(uniqueName("Dash Bau"));
     const jobs = ["Dash electrician", "Dash welder", "Dash fitter", "Dash roofer"].map((title) => seedJob(team, { title, status: "open" }));
     const worker = await createCommittedUser("worker");
@@ -67,10 +67,20 @@ test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3)", () => {
     const interviews = count(`select count(*) from public.job_applications where worker_user_id = ${literal(worker.id)} and status = 'interview'`);
     const saved = count(`select count(*) from public.saved_jobs where worker_user_id = ${literal(worker.id)}`);
     expect([total, interviews, saved]).toEqual([4, 1, 3]);
-    await expect(card(page, `My applications: ${total}`)).toHaveAttribute("href", "/en/applications");
-    await expect(card(page, `My applications: ${total}`)).toContainText("3 in progress");
-    await expect(card(page, `Interviews: ${interviews}`)).toHaveAttribute("href", "/en/applications?stage=interview");
-    await expect(card(page, `Saved vacancies: ${saved}`)).toHaveAttribute("href", "/en/saved");
+    await expect(card(page, `Saved jobs: ${saved}`)).toHaveAttribute("href", "/en/saved");
+    const header = page.getByRole("main").locator("header").first();
+    await expect(header.getByRole("link")).toHaveText(["Search jobs", "Update passport", "Add skills"]);
+    await expect(header.getByRole("link", { name: "Search jobs" })).toHaveAttribute("href", "/en/jobs");
+    await expect(header.getByRole("link", { name: "Update passport" })).toHaveAttribute("href", "/en/passport");
+    await expect(header.getByRole("link", { name: "Add skills" })).toHaveAttribute("href", "/en/passport#skills");
+    await expect(page.getByRole("heading", { name: "Profile completion", level: 2 })).toBeVisible();
+    const availability = page.getByRole("region", { name: "Availability", exact: true });
+    await expect(availability).toContainText("Not set");
+    await expect(availability.getByRole("link", { name: "Set availability" })).toHaveAttribute("href", "/en/passport#experience");
+    for (const gone of ["Quick actions", "Recent applications"]) await expect(page.getByRole("region", { name: gone })).toHaveCount(0);
+    await expect(card(page, /^My applications/)).toHaveCount(0);
+    await expect(card(page, /^Interviews/)).toHaveCount(0);
+    expect(interviews).toBe(1);
 
     const byStage = query<{ status: string; n: number }>(
       `select s.status::text as status, count(a.id)::int as n from unnest(enum_range(null::public.application_status)) s(status)
@@ -79,7 +89,7 @@ test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3)", () => {
     expect(await stageTable(page, "Applications by stage")).toEqual(STAGES.map((label, index) => [label, String(byStage[index].n)]));
     await expect(page.getByRole("table", { name: "Applications by stage" }).locator("tfoot")).toHaveText(`Total${total}`);
 
-    const recent = page.getByRole("region", { name: "Recent applications" }).getByRole("listitem");
+    const recent = page.getByRole("region", { name: "Applications", exact: true }).getByRole("listitem");
     await expect(recent).toHaveCount(3);
     await expect(recent.nth(0)).toContainText("Dash roofer");
     await expect(recent.nth(0)).toContainText("Withdrawn");
@@ -87,7 +97,8 @@ test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3)", () => {
     await expect(recent.nth(1)).toContainText("Dash fitter");
     await expect(recent.nth(1)).toContainText("Interview");
     await expect(recent.nth(2)).toContainText("Dash welder");
-    await expect(page.getByRole("region", { name: "Recent applications" })).not.toContainText("Dash electrician");
+    await expect(page.getByRole("region", { name: "Applications", exact: true })).not.toContainText("Dash electrician");
+    await expect(page.getByRole("region", { name: "Applications", exact: true }).getByRole("link", { name: "View all applications" })).toHaveAttribute("href", "/en/applications");
     await expectNoAxeViolations(page);
 
     await recent.nth(1).getByRole("link").click();
@@ -107,9 +118,8 @@ test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3)", () => {
     await page.goto("/en/dashboard/worker");
     await expect(page.getByRole("heading", { name: "No applications yet" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Complete your passport" })).toHaveAttribute("href", "/en/passport#occupation");
-    await expect(card(page, "My applications: 0")).toBeVisible();
-    await expect(card(page, "Saved vacancies: 0")).toBeVisible();
-    await expect(page.getByRole("region", { name: "Recent applications" })).toHaveCount(0);
+    await expect(card(page, "Saved jobs: 0")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Applications", exact: true })).toHaveCount(0);
     await expectNoAxeViolations(page);
 
     execute(`update public.worker_profiles set occupation_id = '7212' where user_id = ${literal(fresh.id)}`);
@@ -119,7 +129,7 @@ test.describe("the candidate dashboard (UX-03, FR-B4, FR-D3)", () => {
 
     const phone = await signedInPage(browser, fresh, PHONE);
     await phone.page.goto("/en/dashboard/worker");
-    await expect(card(phone.page, "My applications: 0")).toBeVisible();
+    await expect(card(phone.page, "Saved jobs: 0")).toBeVisible();
     expect(await overflow(phone.page)).toBeLessThanOrEqual(0);
     await expectNoAxeViolations(phone.page);
     await phone.context.close();
@@ -142,7 +152,7 @@ test.describe("the employer first steps (UX-04, FR-E5)", () => {
     await expect(steps.getByRole("link", { name: "Publish your first vacancy" })).toHaveAttribute("href", `/en/org/${team.slug}/jobs/new`);
     await expect(steps.getByRole("link", { name: "Invite a team member" })).toHaveAttribute("href", `/en/org/${team.slug}/members`);
     await expect(steps.getByRole("link", { name: "Choose a plan" })).toHaveAttribute("href", `/en/org/${team.slug}/billing`);
-    await expect(page.getByRole("link", { name: "New vacancy" })).toHaveAttribute("href", `/en/org/${team.slug}/jobs/new`);
+    await expect(page.getByRole("link", { name: "Post job" })).toHaveAttribute("href", `/en/org/${team.slug}/jobs/new`);
     await expectNoAxeViolations(page);
 
     seedJob(team, { title: "Steps draft" });
@@ -158,9 +168,12 @@ test.describe("the employer first steps (UX-04, FR-E5)", () => {
 
     seedSubscription(team, "employer_starter", "trialing", { trialEndsAt: new Date(Date.now() + 10 * DAY).toISOString() });
     await page.reload();
-    await expect(card(page, /^Open vacancies/)).toBeVisible();
+    await expect(card(page, /^Active jobs/)).toBeVisible();
     await expect(page.getByRole("region", { name: "Get set up" })).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Quick actions" }).getByRole("link", { name: "Manage your team" })).toBeVisible();
+    const main = page.getByRole("main");
+    await expect(main.getByRole("link", { name: "Billing", exact: true })).toHaveAttribute("href", `/en/org/${team.slug}/billing`);
+    await expect(main.getByRole("link", { name: "Company profile" })).toHaveAttribute("href", `/en/org/${team.slug}/profile`);
+    await expect(page.getByRole("region", { name: "Quick actions" })).toHaveCount(0);
   });
 
   test("a plain member sees no checklist and no billing action", async ({ browser }) => {
@@ -172,10 +185,11 @@ test.describe("the employer first steps (UX-04, FR-E5)", () => {
     );
     const { context, page } = await signedInPage(browser, member);
     await page.goto(dashboardUrl(team.slug));
-    await expect(card(page, /^Open vacancies/)).toBeVisible();
+    await expect(card(page, /^Active jobs/)).toBeVisible();
     await expect(page.getByRole("region", { name: "Get set up" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "New vacancy" })).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Quick actions" }).getByRole("link")).toHaveText(["Review applicants", "Notification settings"]);
+    await expect(page.getByRole("link", { name: "Post job" })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("link", { name: /^(Billing|Company profile)$/ })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Quick actions" })).toHaveCount(0);
     await context.close();
   });
 });

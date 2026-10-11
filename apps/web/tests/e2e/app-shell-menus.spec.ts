@@ -29,7 +29,8 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(menu).toHaveAttribute("aria-expanded", "true");
     expect(await linkLabels(mainNavigation(page))).toEqual(WORKER_LINKS);
     await expect(page.getByText(worker.email).filter({ visible: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Notification settings" }).filter({ visible: true })).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Edit profile" }).filter({ visible: true })).toHaveAttribute("href", "/en/passport");
+    await expect(page.getByRole("link", { name: "Settings", exact: true }).filter({ visible: true })).toHaveAttribute("href", "/en/settings");
     await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
     await expectNoAxeViolations(page);
 
@@ -119,12 +120,12 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(panel).toBeVisible();
     await expect(panel).toContainText(worker.email);
     await expect(panel).toContainText("Worker");
-    expect(await linkLabels(panel)).toEqual(["Settings", "Notification settings"]);
+    expect(await linkLabels(panel)).toEqual(["Edit profile", "Settings"]);
     await expect(panel.getByRole("button", { name: "Log out" })).toBeVisible();
     await expectNoAxeViolations(page);
 
     await page.keyboard.press("Tab");
-    await expect(panel.getByRole("link", { name: "Settings", exact: true })).toBeFocused();
+    await expect(panel.getByRole("link", { name: "Edit profile" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(button).toHaveAttribute("aria-expanded", "false");
     await expect(button).toBeFocused();
@@ -139,7 +140,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await button.press("Enter");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL("/en/settings");
+    await expect(page).toHaveURL("/en/passport");
     await expect(button).toHaveAttribute("aria-expanded", "false");
     await context.close();
   });
@@ -155,14 +156,14 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await context.close();
   });
 
-  test("an employer's account menu offers the notification settings but not the account deletion that only a candidate has", async ({ browser }) => {
+  test("an employer's account menu offers Settings, which are the notification settings, but not the account deletion that only a candidate has", async ({ browser }) => {
     const team = await newTeam();
     const member = await addMember(team, "member");
     const { context, page } = await signedInPage(browser, member.user);
     await page.goto("/en/dashboard/employer");
     await openAccountMenu(page);
     const panel = await panelOf(page);
-    expect(await linkLabels(panel)).toEqual(["Notification settings"]);
+    expect(await linkLabels(panel)).toEqual(["Settings"]);
     await expect(panel).toContainText("Member");
     await expect(panel).toContainText(member.user.email);
     await logOut(page);

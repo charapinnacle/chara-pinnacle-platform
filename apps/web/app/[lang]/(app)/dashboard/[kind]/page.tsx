@@ -25,8 +25,9 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
     return (
       <WorkerDashboard
         lang={lang}
-        firstName={passport.firstName}
         completeness={computeCompleteness({ ...passport, hasCv }, today)}
+        availability={passport.availability}
+        availableFrom={passport.availableFrom}
         reminders={reminders}
         today={today}
       />

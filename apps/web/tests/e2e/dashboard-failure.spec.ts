@@ -41,7 +41,7 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     await page.goto(dashboardUrl(company.slug), { waitUntil: "commit" });
-    await expect(card(page, "Open vacancies: 1")).toBeVisible();
+    await expect(card(page, "Active jobs: 1")).toBeVisible();
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
     await expect(page.getByRole("status").getByText("Loading")).toHaveCount(2);
     await expect(page.getByRole("table")).toHaveCount(0);
@@ -62,7 +62,7 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     await expect(page.getByRole("heading", { name: "The new applications could not be counted", level: 2 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "The applicants by stage could not be counted", level: 2 })).toBeVisible();
     await expect(page.getByText("Check your connection and try again.").first()).toBeVisible();
-    await expect(card(page, "Open vacancies: 1")).toBeVisible();
+    await expect(card(page, "Active jobs: 1")).toBeVisible();
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
     await expect(page.getByRole("table")).toHaveCount(0);
     await expect(page.getByText(/permission denied|get_dashboard_applications/)).toHaveCount(0);
@@ -75,7 +75,7 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     await context.close();
   });
 
-  test("FR-E5 AC10: the Open vacancies card shows a skeleton while the vacancies are read, and the others show their numbers", async ({ browser }) => {
+  test("FR-E5 AC10: the Active jobs card shows a skeleton while the vacancies are read, and the others show their numbers", async ({ browser }) => {
     const { company, context, page } = await setup(browser);
     const held = executeAsync("begin; lock table public.jobs in access exclusive mode; select pg_sleep(4); commit;");
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -85,9 +85,9 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     expect((await stageRows(page))[0]).toEqual(["Applied", "1"]);
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
     await expect(page.getByRole("status").getByText("Loading")).toHaveCount(1);
-    await expect(card(page, /^Open vacancies/)).toHaveCount(0);
+    await expect(card(page, /^Active jobs/)).toHaveCount(0);
 
-    await expect(card(page, "Open vacancies: 1")).toBeVisible({ timeout: 15_000 });
+    await expect(card(page, "Active jobs: 1")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
     await held;
     await context.close();
@@ -101,7 +101,7 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     await expect(page.getByRole("heading", { name: "The plan could not be loaded", level: 2 })).toBeVisible();
     await expect(page.getByText("Check your connection and try again.").first()).toBeVisible();
     await expect(page.getByRole("alert").filter({ hasText: /trial|payment/ })).toHaveCount(0);
-    await expect(card(page, "Open vacancies: 1")).toBeVisible();
+    await expect(card(page, "Active jobs: 1")).toBeVisible();
     await expect(card(page, "New applications in the last 7 days: 2")).toBeVisible();
     expect((await stageRows(page))[0]).toEqual(["Applied", "1"]);
     await expect(page.getByText(/permission denied|get_dashboard_plan/)).toHaveCount(0);
@@ -124,39 +124,35 @@ async function candidate(browser: Browser) {
 }
 
 test.describe("the candidate dashboard and the console when the database is slow or fails (UX-03, UX-10)", () => {
-  test("the saved vacancies card shows a skeleton while they are read, and the application figures show their numbers", async ({ browser }) => {
+  test("the saved jobs card shows a skeleton while they are read, and the applications show themselves", async ({ browser }) => {
     const { context, page } = await candidate(browser);
     const held = executeAsync("begin; lock table public.saved_jobs in access exclusive mode; select pg_sleep(4); commit;");
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     await page.goto("/en/dashboard/worker", { waitUntil: "commit" });
-    await expect(card(page, "My applications: 1")).toBeVisible();
-    await expect(card(page, "Interviews: 1")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Applications", exact: true })).toContainText("Failing fitter");
     await expect(page.getByRole("status").getByText("Loading")).toHaveCount(1);
-    await expect(card(page, /^Saved vacancies/)).toHaveCount(0);
+    await expect(card(page, /^Saved jobs/)).toHaveCount(0);
 
-    await expect(card(page, "Saved vacancies: 1")).toBeVisible({ timeout: 15_000 });
+    await expect(card(page, "Saved jobs: 1")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
     await held;
     await context.close();
   });
 
-  test("the application figures whose function fails show their errors and Try again, the saved vacancies keep their number", async ({ browser }) => {
+  test("the applications whose function fails show their error and Try again, the saved jobs keep their number", async ({ browser }) => {
     const { context, page } = await candidate(browser);
     execute(`revoke execute on function ${STAGE_FUNCTION} from authenticated`);
 
     await page.goto("/en/dashboard/worker");
-    await expect(page.getByRole("heading", { name: "Your applications could not be counted", level: 2 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Your interviews could not be counted", level: 2 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Your recent applications could not be loaded", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your applications could not be loaded", level: 2 })).toBeVisible();
     await expect(page.getByText("Check your connection and try again.").first()).toBeVisible();
-    await expect(card(page, "Saved vacancies: 1")).toBeVisible();
+    await expect(card(page, "Saved jobs: 1")).toBeVisible();
     await expect(page.getByText(/permission denied|my_application_stage_counts/)).toHaveCount(0);
 
     execute(`grant execute on function ${STAGE_FUNCTION} to authenticated`);
     await page.getByRole("button", { name: "Try again" }).first().click();
-    await expect(card(page, "My applications: 1")).toBeVisible();
-    await expect(card(page, "Interviews: 1")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Applications", exact: true })).toContainText("Failing fitter");
     await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
     await context.close();
   });

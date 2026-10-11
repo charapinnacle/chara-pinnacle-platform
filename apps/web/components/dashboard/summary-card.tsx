@@ -1,4 +1,4 @@
-import { ArrowRight, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";
 import { cardVariants } from "@/components/layout/card";
@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils";
 
 // hint belongs to the label and is part of the name ("New applications in the last 7 days"); detail is a further line
 // that describes the card.
-type SummaryCardProps = { label: string; hint?: string; detail?: string; value: number; href: string; icon: LucideIcon };
+type SummaryCardProps = { label: string; hint?: string; detail?: string; value: number; href: string };
 
 // A figure of a dashboard. The whole card is the link to the list it counts; its name carries the number, as in
 // "Open vacancies: 2", so the visible "View all" is not read twice.
-export function SummaryCard({ label, hint, detail, value, href, icon: Icon }: SummaryCardProps) {
+export function SummaryCard({ label, hint, detail, value, href }: SummaryCardProps) {
   const detailId = useId();
   return (
     <Link
@@ -23,19 +23,14 @@ export function SummaryCard({ label, hint, detail, value, href, icon: Icon }: Su
         "group h-full min-h-11 content-between gap-4 transition-[border-color,box-shadow,translate] duration-200 ease-brand hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-md",
       )}
     >
-      <span className="flex items-start justify-between gap-3">
-        <span className="grid gap-0.5">
-          <span className="text-small font-medium text-foreground">{label}</span>
-          {hint ? <span className="text-small text-muted-foreground">{hint}</span> : null}
-          {detail ? (
-            <span id={detailId} className="text-small text-muted-foreground">
-              {detail}
-            </span>
-          ) : null}
-        </span>
-        <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-brand-ink">
-          <Icon className="size-4" strokeWidth={1.75} />
-        </span>
+      <span className="grid gap-0.5">
+        <span className="text-small font-medium text-foreground">{label}</span>
+        {hint ? <span className="text-small text-muted-foreground">{hint}</span> : null}
+        {detail ? (
+          <span id={detailId} className="text-small text-muted-foreground">
+            {detail}
+          </span>
+        ) : null}
       </span>
       <span className="flex items-end justify-between gap-3">
         <span className="text-figure tabular-nums">{formatCount(value)}</span>

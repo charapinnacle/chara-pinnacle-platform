@@ -66,12 +66,15 @@ describe("the header links of an organisation", () => {
 });
 
 describe("the account links", () => {
-  it("give a candidate the settings and the notification settings", () => {
-    expect(labels(accountLinks("en", "worker"))).toEqual(["Settings", "Notification settings"]);
+  it("give a candidate Edit profile, which is the passport, and Settings", () => {
+    expect(accountLinks("en", "worker").map(({ label, href }) => [label, href])).toEqual([
+      ["Edit profile", "/en/passport"],
+      ["Settings", "/en/settings"],
+    ]);
   });
 
-  it("give an employer only the notification settings, because the settings page sends an employer away", () => {
-    expect(labels(accountLinks("en", "company"))).toEqual(["Notification settings"]);
+  it("give an employer Settings, which are the notification settings, because the settings page sends an employer away", () => {
+    expect(accountLinks("en", "company").map(({ label, href }) => [label, href])).toEqual([["Settings", "/en/settings/notifications"]]);
   });
 
   it("carry the organisation to the notification settings, so that a person in several organisations keeps the one they work in", () => {
@@ -95,7 +98,7 @@ describe("the current page", () => {
   });
 
   it("is only the page itself when the link is exact, so Settings is not current on the notification settings", () => {
-    const [settings] = accountLinks("en", "worker");
+    const [, settings] = accountLinks("en", "worker");
     expect(isCurrent("/en/settings", settings)).toBe(true);
     expect(isCurrent("/en/settings/notifications", settings)).toBe(false);
   });

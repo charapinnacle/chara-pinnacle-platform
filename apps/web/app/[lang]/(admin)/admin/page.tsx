@@ -1,4 +1,4 @@
-import { EyeOff, FileText, ShieldAlert, Building2, UserCog, Send } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import type { Metadata } from "next";
 import { LegalOverview } from "@/components/admin/legal-overview";
 import { Panel } from "@/components/dashboard/panel";
@@ -32,11 +32,11 @@ function AdministratorOverview({ lang }: { lang: string }) {
       </h2>
       <div className={statRow}>
         <Panel promise={staffCount()} errorTitle="The staff could not be counted">
-          {(count) => <SummaryCard label="Staff members" detail="With an active staff role now" value={count} href={adminPath(lang, "staff")} icon={UserCog} />}
+          {(count) => <SummaryCard label="Staff members" detail="With an active staff role now" value={count} href={adminPath(lang, "staff")} />}
         </Panel>
         <Panel promise={counts} errorTitle="The applications could not be counted">
           {(totals) => (
-            <SummaryCard label="Applications" hint="in the last 30 days" detail="Created in that time, any stage, UTC days" value={sumOf(totals)} href={statisticsHref} icon={Send} />
+            <SummaryCard label="Applications" hint="in the last 30 days" detail="Created in that time, any stage, UTC days" value={sumOf(totals)} href={statisticsHref} />
           )}
         </Panel>
         <div className="sm:col-span-2 xl:col-span-1">
@@ -47,7 +47,6 @@ function AdministratorOverview({ lang }: { lang: string }) {
                 detail={`Out of ${formatCount(documents.length)} in all`}
                 value={documents.filter((document) => document.isDraft).length}
                 href={adminPath(lang, "legal")}
-                icon={FileText}
               />
             )}
           </Panel>
@@ -89,18 +88,18 @@ function TrustSafetyOverview({ lang }: { lang: string }) {
       <div className={statRow}>
         <Panel promise={counts} errorTitle="The suspended accounts could not be counted">
           {({ suspendedUsers }) => (
-            <SummaryCard label="Suspended accounts" detail="Suspended now" value={suspendedUsers} href={adminPath(lang, "suspensions")} icon={ShieldAlert} />
+            <SummaryCard label="Suspended accounts" detail="Suspended now" value={suspendedUsers} href={adminPath(lang, "suspensions")} />
           )}
         </Panel>
         <Panel promise={counts} errorTitle="The suspended organisations could not be counted">
           {({ suspendedOrganizations }) => (
-            <SummaryCard label="Suspended organisations" detail="Suspended now" value={suspendedOrganizations} href={adminPath(lang, "suspensions")} icon={Building2} />
+            <SummaryCard label="Suspended organisations" detail="Suspended now" value={suspendedOrganizations} href={adminPath(lang, "suspensions")} />
           )}
         </Panel>
         <div className="sm:col-span-2 xl:col-span-1">
           <Panel promise={counts} errorTitle="The hidden vacancies could not be counted">
             {({ hiddenVacancies }) => (
-              <SummaryCard label="Hidden vacancies" detail="Hidden by moderation now" value={hiddenVacancies} href={adminPath(lang, "moderation")} icon={EyeOff} />
+              <SummaryCard label="Hidden vacancies" detail="Hidden by moderation now" value={hiddenVacancies} href={adminPath(lang, "moderation")} />
             )}
           </Panel>
         </div>

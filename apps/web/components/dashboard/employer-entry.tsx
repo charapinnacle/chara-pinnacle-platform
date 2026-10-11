@@ -1,4 +1,4 @@
-import { Building2, LockKeyhole } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { EmployerDashboard } from "@/components/dashboard/employer-dashboard";
 import { Panel } from "@/components/dashboard/panel";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -54,9 +54,6 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
             </Panel>
           </div>
           <Card padding="lg" className="gap-3 lg:col-span-5">
-            <span aria-hidden className="flex size-9 items-center justify-center rounded-lg bg-accent text-brand-ink">
-              <LockKeyhole className="size-4" strokeWidth={1.75} />
-            </span>
             <p className="text-body text-muted-foreground">
               Your open vacancies, new applications and applicants by stage appear here after the two-step check, because they
               include data about candidates.

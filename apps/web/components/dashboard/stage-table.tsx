@@ -11,7 +11,7 @@ type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 type StageTableProps = {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   countLabel: string;
   totals: StageTotals;
   total: number;
@@ -29,7 +29,7 @@ export function StageTable({ id, title, description, countLabel, totals, total, 
         <h2 id={id} className="text-h2">
           {title}
         </h2>
-        <p className="text-small text-muted-foreground">{description}</p>
+        {description ? <p className="text-small text-muted-foreground">{description}</p> : null}
       </div>
       <table aria-labelledby={id} className="w-full text-body">
         <thead>

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { Briefcase } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
+import { AvailabilityCard } from "@/components/dashboard/availability-card";
 import { PlanAlerts } from "@/components/dashboard/plan-alerts";
 import { PlanCard } from "@/components/dashboard/plan-card";
 import { StageBar } from "@/components/dashboard/stage-bar";
@@ -115,17 +115,17 @@ describe("an organization without a paid plan (FR-E5 AC8)", () => {
 
 describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
   it("makes the whole card a link whose name carries the number", () => {
-    const html = renderToStaticMarkup(<SummaryCard label="Open vacancies" value={2} href="/en/org/acme/jobs?status=open" icon={Briefcase} />);
+    const html = renderToStaticMarkup(<SummaryCard label="Open vacancies" value={2} href="/en/org/acme/jobs?status=open" />);
     expect(html).toContain('href="/en/org/acme/jobs?status=open"');
     expect(html).toContain('aria-label="Open vacancies: 2"');
-    const hinted = renderToStaticMarkup(<SummaryCard label="New applications" hint="in the last 7 days" value={3} href="/x" icon={Briefcase} />);
+    const hinted = renderToStaticMarkup(<SummaryCard label="New applications" hint="in the last 7 days" value={3} href="/x" />);
     expect(hinted).toContain('aria-label="New applications in the last 7 days: 3"');
-    const described = renderToStaticMarkup(<SummaryCard label="My applications" detail="2 in progress" value={4} href="/x" icon={Briefcase} />);
+    const described = renderToStaticMarkup(<SummaryCard label="My applications" detail="2 in progress" value={4} href="/x" />);
     expect(described).toContain('aria-label="My applications: 4"');
     const id = /aria-describedby="([^"]+)"/.exec(described)?.[1];
     expect(described).toContain(`id="${id}"`);
     expect(described).toMatch(/>2 in progress</);
-    const large = renderToStaticMarkup(<SummaryCard label="Applications" value={45210} href="/x" icon={Briefcase} />);
+    const large = renderToStaticMarkup(<SummaryCard label="Applications" value={45210} href="/x" />);
     expect(large).toContain('aria-label="Applications: 45,210"');
     expect(large).toMatch(/>45,210</);
   });
@@ -161,5 +161,28 @@ describe("the cards and the table of stages (FR-E5 AC1 to AC3, AC11)", () => {
     expect(renderToStaticMarkup(<StageBar value={0} max={4} />).match(/<rect/g)).toHaveLength(1);
     expect(renderToStaticMarkup(<StageBar value={0} max={0} />).match(/<rect/g)).toHaveLength(1);
     expect(renderToStaticMarkup(<StageBar value={1} max={100} />)).toContain('width="3"');
+  });
+});
+
+describe("the availability on the candidate dashboard", () => {
+  const render = (availability: "now" | "from_date" | "unavailable" | null, availableFrom: string | null = null) =>
+    renderToStaticMarkup(<AvailabilityCard lang="en" availability={availability} availableFrom={availableFrom} />);
+
+  it("says what the passport holds and links to the section that changes it", () => {
+    expect(render("now")).toContain("Available now");
+    expect(render("from_date", "2026-12-01")).toContain("Available from 1 December 2026");
+    expect(render("unavailable")).toContain("Not available");
+    for (const html of [render("now"), render("unavailable")]) {
+      expect(html).toContain('href="/en/passport#experience"');
+      expect(html).toContain("Change availability");
+    }
+    expect(render("now")).toContain('<h2 id="availability-heading"');
+  });
+
+  it("says Not set and offers Set availability while the passport has no availability", () => {
+    const html = render(null);
+    expect(html).toContain("Not set");
+    expect(html).toContain("Set availability");
+    expect(html).not.toContain("Change availability");
   });
 });

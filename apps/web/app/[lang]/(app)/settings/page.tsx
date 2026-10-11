@@ -3,10 +3,11 @@ import { redirect } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
+import { TextLink } from "@/components/forms/text-link";
 import { DeleteAccount } from "@/components/settings/delete-account";
 import { getDeletionStatus } from "@/lib/dal/account-closure";
 import { requireUser } from "@/lib/dal/session";
-import { homePath } from "@/lib/routes";
+import { homePath, notificationSettingsPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Settings — CHARA", robots: { index: false } };
 
@@ -23,6 +24,11 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
         title="Settings"
         breadcrumb={<Breadcrumbs items={[{ label: "Dashboard", href: homePath(lang, "worker") }, { label: "Settings" }]} />}
       />
+      <Section id="notifications" title="Notifications" description="Which emails we send you about your applications.">
+        <TextLink standalone="flush" href={notificationSettingsPath(lang)}>
+          Notification settings
+        </TextLink>
+      </Section>
       <Section
         id="delete-account"
         title="Delete account"
