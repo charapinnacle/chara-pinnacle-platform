@@ -1,12 +1,12 @@
 begin;
-select plan(55);
+select plan(59);
 
 \set a 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 \set b 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
 
 create function pg_temp.bucket(p_key text) returns integer
 language sql as $$
-  select (('x' || left(p_key, 8))::bit(32)::bigint % (select (value #>> '{}')::integer from private.settings where key = 'rate_limit_buckets'))::integer
+  select (('x' || left(p_key, 8))::bit(32)::bigint & 2147483647)::integer
 $$;
 
 create function pg_temp.hits(p_action text, p_key text) returns integer
@@ -40,8 +40,9 @@ select results_eq(
     ('rate_limit_resend_max', '10'), ('rate_limit_resend_seconds', '300'),
     ('rate_limit_reset_password_max', '10'), ('rate_limit_reset_password_seconds', '300'),
     ('rate_limit_signup_max', '30'), ('rate_limit_signup_seconds', '300'),
-    ('rate_limit_user_buckets', '1048576')$$,
-  'the limits of the five actions and the bucket count are settings with their defaults'
+    ('rate_limit_user_buckets', '1048576'),
+    ('rate_limit_visitor_keys_max', '20000')$$,
+  'the limits of the five actions, the bucket count and the cap on new visitors are settings with their defaults'
 );
 
 -- Shape and privileges
@@ -185,7 +186,8 @@ select throws_ok(
   'P0001', 'CHARA_INVALID_INPUT', 'a missing action is refused'
 );
 select is(
-  (select count(*) from private.rate_limit_hits where action not in ('login', 'signup', 'resend', 'forgot_password', 'reset_password', 'mfa_code')),
+  (select count(*) from private.rate_limit_hits
+   where regexp_replace(action, '^keys:', '') not in ('login', 'signup', 'resend', 'forgot_password', 'reset_password', 'mfa_code')),
   0::bigint,
   'no refused call created a counter'
 );
@@ -212,25 +214,43 @@ select is(
   'the counters are unlogged: a crash gives visitors a fresh window'
 );
 
--- The bound: whatever keys a caller sends, a bucket is a row
+update private.settings set value = '0' where key = 'rate_limit_visitor_keys_max';
+select throws_ok(
+  $$select * from public.rate_limit_attempt('login', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'a cap of zero new visitors is refused'
+);
+delete from private.settings where key = 'rate_limit_visitor_keys_max';
+select throws_ok(
+  $$select * from public.rate_limit_attempt('login', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  'P0001', 'CHARA_INVALID_INPUT', 'a missing cap on new visitors is refused'
+);
+insert into private.settings (key, value) values ('rate_limit_visitor_keys_max', '20000');
+
+-- The bound: whatever keys a caller sends, an action holds at most the cap of new visitors, the shared buckets and one
+-- row that counts the new visitors of the window
 delete from private.rate_limit_hits;
 update private.settings set value = '8' where key = 'rate_limit_buckets';
+update private.settings set value = '8' where key = 'rate_limit_visitor_keys_max';
 select is(
   (select count(*) from generate_series(1, 500) i,
      lateral public.rate_limit_attempt('login', md5(i::text) || md5((i + 1000)::text))),
   500::bigint,
   'a caller sends 500 different keys'
 );
+select is((select count(*) from private.rate_limit_hits where action = 'login'), 8::bigint, 'the first 8 keys have counters of their own');
 select cmp_ok(
-  (select count(*) from private.rate_limit_hits), '<=', 8::bigint, 'and the table holds at most one row per bucket: 8 rows'
+  (select count(*) from private.rate_limit_hits where action = 'shared:login'), '<=', 8::bigint,
+  'the other keys share at most 8 buckets'
 );
-select cmp_ok((select max(bucket) from private.rate_limit_hits), '<', 8, 'every row is a bucket below the setting');
+select cmp_ok((select max(bucket) from private.rate_limit_hits where action = 'shared:login'), '<', 8, 'every shared row is a bucket below the setting');
+select cmp_ok((select count(*) from private.rate_limit_hits), '<=', 17::bigint, 'and the table holds at most 8 + 8 + 1 rows');
 select cmp_ok(
   (select count(*) from generate_series(1, 5) i, lateral public.rate_limit_attempt('resend', md5(i::text) || md5((i + 7)::text))),
-  '=', 5::bigint, 'another action takes its own 8 rows at most'
+  '=', 5::bigint, 'another action takes rows of its own'
 );
-select cmp_ok((select count(*) from private.rate_limit_hits), '<=', 16::bigint, 'two actions, 16 rows at most');
+select cmp_ok((select count(*) from private.rate_limit_hits), '<=', 34::bigint, 'two actions, 34 rows at most');
 update private.settings set value = '16384' where key = 'rate_limit_buckets';
+update private.settings set value = '20000' where key = 'rate_limit_visitor_keys_max';
 
 -- Anonymous and signed-in callers, and nothing else
 delete from private.rate_limit_hits;
