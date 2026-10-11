@@ -238,6 +238,7 @@ describe("usedFilters", () => {
       "country",
       "accommodation",
     ]);
+    expect(usedFilters(parse({ employer: "Acme" }).filters)).toEqual(["employer"]);
   });
 
   it("does not name an option the address could not carry", () => {
