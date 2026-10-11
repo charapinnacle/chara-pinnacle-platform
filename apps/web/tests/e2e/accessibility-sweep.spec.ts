@@ -13,7 +13,7 @@ import { enterCode } from "./support/mfa";
 import { expectSecurityHeaders } from "./support/security-headers";
 import { seedSaved } from "./support/saved";
 import { signInBrowser } from "./support/session";
-import { newTeam, seedInvitation } from "./support/team";
+import { addMember, newTeam, seedInvitation, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 import { createTestUser } from "./support/test-user";
 
@@ -117,6 +117,8 @@ function routesOnDisk(directory: string, route = "/[lang]"): string[] {
 }
 
 test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR-S5)", () => {
+  test.describe.configure({ timeout: 180_000 });
+
   test("the sweep names every page of the application", () => {
     const swept = new Set([
       ...Object.keys(publicPages("")),
@@ -176,8 +178,46 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
     await expect(page.getByRole("heading", { name: "This organisation is suspended" })).toBeVisible();
   });
 
+  // A member sees the vacancy and applicant pages without the controls of a manager, and no two-step challenge.
+  test("employer pages, as an organisation member", async ({ page, context }) => {
+    const team = await newTeam();
+    const jobId = seedJob(team, { title: "Member crane operator", status: "open" });
+    const applicationId = seedDetailedApplication(await newApplicant(), jobId, team);
+    const pages = employerPages(team.slug, jobId, applicationId);
+    const { user } = await addMember(team, "member");
+    await signInBrowser(context, user);
+    await sweep(page, {
+      dashboard: pages["/[lang]/dashboard/[kind]"],
+      members: pages["/[lang]/org/[slug]/members"],
+      jobs: pages["/[lang]/org/[slug]/jobs"],
+      job: pages["/[lang]/org/[slug]/jobs/[id]"],
+      preview: pages["/[lang]/org/[slug]/jobs/[id]/preview"],
+      applicants: pages["/[lang]/org/[slug]/applicants"],
+      applicant: pages["/[lang]/org/[slug]/applicants/[applicationId]"],
+    });
+    await page.goto(pages["/[lang]/org/[slug]/billing"]);
+    await expect(page).toHaveURL("/en/forbidden");
+    await expectPage(page, "/en/forbidden");
+  });
+
+  // An administrator manages the organisation like the owner, except for what only the owner may do.
+  test("management pages, as an organisation administrator at aal2", async ({ page }) => {
+    const team = await newTeam();
+    const pages = employerPages(team.slug, "", "");
+    const admin = await addMember(team, "admin");
+    if (!admin.secret) throw new Error("The admin has no factor");
+    await signInAtAal2(page, admin.user, admin.secret, pages["/[lang]/org/[slug]/billing"]);
+    await sweep(page, {
+      dashboard: pages["/[lang]/dashboard/[kind]"],
+      profile: pages["/[lang]/org/[slug]/profile"],
+      members: pages["/[lang]/org/[slug]/members"],
+      billing: pages["/[lang]/org/[slug]/billing"],
+    });
+  });
+
   test("account states: onboarding, updated documents and suspension", async ({ browser }) => {
     const uncommitted = await createTestUser("worker", await pendingConsents("worker"));
+    const uncommittedCompany = await createTestUser("company", await pendingConsents("company"));
     const reconsenting = await createCommittedUser("worker");
     execute(
       `insert into public.consents (user_id, purpose, version, action)
@@ -188,6 +228,7 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
 
     for (const [user, address] of [
       [uncommitted, "/en/onboarding"],
+      [uncommittedCompany, "/en/onboarding"],
       [reconsenting, "/en/consent"],
       [suspended, "/en/suspended"],
     ] as const) {
@@ -200,6 +241,7 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
 
   test("administration pages, as a platform administrator", async ({ page }) => {
     const team = await newTeam();
+    seedJob(team, { title: "Listed welder", status: "open" });
     const { user } = await signInStaff(page, "admin");
     await sweep(page, adminPages(user.id, team.id));
   });
@@ -207,6 +249,11 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
   test("moderation and suspension pages, as trust and safety", async ({ page }) => {
     const company = await newCompany();
     const jobId = seedJob(company, { title: "Moderated welder", status: "open" });
+    execute(
+      `insert into public.moderation_actions (target_type, target_id, action, statement_of_reasons, created_at)
+       values ('job', ${literal(jobId)}, 'job_hidden', 'Reported as a duplicate listing.', now() - interval '1 hour'),
+              ('job', ${literal(jobId)}, 'job_unhidden', 'The report was mistaken.', now())`,
+    );
     await signInStaff(page, "trust_safety");
     await sweep(page, trustSafetyPages(jobId));
   });
