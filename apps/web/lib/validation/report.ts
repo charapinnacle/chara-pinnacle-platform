@@ -7,7 +7,7 @@ import { emailSchema } from "@/lib/validation/sign-up";
 
 type Enums = Database["public"]["Enums"];
 
-export const DETAILS_MIN_CHARS = 20;
+const DETAILS_MIN_CHARS = 20;
 export const DETAILS_MAX_CHARS = 2000;
 
 export const reportCategoryLabels = {
@@ -44,10 +44,7 @@ export const reportTargetLabels = {
   content: "Page",
 } as const satisfies Record<Enums["report_target_type"], string>;
 
-// The kinds a visitor can report; a candidate profile is reported by a member from the applicant page.
-export const publicReportTypes = ["job", "company", "content"] as const;
-
-export type PublicReportType = (typeof publicReportTypes)[number];
+export const reportTargetTypes = ["job", "company", "profile", "content"] as const satisfies readonly Enums["report_target_type"][];
 
 const categorySchema = z.string({ error: "Choose a category." }).pipe(
   z.enum(Object.keys(reportCategoryLabels) as [Enums["report_category"], ...Enums["report_category"][]], { error: "Choose a category." }),
@@ -73,18 +70,18 @@ const commonFields = { category: categorySchema, details: detailsSchema, email: 
 const VACANCY_LINK = "Paste the address of a vacancy page on CHARA.";
 const PAGE_LINK = "Enter the address of a page of CHARA, for example /en/jobs.";
 
-export const vacancyReportFormSchema = z.object({
+const vacancyReportFormSchema = z.object({
   ...commonFields,
   link: z.string().trim().refine((value) => vacancyIdFrom(value) !== null, { error: VACANCY_LINK }),
 });
 
-export const contentReportFormSchema = z.object({
+const contentReportFormSchema = z.object({
   ...commonFields,
   link: z.string().trim().refine((value) => contentPathFrom(value) !== null, { error: PAGE_LINK }),
 });
 
 // A form whose target is known has no link to check.
-export const knownTargetReportFormSchema = z.object({ ...commonFields, link: z.string() });
+const knownTargetReportFormSchema = z.object({ ...commonFields, link: z.string() });
 
 export type ReportFormInput = z.input<typeof knownTargetReportFormSchema>;
 
@@ -97,7 +94,7 @@ export function reportFormSchemaFor(type: Enums["report_target_type"], targetKno
 // profile, a path for a page) and the fields of the form. The action resolves the link itself, so a form cannot send a
 // target it did not parse.
 export const reportInputSchema = z.object({
-  type: z.enum(["job", "company", "profile", "content"] as const satisfies readonly Enums["report_target_type"][]),
+  type: z.enum(reportTargetTypes),
   target: z.string().trim().min(1).max(2048),
   ...commonFields,
 });
@@ -121,7 +118,7 @@ export type ReportCloseInput = z.input<typeof reportCloseInputSchema>;
 
 export const reportListFilterSchema = z.object({
   status: z.enum(["open", "new", "in_review", "actioned", "dismissed", "all"]).catch("open"),
-  type: z.enum(["job", "company", "profile", "content"] as const satisfies readonly Enums["report_target_type"][]).optional().catch(undefined),
+  type: z.enum(reportTargetTypes).optional().catch(undefined),
 });
 
 export type ReportListFilter = z.output<typeof reportListFilterSchema>;

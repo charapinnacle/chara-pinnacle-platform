@@ -20,7 +20,7 @@ export type MyReport = {
   createdAt: string;
 };
 
-export type MyReportsCursor = { at: string; id: number };
+type MyReportsCursor = { at: string; id: number };
 
 type Target =
   | { type: "job" | "company"; job: string }

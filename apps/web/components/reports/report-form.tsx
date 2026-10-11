@@ -18,11 +18,12 @@ import {
   reportCategoryOptions,
   reportFormSchemaFor,
   type ReportFormInput,
+  type ReportInput,
 } from "@/lib/validation/report";
 
 type ReportFormProps = {
   lang: string;
-  type: "job" | "company" | "profile" | "content";
+  type: ReportInput["type"];
   // The vacancy, application or path when the page already knows it; the person then has no link to give.
   target?: string;
   signedIn: boolean;

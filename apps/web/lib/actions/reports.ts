@@ -10,7 +10,7 @@ import { mfaPath } from "@/lib/routes";
 import { reportInputSchema, type ReportInput } from "@/lib/validation/report";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 
-export type ReportResult = { errors?: FieldErrors; message?: string; reference?: string };
+type ReportResult = { errors?: FieldErrors; message?: string; reference?: string };
 
 const RATE_LIMITED = "You have sent several reports in a short time. Try again in a while.";
 const VACANCY_NOT_PUBLIC = "This vacancy cannot be reported: it is not public. Check the address.";

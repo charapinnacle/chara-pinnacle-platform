@@ -8,10 +8,9 @@ import { ReportForm } from "@/components/reports/report-form";
 import { getPublicJob } from "@/lib/dal/hiring";
 import { getCurrentUser } from "@/lib/dal/session";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
+import { reportTargetTypes } from "@/lib/validation/report";
 
 export const metadata: Metadata = { title: "Report - CHARA", robots: { index: false } };
-
-const types = ["job", "company", "profile", "content"] as const;
 
 const headings = {
   job: "Report a vacancy",
@@ -27,7 +26,7 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 // a link, and the database refuses what cannot be reported. Candidate profiles are private, so there is a note and no form.
 export default async function ReportPage({ params, searchParams }: PageProps<"/[lang]/report">) {
   const [{ lang }, query] = await Promise.all([params, searchParams]);
-  const type = z.enum(types).safeParse(first(query.type));
+  const type = z.enum(reportTargetTypes).safeParse(first(query.type));
   if (!type.success) notFound();
   const kind = type.data;
 
