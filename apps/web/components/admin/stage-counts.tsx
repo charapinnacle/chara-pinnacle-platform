@@ -7,7 +7,7 @@ export async function StageCounts({ from, to }: { from: string; to: string }) {
   const total = counts.reduce((sum, row) => sum + row.count, 0);
 
   return (
-    <ResultsTable caption={`Applications created from ${from} to ${to}`} columns={["Stage", "Applications"]}>
+    <ResultsTable caption={`Applications created from ${from} to ${to}`} columns={["Stage", "Applications"]} narrow>
       {counts.map((row) => (
         <tr key={row.status}>
           <td className={cell}>{applicationStatusLabels[row.status]}</td>
