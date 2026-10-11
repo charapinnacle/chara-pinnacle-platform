@@ -1,4 +1,4 @@
-import { Bell, BriefcaseBusiness, Inbox, Plus, Users, UsersRound } from "lucide-react";
+import { Bell, BriefcaseBusiness, Building2, Inbox, Plus, Users, UsersRound } from "lucide-react";
 import { Suspense } from "react";
 import { Panel } from "@/components/dashboard/panel";
 import { PlanAlerts } from "@/components/dashboard/plan-alerts";
@@ -11,7 +11,7 @@ import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { getFirstSteps, startDashboardLoad } from "@/lib/dal/dashboard";
-import { applicantsPath, billingPath, jobsPath, membersPath, notificationSettingsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, jobsPath, membersPath, notificationSettingsPath, organizationProfilePath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
@@ -71,7 +71,12 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
     <QuickActions
       actions={[
         { href: applicantsPath(lang, slug), label: "Review applicants", icon: Inbox },
-        ...(manager ? [{ href: membersPath(lang, slug), label: "Manage your team", icon: UsersRound }] : []),
+        ...(manager
+          ? [
+              { href: membersPath(lang, slug), label: "Manage your team", icon: UsersRound },
+              { href: organizationProfilePath(lang, slug), label: "Edit company profile", icon: Building2 },
+            ]
+          : []),
         { href: notificationSettingsPath(lang, slug), label: "Notification settings", icon: Bell },
       ]}
     />

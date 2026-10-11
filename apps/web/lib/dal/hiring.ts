@@ -3,10 +3,11 @@ import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { openStages } from "@/lib/applications/stage-machine";
 import { isStaleOpen, type LimitPrompt } from "@/lib/jobs/lifecycle";
 import { logSearch } from "@/lib/jobs/search-log";
 import type { JobSearchFilters } from "@/lib/jobs/search-params";
-import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
+import { formatJobCursor, type JobCursor, type JobFormInput } from "@/lib/validation/job";
 
 type Enums = Database["public"]["Enums"];
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -18,8 +19,11 @@ export type Job = {
   title: string;
   description: string;
   occupation: string;
+  occupationId: string;
   industry: string;
+  industryCode: string;
   country: string;
+  countryCode: string;
   city: string;
   employmentType: Enums["employment_type"];
   salaryMin: number | null;
@@ -49,7 +53,10 @@ type JobSummary = {
 };
 
 // The fields of a vacancy that the page shows; a draft's preview and the public page both render them.
-export type VacancyDetails = Omit<Job, "status" | "moderationState" | "statusChangedAt" | "staleOpen" | "createdAt">;
+export type VacancyDetails = Omit<
+  Job,
+  "occupationId" | "industryCode" | "countryCode" | "status" | "moderationState" | "statusChangedAt" | "staleOpen" | "createdAt"
+>;
 
 // The public profile of an employer, as the SOP names it: name, country, industry and website. Never the legal name.
 export type Employer = { displayName: string; country: string; industry: string | null; website: string | null };
@@ -91,8 +98,11 @@ function toJob(row: JobRow): Job {
     title: row.title,
     description: row.description,
     occupation: row.occupations?.label ?? row.occupation_id,
+    occupationId: row.occupation_id,
     industry: row.industries?.name ?? row.industry_code,
+    industryCode: row.industry_code,
     country: row.countries?.name ?? row.country_code,
+    countryCode: row.country_code,
     city: row.city,
     employmentType: row.employment_type,
     salaryMin: row.salary_min,
@@ -107,6 +117,27 @@ function toJob(row: JobRow): Job {
     statusChangedAt: row.status_changed_at,
     staleOpen: isStaleOpen(row.status, row.status_changed_at, new Date()),
     createdAt: row.created_at,
+  };
+}
+
+// The saved vacancy as the values of the form, so that the edit form starts from what is stored.
+export function toJobFormInput(job: Job): JobFormInput {
+  const amount = (value: number | null) => (value === null ? "" : String(value));
+  return {
+    title: job.title,
+    description: job.description,
+    occupation: job.occupationId,
+    industry: job.industryCode,
+    country: job.countryCode,
+    city: job.city,
+    employmentType: job.employmentType,
+    salaryMin: amount(job.salaryMin),
+    salaryMax: amount(job.salaryMax),
+    salaryCurrency: job.salaryCurrency ?? "",
+    salaryPeriod: job.salaryPeriod ?? "",
+    accommodation: job.accommodation,
+    visaSupport: job.visaSupport,
+    recruitmentPreference: job.recruitmentPreference,
   };
 }
 
@@ -198,6 +229,20 @@ export async function listJobs(
     jobs: page,
     nextCursor: data.length > JOBS_PAGE_SIZE ? formatJobCursor({ createdAt: last.createdAt, id: last.id }) : null,
   };
+}
+
+// The applications of a vacancy that still wait for a decision, for the prompt before it is closed or filled (FR-C2). The
+// policy shows them to the members of the organization; job_applications_job_status_idx (job_id, status) answers the count.
+export async function countApplicationsInProgress(organizationId: string, jobId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("job_applications")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("job_id", jobId)
+    .in("status", [...openStages]);
+  if (error) throw new Error("The applications in progress could not be counted", { cause: error });
+  return count ?? 0;
 }
 
 export async function getEmployer(organizationId: string): Promise<Employer | null> {

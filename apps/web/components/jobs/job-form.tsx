@@ -1,8 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useForm, type FieldErrors, type FieldPath } from "react-hook-form";
-import { toastError } from "@/components/feedback/toast-store";
+import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
@@ -12,7 +13,7 @@ import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { LegalLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { createJob, reportInvalidJobForm } from "@/lib/actions/jobs";
+import { createJob, reportInvalidJobForm, updateJob } from "@/lib/actions/jobs";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import {
@@ -30,6 +31,7 @@ type JobFormProps = {
   industries: ReferenceItem[];
   countries: ReferenceItem[];
   currencies: ReferenceItem[];
+  edit?: { jobId: string; values: JobFormInput; jobHref: string };
 };
 
 const ids = {
@@ -66,18 +68,32 @@ const defaultValues: JobFormInput = {
   recruitmentPreference: "",
 };
 
-export function JobForm({ slug, occupations, industries, countries, currencies }: JobFormProps) {
+export function JobForm({ slug, occupations, industries, countries, currencies, edit }: JobFormProps) {
   const form = useForm<JobFormInput, unknown, JobFormValues>({
     resolver: zodResolver(jobFormSchema),
-    defaultValues,
+    defaultValues: edit?.values ?? defaultValues,
   });
   const { control, formState, handleSubmit } = form;
+  // Read during render: the formState proxy only tracks isDirty once it has been read here.
+  const { isDirty } = formState;
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not save the vacancy" });
+  const router = useRouter();
 
   function onValid() {
+    // An update stamps jobs.updated_at, the sitemap lastmod of an open vacancy, so a save without changes sends nothing.
+    if (edit && !isDirty) {
+      toast({ title: "No changes to save" });
+      router.push(edit.jobHref);
+      return;
+    }
     return submit(
-      () => createJob(slug, form.getValues()),
+      () => (edit ? updateJob(slug, edit.jobId, form.getValues()) : createJob(slug, form.getValues())),
       (result) => {
+        if (result.saved && edit) {
+          toast({ title: "Vacancy saved" });
+          router.push(edit.jobHref);
+          return;
+        }
         if (result.message) {
           toastError("Could not save the vacancy", result.message);
         }
@@ -88,6 +104,7 @@ export function JobForm({ slug, occupations, industries, countries, currencies }
   }
 
   function onInvalid(errors: FieldErrors<JobFormInput>) {
+    if (edit) return;
     // The refusal is only counted for the validation error rate; it must never get in the way of the person typing.
     reportInvalidJobForm(slug, Object.keys(errors)).catch(() => undefined);
   }
@@ -189,7 +206,7 @@ export function JobForm({ slug, occupations, industries, countries, currencies }
       />
 
       <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Saving vacancy..." : "Save vacancy"}
+        {formState.isSubmitting ? "Saving vacancy..." : edit ? "Save changes" : "Save vacancy"}
       </FormButton>
     </form>
   );

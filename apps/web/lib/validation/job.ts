@@ -24,6 +24,9 @@ type JobInsert = Pick<
   | "recruitment_preference"
 >;
 
+// The organization is fixed at creation: the update grant leaves it out, so an update that named it would be refused.
+type JobUpdate = Omit<JobInsert, "organization_id">;
+
 export const employmentTypes = ["full_time", "part_time", "contract", "temporary", "seasonal"] as const;
 export const salaryPeriods = ["hour", "month", "year"] as const;
 const recruitmentPreferences = ["local", "international", "both"] as const;
@@ -82,7 +85,7 @@ function amountField(label: string) {
     });
 }
 
-// The form's own schema: the amounts stay strings so that the form can use it as its resolver; toJobInsert converts them.
+// The form's own schema: the amounts stay strings so that the form can use it as its resolver; toJobUpdate converts them.
 // Keys the form does not own, such as status or created_by, are dropped by the parse.
 export const jobFormSchema = z
   .object({
@@ -154,11 +157,11 @@ export const jobFormSchema = z
 export type JobFormInput = z.input<typeof jobFormSchema>;
 export type JobFormValues = z.output<typeof jobFormSchema>;
 
-// The currency and the pay period only mean something with an amount, so they are not sent without one.
-export function toJobInsert(values: JobFormValues, organizationId: string): JobInsert {
+// The currency and the pay period only mean something with an amount, so they are not sent without one. An edit sends
+// every content column, so an emptied salary is cleared rather than kept.
+export function toJobUpdate(values: JobFormValues): JobUpdate {
   const hasSalary = values.salaryMin !== "" || values.salaryMax !== "";
   return {
-    organization_id: organizationId,
     title: values.title,
     description: values.description,
     occupation_id: values.occupation,
@@ -174,6 +177,10 @@ export function toJobInsert(values: JobFormValues, organizationId: string): JobI
     visa_support: values.visaSupport,
     recruitment_preference: values.recruitmentPreference,
   };
+}
+
+export function toJobInsert(values: JobFormValues, organizationId: string): JobInsert {
+  return { organization_id: organizationId, ...toJobUpdate(values) };
 }
 
 export const jobIdSchema = z.uuid();

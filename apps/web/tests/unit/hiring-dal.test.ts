@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Job } from "@/lib/dal/hiring";
+import { jobFormSchema, toJobUpdate } from "@/lib/validation/job";
 
 type Call = [method: string, ...args: unknown[]];
 
 const calls: Call[] = [];
-let result: { data: unknown; error: unknown } = { data: null, error: null };
+let result: { data: unknown; error: unknown; count?: number | null } = { data: null, error: null };
 
 function builder(table: string) {
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "is", "order", "limit", "or"]) {
+  for (const method of ["select", "eq", "is", "in", "order", "limit", "or"]) {
     chain[method] = (...args: unknown[]) => {
       calls.push([`${table}.${method}`, ...args]);
       return chain;
@@ -30,9 +32,18 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("@/lib/jobs/search-log", () => ({ logSearch: vi.fn() }));
 
-const { getEmployer, getJob, getJobLimit, getPublicJob, isSubscriptionEnded, JOBS_PAGE_SIZE, listJobs, searchJobs } = await import(
-  "@/lib/dal/hiring"
-);
+const {
+  countApplicationsInProgress,
+  getEmployer,
+  getJob,
+  getJobLimit,
+  getPublicJob,
+  isSubscriptionEnded,
+  JOBS_PAGE_SIZE,
+  listJobs,
+  searchJobs,
+  toJobFormInput,
+} = await import("@/lib/dal/hiring");
 const { logSearch } = await import("@/lib/jobs/search-log");
 
 const row = {
@@ -76,6 +87,9 @@ describe("getJob", () => {
       employmentType: "full_time",
       visaSupport: false,
       status: "draft",
+      occupationId: "7212",
+      industryCode: "C",
+      countryCode: "DE",
     });
     expect(calls).toContainEqual(["jobs.eq", "id", row.id]);
     expect(calls).toContainEqual(["jobs.eq", "organization_id", "org-1"]);
@@ -92,6 +106,79 @@ describe("getJob", () => {
   it("fails loudly, without the database text, when the vacancy cannot be read", async () => {
     result = { data: null, error: { message: "secret detail" } };
     await expect(getJob("org-1", row.id)).rejects.toThrow("The vacancy could not be loaded");
+  });
+});
+
+describe("countApplicationsInProgress", () => {
+  it("counts the applications of the vacancy that still wait for a decision, without reading them", async () => {
+    result = { data: null, error: null, count: 4 };
+    await expect(countApplicationsInProgress("org-1", row.id)).resolves.toBe(4);
+    expect(calls).toEqual([
+      ["job_applications.select", "id", { count: "exact", head: true }],
+      ["job_applications.eq", "organization_id", "org-1"],
+      ["job_applications.eq", "job_id", row.id],
+      ["job_applications.in", "status", ["applied", "viewed", "shortlisted", "interview", "offer"]],
+    ]);
+  });
+
+  it("fails loudly, without the database text, when the count cannot be read", async () => {
+    result = { data: null, error: { message: "secret detail" }, count: null };
+    await expect(countApplicationsInProgress("org-1", row.id)).rejects.toThrow("The applications in progress could not be counted");
+  });
+});
+
+describe("toJobFormInput", () => {
+  const saved: Job = {
+    id: "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
+    title: "Welder MIG/MAG",
+    description: "d".repeat(120),
+    occupation: "Welders and flame cutters",
+    occupationId: "7212",
+    industry: "Manufacturing",
+    industryCode: "C",
+    country: "Germany",
+    countryCode: "DE",
+    city: "Hamburg",
+    employmentType: "full_time",
+    salaryMin: 2800.5,
+    salaryMax: 3400,
+    salaryCurrency: "EUR",
+    salaryPeriod: "month",
+    accommodation: true,
+    visaSupport: true,
+    recruitmentPreference: "both",
+    status: "open",
+    moderationState: "visible",
+    statusChangedAt: "2026-10-06T10:00:00Z",
+    staleOpen: false,
+    createdAt: "2026-10-01T10:00:00Z",
+  };
+
+  it("starts the edit form from the stored codes and amounts, and the form accepts it unchanged", () => {
+    const values = toJobFormInput(saved);
+    expect(values).toEqual({
+      title: "Welder MIG/MAG",
+      description: "d".repeat(120),
+      occupation: "7212",
+      industry: "C",
+      country: "DE",
+      city: "Hamburg",
+      employmentType: "full_time",
+      salaryMin: "2800.5",
+      salaryMax: "3400",
+      salaryCurrency: "EUR",
+      salaryPeriod: "month",
+      accommodation: true,
+      visaSupport: true,
+      recruitmentPreference: "both",
+    });
+    expect(toJobUpdate(jobFormSchema.parse(values))).toMatchObject({ occupation_id: "7212", industry_code: "C", country_code: "DE", salary_min: 2800.5 });
+  });
+
+  it("gives empty strings for a vacancy without a salary", () => {
+    const values = toJobFormInput({ ...saved, salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null });
+    expect(values).toMatchObject({ salaryMin: "", salaryMax: "", salaryCurrency: "", salaryPeriod: "" });
+    expect(jobFormSchema.safeParse(values).success).toBe(true);
   });
 });
 

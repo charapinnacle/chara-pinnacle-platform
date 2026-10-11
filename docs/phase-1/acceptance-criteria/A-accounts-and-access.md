@@ -223,6 +223,7 @@
 - No organisation -> Active (company user, create_organization)
 - Identifier unset -> Identifier set (owner at aal2, before checkout)
 - Identifier set -> Identifier locked (system, first billing customer or subscription row)
+- Company details edited (owner or admin at aal2, update_organization_profile on org/[slug]/profile; the legal name follows the identifier lock, the slug never changes; U60, OPEN_QUESTIONS.md D78)
 
 ### Roles and permissions
 
@@ -231,12 +232,13 @@
 - User with null account_kind, suspended user, anonymous caller: denied
 - Employer owner at aal2: may set the legal-entity identifier until it is locked; may read the organisation
 - Employer owner at aal1, admin and member: denied changing the identifier
+- Employer owner or admin at aal2: may correct legal name (until locked), display name, country, industry and website (update_organization_profile, audit organization.updated); member, owner or admin at aal1, other organisations and a suspended organisation: denied
 - Owner or member of another organisation: denied reading or changing this organisation's members and invitations
 - Platform Administrator (admin): may view organisations (FR-F1); may not create them here
 
 ### Objects
 
-- pages: /[lang]/signup, /[lang]/onboarding, /[lang]/mfa, /[lang]/dashboard/employer, /[lang]/org/[slug]
+- pages: /[lang]/signup, /[lang]/onboarding, /[lang]/mfa, /[lang]/dashboard/employer, /[lang]/org/[slug], /[lang]/org/[slug]/profile (U60)
 - RPC create_organization (existing parameters type, legal_name, display_name, based_in_country, website; extended with proposed parameters industry_code, legal_entity_identifier, legal_entity_identifier_kind)
 - tables organizations (legal_name, display_name, slug, based_in_country, industry_code, website, status), organization_members, audit.log, countries, industries, profiles
 - billing.subscriptions, billing.customers, billing.plans, private.org_plan_code(), RPC billing_checkout_start

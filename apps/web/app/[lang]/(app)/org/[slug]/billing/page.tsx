@@ -11,14 +11,12 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { planChanges, type SubscriptionStatus } from "@/lib/billing/presentation";
 import { getBillingState, getSubscription, getUsage, listSoldPlans } from "@/lib/dal/billing";
 import { requireOrgRole } from "@/lib/dal/session";
-import { identifierKindOptions } from "@/lib/validation/organization";
+import { identifierKindLabels as kindLabels } from "@/lib/validation/organization";
 
 export const metadata: Metadata = { title: "Billing — CHARA", robots: { index: false } };
 
 // The statuses whose plan limits apply: the database gives any other status (a paused one) the limits of the free plan.
 const ENTITLED_STATUSES: readonly SubscriptionStatus[] = ["trialing", "active", "past_due"];
-
-const kindLabels = Object.fromEntries(identifierKindOptions.map((option) => [option.value, option.label]));
 
 export default async function BillingPage({ params }: PageProps<"/[lang]/org/[slug]/billing">) {
   const { lang, slug } = await params;

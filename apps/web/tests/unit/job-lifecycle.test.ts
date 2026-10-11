@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isStaleOpen, statusActions } from "@/lib/jobs/lifecycle";
+import { inProgressText, isEditable, isStaleOpen, statusActions } from "@/lib/jobs/lifecycle";
 
 const now = new Date("2026-10-06T12:00:00.000Z");
 const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -20,6 +20,12 @@ describe("isStaleOpen", () => {
 
   it("counts from the instant of the change, not from the day", () => {
     expect(isStaleOpen("open", new Date(now.getTime() - 90 * 86_400_000 - 1).toISOString(), now)).toBe(true);
+  });
+});
+
+describe("isEditable", () => {
+  it("lets every status but Filled be edited, since a filled vacancy is final", () => {
+    expect((["draft", "open", "paused", "closed", "filled"] as const).filter(isEditable)).toEqual(["draft", "open", "paused", "closed"]);
   });
 });
 
@@ -48,5 +54,12 @@ describe("statusActions", () => {
     expect(all.filter((action) => action.confirm).map((action) => action.to).sort()).toEqual(["closed", "closed", "filled", "filled"]);
     for (const action of all.filter((item) => item.to === "filled")) expect(action.confirm?.body).toMatch(/final/i);
     for (const action of all.filter((item) => item.to === "open" || item.to === "paused")) expect(action.confirm).toBeUndefined();
+  });
+});
+
+describe("inProgressText (FR-C2 AC9)", () => {
+  it("counts the applications that still wait for a decision in words", () => {
+    expect(inProgressText(4)).toBe("4 applications are still in progress");
+    expect(inProgressText(1)).toBe("1 application is still in progress");
   });
 });

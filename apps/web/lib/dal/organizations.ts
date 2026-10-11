@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import type { OrganizationProfileInput } from "@/lib/validation/organization";
 import type { MemberRole } from "@/lib/validation/team";
 
 type Organization = { id: string; slug: string; displayName: string; role: MemberRole; suspended: boolean };
@@ -38,6 +39,26 @@ export async function getOrganizationSlug(organizationId: string): Promise<strin
   const { data, error } = await supabase.from("organizations").select("slug").eq("id", organizationId).maybeSingle();
   if (error) throw new Error("The organization could not be loaded", { cause: error });
   return data?.slug ?? null;
+}
+
+// The company details as the profile form edits them: codes for the lists and an empty string for a missing website.
+export async function getOrganizationProfile(organizationId: string): Promise<OrganizationProfileInput | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("legal_name, display_name, based_in_country, industry_code, website")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) throw new Error("The organization profile could not be loaded", { cause: error });
+  return (
+    data && {
+      legalName: data.legal_name,
+      displayName: data.display_name,
+      country: data.based_in_country,
+      industry: data.industry_code ?? "",
+      website: data.website ?? "",
+    }
+  );
 }
 
 export async function getMyOrganization(userId: string): Promise<Organization | null> {

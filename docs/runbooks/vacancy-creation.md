@@ -48,7 +48,22 @@ order by 2 desc;
 
 The field names are those of the form (`title`, `salaryMin`, `occupation`, and so on).
 
-## 3. Cost
+## 3. Editing a vacancy
+
+Owners and admins correct a vacancy at `/[lang]/org/[slug]/jobs/[id]/edit` (links: "Edit" on each row of the vacancy list, "Edit vacancy" on the vacancy page; D78). The page uses the new-vacancy form with the same schema, controlled lists and messages, filled with the stored values. A Filled vacancy is final (FR-C2): it has no edit link, its edit page says so and shows no form, and the trigger `jobs_guard_filled` refuses an update of its content with `CHARA_INVALID_TRANSITION` detail `filled`, so a direct Data API call stops there too. A save without changes sends nothing (the form returns to the vacancy with "No changes to save"), because every update stamps `jobs.updated_at`, the sitemap `lastmod`. Saving sends the content columns only (`toJobUpdate`): the status, the moderation state, the organisation and the author are not in the update grant and are never sent, so an edit keeps the status and a vacancy hidden by moderation stays hidden (the page says so and links the appeal route). A member gets the forbidden page and sees no edit link; another organisation gets the not-found page; a suspended organisation gets the suspension notice and the policy refuses the update. Each accepted edit writes one `job.updated` row with the names of the changed columns, and the trigger stamps `jobs.updated_at`, so the public page (rendered per request) shows the change at once and the sitemap entry of an open vacancy gets the new `lastmod`.
+
+A refused edit is not reported to `record_job_form_invalid`: the validation error rate of section 2 is the rate of the new-vacancy form, whose accepted submissions are the `job.created` rows. The number of edits per vacancy can be read from the same log:
+
+```sql
+select entity_id as job_id, count(*) as edits
+from audit.log
+where action = 'job.updated'
+group by 1
+order by 2 desc
+limit 100;
+```
+
+## 4. Cost
 
 Both queries read `audit.log` by `action`; the table is indexed by time and, for `job.form_invalid`, by `(actor_id, created_at)` (the throttle). They are monthly, offline queries over a table that grows by a few rows per vacancy; run them outside peak hours when the log has millions of rows.
 

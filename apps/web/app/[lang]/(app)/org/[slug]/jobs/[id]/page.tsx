@@ -8,9 +8,9 @@ import { Notice } from "@/components/forms/notice";
 import { JobStatusActions } from "@/components/jobs/job-status-actions";
 import { VacancyView } from "@/components/jobs/vacancy-view";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getJob } from "@/lib/dal/hiring";
+import { countApplicationsInProgress, getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
+import { isEditable, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
 import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
@@ -22,8 +22,16 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
   const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true });
   if (organization.suspended) return <SuspendedOrganization title="Vacancy" subject="vacancies" />;
   const parsedId = jobIdSchema.safeParse(id);
-  const job = parsedId.success ? await getJob(organization.id, parsedId.data) : null;
+  if (!parsedId.success) notFound();
+  const job = await getJob(organization.id, parsedId.data);
   if (!job) notFound();
+  const manager = organization.role !== "member";
+  // Only the Close and Mark as filled dialogs show the count, so it is read only when one of them is offered.
+  const inProgress =
+    manager && statusActions[job.status].some((action) => action.confirm)
+      ? await countApplicationsInProgress(organization.id, job.id)
+      : 0;
+  const applicantsHref = applicantsPath(lang, slug, { job: job.id });
 
   return (
     <div className="grid w-full max-w-3xl gap-page">
@@ -44,12 +52,24 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
           page.
         </Notice>
       ) : null}
-      {organization.role === "member" ? null : (
-        <JobStatusActions slug={slug} jobId={job.id} status={job.status} billingHref={billingPath(lang, slug)} />
-      )}
+      {manager ? (
+        <JobStatusActions
+          slug={slug}
+          jobId={job.id}
+          status={job.status}
+          billingHref={billingPath(lang, slug)}
+          inProgress={inProgress}
+          applicantsHref={applicantsHref}
+        />
+      ) : null}
       <VacancyView job={job} />
       <div className="flex flex-wrap gap-3">
-        <LinkButton href={applicantsPath(lang, slug, { job: job.id })} variant="secondary" size="default">
+        {manager && isEditable(job.status) ? (
+          <LinkButton href={`${jobPath(lang, slug, job.id)}/edit`} variant="secondary" size="default">
+            Edit vacancy
+          </LinkButton>
+        ) : null}
+        <LinkButton href={applicantsHref} variant="secondary" size="default">
           Applicants
         </LinkButton>
         <LinkButton href={`${jobPath(lang, slug, job.id)}/preview`} variant="secondary" size="default">

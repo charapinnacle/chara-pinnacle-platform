@@ -4,16 +4,20 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
-import { requireUser } from "@/lib/dal/session";
+import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { mfaPath } from "@/lib/routes";
+import { mfaPath, organizationProfilePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
   createdOrganizationSchema,
   organizationInputSchema,
+  organizationProfileSchema,
+  updatedOrganizationSchema,
   type OrganizationFormInput,
+  type OrganizationProfileInput,
 } from "@/lib/validation/organization";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
+import { slugSchema } from "@/lib/validation/team";
 
 export type CreateOrganizationResult = {
   errors?: FieldErrors;
@@ -25,6 +29,7 @@ const LIMIT_REACHED = "You have reached the number of organizations one account 
 
 const fieldByConstraint: Record<string, keyof OrganizationFormInput> = {
   legal_name: "legalName",
+  based_in_country: "country",
   organizations_legal_name_check: "legalName",
   organizations_display_name_check: "displayName",
   industry_code: "industry",
@@ -43,7 +48,7 @@ function refusal(error: PostgrestError): CreateOrganizationResult {
       : /constraint "([^"]+)"/.exec(error.message)?.[1];
   const field = constraint ? fieldByConstraint[constraint] : undefined;
   if (field) return { errors: { [field]: "Check this value." } };
-  console.error("Create organization failed", { code: error.code, message: error.message });
+  console.error("Saving the organization failed", { code: error.code, message: error.message });
   return { message: GENERIC_FAILURE };
 }
 
@@ -72,4 +77,49 @@ export async function createOrganization(
   if (created.duplicate_legal_name) return { duplicateLegalName: true };
   refreshAppShell();
   redirect(mfaPath(defaultLocale));
+}
+
+type UpdateOrganizationResult = CreateOrganizationResult & ({ saved?: undefined } | { saved: true; displayName: string });
+
+const LEGAL_NAME_LOCKED = "The legal name cannot be changed once a payment has been started for the company.";
+const SUSPENDED = "This organization is suspended, so its profile cannot be changed.";
+
+// The organization comes from the slug in the address, checked against the caller's membership and role; the function
+// checks the role, two-step verification and the lock of the legal name again in the database.
+export async function updateOrganizationProfile(
+  slug: string,
+  input: OrganizationProfileInput,
+): Promise<UpdateOrganizationResult> {
+  const parsedSlug = slugSchema.safeParse(slug);
+  if (!parsedSlug.success) return { message: GENERIC_FAILURE };
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", { hideFromOutsiders: true });
+  const parsed = organizationProfileSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("update_organization_profile", {
+    p_org: organization.id,
+    p_legal_name: parsed.data.legalName,
+    p_display_name: parsed.data.displayName,
+    p_based_in_country: parsed.data.country,
+    p_industry_code: parsed.data.industry,
+    p_website: parsed.data.website,
+  });
+  if (error) {
+    const path = organizationProfilePath(defaultLocale, parsedSlug.data);
+    if (error.message === "CHARA_FORBIDDEN" && error.details === "aal2_required") redirect(mfaPath(defaultLocale, path));
+    if (error.message === "CHARA_FORBIDDEN" && error.details === "legal_name_locked") {
+      return { errors: { legalName: LEGAL_NAME_LOCKED } };
+    }
+    if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_suspended") return { message: SUSPENDED };
+    return refusal(error);
+  }
+
+  const updated = updatedOrganizationSchema.parse(data);
+  refreshAppShell();
+  return {
+    saved: true,
+    displayName: updated.display_name,
+    ...(updated.duplicate_legal_name ? { duplicateLegalName: true } : {}),
+  };
 }

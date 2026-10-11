@@ -12,14 +12,16 @@ import type { LimitPrompt } from "@/lib/jobs/lifecycle";
 import { statusLabels } from "@/lib/jobs/presentation";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { jobFormSchema, jobIdSchema, toJobInsert, type JobFormInput } from "@/lib/validation/job";
+import { jobFormSchema, jobIdSchema, toJobInsert, toJobUpdate, type JobFormInput } from "@/lib/validation/job";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
-type JobActionResult = { errors?: FieldErrors; message?: string; limitReached?: LimitPrompt };
+type JobActionResult = { errors?: FieldErrors; message?: string; limitReached?: LimitPrompt; saved?: true };
 
 const CHECK_VALUE = "Check this value.";
-const NOT_ALLOWED = "You are not allowed to create vacancies for this company.";
+const NOT_ALLOWED = "You are not allowed to create or edit vacancies for this company.";
+const NOT_FOUND = "This vacancy could not be found.";
+const FILLED = "A filled vacancy is final and cannot be changed.";
 
 // The constraints a value the schema let through can still fail, each with the field it belongs to.
 const fieldByConstraint: Record<string, [field: keyof JobFormInput, message: string]> = {
@@ -43,7 +45,7 @@ function refusal(error: PostgrestError): JobActionResult {
   const known = constraint ? fieldByConstraint[constraint] : undefined;
   if (known) return { errors: { [known[0]]: known[1] } };
   if (error.code === "42501") return { message: NOT_ALLOWED };
-  console.error("Create vacancy failed", { code: error.code, message: error.message });
+  console.error("Saving the vacancy failed", { code: error.code, message: error.message });
   return { message: GENERIC_FAILURE };
 }
 
@@ -89,6 +91,38 @@ export async function createJob(slug: string, input: JobFormInput): Promise<JobA
     return result;
   }
   redirect(jobPath(defaultLocale, organization.slug, data.id));
+}
+
+// As createJob, with the vacancy id from the address. Only the content columns are sent, so the status, the moderation
+// state and the organization stay as they are; the policy refuses a suspended organization and every non-manager, which
+// leaves no row to update, and the trigger jobs_guard_filled refuses a filled vacancy. A refused edit is not reported for
+// the validation error rate: that rate is of new vacancies.
+export async function updateJob(slug: string, id: string, input: JobFormInput): Promise<JobActionResult> {
+  const parsedSlug = slugSchema.safeParse(slug);
+  const parsedId = jobIdSchema.safeParse(id);
+  if (!parsedSlug.success || !parsedId.success) return { message: GENERIC_FAILURE };
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", {
+    mfa: false,
+    hideFromOutsiders: true,
+  });
+  const parsed = jobFormSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .update(toJobUpdate(parsed.data))
+    .eq("id", parsedId.data)
+    .eq("organization_id", organization.id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+  if (error?.message === "CHARA_INVALID_TRANSITION" && error.details === "filled") return { message: FILLED };
+  if (error) return refusal(error);
+  if (!data) return { message: organization.suspended ? NOT_ALLOWED : NOT_FOUND };
+  revalidatePath(jobsPath(defaultLocale, organization.slug));
+  revalidatePath(jobPath(defaultLocale, organization.slug, parsedId.data));
+  return { saved: true };
 }
 
 // Reports a form that was refused in the browser; the server records its own refusals in createJob.
@@ -168,7 +202,7 @@ export async function changeJobStatus(
     ? await statusRefusal(error, supabase, organization.id, parsed.data.id)
     : data
       ? {}
-      : { message: "This vacancy could not be found." };
+      : { message: NOT_FOUND };
   revalidatePath(jobsPath(defaultLocale, organization.slug));
   revalidatePath(jobPath(defaultLocale, organization.slug, parsed.data.id));
   return result;

@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { mainNavigation } from "./support/app-shell";
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { execute, literal } from "./support/db";
+import { execute, literal, query } from "./support/db";
+import { applicationsOf, newApplicant, seedApplication } from "./support/applications";
 import { logIn } from "./support/login-page";
 import { uniqueToken } from "./support/organizations";
 import {
@@ -105,6 +106,90 @@ test.describe("vacancy lifecycle", () => {
     expect(statusAudit(toFill)).toEqual([{ actor_id: admin.id, metadata: { from: "open", to: "filled" } }]);
     await page.reload();
     expect(await offered(page)).toEqual([]);
+    await expect(page.getByRole("link", { name: "Edit vacancy" })).toHaveCount(0);
+  });
+
+  test("FR-C2 AC9: closing or filling with applications in progress names them and links to them first, and changes none of them", async ({
+    page,
+    browser,
+  }) => {
+    const acme = await newCompany();
+    const busy = seedJob(acme, { title: "Busy welder", status: "open" });
+    const decided = seedJob(acme, { title: "Decided welder", status: "open" });
+    const candidates = await Promise.all(Array.from({ length: 6 }, () => newApplicant()));
+    ["applied", "applied", "interview", "offer", "hired", "rejected"].forEach((status, index) =>
+      seedApplication(candidates[index].id, busy, acme.id, { status }),
+    );
+    seedApplication(candidates[0].id, decided, acme.id, { status: "hired" });
+    seedApplication(candidates[1].id, decided, acme.id, { status: "rejected" });
+    const stages = (jobId: string) => applicationsOf(jobId).map(({ status }) => status);
+    const queued = () =>
+      query<{ n: number }>(
+        `select (select count(*) from pgmq.q_notifications where message ->> 'user_id' = any (${literal(`{${candidates.map(({ id }) => id).join(",")}}`)}))
+              + (select count(*) from public.notifications where user_id = any (${literal(`{${candidates.map(({ id }) => id).join(",")}}`)}::uuid[])) as n`,
+      )[0].n;
+    const queuedBefore = queued();
+    const applicantsLink = `/en/org/${acme.slug}/applicants?job=${busy}`;
+
+    await logIn(page, acme.owner, jobUrl(acme.slug, busy));
+    await page.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    const fillDialog = page.getByRole("dialog", { name: "Mark this vacancy as filled?" });
+    await expect(fillDialog.getByText("4 applications are still in progress.", { exact: true })).toBeVisible();
+    await expect(fillDialog.getByRole("link", { name: "Review the applicants of this vacancy" })).toHaveAttribute("href", applicantsLink);
+    await fillDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(fillDialog).toBeHidden();
+
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Close this vacancy?" });
+    await expect(dialog.getByText("4 applications are still in progress.", { exact: true })).toBeVisible();
+    const link = dialog.getByRole("link", { name: "Review the applicants of this vacancy" });
+    await expect(link).toHaveAttribute("href", applicantsLink);
+    await expectNoAxeViolations(page);
+    await link.click();
+    await expect(page).toHaveURL(applicantsLink);
+    expect(jobStatus(busy)).toBe("open");
+    // The owner is asked to set up two-step verification there, so a member checks what the link lists.
+    const memberContext = await browser.newContext();
+    const memberPage = await memberContext.newPage();
+    await logIn(memberPage, await addCompanyUser(acme, "member"), applicantsLink);
+    await expect(memberPage.getByRole("main").getByRole("link", { name: "Busy welder" }).first()).toBeVisible();
+    await expect(memberPage.getByRole("table", { name: "Applicants" }).locator("tbody tr")).toHaveCount(6);
+    await memberContext.close();
+
+    await page.goto(jobUrl(acme.slug, busy));
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await dialog.getByRole("button", { name: "Close vacancy" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Closed - not public" })).toBeVisible();
+    expect(jobStatus(busy)).toBe("closed");
+    expect(stages(busy)).toEqual(["applied", "applied", "interview", "offer", "hired", "rejected"]);
+
+    await page.goto(jobUrl(acme.slug, decided));
+    await page.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    const filled = page.getByRole("dialog", { name: "Mark this vacancy as filled?" });
+    await expect(filled.getByText("This is final.", { exact: false })).toBeVisible();
+    await expect(filled.getByText("still in progress", { exact: false })).toHaveCount(0);
+    await filled.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Filled - not public" })).toBeVisible();
+    expect(stages(decided)).toEqual(["hired", "rejected"]);
+    expect(queued()).toBe(queuedBefore);
+  });
+
+  test("FR-C2 AC9: a paused vacancy with one application in progress names it before it is marked as filled", async ({ page }) => {
+    const acme = await newCompany();
+    const paused = seedJob(acme, { title: "Paused welder", status: "paused" });
+    seedApplication((await newApplicant()).id, paused, acme.id, { status: "applied" });
+
+    await logIn(page, acme.owner, jobUrl(acme.slug, paused));
+    await page.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Mark this vacancy as filled?" });
+    await expect(dialog.getByText("1 application is still in progress.", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Review the applicants of this vacancy" })).toHaveAttribute(
+      "href",
+      `/en/org/${acme.slug}/applicants?job=${paused}`,
+    );
+    await dialog.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Filled - not public" })).toBeVisible();
+    expect(applicationsOf(paused).map(({ status }) => status)).toEqual(["applied"]);
   });
 
   test("FR-C2 AC7, AC1: the owner publishes, pauses and reopens, and the public page and the search follow at the next request", async ({

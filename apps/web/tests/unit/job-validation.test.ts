@@ -4,6 +4,7 @@ import {
   jobFormSchema,
   parseJobCursor,
   toJobInsert,
+  toJobUpdate,
   type JobFormInput,
 } from "@/lib/validation/job";
 import { fieldErrors } from "@/lib/validation/sign-up";
@@ -199,6 +200,15 @@ describe("the insert payload (FR-C1 AC2)", () => {
     expect(payload).toMatchObject({ salary_min: null, salary_max: null, salary_currency: null, salary_period: null });
     const oneAmount = toJobInsert(jobFormSchema.parse({ ...valid, salaryMin: "", salaryMax: "3400" }), organizationId);
     expect(oneAmount).toMatchObject({ salary_min: null, salary_max: 3400, salary_currency: "EUR", salary_period: "month" });
+  });
+});
+
+describe("toJobUpdate", () => {
+  it("maps the form to the content columns, never the organization, and clears an emptied salary", () => {
+    const update = toJobUpdate(jobFormSchema.parse({ ...valid, salaryMin: "", salaryMax: "" }));
+    expect(update).not.toHaveProperty("organization_id");
+    expect(update).toMatchObject({ title: "Welder MIG/MAG", salary_min: null, salary_max: null, salary_currency: null, salary_period: null });
+    expect(toJobInsert(jobFormSchema.parse(valid), "org")).toEqual({ organization_id: "org", ...toJobUpdate(jobFormSchema.parse(valid)) });
   });
 });
 
