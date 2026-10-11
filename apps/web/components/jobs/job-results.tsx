@@ -1,4 +1,3 @@
-import { Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { ApplyButton } from "@/components/jobs/apply-button";
@@ -65,7 +64,6 @@ export async function JobResults({ lang, filters }: { lang: string; filters: Job
     return (
       <div role="status">
         <EmptyState
-          icon={Briefcase}
           title={filtered ? "No vacancies match your search" : "There are no open vacancies yet"}
           description={filtered ? "Try fewer filters or a different keyword." : "Check back soon."}
         >

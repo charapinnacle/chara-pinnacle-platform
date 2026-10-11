@@ -1,4 +1,3 @@
-import { BriefcaseBusiness } from "lucide-react";
 import { Suspense } from "react";
 import { Panel } from "@/components/dashboard/panel";
 import { PlanAlerts } from "@/components/dashboard/plan-alerts";
@@ -23,10 +22,10 @@ type EmployerDashboardProps = {
 async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<boolean>; lang: string; slug: string; role: MemberRole }) {
   if (!(await empty)) return null;
   if (role === "member") {
-    return <EmptyState icon={BriefcaseBusiness} title="No vacancies yet" description="An owner or admin creates the vacancies of your company." />;
+    return <EmptyState title="No vacancies yet" description="An owner or admin creates the vacancies of your company." />;
   }
   return (
-    <EmptyState icon={BriefcaseBusiness} title="Nothing here yet" description="Publish a vacancy and its applications will be counted here.">
+    <EmptyState title="Nothing here yet" description="Publish a vacancy and its applications will be counted here.">
       <LinkButton href={`${jobsPath(lang, slug)}/new`}>Create your first vacancy</LinkButton>
     </EmptyState>
   );

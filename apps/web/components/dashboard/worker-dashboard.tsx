@@ -1,4 +1,3 @@
-import { Send } from "lucide-react";
 import { AvailabilityCard } from "@/components/dashboard/availability-card";
 import { Panel } from "@/components/dashboard/panel";
 import { RecentApplications } from "@/components/dashboard/recent-applications";
@@ -33,11 +32,11 @@ type WorkerDashboardProps = {
 function FirstApplication({ lang, completeness }: { lang: string; completeness: Completeness }) {
   const occupationMissing = completeness.items.some((item) => item.key === "occupation" && !item.done);
   return occupationMissing ? (
-    <EmptyState icon={Send} title="No applications yet" description="Start by adding your occupation to your passport: you need it to apply, and employers see it first.">
+    <EmptyState title="No applications yet" description="Start by adding your occupation to your passport: you need it to apply, and employers see it first.">
       <LinkButton href={`/${lang}/passport#occupation`}>Complete your passport</LinkButton>
     </EmptyState>
   ) : (
-    <EmptyState icon={Send} title="No applications yet" description="Your passport is ready to share. Find a vacancy that fits you and apply: each change of its stage shows here.">
+    <EmptyState title="No applications yet" description="Your passport is ready to share. Find a vacancy that fits you and apply: each change of its stage shows here.">
       <LinkButton href={`/${lang}/jobs`}>Browse vacancies</LinkButton>
     </EmptyState>
   );
