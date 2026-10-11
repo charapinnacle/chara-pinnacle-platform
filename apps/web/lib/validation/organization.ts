@@ -111,7 +111,7 @@ export const organizationProfileSchema = z.object(companyFields);
 export type OrganizationProfileInput = z.input<typeof organizationProfileSchema>;
 
 export const updatedOrganizationSchema = z.object({
-  changed_fields: z.array(z.string()),
+  display_name: z.string(),
   duplicate_legal_name: z.boolean(),
 });
 

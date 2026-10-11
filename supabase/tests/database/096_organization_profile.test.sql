@@ -68,8 +68,8 @@ select is(pg_temp.profile(:'a'), 'Acme Bau AG|Acme Bau AG|AT|C|<null>',
   'the names are trimmed, an empty display name becomes the legal name, codes are upper case and an empty website is null');
 select is(
   current_setting('t.result')::jsonb,
-  '{"changed_fields": ["based_in_country", "display_name", "industry_code", "legal_name", "website"], "duplicate_legal_name": false}'::jsonb,
-  'the result names the changed fields and no duplicate'
+  '{"display_name": "Acme Bau AG", "duplicate_legal_name": false}'::jsonb,
+  'the result gives the stored display name and no duplicate'
 );
 select is(
   (select format('%s|%s|%s', actor_id, entity_type, metadata) from audit.log
@@ -93,8 +93,8 @@ select is(
 select is(pg_temp.update_as(:'adm', :'a', 'Acme Bau AG', 'Acme', 'at', 'c', 'https://acme.example/jobs'), 'ok',
   'the same values again are accepted');
 select is(
-  format('%s|%s', current_setting('t.result')::jsonb -> 'changed_fields', pg_temp.updates(:'a')),
-  '[]|2', 'a submission that changes nothing reports no field and writes no audit row'
+  format('%s|%s', current_setting('t.result')::jsonb, pg_temp.updates(:'a')),
+  '{"display_name": "Acme", "duplicate_legal_name": false}|2', 'a submission that changes nothing writes no audit row'
 );
 
 -- Wrong callers change nothing

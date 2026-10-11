@@ -59,8 +59,9 @@ begin
   from jsonb_each(to_jsonb(v_new)) n
   where n.key in ('legal_name', 'display_name', 'based_in_country', 'industry_code', 'website')
     and n.value is distinct from to_jsonb(v_old) -> n.key;
+  -- The stored display name is returned because an empty one becomes the legal name, and the form shows what is stored.
   if jsonb_array_length(v_changed) = 0 then
-    return jsonb_build_object('changed_fields', v_changed, 'duplicate_legal_name', false);
+    return jsonb_build_object('display_name', v_new.display_name, 'duplicate_legal_name', false);
   end if;
 
   -- As at registration (FR-A2 AC5): a name another organisation already uses is reported, never refused, and nothing
@@ -75,7 +76,7 @@ begin
     'organization.updated', 'organization', p_org::text,
     jsonb_build_object('changed_fields', v_changed, 'duplicate_legal_name', v_duplicate)
   );
-  return jsonb_build_object('changed_fields', v_changed, 'duplicate_legal_name', v_duplicate);
+  return jsonb_build_object('display_name', v_new.display_name, 'duplicate_legal_name', v_duplicate);
 end;
 $$;
 

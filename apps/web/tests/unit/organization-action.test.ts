@@ -129,11 +129,11 @@ describe("updateOrganizationProfile", () => {
 
   beforeEach(() => {
     requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme-bau", role: "admin" } });
-    rpcMock.mockResolvedValue({ data: { changed_fields: ["legal_name"], duplicate_legal_name: false }, error: null });
+    rpcMock.mockResolvedValue({ data: { display_name: "Acme Bau AG", duplicate_legal_name: false }, error: null });
   });
 
-  it("checks the owner or admin role at aal2, sends the normalised values and redraws the header", async () => {
-    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true });
+  it("checks the owner or admin role at aal2, sends the normalised values, returns the stored display name and redraws the header", async () => {
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true, displayName: "Acme Bau AG" });
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { hideFromOutsiders: true });
     expect(rpcMock).toHaveBeenCalledWith("update_organization_profile", {
       p_org: orgId,
@@ -147,8 +147,12 @@ describe("updateOrganizationProfile", () => {
   });
 
   it("passes on the duplicate legal name notice", async () => {
-    rpcMock.mockResolvedValue({ data: { changed_fields: ["legal_name"], duplicate_legal_name: true }, error: null });
-    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true, duplicateLegalName: true });
+    rpcMock.mockResolvedValue({ data: { display_name: "Acme Bau AG", duplicate_legal_name: true }, error: null });
+    await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({
+      saved: true,
+      displayName: "Acme Bau AG",
+      duplicateLegalName: true,
+    });
   });
 
   it("returns the field errors of an invalid input without calling the database", async () => {

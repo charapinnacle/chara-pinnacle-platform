@@ -50,7 +50,7 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
       (result) => {
         setDuplicateLegalName(Boolean(result.duplicateLegalName));
         if (result.saved) {
-          reset(values);
+          reset({ ...values, displayName: result.displayName });
           toast({ title: "Company profile saved" });
         } else if (result.message) {
           toastError(FAILURE, result.message);

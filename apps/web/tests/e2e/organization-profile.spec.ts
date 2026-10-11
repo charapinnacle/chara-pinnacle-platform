@@ -2,6 +2,7 @@ import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { choose } from "./support/combobox";
 import { execute, literal } from "./support/db";
+import { waitForHydration } from "./support/hydration";
 import { expectNotFound, seedJob } from "./support/jobs";
 import { alertText, logIn } from "./support/login-page";
 import { enterCode } from "./support/mfa";
@@ -148,5 +149,18 @@ test.describe("organisation profile", () => {
     await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
     expect(organizationRows(team.owner.id)[0]).toMatchObject({ legal_name: rivalRow.legal_name.toUpperCase(), display_name: "Locked Bau" });
     await expectNoAxeViolations(page);
+  });
+
+  test("FR-A2: an emptied display name is saved as the legal name, and the form shows the stored value", async ({ page }) => {
+    const team = await newTeam();
+    await signInAtAal2(page, team.owner, team.ownerSecret, profileUrl(team.slug));
+    const [before] = organizationRows(team.owner.id);
+    await waitForHydration(page.getByRole("button", { name: "Save profile" }));
+
+    await page.getByLabel("Display name (optional)").fill("");
+    await page.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Display name (optional)")).toHaveValue(before.legal_name);
+    expect(organizationRows(team.owner.id)[0].display_name).toBe(before.legal_name);
   });
 });

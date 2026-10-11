@@ -79,7 +79,7 @@ export async function createOrganization(
   redirect(mfaPath(defaultLocale));
 }
 
-export type UpdateOrganizationResult = CreateOrganizationResult & { saved?: true };
+type UpdateOrganizationResult = CreateOrganizationResult & ({ saved?: undefined } | { saved: true; displayName: string });
 
 const LEGAL_NAME_LOCKED = "The legal name cannot be changed once a payment has been started for the company.";
 const SUSPENDED = "This organization is suspended, so its profile cannot be changed.";
@@ -117,5 +117,9 @@ export async function updateOrganizationProfile(
 
   const updated = updatedOrganizationSchema.parse(data);
   refreshAppShell();
-  return { saved: true, ...(updated.duplicate_legal_name ? { duplicateLegalName: true } : {}) };
+  return {
+    saved: true,
+    displayName: updated.display_name,
+    ...(updated.duplicate_legal_name ? { duplicateLegalName: true } : {}),
+  };
 }
