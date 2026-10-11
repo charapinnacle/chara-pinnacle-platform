@@ -158,16 +158,22 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
     const team = await newTeam();
     const jobId = seedJob(team, { title: "Sweep crane operator", status: "open" });
     const applicationId = seedDetailedApplication(await newApplicant(), jobId, team);
-    const pages = employerPages(team.slug, jobId, applicationId);
+    const { "/[lang]/org/[slug]": hub, ...pages } = employerPages(team.slug, jobId, applicationId);
+    const billing = pages["/[lang]/org/[slug]/billing"];
 
-    await logIn(page, team.owner, pages["/[lang]/org/[slug]"]);
-    await expect(page).toHaveURL(/\/en\/mfa\?next=/);
+    await logIn(page, team.owner, billing);
+    await expect(page).toHaveURL(`/en/mfa?next=${encodeURIComponent(billing)}`);
     expectSecurityHeaders((await page.request.get(page.url())).headers(), "/en/mfa");
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     await enterCode(page, team.ownerSecret);
-    await expect(page).toHaveURL(pages["/[lang]/org/[slug]"]);
+    await expect(page).toHaveURL(billing);
     await sweep(page, pages);
+
+    // The address of the organisation only leads to its dashboard; what it shows itself is the notice of a suspension.
+    execute(`update public.organizations set status = 'suspended' where id = ${literal(team.id)}`);
+    await expectPage(page, hub);
+    await expect(page.getByRole("heading", { name: "This organisation is suspended" })).toBeVisible();
   });
 
   test("account states: onboarding, updated documents and suspension", async ({ browser }) => {
