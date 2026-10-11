@@ -131,6 +131,13 @@ test.describe("vacancy lifecycle", () => {
     const applicantsLink = `/en/org/${acme.slug}/applicants?job=${busy}`;
 
     await logIn(page, acme.owner, jobUrl(acme.slug, busy));
+    await page.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    const fillDialog = page.getByRole("dialog", { name: "Mark this vacancy as filled?" });
+    await expect(fillDialog.getByText("4 applications are still in progress.", { exact: true })).toBeVisible();
+    await expect(fillDialog.getByRole("link", { name: "Review the applicants of this vacancy" })).toHaveAttribute("href", applicantsLink);
+    await fillDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(fillDialog).toBeHidden();
+
     await page.getByRole("button", { name: "Close", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Close this vacancy?" });
     await expect(dialog.getByText("4 applications are still in progress.", { exact: true })).toBeVisible();
@@ -139,6 +146,8 @@ test.describe("vacancy lifecycle", () => {
     await expectNoAxeViolations(page);
     await link.click();
     await expect(page).toHaveURL(applicantsLink);
+    await expect(page.getByRole("main").getByRole("link", { name: "Busy welder" })).toBeVisible();
+    await expect(page.getByRole("table", { name: "Applicants" }).locator("tbody tr")).toHaveCount(6);
     expect(jobStatus(busy)).toBe("open");
 
     await page.goto(jobUrl(acme.slug, busy));
@@ -157,6 +166,24 @@ test.describe("vacancy lifecycle", () => {
     await expect(page.getByRole("status").filter({ hasText: "Filled - not public" })).toBeVisible();
     expect(stages(decided)).toEqual(["hired", "rejected"]);
     expect(queued()).toBe(queuedBefore);
+  });
+
+  test("FR-C2 AC9: a paused vacancy with one application in progress names it before it is marked as filled", async ({ page }) => {
+    const acme = await newCompany();
+    const paused = seedJob(acme, { title: "Paused welder", status: "paused" });
+    seedApplication((await newApplicant()).id, paused, acme.id, { status: "applied" });
+
+    await logIn(page, acme.owner, jobUrl(acme.slug, paused));
+    await page.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Mark this vacancy as filled?" });
+    await expect(dialog.getByText("1 application is still in progress.", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Review the applicants of this vacancy" })).toHaveAttribute(
+      "href",
+      `/en/org/${acme.slug}/applicants?job=${paused}`,
+    );
+    await dialog.getByRole("button", { name: "Mark as filled", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Filled - not public" })).toBeVisible();
+    expect(applicationsOf(paused).map(({ status }) => status)).toEqual(["applied"]);
   });
 
   test("FR-C2 AC7, AC1: the owner publishes, pauses and reopens, and the public page and the search follow at the next request", async ({
