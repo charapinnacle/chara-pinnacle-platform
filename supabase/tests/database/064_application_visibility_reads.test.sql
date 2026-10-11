@@ -5,7 +5,7 @@ select plan(45);
 
 -- FR-D5: who reads job_applications and application_events. n_as counts the rows a query returns for a caller; refused is
 -- the refusal text of a query for a role without a grant.
-create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns text
+create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal2') returns text
 language sql as $$ select pg_temp.val_as(p_user, p_aal, 'select count(*) from (' || p_sql || ') q') $$;
 
 create function pg_temp.ids_of(p_apps uuid[]) returns text

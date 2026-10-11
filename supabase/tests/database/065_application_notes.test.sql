@@ -15,11 +15,11 @@ language sql as $$
       then format('insert into public.application_notes (application_id, organization_id, body) values (%L, %L, %L)', p_app, p_org, p_body)
       else format('insert into public.application_notes (application_id, organization_id, author_id, body) values (%L, %L, %L, %L)', p_app, p_org, p_author, p_body)
     end,
-    'aal1'
+    'aal2'
   )
 $$;
 
-create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal1') returns text
+create function pg_temp.n_as(p_user uuid, p_sql text, p_aal text default 'aal2') returns text
 language sql as $$ select pg_temp.val_as(p_user, p_aal, 'select count(*) from (' || p_sql || ') q') $$;
 
 create function pg_temp.fixed_state() returns text

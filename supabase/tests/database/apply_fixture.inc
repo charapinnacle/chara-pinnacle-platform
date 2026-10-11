@@ -48,7 +48,7 @@ language sql as $$
 $$;
 
 -- document_access_grant for a member of Acme: 'ok' or 'sqlstate|message|detail'.
-create function pg_temp.grant_as(p_user uuid, p_doc uuid, p_aal text default 'aal1') returns text
+create function pg_temp.grant_as(p_user uuid, p_doc uuid, p_aal text default 'aal2') returns text
 language sql as $$
   select pg_temp.call_as(p_user, 'authenticated', format('select * from public.document_access_grant(%L, %L)', p_doc, 'application_review'), p_aal)
 $$;

@@ -268,7 +268,7 @@ select pg_temp.seed_app('hired', (select org from t_l)) as l_hired \gset
 insert into public.application_notes (application_id, organization_id, author_id, body) values (:'l_applied', (select org from t_l), :'l_member', 'Earlier note');
 create function pg_temp.note_as(p_user uuid, p_app uuid, p_org uuid) returns text
 language sql as $$
-  select pg_temp.call_as(p_user, 'authenticated', format('insert into public.application_notes (application_id, organization_id, body) values (%L, %L, %L)', p_app, p_org, 'New note'), 'aal1')
+  select pg_temp.call_as(p_user, 'authenticated', format('insert into public.application_notes (application_id, organization_id, body) values (%L, %L, %L)', p_app, p_org, 'New note'), 'aal2')
 $$;
 create function pg_temp.withdraw_as(p_user uuid, p_app uuid) returns text
 language sql as $$ select pg_temp.call_as(p_user, 'authenticated', format('select public.withdraw_application(%L)', p_app), 'aal1') $$;
