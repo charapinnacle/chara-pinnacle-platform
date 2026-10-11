@@ -106,7 +106,7 @@
 
 ### Roles and permissions
 
-- Owner: may create, preview and edit vacancies of own organisation (edit page org/[slug]/jobs/[id]/edit, any status, the status and moderation state are kept; U60, D78); may delete (policy jobs_delete_owner, no UI in Phase 1)
+- Owner: may create, preview and edit vacancies of own organisation (edit page org/[slug]/jobs/[id]/edit, any status but Filled, which is final; the status and moderation state are kept; U60, D78); may delete (policy jobs_delete_owner, no UI in Phase 1)
 - Admin (organisation): may create, preview and edit vacancies of own organisation; denied delete
 - Member (organisation): may read drafts and open the preview of own organisation; denied create, edit and delete (no edit link; the edit page answers forbidden)
 - Admin or owner of another organisation: denied any access to the vacancy (row-level security; 404 on the pages)
