@@ -246,7 +246,7 @@ test.describe("the console with account-ops and notify running", () => {
     await expect(ownPage).toHaveURL(`/en/mfa?next=${encodeURIComponent("/en/admin")}`);
     await enterCode(ownPage, secret);
     await expect(ownPage).toHaveURL("/en/admin");
-    await expect(ownPage.getByRole("navigation", { name: "Administration" }).getByRole("link")).toHaveCount(4);
+    await expect(ownPage.getByRole("navigation", { name: "Administration" }).getByRole("link")).toHaveCount(5);
     expect((await ownPage.goto("/en/admin/staff"))?.status()).toBe(404);
 
     await page.reload();
