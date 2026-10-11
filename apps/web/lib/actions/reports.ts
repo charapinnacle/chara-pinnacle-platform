@@ -59,7 +59,8 @@ export async function submitReport(input: ReportInput): Promise<ReportResult> {
   }
   if (error.message === "CHARA_FORBIDDEN") {
     if (error.details === "aal2_required") redirect(mfaPath(defaultLocale));
-    return { message: MEMBERS_ONLY };
+    // A failed proof of the throttle is also CHARA_FORBIDDEN; it is a fault of ours and is never put on a member.
+    if (error.details === "sign_in_required" || (type === "profile" && error.details !== "p_proof")) return { message: MEMBERS_ONLY };
   }
   const field = error.message === "CHARA_INVALID_INPUT" && error.details ? fieldByDetail[error.details] : undefined;
   if (field) return { errors: { [field]: "Check this value." } };

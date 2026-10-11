@@ -53,10 +53,10 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
         actions={<VacancyActions job={job} lang={lang} viewer={viewer} saved={savedIds.has(job.id)} application={applications.get(job.id) ?? null} />}
       />
       <nav aria-label="Report" className="mt-10 flex flex-wrap gap-x-6 border-t pt-4">
-        <TextLink standalone href={reportPath(lang, "job", job.id)}>
+        <TextLink standalone rel="nofollow" href={reportPath(lang, "job", job.id)}>
           Report this vacancy
         </TextLink>
-        <TextLink standalone href={reportPath(lang, "company", job.id)}>
+        <TextLink standalone rel="nofollow" href={reportPath(lang, "company", job.id)}>
           Report this company
         </TextLink>
       </nav>

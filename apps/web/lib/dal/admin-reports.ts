@@ -6,7 +6,7 @@ import type { ReportListFilter } from "@/lib/validation/report";
 
 type Enums = Database["public"]["Enums"];
 
-export type ReportRow = {
+type ReportRow = {
   id: number;
   reference: string;
   targetType: Enums["report_target_type"];

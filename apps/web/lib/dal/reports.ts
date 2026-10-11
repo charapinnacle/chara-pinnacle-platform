@@ -6,7 +6,7 @@ import { reportReferenceSchema } from "@/lib/validation/report";
 
 type Enums = Database["public"]["Enums"];
 
-export const MY_REPORTS_PAGE_SIZE = 25;
+const MY_REPORTS_PAGE_SIZE = 25;
 
 export type MyReport = {
   id: number;

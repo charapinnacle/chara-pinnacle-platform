@@ -12,7 +12,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { cardVariants } from "@/components/layout/card";
 import { submitReport } from "@/lib/actions/reports";
-import { cn } from "@/lib/utils";
+import { characters, cn } from "@/lib/utils";
 import {
   DETAILS_MAX_CHARS,
   reportCategoryOptions,
@@ -46,6 +46,9 @@ const linkLabels = {
 
 const FAILURE = "The report was not sent";
 
+// What a member writes about an applicant reaches Trust & Safety as typed, so the form says what to leave out.
+const PROFILE_ADVICE = "Do not write the candidate's name, contact details or documents; describe the behaviour only.";
+
 // One form for every kind of report: the page decides the kind and whether the target is known. The database checks
 // that the target can be reported, and by whom, again.
 export function ReportForm({ lang, type, target, signedIn }: ReportFormProps) {
@@ -56,7 +59,7 @@ export function ReportForm({ lang, type, target, signedIn }: ReportFormProps) {
   });
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: FAILURE });
-  const length = useWatch({ control, name: "details" }).length;
+  const length = characters(useWatch({ control, name: "details" }));
   const [reference, setReference] = useState<string | null>(null);
   const received = useRef<HTMLDivElement>(null);
 
@@ -115,7 +118,7 @@ export function ReportForm({ lang, type, target, signedIn }: ReportFormProps) {
         name="details"
         id={ids.details}
         label="What happened"
-        description={`20 to ${DETAILS_MAX_CHARS} characters. Do not include passwords or documents. ${length}/${DETAILS_MAX_CHARS}`}
+        description={`20 to ${DETAILS_MAX_CHARS} characters. ${type === "profile" ? PROFILE_ADVICE : "Do not include passwords or documents."} ${length}/${DETAILS_MAX_CHARS}`}
       />
       {signedIn ? null : (
         <InputField

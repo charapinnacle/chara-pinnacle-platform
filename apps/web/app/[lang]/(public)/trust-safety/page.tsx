@@ -46,7 +46,7 @@ export default async function TrustSafetyPage({ params }: PageProps<"/[lang]/tru
           <LinkButton variant="secondary" href={reportPath(lang, "company")}>
             Report company
           </LinkButton>
-          <LinkButton variant="secondary" href={`/${lang}/report?type=profile`}>
+          <LinkButton variant="secondary" href={reportPath(lang, "profile")}>
             Report profile
           </LinkButton>
           <LinkButton variant="secondary" href={reportPath(lang, "content")}>

@@ -20,6 +20,7 @@ test.describe("reporting an applicant", () => {
     await expect(page.getByText("Detail welder", { exact: true })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("Ana");
     await expect(page.locator("main")).not.toContainText("Silva");
+    await expect(page.getByText("Do not write the candidate's name, contact details or documents; describe the behaviour only.")).toBeVisible();
     await expect(page.getByLabel("Your email (optional)")).toHaveCount(0);
     await expect(page.getByLabel("Address of the vacancy")).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Applicants");

@@ -10,16 +10,33 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { getReport, type ReportDetail } from "@/lib/dal/admin-reports";
 import { formatDateTime } from "@/lib/i18n/format";
+import { defaultLocale } from "@/lib/i18n/locale";
 import { statusLabels } from "@/lib/jobs/presentation";
 import { adminPath } from "@/lib/routes";
+import { isPrivatePath } from "@/lib/seo/private-routes";
 import { reportCategoryLabels, reportStatusLabels, reportStatusTones, reportTargetLabels } from "@/lib/validation/report";
+
+// The path was typed by a visitor, so it is a link only when it is a public page of the site: a staff member's click carries
+// their session, and it must never reach a page that acts (a checkout, an export) or one for signed-in people.
+function isPublicPage(path: string): boolean {
+  return path.split("/")[1] === defaultLocale && !isPrivatePath(path);
+}
 
 function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; canAct: boolean }) {
   const { job, organization } = report;
   if (report.targetType === "content" && report.contentPath) {
     return (
       <DetailList
-        items={[{ label: "Page", value: <TextLink href={report.contentPath}>{report.contentPath}</TextLink> }]}
+        items={[
+          {
+            label: "Page",
+            value: isPublicPage(report.contentPath) ? (
+              <TextLink href={report.contentPath}>{report.contentPath}</TextLink>
+            ) : (
+              <span className="font-mono wrap-anywhere">{report.contentPath}</span>
+            ),
+          },
+        ]}
       />
     );
   }

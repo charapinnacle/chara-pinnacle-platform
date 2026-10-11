@@ -91,6 +91,19 @@ describe("submitReport", () => {
     expect((await submitReport({ ...base, type: "profile", target: ID })).message).toContain("members of a company");
   });
 
+  it("says nothing about members when the proof of the throttle is refused, whatever the kind of report", async () => {
+    rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN", "p_proof"));
+    for (const type of ["job", "profile"] as const) {
+      expect(await submitReport({ ...base, type, target: ID })).toEqual({ message: "We could not complete this request. Try again." });
+    }
+    expect(console.error).toHaveBeenCalledTimes(2);
+  });
+
+  it("tells a visitor who reports a candidate to sign in as a member", async () => {
+    rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN", "sign_in_required"));
+    expect((await submitReport({ ...base, type: "profile", target: ID })).message).toContain("members of a company");
+  });
+
   it("maps a refusal of the database to the field and hides anything else behind the generic message", async () => {
     rpcMock.mockResolvedValue(failure("CHARA_INVALID_INPUT", "good_faith"));
     expect((await submitReport({ ...base, type: "job", target: ID })).errors).toEqual({ goodFaith: "Check this value." });

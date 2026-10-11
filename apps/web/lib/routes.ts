@@ -116,9 +116,9 @@ export function adminPath(lang: string, segment = ""): string {
   return segment ? `/${lang}/admin/${segment}` : `/${lang}/admin`;
 }
 
-// The form to report a vacancy, a company or a page, with the target already named when the link comes from a page that
+// The form to report a vacancy, a company or a page (and the note on candidate profiles), with the target already named when the link comes from a page that
 // knows it (a vacancy by its id, a page by its path).
-export function reportPath(lang: string, type: "job" | "company" | "content", target?: string): string {
+export function reportPath(lang: string, type: "job" | "company" | "profile" | "content", target?: string): string {
   const query = new URLSearchParams({ type });
   if (target) query.set(type === "content" ? "path" : "job", target);
   return `/${lang}/report?${query.toString()}`;
