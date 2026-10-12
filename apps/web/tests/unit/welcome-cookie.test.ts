@@ -49,7 +49,8 @@ describe("the welcome cookie", () => {
     });
     const response = NextResponse.next();
     consumeWelcome(carrying, response);
-    expect(response.headers.get("set-cookie")).toMatch(/^chara_welcome=; Path=\/; Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
+    expect(response.headers.getSetCookie()).toEqual(["chara_welcome=; Path=/; Max-Age=0"]);
+    expect(response.headers.get("x-middleware-set-cookie")).toBeNull();
 
     const other = NextResponse.next();
     consumeWelcome(new NextRequest("http://localhost:3100/en/jobs"), other);

@@ -137,13 +137,14 @@ describe("proxy", () => {
     expect(response.headers.get("content-security-policy")).toContain("nonce-");
   });
 
-  it("removes the welcome cookie from the browser on the first request after the welcome screen", async () => {
+  it("removes the welcome cookie from the browser on the first request after the welcome screen, not from that request", async () => {
     const response = await proxy(
       new NextRequest(`${origin}/en/org/acme/jobs/new`, {
         headers: { cookie: "chara_welcome=6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11" },
       }),
     );
-    expect(response.headers.getSetCookie()).toContainEqual(expect.stringMatching(/^chara_welcome=; Path=\/; Expires=Thu, 01 Jan 1970/));
+    expect(response.headers.getSetCookie()).toContain("chara_welcome=; Path=/; Max-Age=0");
+    expect(response.headers.get("x-middleware-set-cookie") ?? "").not.toContain("chara_welcome");
     const without = await proxy(new NextRequest(`${origin}/en/org/acme/jobs/new`));
     expect(without.headers.getSetCookie().filter((cookie) => cookie.startsWith("chara_welcome="))).toEqual([]);
   });

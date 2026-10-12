@@ -26,8 +26,9 @@ export async function welcomeIsDue(userId: string): Promise<boolean> {
 }
 
 // Next renders the page an action redirects to in an inner request whose Set-Cookie it drops, so the welcome screen
-// renders with the cookie and the next request that carries it (the prefetch of a tile, a reload, Back, log-out)
-// removes it: the screen is seen once.
+// renders with the cookie and the next request that carries it (the prefetch of a tile, a reload, log-out) removes it
+// from the browser: the screen is seen once. A raw header and not response.cookies, which would also take the cookie
+// away from the render of the request itself.
 export function consumeWelcome(request: NextRequest, response: NextResponse): void {
-  if (request.cookies.has(NAME)) response.cookies.delete({ name: NAME, path: "/" });
+  if (request.cookies.has(NAME)) response.headers.append("set-cookie", `${NAME}=; Path=/; Max-Age=0`);
 }
