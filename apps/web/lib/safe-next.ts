@@ -1,3 +1,5 @@
+import { onboardingPath } from "@/lib/routes";
+
 const PLACEHOLDER_ORIGIN = "http://localhost";
 
 export function safeNextPath(next: string | null | undefined): string {
@@ -15,9 +17,7 @@ export function safeNextPath(next: string | null | undefined): string {
 
 export function consentReturnPath(lang: string, next: string): string {
   const target = safeNextPath(next);
-  return target === "/" || target.startsWith(`/${lang}/consent`)
-    ? `/${lang}/onboarding`
-    : target;
+  return target === "/" || target.startsWith(`/${lang}/consent`) ? onboardingPath(lang) : target;
 }
 
 export function mfaReturnPath(lang: string, next: string | null | undefined, fallback: string): string {

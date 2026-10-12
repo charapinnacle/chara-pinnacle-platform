@@ -15,10 +15,14 @@ export function isDashboardSegment(value: string): value is DashboardSegment {
   return Object.hasOwn(dashboardSegments, value);
 }
 
+export function onboardingPath(lang: string, step?: "security" | "welcome"): string {
+  return step ? `/${lang}/onboarding/${step}` : `/${lang}/onboarding`;
+}
+
 // A user whose account kind is not committed yet still has the onboarding step to finish.
 export function homePath(lang: string, accountKind: AccountKind | null): string {
   const segment = Object.entries(dashboardSegments).find(([, kind]) => kind === accountKind)?.[0];
-  return segment ? `/${lang}/dashboard/${segment}` : `/${lang}/onboarding`;
+  return segment ? `/${lang}/dashboard/${segment}` : onboardingPath(lang);
 }
 
 // The dashboard of an employer; without a slug it is the one of the first organization of the user.
@@ -29,12 +33,6 @@ export function employerDashboardPath(lang: string, slug?: string): string {
 // The sign-up page, optionally with the account type preselected (the person can still change it).
 export function signUpPath(lang: string, kind?: "worker" | "company"): string {
   return kind ? `/${lang}/signup?kind=${kind}` : `/${lang}/signup`;
-}
-
-// The steps of setting up an account after the email is confirmed: the company or the passport, the owner's two-step
-// verification, then the welcome screen.
-export function onboardingPath(lang: string, step?: "security" | "welcome"): string {
-  return step ? `/${lang}/onboarding/${step}` : `/${lang}/onboarding`;
 }
 
 export function mfaPath(lang: string, next?: string): string {

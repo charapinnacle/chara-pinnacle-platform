@@ -5,8 +5,7 @@ import { MAIN_CONTENT_ID } from "@/components/layout/skip-link";
 import { appFooterLinks } from "@/lib/public/navigation";
 import "@/components/onboarding/onboarding.css";
 
-// The frame of the steps between a confirmed email and the first page of the product: no navigation and no account
-// menu, because none of it can be used before the steps are done; the logo, a quiet way out and one centred column.
+// No navigation and no account menu: none of it can be used before the steps are done.
 export default async function OnboardingLayout({ children, params }: LayoutProps<"/[lang]">) {
   const { lang } = await params;
   return (

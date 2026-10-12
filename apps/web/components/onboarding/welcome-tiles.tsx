@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 
 type Tile = { href: string; title: string; text: string };
 
-// The next actions after onboarding as large tiles; the first is the primary one and is drawn as the dark button is.
 export function WelcomeTiles({ tiles }: { tiles: readonly Tile[] }) {
   return (
     <ul className="grid gap-3">
