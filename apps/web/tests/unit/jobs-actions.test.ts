@@ -12,6 +12,7 @@ const rpcMock = vi.fn();
 const singleMock = vi.fn();
 const selectMock = vi.fn(() => ({ single: singleMock }));
 const revalidatePathMock = vi.hoisted(() => vi.fn());
+const updateTagMock = vi.hoisted(() => vi.fn());
 const updateMock = vi.fn();
 const maybeSingleMock = vi.fn();
 const eqMock = vi.fn();
@@ -35,7 +36,8 @@ const chain = {
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
-vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
+vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock, updateTag: updateTagMock }));
+vi.mock("@/lib/dal/home", () => ({ PUBLIC_JOBS_TAG: "public-jobs" }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -246,6 +248,7 @@ describe("updateJob", () => {
     expect(isMock).toHaveBeenCalledWith("deleted_at", null);
     expect(revalidatePathMock).toHaveBeenCalledWith(`/en/org/acme-bau/jobs/${jobId}`);
     expect(revalidatePathMock).toHaveBeenCalledWith("/en/org/acme-bau/jobs");
+    expect(updateTagMock).toHaveBeenCalledWith("public-jobs");
   });
 
   it("never sends the status, the organization or the moderation state, even when the input names them", async () => {
@@ -337,6 +340,7 @@ describe("changeJobStatus", () => {
     expect(isMock).toHaveBeenCalledWith("deleted_at", null);
     expect(revalidatePathMock).toHaveBeenCalledWith(`/en/org/acme-bau/jobs/${jobId}`);
     expect(revalidatePathMock).toHaveBeenCalledWith("/en/org/acme-bau/jobs");
+    expect(updateTagMock).toHaveBeenCalledWith("public-jobs");
   });
 
   it.each([["draft"], ["Open"], [""], ["moderation_state"]])("sends nothing for the target status %j", async (to) => {
@@ -388,6 +392,7 @@ describe("changeJobStatus", () => {
   it("says the vacancy was not found when row level security or the filters match no row", async () => {
     maybeSingleMock.mockResolvedValue({ data: null, error: null });
     await expect(changeJobStatus("acme-bau", jobId, "open")).resolves.toEqual({ message: "This vacancy could not be found." });
+    expect(updateTagMock).not.toHaveBeenCalled();
   });
 
   it("returns the generic failure for an unknown error, without its text", async () => {
@@ -396,6 +401,7 @@ describe("changeJobStatus", () => {
     const result = await changeJobStatus("acme-bau", jobId, "open");
     expect(result).toEqual({ message: "We could not complete this request. Try again." });
     expect(JSON.stringify(result)).not.toContain("secret");
+    expect(updateTagMock).not.toHaveBeenCalled();
     log.mockRestore();
   });
 });

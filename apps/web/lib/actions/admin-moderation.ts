@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { adminRefusal, type AdminResult } from "@/lib/actions/admin-errors";
 import { adminClient } from "@/lib/dal/admin";
+import { PUBLIC_JOBS_TAG } from "@/lib/dal/home";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { adminPath } from "@/lib/routes";
@@ -40,6 +41,7 @@ export async function changeStanding(input: Input): Promise<AdminResult> {
       },
     });
   }
+  if (target === "organization") updateTag(PUBLIC_JOBS_TAG);
   revalidatePath(path);
   return { done: true };
 }
@@ -63,6 +65,7 @@ export async function moderateJob(input: JobInput): Promise<AdminResult> {
       "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters" } },
     });
   }
+  updateTag(PUBLIC_JOBS_TAG);
   revalidatePath(path);
   return { done: true };
 }

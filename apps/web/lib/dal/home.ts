@@ -5,8 +5,10 @@ import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib
 import { anonymousClient } from "@/lib/supabase/anonymous";
 
 // Kept for all visitors for a minute: a new vacancy reaches the home page within that time, and a busy home page costs the
-// database one read a minute, not one per view.
+// database one read a minute, not one per view. A vacancy that leaves the public (closed, filled or paused, hidden by
+// moderation or with its suspended organisation) or is edited changes the page at once: those actions expire this tag.
 const REVALIDATE_SECONDS = 60;
+export const PUBLIC_JOBS_TAG = "public-jobs";
 
 // The most search_jobs returns in one call. The newest of them are the cards of the page and their countries the chips, so
 // the home page reads one bounded page of the public search and nothing else of the vacancies.
@@ -20,7 +22,7 @@ const readNewestJobs = unstable_cache(
     return data.map(toSearchResult);
   },
   ["home", "newest-jobs"],
-  { revalidate: REVALIDATE_SECONDS },
+  { revalidate: REVALIDATE_SECONDS, tags: [PUBLIC_JOBS_TAG] },
 );
 
 // One count per industry tile, each an index scan of the open vacancies of one industry (jobs_public_industry_idx);
@@ -38,7 +40,7 @@ const readIndustryCounts = unstable_cache(
     return Object.fromEntries(counts);
   },
   ["home", "industry-counts"],
-  { revalidate: REVALIDATE_SECONDS },
+  { revalidate: REVALIDATE_SECONDS, tags: [PUBLIC_JOBS_TAG] },
 );
 
 // Every read of the home page but the statistics (which cope on their own) serves a part of it, not its purpose: when one
