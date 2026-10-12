@@ -6,28 +6,30 @@ import { StatisticsBlock } from "@/components/home/statistics-block";
 const getPlatformStatistics = vi.hoisted(() => vi.fn());
 const getNewestJobs = vi.hoisted(() => vi.fn());
 const getIndustryCounts = vi.hoisted(() => vi.fn());
+const getHomeReference = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/display-font", () => ({ newsreader: { variable: "font-newsreader" } }));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
-vi.mock("@/lib/dal/home", () => ({ getNewestJobs, getIndustryCounts }));
-vi.mock("@/lib/dal/reference", () => ({
-  getCountries: async () => [
+vi.mock("@/lib/dal/home", () => ({ getNewestJobs, getIndustryCounts, getHomeReference }));
+
+const reference = {
+  countries: [
     { code: "DE", name: "Germany" },
     { code: "PL", name: "Poland" },
     { code: "NL", name: "Netherlands" },
   ],
-  getIndustries: async () => [{ code: "F", name: "Construction" }],
-  getLanguages: async () => [
+  industries: [{ code: "F", name: "Construction" }],
+  languages: [
     { code: "en", name: "English" },
     { code: "pl", name: "Polish" },
   ],
-  getOccupations: async () => [
+  occupations: [
     { code: "7212", label: "Welders and flame cutters", synonyms: ["welder"] },
     { code: "8332", label: "Heavy truck and lorry drivers", synonyms: ["truck driver"] },
     { code: "9999", label: "Not popular", synonyms: [] },
   ],
-}));
+};
 
 const { default: Home } = await import("@/app/[lang]/(public)/page");
 
@@ -58,6 +60,7 @@ beforeEach(() => {
   getPlatformStatistics.mockResolvedValue([]);
   getNewestJobs.mockResolvedValue([vacancy(1, "PL"), vacancy(2, "DE"), vacancy(3, "PL")]);
   getIndustryCounts.mockResolvedValue({ F: 0 });
+  getHomeReference.mockResolvedValue(reference);
 });
 
 describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
@@ -120,6 +123,21 @@ describe("the home page (U70)", () => {
     expect(html).not.toContain("home-countries-heading");
     expect(html).toContain("Browse by industry");
     expect(html).toContain("Your Workforce. Your Network. One Platform.");
+  });
+
+  it("serves the hero, the search and the closing call without the popular searches, the country chips and the reach band when the reference data cannot be read", async () => {
+    getHomeReference.mockResolvedValue(null);
+    getPlatformStatistics.mockResolvedValue([{ label: "Active jobs", value: "150" }]);
+    const html = await renderHome();
+    expect(html.match(/<h1/g)).toHaveLength(1);
+    expect(textOf(html)).toContain("The Global Workforce Network");
+    expect(html).toContain('role="search"');
+    expect(html).toContain("Your Workforce. Your Network. One Platform.");
+    expect(html).not.toContain("Popular searches");
+    expect(html).not.toContain("home-countries-heading");
+    expect(html).not.toContain("home-reach-heading");
+    expect(html).toContain("home-jobs-heading");
+    expect(textOf(html)).toContain("City , PL");
   });
 
   it("preloads the hero photograph with the sources and sizes of its picture, before the page", async () => {

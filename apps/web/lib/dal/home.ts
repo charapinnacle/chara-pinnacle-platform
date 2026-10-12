@@ -1,6 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { toSearchResult, type JobSearchResult } from "@/lib/dal/hiring";
+import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { anonymousClient } from "@/lib/supabase/anonymous";
 
 // Kept for all visitors for a minute: a new vacancy reaches the home page within that time, and a busy home page costs the
@@ -40,16 +41,30 @@ const readIndustryCounts = unstable_cache(
   { revalidate: REVALIDATE_SECONDS },
 );
 
-// The vacancy parts of the home page are not its purpose: when a read fails the page leaves them out and the error goes to
-// the log, as with the statistics (FR-H4 AC12). A failure is not cached, so the next view tries again.
+// Every read of the home page but the statistics (which cope on their own) serves a part of it, not its purpose: when one
+// fails the page leaves that part out and the code goes to the log, as with the statistics (FR-H4 AC12). Only the code and
+// the message are logged, as in the other readers. A failure is not cached, so the next view tries again.
 async function orNull<Value>(what: string, read: () => Promise<Value>): Promise<Value | null> {
   try {
     return await read();
   } catch (error) {
-    console.error(`The ${what} of the home page could not be loaded`, error instanceof Error ? error.cause : error);
+    const cause: unknown = error instanceof Error ? error.cause : undefined;
+    const known = typeof cause === "object" && cause !== null;
+    console.error(`The ${what} of the home page could not be loaded`, {
+      code: known && "code" in cause ? cause.code : undefined,
+      message: known && "message" in cause ? cause.message : undefined,
+    });
     return null;
   }
 }
 
 export const getNewestJobs = () => orNull("newest vacancies", readNewestJobs);
 export const getIndustryCounts = (codes: readonly string[]) => orNull("industry counts", () => readIndustryCounts(codes));
+
+// The popular searches, the names of the countries and the reach band come from the cached reference lists, which a new
+// instance or the end of their cache reads again.
+export const getHomeReference = () =>
+  orNull("reference data", async () => {
+    const [occupations, countries, industries, languages] = await Promise.all([getOccupations(), getCountries(), getIndustries(), getLanguages()]);
+    return { occupations, countries, industries, languages };
+  });

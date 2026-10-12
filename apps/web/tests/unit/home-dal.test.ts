@@ -12,8 +12,16 @@ vi.mock("next/cache", () => ({ unstable_cache: <Read>(read: Read) => read }));
 vi.mock("@/lib/supabase/anonymous", () => ({ anonymousClient: () => ({ rpc, from }) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
 vi.mock("@/lib/jobs/search-log", () => ({ logSearch }));
+vi.mock("@/lib/dal/reference", () => reference);
 
-const { getIndustryCounts, getNewestJobs } = await import("@/lib/dal/home");
+const reference = vi.hoisted(() => ({
+  getCountries: vi.fn(),
+  getIndustries: vi.fn(),
+  getLanguages: vi.fn(),
+  getOccupations: vi.fn(),
+}));
+
+const { getHomeReference, getIndustryCounts, getNewestJobs } = await import("@/lib/dal/home");
 
 const row = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -77,9 +85,9 @@ describe("the newest vacancies of the home page", () => {
     expect(logSearch).not.toHaveBeenCalled();
   });
 
-  it("are null, and the code goes to the log, when the search fails", async () => {
+  it("are null, and only the code and the message go to the log, when the search fails", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "permission denied" } });
+    rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "permission denied", details: "secret detail", hint: "secret hint" } });
     expect(await getNewestJobs()).toBeNull();
     expect(log).toHaveBeenCalledWith("The newest vacancies of the home page could not be loaded", { code: "42501", message: "permission denied" });
   });
@@ -103,5 +111,27 @@ describe("the industry counts of the home page", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     countError = { code: "57014" };
     expect(await getIndustryCounts(["F"])).toBeNull();
+  });
+});
+
+describe("the reference data of the home page", () => {
+  it("are the four reference lists", async () => {
+    reference.getOccupations.mockResolvedValue([{ code: "7212", label: "Welders", synonyms: [] }]);
+    reference.getCountries.mockResolvedValue([{ code: "DE", name: "Germany" }]);
+    reference.getIndustries.mockResolvedValue([{ code: "F", name: "Construction" }]);
+    reference.getLanguages.mockResolvedValue([{ code: "de", name: "German" }]);
+    expect(await getHomeReference()).toEqual({
+      occupations: [{ code: "7212", label: "Welders", synonyms: [] }],
+      countries: [{ code: "DE", name: "Germany" }],
+      industries: [{ code: "F", name: "Construction" }],
+      languages: [{ code: "de", name: "German" }],
+    });
+  });
+
+  it("are null, and the code goes to the log, when one list cannot be read", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    reference.getCountries.mockRejectedValue(new Error("The countries could not be loaded", { cause: { code: "PGRST000", message: "no connection" } }));
+    expect(await getHomeReference()).toBeNull();
+    expect(log).toHaveBeenCalledWith("The reference data of the home page could not be loaded", { code: "PGRST000", message: "no connection" });
   });
 });
