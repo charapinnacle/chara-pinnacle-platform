@@ -100,6 +100,7 @@ export function planFacts(subscription: PlanFactsInput, plan: SoldPlan | undefin
 }
 
 export const oneTrialRule = "One free trial is granted for each legal entity.";
+export const identifierPurpose = "We use it to give each company one free trial.";
 
 export function trialConversion(planName: string): string {
   return `When the trial ends, your subscription converts to the paid ${planName} plan and your payment method is charged automatically.`;

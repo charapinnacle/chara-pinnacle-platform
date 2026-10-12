@@ -8,6 +8,7 @@ import { addMember, membersPath, newTeam, newVisitor, signInAtAal2 } from "./sup
 import { createTestUser } from "./support/test-user";
 import { pendingConsents } from "./support/accounts";
 import { waitForHydration } from "./support/hydration";
+import { beginSetup, enterCode } from "./support/mfa";
 import { expect, test } from "./support/test";
 
 const WORKER_LINKS = ["Dashboard", "Find jobs", "Saved", "Applications", "Passport"];
@@ -132,16 +133,27 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
     await context.close();
   });
 
-  test("a new employer has the links of the header as soon as the organisation exists, without reloading", async ({ page }) => {
+  test("onboarding has no header links or account menu, and a new employer has the links as soon as it ends, without reloading", async ({
+    page,
+  }) => {
     const user = await createTestUser("company", await pendingConsents("company"));
     await logIn(page, user);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(mainNavigation(page)).toHaveCount(0);
-    await expect(accountButton(page)).toBeVisible();
+    await expect(accountButton(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 
     await fillCompany(page, { legalName: `${uniqueName("Fresh Bau")} GmbH`, country: "Germany", industry: "Construction" });
-    await page.getByRole("button", { name: "Create company" }).click();
-    await expect(page).toHaveURL(/\/en\/mfa$/);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/en\/onboarding\/security$/);
+    await expect(mainNavigation(page)).toHaveCount(0);
+    await expect(accountButton(page)).toHaveCount(0);
+    await enterCode(page, await beginSetup(page));
+    await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
+    await expect(mainNavigation(page)).toHaveCount(0);
+
+    await page.getByRole("link", { name: /^Invite your team/ }).click();
+    await expect(page).toHaveURL(/\/en\/org\/fresh-bau-[0-9a-f]+-gmbh\/members$/);
     expect(await linkLabels(mainNavigation(page))).toEqual(MANAGER_LINKS);
   });
 });

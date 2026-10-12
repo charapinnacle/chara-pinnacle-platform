@@ -6,7 +6,7 @@ import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { mfaPath, organizationProfilePath } from "@/lib/routes";
+import { mfaPath, onboardingPath, organizationProfilePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
   createdOrganizationSchema,
@@ -77,7 +77,7 @@ export async function createOrganization(
   const created = createdOrganizationSchema.parse(data);
   if (created.duplicate_legal_name) return { duplicateLegalName: true };
   refreshAppShell();
-  redirect(mfaPath(defaultLocale));
+  redirect(onboardingPath(defaultLocale, "security"));
 }
 
 type UpdateOrganizationResult = CreateOrganizationResult & ({ saved?: undefined } | { saved: true; displayName: string });

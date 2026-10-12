@@ -9,6 +9,7 @@ import {
   pendingConsents,
 } from "./support/accounts";
 import { messageCount, waitForMessage } from "./support/mailpit";
+import { currentStep } from "./support/onboarding";
 import { signInBrowser } from "./support/session";
 import { createTestUser, deleteTestUser } from "./support/test-user";
 
@@ -37,9 +38,9 @@ test.describe("email confirmation", () => {
     await confirmFromLink(page, user.confirmPath);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(
-      page.getByRole("heading", { name: "Your account type is Worker" }),
+      page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 }),
     ).toBeVisible();
-    await expect(page.getByText("This cannot be changed later.")).toBeVisible();
+    await expect(currentStep(page)).toContainText("Step 1 of 2: Your profile");
     await expectNoAxeViolations(page);
 
     await expect
@@ -57,16 +58,17 @@ test.describe("email confirmation", () => {
     expect(await sessionCookies(page.context())).not.toEqual([]);
   });
 
-  test("FR-A6 AC8: the onboarding page states the employer kind, fits 360 px and takes focus in page order", async ({
+  test("FR-A6 AC8: the onboarding page names the employer's task, not the system, fits 360 px and takes focus in page order", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 800 });
     const user = await createUnconfirmedUser("company");
     await confirmFromLink(page, user.confirmPath);
     await expect(
-      page.getByRole("heading", { name: "Your account type is Employer" }),
+      page.getByRole("heading", { name: "Tell us about your company", level: 1 }),
     ).toBeVisible();
-    await expect(page.getByText("This cannot be changed later.")).toBeVisible();
+    await expect(page.getByText("This is how candidates see you. You can edit most of it later.")).toBeVisible();
+    await expect(page.getByText(/cannot be changed/)).toHaveCount(0);
     await page.reload();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -90,7 +92,7 @@ test.describe("email confirmation", () => {
     moveConfirmationSent(inTime.id, "23 hours 59 minutes");
     await confirmFromLink(page, inTime.confirmPath);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByRole("heading", { name: /Your account type is/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 })).toBeVisible();
 
     const expired = await createUnconfirmedUser();
     moveConfirmationSent(expired.id, "24 hours 1 minute");
@@ -220,7 +222,7 @@ test.describe("onboarding commit", () => {
       await Promise.all([first.goto("/en/onboarding"), second.goto("/en/onboarding")]);
       for (const page of [first, second]) {
         await expect(
-          page.getByRole("heading", { name: "Your account type is Worker" }),
+          page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 }),
         ).toBeVisible();
         await expect(page.getByText("Could not set up your account")).toHaveCount(0);
       }
@@ -257,7 +259,7 @@ test.describe("onboarding commit", () => {
 
       await page.getByRole("button", { name: "Try again" }).click();
       await expect(
-        page.getByRole("heading", { name: "Your account type is Employer" }),
+        page.getByRole("heading", { name: "Tell us about your company", level: 1 }),
       ).toBeVisible();
       expect(accountRows(user.id).account.account_kind).toBe("company");
     } finally {

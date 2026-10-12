@@ -82,9 +82,10 @@ export function accountLinks(lang: string, accountKind: "worker" | "company", or
   return [{ label: "Settings", href: notificationSettingsPath(lang, orgSlug), match: notificationSettingsPath(lang), icon: "settings" }, reports];
 }
 
-// The onboarding and consent pages exist to finish a step that every other page waits for, so the header offers no links there.
+// The consent page exists to finish a step that every other page waits for, so the header offers no links there (onboarding
+// has a layout of its own without the header).
 export function isGatePage(lang: string, pathname: string): boolean {
-  return pathname === `/${lang}/onboarding` || pathname === `/${lang}/consent`;
+  return pathname === `/${lang}/consent`;
 }
 
 export function isCurrent(pathname: string, { match, exact }: Pick<NavLink, "match" | "exact">): boolean {

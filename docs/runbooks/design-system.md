@@ -1,6 +1,6 @@
 # Runbook: design system
 
-NFR-U1 and NFR-U2, audit findings DS-01 to DS-03, CODE-01, CODE-02, CODE-05 and UX-07 (unit U56); the brand, the app layout and the dashboards of unit U59 (audit findings UX-03, UX-04, UX-10); the public site and the sign-in journey of unit U63 (section 6); the forms and the pages after sign-up of unit U67 (section 9). The tokens live in `apps/web/app/globals.css`; the shared components in `apps/web/components/layout`, `components/feedback`, `components/forms` and `components/dashboard`. `components/ui` holds the shadcn/ui primitives: they are never edited, a component wraps them.
+NFR-U1 and NFR-U2, audit findings DS-01 to DS-03, CODE-01, CODE-02, CODE-05 and UX-07 (unit U56); the brand, the app layout and the dashboards of unit U59 (audit findings UX-03, UX-04, UX-10); the public site and the sign-in journey of unit U63 (section 6); the forms and the pages after sign-up of unit U67 (section 9); the onboarding of unit U68 (section 10). The tokens live in `apps/web/app/globals.css`; the shared components in `apps/web/components/layout`, `components/feedback`, `components/forms` and `components/dashboard`. `components/ui` holds the shadcn/ui primitives: they are never edited, a component wraps them.
 
 ## 0. Design brief
 
@@ -146,7 +146,7 @@ The pages a visitor sees first are held to the brief of section 0, read as a Eur
 - **Vacancy page.** From 1024 px the salary and the actions form a raised panel in a 20 rem column that stays in view while the description scrolls; on a phone the panel follows the title, so Apply is in the first screen. The key facts are a hairline grid (`dl`), the one place assistive technology reads them: the employer, location and employment type line under the title is a visual summary and hidden from it. The description keeps 65 ch, the employer card closes the page. The split follows the width the article has (a container query at 56 rem), so the employer preview, in the 48 rem column of the signed-in area, keeps one column with the panel after the title.
 - **Find Jobs.** The search and the filters sit in a card in the 19 rem column; each result is a card: the title (the link) and the employer, then the location and the employment type as quiet tags with icons, accommodation and visa support as info badges, and the salary set apart above the date. Only the title link and Save are targets, so a card does not lift on hover; its hairline darkens.
 - **Pricing.** Three columns from 1024 px with a subgrid, so the workers card on black ("Always free") and the plan cards share one top line; the plans fill their two columns with as many cards of at least 15 rem as fit in a row (`auto-fit`): two plans share the width, and three (Enterprise made public) stand in one row from 1280 px and wrap to two and one below it. The plan named by `RECOMMENDED_PLAN_CODE` in `lib/billing/pricing.ts` (OPEN_QUESTIONS.md P19) has a gold edge, the Recommended badge and the primary button; the other plans have a secondary button. The trial terms sit in a tinted block of the card; VAT is stated in the lead, beside every price and in Good to know.
-- **Sign-in journey.** From 1024 px the black brand panel (sticky) and the form share the width; a short form is centred against the panel, a long one runs past it. Below 1024 px only the form shows. Onboarding shows its three steps (Account, Account type, Passport or Organisation) above the title (`OnboardingSteps`).
+- **Sign-in journey.** From 1024 px the black brand panel (sticky) and the form share the width; a short form is centred against the panel, a long one runs past it. Below 1024 px only the form shows. Onboarding has its own focused layout and steps (section 10).
 
 ### Components
 
@@ -156,7 +156,7 @@ The pages a visitor sees first are held to the brief of section 0, read as a Eur
 | `SectionHeading` | `components/public/section-heading.tsx` | Eyebrow, h2 (its `id` names the section through `aria-labelledby`) and a lead line; `tone="inverse"` on black |
 | `StepList` | `components/public/step-list.tsx` | The steps of `lib/public/steps.ts`, the one source for the home page and How CHARA Works; numbers on the gradient are hidden from assistive technology (the list is ordered); `titleAs="h4"` under an h3 |
 | `PlanCard` | `components/public/plan-card.tsx` | One public plan from its record; the price is `text-figure` with `tabular-nums`; the card holds exactly the limit and feature items of its record |
-| `OnboardingSteps` | `components/consent/onboarding-steps.tsx` | An ordered list named "Setting up your account"; the current step has `aria-current="step"`, earlier steps say "(done)" to assistive technology |
+| `OnboardingSteps` | `components/onboarding/onboarding-steps.tsx` | An ordered list named "Setting up your account" of the steps that are left (section 10); the current step has `aria-current="step"`, earlier steps say "(done)" to assistive technology |
 | `AuthBrandPanel` | `components/layout/auth-brand-panel.tsx` | The monogram, the wordmark with Pinnacle, the claim and three points with icons, under a gold rule |
 
 ### Header and statistics
@@ -165,7 +165,7 @@ The account items of the public header (Log in and Sign up, or Go to my area and
 
 ### Motion
 
-The hero, the page headers and the auth form rise once (`animate-rise`); steps, safeguards, statistics, plan cards, results and content sections rise in turn (`animate-stagger`); the hairline of a result card darkens on hover in 200 ms; the arrow of Browse vacancies moves 2 px; the current onboarding bar slides in (tw-animate-css). All of it stops under `prefers-reduced-motion` (`tests/e2e/public-site-design.spec.ts`).
+The hero, the page headers and the auth form rise once (`animate-rise`); steps, safeguards, statistics, plan cards, results and content sections rise in turn (`animate-stagger`); the hairline of a result card darkens on hover in 200 ms; the arrow of Browse vacancies moves 2 px; an onboarding step rises once (section 10). All of it stops under `prefers-reduced-motion` (`tests/e2e/public-site-design.spec.ts`).
 
 ### Verification
 
@@ -228,3 +228,26 @@ After sign-up (`/verify-email`) and after a reset request (`/forgot-password/che
 ### 9.6 Verification
 
 `tests/e2e/forms-auth-polish.spec.ts` (consent rows, tap target, link underline, checkbox size, focus, account type cards, password toggle and checklist on sign-up, log in, reset and invitation, card, button and summary, axe and overflow at 1280 and 360 px), `tests/e2e/check-email.spec.ts` (masked address, cookie flags, no address in the URL, cooldown, resend, throttle, identical answers, failure, no cookie, different address, removal), `tests/unit/forms-controls.test.tsx`, `tests/unit/check-email-panel.test.tsx`, `tests/unit/pending-email.test.ts`, `tests/unit/tokens.test.ts`, and the updated sign-up, recovery, rate-limit, keyboard and consent specs. Screenshots before and after at 1440, 1280, 768 and 375 px are in `docs/phase-1/client/evidence/U67/` (not in git).
+
+## 10. Onboarding (U68)
+
+The steps between a confirmed email and the product have their own layout and an honest step indicator (OPEN_QUESTIONS.md D85). Flow and presentation only: every guard and audit row is unchanged.
+
+### 10.1 Layout
+
+`app/[lang]/(onboarding)/layout.tsx` frames `/onboarding`, `/onboarding/security` and `/onboarding/welcome`: a slim header with the CP tile and CHARA with Pinnacle (to the public home) and a quiet Log out, one column of 35 rem centred with 24 px of top space on a phone, 48 px from `sm` and 64 px from `lg`, and the line of legal links. `OnboardingPanel` is one step: the steps, one h1 with one calm line, then the form; a white card (16 px radius, 40 px padding, the card shadow) from 640 px, the page itself on a phone, rising once (`animate-rise`). Below 640 px the submit button of a step is sticky at the foot of the screen, 12 px above the edge, on a 12 px band of the page colour, and `html` keeps 6 rem of scroll padding while an onboarding step is shown, so a field reached with Tab is never under the button (WCAG 2.4.11); these two rules are the only CSS of `components/onboarding/onboarding.css`, loaded with the layout.
+
+### 10.2 Steps
+
+`OnboardingSteps` takes the account kind and the index of the current step: employer Company, Security, Ready; worker Your profile, Ready. A 28 px circle per step and a hairline between them: done is the gold `--brand` circle with a dark check and a gold line after it, current the near-black `--primary` circle with its white number and a semibold label, upcoming an outline circle (`--muted-foreground`, above 3:1 on the card and the page for WCAG 1.4.11) with a muted number and label. Each item reads "Step 2 of 3: Security" to assistive technology, with "(done)" after a done step; the circles and lines are hidden from it. Below 640 px a visible "Step 2 of 3" (hidden from assistive technology, which reads the list) stands above the circles and only the current step is named. The account-type choice and the acceptance of a changed document have no steps.
+
+### 10.3 Pages
+
+- Company step: "Tell us about your company", the form in two `fieldset`s with an eyebrow legend in `muted-foreground`, Company and Registration (a hairline and 32 px above the second); the country preselected from the browser's region (`countryFromAcceptLanguage` in `lib/i18n/locale.ts`); one button, Continue.
+- Passport step: "Create your CHARA Passport" and one line on why; the existing form.
+- Security step: "Secure your account", why in one line, how in one line, then the existing `EnrolmentStartForm` (QR code, setup key, code) with the welcome screen as `next`.
+- Welcome: "Welcome to CHARA Pinnacle, <name>", one sentence and `WelcomeTiles`: link tiles of at least 80 px with a title, a line and an arrow that moves 2 px on hover; the first tile is drawn as the primary button (near-black), the others as white cards whose border darkens on hover. Shown once (`lib/welcome-cookie.ts`): the action that finishes the last step (`createPassport`, or `verifyEnrolment` for the owner of the first organisation) sets the cookie `chara_welcome`, and the proxy removes it on the next request that carries it, so a reload, a direct visit or a later sign-in goes to the dashboard. Back after a tile restores the page from the browser's history.
+
+### 10.4 Verification
+
+`tests/e2e/onboarding-journey.spec.ts` (both journeys with the state of every step and `aria-current`, the focused layout, two-step verification before billing, team and applicants, resume half-way, the country by keyboard and from the browser's region, the welcome screen once, the sticky button on every step and the focus not hidden at 375 px, axe and no sideways scrolling at 1280 and 360 px on every screen, the account-type choice and the re-acceptance of a changed document included), the updated `employer-registration`, `employer-dashboard`, `candidate-passport-create`, `confirm`, `google-sign-in`, `consent-versions`, `app-shell-navigation`, `smoke-journeys`, `public-site-design` and `accessibility-sweep` specs; Vitest `onboarding-components.test.tsx`, `onboarding-pages.test.tsx`, `welcome-cookie.test.ts`, `proxy.test.ts`, `locale.test.ts`, `routes.test.ts` and the action tests. First-load JavaScript (`route-bundle-stats.json`): `/[lang]/onboarding` 745,053 bytes, `/[lang]/onboarding/security` 716,733, `/[lang]/onboarding/welcome` 541,672 (no client code of its own; `/[lang]/mfa` in the signed-in shell is 733,789). Screenshots before and after at 1440, 1280, 768 and 375 px: `docs/phase-1/client/evidence/U68/` (not in git).

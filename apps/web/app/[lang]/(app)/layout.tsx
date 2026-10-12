@@ -21,7 +21,7 @@ async function organizationsOrNone(userId: string): ReturnType<typeof getMyOrgan
 
 // What the header offers follows the account kind and the organisations of the person; every page still asks for its
 // own role, because a layout does not run again when a person moves between pages. A suspended account and an account
-// whose kind is not committed yet (onboarding) get the way out and nothing else.
+// whose kind is not committed yet (on the consent page) get the way out and nothing else.
 export default async function AppLayout({ children, params }: LayoutProps<"/[lang]">) {
   const { lang } = await params;
   const user = await getCurrentUser();

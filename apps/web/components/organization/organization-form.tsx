@@ -13,10 +13,10 @@ import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { createOrganization } from "@/lib/actions/organizations";
-import { oneTrialRule } from "@/lib/billing/presentation";
+import { identifierPurpose } from "@/lib/billing/presentation";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
-import { mfaPath } from "@/lib/routes";
+import { onboardingPath } from "@/lib/routes";
 import {
   identifierKindOptions,
   organizationFormSchema,
@@ -27,7 +27,10 @@ type OrganizationFormProps = {
   lang: string;
   countries: ReferenceItem[];
   industries: ReferenceItem[];
+  defaultCountry: string;
 };
+
+const IDENTIFIER_HELP = `${identifierPurpose} 4 to 32 letters and digits, for example DE123456789 (VAT) or HRB12345 (company register); spaces, dots, hyphens and slashes are ignored.`;
 
 const ids = {
   legalName: "org-legal-name",
@@ -39,13 +42,15 @@ const ids = {
   identifierKind: "org-identifier-kind",
 } as const satisfies Record<keyof OrganizationFormInput, string>;
 
-export function OrganizationForm({ lang, countries, industries }: OrganizationFormProps) {
+const groupTitleClassName = "mb-5 text-eyebrow text-muted-foreground uppercase";
+
+export function OrganizationForm({ lang, countries, industries, defaultCountry }: OrganizationFormProps) {
   const form = useForm<OrganizationFormInput>({
     resolver: zodResolver(organizationFormSchema),
     defaultValues: {
       legalName: "",
       displayName: "",
-      country: "",
+      country: defaultCountry,
       industry: "",
       website: "",
       identifier: "",
@@ -78,7 +83,7 @@ export function OrganizationForm({ lang, countries, industries }: OrganizationFo
         <Notice tone="info" role="status">
           An organisation with a similar name already exists on CHARA.
         </Notice>
-        <TextLink standalone href={mfaPath(lang)}>
+        <TextLink standalone href={onboardingPath(lang, "security")}>
           Continue
         </TextLink>
       </div>
@@ -88,61 +93,69 @@ export function OrganizationForm({ lang, countries, industries }: OrganizationFo
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <InputField
-        control={control}
-        name="legalName"
-        id={ids.legalName}
-        label="Legal company name"
-        autoComplete="organization"
-      />
-      <InputField
-        control={control}
-        name="displayName"
-        id={ids.displayName}
-        label="Display name (optional)"
-        description="The name candidates see. Defaults to the legal name."
-      />
-      <ComboboxField
-        control={control}
-        name="country"
-        id={ids.country}
-        label="Country"
-        placeholder="Choose a country"
-        options={toOptions(countries)}
-      />
-      <ComboboxField
-        control={control}
-        name="industry"
-        id={ids.industry}
-        label="Industry"
-        placeholder="Choose an industry"
-        options={toOptions(industries)}
-      />
-      <InputField
-        control={control}
-        name="website"
-        id={ids.website}
-        label="Website (optional)"
-        type="url"
-        autoComplete="url"
-      />
-      <InputField
-        control={control}
-        name="identifier"
-        id={ids.identifier}
-        label="Company registration number or VAT number (optional until you start your trial)"
-        description={oneTrialRule}
-      />
-      <SelectField
-        control={control}
-        name="identifierKind"
-        id={ids.identifierKind}
-        label="Type of identifier"
-        placeholder="Choose a type"
-        options={identifierKindOptions}
-      />
+      <fieldset className="grid min-w-0 gap-6">
+        <legend className={groupTitleClassName}>Company</legend>
+        <InputField
+          control={control}
+          name="legalName"
+          id={ids.legalName}
+          label="Legal company name"
+          autoComplete="organization"
+        />
+        <InputField
+          control={control}
+          name="displayName"
+          id={ids.displayName}
+          label="Display name (optional)"
+          description="The name candidates see. Defaults to the legal name."
+        />
+        <ComboboxField
+          control={control}
+          name="country"
+          id={ids.country}
+          label="Country"
+          placeholder="Choose a country"
+          options={toOptions(countries)}
+        />
+        <ComboboxField
+          control={control}
+          name="industry"
+          id={ids.industry}
+          label="Industry"
+          placeholder="Choose an industry"
+          options={toOptions(industries)}
+        />
+        <InputField
+          control={control}
+          name="website"
+          id={ids.website}
+          label="Website (optional)"
+          type="url"
+          autoComplete="url"
+        />
+      </fieldset>
+      <div className="border-t pt-8">
+        <fieldset className="grid min-w-0 gap-6">
+          <legend className={groupTitleClassName}>Registration</legend>
+          <InputField
+            control={control}
+            name="identifier"
+            id={ids.identifier}
+            label="Company registration number or VAT number (optional until you start your trial)"
+            description={IDENTIFIER_HELP}
+          />
+          <SelectField
+            control={control}
+            name="identifierKind"
+            id={ids.identifierKind}
+            label="Type of identifier"
+            placeholder="Choose a type"
+            options={identifierKindOptions}
+          />
+        </fieldset>
+      </div>
       <FormButton type="submit" busy={formState.isSubmitting}>
-        {formState.isSubmitting ? "Creating company..." : "Create company"}
+        {formState.isSubmitting ? "Creating company..." : "Continue"}
       </FormButton>
     </form>
   );

@@ -40,8 +40,8 @@ beforeEach(() => {
 });
 
 describe("createOrganization", () => {
-  it("checks the session, sends the normalised values and goes to two-step setup", async () => {
-    await expect(createOrganization(input)).rejects.toThrow("REDIRECT:/en/mfa");
+  it("checks the session, sends the normalised values and goes to the two-step set-up step of onboarding", async () => {
+    await expect(createOrganization(input)).rejects.toThrow("REDIRECT:/en/onboarding/security");
     expect(refreshShellMock).toHaveBeenCalledOnce();
     expect(requireUserMock).toHaveBeenCalledWith("en");
     expect(rpcMock).toHaveBeenCalledWith("create_organization", {

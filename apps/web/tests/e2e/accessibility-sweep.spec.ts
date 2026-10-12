@@ -10,6 +10,7 @@ import { newCompany, seedJob } from "./support/jobs";
 import { createCommittedUser, generateRecoveryPath, requestReset, suspendProfile } from "./support/login";
 import { logIn } from "./support/login-page";
 import { enterCode } from "./support/mfa";
+import { registerOrganization, uniqueName } from "./support/organizations";
 import { expectSecurityHeaders } from "./support/security-headers";
 import { seedSaved } from "./support/saved";
 import { signInBrowser } from "./support/session";
@@ -100,7 +101,15 @@ const trustSafetyPages = (jobId: string): Pages => ({
 
 // The pages that belong to a state of the account rather than to a role.
 // /post-job only redirects (to the new-vacancy page or the dashboard), so it renders nothing to sweep.
-const accountStatePages = ["/[lang]/onboarding", "/[lang]/consent", "/[lang]/suspended", "/[lang]/mfa", "/[lang]/post-job"];
+const accountStatePages = [
+  "/[lang]/onboarding",
+  "/[lang]/onboarding/security",
+  "/[lang]/onboarding/welcome",
+  "/[lang]/consent",
+  "/[lang]/suspended",
+  "/[lang]/mfa",
+  "/[lang]/post-job",
+];
 
 async function expectPage(page: Page, address: string): Promise<void> {
   const response = await page.goto(address);
@@ -235,15 +244,24 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
     );
     const suspended = await createCommittedUser("worker");
     suspendProfile(suspended.id);
+    const ownerWithoutTwoStep = await createCommittedUser("company");
+    await registerOrganization(ownerWithoutTwoStep, uniqueName("Sweep Bau GmbH"));
+    const welcomedWorker = await createCommittedUser("worker");
 
     for (const [user, address] of [
       [uncommitted, "/en/onboarding"],
       [uncommittedCompany, "/en/onboarding"],
+      [ownerWithoutTwoStep, "/en/onboarding/security"],
+      [welcomedWorker, "/en/onboarding/welcome"],
       [reconsenting, "/en/consent"],
       [suspended, "/en/suspended"],
     ] as const) {
       const context = await browser.newContext();
       await signInBrowser(context, user);
+      // The welcome screen is shown once, when the last step sets this cookie (lib/welcome-cookie.ts).
+      if (user === welcomedWorker) {
+        await context.addCookies([{ name: "chara_welcome", value: user.id, domain: "localhost", path: address }]);
+      }
       await expectPage(await context.newPage(), address);
       await context.close();
     }

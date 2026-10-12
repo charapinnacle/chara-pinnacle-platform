@@ -9,6 +9,7 @@ const redirectMock = vi.hoisted(() =>
 const revalidateMock = vi.hoisted(() => vi.fn());
 const requireUserMock = vi.hoisted(() => vi.fn());
 const rpcMock = vi.fn();
+const rememberWelcomeMock = vi.hoisted(() => vi.fn());
 
 type Call = { table: string; operation: string; values?: unknown; filters: Record<string, unknown> };
 const calls: Call[] = [];
@@ -35,6 +36,7 @@ vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock, from }) }));
+vi.mock("@/lib/welcome-cookie", () => ({ rememberWelcome: rememberWelcomeMock }));
 
 const actions = await import("@/lib/actions/passport");
 
@@ -61,8 +63,9 @@ beforeEach(() => {
 describe("createPassport", () => {
   const input = { firstName: "  Amina ", lastName: "Okafor", country: "ng" };
 
-  it("checks the session, sends the normalised values with English and goes to the dashboard", async () => {
-    await expect(actions.createPassport(input)).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+  it("checks the session, sends the normalised values with English and goes to the welcome screen, once", async () => {
+    await expect(actions.createPassport(input)).rejects.toThrow("REDIRECT:/en/onboarding/welcome");
+    expect(rememberWelcomeMock).toHaveBeenCalledExactlyOnceWith(userId);
     expect(requireUserMock).toHaveBeenCalledWith("en");
     expect(rpcMock).toHaveBeenCalledWith("create_worker_passport", {
       p_first_name: "Amina",
@@ -74,7 +77,7 @@ describe("createPassport", () => {
 
   it("treats a second submit, which finds the passport already created, as done", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: "duplicate key", code: "23505", details: null } });
-    await expect(actions.createPassport(input)).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+    await expect(actions.createPassport(input)).rejects.toThrow("REDIRECT:/en/onboarding/welcome");
   });
 
   it("returns a message and stays when the database refuses", async () => {
@@ -82,6 +85,7 @@ describe("createPassport", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(actions.createPassport(input)).resolves.toEqual({ message: GENERIC });
     expect(redirectMock).not.toHaveBeenCalled();
+    expect(rememberWelcomeMock).not.toHaveBeenCalled();
   });
 
   it("returns field messages and does not call the database for an invalid input", async () => {

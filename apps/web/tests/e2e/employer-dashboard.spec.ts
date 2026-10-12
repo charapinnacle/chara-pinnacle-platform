@@ -10,7 +10,7 @@ import {
 } from "./support/organizations";
 
 test.describe("employer registration: after the organization exists", () => {
-  test("FR-A2 AC11: an employer without an organization is sent to set it up, and one with an organization is sent to the dashboard", async ({
+  test("FR-A2 AC11: an employer without an organization is sent to set it up, an owner without two-step verification to its set-up, and one with both to the dashboard", async ({
     page,
   }) => {
     const user = await createCommittedUser("company");
@@ -21,6 +21,11 @@ test.describe("employer registration: after the organization exists", () => {
     await expect(page.getByLabel("Legal company name")).toBeVisible();
 
     await registerOrganization(user, uniqueName("Redirect Bau GmbH"), "Redirect Bau");
+    await signInAsEmployer(page, user);
+    await page.goto("/en/onboarding");
+    await expect(page).toHaveURL(/\/en\/onboarding\/security$/);
+
+    await enrollTotp(user);
     await signInAsEmployer(page, user);
     await page.goto("/en/onboarding");
     await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);

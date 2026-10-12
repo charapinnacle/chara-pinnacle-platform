@@ -2,6 +2,7 @@ import { isValidElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppLayout from "@/app/[lang]/(app)/layout";
+import OnboardingLayout from "@/app/[lang]/(onboarding)/layout";
 import { AppNav } from "@/components/layout/app-nav";
 import { FooterLinks } from "@/components/layout/footer-links";
 import { appFooterLinks } from "@/lib/public/navigation";
@@ -90,9 +91,8 @@ describe("the header of the signed-in area", () => {
     expect(html).not.toContain("Edit profile");
   });
 
-  it("offers nothing to a suspended organisation, and no page link on the onboarding page or to an account without a kind", () => {
+  it("offers nothing to a suspended organisation, and no page link on the consent page or to an account without a kind", () => {
     expect(mainLabels(nav({ accountKind: "company", organizations: [{ ...acme, suspended: true }] }))).toEqual([]);
-    expect(mainLabels(nav({}, "/en/onboarding"))).toEqual([]);
     expect(mainLabels(nav({}, "/en/consent"))).toEqual([]);
     const html = nav({ accountKind: null });
     expect(mainLabels(html)).toEqual([]);
@@ -190,6 +190,23 @@ describe("the layout of the signed-in area", () => {
     const props = await shell();
     expect(props.headerActions).toBeNull();
     expect(renderToStaticMarkup(props.footerLinks)).toContain('href="/en/imprint"');
+  });
+});
+
+describe("the layout of onboarding", () => {
+  it("has the logo, Log out, the main column and the legal links, and no navigation, account menu or identity", async () => {
+    userMock.mockReset();
+    const html = renderToStaticMarkup(
+      await OnboardingLayout({ children: <p>Step</p>, params: Promise.resolve({ lang: "en" }) }),
+    );
+    expect(html).toMatch(/<a [^>]*href="\/en"[^>]*>.*CHARA.*Pinnacle.*<\/a>/);
+    expect(html).toContain("Log out");
+    expect(html).toMatch(/<main id="main-content"[^>]*><div class="[^"]*max-w-\[35rem\][^"]*"><p>Step<\/p><\/div><\/main>/);
+    expect(html).toContain('href="/en/imprint"');
+    expect(html).not.toContain('aria-label="Main"');
+    expect(html).not.toContain("Account");
+    expect(html).not.toContain("<aside");
+    expect(userMock).not.toHaveBeenCalled();
   });
 });
 

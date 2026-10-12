@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, signUpPath } from "@/lib/routes";
+import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, onboardingPath, signUpPath } from "@/lib/routes";
 
 describe("homePath", () => {
   it("sends each account kind to its own dashboard", () => {
@@ -9,6 +9,14 @@ describe("homePath", () => {
 
   it("keeps an account whose kind is not committed on onboarding", () => {
     expect(homePath("en", null)).toBe("/en/onboarding");
+  });
+});
+
+describe("onboardingPath", () => {
+  it("names the first step, the owner's two-step set-up and the welcome screen", () => {
+    expect(onboardingPath("en")).toBe("/en/onboarding");
+    expect(onboardingPath("en", "security")).toBe("/en/onboarding/security");
+    expect(onboardingPath("en", "welcome")).toBe("/en/onboarding/welcome");
   });
 });
 

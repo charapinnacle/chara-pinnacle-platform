@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { pendingConsents } from "./support/accounts";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal } from "./support/db";
 import { addCompanyUser, newCompany, previewUrl, seedJob } from "./support/jobs";
@@ -230,19 +231,20 @@ test.describe("the sign-in journey", () => {
     }
   });
 
-  test("onboarding shows where the person is in the three steps", async ({ browser }) => {
-    for (const [make, current, last] of [
-      [() => createTestUser("worker"), "Account type", "Passport"],
-      [() => createCommittedUser("worker", { passport: false }), "Passport", "Passport"],
-      [() => createCommittedUser("company"), "Organisation", "Organisation"],
+  test("onboarding shows where the person is in the steps that are left, and none for the account or its type", async ({ browser }) => {
+    for (const [make, labels, current] of [
+      [async () => createTestUser("worker", await pendingConsents("worker")), [/Your profile$/, /Ready$/], "Your profile"],
+      [() => createCommittedUser("worker", { passport: false }), [/Your profile$/, /Ready$/], "Your profile"],
+      [() => createCommittedUser("company"), [/Company$/, /Security$/, /Ready$/], "Company"],
     ] as const) {
       const context = await browser.newContext();
       await signInBrowser(context, await make());
       const page = await context.newPage();
       await page.goto("/en/onboarding");
       const steps = page.getByRole("list", { name: "Setting up your account" });
-      await expect(steps.getByRole("listitem")).toHaveText([/Account \(done\)$/, /Account type/, new RegExp(last)]);
+      await expect(steps.getByRole("listitem")).toHaveText([...labels]);
       await expect(steps.locator('[aria-current="step"]')).toContainText(current);
+      await expect(steps).not.toContainText("Account type");
       await expectNoAxeViolations(page);
       await context.close();
     }

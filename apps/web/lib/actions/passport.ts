@@ -8,7 +8,7 @@ import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { homePath } from "@/lib/routes";
+import { homePath, onboardingPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import {
@@ -32,6 +32,7 @@ import {
   type PreferredCountryInput,
   type SkillInput,
 } from "@/lib/validation/passport";
+import { rememberWelcome } from "@/lib/welcome-cookie";
 
 export type PassportResult = { errors?: FieldErrors; message?: string };
 
@@ -69,7 +70,7 @@ function settle(error: PostgrestError | null): PassportResult {
 }
 
 export async function createPassport(input: CreatePassportInput): Promise<PassportResult | undefined> {
-  await requireUser(defaultLocale);
+  const user = await requireUser(defaultLocale);
   const parsed = createPassportSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { firstName, lastName, country } = parsed.data;
@@ -84,7 +85,8 @@ export async function createPassport(input: CreatePassportInput): Promise<Passpo
   // A second submit of the same form finds the passport already created, which is what the person wanted.
   if (error && error.code !== "23505") return refusal(error);
   refreshAppShell();
-  redirect(homePath(defaultLocale, "worker"));
+  await rememberWelcome(user.id);
+  redirect(onboardingPath(defaultLocale, "welcome"));
 }
 
 type ProfileUpdate = Database["public"]["Tables"]["worker_profiles"]["Update"];
