@@ -21,6 +21,7 @@ import {
   type LoginInput,
 } from "@/lib/validation/login";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
+import { forgetWelcome } from "@/lib/welcome-cookie";
 
 type LoginResult = { errors?: FieldErrors; message?: string; unconfirmed?: true };
 
@@ -63,5 +64,6 @@ export async function signOut(): Promise<{ message: string } | undefined> {
     logAuthFailure("Logout", error);
     return { message: GENERIC_FAILURE };
   }
+  await forgetWelcome();
   redirect(`/${defaultLocale}/login`);
 }

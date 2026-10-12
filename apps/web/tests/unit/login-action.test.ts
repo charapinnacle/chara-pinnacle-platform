@@ -10,10 +10,12 @@ const signInMock = vi.fn();
 const signOutMock = vi.fn();
 const userMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
+const forgetWelcomeMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
+vi.mock("@/lib/welcome-cookie", () => ({ forgetWelcome: forgetWelcomeMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signInWithPassword: signInMock, signOut: signOutMock },
@@ -172,9 +174,10 @@ describe("signIn", () => {
 });
 
 describe("signOut", () => {
-  it("revokes this session only and goes to the login page", async () => {
+  it("revokes this session only, forgets a welcome screen not yet seen and goes to the login page", async () => {
     await expect(signOut()).rejects.toThrow("REDIRECT:/en/login");
     expect(signOutMock).toHaveBeenCalledWith({ scope: "local" });
+    expect(forgetWelcomeMock).toHaveBeenCalledOnce();
   });
 
   it("stays on the page and reports a failure when Auth cannot revoke the session", async () => {
@@ -182,6 +185,7 @@ describe("signOut", () => {
     signOutMock.mockResolvedValue({ error: new AuthApiError("down", 500, "unexpected_failure") });
     expect(await signOut()).toEqual({ message: "We could not complete this request. Try again." });
     expect(redirectMock).not.toHaveBeenCalled();
+    expect(forgetWelcomeMock).not.toHaveBeenCalled();
     logged.mockRestore();
   });
 });

@@ -31,6 +31,12 @@ export function signUpPath(lang: string, kind?: "worker" | "company"): string {
   return kind ? `/${lang}/signup?kind=${kind}` : `/${lang}/signup`;
 }
 
+// The steps of setting up an account after the email is confirmed: the company or the passport, the owner's two-step
+// verification, then the welcome screen.
+export function onboardingPath(lang: string, step?: "security" | "welcome"): string {
+  return step ? `/${lang}/onboarding/${step}` : `/${lang}/onboarding`;
+}
+
 export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }

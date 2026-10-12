@@ -12,6 +12,7 @@ const startMock = vi.hoisted(() => vi.fn());
 const verifyTotpMock = vi.hoisted(() => vi.fn());
 const listFactorsMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
+const rememberWelcomeMock = vi.hoisted(() => vi.fn());
 const errorLogMock = vi.spyOn(console, "error").mockImplementation(() => {});
 
 vi.mock("server-only", () => ({}));
@@ -24,6 +25,7 @@ vi.mock("@/lib/dal/mfa", () => ({
   hasVerifiedTotpFactor: async () => (await listFactorsMock()).length > 0,
 }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
+vi.mock("@/lib/welcome-cookie", () => ({ rememberWelcome: rememberWelcomeMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { mfa: { challengeAndVerify: challengeAndVerifyMock } } }),
 }));
@@ -128,6 +130,20 @@ describe("verifyEnrolment", () => {
       "REDIRECT:/en/admin",
     );
     expect(challengeAndVerifyMock).toHaveBeenCalledWith({ factorId, code: "123456" });
+    expect(rememberWelcomeMock).not.toHaveBeenCalled();
+  });
+
+  it("ends the owner's set-up during onboarding on the welcome screen, which it marks as due once", async () => {
+    await expect(verifyEnrolment({ factorId, code: "123456", next: "/en/onboarding/welcome" })).rejects.toThrow(
+      "REDIRECT:/en/onboarding/welcome",
+    );
+    expect(rememberWelcomeMock).toHaveBeenCalledExactlyOnceWith("user-1");
+  });
+
+  it("marks no welcome when a refused code keeps the owner on the set-up step", async () => {
+    challengeAndVerifyMock.mockResolvedValue({ data: null, error: new AuthApiError("no", 422, "mfa_verification_failed") });
+    expect(await verifyEnrolment({ factorId, code: "000000", next: "/en/onboarding/welcome" })).toEqual({ errors: { code: WRONG } });
+    expect(rememberWelcomeMock).not.toHaveBeenCalled();
   });
 
   it("does not let a session at aal1 verify a factor when a verified factor exists, and never asks Auth", async () => {

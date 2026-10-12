@@ -51,7 +51,12 @@ describe("which paths are private (FR-H5 AC6, AC7)", () => {
   });
 
   it("lists every private page in the route groups of the app, so that a new one cannot be forgotten", () => {
-    const behindLogin = [...topSegments("(app)"), ...topSegments("(auth)"), ...topSegments("(admin)")].filter(
+    const behindLogin = [
+      ...topSegments("(app)"),
+      ...topSegments("(auth)"),
+      ...topSegments("(admin)"),
+      ...topSegments("(onboarding)"),
+    ].filter(
       (segment) => segment !== "jobs",
     );
     expect(behindLogin.length).toBeGreaterThan(10);

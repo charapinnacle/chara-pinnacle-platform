@@ -1,0 +1,17 @@
+/* Rules that only the onboarding layout uses, loaded with it (layout.tsx). */
+
+/* Below 40 rem the submit button of a step stays at the foot of the screen while its form scrolls, on a band of the page
+   colour so that the fields slide under it; the page keeps the band's height free when it scrolls a focused field into
+   view, so the button never covers the field in focus (WCAG 2.4.11). */
+@media (width < 40rem) {
+  .onboarding-step form > button[type="submit"] {
+    position: sticky;
+    bottom: 0.75rem;
+    z-index: 10;
+    box-shadow: 0 0 0 0.75rem var(--background);
+  }
+
+  html:has(.onboarding-step) {
+    scroll-padding-bottom: 6rem;
+  }
+}

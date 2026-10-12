@@ -13,7 +13,7 @@ import { hasVerifiedTotpFactor, listVerifiedFactors, startEnrolment, verifyTotp,
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { homePath } from "@/lib/routes";
+import { homePath, onboardingPath } from "@/lib/routes";
 import { mfaReturnPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
@@ -27,6 +27,7 @@ import {
   type CodeInput,
   type EnrolmentStartInput,
 } from "@/lib/validation/mfa";
+import { rememberWelcome } from "@/lib/welcome-cookie";
 
 type MfaResult = { errors?: FieldErrors; message?: string };
 type StartResult = MfaResult & { enrolment?: Enrolment };
@@ -69,7 +70,10 @@ export async function verifyEnrolment(input: CodeInput): Promise<VerifyResult | 
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
   if (error) return verifyRefusal(error);
   if (user.aal === "aal2") return { added: true };
-  redirect(mfaReturnPath(defaultLocale, next, homePath(defaultLocale, user.accountKind)));
+  const target = mfaReturnPath(defaultLocale, next, homePath(defaultLocale, user.accountKind));
+  // The owner's set-up during onboarding is its last step, which ends on the welcome screen.
+  if (target === onboardingPath(defaultLocale, "welcome")) await rememberWelcome(user.id);
+  redirect(target);
 }
 
 export async function answerChallenge(input: CodeInput): Promise<MfaResult | undefined> {

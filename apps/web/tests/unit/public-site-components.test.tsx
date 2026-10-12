@@ -1,6 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { OnboardingSteps } from "@/components/consent/onboarding-steps";
 import { HeroSearch } from "@/components/home/hero-search";
 import { SectionHeading } from "@/components/public/section-heading";
 import { StepList } from "@/components/public/step-list";
@@ -65,23 +64,5 @@ describe("SectionHeading", () => {
     expect(markup).toContain("text-brand");
     expect(markup).not.toContain("text-brand-ink");
     expect(markup).toContain("text-inverse-foreground");
-  });
-});
-
-describe("OnboardingSteps", () => {
-  it("marks the current step, says the earlier ones are done, and names the last step by the account kind", () => {
-    const markup = html(<OnboardingSteps current={2} kind="company" />);
-    expect(markup).toContain('aria-label="Setting up your account"');
-    expect(markup.match(/aria-current="step"/g)).toHaveLength(1);
-    expect(markup).toMatch(/<li aria-current="step"[^>]*>.*Step 3 of 3: <\/span>Organisation/);
-    expect(markup.match(/\(done\)/g)).toHaveLength(2);
-    expect(html(<OnboardingSteps current={2} kind="worker" />)).toContain("Passport");
-  });
-
-  it("names the last step Profile while the kind is not chosen", () => {
-    const markup = html(<OnboardingSteps current={1} kind={null} />);
-    expect(markup).toMatch(/<li aria-current="step"[^>]*>.*Account type/);
-    expect(markup).toContain("Profile");
-    expect(markup.match(/\(done\)/g)).toHaveLength(1);
   });
 });

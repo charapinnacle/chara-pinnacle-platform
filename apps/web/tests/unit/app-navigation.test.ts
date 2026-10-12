@@ -131,9 +131,9 @@ describe("the organisation a person is working in", () => {
 });
 
 describe("the pages that finish a step", () => {
-  it("are the onboarding and the consent page, which have no links in the header", () => {
-    expect(isGatePage("en", "/en/onboarding")).toBe(true);
+  it("are the consent page, which has no links in the header; onboarding has a layout without the header", () => {
     expect(isGatePage("en", "/en/consent")).toBe(true);
+    expect(isGatePage("en", "/en/onboarding")).toBe(false);
     expect(isGatePage("en", "/en/dashboard/worker")).toBe(false);
     expect(isGatePage("en", "/en/mfa")).toBe(false);
   });
