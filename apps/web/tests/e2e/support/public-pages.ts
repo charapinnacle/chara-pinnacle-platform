@@ -34,6 +34,15 @@ export const FOOTER_LABELS = [
   "All legal documents",
 ];
 
+// The headings of the home page's sections that are there whatever vacancies are open (U70, D87).
+export const HOME_SECTION_HEADINGS = [
+  "Browse by industry",
+  "Publish a vacancy and manage every applicant in one pipeline",
+  "One CHARA Passport for every application",
+  "Built for hiring across borders",
+  "Your Workforce. Your Network. One Platform.",
+];
+
 export const SETTING_KEYS = [
   "legal_entity_name",
   "legal_entity_address",
