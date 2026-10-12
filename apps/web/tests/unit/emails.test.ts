@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
+import { BRAND_NAME } from "@/lib/brand";
 import { applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
 
 const SITE = "https://chara.example";
@@ -63,6 +64,16 @@ describe("notification templates", () => {
     expect(email.subject.length).toBeGreaterThan(5);
     expect(email.text.length).toBeGreaterThan(40);
     expect(email.text).not.toContain("<");
+  });
+
+  it.each(KINDS)("%s names the product Chara Pinnacle in its header and footer and never the old name CHARA", async (kind) => {
+    const email = await renderEmail(kind, SAMPLES[kind], SITE);
+    expect(email.text.startsWith(BRAND_NAME)).toBe(true);
+    expect(email.text).toContain(`This is a service email about your ${BRAND_NAME} account.`);
+    // The plain text writes headings in capitals, so CHARA PINNACLE there is the new name.
+    for (const part of [email.subject, email.text, email.html]) {
+      expect(part).not.toMatch(/\bCHARA\b(?! PINNACLE)/);
+    }
   });
 
   it.each(KINDS)("%s shows nothing that is not whitelisted", async (kind) => {
@@ -216,6 +227,16 @@ describe("notification templates", () => {
     expect(noPlan.text).toContain("Your free trial ends on");
     const blankName = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, plan_name: "" }, SITE);
     expect(blankName.text).toContain("Employer starter");
+  });
+
+  it("payment_failed, deletion_requested and deletion_completed name the product in their subjects", async () => {
+    expect((await renderEmail("payment_failed", SAMPLES.payment_failed, SITE)).subject).toBe("We could not collect your Chara Pinnacle payment");
+    expect((await renderEmail("deletion_requested", SAMPLES.deletion_requested, SITE)).subject).toBe(
+      "We received your request to delete your Chara Pinnacle account",
+    );
+    const completed = await renderEmail("deletion_completed", SAMPLES.deletion_completed, SITE);
+    expect(completed.subject).toBe("Your Chara Pinnacle account was deleted");
+    expect(completed.text).toContain("Thank you for using Chara Pinnacle.");
   });
 
   it("deletion_requested shows the date of the erasure", async () => {
