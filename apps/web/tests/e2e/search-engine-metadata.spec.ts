@@ -56,11 +56,10 @@ test.describe("metadata of the public pages", () => {
   }) => {
     for (const path of ["/en/login", "/en/signup", "/en/forgot-password"]) {
       await page.goto(path);
-      const head = await readHead(page);
-      expect(head.title, `${path} title`).toMatch(/ — Chara Pinnacle$/);
-      expect(head.ogImage, `${path} og:image`).toBe(`${SITE}/opengraph-image`);
-      expect(head.ogSiteName, `${path} og:site_name`).toBe("Chara Pinnacle");
-      expect(head.twitterCard, `${path} twitter:card`).toBe("summary_large_image");
+      await expect(page, path).toHaveTitle(/ — Chara Pinnacle$/);
+      await expect(page.locator('meta[property="og:image"]'), path).toHaveAttribute("content", `${SITE}/opengraph-image`);
+      await expect(page.locator('meta[property="og:site_name"]'), path).toHaveAttribute("content", "Chara Pinnacle");
+      await expect(page.locator('meta[name="twitter:card"]'), path).toHaveAttribute("content", "summary_large_image");
     }
   });
 
