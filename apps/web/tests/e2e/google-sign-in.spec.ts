@@ -171,8 +171,8 @@ test.describe("Continue with Google switched on", () => {
     await chooseAndAccept(page, "company");
     await expect(ageBox(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(page.getByRole("heading", { name: "Your account type is Employer" })).toBeVisible();
-    await expect(page.getByText("This cannot be changed later.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
+    await expect(page.getByText(/cannot be changed/)).toHaveCount(0);
 
     const { account, consents, audit } = accountRows(user.id);
     expect(account.account_kind).toBe("company");
@@ -204,7 +204,7 @@ test.describe("Continue with Google switched on", () => {
     expect(after.audit.filter((a) => a.action === "account_kind_set")).toHaveLength(1);
 
     await page.goto("http://localhost:3100/en/onboarding");
-    await expect(page.getByRole("heading", { name: "Your account type is Employer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
     await expect(page.getByRole("radio")).toHaveCount(0);
   });
 
@@ -220,7 +220,7 @@ test.describe("Continue with Google switched on", () => {
 
     await ageBox(page).check();
     await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(page.getByRole("heading", { name: "Your account type is Worker" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 })).toBeVisible();
     const { account, consents } = accountRows(user.id);
     expect(account.account_kind).toBe("worker");
     expect(consents.map((c) => `${c.purpose}:${c.action}`).sort()).toEqual(

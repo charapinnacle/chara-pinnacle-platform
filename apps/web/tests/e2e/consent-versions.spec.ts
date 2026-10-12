@@ -46,7 +46,7 @@ test("FR-A8 AC5: a version superseded before confirmation is accepted first and 
 
   await box.check();
   await page.getByRole("button", { name: "Accept and continue" }).click();
-  await expect(page.getByRole("heading", { name: "Your account type is Worker" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 })).toBeVisible();
 
   const { account, consents } = accountRows(user.id);
   expect(account.account_kind).toBe("worker");
@@ -63,13 +63,13 @@ test("FR-A8 AC9: a changed document gates the next sign-in, not the open session
   try {
     await signInBrowser(page.context(), user);
     await page.goto("/en/onboarding");
-    await expect(page.getByRole("heading", { name: "Your account type is Employer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
 
     const version = publishNewVersion("employer-terms", "Adds the data processing annex.");
 
     await page.goto("/en/onboarding");
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByRole("heading", { name: "Your account type is Employer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
 
     const signedOut = await browser.newContext();
     await signInBrowser(signedOut, user);
@@ -103,7 +103,7 @@ test("FR-A8 AC9: a changed document gates the next sign-in, not the open session
     await next.getByRole("checkbox").check();
     await next.getByRole("button", { name: "Accept and continue" }).click();
     await expect(next).toHaveURL(/\/en\/onboarding$/);
-    await expect(next.getByRole("heading", { name: "Your account type is Employer" })).toBeVisible();
+    await expect(next.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
     expect(accountRows(user.id).consents.at(-1)).toEqual({
       purpose: "employer-terms",
       version,
@@ -126,7 +126,7 @@ test("FR-A8 AC10 (web part): a withdrawal holds the next sign-in on the consent 
     await signInBrowser(first, user);
     const page = await first.newPage();
     await page.goto("/en/onboarding");
-    await expect(page.getByRole("heading", { name: "Your account type is Worker" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 })).toBeVisible();
 
     await callAs(user, "withdraw_consent", { p_purpose: "worker-terms" });
     expect(accountRows(user.id).consents.at(-1)).toMatchObject({

@@ -56,9 +56,10 @@ test.describe("smoke: the five main journeys end to end", () => {
     await page.getByLabel("Last name", { exact: true }).fill("Okafor");
     await choose(page, "Current country", "Nigeria");
     await page.getByRole("button", { name: "Create CHARA Passport" }).click();
-    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+    await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
 
-    await mainNavigation(page).getByRole("link", { name: "Passport" }).click();
+    await page.getByRole("link", { name: /^Complete your passport/ }).click();
+    await expect(page).toHaveURL(/\/en\/passport$/);
     const occupation = page.getByRole("combobox", { name: "Occupation", exact: true });
     await waitForHydration(occupation);
     await occupation.fill("welders and flame");
@@ -94,12 +95,12 @@ test.describe("smoke: the five main journeys end to end", () => {
 
     await signUpAndConfirm(page, "company", email);
     await fillCompany(page, { legalName: `${display} GmbH`, displayName: display, country: "Germany", industry: "Construction" });
-    await page.getByRole("button", { name: "Create company" }).click();
-    await expect(page).toHaveURL(/\/en\/mfa$/);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/en\/onboarding\/security$/);
     await enterCode(page, await beginSetup(page));
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
 
-    await page.getByRole("link", { name: "Post job" }).click();
+    await page.getByRole("link", { name: /^Post your first job/ }).click();
     await waitForHydration(page.getByLabel("Title", { exact: true }));
     await fillJob(page, { title });
     await page.getByRole("button", { name: "Save vacancy" }).click();

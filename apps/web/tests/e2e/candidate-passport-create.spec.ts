@@ -13,13 +13,13 @@ function country(page: Page) {
 }
 
 test.describe("candidate passport: onboarding", () => {
-  test("FR-B1 AC1: a new candidate creates the passport once, lands on the dashboard at 10 percent and cannot onboard again", async ({
+  test("FR-B1 AC1: a new candidate creates the passport once, is welcomed, finds the dashboard at 10 percent and cannot onboard again", async ({
     page,
   }) => {
     const user = await createCommittedUser("worker", { passport: false });
     await logIn(page, user);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByRole("heading", { name: "Your account type is Worker" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your CHARA Passport", level: 1 })).toBeVisible();
     await expectNoAxeViolations(page);
 
     const calls = captureActionRequests(page);
@@ -28,7 +28,9 @@ test.describe("candidate passport: onboarding", () => {
     await choose(page, "Current country", "Nigeria");
     await page.getByRole("button", { name: "Create CHARA Passport" }).dblclick();
 
-    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+    await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
+    await expect(page.getByRole("heading", { name: "Welcome to CHARA Pinnacle, Amina", level: 1 })).toBeVisible();
+    await page.goto("/en/dashboard/worker");
     await expect(page.getByText("10% complete")).toBeVisible();
     await expect(page.getByText("Next:")).toContainText("Occupation");
     expect(calls).toHaveLength(1);

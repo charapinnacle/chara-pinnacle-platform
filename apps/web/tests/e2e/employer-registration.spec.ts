@@ -16,6 +16,7 @@ import {
   uniqueName,
   uniqueToken,
 } from "./support/organizations";
+import { currentStep } from "./support/onboarding";
 import { captureActionRequests } from "./support/server-action";
 import {
   ageBox,
@@ -28,7 +29,7 @@ import {
 } from "./support/signup-page";
 
 test.describe("employer registration", () => {
-  test("FR-A2 AC1: an employer signs up, confirms, enters the company details and lands on two-step setup", async ({
+  test("FR-A2 AC1: an employer signs up, confirms, enters the company details and lands on the two-step set-up step", async ({
     page,
   }) => {
     const email = newEmail();
@@ -52,7 +53,8 @@ test.describe("employer registration", () => {
     await confirmFromLink(page, `${pathname}${search}`);
 
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByRole("heading", { name: "Your account type is Employer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
+    await expect(currentStep(page)).toContainText("Step 1 of 3: Company");
     await expect(page.getByLabel("Legal company name")).toBeVisible();
     await fillCompany(page, {
       legalName: `${display} GmbH`,
@@ -63,8 +65,9 @@ test.describe("employer registration", () => {
       identifierKind: "vat_number",
       identifier: "DE 123.456-789",
     });
-    await page.getByRole("button", { name: "Create company" }).click();
-    await expect(page).toHaveURL(/\/en\/mfa$/);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/en\/onboarding\/security$/);
+    await expect(currentStep(page)).toContainText("Step 2 of 3: Security");
 
     const [user] = userByEmail(email);
     const { account, consents } = accountRows(user.id);
@@ -117,7 +120,7 @@ test.describe("employer registration", () => {
     await signInAsEmployer(page, second);
     await page.goto("/en/onboarding");
     await fillCompany(page, { legalName: legalName.toUpperCase().replace(" ", "   "), country: "Germany", industry: "Construction" });
-    await page.getByRole("button", { name: "Create company" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.getByRole("status")).toHaveText(SIMILAR_NAME_NOTICE);
     await expectNoAxeViolations(page);
@@ -126,7 +129,7 @@ test.describe("employer registration", () => {
     expect(organization.role).toBe("owner");
     expect(organizationAudit(organization.id)[0].metadata).toMatchObject({ duplicate_legal_name: true });
     await page.getByRole("link", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/en\/mfa$/);
+    await expect(page).toHaveURL(/\/en\/onboarding\/security$/);
   });
 
   test("FR-A2 AC3: the form names each invalid field, moves focus to the summary and sends nothing until it is valid", async ({
@@ -153,7 +156,8 @@ test.describe("employer registration", () => {
       await expectNoAxeViolations(page);
     }
 
-    await page.getByRole("button", { name: "Create company" }).click();
+    await page.getByRole("combobox", { name: "Country", exact: true }).fill("");
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(summary(page)).toBeFocused();
     for (const message of [
       "Legal name must be at least 2 characters.",
@@ -173,7 +177,7 @@ test.describe("employer registration", () => {
       website: "ftp://x.example",
       identifier: "x1",
     });
-    await page.getByRole("button", { name: "Create company" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(summary(page)).toBeFocused();
     for (const message of [
       "Enter a web address that starts with http:// or https://.",
@@ -199,9 +203,9 @@ test.describe("employer registration", () => {
       await route.continue();
     });
     await fillCompany(page, { legalName, country: "Germany", industry: "Construction" });
-    await page.getByRole("button", { name: "Create company" }).dblclick();
+    await page.getByRole("button", { name: "Continue" }).dblclick();
     await expect(page.getByRole("button", { name: "Creating company..." })).toBeDisabled();
-    await expect(page).toHaveURL(/\/en\/mfa$/);
+    await expect(page).toHaveURL(/\/en\/onboarding\/security$/);
     expect(calls).toHaveLength(1);
     expect(organizationCountByName(legalName)).toBe(1);
   });
@@ -250,7 +254,7 @@ test.describe("employer registration", () => {
       await page.keyboard.press("Tab");
       await page.keyboard.type("VAT");
       await page.keyboard.press("Tab");
-      await expect(page.getByRole("button", { name: "Create company" })).toBeFocused();
+      await expect(page.getByRole("button", { name: "Continue" })).toBeFocused();
       await expectNoAxeViolations(page);
       await page.keyboard.press("Enter");
 
@@ -285,7 +289,7 @@ test.describe("employer registration", () => {
     await page.getByLabel("Legal company name").focus();
     await expect(country).toHaveValue("Germany");
     await country.fill("");
-    await page.getByRole("button", { name: "Create company" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(summary(page).getByRole("link", { name: "Choose the country of your company." })).toBeVisible();
   });
 
@@ -296,7 +300,7 @@ test.describe("employer registration", () => {
     const legalName = uniqueName("Limit Bau GmbH");
     await signInAsEmployer(page, user);
     await page.goto("/en/onboarding");
-    await waitForHydration(page.getByRole("button", { name: "Create company" }));
+    await waitForHydration(page.getByRole("button", { name: "Continue" }));
     await fillCompany(page, {
       legalName,
       country: "Germany",
@@ -305,7 +309,7 @@ test.describe("employer registration", () => {
       identifier: "DE 123 456 789",
     });
     for (const name of ["First", "Second", "Third"]) await registerOrganization(user, uniqueName(`${name} Bau GmbH`));
-    await page.getByRole("button", { name: "Create company" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.getByText("Could not create the company", { exact: true })).toBeVisible();
     await expect(summary(page)).toContainText("You have reached the number of organizations one account can own.");
@@ -322,7 +326,7 @@ test.describe("employer registration", () => {
     await page.goto("/en/onboarding");
     await fillCompany(page, { legalName, country: "Germany", industry: "Construction" });
     await context.setOffline(true);
-    await page.getByRole("button", { name: "Create company" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByText("Could not create the company", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Legal company name")).toHaveValue(legalName);
     await context.setOffline(false);
