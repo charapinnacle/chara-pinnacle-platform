@@ -69,8 +69,8 @@ const goodFaithSchema = z.boolean().refine((value) => value, { error: "Confirm t
 // already known.
 const commonFields = { category: categorySchema, details: detailsSchema, email: optionalEmailSchema, goodFaith: goodFaithSchema };
 
-const VACANCY_LINK = `Paste the address of a vacancy page on ${BRAND_NAME}.`;
-const PAGE_LINK = `Enter the address of a page of ${BRAND_NAME}, for example /en/jobs.`;
+export const VACANCY_LINK = `Paste the address of a vacancy page on ${BRAND_NAME}.`;
+export const PAGE_LINK = `Enter the address of a page of ${BRAND_NAME}, for example /en/jobs.`;
 
 const vacancyReportFormSchema = z.object({
   ...commonFields,

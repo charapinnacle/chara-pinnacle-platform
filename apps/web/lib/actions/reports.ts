@@ -7,9 +7,8 @@ import { submitReport as storeReport } from "@/lib/dal/reports";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
 import { mfaPath } from "@/lib/routes";
-import { reportInputSchema, type ReportInput } from "@/lib/validation/report";
+import { PAGE_LINK, VACANCY_LINK, reportInputSchema, type ReportInput } from "@/lib/validation/report";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
-import { BRAND_NAME } from "@/lib/brand";
 
 type ReportResult = { errors?: FieldErrors; message?: string; reference?: string };
 
@@ -48,7 +47,7 @@ export async function submitReport(input: ReportInput): Promise<ReportResult> {
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { type, target, category, details, email } = parsed.data;
   const resolved = resolveTarget(type, target);
-  if (!resolved) return { errors: { link: type === "content" ? `Enter the address of a page of ${BRAND_NAME}.` : `Paste the address of a vacancy page on ${BRAND_NAME}.` } };
+  if (!resolved) return { errors: { link: type === "content" ? PAGE_LINK : VACANCY_LINK } };
 
   const stored = await storeReport(resolved, { category, details, email });
   if (stored.ok) return { reference: stored.reference };

@@ -68,7 +68,7 @@ describe("submitReport", () => {
 
   it("names the link when the target is not a vacancy or a page", async () => {
     expect((await submitReport({ ...base, type: "job", target: "welder" })).errors).toEqual({ link: "Paste the address of a vacancy page on Chara Pinnacle." });
-    expect((await submitReport({ ...base, type: "content", target: "//evil.example" })).errors).toEqual({ link: "Enter the address of a page of Chara Pinnacle." });
+    expect((await submitReport({ ...base, type: "content", target: "//evil.example" })).errors).toEqual({ link: "Enter the address of a page of Chara Pinnacle, for example /en/jobs." });
     expect((await submitReport({ ...base, type: "profile", target: "not-an-id" })).errors).toHaveProperty("link");
     expect(rpcMock).not.toHaveBeenCalled();
   });
