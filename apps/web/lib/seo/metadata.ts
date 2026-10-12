@@ -23,6 +23,12 @@ function fit(text: string, max: number): string {
   return text.length <= max ? text : `${cut(text, max - 1).trimEnd()}…`;
 }
 
+// The product name is added only when it fits whole: a title that is cut keeps what names the page, never "Chara Pin…".
+function withBrand(title: string, separator: string): string {
+  const full = `${title}${separator}${BRAND_NAME}`;
+  return full.length <= TITLE_MAX ? full : fit(title, TITLE_MAX);
+}
+
 // The canonical address has no query string: a search, a campaign tag and the page itself are one page to a crawler.
 // The image of app/opengraph-image.tsx and the site name are named again because a page's openGraph replaces the
 // inherited one whole. The title already holds the product name, so it is absolute: the layout's template is not added.
@@ -54,7 +60,7 @@ export function legalPageMetadata(
   document: { title: string; version: number; publishedAt: string },
 ): Metadata {
   return pageMetadata(
-    fit(`${document.title} — ${BRAND_NAME}`, TITLE_MAX),
+    withBrand(document.title, " — "),
     fit(`Read the ${document.title} of ${BRAND_NAME}: version ${document.version}, published ${formatDate(document.publishedAt)}.`, DESCRIPTION_MAX),
     `/${lang}/legal/${slug}`,
   );
@@ -64,5 +70,5 @@ export function legalPageMetadata(
 // spaces, and nothing added to it.
 export function vacancyMetadata(lang: string, job: Pick<PublicJob, "id" | "title" | "description" | "employer">): Metadata {
   const description = cut(job.description.replace(/\s+/g, " ").trim(), VACANCY_DESCRIPTION_LENGTH).trimEnd();
-  return pageMetadata(fit(`${job.title} - ${job.employer.displayName} | ${BRAND_NAME}`, TITLE_MAX), description, `/${lang}/jobs/${job.id}`);
+  return pageMetadata(withBrand(`${job.title} - ${job.employer.displayName}`, " | "), description, `/${lang}/jobs/${job.id}`);
 }

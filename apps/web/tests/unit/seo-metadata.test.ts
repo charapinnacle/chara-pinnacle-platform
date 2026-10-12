@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { describe, expect, it } from "vitest";
+import { BRAND_NAME } from "@/lib/brand";
 import { legalSlugs } from "@/lib/public/navigation";
 import { legalIndexMetadata, legalPageMetadata, staticPageMetadata, vacancyMetadata } from "@/lib/seo/metadata";
 import { staticPages, type StaticPageKey } from "@/lib/seo/pages";
@@ -46,12 +47,13 @@ describe("the metadata of the static pages (FR-H5 AC1)", () => {
     ]);
   });
 
-  it("repeats the title and the description in the Open Graph tags", () => {
+  it("repeats the title and the description in the Open Graph tags and names the product as the site", () => {
     for (const key of keys) {
       const metadata = staticPageMetadata(key, "en");
       const { description, openGraph } = metadata;
       expect(openGraph?.title, key).toBe(titleOf(metadata));
       expect(openGraph?.description, key).toBe(description);
+      expect(openGraph?.siteName, key).toBe(BRAND_NAME);
     }
   });
 });
@@ -63,6 +65,7 @@ describe("the metadata of the legal index (FR-H5 AC1)", () => {
     expect(String(metadata.description).length).toBeGreaterThanOrEqual(50);
     expect(String(metadata.description).length).toBeLessThanOrEqual(160);
     expect(canonicalOf(metadata)).toBe(`${SITE}/en/legal`);
+    expect(metadata.openGraph?.siteName).toBe(BRAND_NAME);
   });
 });
 
@@ -76,6 +79,12 @@ describe("the metadata of the legal pages (FR-H5 AC1)", () => {
     expect(canonicalOf(metadata)).toBe(`${SITE}/en/legal/terms-of-service`);
     expect(metadata.openGraph?.title).toBe(titleOf(metadata));
     expect(metadata.openGraph?.description).toBe(metadata.description);
+    expect(metadata.openGraph?.siteName).toBe(BRAND_NAME);
+  });
+
+  it("leaves the product name out of a title it would not fit, rather than cutting the name", () => {
+    const title = "DRAFT: Account Suspension and Termination Rules";
+    expect(titleOf(legalPageMetadata("en", "account-rules", document(title)))).toBe(title);
   });
 
   it("gives each of the legal pages a description of 50 to 160 characters that no other has", () => {
@@ -115,6 +124,13 @@ describe("the metadata of a vacancy (FR-H5 AC2)", () => {
     expect(canonicalOf(metadata)).toBe(`${SITE}/en/jobs/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11`);
     expect(metadata.openGraph?.title).toBe(titleOf(metadata));
     expect(metadata.openGraph?.description).toBe(metadata.description);
+    expect(metadata.openGraph?.siteName).toBe(BRAND_NAME);
+  });
+
+  it("leaves the product name out of a title it would not fit, rather than cutting the name", () => {
+    const metadata = vacancyMetadata("en", job({ title: "Senior Warehouse Operator" }));
+    expect(`${titleOf(metadata)} | ${BRAND_NAME}`).toHaveLength(62);
+    expect(titleOf(metadata)).toBe("Senior Warehouse Operator - Example Logistics");
   });
 
   it("cuts the title to 60 characters when it is longer, and keeps the one that fits", () => {

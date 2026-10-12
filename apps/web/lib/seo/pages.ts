@@ -24,7 +24,7 @@ export const staticPages = {
   },
   howItWorks: {
     path: "how-it-works",
-    title: `How ${BRAND_NAME} works — ${BRAND_NAME}`,
+    title: `How ${BRAND_NAME} works`,
     description:
       `How workers and employers use ${BRAND_NAME}, step by step: from the profile and the search to the application and the decision.`,
   },
