@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { waitForHydration } from "./hydration";
 import { createCommittedUser } from "./login";
 import { execute, literal, query } from "./db";
-import { organizationRows, registerOrganization, uniqueName } from "./organizations";
+import { organizationRows, registerOrganization, uniqueName, uniqueToken } from "./organizations";
 import { expect } from "./test";
 import type { TestUser } from "./test-user";
 
@@ -151,6 +151,7 @@ interface SeedJobOptions {
   statusChangedAt: string;
   country: string;
   city: string;
+  industry: string;
   employment: string;
   salary: Salary | null;
   accommodation: boolean;
@@ -166,6 +167,7 @@ const SEED_DEFAULTS: SeedJobOptions = {
   statusChangedAt: "now()",
   country: "DE",
   city: "Hamburg",
+  industry: "C",
   employment: "full_time",
   salary: null,
   accommodation: false,
@@ -174,7 +176,7 @@ const SEED_DEFAULTS: SeedJobOptions = {
 
 // A vacancy as an administrator would have saved it, written by the database owner so that a test can give it any status.
 export function seedJob(company: Company, options: Partial<SeedJobOptions> = {}): string {
-  const { title, description, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport } = {
+  const { title, description, status, moderation, createdAt, statusChangedAt, country, city, industry, employment, salary, accommodation, visaSupport } = {
     ...SEED_DEFAULTS,
     ...options,
   };
@@ -184,7 +186,7 @@ export function seedJob(company: Company, options: Partial<SeedJobOptions> = {})
         employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support,
         recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at)
      values (${literal(company.id)}, ${literal(title)}, ${literal(description)},
-        '7212', 'C', ${literal(country)}, ${literal(city)}, ${literal(employment)}, ${amount(salary?.min)}, ${amount(salary?.max)},
+        '7212', ${literal(industry)}, ${literal(country)}, ${literal(city)}, ${literal(employment)}, ${amount(salary?.min)}, ${amount(salary?.max)},
         ${salary ? literal(salary.currency) : "null"}, ${salary ? literal(salary.period) : "null"}, ${accommodation}, ${visaSupport},
         'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt})
      returning id`,
@@ -215,4 +217,46 @@ export async function expectNotFound(page: Page, path: string) {
   expect(response?.status(), path).toBe(200);
   await expect(page.getByRole("heading", { name: "Page not found" }), path).toBeVisible();
   await expect(page.locator('meta[name="robots"]').first(), path).toHaveAttribute("content", /noindex/);
+}
+
+export interface SeededEmployers {
+  organizations: string[];
+  jobs: string[];
+}
+
+// Many active employers with one open, visible vacancy each, in one statement of the database owner, for the figures the
+// home page shows only from 100 (D87). The given company user owns them all, so no account is created per employer, and
+// one vacancy each stays within the open-vacancy limit of any plan.
+export function seedEmployersWithVacancy(owner: TestUser, count: number, industry: string): SeededEmployers {
+  const token = uniqueToken();
+  const rows = execute(
+    `with orgs as (
+       insert into public.organizations (type, slug, legal_name, display_name, based_in_country)
+       select 'employer', 'bulk-${token}-' || n, 'Bulk Employer ${token} ' || n, 'Bulk Employer ${token} ' || n, 'PL'
+       from generate_series(1, ${count}) n
+       returning id
+     ), owners as (
+       insert into public.organization_members (organization_id, user_id, role, accepted_at)
+       select id, ${literal(owner.id)}, 'owner', now() from orgs
+       returning organization_id
+     )
+     insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city,
+        employment_type, recruitment_preference, status, moderation_state, created_by)
+     select organization_id, 'Bulk vacancy ${token}', ${literal(SEED_DEFAULTS.description)}, '7212', ${literal(industry)}, 'PL', 'Gdansk',
+        'full_time', 'both', 'open', 'visible', ${literal(owner.id)}
+     from owners
+     returning organization_id, id`,
+  )
+    .trim()
+    .split("\n")
+    .map((row) => row.split("|"));
+  return { organizations: rows.map(([organization]) => organization), jobs: rows.map(([, job]) => job) };
+}
+
+// Takes the seeded employers and their vacancies out of every public figure and list again.
+export function retireEmployers({ organizations, jobs }: SeededEmployers): void {
+  if (jobs.length > 0) execute(`update public.jobs set deleted_at = now() where id in (${jobs.map(literal).join(", ")})`);
+  if (organizations.length > 0) {
+    execute(`update public.organizations set status = 'suspended' where id in (${organizations.map(literal).join(", ")})`);
+  }
 }

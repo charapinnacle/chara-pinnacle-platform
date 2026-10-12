@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, query } from "./support/db";
-import { newCompany, seedJob } from "./support/jobs";
+import { newCompany, retireEmployers, seedEmployersWithVacancy, seedJob, type SeededEmployers } from "./support/jobs";
 import { restoreSnapshot, showSnapshot, visitorCounts } from "./support/statistics";
 import { expect, test } from "./support/test";
 
@@ -11,7 +11,10 @@ const SCHEDULED_REFRESH = "select cron.alter_job((select jobid from cron.job whe
 // The snapshot of the statistics, the threshold setting and the grant on the view are changed for the whole database
 // while this file runs, so it has a project of its own that follows the others (playwright.config.ts).
 test.describe.configure({ mode: "serial" });
+let bulk: SeededEmployers = { organizations: [], jobs: [] };
 test.afterEach(() => {
+  retireEmployers(bulk);
+  bulk = { organizations: [], jobs: [] };
   restoreSnapshot();
   execute(`grant select on ${VIEW} to anon, authenticated`);
   execute("update private.settings set value = '5' where key = 'stats_min_count'");
@@ -139,6 +142,8 @@ test.describe("live statistics on the home page", () => {
 
     const companies = await Promise.all(Array.from({ length: 5 }, () => newCompany()));
     companies.forEach((company) => seedJob(company, { title: "Statistics welder", status: "open", country: "PL" }));
+    // A hundred more, so that both figures reach the credible minimum of the page (D87) whatever the other specs left.
+    bulk = seedEmployersWithVacancy(companies[0].owner, 100, "C");
     expect(visitorCounts()).toEqual(before);
 
     execute("refresh materialized view concurrently stats.platform_counts_mv");
@@ -147,21 +152,14 @@ test.describe("live statistics on the home page", () => {
       `select (select count(*) from public.jobs where status = 'open' and moderation_state = 'visible' and deleted_at is null)::integer as jobs,
               (select count(*) from public.organizations where type = 'employer' and status = 'active')::integer as employers`,
     )[0];
-    expect(direct.jobs).toBeGreaterThanOrEqual(5);
-    expect(direct.employers).toBeGreaterThanOrEqual(5);
+    expect(direct.jobs).toBeGreaterThanOrEqual(105);
+    expect(direct.employers).toBeGreaterThanOrEqual(105);
     expect(after.active_jobs).toBe(direct.jobs);
     expect(after.employers).toBe(direct.employers);
     expect(after.active_jobs).not.toBe(before.active_jobs);
 
-    // The page shows each of them from the credible minimum of 100 (D87) and leaves it out below.
     await openHome(page);
-    for (const [label, count] of [
-      ["Active jobs", after.active_jobs],
-      ["Employers", after.employers],
-    ] as const) {
-      const group = groups(page).filter({ hasText: label });
-      if ((count ?? 0) >= 100) await expect(group).toHaveText(new RegExp(`^${label}\\s*${(count ?? 0).toLocaleString("en")}$`));
-      else await expect(group).toHaveCount(0);
-    }
+    await expect(groups(page).filter({ hasText: "Active jobs" })).toHaveText(new RegExp(`^Active jobs\\s*${direct.jobs.toLocaleString("en")}$`));
+    await expect(groups(page).filter({ hasText: "Employers" })).toHaveText(new RegExp(`^Employers\\s*${direct.employers.toLocaleString("en")}$`));
   });
 });
