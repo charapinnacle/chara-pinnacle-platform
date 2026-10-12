@@ -5,7 +5,7 @@ import { Photo } from "@/components/home/photo";
 import { PipelinePreview } from "@/components/home/pipeline-preview";
 import { signUpPath } from "@/lib/routes";
 
-type PanelTextProps = { id: string; eyebrow: string; heading: string; text: string; children: React.ReactNode };
+type PanelTextProps = { id: string; eyebrow: string; heading: string; text: string; children?: React.ReactNode };
 
 function PanelText({ id, eyebrow, heading, text, children }: PanelTextProps) {
   return (
@@ -15,13 +15,14 @@ function PanelText({ id, eyebrow, heading, text, children }: PanelTextProps) {
         {heading}
       </h2>
       <p className="max-w-[44ch] text-lead text-pretty text-muted-foreground">{text}</p>
-      <div className="pt-2">{children}</div>
+      {children ? <div className="pt-2">{children}</div> : null}
     </div>
   );
 }
 
 // One panel per side of the platform, each with a rendering of the screen it leads to. Only what Phase 1 does is said.
-export function ProductPanels({ lang }: { lang: string }) {
+// Post a Job is offered only to those the header offers it to.
+export function ProductPanels({ lang, postJobHref }: { lang: string; postJobHref: string | null }) {
   return (
     <>
       <Band tone="dark" aria-labelledby="home-employers-heading" className="grid items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
@@ -31,9 +32,11 @@ export function ProductPanels({ lang }: { lang: string }) {
           heading="Publish a vacancy and manage every applicant in one pipeline"
           text="Move applicants from Applied to Hired on one board, shortlist the strongest and invite your team to review."
         >
-          <LinkButton href={signUpPath(lang, "company")} prefetch={false} className="lift">
-            Post a Job
-          </LinkButton>
+          {postJobHref ? (
+            <LinkButton href={postJobHref} prefetch={false} className="lift">
+              Post a Job
+            </LinkButton>
+          ) : null}
         </PanelText>
         <div className="relative isolate grid ps-6 pt-[46%] sm:ps-16">
           <div className="absolute start-0 end-10 top-0 -z-10 aspect-[3/2] overflow-hidden rounded-2xl bg-inverse sm:end-20">

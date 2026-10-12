@@ -1,5 +1,7 @@
 import "server-only";
 import { cache } from "react";
+import { getCurrentUser } from "@/lib/dal/session";
+import { signUpPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import type { OrganizationProfileInput } from "@/lib/validation/organization";
 import type { MemberRole } from "@/lib/validation/team";
@@ -37,6 +39,23 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
 // The organization in which the user may publish vacancies: an owner or an admin of one that is not suspended.
 export function publishingOrganization(organizations: Organization[]): Organization | undefined {
   return organizations.find(({ role, suspended }) => role !== "member" && !suspended);
+}
+
+// Where Post a Job leads, for the header and the home page alike. A visitor starts as an employer; a signed-in employer goes
+// through /post-job, which finds the new-vacancy page of the organisation (the address of an organisation is not put on a
+// public page). A candidate, a suspended account and a member who cannot publish are offered nothing (null).
+export async function getPostJobHref(lang: string): Promise<string | null> {
+  const user = await getCurrentUser();
+  if (!user) return signUpPath(lang, "company");
+  if (user.suspended || user.accountKind !== "company") return null;
+  try {
+    const organizations = await getMyOrganizations(user.id);
+    const mayPublish = organizations.length === 0 || publishingOrganization(organizations) !== undefined;
+    return mayPublish ? `/${lang}/post-job` : null;
+  } catch (error) {
+    console.error("The organisations of Post a Job could not be loaded", error);
+    return `/${lang}/post-job`;
+  }
 }
 
 export async function getOrganizationSlug(organizationId: string): Promise<string | null> {

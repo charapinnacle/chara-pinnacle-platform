@@ -7,7 +7,6 @@ import type { JobSearchResult } from "@/lib/dal/hiring";
 import { formatShortDate } from "@/lib/i18n/format";
 import { formatSalary } from "@/lib/jobs/presentation";
 import { LATEST_JOBS_MINIMUM, LATEST_JOBS_SHOWN } from "@/lib/public/home";
-import { signUpPath } from "@/lib/routes";
 
 type JobCardProps = { job: JobSearchResult; lang: string; countryName: string };
 
@@ -65,11 +64,16 @@ function JobCard({ job, lang, countryName }: JobCardProps) {
   );
 }
 
-type LatestJobsProps = { lang: string; jobs: readonly JobSearchResult[]; countryNames: ReadonlyMap<string, string> };
+type LatestJobsProps = {
+  lang: string;
+  jobs: readonly JobSearchResult[];
+  countryNames: ReadonlyMap<string, string>;
+  postJobHref: string | null;
+};
 
 // Real open vacancies from the public search, six from sm and three on a phone. With fewer than three the section would look
 // broken, so it says what will be here and offers the way to post one instead.
-export function LatestJobs({ lang, jobs, countryNames }: LatestJobsProps) {
+export function LatestJobs({ lang, jobs, countryNames, postJobHref }: LatestJobsProps) {
   const enough = jobs.length >= LATEST_JOBS_MINIMUM;
   return (
     <Band aria-labelledby="home-jobs-heading" className="grid gap-10">
@@ -94,9 +98,11 @@ export function LatestJobs({ lang, jobs, countryNames }: LatestJobsProps) {
             Open vacancies appear here as soon as employers publish them. Hiring? Publish yours and manage every applicant in one
             place.
           </p>
-          <LinkButton href={signUpPath(lang, "company")} prefetch={false} className="mt-2">
-            Post a Job
-          </LinkButton>
+          {postJobHref ? (
+            <LinkButton href={postJobHref} prefetch={false} className="mt-2">
+              Post a Job
+            </LinkButton>
+          ) : null}
         </div>
       )}
     </Band>

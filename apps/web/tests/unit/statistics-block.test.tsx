@@ -12,6 +12,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/display-font", () => ({ newsreader: { variable: "font-newsreader" } }));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/home", () => ({ getNewestJobs, getIndustryCounts, getHomeReference }));
+vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref: async () => "/en/signup?kind=company" }));
 
 const reference = {
   countries: [

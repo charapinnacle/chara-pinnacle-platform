@@ -45,7 +45,7 @@ function job(index: number, overrides: Partial<JobSearchResult> = {}): JobSearch
 const countryNames = new Map([["DE", "Germany"]]);
 
 describe("the hero", () => {
-  const markup = html(<Hero lang="en" popular={popular} />);
+  const markup = html(<Hero lang="en" popular={popular} postJobHref="/en/signup?kind=company" />);
 
   it("marks itself for the header and holds the one h1, the client's line, the search and the way to post a job", () => {
     expect(markup).toMatch(/^<header data-hero="true" class="dark /);
@@ -66,7 +66,15 @@ describe("the hero", () => {
   });
 
   it("leaves out the row of popular searches when no occupation is known", () => {
-    expect(html(<Hero lang="en" popular={[]} />)).not.toContain("Popular searches");
+    expect(html(<Hero lang="en" popular={[]} postJobHref="/en/signup?kind=company" />)).not.toContain("Popular searches");
+  });
+
+  it("sends a signed-in employer to /post-job and offers no Post a Job to whom the header offers none", () => {
+    expect(html(<Hero lang="en" popular={popular} postJobHref="/en/post-job" />)).toMatch(/Hiring\?.*<a [^>]*href="\/en\/post-job"[^>]*>Post a Job<\/a>/);
+    const none = html(<Hero lang="en" popular={popular} postJobHref={null} />);
+    expect(none).not.toContain("Hiring?");
+    expect(none).not.toContain("Post a Job");
+    expect(none).toContain('role="search"');
   });
 
   it("puts the welding photograph under the text as the one eager, high-priority picture, and writes no style attribute", () => {
@@ -94,7 +102,7 @@ describe("the latest jobs", () => {
     const jobs = Array.from({ length: 8 }, (_, index) =>
       job(index, index === 0 ? { salaryMin: 3200, salaryMax: 3900, salaryCurrency: "EUR", salaryPeriod: "month" } : {}),
     );
-    const markup = html(<LatestJobs lang="en" jobs={jobs} countryNames={countryNames} />);
+    const markup = html(<LatestJobs lang="en" jobs={jobs} countryNames={countryNames} postJobHref="/en/signup?kind=company" />);
     const cards = (markup.match(/<a [^>]*aria-labelledby="[^"]+"[^>]*>/g) ?? []).map((tag) => ({
       href: /href="([^"]+)"/.exec(tag)?.[1],
       labelledBy: /aria-labelledby="([^"]+)"/.exec(tag)?.[1],
@@ -113,12 +121,18 @@ describe("the latest jobs", () => {
 
   it("with fewer than three vacancies shows a calm empty state with Post a Job instead of a short list", () => {
     for (const jobs of [[], [job(1), job(2)]]) {
-      const markup = html(<LatestJobs lang="en" jobs={jobs} countryNames={countryNames} />);
+      const markup = html(<LatestJobs lang="en" jobs={jobs} countryNames={countryNames} postJobHref="/en/signup?kind=company" />);
       expect(markup).not.toMatch(/href="\/en\/jobs\/0/);
       expect(textOf(markup)).toContain("The first vacancies are on their way");
       expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a Job<\/a>/);
       expect(markup).toMatch(/>Browse all jobs<\/a>/);
     }
+  });
+
+  it("keeps the empty state without Post a Job for whom the header offers none", () => {
+    const markup = html(<LatestJobs lang="en" jobs={[]} countryNames={countryNames} postJobHref={null} />);
+    expect(textOf(markup)).toContain("The first vacancies are on their way");
+    expect(markup).not.toContain("Post a Job");
   });
 });
 
@@ -161,7 +175,7 @@ describe("browse by industry and by country", () => {
 });
 
 describe("the product panels", () => {
-  const markup = html(<ProductPanels lang="en" />);
+  const markup = html(<ProductPanels lang="en" postJobHref="/en/signup?kind=company" />);
 
   it("offer employers Post a Job and workers the passport, each beside a rendering of its screen", () => {
     expect(markup).toMatch(/<h2 id="home-employers-heading"[^>]*>Publish a vacancy and manage every applicant in one pipeline<\/h2>/);
@@ -169,6 +183,13 @@ describe("the product panels", () => {
     expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a Job<\/a>/);
     expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=worker"[^>]*>Create your passport<\/a>/);
     expect(markup).toContain("employers-handshake-640.webp");
+  });
+
+  it("lead a signed-in employer to /post-job and offer no Post a Job to whom the header offers none", () => {
+    expect(html(<ProductPanels lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*>Post a Job<\/a>/);
+    const none = html(<ProductPanels lang="en" postJobHref={null} />);
+    expect(none).not.toContain("Post a Job");
+    expect(none).toMatch(/<a [^>]*href="\/en\/signup\?kind=worker"[^>]*>Create your passport<\/a>/);
   });
 
   it("promise nothing of a later phase", () => {
@@ -233,12 +254,14 @@ describe("the trust strip", () => {
 
 describe("the closing call", () => {
   it("sets the client's line over the lazy construction photograph with Join and Post a Job", () => {
-    const markup = html(<ClosingCall lang="en" />);
+    const markup = html(<ClosingCall lang="en" postJobHref="/en/signup?kind=company" />);
     expect(markup).toMatch(/<h2 id="home-start-heading"[^>]*>Your Workforce. Your Network. One Platform.<\/h2>/);
     expect(markup).toContain("construction-team-1280.jpg");
     expect(markup).toContain('loading="lazy"');
     expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=worker"[^>]*>Join Chara Pinnacle<\/a>/);
     expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a Job<\/a>/);
+    expect(html(<ClosingCall lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*>Post a Job<\/a>/);
+    expect(html(<ClosingCall lang="en" postJobHref={null} />)).not.toContain("Post a Job");
   });
 });
 

@@ -4,7 +4,7 @@ import { signUpPath } from "@/lib/routes";
 import { BRAND_NAME } from "@/lib/brand";
 
 // The construction photograph under a scrim that keeps the heading and the buttons at AA contrast or better.
-export function ClosingCall({ lang }: { lang: string }) {
+export function ClosingCall({ lang, postJobHref }: { lang: string; postJobHref: string | null }) {
   return (
     <section aria-labelledby="home-start-heading" className="dark relative isolate overflow-hidden bg-inverse text-foreground">
       <Photo name="construction-team" sizes="100vw" />
@@ -17,9 +17,11 @@ export function ClosingCall({ lang }: { lang: string }) {
           <LinkButton href={signUpPath(lang, "worker")} prefetch={false} className="lift">
             Join {BRAND_NAME}
           </LinkButton>
-          <LinkButton href={signUpPath(lang, "company")} prefetch={false} variant="secondary" className="lift min-h-12 border-foreground/40 bg-transparent hover:bg-secondary">
-            Post a Job
-          </LinkButton>
+          {postJobHref ? (
+            <LinkButton href={postJobHref} prefetch={false} variant="secondary" className="lift min-h-12 border-foreground/40 bg-transparent hover:bg-secondary">
+              Post a Job
+            </LinkButton>
+          ) : null}
         </div>
       </div>
     </section>

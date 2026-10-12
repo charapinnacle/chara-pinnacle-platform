@@ -9,6 +9,7 @@ import { ReachBand } from "@/components/home/reach-band";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { TrustStrip } from "@/components/home/trust-strip";
 import { getHomeReference, getIndustryCounts, getNewestJobs } from "@/lib/dal/home";
+import { getPostJobHref } from "@/lib/dal/organizations";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
 import { newsreader } from "@/lib/display-font";
 import { countryChips, INDUSTRY_TILES, popularSearches, reachFigures } from "@/lib/public/home";
@@ -24,21 +25,22 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
 export default async function Home({ params }: PageProps<"/[lang]">) {
   preloadHeroPhoto();
   const { lang } = await params;
-  const [jobs, industryCounts, tiles, reference] = await Promise.all([
+  const [jobs, industryCounts, tiles, reference, postJobHref] = await Promise.all([
     getNewestJobs(),
     getIndustryCounts(INDUSTRY_TILES.map(({ code }) => code)),
     getPlatformStatistics(),
     getHomeReference(),
+    getPostJobHref(lang),
   ]);
   const countries = reference?.countries ?? [];
   const countryNames = new Map(countries.map(({ code, name }) => [code, name]));
 
   return (
     <div className={newsreader.variable}>
-      <Hero lang={lang} popular={reference ? popularSearches(reference.occupations) : []} />
-      {jobs ? <LatestJobs lang={lang} jobs={jobs} countryNames={countryNames} /> : null}
+      <Hero lang={lang} popular={reference ? popularSearches(reference.occupations) : []} postJobHref={postJobHref} />
+      {jobs ? <LatestJobs lang={lang} jobs={jobs} countryNames={countryNames} postJobHref={postJobHref} /> : null}
       <Browse lang={lang} industryCounts={industryCounts} countries={jobs ? countryChips(jobs, countries) : []} />
-      <ProductPanels lang={lang} />
+      <ProductPanels lang={lang} postJobHref={postJobHref} />
       {reference ? (
         <ReachBand
           figures={reachFigures({
@@ -51,7 +53,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         />
       ) : null}
       <TrustStrip lang={lang} />
-      <ClosingCall lang={lang} />
+      <ClosingCall lang={lang} postJobHref={postJobHref} />
       <RevealOnScroll />
     </div>
   );

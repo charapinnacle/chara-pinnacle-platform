@@ -3,33 +3,17 @@ import { FormButton } from "@/components/forms/form-button";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { LinkButton } from "@/components/layout/link-button";
 import { signOut } from "@/lib/actions/login";
-import { getMyOrganizations, publishingOrganization } from "@/lib/dal/organizations";
+import { getPostJobHref } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
 import { guestLinks, siteLinks } from "@/lib/public/navigation";
-import { homePath, signUpPath } from "@/lib/routes";
+import { homePath } from "@/lib/routes";
 
 const linkClassName =
   "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground";
 
-// A visitor starts as an employer; a signed-in employer goes through /post-job, which finds the new-vacancy page of the
-// organisation (the address of an organisation is not put on a public page). A candidate, a suspended account and a
-// member who cannot publish are offered nothing. Not behind a Suspense boundary, like the account items below.
-async function postJobHref(lang: string): Promise<string | null> {
-  const user = await getCurrentUser();
-  if (!user) return signUpPath(lang, "company");
-  if (user.suspended || user.accountKind !== "company") return null;
-  try {
-    const organizations = await getMyOrganizations(user.id);
-    const mayPublish = organizations.length === 0 || publishingOrganization(organizations) !== undefined;
-    return mayPublish ? `/${lang}/post-job` : null;
-  } catch (error) {
-    console.error("The organisations of the header could not be loaded", error);
-    return `/${lang}/post-job`;
-  }
-}
-
+// Not behind a Suspense boundary, like the account items below.
 async function PostJob({ lang }: { lang: string }) {
-  const href = await postJobHref(lang);
+  const href = await getPostJobHref(lang);
   if (!href) return null;
   return (
     <li>

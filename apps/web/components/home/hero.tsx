@@ -4,7 +4,6 @@ import { TextLink } from "@/components/forms/text-link";
 import { HeroSearch } from "@/components/home/hero-search";
 import { Photo } from "@/components/home/photo";
 import { photoSrcSet } from "@/lib/public/photos";
-import { signUpPath } from "@/lib/routes";
 
 const PHOTO_SIZES = "100vw";
 
@@ -21,11 +20,11 @@ export function preloadHeroPhoto() {
   });
 }
 
-type HeroProps = { lang: string; popular: readonly { code: string; label: string }[] };
+type HeroProps = { lang: string; popular: readonly { code: string; label: string }[]; postJobHref: string | null };
 
 // data-hero tells the header (home.css) that it lies over a dark surface. The photograph is decoration under a scrim that
 // keeps every text on it at AA contrast or better (home.css, hero-scrim).
-export function Hero({ lang, popular }: HeroProps) {
+export function Hero({ lang, popular, postJobHref }: HeroProps) {
   return (
     <header data-hero className="dark relative isolate overflow-hidden bg-inverse text-foreground">
       <Photo name="hero-welder" priority sizes={PHOTO_SIZES} className="object-[60%_center]" />
@@ -57,12 +56,14 @@ export function Hero({ lang, popular }: HeroProps) {
               </ul>
             </div>
           ) : null}
-          <p className="flex flex-wrap items-center gap-x-2 text-body">
-            Hiring?
-            <TextLink standalone href={signUpPath(lang, "company")} prefetch={false}>
-              Post a Job
-            </TextLink>
-          </p>
+          {postJobHref ? (
+            <p className="flex flex-wrap items-center gap-x-2 text-body">
+              Hiring?
+              <TextLink standalone href={postJobHref} prefetch={false}>
+                Post a Job
+              </TextLink>
+            </p>
+          ) : null}
         </div>
       </div>
     </header>
