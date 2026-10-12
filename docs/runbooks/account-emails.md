@@ -35,7 +35,7 @@ Run it before go-live and again after each change of wording, the domain or the 
 | A test confirmation reaches an external mailbox | Sign up with an address at a public mail provider; the email arrives in the inbox (not spam) from `Chara Pinnacle <no-reply@<domain>>` | |
 | A test invitation reaches an external mailbox | Invite that address from a test organization; the email arrives and the link opens the invitation page | |
 | Reset and two-step notice | Request a reset; check that the reset email arrives. The notice is checked in the Resend dashboard after a staff reset of a test user (never on a real account) | |
-| Wording of the four templates | Each is English only, names CHARA, carries one link and says what to do if the email was not requested. `apps/web/tests/unit/account-email-wording.test.ts` checks this on every change; a person reads the final text as well | |
+| Wording of the four templates | Each is English only, names the product (Chara Pinnacle, equal to `BRAND_NAME` in `apps/web/lib/brand.ts`), carries one link and says what to do if the email was not requested. `apps/web/tests/unit/account-email-wording.test.ts` checks this on every change; a person reads the final text as well | |
 
 The wording is reviewed by Platform and Operations; legal review of the tone is outside the repository.
 
