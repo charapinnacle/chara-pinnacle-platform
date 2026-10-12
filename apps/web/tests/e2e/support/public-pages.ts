@@ -18,7 +18,7 @@ export const LEGAL_SLUGS = [
 // Post a Job from the client's website structure (D81); the pages about Chara Pinnacle are in the footer.
 export const HEADER_LABELS = ["Find Jobs", "How Chara Pinnacle works", "Post a Job", "Login", "Sign up"];
 
-// The footer reads in three columns: Platform, Company and Legal.
+// The footer reads in three columns: Platform, Company and Legal (with the photo credits of the home page, U70).
 export const FOOTER_LABELS = [
   "Find Jobs",
   "How Chara Pinnacle works",
@@ -30,6 +30,7 @@ export const FOOTER_LABELS = [
   "Privacy Policy",
   "Terms of Service",
   "Cookie Policy",
+  "Photo credits",
   "All legal documents",
 ];
 

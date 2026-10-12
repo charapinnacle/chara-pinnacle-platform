@@ -15,11 +15,14 @@ export const guestLinks = [
 
 export const LEGAL_INDEX_PATH = "legal";
 
+export const PHOTO_CREDITS_ID = "photo-credits";
+const PHOTO_CREDITS_PATH = `imprint#${PHOTO_CREDITS_ID}`;
+
 // The billing terms are not shown to a signed-in person who is not an employer: a candidate's pages hold no billing link (FR-G6 AC5).
 export const BILLING_TERMS_PATH = "legal/subscription-and-billing-terms";
 
 // The public footer: three quiet columns under the logo. Every legal document is two clicks away from every page (the last
-// link leads to the index).
+// link leads to the index). The credits of the licensed photographs of the home page are a section of the Imprint.
 export const publicFooterColumns = [
   {
     title: "Platform",
@@ -44,6 +47,7 @@ export const publicFooterColumns = [
       { path: "legal/privacy-policy", label: "Privacy Policy" },
       { path: "legal/terms-of-service", label: "Terms of Service" },
       { path: "legal/cookie-policy", label: "Cookie Policy" },
+      { path: PHOTO_CREDITS_PATH, label: "Photo credits" },
       { path: LEGAL_INDEX_PATH, label: "All legal documents" },
     ],
   },
