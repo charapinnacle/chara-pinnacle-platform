@@ -3,6 +3,7 @@ import {
   formDefaults,
   formFilters,
   parseSearchParams,
+  resolvePlace,
   searchFormSchema,
   searchQuery,
   usedFilters,
@@ -293,5 +294,37 @@ describe("searchFormSchema", () => {
     expect(result.success && searchQuery(formFilters(result.data))).toBe(
       "country=DE&employment_type=full_time&salary_min=3000&salary_currency=EUR&salary_period=month&accommodation=true",
     );
+  });
+});
+
+describe("the place of the home search (U70)", () => {
+  const countries = [
+    { code: "DE", name: "Germany" },
+    { code: "TR", name: "Türkiye" },
+    { code: "CI", name: "Côte d'Ivoire" },
+  ];
+
+  it("turns a country name or code, in any case and without its accents, into the country filter", () => {
+    for (const where of ["Germany", "germany", " GERMANY ", "de", "DE"]) {
+      expect(resolvePlace({ q: "welder", where }, countries), where).toEqual({ q: "welder", country: "DE", city: undefined });
+    }
+    expect(resolvePlace({ where: "turkiye" }, countries)).toEqual({ country: "TR", city: undefined });
+    expect(resolvePlace({ where: "Cote d'Ivoire" }, countries)).toEqual({ country: "CI", city: undefined });
+  });
+
+  it("turns anything else into the city filter, trimmed, and replaces a country of the same address", () => {
+    expect(resolvePlace({ where: "  Hamburg ", country: "PL" }, countries)).toEqual({ city: "Hamburg", country: undefined });
+    expect(resolvePlace({ where: "Germanyx" }, countries)).toEqual({ city: "Germanyx", country: undefined });
+  });
+
+  it("drops an empty place and leaves an address without one as it is", () => {
+    expect(resolvePlace({ q: "", where: "   " }, countries)).toEqual({ q: "" });
+    expect(resolvePlace({ city: "Bremen" }, countries)).toEqual({ city: "Bremen" });
+  });
+
+  it("leaves a place that is too long to the validation of the city, which reports it", () => {
+    const { filters, errors } = parseSearchParams(resolvePlace({ where: "x".repeat(101) }, countries));
+    expect(filters.city).toBeUndefined();
+    expect(errors.city).toBe("Use 100 characters or fewer in the city.");
   });
 });

@@ -178,6 +178,18 @@ export function parseSearchParams(raw: RawParams): { filters: JobSearchFilters; 
   return { filters, errors };
 }
 
+const sameText = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" }) === 0;
+
+// The one place field of the home search (where): a country name or code, in any case and with or without accents,
+// becomes the country filter, anything else the city. It replaces a country or city of the same address.
+export function resolvePlace(raw: RawParams, countries: readonly { code: string; name: string }[]): RawParams {
+  const { where, ...rest } = raw;
+  const place = first(where)?.trim();
+  if (!place) return rest;
+  const country = countries.find(({ code, name }) => sameText(name, place) || sameText(code, place));
+  return country ? { ...rest, country: country.code, city: undefined } : { ...rest, city: place, country: undefined };
+}
+
 const QUERY_ORDER = [
   "q", "country", "city", "employer", "occupation", "industry", "employment_type", "salary_min", "salary_currency", "salary_period",
   "accommodation", "visa_support", "recruitment", "cursor",
