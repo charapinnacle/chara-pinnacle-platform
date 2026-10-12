@@ -24,7 +24,7 @@ export default async function OnboardingSecurityPage({ params }: PageProps<"/[la
     <OnboardingPanel
       steps={<OnboardingSteps kind="company" current={1} />}
       title="Secure your account"
-      description="As the owner you can see applicants' documents and your company's billing, so CHARA asks for a code from an authenticator app when you log in. It takes about a minute."
+      description="As the owner you can see applicants' documents and your company's billing, so CHARA asks for a code from an authenticator app before you open them. It takes about a minute."
     >
       <p className="text-body leading-relaxed">
         You scan a QR code with an authenticator app such as Google Authenticator, 1Password or Authy, then enter the code it

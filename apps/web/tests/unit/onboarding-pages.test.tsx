@@ -75,7 +75,9 @@ describe("the first step of onboarding (resume)", () => {
     expect(html).not.toContain("cannot be changed");
     expect(html).toMatch(/<legend[^>]*>Company<\/legend>/);
     expect(html).toMatch(/<legend[^>]*>Registration<\/legend>/);
-    expect(html).toContain("We use it to give each company one free trial.");
+    expect(html).toContain(
+      "We use it to give each company one free trial. 4 to 32 letters and digits, for example DE123456789 (VAT) or HRB12345 (company register)",
+    );
     expect(html).toMatch(/<input[^>]*role="combobox"[^>]*value="Austria"|<input[^>]*value="Austria"[^>]*role="combobox"/);
     expect(html.match(/type="submit"/g)).toHaveLength(1);
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Continue<\/button>/);
@@ -114,7 +116,9 @@ describe("the two-step set-up step of onboarding", () => {
     const html = await render(SecurityPage);
     expect(currentStep(html)).toBe("Security");
     expect(html).toMatch(/Step 1 of 3: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
-    expect(html).toContain("As the owner you can see applicants&#x27; documents and your company&#x27;s billing");
+    expect(html).toContain(
+      "As the owner you can see applicants&#x27; documents and your company&#x27;s billing, so CHARA asks for a code from an authenticator app before you open them.",
+    );
     expect(html).toContain("Show the QR code");
   });
 

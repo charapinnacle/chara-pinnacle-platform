@@ -33,7 +33,7 @@ export function OnboardingSteps({ kind, current }: OnboardingStepsProps) {
                   "grid size-7 shrink-0 place-items-center rounded-full border text-caption font-semibold tabular-nums",
                   state === "done" && "border-brand bg-brand text-foreground",
                   state === "current" && "border-primary bg-primary text-primary-foreground",
-                  state === "upcoming" && "border-muted-foreground/60 bg-transparent text-muted-foreground",
+                  state === "upcoming" && "border-muted-foreground bg-transparent text-muted-foreground",
                 )}
               >
                 {state === "done" ? <Check className="size-3.5" strokeWidth={2.5} /> : index + 1}

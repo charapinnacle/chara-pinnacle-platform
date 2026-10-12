@@ -13,6 +13,7 @@ import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { createOrganization } from "@/lib/actions/organizations";
+import { identifierPurpose } from "@/lib/billing/presentation";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import { onboardingPath } from "@/lib/routes";
@@ -29,8 +30,7 @@ type OrganizationFormProps = {
   defaultCountry: string;
 };
 
-const IDENTIFIER_HELP =
-  "We use it to give each company one free trial. For example DE123456789; spaces, dots, hyphens and slashes are ignored.";
+const IDENTIFIER_HELP = `${identifierPurpose} 4 to 32 letters and digits, for example DE123456789 (VAT) or HRB12345 (company register); spaces, dots, hyphens and slashes are ignored.`;
 
 const ids = {
   legalName: "org-legal-name",
@@ -44,7 +44,6 @@ const ids = {
 
 const groupTitleClassName = "mb-5 text-eyebrow text-muted-foreground uppercase";
 
-// Two short groups: what candidates see, and the legal identifier that decides the one free trial per legal entity.
 export function OrganizationForm({ lang, countries, industries, defaultCountry }: OrganizationFormProps) {
   const form = useForm<OrganizationFormInput>({
     resolver: zodResolver(organizationFormSchema),

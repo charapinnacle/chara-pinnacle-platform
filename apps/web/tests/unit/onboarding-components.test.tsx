@@ -27,7 +27,8 @@ describe("OnboardingSteps", () => {
     expect(security).not.toContain("(done)");
     expect(ready).not.toContain("aria-current");
     expect(ready).toContain("Step 3 of 3: </span>Ready");
-    expect(ready).toContain("border-muted-foreground/60");
+    expect(ready).toMatch(/border-muted-foreground[ "]/);
+    expect(ready).not.toContain("border-muted-foreground/");
     expect(ready).toContain("max-sm:sr-only");
     expect(ready).not.toContain("(done)");
     expect(markup.match(/aria-current="step"/g)).toHaveLength(1);
