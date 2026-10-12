@@ -1,10 +1,10 @@
 /* Rules that only the home page uses, loaded with it (page.tsx). The dark token set of the header over the hero is in
    globals.css with the other dark selector. */
 
-/* The header lies over the dark hero (the hero carries data-hero) from 48 rem, where the menu is one row of 64 px: solid
-   where scroll-driven animation is not available or the menu is open, transparent at the top and solid after 5 rem of
-   scrolling where it is, and solid at once under reduced motion. Below 48 rem it stays in the flow, because without
-   JavaScript its links are stacked and would cover the headline. */
+/* The header lies over the photograph of the hero (the hero carries data-hero) from 48 rem, where the menu is one row:
+   80 px high, solid where scroll-driven animation is not available or the menu is open, transparent at the top and solid
+   after 5 rem of scrolling where it is, and solid at once under reduced motion. Below 48 rem it stays in the flow, because
+   without JavaScript its links are stacked and would cover the headline. */
 .site-header:has(~ main [data-hero]) {
   color: var(--foreground);
 }
@@ -20,8 +20,17 @@
     backdrop-filter: blur(12px);
   }
 
+  .site-header:has(~ main [data-hero]) > div {
+    min-height: 5rem;
+  }
+
+  /* Over the photograph the quiet links of the header are set at full strength, like the rest of the text on it. */
+  .site-header:has(~ main [data-hero]) {
+    --muted-foreground: var(--foreground);
+  }
+
   html:has([data-hero]) {
-    scroll-padding-top: 5rem;
+    scroll-padding-top: 6rem;
   }
 }
 
@@ -45,14 +54,27 @@
   }
 }
 
-/* The texture of the dark bands: a faint gold glow and a fine grid, both fading out downwards; no image. */
-.band-texture {
-  background-image:
-    radial-gradient(56rem 30rem at 82% -8%, color-mix(in oklch, var(--brand) 17%, transparent), transparent 70%),
-    linear-gradient(to right, color-mix(in oklch, var(--foreground) 5.5%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 5.5%, transparent) 1px, transparent 1px);
-  background-size: auto, 4rem 4rem, 4rem 4rem;
-  mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
+/* The scrim over the photograph of the hero. Every text on it is near-white (--foreground of the dark set) and lies under at
+   least 72 % of --inverse, which keeps it at 6:1 or more even over a white spark of the picture (WCAG AA needs 4.5:1). On
+   a phone the text spans the width, so the scrim is even; from 48 rem the text is on the left and the picture opens up
+   towards the right, and the top darkens under the transparent header (its links stay at 4.5:1 or more over white). */
+.hero-scrim {
+  background-color: color-mix(in oklch, var(--inverse) 76%, transparent);
+}
+
+@media (min-width: 48rem) {
+  .hero-scrim {
+    background-color: transparent;
+    background-image:
+      linear-gradient(to bottom, color-mix(in oklch, var(--inverse) 75%, transparent), transparent 10rem),
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--inverse) 90%, transparent) 0%,
+        color-mix(in oklch, var(--inverse) 78%, transparent) 45%,
+        color-mix(in oklch, var(--inverse) 72%, transparent) 70%,
+        color-mix(in oklch, var(--inverse) 30%, transparent) 100%
+      );
+  }
 }
 
 /* The sections below the fold are shown by a client component only when it can rise them in (data-reveal is "pending" for a
@@ -80,52 +102,4 @@
     transform: none;
     animation: none;
   }
-}
-
-/* The preview of the journey tracker in the hero draws itself once: the line to the current step, then the step. */
-@keyframes draw-line {
-  from {
-    transform: scaleY(0);
-  }
-}
-
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-}
-
-@keyframes draw-ring {
-  from {
-    stroke-dashoffset: 100;
-  }
-}
-
-.journey-line {
-  transform-origin: top;
-  animation: draw-line 600ms var(--ease-brand) 350ms both;
-}
-
-.journey-current {
-  animation: pop-in 450ms var(--ease-brand) 350ms both;
-}
-
-li:nth-child(2) > .journey-current,
-li:nth-child(2) .journey-line {
-  animation-delay: 800ms;
-}
-
-li:nth-child(3) > .journey-current,
-li:nth-child(3) .journey-line {
-  animation-delay: 1250ms;
-}
-
-li:nth-child(4) > .journey-current {
-  animation-delay: 1700ms;
-}
-
-.passport-ring {
-  stroke-dasharray: 100;
-  animation: draw-ring 900ms var(--ease-brand) 300ms both;
 }

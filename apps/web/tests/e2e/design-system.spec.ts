@@ -87,13 +87,15 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     expect(await sizeOf("Find Your Next Opportunity")).toBe("26px");
   });
 
-  test("DS-01: the search of the hero is the primary action, Post a Job is a secondary link-button of the button height, and a click follows the link", async ({ page }) => {
+  test("DS-01: the search of the hero is the primary action, Post a Job of the closing call is a secondary link-button of the button height, and a click follows the link", async ({ page }) => {
     await page.goto("/en");
     const search = page.getByRole("search", { name: "Search jobs" }).getByRole("button", { name: "Search jobs" });
-    const post = page.getByRole("main").getByRole("link", { name: "Post a Job" });
+    const join = page.getByRole("region", { name: "Your Workforce. Your Network. One Platform." }).getByRole("link", { name: "Join Chara Pinnacle" });
+    const post = page.getByRole("region", { name: "Your Workforce. Your Network. One Platform." }).getByRole("link", { name: "Post a Job" });
     expect((await post.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    expect((await post.boundingBox())?.height).toBe((await join.boundingBox())?.height);
     expect(await backgroundOf(search)).toBe(await tokenColour(page, "--primary"));
-    // On the dark hero the secondary action is an outline: no fill, the border of the control token.
+    // On the dark photograph the secondary action is an outline: no fill and a 1 px border.
     expect(await backgroundOf(post)).toBe("rgba(0, 0, 0, 0)");
     expect(await post.evaluate((link) => getComputedStyle(link).borderTopWidth)).toBe("1px");
     await post.click();
