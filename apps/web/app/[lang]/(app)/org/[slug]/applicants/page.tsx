@@ -29,7 +29,7 @@ import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { applicantsExportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { parseApplicantListParams } from "@/lib/validation/applicant-list";
 
-export const metadata: Metadata = { title: "Applicants — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Applicants", robots: { index: false } };
 
 const csvNotInPlanText = "Your plan does not include the CSV export.";
 

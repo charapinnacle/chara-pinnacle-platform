@@ -3,7 +3,7 @@ import { AuditSearch } from "@/components/admin/audit-search";
 import { PageHeader } from "@/components/layout/page-header";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Audit log — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Audit log", robots: { index: false } };
 
 export default async function AuditPage({ params }: PageProps<"/[lang]/admin/audit">) {
   const { lang } = await params;

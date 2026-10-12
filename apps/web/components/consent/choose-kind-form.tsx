@@ -6,6 +6,7 @@ import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { ConsentForm } from "@/components/consent/consent-form";
 import { chooseAccountKind } from "@/lib/actions/consents";
 import type { LegalDocumentSummary } from "@/lib/validation/consents";
+import { BRAND_NAME } from "@/lib/brand";
 
 type ChooseKindFormProps = {
   documents: Record<Kind, LegalDocumentSummary[]>;
@@ -22,7 +23,7 @@ export function ChooseKindForm({ documents, attestationWording }: ChooseKindForm
         control={control}
         name="kind"
         id="onboarding-kind"
-        legend="I want to use CHARA as"
+        legend={`I want to use ${BRAND_NAME} as`}
         description={KIND_IS_FINAL}
         options={kindOptions}
       />

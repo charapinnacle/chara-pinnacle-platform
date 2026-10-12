@@ -149,7 +149,8 @@ test.describe("the public pages", () => {
       if (stop.text === FOOTER_LABELS.at(-1)) break;
     }
     const inRegion = (region: string) => stops.filter((stop) => stop.region === region).map((stop) => stop.text);
-    expect(inRegion("header")).toEqual(["CHARA", ...HEADER_LABELS]);
+    // The logo link's text is its name for assistive technology, then the CHARA lock-up drawn in type (hidden from it).
+    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA", ...HEADER_LABELS]);
     expect(inRegion("footer")).toEqual(FOOTER_LABELS);
     const regions = stops.map((stop) => stop.region);
     expect(regions.lastIndexOf("header")).toBeLessThan(regions.indexOf("footer"));
@@ -232,7 +233,7 @@ test.describe("the public pages at 360 px", () => {
 
     await page.goto("/en");
     const menu = page.getByRole("button", { name: "Menu" });
-    const pricing = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" });
+    const pricing = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How Chara Pinnacle works" });
     await waitForHydration(menu);
     await expect(pricing).toBeHidden();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -261,9 +262,9 @@ test.describe("the public pages at 360 px", () => {
     const menu = page.getByRole("button", { name: "Menu" });
     await waitForHydration(menu);
     await menu.click();
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" }).click();
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How Chara Pinnacle works" }).click();
     await expect(page).toHaveURL("/en/how-it-works");
     await expect(menu).toHaveAttribute("aria-expanded", "false");
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How CHARA Works" })).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How Chara Pinnacle works" })).toBeHidden();
   });
 });

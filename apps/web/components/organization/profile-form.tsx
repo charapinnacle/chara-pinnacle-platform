@@ -18,6 +18,7 @@ import {
   organizationProfileSchema,
   type OrganizationProfileInput,
 } from "@/lib/validation/organization";
+import { BRAND_NAME } from "@/lib/brand";
 
 type ProfileFormProps = {
   slug: string;
@@ -114,7 +115,7 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
       />
       {duplicateLegalName ? (
         <Notice tone="info" role="status">
-          An organisation with a similar name already exists on CHARA.
+          An organisation with a similar name already exists on {BRAND_NAME}.
         </Notice>
       ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>

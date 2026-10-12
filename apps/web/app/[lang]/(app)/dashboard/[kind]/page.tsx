@@ -11,7 +11,7 @@ import { computeCompleteness } from "@/lib/passport/completeness";
 import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
-export const metadata: Metadata = { title: "Dashboard — CHARA" };
+export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage({ params, searchParams }: PageProps<"/[lang]/dashboard/[kind]">) {
   const [{ lang, kind }, { org }] = await Promise.all([params, searchParams]);

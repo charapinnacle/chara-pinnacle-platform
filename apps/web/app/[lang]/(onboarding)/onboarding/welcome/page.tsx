@@ -8,8 +8,9 @@ import { getPassport } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
 import { billingPath, homePath, jobsPath, membersPath, onboardingPath } from "@/lib/routes";
 import { welcomeIsDue } from "@/lib/welcome-cookie";
+import { BRAND_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Welcome — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Welcome", robots: { index: false } };
 
 // Shown once, right after the last step (welcome-cookie.ts); any later visit goes to the dashboard, whose empty states
 // guide from then on.
@@ -24,7 +25,7 @@ export default async function WelcomePage({ params }: PageProps<"/[lang]/onboard
     return (
       <OnboardingPanel
         steps={<OnboardingSteps kind="company" current={2} />}
-        title={`Welcome to CHARA Pinnacle, ${organization.displayName}`}
+        title={`Welcome to ${BRAND_NAME}, ${organization.displayName}`}
         description="Your company is set up and your account is protected. Choose where to start."
       >
         <WelcomeTiles
@@ -43,7 +44,7 @@ export default async function WelcomePage({ params }: PageProps<"/[lang]/onboard
   return (
     <OnboardingPanel
       steps={<OnboardingSteps kind="worker" current={1} />}
-      title={`Welcome to CHARA Pinnacle, ${passport.firstName}`}
+      title={`Welcome to ${BRAND_NAME}, ${passport.firstName}`}
       description="Your passport is ready. Choose where to start."
     >
       <WelcomeTiles

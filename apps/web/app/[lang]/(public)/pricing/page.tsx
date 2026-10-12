@@ -9,6 +9,7 @@ import { planCard, planLink, RECOMMENDED_PLAN_CODE, viewerNote, type PricingView
 import { getPricingViewer, listPublicPlans } from "@/lib/dal/pricing";
 import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
+import { BRAND_NAME } from "@/lib/brand";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/pricing">): Promise<Metadata> {
   return staticPageMetadata("pricing", (await params).lang);
@@ -47,7 +48,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
 
   return (
     <PageContainer layout="page" className="grid gap-12 sm:gap-16">
-      <PageHeader size="display" title="Choose how you want to grow on CHARA" className="max-w-3xl animate-rise" />
+      <PageHeader size="display" title={`Choose how you want to grow on ${BRAND_NAME}`} className="max-w-3xl animate-rise" />
       <div className="grid gap-10 lg:grid-cols-3 lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:gap-y-4">
         <WorkersCard lang={lang} viewer={viewer} />
         <section aria-labelledby="pricing-employers" className="grid gap-4 lg:col-span-2 lg:row-span-2 lg:grid-rows-subgrid">

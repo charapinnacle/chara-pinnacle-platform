@@ -2,15 +2,20 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Toaster } from "@/components/feedback/toaster";
 import { SkipLink } from "@/components/layout/skip-link";
+import { BRAND_NAME } from "@/lib/brand";
 import { env } from "@/lib/env";
 import { geist } from "@/lib/fonts";
+import { staticPages } from "@/lib/seo/pages";
 import "../globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
-  title: "CHARA — The Global Workforce Network",
-  description:
-    "CHARA connects workers, employers, recruitment companies and staffing companies.",
+  // A page names only itself ("Settings"); the template adds the product name. Pages with search metadata set an
+  // absolute title (lib/seo/metadata.ts).
+  title: { default: staticPages.home.title, template: `%s — ${BRAND_NAME}` },
+  description: `${BRAND_NAME} connects workers, employers, recruitment companies and staffing companies.`,
+  // This openGraph replaces the one inherited from app/opengraph-image.tsx whole, so the image is named again.
+  openGraph: { siteName: BRAND_NAME, images: "/opengraph-image" },
 };
 
 // English only in Phase 1; any other first segment is a 404.

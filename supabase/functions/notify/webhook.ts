@@ -89,7 +89,7 @@ export function deliveryEvent(
   };
 }
 
-// "CHARA <noreply@chara.example>" and "noreply@chara.example" are the same sender.
+// "Chara Pinnacle <noreply@chara.example>" and "noreply@chara.example" are the same sender.
 export function senderAddress(from: string): string {
   return (/<([^>]*)>/.exec(from)?.[1] ?? from).trim().toLowerCase();
 }

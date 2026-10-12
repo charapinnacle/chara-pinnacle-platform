@@ -12,7 +12,7 @@ import { requirePlatformRole } from "@/lib/dal/session";
 import { cn } from "@/lib/utils";
 import { lastThirtyDays, rangeSchema } from "@/lib/validation/admin";
 
-export const metadata: Metadata = { title: "Statistics — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Statistics", robots: { index: false } };
 
 function value(raw: string | string[] | undefined, fallback: string): string {
   return typeof raw === "string" ? raw : fallback;

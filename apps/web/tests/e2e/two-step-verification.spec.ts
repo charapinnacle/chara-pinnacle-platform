@@ -31,7 +31,7 @@ test.describe("two-step verification: enrolment", () => {
     await expect(page.getByRole("img", { name: /^QR code/ })).toHaveCount(0);
     expect(factorRows(user.id)).toEqual([]);
     await page.getByRole("button", { name: "Show the QR code" }).click();
-    const qr = page.getByRole("img", { name: /^QR code to add CHARA to your authenticator app/ });
+    const qr = page.getByRole("img", { name: /^QR code to add Chara Pinnacle to your authenticator app/ });
     await expect(qr).toBeVisible();
     expect(await qr.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     const secret = await setupKey(page);

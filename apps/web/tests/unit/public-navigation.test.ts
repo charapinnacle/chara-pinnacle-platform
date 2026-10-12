@@ -6,20 +6,20 @@ const footerLinks = legalGroups.flatMap(({ links }) => links);
 
 describe("the navigation of the public pages (FR-H1 AC3)", () => {
   it("keeps the static header links to the two ways in and the account links, as the owner decided (OPEN_QUESTIONS.md, 2026-10-10); Post a Job sits between them (D81)", () => {
-    expect(headerLinks.map(({ label }) => label)).toEqual(["Find Jobs", "How CHARA Works", "Login", "Sign up"]);
+    expect(headerLinks.map(({ label }) => label)).toEqual(["Find Jobs", "How Chara Pinnacle works", "Login", "Sign up"]);
     expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "how-it-works", "login", "signup"]);
     expect(headerLinks.map(({ label }) => label)).not.toContain("Pricing");
   });
 
   it("splits the header into the links of everybody and the two that only a visitor needs", () => {
-    expect(siteLinks.map(({ label }) => label)).toEqual(["Find Jobs", "How CHARA Works"]);
+    expect(siteLinks.map(({ label }) => label)).toEqual(["Find Jobs", "How Chara Pinnacle works"]);
     expect(guestLinks.map(({ label }) => label)).toEqual(["Login", "Sign up"]);
   });
 
   it("sets the public footer in three columns, Platform, Company and Legal, and ends it with the index of all legal documents (every document is two clicks away)", () => {
     expect(publicFooterColumns.map(({ title }) => title)).toEqual(["Platform", "Company", "Legal"]);
     expect(publicFooterColumns.map(({ links }) => links.map(({ label }) => label))).toEqual([
-      ["Find Jobs", "How CHARA Works", "Pricing"],
+      ["Find Jobs", "How Chara Pinnacle works", "Pricing"],
       ["About", "Trust & Safety", "Contact"],
       ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"],
     ]);

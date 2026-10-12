@@ -2,6 +2,7 @@ import { Band } from "@/components/home/band";
 import { TextLink } from "@/components/forms/text-link";
 import { StepList } from "@/components/public/step-list";
 import { employerSteps, workerSteps } from "@/lib/public/steps";
+import { BRAND_NAME } from "@/lib/brand";
 
 const columns = [
   { id: "home-workers", heading: "For workers", steps: workerSteps },
@@ -12,7 +13,7 @@ export function HowItWorks({ lang }: { lang: string }) {
   return (
     <Band aria-labelledby="home-how-heading" className="grid gap-14">
       <h2 id="home-how-heading" className="font-serif text-section text-balance">
-        How CHARA works
+        How {BRAND_NAME} works
       </h2>
       <div className="grid gap-12 md:grid-cols-2 md:gap-16">
         {columns.map(({ id, heading, steps }) => (
@@ -25,7 +26,7 @@ export function HowItWorks({ lang }: { lang: string }) {
         ))}
       </div>
       <TextLink standalone href={`/${lang}/how-it-works`}>
-        How CHARA works in detail
+        How {BRAND_NAME} works in detail
       </TextLink>
     </Band>
   );

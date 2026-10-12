@@ -41,6 +41,7 @@ test.describe("metadata of the public pages", () => {
       expect(head.ogTitle, `${path} og:title`).toBe(head.title);
       expect(head.ogDescription, `${path} og:description`).toBe(head.description);
       expect(head.ogImage, `${path} og:image`).toBe(`${SITE}/opengraph-image`);
+      expect(head.ogSiteName, `${path} og:site_name`).toBe("Chara Pinnacle");
       if (eighteen.includes(path)) {
         expect(head.description?.length, `${path} description`).toBeGreaterThanOrEqual(50);
         descriptions.push(head.description ?? "");
@@ -48,6 +49,18 @@ test.describe("metadata of the public pages", () => {
     }
     expect(new Set(descriptions).size).toBe(18);
     expect(LEGAL_SLUGS).toHaveLength(10);
+  });
+
+  test("a page without search metadata of its own still carries the Open Graph image and the product name as the site", async ({
+    page,
+  }) => {
+    for (const path of ["/en/login", "/en/signup", "/en/forgot-password"]) {
+      await page.goto(path);
+      await expect(page, path).toHaveTitle(/ — Chara Pinnacle$/);
+      await expect(page.locator('meta[property="og:image"]'), path).toHaveAttribute("content", `${SITE}/opengraph-image`);
+      await expect(page.locator('meta[property="og:site_name"]'), path).toHaveAttribute("content", "Chara Pinnacle");
+      await expect(page.locator('meta[name="twitter:card"]'), path).toHaveAttribute("content", "summary_large_image");
+    }
   });
 
   test("the Open Graph image is a 1200 by 630 PNG served without a language redirect", async ({ request }) => {

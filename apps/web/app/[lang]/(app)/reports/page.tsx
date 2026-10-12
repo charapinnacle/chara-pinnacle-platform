@@ -9,7 +9,7 @@ import { listMyReports } from "@/lib/dal/reports";
 import { myReportsPath } from "@/lib/routes";
 import { reportCursorSchema } from "@/lib/validation/report";
 
-export const metadata: Metadata = { title: "My reports - CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "My reports", robots: { index: false } };
 
 // The reports the signed-in user made, newest first, each with its status and, once closed, the outcome and the note of
 // Trust & Safety. A report is read by its reporter only.

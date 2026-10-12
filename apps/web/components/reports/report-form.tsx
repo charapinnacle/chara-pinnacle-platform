@@ -20,6 +20,7 @@ import {
   type ReportFormInput,
   type ReportInput,
 } from "@/lib/validation/report";
+import { BRAND_NAME } from "@/lib/brand";
 
 type ReportFormProps = {
   lang: string;
@@ -40,7 +41,7 @@ const ids = {
 const linkLabels = {
   job: { label: "Address of the vacancy", description: "Paste the address of the vacancy page." },
   company: { label: "Address of one of its vacancies", description: "Paste the address of a vacancy page of the company." },
-  content: { label: "Address of the page", description: "A page of CHARA, for example /en/pricing." },
+  content: { label: "Address of the page", description: `A page of ${BRAND_NAME}, for example /en/pricing.` },
   profile: { label: "", description: "" },
 } as const;
 

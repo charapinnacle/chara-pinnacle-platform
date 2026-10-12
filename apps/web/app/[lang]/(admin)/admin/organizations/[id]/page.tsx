@@ -6,7 +6,7 @@ import { OrganizationView } from "@/components/admin/organization-view";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Organisation — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Organisation", robots: { index: false } };
 
 export default async function OrganizationPage({ params }: PageProps<"/[lang]/admin/organizations/[id]">) {
   const { lang, id } = await params;

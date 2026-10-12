@@ -3,7 +3,7 @@ import type { Step } from "@/lib/public/steps";
 type StepListProps = { steps: readonly Step[]; titleAs?: "h3" | "h4"; compact?: boolean };
 
 // compact keeps the numbered titles and leaves out the sentence under each (the home page, where the numbers are set in the
-// serif; How CHARA Works has them in full).
+// serif; the How it works page has them in full).
 export function StepList({ steps, titleAs: Title = "h3", compact = false }: StepListProps) {
   if (compact) {
     return (

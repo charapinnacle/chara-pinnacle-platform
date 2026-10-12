@@ -13,7 +13,7 @@ import { logVacancy } from "@/lib/jobs/vacancy-log";
 import { applicationPath, homePath } from "@/lib/routes";
 import { jobIdSchema } from "@/lib/validation/job";
 
-export const metadata: Metadata = { title: "Apply — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Apply", robots: { index: false } };
 
 // For candidates only: a visitor goes to log in and comes back here (requireUser), a company user gets the page of an
 // address that does not exist. A candidate who has an application for the vacancy is sent to it instead of to a form;

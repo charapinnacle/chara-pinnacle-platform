@@ -16,7 +16,7 @@ import { formatShortDate } from "@/lib/i18n/format";
 import { applicationPath, applicationsPath } from "@/lib/routes";
 import { parseApplicationListParams } from "@/lib/validation/application";
 
-export const metadata: Metadata = { title: "My applications — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "My applications", robots: { index: false } };
 
 export default async function ApplicationsPage({ params, searchParams }: PageProps<"/[lang]/applications">) {
   const { lang } = await params;

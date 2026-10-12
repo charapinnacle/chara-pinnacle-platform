@@ -6,7 +6,7 @@ import { UserView } from "@/components/admin/user-view";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "User — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "User", robots: { index: false } };
 
 export default async function UserPage({ params }: PageProps<"/[lang]/admin/users/[id]">) {
   const { lang, id } = await params;

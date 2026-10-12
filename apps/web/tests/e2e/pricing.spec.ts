@@ -51,7 +51,7 @@ test.describe("the cards (FR-H2 AC1, AC2, AC3, AC10)", () => {
     ]);
     await expect(workers.getByRole("link")).toHaveText("Create worker profile");
     await expect(workers.getByRole("link")).toHaveAttribute("href", "/en/signup?kind=worker");
-    await expect(page.getByRole("heading", { level: 1, name: "Choose how you want to grow on CHARA" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Choose how you want to grow on Chara Pinnacle" })).toBeVisible();
 
     const text = await page.getByRole("main").innerText();
     expect(text).toContain(VERIFIED_SENTENCE);

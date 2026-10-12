@@ -29,7 +29,7 @@ const NO_TRIAL_TEXT = "There is no free trial: a free trial has already been use
 const CHANGED = "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue.";
 
 test.describe("checkout: the owner starts a trial through the hosted page (FR-G2)", () => {
-  test("AC1: choosing Basic, the terms and the tax data lead to the hosted page, with no card field on any CHARA page", async ({ page }) => {
+  test("AC1: choosing Basic, the terms and the tax data lead to the hosted page, with no card field on any Chara Pinnacle page", async ({ page }) => {
     const team = await newTeam(uniqueName("Acme Bau"));
     const hosted = await stubHostedPages(page);
     const requests: string[] = [];

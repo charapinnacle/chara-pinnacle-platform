@@ -13,8 +13,9 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { toOptions } from "@/lib/reference-options";
 import { billingPath } from "@/lib/routes";
 import { planCodeSchema } from "@/lib/validation/billing";
+import { BRAND_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Confirm your plan — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Confirm your plan", robots: { index: false } };
 
 function identifierDefaults(state: BillingState) {
   const fromKind = (kinds: readonly string[]) =>
@@ -69,7 +70,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
           ))}
         </dl>
         <p className="text-small text-muted-foreground">
-          You enter your card on the page of our payment provider. CHARA never sees or stores your card details.
+          You enter your card on the page of our payment provider. {BRAND_NAME} never sees or stores your card details.
         </p>
       </Card>
 

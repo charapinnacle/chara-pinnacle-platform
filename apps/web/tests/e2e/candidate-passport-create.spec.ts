@@ -29,7 +29,7 @@ test.describe("candidate passport: onboarding", () => {
     await page.getByRole("button", { name: "Create CHARA Passport" }).dblclick();
 
     await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
-    await expect(page.getByRole("heading", { name: "Welcome to CHARA Pinnacle, Amina", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Chara Pinnacle, Amina", level: 1 })).toBeVisible();
     await page.goto("/en/dashboard/worker");
     await expect(page.getByText("10% complete")).toBeVisible();
     await expect(page.getByText("Next:")).toContainText("Occupation");

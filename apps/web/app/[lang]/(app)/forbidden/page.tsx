@@ -5,7 +5,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { requireUser } from "@/lib/dal/session";
 import { homePath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "No access — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "No access", robots: { index: false } };
 
 export default async function ForbiddenPage({ params }: PageProps<"/[lang]/forbidden">) {
   const { lang } = await params;

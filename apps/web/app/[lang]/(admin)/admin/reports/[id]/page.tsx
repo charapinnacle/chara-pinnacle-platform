@@ -6,7 +6,7 @@ import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { reportIdSchema } from "@/lib/validation/report";
 
-export const metadata: Metadata = { title: "Report - CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Report", robots: { index: false } };
 
 // Trust & Safety decide; a Platform Administrator reads the same page without the decision.
 export default async function ReportPage({ params }: PageProps<"/[lang]/admin/reports/[id]">) {

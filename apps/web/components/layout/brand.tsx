@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 // The gold CP monogram as CHARA supplied it, on its own black ground. It sits only on dark surfaces or as its own dark
@@ -27,7 +28,7 @@ type BrandLinkProps = {
   className?: string;
 };
 
-// The way home: the monogram tile and the CHARA wordmark. The accessible name is the wordmark.
+// The way home: the monogram tile and the wordmark. The accessible name is the product name.
 export function BrandLink({ href, subline = false, tone = "default", className }: BrandLinkProps) {
   return (
     <Link
@@ -43,14 +44,18 @@ export function BrandLink({ href, subline = false, tone = "default", className }
   );
 }
 
+// The letter-spaced CHARA / PINNACLE lock-up is the logo drawn in type, so it is hidden from assistive technology and the
+// product name is read instead: an uppercase word can be spelt out letter by letter, and without the subline Pinnacle
+// would be lost.
 export function Wordmark({ subline = false, tone = "default" }: Pick<BrandLinkProps, "subline" | "tone">) {
   return (
     <span className="grid leading-none">
-      <span className={cn("text-body font-semibold tracking-[0.24em]", tone === "inverse" ? "text-inverse-foreground" : "text-foreground")}>
+      <span className="sr-only">{BRAND_NAME}</span>
+      <span aria-hidden className={cn("text-body font-semibold tracking-[0.24em]", tone === "inverse" ? "text-inverse-foreground" : "text-foreground")}>
         CHARA
       </span>
       {subline ? (
-        <span className={cn("mt-1 text-caption tracking-[0.32em] uppercase", tone === "inverse" ? "text-brand" : "text-brand-ink")}>
+        <span aria-hidden className={cn("mt-1 text-caption tracking-[0.32em] uppercase", tone === "inverse" ? "text-brand" : "text-brand-ink")}>
           Pinnacle
         </span>
       ) : null}

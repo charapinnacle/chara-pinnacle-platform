@@ -15,7 +15,7 @@ import { jobStatusText } from "@/lib/jobs/presentation";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { jobIdSchema } from "@/lib/validation/job";
 
-export const metadata: Metadata = { title: "Edit vacancy — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Edit vacancy", robots: { index: false } };
 
 // Owners and admins correct a vacancy with the form it was created with, in any status but Filled, which is final (FR-C2);
 // a member is sent to the forbidden page, as on the new-vacancy page. Saving changes the text only: the status and the

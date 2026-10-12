@@ -1,6 +1,7 @@
 import { Band } from "@/components/home/band";
 import { LinkButton } from "@/components/layout/link-button";
 import { signUpPath } from "@/lib/routes";
+import { BRAND_NAME } from "@/lib/brand";
 
 export function ClosingCall({ lang }: { lang: string }) {
   return (
@@ -10,7 +11,7 @@ export function ClosingCall({ lang }: { lang: string }) {
       </h2>
       <div className="flex flex-wrap justify-center gap-3">
         <LinkButton href={signUpPath(lang, "worker")} className="lift">
-          Join CHARA
+          Join {BRAND_NAME}
         </LinkButton>
         <LinkButton href={signUpPath(lang, "company")} variant="secondary" className="lift bg-transparent hover:bg-secondary">
           Start hiring

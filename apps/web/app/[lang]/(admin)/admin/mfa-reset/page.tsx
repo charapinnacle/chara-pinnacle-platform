@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "MFA reset — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "MFA reset", robots: { index: false } };
 
 export default async function MfaResetPage({ params, searchParams }: PageProps<"/[lang]/admin/mfa-reset">) {
   const [{ lang }, { user }] = await Promise.all([params, searchParams]);

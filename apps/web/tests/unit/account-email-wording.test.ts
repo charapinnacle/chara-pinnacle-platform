@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderEmail } from "@/emails/index";
+import { BRAND_NAME } from "@/lib/brand";
 
 const SITE = "https://chara.example";
 const TOKEN = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AbCdE";
@@ -39,8 +40,23 @@ async function fourEmails(): Promise<Record<string, { subject: string; html: str
 describe("FR-I1 AC12: the wording of the four account emails", () => {
   it("names the platform in the subject and the body of each", async () => {
     for (const [name, email] of Object.entries(await fourEmails())) {
-      expect(email.subject, name).toContain("CHARA");
-      expect(email.text, name).toContain("CHARA");
+      expect(email.subject, name).toContain(BRAND_NAME);
+      expect(email.text, name).toContain(BRAND_NAME);
+    }
+  });
+
+  // Auth reads supabase/templates and the subjects of config.toml, which cannot import the constant: this keeps them in
+  // step with it (U69).
+  it("names the platform as the product name, and never by the old name, in every Auth template and subject", () => {
+    const sections = ["template.confirmation", "template.recovery", "notification.password_changed", "notification.identity_linked"];
+    const templates = ["confirmation.html", "recovery.html", "password_changed.html", "identity_linked.html"];
+    for (const section of sections) {
+      expect(configured(`auth.email.${section}`, "subject"), section).toContain(BRAND_NAME);
+      expect(configured(`auth.email.${section}`, "subject"), section).not.toMatch(/CHARA/);
+    }
+    for (const name of templates) {
+      expect(plain(authTemplate(name)), name).toContain(BRAND_NAME);
+      expect(authTemplate(name), name).not.toMatch(/CHARA/);
     }
   });
 
@@ -53,7 +69,7 @@ describe("FR-I1 AC12: the wording of the four account emails", () => {
 
   it("tells the reader what to do when the email was not requested", async () => {
     const emails = await fourEmails();
-    expect(emails.confirmation.text).toMatch(/If you did not create a CHARA account, you can ignore this email/);
+    expect(emails.confirmation.text).toMatch(new RegExp(`If you did not create a ${BRAND_NAME} account, you can ignore this email`));
     expect(emails.reset.text).toMatch(/If you did not ask for this email, you can ignore it as well/);
     expect(emails.invitation.text).toMatch(/If you were not expecting this invitation, ignore\s+this email/);
     expect(emails["two-step reset notice"].text).toMatch(/If you did not ask for this, reply to this\s+email or contact support at once/);
@@ -70,7 +86,7 @@ describe("FR-I1 AC12: the wording of the four account emails", () => {
 describe("FR-I1: where the Auth emails come from", () => {
   it("sends the Auth emails from one named sender on the local stack, which the hosted SMTP settings replace", () => {
     expect(configured("local_smtp", "admin_email")).toBe("no-reply@chara.test");
-    expect(configured("local_smtp", "sender_name")).toBe("CHARA");
+    expect(configured("local_smtp", "sender_name")).toBe(BRAND_NAME);
   });
 
   it("keeps the custom SMTP out of the file, so that the local stack and CI never reach the provider", () => {

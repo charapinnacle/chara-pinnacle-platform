@@ -12,7 +12,7 @@ import { expect, test } from "./support/test";
 const STRIPE = /stripe/i;
 
 // What a candidate must never see: a link to pricing, billing or checkout, a button that sells, a Stripe script or
-// frame, a price of CHARA. The same scan runs on an employer's billing page as the control that shows it can find them.
+// frame, a price of Chara Pinnacle. The same scan runs on an employer's billing page as the control that shows it can find them.
 async function paymentElements(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const found: string[] = [];

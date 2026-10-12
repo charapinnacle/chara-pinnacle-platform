@@ -14,7 +14,7 @@ import { requireCandidate } from "@/lib/dal/session";
 import { formatShortDate } from "@/lib/i18n/format";
 import { applicationsPath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "Application — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Application", robots: { index: false } };
 
 // The candidate's own application: an id that is somebody else's, unknown or not a uuid shows the not-found page.
 export default async function ApplicationPage({ params, searchParams }: PageProps<"/[lang]/applications/[id]">) {

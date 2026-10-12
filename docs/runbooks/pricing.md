@@ -4,7 +4,7 @@ FR-H2, design point D74 (OPEN_QUESTIONS.md). The SOP (Pricing Page from Configur
 
 ## 1. What the page shows and where it comes from
 
-Since U64 the heading is "Choose how you want to grow on CHARA" (the client's wording). The workers card lists Worker profile, CHARA Passport, Search jobs, Apply, Save jobs and Manage applications and has Create worker profile for a visitor (`/signup?kind=worker`); the plan links of a visitor open the employer sign-up (`/signup?kind=company`); where no plan is public the notice offers Start hiring to a visitor. There are no recruitment or staffing cards (OPEN_QUESTIONS.md D81).
+Since U64 the heading is "Choose how you want to grow on Chara Pinnacle" (the client's wording, with the product name of D86). The workers card lists Worker profile, CHARA Passport, Search jobs, Apply, Save jobs and Manage applications and has Create worker profile for a visitor (`/signup?kind=worker`); the plan links of a visitor open the employer sign-up (`/signup?kind=company`); where no plan is public the notice offers Start hiring to a visitor. There are no recruitment or staffing cards (OPEN_QUESTIONS.md D81).
 
 `/[lang]/pricing` reads `public.v_plans` on every request (the `(public)` group renders per request, ADR-0004), so a changed record is on the page at the next request without a release. The query (`listPublicPlans`, also the source of the plans the billing pages sell) keeps the public employer plans (`is_public`), in `sort` order, at most 20. The `is_public` filter is in the query and not left to the row policy, because a member also reads the plan of the own organisation when it is not public (the fallback plan, Enterprise before its price is stated).
 

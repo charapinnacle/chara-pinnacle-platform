@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { confirmEmail } from "@/lib/actions/auth";
 
 export const metadata: Metadata = {
-  title: "Confirm your email — CHARA",
+  title: "Confirm your email",
   robots: { index: false },
 };
 

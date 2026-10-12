@@ -144,7 +144,7 @@ test.describe("sign-up form", () => {
     await expect(group.getByRole("radio", { checked: true })).toHaveCount(0);
     await expect(
       page.getByText(
-        "This choice cannot be changed later. To use CHARA as both worker and employer, register a second account with a different email address.",
+        "This choice cannot be changed later. To use Chara Pinnacle as both worker and employer, register a second account with a different email address.",
       ),
     ).toBeVisible();
     await expect(page.getByRole("checkbox")).toHaveCount(0);

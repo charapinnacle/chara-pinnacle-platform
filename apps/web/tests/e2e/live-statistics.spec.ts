@@ -40,14 +40,14 @@ test.describe("live statistics on the home page", () => {
     await expectNoAxeViolations(page);
   });
 
-  test("D81: the block comes after How CHARA works and before the closing call", async ({ page }) => {
+  test("D81: the block comes after How Chara Pinnacle works and before the closing call", async ({ page }) => {
     showSnapshot({ jobs: 15, employers: 8, workers: 30, countries: 6 });
     await openHome(page);
 
     await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText([
       "Who are you?",
       "One professional profile. Multiple opportunities.",
-      "How CHARA works",
+      "How Chara Pinnacle works",
       "Global Workforce Network",
       "Your Workforce. Your Network. One Platform.",
     ]);

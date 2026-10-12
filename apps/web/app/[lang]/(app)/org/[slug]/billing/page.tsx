@@ -13,7 +13,7 @@ import { getBillingState, getSubscription, getUsage, listSoldPlans } from "@/lib
 import { requireOrgRole } from "@/lib/dal/session";
 import { identifierKindLabels as kindLabels } from "@/lib/validation/organization";
 
-export const metadata: Metadata = { title: "Billing — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Billing", robots: { index: false } };
 
 // The statuses whose plan limits apply: the database gives any other status (a paused one) the limits of the free plan.
 const ENTITLED_STATUSES: readonly SubscriptionStatus[] = ["trialing", "active", "past_due"];

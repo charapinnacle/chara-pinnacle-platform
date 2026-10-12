@@ -55,7 +55,7 @@ function setup(routes: Record<string, Route | Response>, provider: Provider = nu
   const deps: NotifyDeps = {
     client,
     provider,
-    from: "CHARA <noreply@chara.example>",
+    from: "Chara Pinnacle <noreply@chara.example>",
     siteUrl: "https://chara.example",
     sharedSecret: SECRET,
     webhookSecret: "",
@@ -154,7 +154,7 @@ Deno.test("a message is rendered, sent with the notification id as idempotency k
   const [email] = provider.outbox;
   assert.equal(email.idempotencyKey, ID_1);
   assert.equal(email.to, "amina@example.test");
-  assert.equal(email.from, "CHARA <noreply@chara.example>");
+  assert.equal(email.from, "Chara Pinnacle <noreply@chara.example>");
   assert.equal(email.subject, "Update on your application for Welder MIG/MAG");
   assert.match(email.html, /Your application for Welder MIG\/MAG is now: Interview\./);
   assert.match(email.text, new RegExp(`https://chara.example/en/applications/${APP}`));

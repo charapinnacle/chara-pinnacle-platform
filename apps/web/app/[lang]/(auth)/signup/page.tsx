@@ -9,7 +9,7 @@ import { prefilledEmail } from "@/lib/pending-email";
 import { accountKindSchema } from "@/lib/validation/sign-up";
 import { invitationTokenSchema } from "@/lib/validation/team";
 
-export const metadata: Metadata = { title: "Create your account — CHARA" };
+export const metadata: Metadata = { title: "Create your account" };
 
 // A link to /signup?invitation=<token> comes from a team invitation: the address and the account type are fixed, and
 // Continue with Google is not offered, since its sign-up cannot carry the invitation. /signup?kind=worker or

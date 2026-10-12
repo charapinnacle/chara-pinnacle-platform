@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { changeRecoveryAddress, resendResetEmail } from "@/lib/actions/recovery";
 import { cooldownLeft, maskEmail, pendingEmail } from "@/lib/pending-email";
 
-export const metadata: Metadata = { title: "Check your email — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Check your email", robots: { index: false } };
 
 export default async function ResetSentPage({ params }: PageProps<"/[lang]/forgot-password/check-email">) {
   const { lang } = await params;

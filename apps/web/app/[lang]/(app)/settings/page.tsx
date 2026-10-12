@@ -9,7 +9,7 @@ import { getDeletionStatus } from "@/lib/dal/account-closure";
 import { requireUser } from "@/lib/dal/session";
 import { homePath, notificationSettingsPath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "Settings — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 
 export default async function SettingsPage({ params }: PageProps<"/[lang]/settings">) {
   const { lang } = await params;

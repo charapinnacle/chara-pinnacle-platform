@@ -11,7 +11,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { jobPath, jobsPath } from "@/lib/routes";
 import { jobIdSchema } from "@/lib/validation/job";
 
-export const metadata: Metadata = { title: "Preview — CHARA", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
 
 export default async function JobPreviewPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/[id]/preview">) {
   const { lang, slug, id } = await params;

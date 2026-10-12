@@ -52,7 +52,7 @@ test.describe("the public vacancy page when a vacancy is not available", () => {
       const { status, html } = await bodyOf(page, publicUrl(id));
       expect(status, id).toBe(404);
       expect(html, id).toContain(UNAVAILABLE);
-      expect(html, id).toContain("<title>Vacancy not available | CHARA</title>");
+      expect(html, id).toContain("<title>Vacancy not available — Chara Pinnacle</title>");
       expect(html, id).toMatch(/<meta name="robots" content="[^"]*noindex/);
       for (const leak of [token, company.slug, "application/ld+json", "Welders", "Hamburg"]) {
         expect(html, `${id} ${leak}`).not.toContain(leak);

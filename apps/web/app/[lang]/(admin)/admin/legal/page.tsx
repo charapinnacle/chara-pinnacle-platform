@@ -10,7 +10,7 @@ import { requirePlatformRole } from "@/lib/dal/session";
 import { formatShortDate } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "Legal documents — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Legal documents", robots: { index: false } };
 
 export default async function LegalPage({ params, searchParams }: PageProps<"/[lang]/admin/legal">) {
   const [{ lang }, { slug }] = await Promise.all([params, searchParams]);

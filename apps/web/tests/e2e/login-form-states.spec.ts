@@ -17,6 +17,8 @@ test.describe("login form", () => {
       await expectNoAxeViolations(page);
     }
     await page.goto("/en/login");
+    await expect(page).toHaveTitle("Log in — Chara Pinnacle");
+    await expect(page.getByText("New to Chara Pinnacle?")).toBeVisible();
     await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute("autocomplete", "username");
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
       "autocomplete",

@@ -6,7 +6,7 @@ import { AuthCard, cardDividerClassName } from "@/components/layout/auth-card";
 import { changeSignupAddress, resendSignupEmail } from "@/lib/actions/auth";
 import { cooldownLeft, maskEmail, pendingEmail } from "@/lib/pending-email";
 
-export const metadata: Metadata = { title: "Check your email — CHARA" };
+export const metadata: Metadata = { title: "Check your email" };
 
 const SENT =
   "If the address can be used for a new account, we have sent a confirmation link. The link is valid for 24 hours and works once. Confirm your email address before you log in.";

@@ -11,8 +11,9 @@ import { formatDate } from "@/lib/i18n/format";
 import { homePath } from "@/lib/routes";
 import { mfaReturnPath } from "@/lib/safe-next";
 import { MAX_TOTP_FACTORS, TOO_MANY_FACTORS } from "@/lib/validation/mfa";
+import { BRAND_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Two-step verification — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Two-step verification", robots: { index: false } };
 
 export default async function MfaPage({ params, searchParams }: PageProps<"/[lang]/mfa">) {
   const { lang } = await params;
@@ -40,7 +41,7 @@ export default async function MfaPage({ params, searchParams }: PageProps<"/[lan
         icon={ShieldCheck}
         title="Verify it is you"
         description="Enter a code from your authenticator app to continue."
-        footer="Lost your device? Use your backup device if you added one. Otherwise contact CHARA support: a platform administrator resets your two-step verification after checking your identity, and you then set it up again."
+        footer={`Lost your device? Use your backup device if you added one. Otherwise contact ${BRAND_NAME} support: a platform administrator resets your two-step verification after checking your identity, and you then set it up again.`}
       >
         <ChallengeForm devices={factors} next={nextPath} />
       </AuthCard>

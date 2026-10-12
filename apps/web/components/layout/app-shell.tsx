@@ -1,5 +1,6 @@
 import { BrandLink } from "@/components/layout/brand";
 import { MAIN_CONTENT_ID } from "@/components/layout/skip-link";
+import { copyrightLine } from "@/lib/brand";
 
 type AppShellProps = {
   homeHref: string;
@@ -38,7 +39,7 @@ export function AppShell({ homeHref, headerActions, sidebar, footerLinks, childr
         <footer className="border-t">
           <div className={`${column} flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-4 text-small text-muted-foreground`}>
             {footerLinks}
-            <p>&copy; CHARA</p>
+            <p>{copyrightLine()}</p>
           </div>
         </footer>
       </div>

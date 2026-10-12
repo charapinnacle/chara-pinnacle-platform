@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BRAND_NAME } from "@/lib/brand";
 import type { PublicJob } from "@/lib/dal/hiring";
 import { env } from "@/lib/env";
 import { formatDate } from "@/lib/i18n/format";
@@ -22,14 +23,21 @@ function fit(text: string, max: number): string {
   return text.length <= max ? text : `${cut(text, max - 1).trimEnd()}…`;
 }
 
+// The product name is added only when it fits whole: a title that is cut keeps what names the page, never "Chara Pin…".
+function withBrand(title: string, separator: string): string {
+  const full = `${title}${separator}${BRAND_NAME}`;
+  return full.length <= TITLE_MAX ? full : fit(title, TITLE_MAX);
+}
+
 // The canonical address has no query string: a search, a campaign tag and the page itself are one page to a crawler.
-// The image of app/opengraph-image.tsx is named again because a page's openGraph replaces the inherited one whole.
+// The image of app/opengraph-image.tsx and the site name are named again because a page's openGraph replaces the
+// inherited one whole. The title already holds the product name, so it is absolute: the layout's template is not added.
 function pageMetadata(title: string, description: string, path: string): Metadata {
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: absoluteUrl(path) },
-    openGraph: { title, description, images: "/opengraph-image" },
+    openGraph: { title, description, siteName: BRAND_NAME, images: "/opengraph-image" },
   };
 }
 
@@ -40,8 +48,8 @@ export function staticPageMetadata(key: StaticPageKey, lang: string): Metadata {
 
 export function legalIndexMetadata(lang: string): Metadata {
   return pageMetadata(
-    "All legal documents — CHARA",
-    "The current version of every CHARA legal document, the terms, the privacy policy and the rules, with the date it was published.",
+    `All legal documents — ${BRAND_NAME}`,
+    `The current version of every ${BRAND_NAME} legal document, the terms, the privacy policy and the rules, with the date it was published.`,
     `/${lang}/legal`,
   );
 }
@@ -52,8 +60,8 @@ export function legalPageMetadata(
   document: { title: string; version: number; publishedAt: string },
 ): Metadata {
   return pageMetadata(
-    fit(`${document.title} — CHARA`, TITLE_MAX),
-    fit(`Read the ${document.title} of CHARA: version ${document.version}, published ${formatDate(document.publishedAt)}.`, DESCRIPTION_MAX),
+    withBrand(document.title, " — "),
+    fit(`Read the ${document.title} of ${BRAND_NAME}: version ${document.version}, published ${formatDate(document.publishedAt)}.`, DESCRIPTION_MAX),
     `/${lang}/legal/${slug}`,
   );
 }
@@ -62,5 +70,5 @@ export function legalPageMetadata(
 // spaces, and nothing added to it.
 export function vacancyMetadata(lang: string, job: Pick<PublicJob, "id" | "title" | "description" | "employer">): Metadata {
   const description = cut(job.description.replace(/\s+/g, " ").trim(), VACANCY_DESCRIPTION_LENGTH).trimEnd();
-  return pageMetadata(fit(`${job.title} - ${job.employer.displayName} | CHARA`, TITLE_MAX), description, `/${lang}/jobs/${job.id}`);
+  return pageMetadata(withBrand(`${job.title} - ${job.employer.displayName}`, " | "), description, `/${lang}/jobs/${job.id}`);
 }

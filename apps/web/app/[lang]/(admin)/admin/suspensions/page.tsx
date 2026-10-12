@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Suspensions and reinstatements — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Suspensions and reinstatements", robots: { index: false } };
 
 export default async function SuspensionsPage({ params, searchParams }: PageProps<"/[lang]/admin/suspensions">) {
   const [{ lang }, { after }] = await Promise.all([params, searchParams]);

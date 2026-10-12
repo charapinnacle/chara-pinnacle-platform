@@ -40,8 +40,8 @@ test.describe("FR-I1: the invitation email", () => {
     await runNotify();
     const message = await waitForMessage(invitee.email, { timeoutMs: 60_000 });
     expect(await messageCount(invitee.email)).toBe(1);
-    expect(message.Subject).toBe(`You are invited to join ${name} on CHARA`);
-    expect(message.Text).toContain(`${name} invited you to join its team on CHARA as a member.`);
+    expect(message.Subject).toBe(`You are invited to join ${name} on Chara Pinnacle`);
+    expect(message.Text).toContain(`${name} invited you to join its team on Chara Pinnacle as a member.`);
     expect(message.Text).toContain("It is valid until");
     const links = extractLinks(message).filter((url) => url.includes("/invitations/"));
     expect(links).toHaveLength(1);

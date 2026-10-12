@@ -13,7 +13,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { billingPath } from "@/lib/routes";
 import { identifierKindLabels } from "@/lib/validation/organization";
 
-export const metadata: Metadata = { title: "Company profile — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Company profile", robots: { index: false } };
 
 // The company details an owner or admin entered at registration (FR-A2), at aal2 like every other page that changes the
 // organisation. The legal-entity identifier is shown only: the owner records it on the billing page, where it decides the

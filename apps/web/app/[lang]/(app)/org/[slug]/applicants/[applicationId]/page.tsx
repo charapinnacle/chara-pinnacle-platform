@@ -31,7 +31,7 @@ import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
 import { applicantPath, applicantReportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
-export const metadata: Metadata = { title: "Applicant — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Applicant", robots: { index: false } };
 
 const blockedText = "Your organization has no active paid plan, so the stage cannot be changed.";
 

@@ -14,6 +14,8 @@ FR-H3 (SOP Legal Document Versioning and Publication, on every change and once a
 | Display: the page shows the current version, its date (UTC) and its change summary, then the change log | `/[lang]/legal/<slug>` reads `public.v_legal_current` and the published versions of the slug (newest first, the latest 100; beyond that the page says that older versions are available on request, and the export holds all of them). |
 | Archive: all versions exportable for audit | Console, Legal documents, "Export all versions": a JSON file of every published version (slug, version, title, body, change_summary, is_draft, published_at). Administrator at the second step only. Keep the file with the audit archive. |
 
+**Product name (D86).** Since 2026-10-12 the product is called "Chara Pinnacle". Stored versions are not edited: counsel updates the drafts that still say "CHARA" and publishes them as new versions. In the repository that is `platform-rules` version 1 ("DRAFT: Platform Rules", migration `20261104110000_platform_rules_worker_statement.sql`); on a hosted project, list the others with `select slug, version from public.legal_documents where title ~ '\mCHARA\M' or body ~ '\mCHARA\M' order by 1, 2`.
+
 ## 2. KPI: users re-consented within 30 days (%)
 
 The ledger holds it: `consents.created_at` against `legal_documents.published_at`. For one version (here version 3 of the terms of service) the affected users are those whose latest consent before the publication was a grant of an older version; the share is of those who then granted the new version within 30 days. It is read when a version has been out for 30 days; no screen shows it in Phase 1.

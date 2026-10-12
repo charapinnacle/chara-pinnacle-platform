@@ -3,7 +3,7 @@ import { OrganizationSearch } from "@/components/admin/organization-search";
 import { PageHeader } from "@/components/layout/page-header";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Organisations — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Organisations", robots: { index: false } };
 
 export default async function OrganizationsPage({ params }: PageProps<"/[lang]/admin/organizations">) {
   const { lang } = await params;

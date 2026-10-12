@@ -8,7 +8,7 @@ import { getEmailDelivery } from "@/lib/dal/notifications";
 import { requireUser } from "@/lib/dal/session";
 import { homePath, settingsPath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "Notification settings — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Notification settings", robots: { index: false } };
 
 export default async function NotificationSettingsPage({ params }: PageProps<"/[lang]/settings/notifications">) {
   const { lang } = await params;

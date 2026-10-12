@@ -25,10 +25,13 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
     expect(await linkLabels(mainNavigation(page))).toEqual(WORKER_LINKS);
     await expect(current(page)).toHaveText("Applications");
     await expect(current(page)).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "CHARA" })).toHaveAttribute("href", "/en/dashboard/worker");
+    await expect(page.getByRole("link", { name: "Chara Pinnacle" })).toHaveAttribute("href", "/en/dashboard/worker");
+    // The page names itself and the title template of the layout adds the product name (D86).
+    await expect(page).toHaveTitle("My applications — Chara Pinnacle");
 
     await mainNavigation(page).getByRole("link", { name: "Passport" }).click();
     await expect(page).toHaveURL("/en/passport");
+    await expect(page).toHaveTitle("CHARA Worker Passport — Chara Pinnacle");
     await expect(current(page)).toHaveText("Passport");
 
     await mainNavigation(page).getByRole("link", { name: "Saved" }).click();
@@ -50,7 +53,7 @@ test.describe("the header of the signed-in area (UX-01, UX-08)", () => {
     await signInAtAal2(ownerPage, team.owner, team.ownerSecret, membersPath(team.slug));
     expect(await linkLabels(mainNavigation(ownerPage))).toEqual(MANAGER_LINKS);
     await expect(current(ownerPage)).toHaveText("Team");
-    await expect(ownerPage.getByRole("link", { name: "CHARA" })).toHaveAttribute("href", "/en/dashboard/employer");
+    await expect(ownerPage.getByRole("link", { name: "Chara Pinnacle" })).toHaveAttribute("href", "/en/dashboard/employer");
 
     for (const [label, path] of [
       ["Vacancies", `/en/org/${team.slug}/jobs`],

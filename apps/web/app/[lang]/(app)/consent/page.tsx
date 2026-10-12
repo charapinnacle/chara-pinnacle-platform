@@ -7,7 +7,7 @@ import { getPendingReconsents } from "@/lib/dal/legal";
 import { requireUser } from "@/lib/dal/session";
 import { consentReturnPath } from "@/lib/safe-next";
 
-export const metadata: Metadata = { title: "Updated documents — CHARA" };
+export const metadata: Metadata = { title: "Updated documents" };
 
 export default async function ConsentPage({
   params,

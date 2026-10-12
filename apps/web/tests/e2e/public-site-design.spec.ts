@@ -66,7 +66,7 @@ test.describe("the home page", () => {
     await expect(main.locator("h2:not(#platform-statistics-heading)")).toHaveText([
       "Who are you?",
       "One professional profile. Multiple opportunities.",
-      "How CHARA works",
+      "How Chara Pinnacle works",
       "Your Workforce. Your Network. One Platform.",
     ]);
     const headingOrder = await main.locator("h1, h2").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top));
@@ -101,7 +101,7 @@ test.describe("the home page", () => {
     ]);
     await expect(main.getByRole("region", { name: "For employers", exact: true }).getByRole("listitem")).toHaveCount(4);
     const closing = main.getByRole("region", { name: "Your Workforce. Your Network. One Platform." });
-    await expect(closing.getByRole("link", { name: "Join CHARA" })).toHaveAttribute("href", "/en/signup?kind=worker");
+    await expect(closing.getByRole("link", { name: "Join Chara Pinnacle" })).toHaveAttribute("href", "/en/signup?kind=worker");
     await expect(closing.getByRole("link", { name: "Start hiring" })).toHaveAttribute("href", "/en/signup?kind=company");
 
     const text = await main.innerText();

@@ -35,7 +35,7 @@ const COMPANY_STEPS = ["Company", "Security", "Ready"];
 const WORKER_STEPS = ["Your profile", "Ready"];
 
 async function expectFocusedLayout(page: Page) {
-  await expect(page.getByRole("link", { name: /CHARA/ }).first()).toHaveAttribute("href", "/en");
+  await expect(page.getByRole("link", { name: /Chara Pinnacle/ }).first()).toHaveAttribute("href", "/en");
   await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
   await expect(mainNavigation(page)).toHaveCount(0);
   await expect(accountButton(page)).toHaveCount(0);
@@ -74,7 +74,7 @@ test.describe("onboarding journey (U68)", () => {
     await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
     await expect(
       page.getByText(
-        "As the owner you can see applicants' documents and your company's billing, so CHARA asks for a code from an authenticator app before you open them.",
+        "As the owner you can see applicants' documents and your company's billing, so Chara Pinnacle asks for a code from an authenticator app before you open them.",
       ),
     ).toBeVisible();
     await expectSteps(page, ["done", "current", "upcoming"], COMPANY_STEPS);
@@ -98,7 +98,7 @@ test.describe("onboarding journey (U68)", () => {
     await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
     expect(factorRows(user.id)).toEqual([expect.objectContaining({ status: "verified", factor_type: "totp" })]);
     expect((await sessionClaims(page.context())).aal).toBe("aal2");
-    await expect(page.getByRole("heading", { name: `Welcome to CHARA Pinnacle, ${display}`, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: `Welcome to Chara Pinnacle, ${display}`, level: 1 })).toBeVisible();
     await expectSteps(page, ["done", "done", "current"], COMPANY_STEPS);
     await expectFocusedLayout(page);
     const tiles = page.getByRole("main").getByRole("listitem").getByRole("link");
@@ -135,7 +135,7 @@ test.describe("onboarding journey (U68)", () => {
     await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
     expect(profileRows(user.id)).toEqual([expect.objectContaining({ first_name: "Amira", current_country: "DE", searchable: false })]);
     expect(passportAudit(user.id)).toHaveLength(1);
-    await expect(page.getByRole("heading", { name: "Welcome to CHARA Pinnacle, Amira", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Chara Pinnacle, Amira", level: 1 })).toBeVisible();
     await expectSteps(page, ["done", "current"], WORKER_STEPS);
     const tiles = page.getByRole("main").getByRole("listitem").getByRole("link");
     await expect(tiles).toHaveCount(3);
@@ -170,7 +170,7 @@ test.describe("onboarding journey (U68)", () => {
     expect(welcomeCookie).toContain("; HttpOnly");
     expect(welcomeCookie).toMatch(/; SameSite=lax/i);
     await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
-    await expect(page.getByRole("heading", { name: "Welcome to CHARA Pinnacle, Lena", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Chara Pinnacle, Lena", level: 1 })).toBeVisible();
 
     // The first request after the welcome screen (here the prefetch of its tiles) takes the cookie away.
     const welcomeCookies = async () => (await page.context().cookies()).filter(({ name }) => name === "chara_welcome");

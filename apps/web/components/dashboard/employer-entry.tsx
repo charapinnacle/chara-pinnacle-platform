@@ -13,6 +13,7 @@ import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { requireOrgRole } from "@/lib/dal/session";
 import { employerDashboardPath, mfaPath } from "@/lib/routes";
+import { BRAND_NAME } from "@/lib/brand";
 
 // The dashboard of an employer shows one organization: the one named by ?org=<slug>, which must be one the user belongs to
 // (anything else is a page that does not exist), or the first of the user. An owner or an admin sees the figures at aal2
@@ -24,7 +25,7 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
   if (!slug) {
     return (
       <div className="grid gap-section">
-        <PageHeader title="Dashboard" description="Your hiring on CHARA starts with your company." />
+        <PageHeader title="Dashboard" description={`Your hiring on ${BRAND_NAME} starts with your company.`} />
         <EmptyState icon={Building2} title="Your company is not set up yet" description="Add your company to publish vacancies and invite your team.">
           <LinkButton href={`/${lang}/onboarding`}>Set up your company</LinkButton>
         </EmptyState>

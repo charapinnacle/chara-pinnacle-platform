@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { hasRecoverySession, isRecoveryLinkFresh } from "@/lib/dal/recovery";
 
 export const metadata: Metadata = {
-  title: "Choose a new password — CHARA",
+  title: "Choose a new password",
   robots: { index: false },
 };
 
