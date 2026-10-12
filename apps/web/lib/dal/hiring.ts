@@ -293,6 +293,26 @@ export async function isSubscriptionEnded(organizationId: string): Promise<boole
   return data?.subscription_ended === true;
 }
 
+type SearchRow = Database["public"]["Functions"]["search_jobs"]["Returns"][number];
+
+export function toSearchResult(row: SearchRow): JobSearchResult {
+  return {
+    id: row.id,
+    title: row.title,
+    employerName: row.employer_display_name,
+    countryCode: row.country_code,
+    city: row.city,
+    employmentType: row.employment_type,
+    salaryMin: row.salary_min ?? null,
+    salaryMax: row.salary_max ?? null,
+    salaryCurrency: row.salary_currency ?? null,
+    salaryPeriod: row.salary_period ?? null,
+    accommodation: row.accommodation,
+    visaSupport: row.visa_support,
+    createdAt: row.created_at,
+  };
+}
+
 // The public search. The function applies the public predicate itself, so it answers the same for a visitor, a candidate
 // and a member of a company; the cursor of the last row of a page, when there is a next page, starts the next one.
 export async function searchJobs(
@@ -320,21 +340,7 @@ export async function searchJobs(
   logSearch(filters, performance.now() - started, data?.length ?? 0, error ? "error" : "ok");
   if (error) throw new Error("The vacancies could not be searched", { cause: error });
   return {
-    results: data.map((row) => ({
-      id: row.id,
-      title: row.title,
-      employerName: row.employer_display_name,
-      countryCode: row.country_code,
-      city: row.city,
-      employmentType: row.employment_type,
-      salaryMin: row.salary_min ?? null,
-      salaryMax: row.salary_max ?? null,
-      salaryCurrency: row.salary_currency ?? null,
-      salaryPeriod: row.salary_period ?? null,
-      accommodation: row.accommodation,
-      visaSupport: row.visa_support,
-      createdAt: row.created_at,
-    })),
+    results: data.map(toSearchResult),
     nextCursor: data.at(-1)?.next_cursor ?? null,
   };
 }

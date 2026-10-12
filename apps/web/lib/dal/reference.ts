@@ -1,8 +1,7 @@
 import "server-only";
-import type { Database } from "@chara-pinnacle/db-types";
-import { createClient, type PostgrestError } from "@supabase/supabase-js";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
-import { env } from "@/lib/env";
+import { anonymousClient } from "@/lib/supabase/anonymous";
 
 export type ReferenceItem = { code: string; name: string };
 export type OccupationItem = { code: string; label: string; synonyms: string[] };
@@ -11,12 +10,7 @@ const PAGE_SIZE = 100;
 const REVALIDATE_SECONDS = 6 * 60 * 60;
 
 // The lists are public and change only with a migration, so they are read once for all visitors and kept for hours,
-// not once per page view. The client holds no session: a cached value must never depend on who asked.
-const anonymousClient = () =>
-  createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
+// not once per page view.
 type Page<Row> = { data: Row[]; count: number | null; error: null } | { data: null; count: null; error: PostgrestError };
 
 // The Data API returns at most 100 rows. The first page also reports the total, so the other pages are read together.
