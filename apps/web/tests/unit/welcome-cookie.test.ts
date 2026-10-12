@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const jar = vi.hoisted(() => ({ values: new Map<string, string>(), set: vi.fn(), delete: vi.fn() }));
@@ -12,7 +13,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-const { forgetWelcome, rememberWelcome, welcomeIsDue } = await import("@/lib/welcome-cookie");
+const { consumeWelcome, rememberWelcome, welcomeIsDue } = await import("@/lib/welcome-cookie");
 
 const userId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 
@@ -22,13 +23,13 @@ beforeEach(() => {
 });
 
 describe("the welcome cookie", () => {
-  it("is set for the account, unreadable by scripts, for the welcome page only and for ten minutes", async () => {
+  it("is set for the account, unreadable by scripts and for ten minutes", async () => {
     await rememberWelcome(userId);
     expect(jar.set).toHaveBeenCalledExactlyOnceWith("chara_welcome", userId, {
       httpOnly: true,
       sameSite: "lax",
       secure: true,
-      path: "/en/onboarding/welcome",
+      path: "/",
       maxAge: 600,
     });
   });
@@ -42,8 +43,16 @@ describe("the welcome cookie", () => {
     expect(await welcomeIsDue("not an id")).toBe(false);
   });
 
-  it("is removed on the path it was set for", async () => {
-    await forgetWelcome();
-    expect(jar.delete).toHaveBeenCalledExactlyOnceWith({ name: "chara_welcome", path: "/en/onboarding/welcome" });
+  it("is removed by the first request that carries it after the welcome screen rendered", () => {
+    const carrying = new NextRequest("http://localhost:3100/en/org/acme/jobs/new", {
+      headers: { cookie: `chara_welcome=${userId}` },
+    });
+    const response = NextResponse.next();
+    consumeWelcome(carrying, response);
+    expect(response.headers.get("set-cookie")).toMatch(/^chara_welcome=; Path=\/; Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
+
+    const other = NextResponse.next();
+    consumeWelcome(new NextRequest("http://localhost:3100/en/jobs"), other);
+    expect(other.headers.get("set-cookie")).toBeNull();
   });
 });

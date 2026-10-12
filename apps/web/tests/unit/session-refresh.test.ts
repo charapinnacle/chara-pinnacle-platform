@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { proxy } from "../../proxy";
+
+vi.mock("server-only", () => ({}));
+
+const { proxy } = await import("../../proxy");
 
 const origin = "http://localhost:3100";
 const supabase = "http://127.0.0.1:54421";

@@ -10,6 +10,7 @@ import {
   RATE_LIMITED,
 } from "@/lib/auth-errors";
 import { hasVerifiedTotpFactor, listVerifiedFactors, startEnrolment, verifyTotp, type Enrolment } from "@/lib/dal/mfa";
+import { getMyOrganization } from "@/lib/dal/organizations";
 import { isThrottled } from "@/lib/dal/rate-limit";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -71,8 +72,12 @@ export async function verifyEnrolment(input: CodeInput): Promise<VerifyResult | 
   if (error) return verifyRefusal(error);
   if (user.aal === "aal2") return { added: true };
   const target = mfaReturnPath(defaultLocale, next, homePath(defaultLocale, user.accountKind));
-  // The owner's set-up during onboarding is its last step, which ends on the welcome screen.
-  if (target === onboardingPath(defaultLocale, "welcome")) await rememberWelcome(user.id);
+  // The welcome screen ends the owner's onboarding only, and the address that leads to it comes from the client.
+  const ownerOnboarding =
+    target === onboardingPath(defaultLocale, "welcome") &&
+    user.accountKind === "company" &&
+    (await getMyOrganization(user.id))?.role === "owner";
+  if (ownerOnboarding) await rememberWelcome(user.id);
   redirect(target);
 }
 

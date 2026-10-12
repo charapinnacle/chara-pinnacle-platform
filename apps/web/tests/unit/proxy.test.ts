@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
-import { describe, expect, it } from "vitest";
-import { config, proxy } from "../../proxy";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+const { config, proxy } = await import("../../proxy");
 
 const origin = "http://localhost:3100";
 
@@ -132,5 +135,16 @@ describe("proxy", () => {
     const response = await proxy(new NextRequest(`${origin}/auth/callback`));
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("content-security-policy")).toContain("nonce-");
+  });
+
+  it("removes the welcome cookie from the browser on the first request after the welcome screen", async () => {
+    const response = await proxy(
+      new NextRequest(`${origin}/en/org/acme/jobs/new`, {
+        headers: { cookie: "chara_welcome=6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11" },
+      }),
+    );
+    expect(response.headers.getSetCookie()).toContainEqual(expect.stringMatching(/^chara_welcome=; Path=\/; Expires=Thu, 01 Jan 1970/));
+    const without = await proxy(new NextRequest(`${origin}/en/org/acme/jobs/new`));
+    expect(without.headers.getSetCookie().filter((cookie) => cookie.startsWith("chara_welcome="))).toEqual([]);
   });
 });

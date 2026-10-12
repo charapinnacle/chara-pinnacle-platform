@@ -13,6 +13,7 @@ const verifyTotpMock = vi.hoisted(() => vi.fn());
 const listFactorsMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
 const rememberWelcomeMock = vi.hoisted(() => vi.fn());
+const organizationMock = vi.hoisted(() => vi.fn());
 const errorLogMock = vi.spyOn(console, "error").mockImplementation(() => {});
 
 vi.mock("server-only", () => ({}));
@@ -25,6 +26,7 @@ vi.mock("@/lib/dal/mfa", () => ({
   hasVerifiedTotpFactor: async () => (await listFactorsMock()).length > 0,
 }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
+vi.mock("@/lib/dal/organizations", () => ({ getMyOrganization: organizationMock }));
 vi.mock("@/lib/welcome-cookie", () => ({ rememberWelcome: rememberWelcomeMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { mfa: { challengeAndVerify: challengeAndVerifyMock } } }),
@@ -46,6 +48,7 @@ beforeEach(() => {
   verifyTotpMock.mockResolvedValue(null);
   listFactorsMock.mockResolvedValue([verified(factorId)]);
   throttledMock.mockResolvedValue(false);
+  organizationMock.mockResolvedValue({ id: "org-1", role: "owner" });
 });
 
 describe("answerChallenge", () => {
@@ -138,6 +141,20 @@ describe("verifyEnrolment", () => {
       "REDIRECT:/en/onboarding/welcome",
     );
     expect(rememberWelcomeMock).toHaveBeenCalledExactlyOnceWith("user-1");
+    expect(organizationMock).toHaveBeenCalledWith("user-1");
+  });
+
+  it.each([
+    ["a worker", { accountKind: "worker" }, null],
+    ["an administrator of the organisation", { accountKind: "company" }, { id: "org-1", role: "admin" }],
+    ["a company user without an organisation", { accountKind: "company" }, null],
+  ])("marks no welcome for %s who asks for the welcome screen", async (_, account, organization) => {
+    userMock.mockResolvedValue({ id: "user-1", aal: "aal1", ...account });
+    organizationMock.mockResolvedValue(organization);
+    await expect(verifyEnrolment({ factorId, code: "123456", next: "/en/onboarding/welcome" })).rejects.toThrow(
+      "REDIRECT:/en/onboarding/welcome",
+    );
+    expect(rememberWelcomeMock).not.toHaveBeenCalled();
   });
 
   it("marks no welcome when a refused code keeps the owner on the set-up step", async () => {

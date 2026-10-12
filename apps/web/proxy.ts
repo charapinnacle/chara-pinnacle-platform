@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { localeRedirectPath } from "@/lib/i18n/locale";
 import { isPrivatePath } from "@/lib/seo/private-routes";
 import { updateSession } from "@/lib/supabase/proxy";
+import { consumeWelcome } from "@/lib/welcome-cookie";
 
 export async function proxy(request: NextRequest) {
   const redirectPath = localeRedirectPath(request.nextUrl.pathname);
@@ -37,6 +38,7 @@ export async function proxy(request: NextRequest) {
   response.headers.set("content-security-policy", csp);
   response.headers.set("x-request-id", requestId);
   if (isPrivatePath(request.nextUrl.pathname)) response.headers.set("x-robots-tag", "noindex, nofollow");
+  consumeWelcome(request, response);
   return response;
 }
 
