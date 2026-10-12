@@ -1,5 +1,6 @@
 import { BrandMark, Wordmark } from "@/components/layout/brand";
 import { PageContainer } from "@/components/layout/page-container";
+import { copyrightLine } from "@/lib/brand";
 
 // Dark because the monogram sits only on black (design-system.md section 0).
 export function SiteFooter({ links }: { links?: React.ReactNode }) {
@@ -13,7 +14,7 @@ export function SiteFooter({ links }: { links?: React.ReactNode }) {
           </span>
           {links}
         </div>
-        <p className="border-t pt-6 text-caption">&copy; CHARA</p>
+        <p className="border-t pt-6 text-caption">{copyrightLine()}</p>
       </PageContainer>
     </footer>
   );

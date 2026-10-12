@@ -108,7 +108,7 @@ test.describe("reporting as a visitor", () => {
     await fillReport(page);
     await page.getByLabel("Address of the vacancy").fill("not a vacancy");
     await page.getByRole("button", { name: "Send report" }).click();
-    await expect(alertText(page)).toContainText("Paste the address of a vacancy page on CHARA.");
+    await expect(alertText(page)).toContainText("Paste the address of a vacancy page on Chara Pinnacle.");
 
     await page.getByLabel("Address of the vacancy").fill(`http://localhost:3100/en/jobs/${draft}`);
     await page.getByRole("button", { name: "Send report" }).click();

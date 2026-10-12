@@ -230,7 +230,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await signInStaff(page, "admin");
     const administration = page.getByRole("navigation", { name: "Administration" });
     await expect(administration.getByRole("link")).toHaveCount(8);
-    await expect(page.getByRole("link", { name: "CHARA" })).toHaveAttribute("href", "/en/admin");
+    await expect(page.getByRole("link", { name: "Chara Pinnacle" })).toHaveAttribute("href", "/en/admin");
     await openAccountMenu(page);
     await expect(await panelOf(page)).toContainText("Platform Administrator");
     await expectNoAxeViolations(page);

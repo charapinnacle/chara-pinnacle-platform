@@ -5,7 +5,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { defaultLocale } from "@/lib/i18n/locale";
 
 export const metadata: Metadata = {
-  title: "Page not found — CHARA",
+  title: "Page not found",
   robots: { index: false, follow: false },
 };
 

@@ -99,8 +99,8 @@ describe("the footer", () => {
 
   it("keeps the logo and the copyright line when a page gives it no links", () => {
     const markup = html(<SiteFooter />);
-    expect(markup).toContain("CHARA");
-    expect(markup).toContain("© CHARA");
+    expect(markup).toContain("Chara Pinnacle");
+    expect(markup).toContain(`© ${new Date().getFullYear()} Chara Pinnacle`);
     expect(markup).not.toContain("<nav");
   });
 });

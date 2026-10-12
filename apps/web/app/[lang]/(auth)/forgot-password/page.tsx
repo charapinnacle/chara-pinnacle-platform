@@ -5,7 +5,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { googleSignInEnabled } from "@/lib/env";
 import { prefilledEmail } from "@/lib/pending-email";
 
-export const metadata: Metadata = { title: "Reset your password — CHARA" };
+export const metadata: Metadata = { title: "Reset your password" };
 
 export default async function ForgotPasswordPage({
   params,

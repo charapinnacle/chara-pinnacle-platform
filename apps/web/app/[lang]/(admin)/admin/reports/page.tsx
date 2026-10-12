@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { reportListFilterSchema } from "@/lib/validation/report";
 
-export const metadata: Metadata = { title: "Reports - CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Reports", robots: { index: false } };
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 

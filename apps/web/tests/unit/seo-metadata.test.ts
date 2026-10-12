@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { describe, expect, it } from "vitest";
 import { legalSlugs } from "@/lib/public/navigation";
 import { legalIndexMetadata, legalPageMetadata, staticPageMetadata, vacancyMetadata } from "@/lib/seo/metadata";
@@ -6,16 +7,21 @@ import { staticPages, type StaticPageKey } from "@/lib/seo/pages";
 const SITE = "http://localhost:3100";
 const keys = Object.keys(staticPages) as StaticPageKey[];
 
-const titleOf = (metadata: { title?: unknown }) => String(metadata.title);
+// The titles hold the product name already, so they are absolute: the layout's title template must not add it again.
+const titleOf = (metadata: Metadata) => {
+  expect(metadata.title).toEqual({ absolute: expect.any(String) });
+  return (metadata.title as { absolute: string }).absolute;
+};
 const canonicalOf = (metadata: { alternates?: { canonical?: unknown } | null }) => String(metadata.alternates?.canonical);
 
 describe("the metadata of the static pages (FR-H5 AC1)", () => {
   it("has a title of at most 60 characters and a description of 50 to 160 on each of the eight pages", () => {
     expect(keys).toHaveLength(8);
     for (const key of keys) {
-      const { title, description } = staticPageMetadata(key, "en");
-      expect(titleOf({ title }).length, key).toBeGreaterThan(0);
-      expect(titleOf({ title }).length, key).toBeLessThanOrEqual(60);
+      const metadata = staticPageMetadata(key, "en");
+      const { description } = metadata;
+      expect(titleOf(metadata).length, key).toBeGreaterThan(0);
+      expect(titleOf(metadata).length, key).toBeLessThanOrEqual(60);
       expect(String(description).length, key).toBeGreaterThanOrEqual(50);
       expect(String(description).length, key).toBeLessThanOrEqual(160);
     }
@@ -24,7 +30,7 @@ describe("the metadata of the static pages (FR-H5 AC1)", () => {
   it("has a different description and a different title on each page", () => {
     const metadata = keys.map((key) => staticPageMetadata(key, "en"));
     expect(new Set(metadata.map((entry) => entry.description)).size).toBe(keys.length);
-    expect(new Set(metadata.map((entry) => entry.title)).size).toBe(keys.length);
+    expect(new Set(metadata.map(titleOf)).size).toBe(keys.length);
   });
 
   it("has an absolute canonical address on the site, without a query string, of the page itself", () => {
@@ -42,8 +48,9 @@ describe("the metadata of the static pages (FR-H5 AC1)", () => {
 
   it("repeats the title and the description in the Open Graph tags", () => {
     for (const key of keys) {
-      const { title, description, openGraph } = staticPageMetadata(key, "en");
-      expect(openGraph?.title, key).toBe(title);
+      const metadata = staticPageMetadata(key, "en");
+      const { description, openGraph } = metadata;
+      expect(openGraph?.title, key).toBe(titleOf(metadata));
       expect(openGraph?.description, key).toBe(description);
     }
   });
@@ -64,10 +71,10 @@ describe("the metadata of the legal pages (FR-H5 AC1)", () => {
 
   it("takes the title from the current version and a description that holds the title, the version and the date", () => {
     const metadata = legalPageMetadata("en", "terms-of-service", document("Terms of Service"));
-    expect(metadata.title).toBe("Terms of Service — CHARA");
-    expect(metadata.description).toBe("Read the Terms of Service of CHARA: version 3, published 6 October 2026.");
+    expect(titleOf(metadata)).toBe("Terms of Service — Chara Pinnacle");
+    expect(metadata.description).toBe("Read the Terms of Service of Chara Pinnacle: version 3, published 6 October 2026.");
     expect(canonicalOf(metadata)).toBe(`${SITE}/en/legal/terms-of-service`);
-    expect(metadata.openGraph?.title).toBe(metadata.title);
+    expect(metadata.openGraph?.title).toBe(titleOf(metadata));
     expect(metadata.openGraph?.description).toBe(metadata.description);
   });
 
@@ -104,9 +111,9 @@ describe("the metadata of a vacancy (FR-H5 AC2)", () => {
 
   it("names the vacancy and the employer, and has the canonical address of the vacancy without a query string", () => {
     const metadata = vacancyMetadata("en", job());
-    expect(metadata.title).toBe("Warehouse Operator - Example Logistics | CHARA");
+    expect(titleOf(metadata)).toBe("Warehouse Operator - Example Logistics | Chara Pinnacle");
     expect(canonicalOf(metadata)).toBe(`${SITE}/en/jobs/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11`);
-    expect(metadata.openGraph?.title).toBe(metadata.title);
+    expect(metadata.openGraph?.title).toBe(titleOf(metadata));
     expect(metadata.openGraph?.description).toBe(metadata.description);
   });
 

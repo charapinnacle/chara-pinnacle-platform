@@ -6,7 +6,7 @@ import { expect, test } from "./support/test";
 const SECTION_HEADINGS = [
   "Who are you?",
   "One professional profile. Multiple opportunities.",
-  "How CHARA works",
+  "How Chara Pinnacle works",
   "Your Workforce. Your Network. One Platform.",
 ];
 
@@ -252,7 +252,7 @@ test.describe("the premium home page (U66)", () => {
       page.getByRole("search").getByLabel("Keyword"),
       page.getByRole("link", { name: "I'm a worker" }),
       page.getByRole("link", { name: "I'm an employer" }),
-      page.getByRole("link", { name: "Join CHARA" }),
+      page.getByRole("link", { name: "Join Chara Pinnacle" }),
       page.getByRole("contentinfo").getByRole("link", { name: "Pricing" }),
     ]) {
       await target.focus();
@@ -296,7 +296,7 @@ test.describe("the premium home page (U66)", () => {
     const footer = page.getByRole("contentinfo");
     await expect(footer.getByRole("navigation", { name: "Footer" }).getByRole("list")).toHaveCount(3);
     for (const [title, links] of [
-      ["Platform", ["Find Jobs", "How CHARA Works", "Pricing"]],
+      ["Platform", ["Find Jobs", "How Chara Pinnacle works", "Pricing"]],
       ["Company", ["About", "Trust & Safety", "Contact"]],
       ["Legal", ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"]],
     ] as const) {
@@ -305,7 +305,7 @@ test.describe("the premium home page (U66)", () => {
     }
     const lefts = await footer.getByRole("list").evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().left)));
     expect(new Set(lefts).size).toBe(3);
-    await expect(footer.getByText("© CHARA")).toBeVisible();
+    await expect(footer.getByText(`© ${new Date().getFullYear()} Chara Pinnacle`)).toBeVisible();
     await expect(footer.getByRole("heading")).toHaveCount(0);
   });
 });

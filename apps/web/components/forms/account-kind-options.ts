@@ -1,4 +1,5 @@
 import { Building2, UserRound } from "lucide-react";
+import { BRAND_NAME } from "@/lib/brand";
 
 export type Kind = "worker" | "company";
 
@@ -8,4 +9,4 @@ export const kindOptions = [
 ] as const;
 
 export const KIND_IS_FINAL =
-  "This choice cannot be changed later. To use CHARA as both worker and employer, register a second account with a different email address.";
+  `This choice cannot be changed later. To use ${BRAND_NAME} as both worker and employer, register a second account with a different email address.`;

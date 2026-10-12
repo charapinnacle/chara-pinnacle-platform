@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { UserSearch } from "@/components/admin/user-search";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Users — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Users", robots: { index: false } };
 
 export default async function UsersPage({ params }: PageProps<"/[lang]/admin/users">) {
   const { lang } = await params;

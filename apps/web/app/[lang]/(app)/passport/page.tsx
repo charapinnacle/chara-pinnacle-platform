@@ -20,7 +20,7 @@ import { computeCompleteness } from "@/lib/passport/completeness";
 import { homePath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
 
-export const metadata: Metadata = { title: "CHARA Worker Passport — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "CHARA Worker Passport", robots: { index: false } };
 
 export default async function PassportPage({ params }: PageProps<"/[lang]/passport">) {
   const { lang } = await params;

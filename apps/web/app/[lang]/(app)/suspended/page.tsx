@@ -5,7 +5,7 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { getCurrentUser } from "@/lib/dal/session";
 import { homePath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "Account suspended — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Account suspended", robots: { index: false } };
 
 export default async function SuspendedPage({ params }: PageProps<"/[lang]/suspended">) {
   const { lang } = await params;

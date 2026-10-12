@@ -4,6 +4,7 @@ import { LoadError } from "@/components/feedback/load-error";
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SkipLink } from "@/components/layout/skip-link";
+import { BRAND_NAME } from "@/lib/brand";
 import { geist } from "@/lib/fonts";
 import { defaultLocale } from "@/lib/i18n/locale";
 import "./globals.css";
@@ -13,7 +14,7 @@ export default function GlobalError({ retry }: { error: Error & { digest?: strin
   return (
     <html lang={defaultLocale} className={geist.variable}>
       <body>
-        <title>Something went wrong — CHARA</title>
+        <title>{`Something went wrong — ${BRAND_NAME}`}</title>
         <SkipLink />
         <SiteShell homeHref={`/${defaultLocale}`}>
           <PageContainer layout="centered" className="max-w-3xl">

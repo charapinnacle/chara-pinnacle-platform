@@ -5,11 +5,12 @@ import { AuthCard } from "@/components/layout/auth-card";
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SkipLink } from "@/components/layout/skip-link";
+import { BRAND_NAME } from "@/lib/brand";
 import { geist } from "@/lib/fonts";
 import { defaultLocale } from "@/lib/i18n/locale";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "Page not found — CHARA" };
+export const metadata: Metadata = { title: `Page not found — ${BRAND_NAME}` };
 
 export default async function GlobalNotFound() {
   await connection();

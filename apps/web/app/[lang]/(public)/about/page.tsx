@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { TextLink } from "@/components/forms/text-link";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { staticPageMetadata } from "@/lib/seo/metadata";
+import { BRAND_NAME } from "@/lib/brand";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/about">): Promise<Metadata> {
   return staticPageMetadata("about", (await params).lang);
@@ -10,10 +11,10 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/about">): 
 export default async function AboutPage({ params }: PageProps<"/[lang]/about">) {
   const { lang } = await params;
   return (
-    <ContentPage title="About CHARA" lead="Building the Global Workforce Network">
-      <ContentSection heading="Who CHARA connects">
+    <ContentPage title={`About ${BRAND_NAME}`} lead="Building the Global Workforce Network">
+      <ContentSection heading={`Who ${BRAND_NAME} connects`}>
         <p>
-          CHARA connects workers and employers. The platform lets them discover one another, create structured profiles,
+          {BRAND_NAME} connects workers and employers. The platform lets them discover one another, create structured profiles,
           find opportunities and build professional connections. Recruitment companies and staffing companies follow in
           a later phase.
         </p>
@@ -24,9 +25,9 @@ export default async function AboutPage({ params }: PageProps<"/[lang]/about">) 
           are public.
         </p>
       </ContentSection>
-      <ContentSection heading="Who is behind CHARA">
+      <ContentSection heading={`Who is behind ${BRAND_NAME}`}>
         <p>
-          The details of the company that operates CHARA are on the <TextLink href={`/${lang}/imprint`}>Imprint</TextLink>{" "}
+          The details of the company that operates {BRAND_NAME} are on the <TextLink href={`/${lang}/imprint`}>Imprint</TextLink>{" "}
           page. To reach us, see <TextLink href={`/${lang}/contact`}>Contact</TextLink>.
         </p>
       </ContentSection>

@@ -64,7 +64,7 @@ describe("the pricing page (FR-H2)", () => {
 
   it("has the client's heading, and a worker card that lists what a worker has and ends in Create worker profile for a visitor (D81)", async () => {
     const html = renderToStaticMarkup(await PricingPage(props));
-    expect(html).toContain("Choose how you want to grow on CHARA");
+    expect(html).toContain("Choose how you want to grow on Chara Pinnacle");
     const workers = html.slice(html.indexOf('id="pricing-workers"'), html.indexOf('id="pricing-employers"'));
     for (const item of ["Worker profile", "CHARA Passport", "Search jobs", "Apply", "Save jobs", "Manage applications"]) {
       expect(workers).toContain(`</svg>${item}</li>`);

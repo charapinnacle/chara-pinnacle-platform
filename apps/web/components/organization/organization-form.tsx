@@ -22,6 +22,7 @@ import {
   organizationFormSchema,
   type OrganizationFormInput,
 } from "@/lib/validation/organization";
+import { BRAND_NAME } from "@/lib/brand";
 
 type OrganizationFormProps = {
   lang: string;
@@ -81,7 +82,7 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
       <div className="grid gap-4">
         <p className="text-body">Your company was created.</p>
         <Notice tone="info" role="status">
-          An organisation with a similar name already exists on CHARA.
+          An organisation with a similar name already exists on {BRAND_NAME}.
         </Notice>
         <TextLink standalone href={onboardingPath(lang, "security")}>
           Continue

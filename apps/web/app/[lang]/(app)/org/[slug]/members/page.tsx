@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/i18n/format";
 import { billingPath } from "@/lib/routes";
 import { roleLabels } from "@/lib/validation/team";
 
-export const metadata: Metadata = { title: "Team — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Team", robots: { index: false } };
 
 function displayName(member: TeamMember): string {
   return member.name ?? member.email ?? "Team member";

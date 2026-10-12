@@ -10,7 +10,7 @@ import { getCurrentUser } from "@/lib/dal/session";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
 import { reportTargetTypes } from "@/lib/validation/report";
 
-export const metadata: Metadata = { title: "Report - CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Report", robots: { index: false } };
 
 const headings = {
   job: "Report a vacancy",

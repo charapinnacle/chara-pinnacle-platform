@@ -19,8 +19,9 @@ import { requireUser } from "@/lib/dal/session";
 import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
 import { homePath, onboardingPath } from "@/lib/routes";
+import { BRAND_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Welcome — CHARA" };
+export const metadata: Metadata = { title: "Welcome" };
 
 const kindLabel = { worker: "Worker", company: "Employer" } as const;
 
@@ -81,7 +82,7 @@ export default async function OnboardingPage({
     return (
       <OnboardingPanel
         title="Choose your account type"
-        description="Tell us how you will use CHARA and accept the documents for it to finish creating your account."
+        description={`Tell us how you will use ${BRAND_NAME} and accept the documents for it to finish creating your account.`}
       >
         <ChooseKindForm documents={form.documents} attestationWording={form.attestationWording} />
       </OnboardingPanel>

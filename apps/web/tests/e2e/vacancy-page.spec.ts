@@ -44,7 +44,7 @@ test.describe("the public vacancy page", () => {
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Welder MIG/MAG", level: 1 })).toBeVisible();
-    await expect(page).toHaveTitle(`Welder MIG/MAG - ${display_name} | CHARA`);
+    await expect(page).toHaveTitle(`Welder MIG/MAG - ${display_name} | Chara Pinnacle`);
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
 
     const description = page.getByText("Line one of the description.");
@@ -232,7 +232,7 @@ test.describe("the public vacancy page", () => {
     const [{ display_name }] = query<{ display_name: string }>(
       `select display_name from public.organizations where id = ${literal(company.id)}`,
     );
-    const title = `Keyboard welder - ${display_name} | CHARA`;
+    const title = `Keyboard welder - ${display_name} | Chara Pinnacle`;
     const id = openJob(company, "Keyboard welder");
 
     await page.setViewportSize({ width: 1280, height: 900 });

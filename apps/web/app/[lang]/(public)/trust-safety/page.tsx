@@ -4,6 +4,7 @@ import { LinkButton } from "@/components/layout/link-button";
 import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { reportPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
+import { BRAND_NAME } from "@/lib/brand";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/trust-safety">): Promise<Metadata> {
   return staticPageMetadata("trustSafety", (await params).lang);
@@ -14,7 +15,7 @@ export default async function TrustSafetyPage({ params }: PageProps<"/[lang]/tru
   return (
     <ContentPage
       title="Trust & Safety"
-      lead="What you can rely on when you use CHARA, as a worker or as an employer."
+      lead={`What you can rely on when you use ${BRAND_NAME}, as a worker or as an employer.`}
     >
       <ContentSection heading="Paying does not buy trust">
         <p>
@@ -25,7 +26,7 @@ export default async function TrustSafetyPage({ params }: PageProps<"/[lang]/tru
       <ContentSection heading="Your documents stay private">
         <p>
           The documents you upload are private by default. An employer sees a document only when you share it with
-          your application, and withdrawing the application ends the sharing. CHARA staff cannot open your documents.
+          your application, and withdrawing the application ends the sharing. {BRAND_NAME} staff cannot open your documents.
         </p>
       </ContentSection>
       <ContentSection heading="Vacancies are moderated">
@@ -36,7 +37,7 @@ export default async function TrustSafetyPage({ params }: PageProps<"/[lang]/tru
       </ContentSection>
       <ContentSection heading="Reporting">
         <p>
-          If a vacancy, a company or a page on CHARA is illegal, misleading or breaks our rules, tell us. You do not need an
+          If a vacancy, a company or a page on {BRAND_NAME} is illegal, misleading or breaks our rules, tell us. You do not need an
           account, and every report gets a reference number.
         </p>
         <div className="flex flex-wrap gap-3">

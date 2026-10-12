@@ -5,7 +5,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { defaultLocale } from "@/lib/i18n/locale";
 
 export const metadata: Metadata = {
-  title: "Vacancy not available | CHARA",
+  title: "Vacancy not available",
   robots: { index: false, follow: false },
 };
 

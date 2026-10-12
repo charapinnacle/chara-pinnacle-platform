@@ -199,8 +199,9 @@ describe("the layout of onboarding", () => {
     const html = renderToStaticMarkup(
       await OnboardingLayout({ children: <p>Step</p>, params: Promise.resolve({ lang: "en" }) }),
     );
-    expect(html).toMatch(/<a [^>]*href="\/en"[^>]*>.*CHARA.*Pinnacle.*<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/en"[^>]*><span[^>]*><\/span><span class="grid leading-none"><span class="sr-only">Chara Pinnacle<\/span><span aria-hidden="true"[^>]*>CHARA<\/span><span aria-hidden="true"[^>]*>Pinnacle<\/span><\/span><\/a>/);
     expect(html).toContain("Log out");
+    expect(html).toContain(`© ${new Date().getFullYear()} Chara Pinnacle`);
     expect(html).toMatch(/<main id="main-content"[^>]*><div class="[^"]*max-w-\[35rem\][^"]*"><p>Step<\/p><\/div><\/main>/);
     expect(html).toContain('href="/en/imprint"');
     expect(html).not.toContain('aria-label="Main"');

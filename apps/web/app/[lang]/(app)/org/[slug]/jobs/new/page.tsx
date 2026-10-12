@@ -8,7 +8,7 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole } from "@/lib/dal/session";
 import { jobsPath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "New vacancy — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "New vacancy", robots: { index: false } };
 
 export default async function NewJobPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/new">) {
   const { lang, slug } = await params;

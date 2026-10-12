@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { isWrongCode } from "@/lib/auth-errors";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TOTP_FACTORS } from "@/lib/validation/mfa";
+import { BRAND_NAME } from "@/lib/brand";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -77,7 +78,7 @@ export async function startEnrolment(
     const { error } = await supabase.auth.mfa.unenroll({ factorId });
     if (error) throw new Error("An unfinished enrolment could not be removed", { cause: error });
   }
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: name });
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: name, issuer: BRAND_NAME });
   if (error) {
     if (error.code === "mfa_factor_name_conflict") return { refused: "name_taken" };
     if (error.code === "too_many_enrolled_mfa_factors") return { refused: "too_many" };

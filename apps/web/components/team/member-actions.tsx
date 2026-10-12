@@ -6,6 +6,7 @@ import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { changeMemberRole, removeMember } from "@/lib/actions/team";
 import type { InvitableRole } from "@/lib/validation/team";
+import { BRAND_NAME } from "@/lib/brand";
 
 type MemberActionsProps = { slug: string; userId: string; name: string; role: InvitableRole };
 
@@ -36,7 +37,7 @@ export function MemberActions({ slug, userId, name, role }: MemberActionsProps) 
       </FormButton>
       <ModalDialog open={confirming} onClose={() => setConfirming(false)} title={`Remove ${name}?`}>
         <p className="text-body leading-relaxed">
-          {name} loses access to this organization at once and is signed out of CHARA.
+          {name} loses access to this organization at once and is signed out of {BRAND_NAME}.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <FormButton type="button" variant="secondary" className="w-full" onClick={() => setConfirming(false)}>

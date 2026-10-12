@@ -9,7 +9,7 @@ import { expect, test } from "./support/test";
 const nav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Main" });
 
 test.describe("the header of the public pages (FR-H1 AC3, D81)", () => {
-  test("a visitor sees Find Jobs, How CHARA Works, Post a Job, Login and Sign up, and Post a Job opens the employer sign-up", async ({ page }) => {
+  test("a visitor sees Find Jobs, How Chara Pinnacle works, Post a Job, Login and Sign up, and Post a Job opens the employer sign-up", async ({ page }) => {
     await page.goto("/en/pricing");
     await expect(nav(page).getByRole("link")).toHaveText(HEADER_LABELS);
     await expect(nav(page).getByRole("link", { name: "Login", exact: true })).toHaveAttribute("href", "/en/login");
@@ -64,7 +64,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link")).toHaveText(["Find Jobs", "How CHARA Works", "Go to my area"]);
+    await expect(nav(page).getByRole("link")).toHaveText(["Find Jobs", "How Chara Pinnacle works", "Go to my area"]);
     await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveCount(0);
     await page.goto("/en/post-job");
     await expect(page).toHaveURL("/en/dashboard/worker");

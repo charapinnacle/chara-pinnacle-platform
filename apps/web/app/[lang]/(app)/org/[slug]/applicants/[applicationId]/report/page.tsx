@@ -10,7 +10,7 @@ import { getApplicant } from "@/lib/dal/applicants";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { applicantPath, applicantsPath, homePath } from "@/lib/routes";
 
-export const metadata: Metadata = { title: "Report a profile - CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Report a profile", robots: { index: false } };
 
 // A member reports an applicant of the organisation (FR-F4). What Trust & Safety receive is the vacancy applied to, the
 // organisation and the text below: not the name of the candidate, and no document.

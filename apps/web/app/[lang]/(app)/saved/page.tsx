@@ -9,7 +9,7 @@ import { SAVED_HEADING_ID, savedPath } from "@/lib/jobs/saved";
 import { homePath } from "@/lib/routes";
 import { parseListCursor } from "@/lib/validation/job";
 
-export const metadata: Metadata = { title: "Saved vacancies — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Saved vacancies", robots: { index: false } };
 
 // For candidates only: a visitor goes to log in (requireUser), a company user gets the same page as for an address that
 // does not exist, and an account that has not chosen its kind goes to the step that finishes it.

@@ -12,7 +12,7 @@ import { homePath } from "@/lib/routes";
 import { invitationTokenSchema, roleLabels, WORKER_CANNOT_JOIN } from "@/lib/validation/team";
 
 export const metadata: Metadata = {
-  title: "Team invitation — CHARA",
+  title: "Team invitation",
   robots: { index: false },
   referrer: "no-referrer",
 };

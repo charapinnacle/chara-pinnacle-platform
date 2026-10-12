@@ -8,7 +8,7 @@ import { logIn } from "./login-page";
 import type { TestUser } from "./test-user";
 
 export const IDENTIFIER_LABEL = "Company registration number or VAT number (optional until you start your trial)";
-export const SIMILAR_NAME_NOTICE = "An organisation with a similar name already exists on CHARA.";
+export const SIMILAR_NAME_NOTICE = "An organisation with a similar name already exists on Chara Pinnacle.";
 
 export function uniqueToken(): string {
   return randomBytes(4).toString("hex");

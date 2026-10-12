@@ -1,9 +1,11 @@
+import { BRAND_NAME } from "@/lib/brand";
+
 // The links of the header that are the same for everybody, and the two that only a visitor needs. The owner keeps the
-// header to the two ways in (OPEN_QUESTIONS.md, owner decision 2026-10-10): the pages about CHARA are in the footer.
+// header to the two ways in (OPEN_QUESTIONS.md, owner decision 2026-10-10): the pages about the platform are in the footer.
 // Post a Job, between them and the account links, comes from the client's website structure (OPEN_QUESTIONS.md D81, question P22).
 export const siteLinks = [
   { path: "jobs", label: "Find Jobs" },
-  { path: "how-it-works", label: "How CHARA Works" },
+  { path: "how-it-works", label: `How ${BRAND_NAME} works` },
 ] as const;
 
 export const guestLinks = [
@@ -23,7 +25,7 @@ export const publicFooterColumns = [
     title: "Platform",
     links: [
       { path: "jobs", label: "Find Jobs" },
-      { path: "how-it-works", label: "How CHARA Works" },
+      { path: "how-it-works", label: `How ${BRAND_NAME} works` },
       { path: "pricing", label: "Pricing" },
     ],
   },

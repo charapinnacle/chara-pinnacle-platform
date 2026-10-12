@@ -6,7 +6,7 @@ import { StaffList } from "@/components/admin/staff-list";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Staff — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Staff", robots: { index: false } };
 
 export default async function StaffPage({ params, searchParams }: PageProps<"/[lang]/admin/staff">) {
   const [{ lang }, { after }] = await Promise.all([params, searchParams]);

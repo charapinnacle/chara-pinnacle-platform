@@ -17,7 +17,7 @@ import { isEditable, STALE_OPEN_TEXT } from "@/lib/jobs/lifecycle";
 import { isJobStatus, jobDateText, jobStatusText, jobStatusTone, statusLabels } from "@/lib/jobs/presentation";
 import { parseJobCursor } from "@/lib/validation/job";
 
-export const metadata: Metadata = { title: "Vacancies — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Vacancies", robots: { index: false } };
 
 export default async function JobsPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/jobs">) {
   const [{ lang, slug }, { after, status: statusParam }] = await Promise.all([params, searchParams]);

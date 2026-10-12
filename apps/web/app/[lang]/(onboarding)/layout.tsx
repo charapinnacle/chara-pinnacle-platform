@@ -4,6 +4,7 @@ import { FooterLinks } from "@/components/layout/footer-links";
 import { MAIN_CONTENT_ID } from "@/components/layout/skip-link";
 import { appFooterLinks } from "@/lib/public/navigation";
 import "@/components/onboarding/onboarding.css";
+import { copyrightLine } from "@/lib/brand";
 
 // No navigation and no account menu: none of it can be used before the steps are done.
 export default async function OnboardingLayout({ children, params }: LayoutProps<"/[lang]">) {
@@ -22,7 +23,7 @@ export default async function OnboardingLayout({ children, params }: LayoutProps
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-content flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-small text-muted-foreground sm:px-6 lg:px-10">
           <FooterLinks lang={lang} label="Legal" links={appFooterLinks} />
-          <p>&copy; CHARA</p>
+          <p>{copyrightLine()}</p>
         </div>
       </footer>
     </div>

@@ -1,5 +1,6 @@
 import { PortalButton } from "@/components/billing/portal-button";
 import type { PlanChange } from "@/lib/billing/presentation";
+import { BRAND_NAME } from "@/lib/brand";
 
 type PlanActionsProps = { slug: string; changes: PlanChange[]; live: boolean };
 
@@ -12,7 +13,7 @@ export function PlanActions({ slug, changes, live }: PlanActionsProps) {
         Plan, tax details and invoices
       </h2>
       <p className="text-body text-muted-foreground">
-        You manage these on the page of our payment provider. CHARA never sees or stores your card details.
+        You manage these on the page of our payment provider. {BRAND_NAME} never sees or stores your card details.
       </p>
       <div className="flex flex-wrap gap-3">
         {live ? (

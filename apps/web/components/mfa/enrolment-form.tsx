@@ -5,6 +5,7 @@ import { toast } from "@/components/feedback/toast-store";
 import { CodeForm } from "@/components/mfa/code-form";
 import { verifyEnrolment } from "@/lib/actions/mfa";
 import type { Enrolment } from "@/lib/dal/mfa";
+import { BRAND_NAME } from "@/lib/brand";
 
 type EnrolmentFormProps = { enrolment: Enrolment; next?: string };
 
@@ -17,7 +18,7 @@ export function EnrolmentForm({ enrolment, next }: EnrolmentFormProps) {
       <picture className="mx-auto">
         <img
           src={enrolment.qrCode}
-          alt="QR code to add CHARA to your authenticator app. If you cannot scan it, use the setup key below."
+          alt={`QR code to add ${BRAND_NAME} to your authenticator app. If you cannot scan it, use the setup key below.`}
           width={200}
           height={200}
           className="block rounded-lg border bg-white p-2"
@@ -31,7 +32,7 @@ export function EnrolmentForm({ enrolment, next }: EnrolmentFormProps) {
       </div>
       <CodeForm
         id={`mfa-code-${enrolment.factorId}`}
-        description="Enter the 6-digit code that your authenticator app shows for CHARA."
+        description={`Enter the 6-digit code that your authenticator app shows for ${BRAND_NAME}.`}
         submitLabel="Verify and continue"
         busyLabel="Verifying..."
         failureTitle="Could not verify the code"

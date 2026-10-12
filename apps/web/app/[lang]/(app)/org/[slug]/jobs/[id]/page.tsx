@@ -15,7 +15,7 @@ import { applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
 
-export const metadata: Metadata = { title: "Vacancy — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Vacancy", robots: { index: false } };
 
 export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/jobs/[id]">) {
   const { lang, slug, id } = await params;

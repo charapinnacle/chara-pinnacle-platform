@@ -6,8 +6,9 @@ import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { googleSignInEnabled } from "@/lib/env";
 import { GOOGLE_ERRORS, isGoogleErrorCode } from "@/lib/google-sign-in";
+import { BRAND_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Log in — CHARA" };
+export const metadata: Metadata = { title: "Log in" };
 
 export default async function LoginPage({
   params,
@@ -20,7 +21,7 @@ export default async function LoginPage({
       title="Log in"
       footer={
         <p className="flex flex-wrap items-center gap-x-1.5">
-          New to CHARA?
+          New to {BRAND_NAME}?
           <TextLink standalone="flush" href={`/${lang}/signup`}>
             Create an account
           </TextLink>

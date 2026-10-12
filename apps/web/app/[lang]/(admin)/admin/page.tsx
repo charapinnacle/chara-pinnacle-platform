@@ -14,7 +14,7 @@ import { formatCount } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 import { lastThirtyDays, platformRoleLabels } from "@/lib/validation/admin";
 
-export const metadata: Metadata = { title: "Administration — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Administration", robots: { index: false } };
 
 const statRow = "animate-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
 

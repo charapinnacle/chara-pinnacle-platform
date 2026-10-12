@@ -3,7 +3,7 @@ import { JobModerationSearch } from "@/components/admin/job-moderation-search";
 import { PageHeader } from "@/components/layout/page-header";
 import { requirePlatformRole } from "@/lib/dal/session";
 
-export const metadata: Metadata = { title: "Vacancy moderation — CHARA", robots: { index: false } };
+export const metadata: Metadata = { title: "Vacancy moderation", robots: { index: false } };
 
 export default async function ModerationPage({ params }: PageProps<"/[lang]/admin/moderation">) {
   const { lang } = await params;

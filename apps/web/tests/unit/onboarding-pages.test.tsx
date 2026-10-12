@@ -117,7 +117,7 @@ describe("the two-step set-up step of onboarding", () => {
     expect(currentStep(html)).toBe("Security");
     expect(html).toMatch(/Step 1 of 3: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(
-      "As the owner you can see applicants&#x27; documents and your company&#x27;s billing, so CHARA asks for a code from an authenticator app before you open them.",
+      "As the owner you can see applicants&#x27; documents and your company&#x27;s billing, so Chara Pinnacle asks for a code from an authenticator app before you open them.",
     );
     expect(html).toContain("Show the QR code");
   });
@@ -140,7 +140,7 @@ describe("the welcome screen", () => {
     const html = await render(WelcomePage);
     expect(welcomeDueMock).toHaveBeenCalledWith("user-1");
     expect(currentStep(html)).toBe("Ready");
-    expect(html).toContain(">Welcome to CHARA Pinnacle, Acme Bau</h1>");
+    expect(html).toContain(">Welcome to Chara Pinnacle, Acme Bau</h1>");
     const links = [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>.*?<span class="text-body font-semibold">([^<]+)<\/span>/g)].map(
       (match) => [match[1], match[2]],
     );
@@ -156,7 +156,7 @@ describe("the welcome screen", () => {
     passportMock.mockResolvedValue({ firstName: "Amira" });
     const html = await render(WelcomePage);
     expect(currentStep(html)).toBe("Ready");
-    expect(html).toContain(">Welcome to CHARA Pinnacle, Amira</h1>");
+    expect(html).toContain(">Welcome to Chara Pinnacle, Amira</h1>");
     expect([...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((match) => match[1])).toEqual([
       "/en/jobs",
       "/en/passport",

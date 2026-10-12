@@ -97,7 +97,7 @@ describe("startEnrolment", () => {
       secret: "JBSWY3DPEHPK3PXP",
     });
     expect(unenrollMock).toHaveBeenCalledWith({ factorId: "old" });
-    expect(enrollMock).toHaveBeenCalledWith({ factorType: "totp", friendlyName: "Authenticator" });
+    expect(enrollMock).toHaveBeenCalledWith({ factorType: "totp", friendlyName: "Authenticator", issuer: "Chara Pinnacle" });
     expect(unenrollMock.mock.invocationCallOrder[0]).toBeLessThan(enrollMock.mock.invocationCallOrder[0]);
   });
 

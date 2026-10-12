@@ -5,6 +5,7 @@ import { moderationFormSchema } from "@/lib/validation/admin";
 import type { StatusTone } from "@/lib/status-tone";
 import { characters } from "@/lib/utils";
 import { emailSchema } from "@/lib/validation/sign-up";
+import { BRAND_NAME } from "@/lib/brand";
 
 type Enums = Database["public"]["Enums"];
 
@@ -68,8 +69,8 @@ const goodFaithSchema = z.boolean().refine((value) => value, { error: "Confirm t
 // already known.
 const commonFields = { category: categorySchema, details: detailsSchema, email: optionalEmailSchema, goodFaith: goodFaithSchema };
 
-const VACANCY_LINK = "Paste the address of a vacancy page on CHARA.";
-const PAGE_LINK = "Enter the address of a page of CHARA, for example /en/jobs.";
+const VACANCY_LINK = `Paste the address of a vacancy page on ${BRAND_NAME}.`;
+const PAGE_LINK = `Enter the address of a page of ${BRAND_NAME}, for example /en/jobs.`;
 
 const vacancyReportFormSchema = z.object({
   ...commonFields,
