@@ -14,7 +14,8 @@ export const metadata: Metadata = {
   // absolute title (lib/seo/metadata.ts).
   title: { default: staticPages.home.title, template: `%s — ${BRAND_NAME}` },
   description: `${BRAND_NAME} connects workers, employers, recruitment companies and staffing companies.`,
-  openGraph: { siteName: BRAND_NAME },
+  // This openGraph replaces the one inherited from app/opengraph-image.tsx whole, so the image is named again.
+  openGraph: { siteName: BRAND_NAME, images: "/opengraph-image" },
 };
 
 // English only in Phase 1; any other first segment is a 404.

@@ -12,6 +12,8 @@ export interface Head {
   ogTitle: string | null;
   ogDescription: string | null;
   ogImage: string | null;
+  ogSiteName: string | null;
+  twitterCard: string | null;
 }
 
 export async function readHead(page: Page): Promise<Head> {
@@ -23,6 +25,8 @@ export async function readHead(page: Page): Promise<Head> {
     ogTitle: await content('meta[property="og:title"]'),
     ogDescription: await content('meta[property="og:description"]'),
     ogImage: await content('meta[property="og:image"]'),
+    ogSiteName: await content('meta[property="og:site_name"]'),
+    twitterCard: await content('meta[name="twitter:card"]'),
   };
 }
 
