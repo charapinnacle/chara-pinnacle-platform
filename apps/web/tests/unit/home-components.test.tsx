@@ -157,8 +157,9 @@ describe("browse by industry and by country", () => {
     expect(html(<Browse lang="en" industryCounts={null} countries={countries} />)).not.toContain("open jobs");
   });
 
-  it("lists the countries with open vacancies as links to their filter, then All countries", () => {
+  it("lists the countries with open vacancies as links to their filter, then All countries, under a line that claims no more than the newest", () => {
     const markup = html(<Browse lang="en" industryCounts={null} countries={countries} />);
+    expect(textOf(markup)).toContain("Browse by country Where the newest vacancies are.");
     const chips = [...markup.matchAll(/<a [^>]*href="(\/en\/jobs(?:\?country=[A-Z]{2})?)"[^>]*>([^<]+)<\/a>/g)].map(([, href, label]) => [href, label]);
     expect(chips).toEqual([
       ["/en/jobs?country=DE", "Germany"],

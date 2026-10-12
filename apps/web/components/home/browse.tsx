@@ -17,7 +17,8 @@ type BrowseProps = {
 };
 
 // The tiles open Find Jobs filtered by the industry; a tile shows how many vacancies it holds only when the count is real
-// and large enough to be credible (D87). The countries are those of open vacancies, so a chip never leads to nothing.
+// and large enough to be credible (D87). The countries are those of the newest open vacancies (the sample of the latest
+// jobs, not every country with a vacancy, D87), so a chip never leads to nothing.
 export function Browse({ lang, industryCounts, countries }: BrowseProps) {
   return (
     <Band tone="white" aria-labelledby="home-industries-heading" className="grid gap-20">
@@ -54,9 +55,12 @@ export function Browse({ lang, industryCounts, countries }: BrowseProps) {
       </div>
       {countries.length > 0 ? (
         <section aria-labelledby="home-countries-heading" className="grid gap-8">
-          <h2 id="home-countries-heading" className="font-serif text-section text-balance">
-            Browse by country
-          </h2>
+          <div className="grid gap-3">
+            <h2 id="home-countries-heading" className="font-serif text-section text-balance">
+              Browse by country
+            </h2>
+            <p className="text-lead text-muted-foreground">Where the newest vacancies are.</p>
+          </div>
           <ul className="flex flex-wrap gap-2 sm:gap-3">
             {countries.map(({ code, name }) => (
               <li key={code}>
