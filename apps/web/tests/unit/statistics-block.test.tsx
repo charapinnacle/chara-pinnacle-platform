@@ -107,7 +107,7 @@ describe("the home page (U70)", () => {
     for (const [label, value] of [
       ["Countries and territories", "3"],
       ["Occupations (ISCO-08)", "3"],
-      ["Industries (NACE)", "1"],
+      ["Industries (ISIC Rev.4)", "1"],
       ["Languages", "2"],
     ]) {
       expect(html).toMatch(new RegExp(`<span[^>]*>${label.replace(/[()]/g, "\\$&")}</span><span[^>]*>${value}</span>`));

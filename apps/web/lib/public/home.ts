@@ -8,7 +8,7 @@ type Occupation = { code: string; label: string; synonyms: string[] };
 // chef, carpenter). A code the data does not hold is left out, so a chip always opens a filter that exists.
 export const POPULAR_OCCUPATIONS = ["7212", "7411", "2221", "8332", "3434", "7115"] as const;
 
-// The six industries of the photo tiles, NACE sections of the reference data. Logistics and transport are one section (H);
+// The six industries of the photo tiles, ISIC Rev.4 sections of the reference data. Logistics and transport are one section (H);
 // the warehouse picture illustrates wholesale and retail trade (G), where most warehouse work is (D87).
 export const INDUSTRY_TILES: readonly { code: string; label: string; photo: PhotoName }[] = [
   { code: "F", label: "Construction", photo: "construction-team" },
@@ -56,7 +56,7 @@ export function reachFigures(sizes: { countries: number; occupations: number; in
   return [
     { label: "Countries and territories", value: formatCount(sizes.countries) },
     { label: "Occupations (ISCO-08)", value: formatCount(sizes.occupations) },
-    { label: "Industries (NACE)", value: formatCount(sizes.industries) },
+    { label: "Industries (ISIC Rev.4)", value: formatCount(sizes.industries) },
     { label: "Languages", value: formatCount(sizes.languages) },
   ];
 }

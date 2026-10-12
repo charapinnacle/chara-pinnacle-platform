@@ -143,7 +143,7 @@ test.describe("the product home page (U70)", () => {
     await expect(reach.getByRole("listitem")).toHaveText([
       new RegExp(`^Countries and territories\\s*${sizes.countries}$`),
       new RegExp(`^Occupations \\(ISCO-08\\)\\s*${sizes.occupations}$`),
-      new RegExp(`^Industries \\(NACE\\)\\s*${sizes.industries}$`),
+      new RegExp(`^Industries \\(ISIC Rev\\.4\\)\\s*${sizes.industries}$`),
       new RegExp(`^Languages\\s*${sizes.languages}$`),
     ]);
     expect(sizes.countries).toBeGreaterThan(200);

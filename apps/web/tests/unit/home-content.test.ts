@@ -23,7 +23,7 @@ describe("the popular searches of the hero", () => {
 });
 
 describe("the industry tiles", () => {
-  it("are six distinct NACE sections, each with a photograph that exists", () => {
+  it("are six distinct ISIC Rev.4 sections, each with a photograph that exists", () => {
     expect(INDUSTRY_TILES).toHaveLength(6);
     expect(new Set(INDUSTRY_TILES.map(({ code }) => code)).size).toBe(6);
     for (const { code, photo } of INDUSTRY_TILES) {
@@ -68,7 +68,7 @@ describe("the reach figures", () => {
     expect(reachFigures({ countries: 250, occupations: 436, industries: 21, languages: 1840 })).toEqual([
       { label: "Countries and territories", value: "250" },
       { label: "Occupations (ISCO-08)", value: "436" },
-      { label: "Industries (NACE)", value: "21" },
+      { label: "Industries (ISIC Rev.4)", value: "21" },
       { label: "Languages", value: "1,840" },
     ]);
   });
