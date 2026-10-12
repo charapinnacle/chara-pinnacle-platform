@@ -304,8 +304,8 @@ describe("the place of the home search (U70)", () => {
     { code: "CI", name: "Côte d'Ivoire" },
   ];
 
-  it("turns a country name or code, in any case and without its accents, into the country filter", () => {
-    for (const where of ["Germany", "germany", " GERMANY ", "de", "DE"]) {
+  it("turns a country name in any case and without its accents, or a code in capitals, into the country filter", () => {
+    for (const where of ["Germany", "germany", " GERMANY ", "DE", " DE "]) {
       expect(resolvePlace({ q: "welder", where }, countries), where).toEqual({ q: "welder", country: "DE", city: undefined });
     }
     expect(resolvePlace({ where: "turkiye" }, countries)).toEqual({ country: "TR", city: undefined });
@@ -315,6 +315,20 @@ describe("the place of the home search (U70)", () => {
   it("turns anything else into the city filter, trimmed, and replaces a country of the same address", () => {
     expect(resolvePlace({ where: "  Hamburg ", country: "PL" }, countries)).toEqual({ city: "Hamburg", country: undefined });
     expect(resolvePlace({ where: "Germanyx" }, countries)).toEqual({ city: "Germanyx", country: undefined });
+  });
+
+  it("keeps two letters in lower or mixed case a city, so a short form or a word is not read as a country", () => {
+    const withLaos = [...countries, { code: "LA", name: "Laos" }, { code: "NO", name: "Norway" }];
+    for (const where of ["de", "De", "la", "no"]) expect(resolvePlace({ where }, withLaos), where).toEqual({ city: where, country: undefined });
+    expect(resolvePlace({ where: "LA" }, withLaos)).toEqual({ country: "LA", city: undefined });
+  });
+
+  it("turns City, Country into both filters, and leaves the whole place a city when the part after the comma is no country", () => {
+    expect(resolvePlace({ where: "Hamburg, Germany", country: "PL" }, countries)).toEqual({ city: "Hamburg", country: "DE" });
+    expect(resolvePlace({ where: " Izmir ,turkiye " }, countries)).toEqual({ city: "Izmir", country: "TR" });
+    expect(resolvePlace({ where: "Hamburg, DE" }, countries)).toEqual({ city: "Hamburg", country: "DE" });
+    expect(resolvePlace({ where: "Hamburg, Altona" }, countries)).toEqual({ city: "Hamburg, Altona", country: undefined });
+    expect(resolvePlace({ where: ", Germany" }, countries)).toEqual({ city: ", Germany", country: undefined });
   });
 
   it("drops an empty place and leaves an address without one as it is", () => {
