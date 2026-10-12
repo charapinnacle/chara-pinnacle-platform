@@ -19,7 +19,7 @@ export const INDUSTRY_TILES: readonly { code: string; label: string; photo: Phot
   { code: "G", label: "Wholesale and retail", photo: "logistics-warehouse" },
 ];
 
-export const COUNTRY_CHIP_LIMIT = 12;
+const COUNTRY_CHIP_LIMIT = 12;
 
 // Below this many open vacancies the latest-jobs section is an empty state with the way to post one, not a short list.
 export const LATEST_JOBS_MINIMUM = 3;
@@ -36,8 +36,8 @@ export function popularSearches(occupations: readonly Occupation[]): { code: str
   });
 }
 
-// The countries of the given open vacancies, the one with the most first (then by name), at most `limit`.
-export function countryChips(jobs: readonly { countryCode: string }[], countries: readonly Named[], limit: number): Named[] {
+// The countries of the given open vacancies, the one with the most first (then by name), at most twelve.
+export function countryChips(jobs: readonly { countryCode: string }[], countries: readonly Named[]): Named[] {
   const tally = new Map<string, number>();
   for (const { countryCode } of jobs) tally.set(countryCode, (tally.get(countryCode) ?? 0) + 1);
   const names = new Map(countries.map(({ code, name }) => [code, name]));
@@ -47,7 +47,7 @@ export function countryChips(jobs: readonly { countryCode: string }[], countries
       return name ? [{ code, name, count }] : [];
     })
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "en"))
-    .slice(0, limit)
+    .slice(0, COUNTRY_CHIP_LIMIT)
     .map(({ code, name }) => ({ code, name }));
 }
 

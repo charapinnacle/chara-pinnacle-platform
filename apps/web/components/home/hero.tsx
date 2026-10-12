@@ -1,10 +1,25 @@
 import Link from "next/link";
+import { preload } from "react-dom";
 import { TextLink } from "@/components/forms/text-link";
 import { HeroSearch } from "@/components/home/hero-search";
 import { Photo } from "@/components/home/photo";
+import { photoSrcSet } from "@/lib/public/photos";
 import { signUpPath } from "@/lib/routes";
 
-export const HERO_PHOTO_SIZES = "100vw";
+const PHOTO_SIZES = "100vw";
+
+// The preload of the hero picture, with the same sources and sizes, so that the browser fetches the one file it will show.
+// It must be called before the page waits for its data: a hint given later reaches the browser only after the head has
+// been sent, as data for the client runtime instead of a link in the head.
+export function preloadHeroPhoto() {
+  preload("/images/home/hero-welder-1920.webp", {
+    as: "image",
+    type: "image/webp",
+    imageSrcSet: photoSrcSet("hero-welder", "webp"),
+    imageSizes: PHOTO_SIZES,
+    fetchPriority: "high",
+  });
+}
 
 type HeroProps = { lang: string; popular: readonly { code: string; label: string }[] };
 
@@ -13,7 +28,7 @@ type HeroProps = { lang: string; popular: readonly { code: string; label: string
 export function Hero({ lang, popular }: HeroProps) {
   return (
     <header data-hero className="dark relative isolate overflow-hidden bg-inverse text-foreground">
-      <Photo name="hero-welder" priority sizes={HERO_PHOTO_SIZES} className="object-[60%_center]" />
+      <Photo name="hero-welder" priority sizes={PHOTO_SIZES} className="object-[60%_center]" />
       <div aria-hidden className="hero-scrim absolute inset-0 -z-10" />
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 pt-14 pb-16 sm:px-6 md:pt-44 md:pb-24 lg:pt-52 lg:pb-32">
         <div className="grid max-w-3xl animate-rise gap-5">

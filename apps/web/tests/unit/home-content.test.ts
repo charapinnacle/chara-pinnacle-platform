@@ -41,20 +41,25 @@ describe("the country chips", () => {
     { code: "AT", name: "Austria" },
   ];
 
-  it("list each country of the vacancies once, the one with the most first, then by name, at most the limit", () => {
+  it("list each country of the vacancies once, the one with the most first, then by name", () => {
     const jobs = ["PL", "DE", "PL", "NL", "AT", "DE", "PL"].map((countryCode) => ({ countryCode }));
-    expect(countryChips(jobs, countries, 10)).toEqual([
+    expect(countryChips(jobs, countries)).toEqual([
       { code: "PL", name: "Poland" },
       { code: "DE", name: "Germany" },
       { code: "AT", name: "Austria" },
       { code: "NL", name: "Netherlands" },
     ]);
-    expect(countryChips(jobs, countries, 2).map(({ code }) => code)).toEqual(["PL", "DE"]);
+  });
+
+  it("are at most twelve, those with the most vacancies", () => {
+    const many = Array.from({ length: 14 }, (_, index) => ({ code: `C${String.fromCharCode(65 + index)}`, name: `Country ${String.fromCharCode(65 + index)}` }));
+    const jobs = many.flatMap(({ code }, index) => Array.from({ length: 20 - index }, () => ({ countryCode: code })));
+    expect(countryChips(jobs, many).map(({ code }) => code)).toEqual(many.slice(0, 12).map(({ code }) => code));
   });
 
   it("are empty without vacancies and skip a code the reference data does not name", () => {
-    expect(countryChips([], countries, 10)).toEqual([]);
-    expect(countryChips([{ countryCode: "XX" }], countries, 10)).toEqual([]);
+    expect(countryChips([], countries)).toEqual([]);
+    expect(countryChips([{ countryCode: "XX" }], countries)).toEqual([]);
   });
 });
 

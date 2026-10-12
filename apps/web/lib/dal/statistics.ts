@@ -6,7 +6,7 @@ import { statisticTiles, type StatisticTile } from "@/lib/statistics/tiles";
 // log, where the operator finds the code (FR-H4 AC12).
 export async function getPlatformStatistics(): Promise<StatisticTile[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("v_platform_counts").select("active_jobs, employers, workers, countries").single();
+  const { data, error } = await supabase.from("v_platform_counts").select("active_jobs, employers, workers").single();
   if (error) {
     console.error("Platform statistics read failed", { code: error.code, message: error.message });
     return [];

@@ -1,7 +1,7 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { formatCount } from "@/lib/i18n/format";
 
-type PlatformCounts = Database["public"]["Views"]["v_platform_counts"]["Row"];
+type PlatformCounts = Pick<Database["public"]["Views"]["v_platform_counts"]["Row"], "active_jobs" | "employers" | "workers">;
 export type StatisticTile = { label: string; value: string };
 
 // The smallest live figure the home page shows (OPEN_QUESTIONS.md D87): the database already holds back every count below

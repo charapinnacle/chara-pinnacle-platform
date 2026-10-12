@@ -2,7 +2,7 @@ import { Banknote, MapPin } from "lucide-react";
 import Link from "next/link";
 import { TextLink } from "@/components/forms/text-link";
 import { Band } from "@/components/home/band";
-import { LinkButton } from "@/components/layout/link-button";
+import { LinkButton, linkButtonClassName } from "@/components/layout/link-button";
 import type { JobSearchResult } from "@/lib/dal/hiring";
 import { formatShortDate } from "@/lib/i18n/format";
 import { formatSalary } from "@/lib/jobs/presentation";
@@ -56,7 +56,7 @@ function JobCard({ job, lang, countryName }: JobCardProps) {
           <span className="text-caption text-muted-foreground">
             Posted <time dateTime={job.createdAt}>{formatShortDate(job.createdAt)}</time>
           </span>
-          <span aria-hidden className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-small font-semibold text-primary-foreground">
+          <span aria-hidden className={linkButtonClassName({ size: "default", className: "min-h-9" })}>
             Apply now
           </span>
         </div>
