@@ -1,6 +1,7 @@
 import { expect, test } from "./support/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { accountRows, currentDocuments } from "./support/accounts";
+import { expectAccessibleAtBothWidths } from "./support/applications";
 import { query, literal } from "./support/db";
 import {
   BUTTON,
@@ -160,7 +161,8 @@ test.describe("Continue with Google switched on", () => {
     await expect(page.getByRole("heading", { name: "Choose your account type" })).toBeVisible();
     await expect(page.getByText("This choice cannot be changed later.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create my account" })).toHaveCount(0);
-    await expectNoAxeViolations(page);
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     for (const path of ["/en/dashboard/worker", "/en/dashboard/employer", "/en/consent"]) {
       await page.goto(`http://localhost:3100${path}`);

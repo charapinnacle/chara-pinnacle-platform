@@ -1,5 +1,6 @@
 import { logOut } from "./support/app-shell";
 import { expect, test } from "./support/test";
+import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
 import {
   accountRows,
@@ -33,6 +34,8 @@ test("FR-A8 AC5: a version superseded before confirmation is accepted first and 
   await expect(page.getByRole("heading", { name: /^Set up your Worker account/ })).toBeVisible();
   await expect(page.getByText(new RegExp(`^Version ${newVersion} · `))).toBeVisible();
   await expect(page.getByText("Adds the new retention periods.")).toBeVisible();
+  await expectAccessibleAtBothWidths(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
   const box = page.getByRole("checkbox", { name: /I accept the .*Privacy Policy/ });
   await expect(box).not.toBeChecked();
   await expect(page.getByRole("checkbox")).toHaveCount(1);

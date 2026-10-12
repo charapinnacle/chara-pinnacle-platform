@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { accountRows, pendingConsents } from "./support/accounts";
-import { accountButton, mainNavigation } from "./support/app-shell";
+import { accountButton, logOut, mainNavigation } from "./support/app-shell";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { choose } from "./support/combobox";
 import { waitForHydration } from "./support/hydration";
@@ -57,7 +57,9 @@ test.describe("onboarding journey (U68)", () => {
     expect(accountRows(user.id).account.account_kind).toBe("company");
     expect(accountRows(user.id).audit.filter((row) => row.action === "account_kind_set")).toHaveLength(1);
     await expect(page.getByRole("group", { name: "Company" })).toBeVisible();
-    await expect(page.getByRole("group", { name: "Registration" })).toContainText("We use it to give each company one free trial.");
+    await expect(page.getByRole("group", { name: "Registration" })).toContainText(
+      "We use it to give each company one free trial. 4 to 32 letters and digits, for example DE123456789 (VAT) or HRB12345 (company register)",
+    );
     await expect(page.getByRole("main").locator('button[type="submit"]')).toHaveText(["Continue"]);
     await expectAccessibleAtBothWidths(page);
 
@@ -70,7 +72,11 @@ test.describe("onboarding journey (U68)", () => {
     expect(organizationAudit(organization.id).map((row) => row.action)).toContain("organization_created");
 
     await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
-    await expect(page.getByText("As the owner you can see applicants' documents and your company's billing")).toBeVisible();
+    await expect(
+      page.getByText(
+        "As the owner you can see applicants' documents and your company's billing, so CHARA asks for a code from an authenticator app before you open them.",
+      ),
+    ).toBeVisible();
     await expectSteps(page, ["done", "current", "upcoming"], COMPANY_STEPS);
     await expectFocusedLayout(page);
     await expectAccessibleAtBothWidths(page);
@@ -147,21 +153,35 @@ test.describe("onboarding journey (U68)", () => {
     await expect(page).toHaveURL("/en/jobs");
   });
 
-  test("the welcome screen is shown once: after a log-out, a later sign-in and a direct visit land on the dashboard", async ({ page }) => {
+  test("the welcome screen is shown once: a reload, a direct visit and a later sign-in land on the dashboard", async ({ page }) => {
     const user = await createCommittedUser("worker", { passport: false });
     await logIn(page, user);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await page.getByLabel("First name", { exact: true }).fill("Lena");
     await page.getByLabel("Last name", { exact: true }).fill("Berg");
     await choose(page, "Current country", "Austria");
+    const created = page.waitForResponse(
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/en/onboarding",
+    );
     await page.getByRole("button", { name: "Create CHARA Passport" }).click();
+    const welcomeCookie = (await (await created).headerValues("set-cookie")).find((value) => value.startsWith("chara_welcome="));
+    expect(welcomeCookie).toMatch(new RegExp(`^chara_welcome=${user.id}; Path=/;`));
+    expect(welcomeCookie).toContain("; Max-Age=600");
+    expect(welcomeCookie).toContain("; HttpOnly");
+    expect(welcomeCookie).toMatch(/; SameSite=lax/i);
     await expect(page).toHaveURL(/\/en\/onboarding\/welcome$/);
-    const cookie = (await page.context().cookies()).find(({ name }) => name === "chara_welcome");
-    expect(cookie).toMatchObject({ value: user.id, path: "/en/onboarding/welcome", httpOnly: true, sameSite: "Lax" });
+    await expect(page.getByRole("heading", { name: "Welcome to CHARA Pinnacle, Lena", level: 1 })).toBeVisible();
 
-    await page.getByRole("button", { name: "Log out" }).click();
+    // The first request after the welcome screen (here the prefetch of its tiles) takes the cookie away.
+    const welcomeCookies = async () => (await page.context().cookies()).filter(({ name }) => name === "chara_welcome");
+    await expect.poll(welcomeCookies).toEqual([]);
+    await page.reload();
+    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+    await page.goto("/en/onboarding/welcome");
+    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+
+    await logOut(page);
     await expect(page).toHaveURL(/\/en\/login$/);
-    expect((await page.context().cookies()).filter(({ name }) => name === "chara_welcome")).toEqual([]);
     await logIn(page, user);
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
     await page.goto("/en/onboarding/welcome");
@@ -170,7 +190,10 @@ test.describe("onboarding journey (U68)", () => {
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
   });
 
-  test("a person who left half-way lands on the step not yet done, and the steps show it", async ({ page, browser }) => {
+  test("a worker who left half-way is put back on the step by signing in; an owner is resumed at Security by /onboarding", async ({
+    page,
+    browser,
+  }) => {
     const worker = await createCommittedUser("worker", { passport: false });
     await logIn(page, worker);
     await expect(page).toHaveURL(/\/en\/onboarding$/);
@@ -218,6 +241,31 @@ test.describe("onboarding journey (U68)", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(phoneLine).toBeHidden();
     expect(await position()).toBe("static");
+  });
+
+  test("on a phone the primary button of the passport and the security steps is sticky too and on screen", async ({ page, browser }) => {
+    const expectStickyOnScreen = async (target: Page, name: string) => {
+      const button = target.getByRole("button", { name });
+      await waitForHydration(button);
+      await target.setViewportSize({ width: 375, height: 700 });
+      expect(await button.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+      const box = await button.boundingBox();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(700);
+    };
+
+    await logIn(page, await createCommittedUser("worker", { passport: false }));
+    await expect(page).toHaveURL(/\/en\/onboarding$/);
+    await expectStickyOnScreen(page, "Create CHARA Passport");
+
+    const owner = await createCommittedUser("company");
+    await registerOrganization(owner, uniqueName("Phone Bau GmbH"));
+    const context = await browser.newContext();
+    const ownerPage = await context.newPage();
+    await logIn(ownerPage, owner);
+    await expect(ownerPage).toHaveURL(/\/en\/dashboard\/employer$/);
+    await ownerPage.goto("/en/onboarding/security");
+    await expectStickyOnScreen(ownerPage, "Show the QR code");
+    await context.close();
   });
 });
 
