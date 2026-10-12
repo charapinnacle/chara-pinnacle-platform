@@ -194,7 +194,7 @@ test.describe("email confirmation", () => {
       await resend(unknown);
 
       const mail = await waitForMessage(waiting.email);
-      expect(mail.Subject).toBe("Confirm your CHARA account");
+      expect(mail.Subject).toBe("Confirm your Chara Pinnacle account");
       await expect(waitForMessage(confirmed.email, { timeoutMs: 1_500 })).rejects.toThrow("No message for");
       await expect(waitForMessage(unknown, { timeoutMs: 1_500 })).rejects.toThrow("No message for");
 

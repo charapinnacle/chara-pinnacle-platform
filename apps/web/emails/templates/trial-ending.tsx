@@ -1,6 +1,7 @@
 import { Action, Layout, Paragraph } from "../layout.tsx";
 import { field, humanize, url } from "../payload.ts";
 import type { Template } from "../template.ts";
+import { BRAND_NAME } from "../../lib/brand.ts";
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" });
 
@@ -24,7 +25,7 @@ function price(amountMinor: string | undefined, currency: string | undefined): s
 
 // The payload carries no interval because billing.plans allows only "month".
 export const trialEnding: Template = {
-  subject: (payload) => `Your CHARA trial ends on ${longDate(field(payload, "trial_ends_at")) ?? "soon"}`,
+  subject: (payload) => `Your ${BRAND_NAME} trial ends on ${longDate(field(payload, "trial_ends_at")) ?? "soon"}`,
   Body: ({ payload, siteUrl }) => {
     const ends = longDate(field(payload, "trial_ends_at"));
     const code = field(payload, "plan_code");

@@ -32,7 +32,7 @@ async function signUpWorker(page: Page, email: string): Promise<void> {
 }
 
 async function confirmationPath(email: string): Promise<string> {
-  const message = await waitForMessage(email, { subject: "Confirm your CHARA account", timeoutMs: 60_000 });
+  const message = await waitForMessage(email, { subject: "Confirm your Chara Pinnacle account", timeoutMs: 60_000 });
   const link = extractLinks(message).find((url) => url.includes("/en/confirm-email?token_hash="));
   if (!link) throw new Error("The confirmation email has no link");
   return `${new URL(link).pathname}${new URL(link).search}`;
@@ -54,7 +54,7 @@ test.describe("FR-I1: account emails through the mail catcher", () => {
     await expect.poll(() => messageCount(email)).toBe(1);
     expect(message.To.map((to) => to.Address)).toEqual([email]);
     expect(message.From.Address).toBe(SENDER);
-    expect(message.Subject).toBe("Confirm your CHARA account");
+    expect(message.Subject).toBe("Confirm your Chara Pinnacle account");
     expect(message.Text).toContain("Follow this link to confirm your email address");
     const links = extractLinks(message).filter((url) => url.includes("token_hash="));
     expect(links).toHaveLength(1);

@@ -1,11 +1,12 @@
 import { Action, Layout, Paragraph, Quote } from "../layout.tsx";
 import { field, url } from "../payload.ts";
 import type { Template } from "../template.ts";
+import { BRAND_NAME } from "../../lib/brand.ts";
 
 export const accountSuspended: Template = {
   subject: (payload) => {
     const org = field(payload, "org_name");
-    return org ? `Your organisation ${org} was suspended` : "Your CHARA account was suspended";
+    return org ? `Your organisation ${org} was suspended` : `Your ${BRAND_NAME} account was suspended`;
   },
   Body: ({ payload, siteUrl }) => {
     const org = field(payload, "org_name");

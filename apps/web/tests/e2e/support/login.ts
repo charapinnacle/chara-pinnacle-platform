@@ -11,8 +11,8 @@ export const RESET_SENT = "If an account exists for this email, we have sent a r
 export const RESET_WAIT = "Wait a minute before asking for another.";
 export const RESET_PATH = /\/en\/forgot-password\/check-email$/;
 export const LINK_EXPIRED = "This link has expired or was already used";
-export const RESET_SUBJECT = "Reset your CHARA password";
-export const CHANGED_SUBJECT = "Your CHARA password was changed";
+export const RESET_SUBJECT = "Reset your Chara Pinnacle password";
+export const CHANGED_SUBJECT = "Your Chara Pinnacle password was changed";
 
 const AUTH_COOKIE = /^sb-.*-auth-token(\.\d+)?$/;
 

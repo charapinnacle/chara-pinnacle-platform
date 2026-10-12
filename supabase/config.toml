@@ -112,7 +112,7 @@ port = 54424
 # pop3_port = 54426
 # The sender of the Auth emails on the local stack; on the hosted project it is the sender of the custom SMTP settings.
 admin_email = "no-reply@chara.test"
-sender_name = "CHARA"
+sender_name = "Chara Pinnacle"
 
 [storage]
 enabled = true
@@ -247,27 +247,27 @@ otp_length = 6
 otp_expiry = 86400
 
 [auth.email.template.confirmation]
-subject = "Confirm your CHARA account"
+subject = "Confirm your Chara Pinnacle account"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Reset your CHARA password"
+subject = "Reset your Chara Pinnacle password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.notification.password_changed]
 enabled = true
-subject = "Your CHARA password was changed"
+subject = "Your Chara Pinnacle password was changed"
 content_path = "./supabase/templates/password_changed.html"
 
 [auth.email.notification.identity_linked]
 enabled = true
-subject = "A sign-in method was added to your CHARA account"
+subject = "A sign-in method was added to your Chara Pinnacle account"
 content_path = "./supabase/templates/identity_linked.html"
 
 # Auth emails on the hosted project go through the custom SMTP of the transactional email provider (Resend, EU region;
 # docs/runbooks/account-emails.md). The hosted project does not read this file for them: the settings live under
 # Authentication, Emails, SMTP Settings (host smtp.resend.com, port 465, user resend, password a Resend API key limited
-# to sending, sender no-reply@ an address of the verified domain, sender name CHARA). They stay out of this file so
+# to sending, sender no-reply@ an address of the verified domain, sender name Chara Pinnacle). They stay out of this file so
 # that the local stack and CI keep sending to the mail catcher.
 
 # Uncomment to customize email template

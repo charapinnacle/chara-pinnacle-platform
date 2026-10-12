@@ -1,9 +1,10 @@
 import { Action, Layout, Paragraph } from "../layout.tsx";
 import { field, url } from "../payload.ts";
 import type { Template } from "../template.ts";
+import { BRAND_NAME } from "../../lib/brand.ts";
 
 export const paymentFailed: Template = {
-  subject: () => "We could not collect your CHARA payment",
+  subject: () => `We could not collect your ${BRAND_NAME} payment`,
   Body: ({ payload, siteUrl }) => {
     const slug = field(payload, "org_slug");
     return (

@@ -3,7 +3,7 @@ import { nullProvider, ProviderError, resendProvider } from "../notify/providers
 
 const EMAIL = {
   idempotencyKey: "00000000-0000-4000-8000-0000000000a1",
-  from: "CHARA <noreply@chara.example>",
+  from: "Chara Pinnacle <noreply@chara.example>",
   to: "amina@example.test",
   subject: "Subject",
   html: "<p>Hi</p>",
@@ -83,7 +83,7 @@ Deno.test("the null provider hands the message to the mail catcher when it is gi
   await provider.send(EMAIL);
   assert.equal(seen[0].url, "http://127.0.0.1:54424/api/v1/send");
   assert.deepEqual(JSON.parse(seen[0].init.body as string), {
-    From: { Name: "CHARA", Email: "noreply@chara.example" },
+    From: { Name: "Chara Pinnacle", Email: "noreply@chara.example" },
     To: [{ Email: EMAIL.to }],
     Subject: "Subject",
     HTML: "<p>Hi</p>",

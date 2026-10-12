@@ -71,7 +71,7 @@ test.describe("password recovery", () => {
     }
     expect(new Set(answers.map((answer) => JSON.stringify(answer))).size).toBe(1);
 
-    const message = await waitForMessage(confirmed.email, { subject: "Reset your CHARA password" });
+    const message = await waitForMessage(confirmed.email, { subject: "Reset your Chara Pinnacle password" });
     const body = `${message.HTML}\n${message.Text}`;
     expect(body).toMatch(/\/en\/reset-password\?token_hash=[A-Za-z0-9_-]+/);
     expect(body).not.toContain(confirmed.password);
@@ -80,7 +80,7 @@ test.describe("password recovery", () => {
     expect(await messageCount(confirmed.email)).toBe(1);
     expect(await messageCount(unknown)).toBe(0);
     // Departure D24: Auth does email an unconfirmed address (AC7 expects none); this pins that behaviour.
-    await waitForMessage(unconfirmed.email, { subject: "Reset your CHARA password" });
+    await waitForMessage(unconfirmed.email, { subject: "Reset your Chara Pinnacle password" });
     expect(await messageCount(unconfirmed.email)).toBe(1);
   });
 

@@ -88,7 +88,7 @@ test.describe("the console with account-ops and notify running", () => {
     await expect(ownPage).toHaveURL(/\/en\/login/);
 
     await runNotify();
-    const mail = await waitForMessage(user.email, { subject: "Your CHARA account was suspended" });
+    const mail = await waitForMessage(user.email, { subject: "Your Chara Pinnacle account was suspended" });
     expect(mail.Text).toContain(REASON);
     expect(`${mail.Text}${mail.HTML}`).not.toMatch(/PRIVATE-COVER-NOTE|Suspension job|cv\.pdf/);
     expect(await messageCount(user.email)).toBe(1);
@@ -101,7 +101,7 @@ test.describe("the console with account-ops and notify running", () => {
     await logIn(ownPage, user);
     await expect(ownPage).toHaveURL(/\/en\/dashboard\/worker$/);
     await runNotify();
-    const back = await waitForMessage(user.email, { subject: "Your CHARA account was reinstated" });
+    const back = await waitForMessage(user.email, { subject: "Your Chara Pinnacle account was reinstated" });
     expect(back.Text).toContain(BACK);
     expect(await messageCount(user.email)).toBe(2);
     expect(query<{ status: string }>(`select status::text from public.job_applications where id = ${literal(application)}`)).toEqual([{ status: "applied" }]);

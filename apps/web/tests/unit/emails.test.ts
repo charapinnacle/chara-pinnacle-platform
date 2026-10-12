@@ -178,7 +178,7 @@ describe("notification templates", () => {
 
   it("trial_ending shows the end date and the price after the trial", async () => {
     const email = await renderEmail("trial_ending", SAMPLES.trial_ending, SITE);
-    expect(email.subject).toBe("Your CHARA trial ends on 1 November 2026");
+    expect(email.subject).toBe("Your Chara Pinnacle trial ends on 1 November 2026");
     expect(email.text).toContain("ends on 1 November 2026");
     expect(email.text).toContain("Employer starter");
     expect(email.text).toContain("€39.00");
@@ -194,22 +194,22 @@ describe("notification templates", () => {
       { ...SAMPLES.trial_ending, trial_ends_at: "2026-11-10T16:32:25.527Z", plan_code: "employer_starter", plan_name: "Basic" },
       SITE,
     );
-    expect(email.subject).toBe("Your CHARA trial ends on 10 November 2026");
+    expect(email.subject).toBe("Your Chara Pinnacle trial ends on 10 November 2026");
     expect(email.text).toContain("Your free trial of the Basic plan ends on 10 November 2026.");
     expect(email.text).toContain("After that the plan costs €39.00 per month, excluding VAT, charged to your payment method.");
     expect(email.text).not.toContain("Employer starter");
     expect(email.text).not.toContain("2026-11-10");
     expect(email.text).not.toContain("billing period");
     const late = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, trial_ends_at: "2026-11-10T23:30:00-05:00" }, SITE);
-    expect(late.subject).toBe("Your CHARA trial ends on 11 November 2026");
+    expect(late.subject).toBe("Your Chara Pinnacle trial ends on 11 November 2026");
     const database = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, trial_ends_at: "2026-11-10 16:32:25.527+00" }, SITE);
-    expect(database.subject).toBe("Your CHARA trial ends on 10 November 2026");
+    expect(database.subject).toBe("Your Chara Pinnacle trial ends on 10 November 2026");
   });
 
   it("trial_ending falls back when the date is missing or not a date and when the plan name is missing", async () => {
     for (const trial_ends_at of [undefined, "", "soon", "2026-13-45"]) {
       const email = await renderEmail("trial_ending", { ...SAMPLES.trial_ending, trial_ends_at }, SITE);
-      expect(email.subject).toBe("Your CHARA trial ends on soon");
+      expect(email.subject).toBe("Your Chara Pinnacle trial ends on soon");
       expect(email.text).toContain("ends on the date shown in your billing page.");
     }
     const noPlan = await renderEmail("trial_ending", { org_slug: "acme-bau" }, SITE);
@@ -227,14 +227,14 @@ describe("notification templates", () => {
 
   it("account_suspended and account_reinstated quote the reasons and say whether a person or an organisation is meant", async () => {
     const person = await renderEmail("account_suspended", SAMPLES.account_suspended, SITE);
-    expect(person.subject).toBe("Your CHARA account was suspended");
+    expect(person.subject).toBe("Your Chara Pinnacle account was suspended");
     expect(person.text).toContain("Repeated fake profile reports.");
     expect(person.text).toContain("cannot sign in until it is reinstated");
     const org = await renderEmail("account_suspended", { ...SAMPLES.account_suspended, org_name: "Acme Bau", org_slug: "acme-bau" }, SITE);
     expect(org.subject).toBe("Your organisation Acme Bau was suspended");
     expect(org.text).toContain("suspended the organisation Acme Bau");
     const back = await renderEmail("account_reinstated", SAMPLES.account_reinstated, SITE);
-    expect(back.subject).toBe("Your CHARA account was reinstated");
+    expect(back.subject).toBe("Your Chara Pinnacle account was reinstated");
     expect(back.text).toContain("Identity confirmed after the complaint.");
     const backOrg = await renderEmail("account_reinstated", { ...SAMPLES.account_reinstated, org_name: "Acme Bau" }, SITE);
     expect(backOrg.subject).toBe("Your organisation Acme Bau was reinstated");
@@ -258,10 +258,10 @@ describe("notification templates", () => {
   });
   it("member_invitation shows the organisation, the role, the expiry date and one link to the invitation page", async () => {
     const email = await renderEmail("member_invitation", SAMPLES.member_invitation, SITE);
-    expect(email.subject).toBe("You are invited to join Acme Bau on CHARA");
+    expect(email.subject).toBe("You are invited to join Acme Bau on Chara Pinnacle");
     expect(email.html).toContain('lang="en"');
-    expect(email.text).toContain("CHARA");
-    expect(email.text).toContain("Acme Bau invited you to join its team on CHARA as a member.");
+    expect(email.text).toContain("Chara Pinnacle");
+    expect(email.text).toContain("Acme Bau invited you to join its team on Chara Pinnacle as a member.");
     expect(email.text).toContain("valid until 2026-10-15 and can be used once.");
     expect(email.html.match(/href="/g)).toHaveLength(1);
     expect(email.html).toContain(`href="${SITE}/en/invitations/${TOKEN}"`);
@@ -287,8 +287,8 @@ describe("notification templates", () => {
 
   it("mfa_reset says the factors were removed and must be enrolled again, with no code, secret or way around two-step verification", async () => {
     const email = await renderEmail("mfa_reset", {}, SITE);
-    expect(email.subject).toBe("Two-step verification was reset on your CHARA account");
-    expect(email.text).toContain("CHARA");
+    expect(email.subject).toBe("Two-step verification was reset on your Chara Pinnacle account");
+    expect(email.text).toContain("Chara Pinnacle");
     expect(email.text).toContain("removed the two-step verification factors");
     expect(email.text).toContain("you must enrol again");
     expect(email.text).toMatch(/if you did not ask for this, reply to this\s+email or contact support at once/i);

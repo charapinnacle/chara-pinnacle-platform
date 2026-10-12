@@ -1,9 +1,10 @@
 import { Action, Layout, Paragraph } from "../layout.tsx";
 import { field, url } from "../payload.ts";
 import type { Template } from "../template.ts";
+import { BRAND_NAME } from "../../lib/brand.ts";
 
 export const deletionRequested: Template = {
-  subject: () => "We received your request to delete your CHARA account",
+  subject: () => `We received your request to delete your ${BRAND_NAME} account`,
   Body: ({ payload, siteUrl }) => {
     const erases = field(payload, "erases_on");
     const date = erases && !Number.isNaN(Date.parse(erases)) ? new Date(erases).toISOString().slice(0, 10) : undefined;

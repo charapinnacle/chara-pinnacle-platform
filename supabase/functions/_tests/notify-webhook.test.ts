@@ -36,7 +36,7 @@ function setup(routes: Record<string, Route | Response> = {}, webhookSecret = WE
   const deps: NotifyDeps = {
     client,
     provider: nullProvider(),
-    from: "CHARA <noreply@chara.example>",
+    from: "Chara Pinnacle <noreply@chara.example>",
     siteUrl: "https://chara.example",
     sharedSecret: "scheduler-secret",
     webhookSecret,
@@ -164,7 +164,7 @@ Deno.test("events that change nothing recorded are acknowledged and ignored", as
 });
 
 Deno.test("an event for an email of another sender, such as an Auth email sent through the same account, is acknowledged and not looked up", async () => {
-  for (const from of ["CHARA <no-reply@chara.example>", "no-reply@chara.example"]) {
+  for (const from of ["Chara Pinnacle <no-reply@chara.example>", "no-reply@chara.example"]) {
     const { calls, deps } = setup();
     const response = await handleNotify(await webhook(event("email.bounced", { email_id: "re_auth", from })), deps);
     assert.equal(response.status, 200, from);
@@ -172,7 +172,11 @@ Deno.test("an event for an email of another sender, such as an Auth email sent t
     assert.equal(calls.length, 0, from);
   }
   for (
-    const from of ["CHARA <noreply@chara.example>", "Notifications <NoReply@Chara.Example>", "noreply@chara.example"]
+    const from of [
+      "Chara Pinnacle <noreply@chara.example>",
+      "Notifications <NoReply@Chara.Example>",
+      "noreply@chara.example",
+    ]
   ) {
     const { calls, deps } = setup();
     assert.equal(

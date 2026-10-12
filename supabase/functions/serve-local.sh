@@ -18,7 +18,7 @@ export EMAIL_PROVIDER=null
 export BILLING_PROVIDER=null
 export BILLING_WEBHOOK_SECRET="${BILLING_WEBHOOK_SECRET:-}"
 export MAIL_CATCHER_URL="http://127.0.0.1:54424"
-export EMAIL_FROM="CHARA <noreply@chara.test>"
+export EMAIL_FROM="Chara Pinnacle <noreply@chara.test>"
 export SITE_URL="http://localhost:3100"
 export DENO_SERVE_ADDRESS="tcp:127.0.0.1:${2:?the port to listen on}"
 exec deno run --frozen --allow-net --allow-env "${1:?the function to serve}/index.ts"
