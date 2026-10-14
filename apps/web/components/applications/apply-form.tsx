@@ -13,6 +13,7 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { applyToVacancy } from "@/lib/actions/applications";
+import type { RefusalLink } from "@/lib/applications/apply-refusal";
 import { CROSS_BORDER_NOTICE } from "@/lib/applications/presentation";
 import type { ApplyDocument } from "@/lib/dal/applications";
 import { applyFormSchema, type ApplyFormInput, type ApplyLimits } from "@/lib/validation/application";
@@ -34,15 +35,18 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents }: Appl
     defaultValues: { coverNote: "", documentIds: [], consent: false },
   });
   const [notOpen, setNotOpen] = useState(false);
+  const [links, setLinks] = useState<RefusalLink[]>([]);
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "Could not submit your application" });
   const noteLength = useWatch({ control, name: "coverNote" }).length;
 
   function onValid() {
+    setLinks([]);
     return submit(
       () => applyToVacancy(jobId, form.getValues()),
       (result) => {
         if (result.notOpen) setNotOpen(true);
+        setLinks(result.links ?? []);
         const [first] = Object.keys(result.errors ?? {});
         if (first) form.setFocus(first as FieldPath<ApplyFormInput>);
       },
@@ -53,7 +57,24 @@ export function ApplyForm({ jobId, lang, employerName, limits, documents }: Appl
 
   return (
     <form noValidate className="grid gap-6" onSubmit={handleSubmit(onValid)}>
-      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
+      <FormErrorSummary
+        form={form}
+        summaryRef={summaryRef}
+        ids={ids}
+        action={
+          links.length > 0 ? (
+            <ul role="list" className="grid">
+              {links.map(({ label, href }) => (
+                <li key={label}>
+                  <TextLink tone="destructive" className="block py-2" href={href}>
+                    {label}
+                  </TextLink>
+                </li>
+              ))}
+            </ul>
+          ) : null
+        }
+      />
 
       <TextareaField
         control={control}
