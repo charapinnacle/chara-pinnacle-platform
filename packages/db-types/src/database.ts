@@ -1163,6 +1163,9 @@ isOneToOne: false
 "notify_dequeue":
 { Args: { "p_limit"?: number }; Returns: Json
                            },
+"notify_existing_account":
+{ Args: { "p_email": string,"p_key": string,"p_proof"?: string }; Returns: undefined
+                           },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {
               "availability_window_months": number,"skills_max": number,"work_authorization_expiry_max_years": number

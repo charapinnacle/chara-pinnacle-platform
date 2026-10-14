@@ -1,4 +1,5 @@
-import { execute } from "./support/db";
+import { expectNoAxeViolations } from "./support/axe";
+import { execute, literal } from "./support/db";
 import {
   applicationRows,
   applicationUrl,
@@ -20,6 +21,8 @@ const APPLY = "public.apply_to_job(uuid, text, uuid[])";
 const LIST = "public.my_applications(public.application_status, integer, integer)";
 const GET = "public.get_my_application(uuid)";
 const WITHDRAW = "public.withdraw_application(uuid)";
+const FAULT = /Applications are temporarily unavailable\. Please try again later\. Reference: [0-9A-F]{8}\./;
+const WITHDRAW_FAULT = /^Something went wrong on our side and nothing was changed\. Please try again later\. Reference: [0-9A-F]{8}\.$/;
 
 // The functions are withdrawn from the API role for the whole database while this file runs, so it has a project of its
 // own that follows the others (playwright.config.ts).
@@ -44,7 +47,7 @@ test.describe("applications when the database fails", () => {
 
     await page.getByRole("button", { name: "Submit application" }).click();
     const alert = page.getByRole("alert").filter({ hasText: "There is a problem" });
-    await expect(alert).toContainText("We could not complete this request. Try again.");
+    await expect(alert).toContainText(FAULT);
     await expect(page.getByLabel("Cover note (optional)")).toHaveValue("My typed note");
     await expect(page.getByLabel("CV.pdf")).toBeChecked();
     await expect(page.getByLabel(`I agree to share the selected documents with ${employer} for this application`)).toBeChecked();
@@ -56,6 +59,33 @@ test.describe("applications when the database fails", () => {
     await page.getByRole("button", { name: "Submit application" }).click();
     await expect(page).toHaveURL(/\/en\/applications\/[0-9a-f-]{36}$/);
     expect(applicationRows(candidate.id)[0]).toMatchObject({ cover_note: "My typed note" });
+  });
+
+  test("D89: a missing setting (the hosted incident) shows that applications are unavailable, with a reference and no internal code", async ({
+    page,
+  }) => {
+    const company = await newCompany();
+    const employer = displayName(company.id);
+    const jobId = seedJob(company, { title: "Unconfigured welder", status: "open" });
+    const candidate = await newApplicant();
+    await logIn(page, candidate, applyUrl(jobId));
+    await waitForHydration(page.getByLabel("Cover note (optional)"));
+    await page.getByLabel(`I agree to share the selected documents with ${employer} for this application`).check();
+    const limit = execute(`select value from private.settings where key = 'apply_rate_limit_max'`).trim();
+    execute(`delete from private.settings where key = 'apply_rate_limit_max'`);
+    try {
+      await page.getByRole("button", { name: "Submit application" }).click();
+      const alert = page.getByRole("alert").filter({ hasText: "There is a problem" });
+      await expect(alert.getByText(FAULT)).toBeVisible();
+      await expect(alert).not.toContainText(/CHARA_|SETTING|apply_rate_limit|Try again\./);
+      expect(applicationRows(candidate.id)).toEqual([]);
+      await expectNoAxeViolations(page);
+    } finally {
+      execute(`insert into private.settings (key, value) values ('apply_rate_limit_max', ${literal(limit)}) on conflict (key) do nothing`);
+    }
+
+    await page.getByRole("button", { name: "Submit application" }).click();
+    await expect(page).toHaveURL(/\/en\/applications\/[0-9a-f-]{36}$/);
   });
 
   test("FR-D1, FR-D3 AC3: a failed read of the list shows a toast, a message and a retry that works once the database answers", async ({ page }) => {
@@ -89,7 +119,7 @@ test.describe("applications when the database fails", () => {
     const dialog = page.getByRole("dialog", { name: "Withdraw this application?" });
     await dialog.getByRole("button", { name: "Withdraw", exact: true }).click();
     await expect(page.getByText("The application was not withdrawn", { exact: true })).toBeVisible();
-    await expect(page.getByText("We could not complete this request. Try again.", { exact: true })).toBeVisible();
+    await expect(page.getByText(WITHDRAW_FAULT)).toBeVisible();
     await expect(page.getByText(/permission denied|withdraw_application/)).toHaveCount(0);
     await expect(page.locator("div:has(> dt:text-is('Stage')) > dd")).toHaveText("Offer");
     expect(eventRows(id)).toHaveLength(1);

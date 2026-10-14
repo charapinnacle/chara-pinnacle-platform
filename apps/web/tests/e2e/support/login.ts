@@ -7,7 +7,11 @@ import { adminRequest, createTestUser, type TestUser } from "./test-user";
 import { totpCode } from "./totp";
 
 export const LOGIN_FAILED = "Email or password is incorrect.";
-export const RESET_SENT = "If an account exists for this email, we have sent a reset link.";
+// "a*****6@gmail.com": the address as maskEmail (lib/pending-email.ts) shows it on the pages after a request.
+export const masked = (email: string) => `${email[0]}*****${email.split("@")[0].at(-1)}@${email.split("@")[1]}`;
+const MASKED_ADDRESS = /\S\*{5}\S*@[^\s,]+?(?=[.,]?(\s|$))/g;
+export const RESET_SENT = /^If an account exists for \S+@\S+, we have sent a link to reset the password\.$/;
+export const resetSent = (email: string) => `If an account exists for ${masked(email)}, we have sent a link to reset the password.`;
 export const RESET_WAIT = "Wait a minute before asking for another.";
 export const RESET_PATH = /\/en\/forgot-password\/check-email$/;
 export const LINK_EXPIRED = "This link has expired or was already used";
@@ -30,7 +34,7 @@ export async function requestReset(page: Page, email: string): Promise<number> {
 
 // What the page after a request says, without the masked address and the seconds left, which are the things that differ between requests.
 export async function checkEmailText(page: Page): Promise<string> {
-  return (await page.locator("main").innerText()).replace(/Sent to \S+/, "Sent to").replace(/Resend in \d+ s/, "Resend in N s");
+  return (await page.locator("main").innerText()).replace(MASKED_ADDRESS, "<address>").replace(/Resend in \d+ s/, "Resend in N s");
 }
 
 export function authCookies(cookies: Cookie[]): Cookie[] {

@@ -4,6 +4,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { requireUser } from "@/lib/dal/session";
+import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { reportQuotaRefused } from "@/lib/quota-refused";
 import { homePath } from "@/lib/routes";
@@ -38,8 +39,7 @@ function refusal(error: PostgrestError): DocumentResult {
     reportQuotaRefused("audited_write", "document");
     return { message: TOO_MANY_CHANGES };
   }
-  console.error("Document action failed", { code: error.code, message: error.message });
-  return { message: GENERIC_FAILURE };
+  return { message: faultMessage(logFault("Document action", error)) };
 }
 
 // The reminders on the dashboard show the title and the expiry date.
@@ -75,10 +75,7 @@ export async function startDocumentUpload(input: UploadInput): Promise<UploadTic
   if (error) return refusal(error);
 
   const { data, error: signError } = await supabase.storage.from(DOCUMENT_BUCKET).createSignedUploadUrl(path);
-  if (signError) {
-    console.error("Document upload link failed", { message: signError.message });
-    return { message: GENERIC_FAILURE };
-  }
+  if (signError) return { message: faultMessage(logFault("Document upload link", signError)) };
   settle();
   return { upload: { documentId, path: data.path, token: data.token } };
 }
@@ -127,13 +124,10 @@ export async function getDocumentDownload(documentId: string): Promise<DownloadR
     return refusal(error);
   }
   const grant = data[0];
-  if (!grant) return { message: GENERIC_FAILURE };
+  if (!grant) return { message: "This document no longer exists." };
   const { data: signed, error: signError } = await supabase.storage
     .from(grant.bucket_id)
     .createSignedUrl(grant.object_path, 60, { download: grant.file_name });
-  if (signError) {
-    console.error("Document download link failed", { message: signError.message });
-    return { message: GENERIC_FAILURE };
-  }
+  if (signError) return { message: faultMessage(logFault("Document download link", signError)) };
   return { url: signed.signedUrl };
 }

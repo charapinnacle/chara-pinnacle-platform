@@ -1,9 +1,12 @@
 import type { AuthError, AuthWeakPasswordError } from "@supabase/supabase-js";
 
 export const RATE_LIMITED = "Too many attempts. Try again in a few minutes.";
-export function rateLimitedFor(seconds: number): string {
+export function tryAgainIn(seconds: number): string {
   const minutes = Math.ceil(seconds / 60);
-  return `Too many attempts. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`;
+  return `in ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+export function rateLimitedFor(seconds: number): string {
+  return `Too many attempts. Try again ${tryAgainIn(seconds)}.`;
 }
 export const SUSPENDED = "This account is suspended. See the email we sent you for the reasons.";
 export const GENERIC_FAILURE = "We could not complete this request. Try again.";

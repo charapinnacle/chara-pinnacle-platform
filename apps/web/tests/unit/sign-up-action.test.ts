@@ -10,6 +10,8 @@ const redirectMock = vi.hoisted(() =>
 const signUpMock = vi.fn();
 const resendMock = vi.fn();
 const verifyOtpMock = vi.fn();
+const rpcMock = vi.fn();
+const proofMock = vi.hoisted(() => vi.fn());
 const documentsMock = vi.hoisted(() => vi.fn());
 const throttledMock = vi.hoisted(() => vi.fn());
 const rememberMock = vi.hoisted(() => vi.fn());
@@ -18,9 +20,10 @@ const forgetEmailMock = vi.hoisted(() => vi.fn());
 const resendPendingMock = vi.hoisted(() => vi.fn());
 const offerEmailMock = vi.hoisted(() => vi.fn());
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
-vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock }));
+vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock, visitorProof: proofMock }));
 vi.mock("@/lib/invitation-cookie", () => ({ rememberInvitation: rememberMock }));
 vi.mock("@/lib/pending-email", () => ({
   rememberPendingEmail: rememberEmailMock,
@@ -31,6 +34,7 @@ vi.mock("@/lib/pending-email", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { signUp: signUpMock, resend: resendMock, verifyOtp: verifyOtpMock },
+    rpc: rpcMock,
   }),
 }));
 
@@ -57,7 +61,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   documentsMock.mockResolvedValue(documents);
   throttledMock.mockResolvedValue(false);
-  signUpMock.mockResolvedValue({ data: {}, error: null });
+  signUpMock.mockResolvedValue({ data: { user: { identities: [{ id: "i" }] }, session: null }, error: null });
+  proofMock.mockResolvedValue({ key: "k".repeat(64), proof: "p".repeat(64) });
+  rpcMock.mockResolvedValue({ data: null, error: null });
 });
 
 describe("signUp action with an invitation", () => {
@@ -73,7 +79,7 @@ describe("signUp action with an invitation", () => {
     await expect(signUp(input, token)).rejects.toThrow("REDIRECT");
     await expect(signUp(employer, "short")).rejects.toThrow("REDIRECT");
     await expect(signUp(employer)).rejects.toThrow("REDIRECT");
-    signUpMock.mockResolvedValue({ data: null, error: new AuthApiError("Boom", 500, "unexpected_failure") });
+    signUpMock.mockResolvedValue({ data: { user: null, session: null }, error: new AuthApiError("Boom", 500, "unexpected_failure") });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(signUp(employer, token)).resolves.toMatchObject({ message: expect.any(String) });
     expect(rememberMock).not.toHaveBeenCalled();
@@ -102,7 +108,7 @@ describe("signUp action", () => {
     await signUp({ ...input, email: "nope" });
     throttledMock.mockResolvedValueOnce(true);
     await signUp(input);
-    signUpMock.mockResolvedValue({ data: null, error: new AuthApiError("limit", 429, "over_request_rate_limit") });
+    signUpMock.mockResolvedValue({ data: { user: null, session: null }, error: new AuthApiError("limit", 429, "over_request_rate_limit") });
     await signUp(input);
     expect(rememberEmailMock).not.toHaveBeenCalled();
   });
@@ -172,16 +178,46 @@ describe("signUp action", () => {
     });
   });
 
-  it.each([
-    [
-      "the per-address minimum interval",
-      new AuthApiError("For security purposes, you can only request this after 59 seconds.", 429, "over_email_send_rate_limit"),
-    ],
-    ["an address that already has an account", new AuthApiError("User already registered", 422, "user_already_exists")],
-  ])("answers %s like a new sign-up so no address is revealed", async (_label, error) => {
-    signUpMock.mockResolvedValue({ data: {}, error });
+  it("answers the per-address minimum interval of a waiting account like a new sign-up and mails nothing more", async () => {
+    const error = new AuthApiError("For security purposes, you can only request this after 59 seconds.", 429, "over_email_send_rate_limit");
+    signUpMock.mockResolvedValue({ data: { user: null, session: null }, error });
     await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
     expect(rememberEmailMock).toHaveBeenCalledWith("signup", "ana@example.com");
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["user_already_exists (phone confirmations off)", { data: { user: null, session: null }, error: new AuthApiError("User already registered", 422, "user_already_exists") }],
+    ["a user without identities (Auth's obfuscated answer)", { data: { user: { identities: [] }, session: null }, error: null }],
+  ])("D89: answers a confirmed account signalled by %s like a new sign-up and asks the database to mail its owner", async (_label, answer) => {
+    signUpMock.mockResolvedValue(answer);
+    await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(rememberEmailMock).toHaveBeenCalledWith("signup", "ana@example.com");
+    expect(proofMock).toHaveBeenCalledWith("account_exists");
+    expect(rpcMock).toHaveBeenCalledWith("notify_existing_account", {
+      p_email: "ana@example.com",
+      p_key: "k".repeat(64),
+      p_proof: "p".repeat(64),
+    });
+  });
+
+  it("D89: asks for no account email after the sign-up of a new address", async () => {
+    await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("D89: a failed account email is logged as a fault with a reference, without the address, and the visitor sees the same page", async () => {
+    signUpMock.mockResolvedValue({ data: { user: { identities: [] }, session: null }, error: null });
+    rpcMock.mockResolvedValue({ data: null, error: { code: "P0001", message: "CHARA_SETTING_MISSING", details: "x" } });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(log).toHaveBeenCalledWith("Existing-account email failed", {
+      reference: expect.stringMatching(/^[0-9A-F]{8}$/),
+      code: "P0001",
+      message: "CHARA_SETTING_MISSING",
+      detail: "x",
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("ana@example.com");
   });
 
   it.each([
@@ -312,6 +348,7 @@ describe("resendSignupEmail action", () => {
     expect(await resendSignupEmail()).toEqual({ cooldown: 60, sent: true });
     expect(resendPendingMock).toHaveBeenCalledWith("signup", "resend", "/verify-email", expect.any(Function));
     expect(resendMock).toHaveBeenCalledWith({ type: "signup", email: "ana@example.test" });
+    expect(rpcMock).toHaveBeenCalledWith("notify_existing_account", expect.objectContaining({ p_email: "ana@example.test" }));
   });
 });
 

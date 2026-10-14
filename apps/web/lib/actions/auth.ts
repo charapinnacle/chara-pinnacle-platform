@@ -13,7 +13,8 @@ import {
   weakPasswordMessage,
 } from "@/lib/auth-errors";
 import { getSignupDocuments } from "@/lib/dal/legal";
-import { isThrottled } from "@/lib/dal/rate-limit";
+import { isThrottled, visitorProof } from "@/lib/dal/rate-limit";
+import { logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { rememberInvitation } from "@/lib/invitation-cookie";
 import {
@@ -70,7 +71,7 @@ export async function signUp(
   if (await isThrottled("signup")) return { message: RATE_LIMITED };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -84,14 +85,28 @@ export async function signUp(
     },
   });
 
-  // A repeat sign-up of an existing or waiting address must look like a new one.
-  if (error && error.code !== "user_already_exists" && !isAddressThrottle(error)) {
+  // A repeat sign-up of an existing or waiting address must look like a new one. Auth signals a confirmed account with
+  // user_already_exists while phone confirmations are off (the local stack) and otherwise with a user without identities;
+  // for a waiting account it sends a new confirmation link itself.
+  const existing = error?.code === "user_already_exists" || data.user?.identities?.length === 0;
+  if (error && !existing && !isAddressThrottle(error)) {
     return refusal(error);
   }
+  if (existing) await tellExistingAccount(email);
   const token = invitationTokenSchema.safeParse(invitation);
   if (token.success && kind === "company") await rememberInvitation(token.data);
   await rememberPendingEmail("signup", email);
   redirect(`/${defaultLocale}/verify-email`);
+}
+
+// The owner of a confirmed account learns by email that the address is registered, never on screen (D89). The database
+// decides whether the address has such an account and mails it at most once per interval; a failure is logged and changes
+// nothing that the visitor sees.
+async function tellExistingAccount(email: string): Promise<void> {
+  const { key, proof } = await visitorProof("account_exists");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("notify_existing_account", { p_email: email, p_key: key, p_proof: proof });
+  if (error) logFault("Existing-account email", error);
 }
 
 function refusal(error: AuthError): AuthActionResult {
@@ -130,6 +145,7 @@ export async function resendSignupEmail(): Promise<ResendAnswer> {
   return resendPending("signup", "resend", "/verify-email", async (email) => {
     const supabase = await createClient();
     const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (!error) await tellExistingAccount(email);
     return error;
   });
 }

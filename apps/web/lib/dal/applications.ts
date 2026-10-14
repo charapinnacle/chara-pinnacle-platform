@@ -3,8 +3,10 @@ import type { Database } from "@chara-pinnacle/db-types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { cache } from "react";
 import * as z from "zod";
+import type { ApplyRefusal } from "@/lib/applications/apply-refusal";
 import { type EventActorRole, eventActorLabels, isApplicationStatus } from "@/lib/applications/presentation";
 import { stageTotals, type StageTotals } from "@/lib/dashboard/stage-counts";
+import { logFault } from "@/lib/fault";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplyLimits } from "@/lib/validation/application";
 
@@ -55,15 +57,7 @@ type TimelineEvent = {
   actorRole: EventActorRole;
 };
 
-export type ApplyRefusal =
-  | { kind: "not_open" }
-  | { kind: "profile_incomplete"; missing: string[] }
-  | { kind: "rate_limited" }
-  | { kind: "document_not_found" }
-  | { kind: "forbidden" }
-  | { kind: "failed" };
-
-type WithdrawRefusal = { kind: "not_found" } | { kind: "not_withdrawable" } | { kind: "failed" };
+type WithdrawRefusal = { kind: "not_found" } | { kind: "not_withdrawable" } | { kind: "fault"; reference: string };
 
 type ApplyResult = { kind: "created"; applicationId: string } | { kind: "existing"; applicationId: string } | ApplyRefusal;
 
@@ -118,21 +112,31 @@ export async function getApplicationStates(jobIds: string[]): Promise<Map<string
   return states;
 }
 
+const INVALID_FIELDS: Record<string, "coverNote" | "documentIds"> = { p_note: "coverNote", p_document_ids: "documentIds" };
+
+function retryAfter(details: string | null | undefined): number | null {
+  const seconds = Number(details);
+  return Number.isInteger(seconds) && seconds > 0 ? seconds : null;
+}
+
+// The codes and details of apply_to_job become the reasons the page explains; anything else, a missing setting included, is a
+// system fault with a reference in the log.
 function refusal(error: PostgrestError): ApplyRefusal {
+  const invalidField = error.message === "CHARA_INVALID_INPUT" ? INVALID_FIELDS[error.details ?? ""] : undefined;
+  if (invalidField) return { kind: "invalid_input", field: invalidField };
   switch (error.message) {
     case "CHARA_JOB_NOT_OPEN":
       return { kind: "not_open" };
     case "CHARA_PROFILE_INCOMPLETE":
       return { kind: "profile_incomplete", missing: (error.details ?? "").split(", ").filter(Boolean) };
     case "CHARA_RATE_LIMITED":
-      return { kind: "rate_limited" };
+      return { kind: "rate_limited", retryAfterSeconds: retryAfter(error.details) };
     case "CHARA_NOT_FOUND":
       return { kind: "document_not_found" };
     case "CHARA_FORBIDDEN":
-      return { kind: "forbidden" };
+      return error.details === "account_not_active" ? { kind: "account_inactive" } : { kind: "not_candidate" };
     default:
-      console.error("Apply to vacancy failed", { code: error.code, message: error.message });
-      return { kind: "failed" };
+      return { kind: "fault", reference: logFault("Apply to vacancy", error) };
   }
 }
 
@@ -252,7 +256,6 @@ export async function withdrawApplication(id: string): Promise<WithdrawRefusal |
     case "CHARA_INVALID_TRANSITION":
       return { kind: "not_withdrawable" };
     default:
-      console.error("Withdraw application failed", { code: error.code, message: error.message });
-      return { kind: "failed" };
+      return { kind: "fault", reference: logFault("Withdraw application", error) };
   }
 }

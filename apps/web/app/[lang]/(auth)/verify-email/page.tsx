@@ -19,9 +19,16 @@ export default async function VerifyEmailPage({ searchParams }: PageProps<"/[lan
   const pending = invalidLink ? null : await pendingEmail("signup");
   if (pending) {
     return (
-      <AuthCard icon={Mail} title="Check your email" description={SENT}>
+      // True for every address (D89): a new account gets the confirmation link, an existing one an email with a sign-in link.
+      <AuthCard
+        icon={Mail}
+        title="Check your email"
+        description={`We have sent an email to ${maskEmail(pending.email)}. It contains the next step: a confirmation link for a new account, or a sign-in link if you already have one.`}
+      >
+        <p className="text-center text-small text-muted-foreground text-balance">
+          A confirmation link is valid for 24 hours and works once. Confirm your email address before you log in.
+        </p>
         <CheckEmailPanel
-          maskedEmail={maskEmail(pending.email)}
           initialCooldown={cooldownLeft(pending.sentAt)}
           resend={resendSignupEmail}
           changeAddress={changeSignupAddress}
