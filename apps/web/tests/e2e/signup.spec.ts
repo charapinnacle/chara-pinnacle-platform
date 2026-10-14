@@ -115,8 +115,9 @@ test.describe("sign-up form", () => {
       expect(answers[0].text).toContain(
         "We have sent an email to <address>. It contains the next step: a confirmation link for a new account, or a sign-in link if you already have one.",
       );
-      // The same timing class: both answers come within the time of one page load, neither waits on the other's work.
+      // The same timing class: both answers come within the time of one page load and within 1.5 s of each other.
       for (const answer of answers) expect(answer.milliseconds).toBeLessThan(5_000);
+      expect(Math.abs(answers[0].milliseconds - answers[1].milliseconds)).toBeLessThan(1_500);
 
       expect(notificationsOf(existing.id).map((row) => [row.kind, row.status])).toEqual([["account_exists", "queued"]]);
       const [fresher] = userByEmail(fresh);
