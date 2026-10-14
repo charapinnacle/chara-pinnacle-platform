@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from "@playwright/test";
 import { moveConfirmationSent, userByEmail } from "./support/accounts";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
-import { createCommittedUser, requestReset, RESET_PATH, RESET_SENT, RESET_SUBJECT, RESET_WAIT } from "./support/login";
+import { checkEmailText, createCommittedUser, masked, requestReset, RESET_PATH, RESET_SUBJECT, RESET_WAIT, resetSent } from "./support/login";
 import { messageCount, waitForMessage } from "./support/mailpit";
 import { fillSignup, newEmail, PASSWORD, summary } from "./support/signup-page";
 import { expect, test } from "./support/test";
@@ -29,7 +29,6 @@ async function minutePasses(context: BrowserContext): Promise<void> {
 }
 
 const resend = (page: Page) => page.getByRole("button", { name: /^Resend/ });
-const masked = (email: string) => `${email[0]}*****${email.split("@")[0].at(-1)}@${email.split("@")[1]}`;
 
 test.describe("U67: the page after sign-up and after a password reset request", () => {
   test("FR-A1: the page knows the address, shows it masked, offers a plain Resend button and keeps the address out of the URL", async ({ page, context }) => {
@@ -37,7 +36,12 @@ test.describe("U67: the page after sign-up and after a password reset request", 
     await signUp(page, email);
 
     await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
-    await expect(page.getByText(`Sent to ${masked(email)}`)).toBeVisible();
+    await expect(
+      page.getByText(
+        `We have sent an email to ${masked(email)}. It contains the next step: a confirmation link for a new account, or a sign-in link if you already have one.`,
+        { exact: true },
+      ),
+    ).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(email);
     await expect(page.getByRole("main").getByRole("textbox")).toHaveCount(0);
     await expect(page.getByText("Not there? Check your spam or promotions folder.")).toBeVisible();
@@ -116,7 +120,7 @@ test.describe("U67: the page after sign-up and after a password reset request", 
       await resend(page).click();
       await expect(page.getByRole("status")).toHaveText("We sent the email again.");
       answers.push({
-        text: (await page.locator("main").innerText()).replace(/Sent to \S+/, "Sent to").replace(/Resend in \d+ s/, "Resend in N s"),
+        text: await checkEmailText(page),
         button: await resend(page).innerText().then((label) => label.replace(/\d+/, "N")),
       });
       await context.clearCookies();
@@ -241,9 +245,8 @@ test.describe("U67: after a password reset request", () => {
     const user = await createCommittedUser("worker");
     await requestReset(page, user.email);
     await expect(page).toHaveURL(RESET_PATH);
-    await expect(page.getByText(RESET_SENT, { exact: true })).toBeVisible();
+    await expect(page.getByText(resetSent(user.email), { exact: true })).toBeVisible();
     await expect(page.getByText(RESET_WAIT)).toBeVisible();
-    await expect(page.getByText(`Sent to ${masked(user.email)}`)).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(user.email);
     await expect(page.getByRole("main").getByRole("textbox")).toHaveCount(0);
     expect(page.url()).not.toContain("@");
@@ -258,6 +261,19 @@ test.describe("U67: after a password reset request", () => {
     await page.getByRole("button", { name: "Use a different address" }).click();
     await expect(page).toHaveURL(/\/en\/forgot-password$/);
     await expect(page.getByLabel("Email", { exact: true })).toHaveValue(user.email);
+  });
+
+  test("FR-A3 AC7, D89: an unknown address is promised nothing, is offered sign-up, and is sent no email", async ({ page }) => {
+    const unknown = newEmail();
+    await requestReset(page, unknown);
+    await expect(page.getByText(resetSent(unknown), { exact: true })).toBeVisible();
+    const hint = page.getByText(/^Not received\? Check the address or create an account\./);
+    await expect(hint).toBeVisible();
+    await expect(hint.getByRole("link", { name: "create an account" })).toHaveAttribute("href", "/en/signup");
+    await expect(page.getByRole("main")).not.toContainText("we have sent a reset link");
+    await expectNoAxeViolations(page);
+    await page.waitForTimeout(1_500);
+    expect(await messageCount(unknown)).toBe(0);
   });
 
   test("FR-A3: Resend sends a second reset email after the minute, an unknown address is told the same", async ({ page, context }) => {

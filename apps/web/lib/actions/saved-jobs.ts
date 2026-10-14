@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { requireUser } from "@/lib/dal/session";
+import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { logVacancy } from "@/lib/jobs/vacancy-log";
 import { savedPath } from "@/lib/jobs/saved";
@@ -11,10 +11,12 @@ import { jobIdSchema } from "@/lib/validation/job";
 
 type SavedJobResult = { message?: string };
 
+const NOT_SAVABLE = "This vacancy can no longer be saved.";
+
 // ON CONFLICT DO NOTHING keeps a repeated save a no-op, also when two presses arrive together.
 export async function setSavedJob(jobId: string, saved: boolean): Promise<SavedJobResult> {
   const id = jobIdSchema.safeParse(jobId);
-  if (!id.success || typeof saved !== "boolean") return { message: GENERIC_FAILURE };
+  if (!id.success || typeof saved !== "boolean") return { message: NOT_SAVABLE };
   const user = await requireUser(defaultLocale);
   if (user.accountKind !== "worker") return { message: "Only candidates can save vacancies." };
 
@@ -26,10 +28,9 @@ export async function setSavedJob(jobId: string, saved: boolean): Promise<SavedJ
     : await supabase.from("saved_jobs").delete().eq("worker_user_id", user.id).eq("job_id", id.data);
   if (error) {
     if (saved && error.code === "42501" && error.message.includes("row-level security")) {
-      return { message: "This vacancy can no longer be saved." };
+      return { message: NOT_SAVABLE };
     }
-    console.error("Change saved vacancy failed", { code: error.code, message: error.message });
-    return { message: GENERIC_FAILURE };
+    return { message: faultMessage(logFault("Change saved vacancy", error)) };
   }
   if (saved) logVacancy({ event: "vacancy_action", action: "save", jobId: id.data, viewer: "candidate" });
   revalidatePath(savedPath(defaultLocale));

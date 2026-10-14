@@ -36,7 +36,10 @@ const { setSavedJob } = await import("@/lib/actions/saved-jobs");
 
 const userId = "0a1b2c3d-0000-4000-8000-0000000000aa";
 const jobId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
-const GENERIC = "We could not complete this request. Try again.";
+const NOT_SAVABLE = "This vacancy can no longer be saved.";
+const FAULT = {
+  message: expect.stringMatching(/^Something went wrong on our side and nothing was changed\. Please try again later\. Reference: [0-9A-F]{8}\.$/),
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -80,9 +83,9 @@ describe("setSavedJob", () => {
 
   it("refuses an id that is not a uuid and a value that is not a boolean", async () => {
     for (const id of ["", "not-an-id", "../x", `${jobId}x`]) {
-      expect(await setSavedJob(id, true)).toEqual({ message: GENERIC });
+      expect(await setSavedJob(id, true)).toEqual({ message: NOT_SAVABLE });
     }
-    expect(await setSavedJob(jobId, "yes" as unknown as boolean)).toEqual({ message: GENERIC });
+    expect(await setSavedJob(jobId, "yes" as unknown as boolean)).toEqual({ message: NOT_SAVABLE });
     expect(requireUserMock).not.toHaveBeenCalled();
     expect(calls).toEqual([]);
   });
@@ -96,13 +99,19 @@ describe("setSavedJob", () => {
 
   it("does not call a missing privilege a vacancy that is no longer public", async () => {
     outcome = { error: { code: "42501", message: "permission denied for table saved_jobs" } };
-    expect(await setSavedJob(jobId, true)).toEqual({ message: GENERIC });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await setSavedJob(jobId, true)).toEqual(FAULT);
   });
 
-  it("answers any other failure with the generic message and names nothing of the cause", async () => {
+  it("answers any other failure as a system fault with a reference, names nothing of the cause and logs the reference", async () => {
     outcome = { error: { code: "XX000", message: "connection to server lost" } };
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     for (const saved of [true, false]) {
-      expect(await setSavedJob(jobId, saved)).toEqual({ message: GENERIC });
+      const result = await setSavedJob(jobId, saved);
+      expect(result).toEqual(FAULT);
+      expect(result.message).not.toContain("connection");
+      const reference = /Reference: ([0-9A-F]{8})/.exec(result.message ?? "")?.[1];
+      expect(log).toHaveBeenLastCalledWith("Change saved vacancy failed", { reference, code: "XX000", message: "connection to server lost" });
     }
     expect(logMock).not.toHaveBeenCalled();
   });

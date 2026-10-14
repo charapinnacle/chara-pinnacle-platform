@@ -1,5 +1,5 @@
 begin;
-select plan(62);
+select plan(63);
 
 \ir apply_fixture.inc
 
@@ -117,12 +117,12 @@ select is(
   'AC8: calls 1 to 60 of one candidate within the hour are answered (one creates, 59 are duplicates)'
 );
 create temp table t_b8 as select pg_temp.counts() as c;
-select is(pg_temp.apply_as(:'wnew', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|', 'AC8: the 61st call raises CHARA_RATE_LIMITED');
+select is(pg_temp.apply_as(:'wnew', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|3600', 'AC8: the 61st call raises CHARA_RATE_LIMITED with the seconds to wait (the whole hour: every call was just now)');
 select is(pg_temp.counts(), (select c from t_b8), 'AC8: and writes nothing');
 select is(pg_temp.apply_as(:'wb', (select id from t_rl)), 'ok', 'AC8: another candidate is not affected');
-select is(pg_temp.apply_as(:'wnew', pg_temp.open_job('Rate vacancy two')), 'P0001|CHARA_RATE_LIMITED|', 'AC8: the limit holds for any vacancy');
+select is(pg_temp.apply_as(:'wnew', pg_temp.open_job('Rate vacancy two')), 'P0001|CHARA_RATE_LIMITED|3600', 'AC8: the limit holds for any vacancy');
 update private.settings set value = '5' where key = 'apply_rate_limit_max';
-select is(pg_temp.apply_as(:'wb', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|', 'AC8: the limit is a setting: with 5 a candidate who made more calls is refused');
+select is(pg_temp.apply_as(:'wb', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|3600', 'AC8: the limit is a setting: with 5 a candidate who made more calls is refused');
 update private.settings set value = '60' where key = 'apply_rate_limit_max';
 -- The window: sixty calls that are older than an hour no longer count, sixty within it do.
 insert into audit.log (actor_id, action, entity_type, entity_id, metadata, created_at)
@@ -130,7 +130,19 @@ select :'wb', 'application.duplicate_attempt', 'job_application', gen_random_uui
 select is(pg_temp.apply_as(:'wb', (select id from t_rl)), 'ok', 'AC8: once the window has elapsed calls succeed again (sixty calls two hours ago do not count)');
 insert into audit.log (actor_id, action, entity_type, entity_id, metadata, created_at)
 select :'wb', 'application.duplicate_attempt', 'job_application', gen_random_uuid()::text, '{}', now() - interval '59 minutes' from generate_series(1, 60);
-select is(pg_temp.apply_as(:'wb', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|', 'AC8: sixty calls 59 minutes ago still count');
+select is(pg_temp.apply_as(:'wb', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|60', 'AC8: sixty calls 59 minutes ago still count, and the wait is the minute until the oldest leaves the window');
+insert into audit.log (actor_id, action, entity_type, entity_id, metadata, created_at)
+select :'wb', 'application.duplicate_attempt', 'job_application', gen_random_uuid()::text, '{}', now() - interval '10 minutes' from generate_series(1, 3);
+-- The limit set one above wb's calls of this minute, so the call that has to leave the window is one of 10 minutes ago.
+update private.settings set value = (
+  select to_jsonb(count(*) + 1) from audit.log l
+  where l.actor_id = :'wb' and l.action in ('application.submitted', 'application.duplicate_attempt') and l.created_at > now() - interval '5 minutes'
+) where key = 'apply_rate_limit_max';
+select is(
+  pg_temp.apply_as(:'wb', (select id from t_rl)), 'P0001|CHARA_RATE_LIMITED|3000',
+  'AC8: with the limit lowered below the count, the wait runs until the call that brings the count under it (10 minutes ago) leaves the window, not the oldest'
+);
+update private.settings set value = '60' where key = 'apply_rate_limit_max';
 select is(
   (select count(*) from pg_indexes where indexname = 'log_apply_actor_idx'), 1::bigint,
   'AC8: the count is served by a partial index on the audit log'

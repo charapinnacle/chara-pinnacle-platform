@@ -12,12 +12,14 @@ The CLI is the pinned devDependency, always `npx supabase` (2.119.0). It needs `
 npx supabase link --project-ref <project-ref>
 npx supabase migration list
 npx supabase db push --dry-run
-npx supabase db push
+npx supabase db push --include-seed
 ```
 
 - `migration list` must show the same version in the Local and Remote columns for every migration already applied. The production history does not yet: its migrations were applied through the dashboard connector with apply-time versions (SA-17). Repair it once, before the first `db push`, for each row where only Remote has a version and the name matches a local file: `npx supabase migration repair --status reverted <remote version>` then `npx supabase migration repair --status applied <local version>`; repeat until `migration list` pairs every row. Repairing writes only the history table, never the schema.
 - `db push --dry-run` must print exactly the migrations of this release, in filename order. Anything else stops the deployment.
-- The first deployment of an environment adds `--include-seed` once (reference data, plans, legal document drafts of `supabase/seeds/ref`); later deployments never do.
+- `--include-seed` applies `supabase/seeds/ref/*.sql` (reference data, plans, legal document drafts) on every deployment of every hosted environment, not only the first: the files are idempotent (`on conflict`), the CLI runs a file again only when its content changed, and a seed that gained a row later (the legal document `sharing-notice`) otherwise never reaches an older environment (OPEN_QUESTIONS.md D89).
+- Then, in the SQL editor as `postgres`: `select * from private.missing_reference_data();` must return no rows. Each row names a legal document without a published version, an empty reference table, a missing setting (one that a function reads by its literal key, a list limit of a passport trigger, or a throttle setting; the legal entity details are checked by the go-live gate) or the missing Vault secret `rate_limit_proof_key`; while one is listed the features that need it fail with `CHARA_SETTING_MISSING` (applications without `sharing-notice`), or, for the secret, a direct call of the Data API skips the visitor proof and can mail every registered address (`notify_existing_account`). Apply the seed, insert the setting or create the secret (`security-checklist.md` item 10, section 4 below), and run the check again before step 2.
+- A release that adds a notification kind (D89: `account_exists`) deploys `notify` (section 2) before this push: a message of a kind the running `notify` does not know is marked failed with `unknown_kind` and never retried, while the new template is inert until a row of its kind exists.
 - Migrations are forward-only and must work with the web build that is still running until step 6 (add columns and functions first, remove them in a later release).
 - After the push: Advisors, Security Advisor lists only the warnings of `security-checklist.md` item 11.
 

@@ -4,10 +4,12 @@ import { execute, literal, query } from "./support/db";
 import { seedDocument } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
 import { addCompanyUser, newCompany, seedJob } from "./support/jobs";
+import { createCommittedUser } from "./support/login";
 import { logIn } from "./support/login-page";
 import { extractLinks, messageCount, waitForMessage } from "./support/mailpit";
 import { notificationsOf, runNotify, sendDeliveryEvent, undeliverableAt } from "./support/notify";
 import { expect, test } from "./support/test";
+import { fillSignup, PASSWORD } from "./support/signup-page";
 import { publicUrl } from "./support/vacancy-page";
 
 // notify takes every message in the queue, so these tests run in their own project after the others
@@ -182,5 +184,24 @@ test.describe("notify: transactional emails through the mail catcher", () => {
     const [, second] = notificationsOf(owner.id);
     expect(second).toMatchObject({ status: "suppressed", provider_message_id: null, sent: false });
     expect(await messageCount(owner.email)).toBe(1);
+  });
+
+  test("FR-A1, FR-I1, D89: a sign-up with a confirmed address mails its owner once, with a Log in button and a reset link", async ({ page }) => {
+    const existing = await createCommittedUser("worker");
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await page.goto("/en/signup");
+      await fillSignup(page, { kind: "worker", email: existing.email, password: PASSWORD });
+      await page.getByRole("button", { name: "Create account" }).click();
+      await expect(page).toHaveURL(/\/en\/verify-email$/);
+    }
+    expect(notificationsOf(existing.id).map((row) => row.kind)).toEqual(["account_exists"]);
+
+    await runNotify();
+    const message = await waitForMessage(existing.email, { subject: "You already have a Chara Pinnacle account", timeoutMs: 30_000 });
+    expect(message.From.Name).toBe("Chara Pinnacle");
+    expect(extractLinks(message)).toEqual(expect.arrayContaining([`${SITE}/en/login`, `${SITE}/en/forgot-password`]));
+    expect(`${message.Text}${message.HTML}`).not.toContain(PASSWORD);
+    expect(await messageCount(existing.email)).toBe(1);
+    expect(notificationsOf(existing.id)).toEqual([expect.objectContaining({ kind: "account_exists", status: "sent", sent: true })]);
   });
 });

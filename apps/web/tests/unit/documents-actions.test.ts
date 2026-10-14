@@ -47,6 +47,9 @@ const actions = await import("@/lib/actions/documents");
 const userId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const documentId = "0a1b2c3d-0000-4000-8000-000000000001";
 const GENERIC = "We could not complete this request. Try again.";
+const FAULT = {
+  message: expect.stringMatching(/^Something went wrong on our side and nothing was changed\. Please try again later\. Reference: [0-9A-F]{8}\.$/),
+};
 const file = { name: "My CV (final).pdf", size: 1_258_291, type: "application/pdf" };
 const input = { type: "cv", title: "  Amina Okafor CV 2026 ", expiresOn: "", file };
 
@@ -143,16 +146,21 @@ describe("startDocumentUpload", () => {
     expect(warn).toHaveBeenCalledExactlyOnceWith('{"alert":"quota_refused","quota":"audited_write","flow":"document"}');
   });
 
-  it("answers generically, and logs only a code and message, when the database refuses", async () => {
+  it("answers a system fault with a reference, and logs the reference with a code and message but not the detail", async () => {
     outcome = { data: null, error: { message: "new row violates row-level security policy", code: "42501", details: "secret" } };
-    expect(await actions.startDocumentUpload(input)).toEqual({ message: GENERIC });
+    const result = await actions.startDocumentUpload(input);
+    expect(result).toEqual(FAULT);
     expect(signUploadMock).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith("Document action failed", { code: "42501", message: "new row violates row-level security policy" });
+    expect(console.error).toHaveBeenCalledWith("Document action failed", {
+      reference: /Reference: ([0-9A-F]{8})/.exec(result.message ?? "")?.[1],
+      code: "42501",
+      message: "new row violates row-level security policy",
+    });
   });
 
-  it("answers generically when the upload link cannot be made, leaving the pending row to be deleted", async () => {
+  it("answers a system fault when the upload link cannot be made, leaving the pending row to be deleted", async () => {
     signUploadMock.mockResolvedValue({ data: null, error: { message: "boom" } });
-    expect(await actions.startDocumentUpload(input)).toEqual({ message: GENERIC });
+    expect(await actions.startDocumentUpload(input)).toEqual(FAULT);
     expect(calls).toHaveLength(1);
   });
 });
@@ -191,9 +199,9 @@ describe("deleteDocument", () => {
     expect(await actions.deleteDocument(documentId)).toEqual({});
   });
 
-  it("reports any other refusal generically", async () => {
+  it("reports any other refusal as a system fault with a reference", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", code: "P0001", details: "x" } });
-    expect(await actions.deleteDocument(documentId)).toEqual({ message: GENERIC });
+    expect(await actions.deleteDocument(documentId)).toEqual(FAULT);
     expect(revalidateMock).not.toHaveBeenCalled();
   });
 
@@ -248,11 +256,11 @@ describe("getDocumentDownload", () => {
     expect(signMock).not.toHaveBeenCalled();
   });
 
-  it("answers generically when the grant refuses for another reason or answers nothing", async () => {
+  it("answers a system fault when the grant refuses for another reason, and that the document is gone when it answers nothing", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { code: "42501", message: "CHARA_FORBIDDEN" } });
-    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
+    expect(await actions.getDocumentDownload(documentId)).toEqual(FAULT);
     rpcMock.mockResolvedValue({ data: [], error: null });
-    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
+    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: "This document no longer exists." });
     expect(signMock).not.toHaveBeenCalled();
   });
 
@@ -261,9 +269,9 @@ describe("getDocumentDownload", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("answers generically when the link cannot be made", async () => {
+  it("answers a system fault when the link cannot be made", async () => {
     rpcMock.mockResolvedValue({ data: [grant], error: null });
     signMock.mockResolvedValue({ data: null, error: { message: "boom" } });
-    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
+    expect(await actions.getDocumentDownload(documentId)).toEqual(FAULT);
   });
 });

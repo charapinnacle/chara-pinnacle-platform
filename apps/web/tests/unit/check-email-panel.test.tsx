@@ -7,7 +7,6 @@ vi.mock("server-only", () => ({}));
 const render = (initialCooldown: number) =>
   renderToStaticMarkup(
     <CheckEmailPanel
-      maskedEmail="a*****6@gmail.com"
       initialCooldown={initialCooldown}
       resend={async () => ({ cooldown: 60, sent: true })}
       changeAddress={async () => undefined}
@@ -15,9 +14,9 @@ const render = (initialCooldown: number) =>
   );
 
 describe("CheckEmailPanel (U67)", () => {
-  it("shows the masked address, a Resend button without any input, the spam hint and the way back to the form", () => {
+  it("shows a Resend button without any input, the spam hint and the way back to the form (the page text names the address)", () => {
     const html = render(0);
-    expect(html).toContain("a*****6@gmail.com");
+    expect(html).not.toContain("Sent to");
     expect(html).toMatch(/<button[^>]*type="button"[^>]*>Resend email<\/button>/);
     expect(html).not.toContain("<input");
     expect(html).toContain("Not there? Check your spam or promotions folder.");

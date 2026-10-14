@@ -78,24 +78,54 @@ describe("applyToJob", () => {
 
   it("does not treat a unique violation as an existing application when none is found", async () => {
     rpcResult = { data: null, error: { code: "23505", message: "duplicate key value", details: "" } };
-    expect(await applyToJob(jobId, null, [])).toEqual({ kind: "failed" });
+    expect(await applyToJob(jobId, null, [])).toEqual({ kind: "fault", reference: expect.stringMatching(/^[0-9A-F]{8}$/) });
   });
 
   it.each([
     ["CHARA_JOB_NOT_OPEN", "", { kind: "not_open" }],
-    ["CHARA_RATE_LIMITED", "", { kind: "rate_limited" }],
+    ["CHARA_RATE_LIMITED", "1800", { kind: "rate_limited", retryAfterSeconds: 1800 }],
+    ["CHARA_RATE_LIMITED", "", { kind: "rate_limited", retryAfterSeconds: null }],
     ["CHARA_NOT_FOUND", "", { kind: "document_not_found" }],
-    ["CHARA_FORBIDDEN", "account_not_active", { kind: "forbidden" }],
+    ["CHARA_FORBIDDEN", "account_not_active", { kind: "account_inactive" }],
+    ["CHARA_FORBIDDEN", "worker_account_required", { kind: "not_candidate" }],
+    ["CHARA_INVALID_INPUT", "p_note", { kind: "invalid_input", field: "coverNote" }],
+    ["CHARA_INVALID_INPUT", "p_document_ids", { kind: "invalid_input", field: "documentIds" }],
     ["CHARA_PROFILE_INCOMPLETE", "current_country, occupation_id", { kind: "profile_incomplete", missing: ["current_country", "occupation_id"] }],
-  ])("maps %s to a refusal that carries no database text", async (message, details, expected) => {
+  ])("maps %s (%s) to a refusal that carries no database text", async (message, details, expected) => {
+    vi.mocked(console.error).mockClear();
     rpcResult = { data: null, error: { code: "P0001", message, details } };
     expect(await applyToJob(jobId, null, [])).toEqual(expected);
+    expect(console.error).not.toHaveBeenCalled();
   });
 
-  it("answers an unknown error as failed and logs only its code and message", async () => {
+  it("D89: answers a missing setting as a system fault and logs its reference with the code and the detail", async () => {
+    rpcResult = { data: null, error: { code: "P0001", message: "CHARA_SETTING_MISSING", details: "sharing-notice" } };
+    const result = await applyToJob(jobId, null, []);
+    expect(result).toEqual({ kind: "fault", reference: expect.stringMatching(/^[0-9A-F]{8}$/) });
+    expect(console.error).toHaveBeenCalledWith("Apply to vacancy failed", {
+      reference: (result as { reference: string }).reference,
+      code: "P0001",
+      message: "CHARA_SETTING_MISSING",
+      detail: "sharing-notice",
+    });
+  });
+
+  it("answers an unknown error as a system fault and logs its reference, code and message but not its detail", async () => {
     rpcResult = { data: null, error: { code: "XX000", message: "connection to server lost", details: "secret detail" } };
-    expect(await applyToJob(jobId, null, [])).toEqual({ kind: "failed" });
-    expect(console.error).toHaveBeenCalledWith("Apply to vacancy failed", { code: "XX000", message: "connection to server lost" });
+    const result = await applyToJob(jobId, null, []);
+    expect(result).toEqual({ kind: "fault", reference: expect.stringMatching(/^[0-9A-F]{8}$/) });
+    expect(console.error).toHaveBeenCalledWith("Apply to vacancy failed", {
+      reference: (result as { reference: string }).reference,
+      code: "XX000",
+      message: "connection to server lost",
+    });
+  });
+
+  it("gives each fault its own reference", async () => {
+    rpcResult = { data: null, error: { code: "XX000", message: "connection to server lost", details: null } };
+    const first = (await applyToJob(jobId, null, [])) as { reference: string };
+    const second = (await applyToJob(jobId, null, [])) as { reference: string };
+    expect(first.reference).not.toBe(second.reference);
   });
 });
 
@@ -239,7 +269,7 @@ describe("withdrawApplication", () => {
   it.each([
     ["CHARA_NOT_FOUND", { kind: "not_found" }],
     ["CHARA_INVALID_TRANSITION", { kind: "not_withdrawable" }],
-    ["permission denied for function withdraw_application", { kind: "failed" }],
+    ["permission denied for function withdraw_application", { kind: "fault", reference: expect.stringMatching(/^[0-9A-F]{8}$/) }],
   ])("maps the error %s to %j without the text of the database", async (message, expected) => {
     rpcResult = { data: null, error: { message, code: "P0001", details: null } };
     expect(await withdrawApplication(applicationId)).toEqual(expected);

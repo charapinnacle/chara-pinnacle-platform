@@ -14,8 +14,9 @@ type ThrottledAction =
   | "report";
 
 // The keyed hash of this visitor's address and the proof of this minute that the database asks for with it; the address
-// itself never leaves the web tier.
-export async function visitorProof(action: ThrottledAction): Promise<{ key: string; proof: string }> {
+// itself never leaves the web tier. account_exists is no throttled action: it proves that the web tier asks
+// notify_existing_account to mail an address.
+export async function visitorProof(action: ThrottledAction | "account_exists"): Promise<{ key: string; proof: string }> {
   const { VISITOR_HASH_SECRET, TRUSTED_PROXY_HOPS } = serverEnv();
   const address = clientAddress((await headers()).get("x-forwarded-for"), TRUSTED_PROXY_HOPS);
   if (address === null) {

@@ -2,7 +2,7 @@
 
 FR-I1, design point D65 (OPEN_QUESTIONS.md). The SOP is "Account Email Delivery E2E SOP" (owner Platform / Operations, reviewed quarterly): authentication emails are delivered reliably from a verified domain. Queries are run by CHARA staff as the database owner (SQL editor of the project); no screen shows them. The queue, templates and retries of the emails that `notify` sends are in `docs/runbooks/transactional-emails.md`.
 
-## 1. The four emails and the path each one takes
+## 1. The emails and the path each one takes
 
 | Email | Sent by | Template and subject | Trigger |
 |---|---|---|---|
@@ -10,6 +10,7 @@ FR-I1, design point D65 (OPEN_QUESTIONS.md). The SOP is "Account Email Delivery 
 | Password reset | Supabase Auth, through the custom SMTP | `supabase/templates/recovery.html`, `[auth.email.template.recovery]` | `/forgot-password` |
 | Team invitation | `notify`, through the Resend API | `apps/web/emails/templates/member-invitation.tsx` | `invite_member` queues kind `member_invitation` |
 | Two-step verification reset notice | `notify`, through the Resend API | `apps/web/emails/templates/mfa-reset.tsx` | `reset_mfa` queues kind `mfa_reset` |
+| Account already exists | `notify`, through the Resend API | `apps/web/emails/templates/account-exists.tsx` | A sign-up (or its Resend) with the address of a confirmed account: `notify_existing_account` queues kind `account_exists`, at most once per 15 minutes per account (OPEN_QUESTIONS.md D89) |
 
 Auth also sends two notices that FR-A3 and FR-A1 added (`password_changed`, `identity_linked`); they use the same SMTP and the same checks.
 
@@ -44,7 +45,7 @@ The wording is reviewed by Platform and Operations; legal review of the tone is 
 Delivery rate and bounce rate are the KPIs of the SOP.
 
 - Auth emails: Resend dashboard, Emails, filter by the sender `no-reply@<domain>`, last 7 days: delivered, bounced and complained as shares of sent. Record them in the weekly review. This is the only record of these emails; the database does not hold them.
-- `notify` emails of this requirement (`member_invitation`, `mfa_reset`):
+- `notify` emails of this requirement (`member_invitation`, `mfa_reset`, `account_exists`):
 
 ```sql
 select kind,
@@ -55,7 +56,7 @@ select kind,
        count(*) filter (where delivery = 'complained') as complaints,
        count(*) filter (where status = 'failed') as failed
 from public.notifications
-where kind in ('member_invitation', 'mfa_reset') and created_at > now() - interval '7 days'
+where kind in ('member_invitation', 'mfa_reset', 'account_exists') and created_at > now() - interval '7 days'
 group by kind;
 ```
 

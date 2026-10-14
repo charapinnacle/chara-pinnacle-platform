@@ -10,6 +10,7 @@ import { publicUrl } from "./support/vacancy-page";
 const LIST = "public.list_saved_jobs(text, integer)";
 const INSERT = "insert (worker_user_id, job_id) on public.saved_jobs";
 const DELETE = "delete on public.saved_jobs";
+const FAULT = /^Something went wrong on our side and nothing was changed\. Please try again later\. Reference: [0-9A-F]{8}\.$/;
 
 // The list function and the insert and delete privileges are withdrawn from the API role for the whole database while this file
 // runs, so it has a project of its own that follows the others (playwright.config.ts).
@@ -52,7 +53,7 @@ test.describe("saved vacancies when the database fails", () => {
 
     await save.click();
     await expect(page.getByText("Your saved vacancies were not changed", { exact: true })).toBeVisible();
-    await expect(page.getByText("We could not complete this request. Try again.", { exact: true })).toBeVisible();
+    await expect(page.getByText(FAULT)).toBeVisible();
     await expect(save).toHaveAttribute("aria-pressed", "false");
     await expect(save).toBeEnabled();
     expect(savedJobIds(candidate.id)).toEqual([]);
@@ -78,7 +79,7 @@ test.describe("saved vacancies when the database fails", () => {
 
     await unsave.click();
     await expect(page.getByText("The vacancy was not removed", { exact: true })).toBeVisible();
-    await expect(page.getByText("We could not complete this request. Try again.", { exact: true })).toBeVisible();
+    await expect(page.getByText(FAULT)).toBeVisible();
     await expect(page.getByRole("heading", { name: "Staying welder" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "No saved vacancies yet" })).toHaveCount(0);
     expect(savedJobIds(candidate.id)).toEqual([id]);

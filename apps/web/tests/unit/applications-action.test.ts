@@ -69,29 +69,26 @@ describe("applyToVacancy", () => {
     });
     const many = Array.from({ length: 11 }, (_, i) => `0a1b2c3d-0000-4000-8000-${String(i).padStart(12, "0")}`);
     expect((await applyToVacancy(jobId, { ...valid, documentIds: many }))?.errors).toEqual({ documentIds: "Select at most 10 documents" });
-    expect((await applyToVacancy("not-a-uuid", valid))?.message).toBe("We could not complete this request. Try again.");
+    expect(await applyToVacancy("not-a-uuid", valid)).toEqual({ message: "This vacancy is no longer accepting applications", notOpen: true });
     expect(applyMock).not.toHaveBeenCalled();
   });
 
   it("refuses an account that is not a candidate before it reads anything else", async () => {
     requireUserMock.mockResolvedValue({ id: "u", accountKind: "company" });
-    expect(await applyToVacancy(jobId, valid)).toEqual({ message: "Only candidates can apply for vacancies." });
+    expect(await applyToVacancy(jobId, valid)).toEqual({ message: "Only an active candidate account can apply." });
     expect(applyMock).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [{ kind: "not_open" }, { message: "This vacancy is no longer accepting applications", notOpen: true }],
-    [{ kind: "rate_limited" }, { message: "You have sent many applications in a short time. Try again later." }],
-    [{ kind: "document_not_found" }, { message: "One of the selected documents is no longer available. Reload the page and choose again." }],
-    [{ kind: "forbidden" }, { message: "Only an active candidate account can apply." }],
-    [{ kind: "failed" }, { message: "We could not complete this request. Try again." }],
-    [
-      { kind: "profile_incomplete", missing: ["occupation_id"] },
-      { message: "Your passport is incomplete: add your occupation, then apply again." },
-    ],
-  ])("answers the refusal %j with a message and no database text", async (refusal, expected) => {
-    applyMock.mockResolvedValue(refusal);
-    expect(await applyToVacancy(jobId, valid)).toEqual(expected);
+  it("hands every refusal of the database to the shared mapping, which shows no database text", async () => {
+    applyMock.mockResolvedValue({ kind: "fault", reference: "1A2B3C4D" });
+    expect(await applyToVacancy(jobId, valid)).toEqual({
+      message: "Applications are temporarily unavailable. Please try again later. Reference: 1A2B3C4D.",
+    });
+    applyMock.mockResolvedValue({ kind: "profile_incomplete", missing: ["occupation_id"] });
+    expect(await applyToVacancy(jobId, valid)).toEqual({
+      message: "Add your occupation to your passport before you apply.",
+      links: [{ label: "Add your occupation", href: "/en/passport#occupation" }],
+    });
   });
 });
 
@@ -110,7 +107,7 @@ describe("withdrawMyApplication", () => {
   });
 
   it("does not call the database for an id that is not a uuid", async () => {
-    expect(await withdrawMyApplication("not-a-uuid")).toEqual({ message: "We could not complete this request. Try again." });
+    expect(await withdrawMyApplication("not-a-uuid")).toEqual({ message: "This application could not be found." });
     expect(withdrawMock).not.toHaveBeenCalled();
   });
 
@@ -128,7 +125,10 @@ describe("withdrawMyApplication", () => {
 
   it.each([
     [{ kind: "not_found" }, { message: "This application could not be found." }],
-    [{ kind: "failed" }, { message: "We could not complete this request. Try again." }],
+    [
+      { kind: "fault", reference: "1A2B3C4D" },
+      { message: "Something went wrong on our side and nothing was changed. Please try again later. Reference: 1A2B3C4D." },
+    ],
   ])("answers the refusal %j with a message and no database text", async (refusal, expected) => {
     withdrawMock.mockResolvedValue(refusal);
     expect(await withdrawMyApplication(applicationId)).toEqual(expected);
