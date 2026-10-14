@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
-import { Band } from "@/components/home/band";
-import { ClosingCall } from "@/components/home/closing-call";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
+import { Band } from "@/components/public/band";
+import { ClosingCall } from "@/components/public/closing-call";
 import { FactList } from "@/components/public/fact-list";
 import { NumberedSteps } from "@/components/public/numbered-steps";
 import { SectionHeading } from "@/components/public/section-heading";

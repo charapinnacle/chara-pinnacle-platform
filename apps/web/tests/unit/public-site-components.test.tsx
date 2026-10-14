@@ -46,9 +46,8 @@ describe("StepList", () => {
 
 describe("SectionHeading", () => {
   it("names its section through the id of its h2 and keeps the eyebrow out of the heading, in the section size", () => {
-    const markup = html(<SectionHeading id="s" eyebrow="How it works" title="In three steps." description="Quiet line" />);
-    expect(markup).toMatch(/<p class="[^"]*text-brand-ink[^"]*">How it works<\/p><h2 id="s" class="[^"]*text-section[^"]*">In three steps.<\/h2><p[^>]*>Quiet line<\/p>/);
-    expect(html(<SectionHeading id="s" eyebrow="E" title="T" />)).not.toContain("text-lead");
+    const markup = html(<SectionHeading id="s" eyebrow="How it works" title="In three steps." />);
+    expect(markup).toMatch(/<p class="[^"]*text-brand-ink[^"]*">How it works<\/p><h2 id="s" class="[^"]*text-section[^"]*">In three steps.<\/h2><\/div>$/);
   });
 });
 

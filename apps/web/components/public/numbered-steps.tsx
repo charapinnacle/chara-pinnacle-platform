@@ -1,8 +1,7 @@
-export type NumberedStep = { title: string; text: string };
+import type { Step } from "@/lib/public/steps";
 
-// Three steps side by side from 768 px under a dark rule, each a number, a short title and one line; the list is ordered,
-// so the number is hidden from assistive technology.
-export function NumberedSteps({ steps }: { steps: readonly NumberedStep[] }) {
+// The list is ordered, so the number is hidden from assistive technology.
+export function NumberedSteps({ steps }: { steps: readonly Step[] }) {
   return (
     <ol className="grid gap-10 md:grid-cols-3 md:gap-8 lg:gap-14">
       {steps.map(({ title, text }, index) => (

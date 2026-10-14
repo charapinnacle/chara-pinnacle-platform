@@ -3,8 +3,6 @@ import { PageContainer } from "@/components/layout/page-container";
 
 type ClosingAction = { href: string; label: string };
 
-// The last call of the home and For employers pages on the near-black of the brand, centred, where the primary action is
-// the gold one and a second action, when there is one, an outline.
 export function ClosingCall({ id, title, primary, secondary }: { id: string; title: string; primary: ClosingAction | null; secondary?: ClosingAction | null }) {
   return (
     <section aria-labelledby={id} className="dark border-b bg-inverse text-foreground">

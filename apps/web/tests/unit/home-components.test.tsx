@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Band } from "@/components/home/band";
-import { ClosingCall } from "@/components/home/closing-call";
+import { Band } from "@/components/public/band";
+import { ClosingCall } from "@/components/public/closing-call";
 import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";

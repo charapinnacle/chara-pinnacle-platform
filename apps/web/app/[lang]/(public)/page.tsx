@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClosingCall } from "@/components/home/closing-call";
+import { ClosingCall } from "@/components/public/closing-call";
 import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";

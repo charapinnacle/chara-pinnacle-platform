@@ -1,6 +1,5 @@
-export type Fact = { title: string; text: string };
+type Fact = { title: string; text: string };
 
-// Statements the product enforces, each a short title and one line between hairlines.
 export function FactList({ label, facts }: { label: string; facts: readonly Fact[] }) {
   return (
     <ul aria-label={label} className="border-b">

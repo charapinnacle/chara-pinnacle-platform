@@ -1,4 +1,4 @@
-import { Band } from "@/components/home/band";
+import { Band } from "@/components/public/band";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { EMPLOYERS_PATH } from "@/lib/public/navigation";

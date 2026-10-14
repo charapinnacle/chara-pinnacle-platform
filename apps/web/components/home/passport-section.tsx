@@ -1,4 +1,4 @@
-import { Band } from "@/components/home/band";
+import { Band } from "@/components/public/band";
 import { FactList } from "@/components/public/fact-list";
 import { SectionHeading } from "@/components/public/section-heading";
 

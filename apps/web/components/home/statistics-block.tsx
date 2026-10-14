@@ -1,4 +1,4 @@
-import { Band } from "@/components/home/band";
+import { Band } from "@/components/public/band";
 import type { StatisticTile } from "@/lib/statistics/tiles";
 
 // The live figures, only when there is a tile. The label comes first in the document, so that a screen reader says

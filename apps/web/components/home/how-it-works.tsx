@@ -1,4 +1,4 @@
-import { Band } from "@/components/home/band";
+import { Band } from "@/components/public/band";
 import { LinkButton } from "@/components/layout/link-button";
 import { NumberedSteps } from "@/components/public/numbered-steps";
 import { SectionHeading } from "@/components/public/section-heading";
