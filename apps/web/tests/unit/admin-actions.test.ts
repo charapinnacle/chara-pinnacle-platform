@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateMock = vi.hoisted(() => vi.fn());
-const updateTagMock = vi.hoisted(() => vi.fn());
 const requireRoleMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
@@ -11,8 +10,7 @@ const redirectMock = vi.hoisted(() =>
 const rpcMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/cache", () => ({ revalidatePath: revalidateMock, updateTag: updateTagMock }));
-vi.mock("@/lib/dal/home", () => ({ PUBLIC_JOBS_TAG: "public-jobs" }));
+vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/session", () => ({ requirePlatformRole: requireRoleMock }));
 vi.mock("@/lib/dal/admin", () => ({ adminClient: async () => ({ rpc: rpcMock }) }));
@@ -47,9 +45,6 @@ describe("changeStanding", () => {
     expect(requireRoleMock).toHaveBeenCalledWith("en", ["trust_safety"]);
     expect(rpcMock).toHaveBeenCalledWith(name, args);
     expect(revalidateMock).toHaveBeenCalledWith(`/en/admin/${target === "user" ? "users" : "organizations"}/${ID}`);
-    // The vacancies of an organisation leave the public with it, so the cached home page lets them go at once.
-    if (target === "organization") expect(updateTagMock).toHaveBeenCalledWith("public-jobs");
-    else expect(updateTagMock).not.toHaveBeenCalled();
   });
 
   it("refuses a short reason with the field error and calls nothing", async () => {
@@ -101,7 +96,6 @@ describe("moderateJob", () => {
     expect(requireRoleMock).toHaveBeenCalledWith("en", ["trust_safety"]);
     expect(rpcMock).toHaveBeenCalledWith("moderate_job", { p_job: ID, p_action: action, p_reason: REASON });
     expect(revalidateMock).toHaveBeenCalledWith(`/en/admin/moderation/${ID}`);
-    expect(updateTagMock).toHaveBeenCalledWith("public-jobs");
   });
 
   it("refuses a short reason with the field error and an action that is none, and calls nothing", async () => {
@@ -120,7 +114,6 @@ describe("moderateJob", () => {
     rpcMock.mockResolvedValue(failure("CHARA_INVALID_STATE", state));
     expect(await moderateJob({ id: ID, action: "hide", reason: REASON })).toEqual({ message: expected });
     expect(revalidateMock).not.toHaveBeenCalled();
-    expect(updateTagMock).not.toHaveBeenCalled();
   });
 
   it("explains a missing vacancy and a refusal without leaking the database text, and sends a lapsed session to confirm", async () => {

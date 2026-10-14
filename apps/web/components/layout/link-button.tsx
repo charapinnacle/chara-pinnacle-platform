@@ -12,16 +12,16 @@ const linkButtonVariants = cva(
   },
 );
 
-type ButtonLook = VariantProps<typeof linkButtonVariants> & Pick<VariantProps<typeof formButtonVariants>, "variant">;
-type LinkButtonProps = React.ComponentProps<typeof Link> & ButtonLook;
-
-// The classes of a link button, also for an element that only shows the look of an action (the "Apply now" of a card
-// that is itself the link).
-export function linkButtonClassName({ variant, size, className }: ButtonLook & { className?: string }): string {
-  return cn(linkButtonVariants({ size }), formButtonVariants({ variant }), "w-auto", className);
-}
+type LinkButtonProps = React.ComponentProps<typeof Link> &
+  VariantProps<typeof linkButtonVariants> &
+  Pick<VariantProps<typeof formButtonVariants>, "variant">;
 
 // A link that looks like a button: for navigation that must read as an action. Use FormButton for anything that submits.
 export function LinkButton({ variant, size, className, ...props }: LinkButtonProps) {
-  return <Link className={linkButtonClassName({ variant, size, className })} {...props} />;
+  return (
+    <Link
+      className={cn(linkButtonVariants({ size }), formButtonVariants({ variant }), "w-auto", className)}
+      {...props}
+    />
+  );
 }

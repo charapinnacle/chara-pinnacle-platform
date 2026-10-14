@@ -1,29 +1,28 @@
 import { LinkButton } from "@/components/layout/link-button";
-import { Photo } from "@/components/home/photo";
-import { signUpPath } from "@/lib/routes";
+import { PageContainer } from "@/components/layout/page-container";
 import { BRAND_NAME } from "@/lib/brand";
+import { signUpPath } from "@/lib/routes";
 
-// The construction photograph under a scrim that keeps the heading and the buttons at AA contrast or better.
+// The client's closing line on the near-black of the brand, where the primary action is the gold one. Start hiring leads where
+// the header's Post a Job does, and is left out for whom the header offers none.
 export function ClosingCall({ lang, postJobHref }: { lang: string; postJobHref: string | null }) {
   return (
-    <section aria-labelledby="home-start-heading" className="dark relative isolate overflow-hidden bg-inverse text-foreground">
-      <Photo name="construction-team" sizes="100vw" />
-      <div aria-hidden className="absolute inset-0 -z-10 bg-inverse/75" />
-      <div data-reveal className="mx-auto grid w-full max-w-6xl justify-items-center gap-10 px-4 py-24 text-center sm:px-6 sm:py-36">
-        <h2 id="home-start-heading" className="max-w-4xl font-serif text-section text-balance">
+    <section aria-labelledby="home-start-heading" className="dark border-b bg-inverse text-foreground">
+      <PageContainer className="grid justify-items-start gap-10 py-20 sm:py-28">
+        <h2 id="home-start-heading" className="max-w-4xl text-section text-balance">
           Your Workforce. Your Network. One Platform.
         </h2>
-        <div className="flex flex-wrap justify-center gap-3">
-          <LinkButton href={signUpPath(lang, "worker")} prefetch={false} className="lift">
+        <div className="flex flex-wrap gap-3">
+          <LinkButton href={signUpPath(lang)} prefetch={false} className="min-h-12">
             Join {BRAND_NAME}
           </LinkButton>
           {postJobHref ? (
-            <LinkButton href={postJobHref} prefetch={false} variant="secondary" className="lift min-h-12 border-foreground/40 bg-transparent hover:bg-secondary">
-              Post a Job
+            <LinkButton href={postJobHref} prefetch={false} variant="secondary" className="min-h-12 bg-transparent">
+              Start hiring
             </LinkButton>
           ) : null}
         </div>
-      </div>
+      </PageContainer>
     </section>
   );
 }

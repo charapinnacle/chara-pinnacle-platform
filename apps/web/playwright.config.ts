@@ -86,7 +86,6 @@ export default defineConfig({
         "**/billing-page-failure.spec.ts",
         "**/pricing.spec.ts",
         "**/search-engine-sitemap.spec.ts",
-        "**/home-vacancies.spec.ts",
         "**/perf-smoke.spec.ts",
       ],
     },
@@ -258,20 +257,12 @@ export default defineConfig({
       testMatch: "**/search-engine-sitemap.spec.ts",
       dependencies: ["billing-failure"],
     },
-    // The home page shows the newest public vacancies: these tests add the newest of all for a while, which no other spec
-    // may see (the sitemap compares every public vacancy), so they follow every other project.
-    {
-      name: "home-vacancies",
-      use: { ...devices["Desktop Chrome"] },
-      testMatch: "**/home-vacancies.spec.ts",
-      dependencies: ["sitemap"],
-    },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
       name: "perf",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/perf-smoke.spec.ts",
-      dependencies: ["home-vacancies"],
+      dependencies: ["sitemap"],
     },
   ],
   // The second server runs the same build with Continue with Google switched on; the flag is read per request.

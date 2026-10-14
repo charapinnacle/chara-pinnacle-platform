@@ -16,12 +16,12 @@ describe("the navigation of the public pages (FR-H1 AC3)", () => {
     expect(guestLinks.map(({ label }) => label)).toEqual(["Login", "Sign up"]);
   });
 
-  it("sets the public footer in three columns, Platform, Company and Legal, with the photo credits, and ends it with the index of all legal documents (every document is two clicks away)", () => {
+  it("sets the public footer in three columns, Platform, Company and Legal, and ends it with the index of all legal documents (every document is two clicks away)", () => {
     expect(publicFooterColumns.map(({ title }) => title)).toEqual(["Platform", "Company", "Legal"]);
     expect(publicFooterColumns.map(({ links }) => links.map(({ label }) => label))).toEqual([
       ["Find Jobs", "How Chara Pinnacle works", "Pricing"],
       ["About", "Trust & Safety", "Contact"],
-      ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "Photo credits", "All legal documents"],
+      ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"],
     ]);
     expect(publicFooterColumns.flatMap(({ links }) => links.map(({ path }) => path))).toEqual([
       "jobs",
@@ -34,7 +34,6 @@ describe("the navigation of the public pages (FR-H1 AC3)", () => {
       "legal/privacy-policy",
       "legal/terms-of-service",
       "legal/cookie-policy",
-      "imprint#photo-credits",
       "legal",
     ]);
     expect(publicFooterColumns[2].links.at(-1)?.path).toBe("legal");

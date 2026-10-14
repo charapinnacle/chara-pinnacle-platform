@@ -8,8 +8,8 @@ const fields = [
 ] as const;
 
 // A plain GET form to Find Jobs: it works without JavaScript and loads none. Find Jobs validates the address it receives as
-// it does every other (100 characters is its limit too) and turns the place into a country or a city filter. The light
-// token set is put back inside the bar so that it stands out on the photograph; it is 64 px high from md.
+// it does every other (100 characters is its limit too) and turns the place into a country or a city filter. The icons
+// stand in for the labels, which only assistive technology reads.
 export function HeroSearch({ lang }: { lang: string }) {
   return (
     <form
@@ -17,10 +17,10 @@ export function HeroSearch({ lang }: { lang: string }) {
       method="get"
       role="search"
       aria-label="Search jobs"
-      className="light grid gap-1 rounded-2xl bg-card p-2 text-foreground shadow-[0_32px_64px_-24px_rgb(0_0_0/0.7)] md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_auto] md:items-center"
+      className="grid gap-1 rounded-xl border bg-card p-1.5 shadow-card md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_auto] md:items-center"
     >
       {fields.map(({ name, id, label, icon: Icon }) => (
-        <div key={name} className="relative md:first:border-e md:first:border-border">
+        <div key={name} className="relative max-md:first:border-b md:first:border-e">
           <label htmlFor={id} className="sr-only">
             {label}
           </label>
@@ -31,11 +31,11 @@ export function HeroSearch({ lang }: { lang: string }) {
             maxLength={100}
             autoComplete="off"
             placeholder={label}
-            className="h-12 rounded-xl border-transparent bg-transparent ps-12 text-base shadow-none hover:border-transparent focus-visible:ring-0 md:text-base dark:bg-transparent"
+            className="h-12 rounded-lg border-transparent bg-transparent ps-12 text-base shadow-none hover:border-transparent focus-visible:ring-0 md:text-base"
           />
         </div>
       ))}
-      <FormButton type="submit" className="min-h-12 rounded-xl text-base md:w-auto md:px-8">
+      <FormButton type="submit" className="min-h-12 text-base md:w-auto md:px-8">
         Search jobs
       </FormButton>
     </form>

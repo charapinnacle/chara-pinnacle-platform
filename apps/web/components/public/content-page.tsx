@@ -18,9 +18,9 @@ export function ContentPage({
   );
 }
 
-export function ContentSection({ heading, id, children }: { heading: string; id?: string; children: React.ReactNode }) {
+export function ContentSection({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="grid gap-4 border-t pt-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12">
+    <section className="grid gap-4 border-t pt-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12">
       <h2 className="text-h2">{heading}</h2>
       <div className="grid max-w-[65ch] gap-3 leading-7">{children}</div>
     </section>

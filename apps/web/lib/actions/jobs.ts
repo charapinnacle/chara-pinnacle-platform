@@ -1,12 +1,11 @@
 "use server";
 
 import type { PostgrestError } from "@supabase/supabase-js";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { getJobLimit } from "@/lib/dal/hiring";
-import { PUBLIC_JOBS_TAG } from "@/lib/dal/home";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import type { LimitPrompt } from "@/lib/jobs/lifecycle";
@@ -130,7 +129,6 @@ export async function updateJob(slug: string, id: string, input: JobFormInput): 
   if (error?.message === "CHARA_INVALID_TRANSITION" && error.details === "filled") return { message: FILLED };
   if (error) return refusal(error);
   if (!data) return { message: organization.suspended ? NOT_ALLOWED : NOT_FOUND };
-  updateTag(PUBLIC_JOBS_TAG);
   revalidatePath(jobsPath(defaultLocale, organization.slug));
   revalidatePath(jobPath(defaultLocale, organization.slug, parsedId.data));
   return { saved: true };
@@ -215,7 +213,6 @@ export async function changeJobStatus(
     : data
       ? {}
       : { message: NOT_FOUND };
-  if (!error && data) updateTag(PUBLIC_JOBS_TAG);
   revalidatePath(jobsPath(defaultLocale, organization.slug));
   revalidatePath(jobPath(defaultLocale, organization.slug, parsed.data.id));
   return result;

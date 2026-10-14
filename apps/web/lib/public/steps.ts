@@ -1,4 +1,4 @@
-// The steps of the How it works page.
+// The steps of the How it works page, shown in full on that page and on the home page: one source, so the two never differ.
 export type Step = { title: string; text: string };
 
 export const workerSteps: readonly Step[] = [

@@ -1,24 +1,12 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { PageContainer } from "@/components/layout/page-container";
 import { cn } from "@/lib/utils";
 
-const bandVariants = cva("relative isolate overflow-hidden", {
-  variants: {
-    tone: {
-      light: "bg-background text-foreground",
-      white: "bg-card text-foreground",
-      dark: "dark bg-background text-foreground",
-    },
-  },
-});
-
-type BandProps = React.ComponentProps<"section"> & VariantProps<typeof bandVariants>;
-
-export function Band({ tone = "light", className, children, ...props }: BandProps) {
+// A section of the home page: a hairline above it instead of a box or a coloured band, the content in the page column, and
+// the same 80 px (112 px from sm) above and below every section.
+export function Band({ className, children, ...props }: React.ComponentProps<"section">) {
   return (
-    <section className={bandVariants({ tone })} {...props}>
-      <div data-reveal className={cn("mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24", className)}>
-        {children}
-      </div>
+    <section className="border-t" {...props}>
+      <PageContainer className={cn("py-20 sm:py-28", className)}>{children}</PageContainer>
     </section>
   );
 }
