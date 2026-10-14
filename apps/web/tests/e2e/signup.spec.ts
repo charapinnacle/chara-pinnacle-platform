@@ -4,7 +4,9 @@ import type { BrowserContext } from "@playwright/test";
 import { env } from "@/lib/env";
 import {
   accountRows,
+  createUnconfirmedUser,
   currentDocuments,
+  moveConfirmationSent,
   pendingConsents,
   userByEmail,
 } from "./support/accounts";
@@ -21,6 +23,8 @@ import {
 } from "./support/signup-page";
 import { captureActionRequests } from "./support/server-action";
 import { createTestUser, deleteTestUser } from "./support/test-user";
+import { checkEmailText } from "./support/login";
+import { notificationsOf } from "./support/notify";
 import { displayTitle } from "@/lib/validation/consents";
 
 const authUrl = `${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`;
@@ -87,29 +91,36 @@ test.describe("sign-up form", () => {
     expect(JSON.stringify(payload)).not.toMatch(/\d{4}-\d{2}-\d{2}|birth|dob/i);
   });
 
-  test("FR-A1 AC5: a repeat sign-up of a confirmed address looks like a new one and changes nothing", async ({
+  test("FR-A1 AC5, D89: a repeat sign-up of a confirmed address looks like a new one, changes nothing and queues the account email", async ({
     page,
     context,
     request,
   }) => {
     const existing = await createTestUser("worker");
+    const fresh = newEmail();
     try {
       const calls = captureActionRequests(page);
-      await page.goto("/en/signup");
-      await fillSignup(page, {
-        kind: "company",
-        email: existing.email.toUpperCase(),
-        password: "Another-Passw0rd",
-      });
-      await page.getByRole("button", { name: "Create account" }).click();
-      await expect(page).toHaveURL(/\/en\/verify-email$/);
-      const duplicateStatus = calls[0].status();
+      const answers: { text: string; milliseconds: number }[] = [];
+      for (const email of [existing.email.toUpperCase(), fresh]) {
+        await page.goto("/en/signup");
+        await fillSignup(page, { kind: "company", email, password: "Another-Passw0rd" });
+        const started = Date.now();
+        await page.getByRole("button", { name: "Create account" }).click();
+        await expect(page).toHaveURL(/\/en\/verify-email$/);
+        await expect(page.getByText(/^We have sent an email to /)).toBeVisible();
+        answers.push({ text: await checkEmailText(page), milliseconds: Date.now() - started });
+      }
+      expect(calls[1].status()).toBe(calls[0].status());
+      expect(answers[0].text).toBe(answers[1].text);
+      expect(answers[0].text).toContain(
+        "We have sent an email to <address>. It contains the next step: a confirmation link for a new account, or a sign-in link if you already have one.",
+      );
+      // The same timing class: both answers come within the time of one page load, neither waits on the other's work.
+      for (const answer of answers) expect(answer.milliseconds).toBeLessThan(5_000);
 
-      await page.goto("/en/signup");
-      await fillSignup(page, { kind: "company", email: newEmail(), password: "Another-Passw0rd" });
-      await page.getByRole("button", { name: "Create account" }).click();
-      await expect(page).toHaveURL(/\/en\/verify-email$/);
-      expect(calls[1].status()).toBe(duplicateStatus);
+      expect(notificationsOf(existing.id).map((row) => [row.kind, row.status])).toEqual([["account_exists", "queued"]]);
+      const [fresher] = userByEmail(fresh);
+      expect(notificationsOf(fresher.id)).toEqual([]);
 
       expect(userByEmail(existing.email)).toHaveLength(1);
       expect(accountRows(existing.id).account).toMatchObject({
@@ -129,6 +140,25 @@ test.describe("sign-up form", () => {
     } finally {
       await deleteTestUser(existing.id);
     }
+  });
+
+  test("FR-A1, D89: a repeat sign-up of an address that waits for confirmation sends a new confirmation link, not the account email", async ({
+    page,
+  }) => {
+    const waiting = await createUnconfirmedUser("worker");
+    moveConfirmationSent(waiting.id, "2 minutes");
+    await page.goto("/en/signup");
+    await fillSignup(page, { kind: "worker", email: waiting.email, password: PASSWORD });
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page).toHaveURL(/\/en\/verify-email$/);
+    await expect(page.getByText(/^We have sent an email to /)).toBeVisible();
+
+    const message = await waitForMessage(waiting.email, { timeoutMs: 60_000 });
+    expect(extractLinks(message).some((link) => link.includes("/en/confirm-email?token_hash="))).toBe(true);
+    expect(await messageCount(waiting.email)).toBe(1);
+    expect(notificationsOf(waiting.id)).toEqual([]);
+    expect(userByEmail(waiting.email)).toHaveLength(1);
+    await deleteTestUser(waiting.id);
   });
 
   test("FR-A8 AC1, FR-A9 AC1, FR-A6 AC1: the kind comes first, is final, and decides the documents and the age box", async ({

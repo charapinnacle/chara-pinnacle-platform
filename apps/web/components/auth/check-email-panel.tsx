@@ -12,7 +12,6 @@ import { isRedirectError } from "@/lib/redirect-error";
 import { cn } from "@/lib/utils";
 
 type CheckEmailPanelProps = {
-  maskedEmail: string;
   initialCooldown: number;
   resend: () => Promise<ResendAnswer>;
   changeAddress: () => Promise<void>;
@@ -41,10 +40,10 @@ function useCooldown(initial: number) {
   return { remaining, restart };
 }
 
-// What the page after sign-up and after a password reset request shows under its text: where the link went (masked), a Resend
+// What the page after sign-up and after a password reset request shows under its text (which names the masked address): a Resend
 // button that needs no address and shows its cooldown, and a way back to the form. The button stays focusable while it waits
 // (aria-disabled), so the cooldown can be read from the keyboard; the result is announced in a polite live region.
-export function CheckEmailPanel({ maskedEmail, initialCooldown, resend, changeAddress }: CheckEmailPanelProps) {
+export function CheckEmailPanel({ initialCooldown, resend, changeAddress }: CheckEmailPanelProps) {
   const { remaining, restart } = useCooldown(initialCooldown);
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>(null);
@@ -70,9 +69,6 @@ export function CheckEmailPanel({ maskedEmail, initialCooldown, resend, changeAd
 
   return (
     <div className="grid gap-5">
-      <p className="text-center text-body text-muted-foreground">
-        Sent to <span className="font-medium whitespace-nowrap text-foreground">{maskedEmail}</span>
-      </p>
       <div role="status" aria-live="polite" className="sr-only">
         {outcome?.text}
       </div>
