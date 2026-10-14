@@ -75,27 +75,27 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     const sizeOf = (name: string) => page.getByRole("heading", { level: 1, name }).evaluate((heading) => getComputedStyle(heading).fontSize);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/en");
-    expect(await sizeOf("The Global Workforce Network")).toBe("76px");
+    expect(await sizeOf("The Global Workforce Network")).toBe("64px");
     await page.goto("/en/jobs");
     expect(await sizeOf("Find Your Next Opportunity")).toBe("32px");
     await page.goto("/en/pricing");
     expect(await sizeOf("Choose how you want to grow on Chara Pinnacle")).toBe("48px");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/en");
-    expect(await sizeOf("The Global Workforce Network")).toBe("44px");
+    expect(await sizeOf("The Global Workforce Network")).toBe("40px");
     await page.goto("/en/jobs");
     expect(await sizeOf("Find Your Next Opportunity")).toBe("26px");
   });
 
-  test("DS-01: the search of the hero is the primary action, Post a Job of the closing call is a secondary link-button of the button height, and a click follows the link", async ({ page }) => {
+  test("DS-01: the search of the hero is the primary action, Start hiring of the closing call is a secondary link-button of the button height, and a click follows the link", async ({ page }) => {
     await page.goto("/en");
     const search = page.getByRole("search", { name: "Search jobs" }).getByRole("button", { name: "Search jobs" });
     const join = page.getByRole("region", { name: "Your Workforce. Your Network. One Platform." }).getByRole("link", { name: "Join Chara Pinnacle" });
-    const post = page.getByRole("region", { name: "Your Workforce. Your Network. One Platform." }).getByRole("link", { name: "Post a Job" });
+    const post = page.getByRole("region", { name: "Your Workforce. Your Network. One Platform." }).getByRole("link", { name: "Start hiring" });
     expect((await post.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     expect((await post.boundingBox())?.height).toBe((await join.boundingBox())?.height);
     expect(await backgroundOf(search)).toBe(await tokenColour(page, "--primary"));
-    // On the dark photograph the secondary action is an outline: no fill and a 1 px border.
+    // On the near-black closing call the secondary action is an outline: no fill and a 1 px border.
     expect(await backgroundOf(post)).toBe("rgba(0, 0, 0, 0)");
     expect(await post.evaluate((link) => getComputedStyle(link).borderTopWidth)).toBe("1px");
     await post.click();

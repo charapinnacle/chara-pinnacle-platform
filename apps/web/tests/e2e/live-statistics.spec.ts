@@ -21,8 +21,8 @@ test.afterEach(() => {
   execute(`${SCHEDULED_REFRESH}true)`);
 });
 
-const heading = (page: Page) => page.getByRole("heading", { name: "Global Workforce Network", level: 2 });
-const block = (page: Page) => page.getByRole("region", { name: "Global Workforce Network" });
+const heading = (page: Page) => page.getByRole("heading", { name: "Global Workforce Network", level: 2, exact: true });
+const block = (page: Page) => page.getByRole("region", { name: "Global Workforce Network", exact: true });
 const groups = (page: Page) => block(page).locator("dl > div");
 
 async function openHome(page: Page): Promise<void> {
@@ -32,30 +32,27 @@ async function openHome(page: Page): Promise<void> {
 }
 
 // The home page leaves out a live figure below 100, the credible minimum (D87), so the snapshots of these tests are at least
-// that large where a value must be shown; the countries of the view are named by the country chips, not counted in a tile.
+// that large where a value must be shown.
 test.describe("live statistics on the home page", () => {
-  test("FR-H4 AC1: an anonymous visitor sees the labelled values, each as text in one group with its label", async ({ page }) => {
-    showSnapshot({ jobs: 150, employers: 120, workers: 3000, countries: 60 });
+  test("FR-H4 AC1: an anonymous visitor sees the four labelled values, each as text in one group with its label", async ({ page }) => {
+    showSnapshot({ jobs: 150, employers: 120, workers: 3000, countries: 120 });
     await openHome(page);
 
     await expect(heading(page)).toBeVisible();
-    await expect(groups(page)).toHaveText([/^Workers\s*3,000$/, /^Employers\s*120$/, /^Active jobs\s*150$/]);
-    await expect(page.getByRole("term")).toHaveText(["Workers", "Employers", "Active jobs"]);
-    await expect(page.getByRole("definition")).toHaveText(["3,000", "120", "150"]);
+    await expect(groups(page)).toHaveText([/^Workers\s*3,000$/, /^Employers\s*120$/, /^Active jobs\s*150$/, /^Countries\s*120$/]);
+    await expect(page.getByRole("term")).toHaveText(["Workers", "Employers", "Active jobs", "Countries"]);
+    await expect(page.getByRole("definition")).toHaveText(["3,000", "120", "150", "120"]);
     await expectNoAxeViolations(page);
   });
 
-  test("U70: the block is the end of the reach band, after the reference figures and before the trust strip and the closing call", async ({ page }) => {
+  test("U71: the block is a section of its own after the CHARA Passport and before the closing call, and no reference-table figure is shown", async ({ page }) => {
     showSnapshot({ jobs: 150, employers: 120, workers: 3000, countries: 60 });
     await openHome(page);
 
     const headings = await page.getByRole("main").getByRole("heading", { level: 2 }).allInnerTexts();
-    const at = headings.indexOf("Global Workforce Network");
-    expect(headings[at - 1]).toBe("Built for hiring across borders");
-    expect(headings.at(-1)).toBe("Your Workforce. Your Network. One Platform.");
-    expect(at).toBe(headings.length - 2);
-    const reach = page.getByRole("region", { name: "Built for hiring across borders" });
-    await expect(reach.getByRole("region", { name: "Global Workforce Network" })).toBeVisible();
+    expect(headings.slice(-3)).toEqual(["One professional profile. Multiple opportunities.", "Global Workforce Network", "Your Workforce. Your Network. One Platform."]);
+    await expect(page.getByRole("main")).not.toContainText("Built for hiring across borders");
+    await expect(page.getByRole("main")).not.toContainText("Countries and territories");
   });
 
   test("D87: a value the database shows but below 100 is left out, and 100 is shown", async ({ page }) => {
@@ -65,6 +62,7 @@ test.describe("live statistics on the home page", () => {
     await expect(groups(page)).toHaveText([/^Employers\s*100$/]);
     await expect(block(page).getByText("Workers")).toHaveCount(0);
     await expect(block(page).getByText("Active jobs")).toHaveCount(0);
+    await expect(block(page).getByText("Countries")).toHaveCount(0);
 
     showSnapshot({ jobs: 99, employers: 99, workers: 90, countries: 6 });
     await openHome(page);
@@ -87,7 +85,7 @@ test.describe("live statistics on the home page", () => {
     showSnapshot({ jobs: 100, employers: 1234, workers: 1234, countries: 1234 });
     await openHome(page);
 
-    await expect(groups(page)).toHaveText([/^Workers\s*1,230$/, /^Employers\s*1,234$/, /^Active jobs\s*100$/]);
+    await expect(groups(page)).toHaveText([/^Workers\s*1,230$/, /^Employers\s*1,234$/, /^Active jobs\s*100$/, /^Countries\s*1,234$/]);
   });
 
   test("FR-H4 AC3: a single low value is left out without a label, a zero, a dash or an empty tile", async ({ page }) => {
@@ -113,7 +111,7 @@ test.describe("live statistics on the home page", () => {
   test("FR-H4 AC8: the threshold is read from the setting at the next request", async ({ page }) => {
     showSnapshot({ jobs: 190, employers: 190, workers: 190, countries: 190 });
     await openHome(page);
-    await expect(groups(page)).toHaveCount(3);
+    await expect(groups(page)).toHaveCount(4);
 
     execute("update private.settings set value = '200' where key = 'stats_min_count'");
     await openHome(page);
@@ -143,7 +141,7 @@ test.describe("live statistics on the home page", () => {
     const companies = await Promise.all(Array.from({ length: 5 }, () => newCompany()));
     companies.forEach((company) => seedJob(company, { title: "Statistics welder", status: "open", country: "PL" }));
     // A hundred more, so that both figures reach the credible minimum of the page (D87) whatever the other specs left.
-    bulk = seedEmployersWithVacancy(companies[0].owner, 100, "C");
+    bulk = seedEmployersWithVacancy(companies[0].owner, 100);
     expect(visitorCounts()).toEqual(before);
 
     execute("refresh materialized view concurrently stats.platform_counts_mv");

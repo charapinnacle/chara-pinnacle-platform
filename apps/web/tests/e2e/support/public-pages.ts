@@ -18,7 +18,7 @@ export const LEGAL_SLUGS = [
 // Post a Job from the client's website structure (D81); the pages about Chara Pinnacle are in the footer.
 export const HEADER_LABELS = ["Find Jobs", "How Chara Pinnacle works", "Post a Job", "Login", "Sign up"];
 
-// The footer reads in three columns: Platform, Company and Legal (with the photo credits of the home page, U70).
+// The footer reads in three columns: Platform, Company and Legal.
 export const FOOTER_LABELS = [
   "Find Jobs",
   "How Chara Pinnacle works",
@@ -30,16 +30,14 @@ export const FOOTER_LABELS = [
   "Privacy Policy",
   "Terms of Service",
   "Cookie Policy",
-  "Photo credits",
   "All legal documents",
 ];
 
-// The headings of the home page's sections that are there whatever vacancies are open (U70, D87).
+// The h2 of the home page's sections in reading order when no live figure is credible (U71, OPEN_QUESTIONS.md D88).
 export const HOME_SECTION_HEADINGS = [
-  "Browse by industry",
-  "Publish a vacancy and manage every applicant in one pipeline",
-  "One CHARA Passport for every application",
-  "Built for hiring across borders",
+  "Who are you?",
+  "Workers and employers, connected",
+  "One professional profile. Multiple opportunities.",
   "Your Workforce. Your Network. One Platform.",
 ];
 
