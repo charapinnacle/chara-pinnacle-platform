@@ -138,6 +138,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await menu.click();
     await page.mouse.click(40, 400);
     await expect(panel).toBeHidden();
+    await expect(menu).toBeFocused();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
   });
 
