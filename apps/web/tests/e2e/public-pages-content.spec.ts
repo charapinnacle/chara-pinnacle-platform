@@ -89,12 +89,12 @@ test.describe("the details of the legal entity", () => {
 });
 
 test.describe("the accessibility of the public pages", () => {
-  test("FR-H1 AC4: axe finds no serious or critical violation on any of the 19 public pages", async ({ page }) => {
+  test("FR-H1 AC4: axe finds no serious or critical violation on any of the 19 public pages and on For employers", async ({ page }) => {
     test.setTimeout(180_000);
     setSettings(DETAILS);
     const jobId = await openVacancyId();
     const paths = [...sitePaths(jobId), ...legalPaths()];
-    expect(paths).toHaveLength(19);
+    expect(paths).toHaveLength(20);
     for (const path of paths) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);

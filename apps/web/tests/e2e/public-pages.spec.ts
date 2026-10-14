@@ -14,7 +14,7 @@ test.describe("the public pages without JavaScript", () => {
   }) => {
     const jobId = await openVacancyId();
     const paths = [...sitePaths(jobId), ...legalPaths()];
-    expect(paths).toHaveLength(19);
+    expect(paths).toHaveLength(20);
 
     for (const path of paths) {
       const response = await page.goto(path);

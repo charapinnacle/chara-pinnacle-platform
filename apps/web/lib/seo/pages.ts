@@ -1,6 +1,6 @@
 import { BRAND_NAME } from "@/lib/brand";
 
-// The eight static public pages: the path after the language, the title and the description of each. The metadata of a
+// The nine static public pages: the path after the language, the title and the description of each. The metadata of a
 // page and the sitemap read this one list, so a page that is in the sitemap has the metadata it was listed with.
 // Descriptions are 50 to 160 characters and differ from page to page (FR-H5 AC1).
 export const staticPages = {
@@ -27,6 +27,12 @@ export const staticPages = {
     title: `How ${BRAND_NAME} works`,
     description:
       `How workers and employers use ${BRAND_NAME}, step by step: from the profile and the search to the application and the decision.`,
+  },
+  employers: {
+    path: "employers",
+    title: `For employers — ${BRAND_NAME}`,
+    description:
+      `Hire on ${BRAND_NAME}: publish a vacancy, review every applicant in one pipeline and keep each candidate informed at every stage.`,
   },
   trustSafety: {
     path: "trust-safety",

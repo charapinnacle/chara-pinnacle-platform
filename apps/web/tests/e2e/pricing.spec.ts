@@ -256,3 +256,32 @@ test.describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
     await expect(page.getByRole("main").getByText("Enterprise")).toHaveCount(0);
   });
 });
+
+test.describe("the pricing teaser of the For employers page (U73, FR-H2 AC4, KPI pricing mismatches)", () => {
+  test("shows the lowest public price of the records and follows a change of price, name, visibility and trial on the next request", async ({ page }) => {
+    const pricing = page.getByRole("region", { name: "Pricing", exact: true });
+    const [first, second] = publicPlanRecords();
+    await page.goto("/en/employers");
+    await expect(pricing).toContainText(`${priceText(first.price_minor, first.currency)}per ${first.interval}, excluding VAT`);
+    await expect(pricing).toContainText(`${first.name} plan. ${first.trial_days} days free trial.`);
+
+    setPlan(first.code, "price_minor = price_minor + 1000, name = 'Starter', trial_days = 0");
+    await page.reload();
+    await expect(pricing).toContainText(`${priceText(first.price_minor + 1000, first.currency)}per ${first.interval}, excluding VAT`);
+    await expect(pricing).toContainText("Starter plan. Higher plans are on the pricing page.");
+    await expect(pricing).not.toContainText("trial");
+
+    setPlan(first.code, "is_public = false");
+    setPlan("employer_enterprise", "is_public = true, contact_sales = true, price_minor = 100");
+    await page.reload();
+    await expect(pricing).toContainText(`${priceText(second.price_minor, second.currency)}per ${second.interval}, excluding VAT`);
+    await expect(pricing).toContainText(`${second.name} plan.`);
+    await expect(pricing).not.toContainText(priceText(100, second.currency));
+
+    execute("update billing.plans set is_public = false where org_type = 'employer'");
+    await page.reload();
+    await expect(pricing).toContainText("The plans and their prices are on the pricing page.");
+    await expect(pricing).not.toContainText("EUR");
+    await expect(pricing.getByRole("link", { name: "See all plans" })).toHaveAttribute("href", "/en/pricing");
+  });
+});

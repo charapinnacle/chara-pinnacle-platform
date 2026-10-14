@@ -16,17 +16,17 @@ async function openVacancy(title: string, options: { description?: string; creat
 }
 
 test.describe("metadata of the public pages", () => {
-  test("FR-H5 AC1: each of the eight pages, the ten legal pages and a vacancy has a title, a description, a canonical address and Open Graph tags", async ({
+  test("FR-H5 AC1: each of the nine pages (For employers among them), the ten legal pages and a vacancy has a title, a description, a canonical address and Open Graph tags", async ({
     page,
   }) => {
     const { id } = await openVacancy("Metadata welder");
     const vacancy = `/en/jobs/${id}`;
     const staticPaths = sitePaths(id).filter((path) => path !== vacancy);
-    const eighteen = [...staticPaths, ...legalPaths()];
-    expect(eighteen).toHaveLength(18);
+    const nineteen = [...staticPaths, ...legalPaths()];
+    expect(nineteen).toHaveLength(19);
 
     const descriptions: string[] = [];
-    for (const path of [...eighteen, vacancy, "/en/jobs?q=warehouse"]) {
+    for (const path of [...nineteen, vacancy, "/en/jobs?q=warehouse"]) {
       const response = await page.goto(path);
       expect(response?.status(), path).toBe(200);
       const head = await readHead(page);
@@ -42,12 +42,12 @@ test.describe("metadata of the public pages", () => {
       expect(head.ogDescription, `${path} og:description`).toBe(head.description);
       expect(head.ogImage, `${path} og:image`).toBe(`${SITE}/opengraph-image`);
       expect(head.ogSiteName, `${path} og:site_name`).toBe("Chara Pinnacle");
-      if (eighteen.includes(path)) {
+      if (nineteen.includes(path)) {
         expect(head.description?.length, `${path} description`).toBeGreaterThanOrEqual(50);
         descriptions.push(head.description ?? "");
       }
     }
-    expect(new Set(descriptions).size).toBe(18);
+    expect(new Set(descriptions).size).toBe(19);
     expect(LEGAL_SLUGS).toHaveLength(10);
   });
 

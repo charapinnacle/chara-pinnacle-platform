@@ -21,6 +21,7 @@ export const HEADER_LABELS = ["Find Jobs", "How Chara Pinnacle works", "Post a J
 // The footer reads in three columns: Platform, Company and Legal.
 export const FOOTER_LABELS = [
   "Find Jobs",
+  "For employers",
   "How Chara Pinnacle works",
   "Pricing",
   "About",
@@ -33,12 +34,20 @@ export const FOOTER_LABELS = [
   "All legal documents",
 ];
 
-// The h2 of the home page's sections in reading order when no live figure is credible (U71, OPEN_QUESTIONS.md D88).
+// The h2 of the home page's sections in reading order when no live figure is credible (U73, OPEN_QUESTIONS.md D90); the
+// employer band between the passport and the closing call is named by its aria-label, not a heading.
 export const HOME_SECTION_HEADINGS = [
-  "Who are you?",
-  "Workers and employers, connected",
+  "From profile to offer, in three steps.",
   "One professional profile. Multiple opportunities.",
   "Your Workforce. Your Network. One Platform.",
+];
+
+// The h2 of the For employers page in reading order.
+export const EMPLOYERS_SECTION_HEADINGS = [
+  "From vacancy to hire in three steps.",
+  "Built for teams that hire together.",
+  "Pricing",
+  "Ready to hire?",
 ];
 
 export const SETTING_KEYS = [
@@ -56,7 +65,7 @@ export async function openVacancyId(): Promise<string> {
   return seedJob(company, { title: "Public pages welder", status: "open" });
 }
 
-// The nine pages of AC6 and AC10, with the vacancy page of the given id.
+// The nine pages of AC6 and AC10, with the vacancy page of the given id, and the For employers page (U73).
 export function sitePaths(jobId: string): string[] {
   return [
     "/en",
@@ -68,6 +77,7 @@ export function sitePaths(jobId: string): string[] {
     "/en/about",
     "/en/contact",
     "/en/imprint",
+    "/en/employers",
   ];
 }
 

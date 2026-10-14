@@ -1,27 +1,31 @@
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
-import { BRAND_NAME } from "@/lib/brand";
-import { signUpPath } from "@/lib/routes";
 
-// The client's closing line on the near-black of the brand, where the primary action is the gold one. Start hiring leads where
-// the header's Post a Job does, and is left out for whom the header offers none.
-export function ClosingCall({ lang, postJobHref }: { lang: string; postJobHref: string | null }) {
+type ClosingAction = { href: string; label: string };
+
+// The last call of the home and For employers pages on the near-black of the brand, centred, where the primary action is
+// the gold one and a second action, when there is one, an outline.
+export function ClosingCall({ id, title, primary, secondary }: { id: string; title: string; primary: ClosingAction | null; secondary?: ClosingAction | null }) {
   return (
-    <section aria-labelledby="home-start-heading" className="dark border-b bg-inverse text-foreground">
-      <PageContainer className="grid justify-items-start gap-10 py-20 sm:py-28">
-        <h2 id="home-start-heading" className="max-w-4xl text-section text-balance">
-          Your Workforce. Your Network. One Platform.
+    <section aria-labelledby={id} className="dark border-b bg-inverse text-foreground">
+      <PageContainer className="grid justify-items-center gap-10 py-20 text-center sm:py-28 lg:py-36">
+        <h2 id={id} className="max-w-[16ch] text-section text-balance">
+          {title}
         </h2>
-        <div className="flex flex-wrap gap-3">
-          <LinkButton href={signUpPath(lang)} prefetch={false} className="min-h-12">
-            Join {BRAND_NAME}
-          </LinkButton>
-          {postJobHref ? (
-            <LinkButton href={postJobHref} prefetch={false} variant="secondary" className="min-h-12 bg-transparent">
-              Start hiring
-            </LinkButton>
-          ) : null}
-        </div>
+        {primary || secondary ? (
+          <div className="flex flex-wrap justify-center gap-3.5">
+            {primary ? (
+              <LinkButton href={primary.href} prefetch={false} className="min-h-12 px-6">
+                {primary.label}
+              </LinkButton>
+            ) : null}
+            {secondary ? (
+              <LinkButton href={secondary.href} prefetch={false} variant="secondary" className="min-h-12 bg-transparent px-6">
+                {secondary.label}
+              </LinkButton>
+            ) : null}
+          </div>
+        ) : null}
       </PageContainer>
     </section>
   );

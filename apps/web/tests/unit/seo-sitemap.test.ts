@@ -12,20 +12,21 @@ const entries = sitemapEntries({ siteUrl: SITE, lang: "en", legalSlugs, vacancie
 const paths = entries.map((entry) => new URL(entry.url).pathname);
 
 describe("the sitemap entries (FR-H5 AC3)", () => {
-  it("lists the eight pages, the ten legal pages and the given vacancies, 20 addresses in all", () => {
-    expect(entries).toHaveLength(20);
-    expect(paths.slice(0, 8)).toEqual([
+  it("lists the nine pages (For employers among them, D90), the ten legal pages and the given vacancies, 21 addresses in all", () => {
+    expect(entries).toHaveLength(21);
+    expect(paths.slice(0, 9)).toEqual([
       "/en",
       "/en/jobs",
       "/en/pricing",
       "/en/how-it-works",
+      "/en/employers",
       "/en/trust-safety",
       "/en/about",
       "/en/contact",
       "/en/imprint",
     ]);
-    expect(paths.slice(8, 18)).toEqual(legalSlugs.map((slug) => `/en/legal/${slug}`));
-    expect(paths.slice(18)).toEqual(vacancies.map((vacancy) => `/en/jobs/${vacancy.id}`));
+    expect(paths.slice(9, 19)).toEqual(legalSlugs.map((slug) => `/en/legal/${slug}`));
+    expect(paths.slice(19)).toEqual(vacancies.map((vacancy) => `/en/jobs/${vacancy.id}`));
   });
 
   it("makes every address absolute on the site", () => {
@@ -33,17 +34,17 @@ describe("the sitemap entries (FR-H5 AC3)", () => {
   });
 
   it("gives a vacancy the UTC date of its last change as lastmod, and no other page one", () => {
-    expect(entries.slice(18).map((entry) => entry.lastModified)).toEqual(["2026-10-06", "2026-09-01"]);
-    expect(entries.slice(0, 18).every((entry) => entry.lastModified === undefined)).toBe(true);
+    expect(entries.slice(19).map((entry) => entry.lastModified)).toEqual(["2026-10-06", "2026-09-01"]);
+    expect(entries.slice(0, 19).every((entry) => entry.lastModified === undefined)).toBe(true);
   });
 
   it("lists only the legal pages that the database reports as published", () => {
     const some = sitemapEntries({ siteUrl: SITE, lang: "en", legalSlugs: ["terms-of-service"], vacancies: [] });
-    expect(some.map((entry) => new URL(entry.url).pathname).slice(8)).toEqual(["/en/legal/terms-of-service"]);
+    expect(some.map((entry) => new URL(entry.url).pathname).slice(9)).toEqual(["/en/legal/terms-of-service"]);
   });
 
   it("leaves room for the vacancies under the limit of the protocol", () => {
-    expect(vacancyCapacity(10) + 8 + 10).toBe(50_000);
+    expect(vacancyCapacity(10) + 9 + 10).toBe(50_000);
   });
 });
 

@@ -1,5 +1,7 @@
 import { BRAND_NAME } from "@/lib/brand";
 
+export const EMPLOYERS_PATH = "employers";
+
 // The links of the header that are the same for everybody, and the two that only a visitor needs. The owner keeps the
 // header to the two ways in (OPEN_QUESTIONS.md, owner decision 2026-10-10): the pages about the platform are in the footer.
 // Post a Job, between them and the account links, comes from the client's website structure (OPEN_QUESTIONS.md D81, question P22).
@@ -25,6 +27,7 @@ export const publicFooterColumns = [
     title: "Platform",
     links: [
       { path: "jobs", label: "Find Jobs" },
+      { path: EMPLOYERS_PATH, label: "For employers" },
       { path: "how-it-works", label: `How ${BRAND_NAME} works` },
       { path: "pricing", label: "Pricing" },
     ],

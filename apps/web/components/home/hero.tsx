@@ -1,32 +1,29 @@
 import { HeroSearch } from "@/components/home/hero-search";
-import { LinkButton } from "@/components/layout/link-button";
+import { TextLink } from "@/components/forms/text-link";
 import { PageContainer } from "@/components/layout/page-container";
+import { EMPLOYERS_PATH } from "@/lib/public/navigation";
 
-// The client's headline and line, the search and, for whom the header offers it, Post a Job: the two things a visitor can do
-// at once.
-export function Hero({ lang, postJobHref }: { lang: string; postJobHref: string | null }) {
+// The page is for the person looking for work, as Indeed's and Glassdoor's are: the client's headline and line, the search
+// as the one action, and one quiet line that sends an employer to their own page.
+export function Hero({ lang }: { lang: string }) {
   return (
     <section aria-labelledby="home-heading">
-      <PageContainer className="grid gap-10 pt-16 pb-20 sm:gap-12 sm:pt-24 sm:pb-28 lg:pt-32">
-        <div className="grid max-w-4xl gap-6">
-          <h1 id="home-heading" className="text-hero text-balance">
-            The Global Workforce Network
-          </h1>
-          <p className="max-w-[44ch] text-lead text-balance text-muted-foreground">
-            Connect with the people and companies that can build your workforce.
-          </p>
-        </div>
-        <div className="grid max-w-4xl gap-5">
+      <PageContainer className="grid justify-items-center pt-20 pb-16 text-center sm:pt-28 sm:pb-24 lg:pt-36 lg:pb-28">
+        <h1 id="home-heading" className="max-w-[14ch] text-hero text-balance">
+          The Global Workforce Network
+        </h1>
+        <p className="mt-6 max-w-[34ch] text-lead text-balance text-muted-foreground">
+          Connect with the people and companies that can build your workforce.
+        </p>
+        <div className="mt-11 w-full max-w-4xl">
           <HeroSearch lang={lang} />
-          {postJobHref ? (
-            <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-body text-muted-foreground">
-              Hiring?
-              <LinkButton href={postJobHref} prefetch={false} variant="secondary">
-                Post a Job
-              </LinkButton>
-            </p>
-          ) : null}
         </div>
+        <p className="mt-4 flex items-center gap-1.5 text-body text-muted-foreground">
+          Hiring?
+          <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>
+            Post a job
+          </TextLink>
+        </p>
       </PageContainer>
     </section>
   );

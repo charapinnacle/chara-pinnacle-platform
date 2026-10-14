@@ -52,12 +52,14 @@ describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
   });
 });
 
-describe("the home page (U71)", () => {
-  it("follows the client's order within Phase 1: hero, Who are you?, the network, the CHARA Passport, the closing call", async () => {
+describe("the home page (U73)", () => {
+  it("follows the order of D90: hero, How it works, the CHARA Passport, the employer band, the closing call, and no audience split", async () => {
     const html = await renderHome();
-    const order = ['<h1 id="home-heading"', "home-who-heading", "home-network-heading", "home-passport-heading", "home-start-heading"].map((marker) =>
+    const order = ['<h1 id="home-heading"', "home-how-heading", "home-passport-heading", 'aria-label="For employers"', "home-start-heading"].map((marker) =>
       html.indexOf(marker),
     );
+    expect(html).not.toContain("home-who-heading");
+    expect(html).not.toContain("home-network-heading");
     expect(order.every((position) => position >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((a, b) => a - b));
     expect(html.match(/<h1/g)).toHaveLength(1);
@@ -74,6 +76,7 @@ describe("the home page (U71)", () => {
   it("leads every Post a Job of the page where the header's does, and offers none to whom the header offers none", async () => {
     getPostJobHref.mockResolvedValue("/en/post-job");
     const employer = await renderHome();
+    // The employer band's Post a Job and the closing call's Start hiring; the hero's line leads to For employers.
     expect(employer.match(/href="\/en\/post-job"/g)).toHaveLength(2);
     getPostJobHref.mockResolvedValue(null);
     const candidate = await renderHome();

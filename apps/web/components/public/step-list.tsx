@@ -1,8 +1,6 @@
 import type { Step } from "@/lib/public/steps";
 
-type StepListProps = { steps: readonly Step[]; titleAs?: "h3" | "h4" };
-
-export function StepList({ steps, titleAs: Title = "h3" }: StepListProps) {
+export function StepList({ steps }: { steps: readonly Step[] }) {
   return (
     <ol className="grid">
       {steps.map(({ title, text }, index) => (
@@ -11,7 +9,7 @@ export function StepList({ steps, titleAs: Title = "h3" }: StepListProps) {
             {index + 1}
           </span>
           <div className="grid gap-1">
-            <Title className="text-h3">{title}</Title>
+            <h3 className="text-h3">{title}</h3>
             <p className="text-small text-muted-foreground">{text}</p>
           </div>
         </li>

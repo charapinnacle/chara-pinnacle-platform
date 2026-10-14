@@ -1,16 +1,16 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { newCompany, seedJob } from "./support/jobs";
 import { uniqueToken } from "./support/organizations";
-import { HOME_SECTION_HEADINGS } from "./support/public-pages";
+import { FOOTER_LABELS, HEADER_LABELS, HOME_SECTION_HEADINGS } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
-// The content and the links of the home page (U71, OPEN_QUESTIONS.md D88); its layout, type, motion and accessibility are
+// The content and the links of the home page (U73, OPEN_QUESTIONS.md D90); its layout, type, motion and accessibility are
 // in home-layout.spec.ts and its live figures in live-statistics.spec.ts.
 const search = (page: Page) => page.getByRole("search", { name: "Search jobs" });
 const region = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 
-// What Phase 1 does not have and the claims the audit of U71 removed (docs/phase-1/client/audit/HOME_AUDIT_U71.md).
+// What Phase 1 does not have and the claims the audits of U71 and U73 removed.
 const NEVER_SAID = [
   "recruitment",
   "staffing",
@@ -26,10 +26,13 @@ const NEVER_SAID = [
   "Latest jobs",
   "Browse by",
   "Apply now",
+  "Who are you?",
+  "Workers and employers, connected",
+  "Frequently asked",
 ];
 
-test.describe("the home page (U71)", () => {
-  test("the hero holds the h1, the client's line, the search and Post a Job; the sections follow in the client's order", async ({ page }) => {
+test.describe("the home page (U73)", () => {
+  test("the hero holds the h1, the client's line, the search and the quiet line to For employers; the sections follow in order", async ({ page }) => {
     await page.goto("/en");
     const main = page.getByRole("main");
     const hero = region(page, "The Global Workforce Network");
@@ -37,17 +40,29 @@ test.describe("the home page (U71)", () => {
     await expect(hero.getByText("Connect with the people and companies that can build your workforce.")).toBeVisible();
     await expect(search(page).getByRole("textbox")).toHaveCount(2);
     await expect(search(page).getByRole("button", { name: "Search jobs" })).toBeVisible();
-    await expect(hero.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await expect(hero.getByRole("link")).toHaveCount(1);
+    await expect(hero.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/employers");
 
-    await expect(main.locator("h2:not(#platform-statistics-heading):not([inert] h2)")).toHaveText(HOME_SECTION_HEADINGS);
+    await expect(main.locator("h2:not(#platform-statistics-heading)")).toHaveText(HOME_SECTION_HEADINGS);
+    const order = await main.locator(":scope > section").evaluateAll((sections) =>
+      sections.map((section) => section.getAttribute("aria-label") ?? document.getElementById(section.getAttribute("aria-labelledby") ?? "")?.textContent ?? ""),
+    );
+    expect(order.filter((name) => name !== "Global Workforce Network")).toEqual([
+      "The Global Workforce Network",
+      "From profile to offer, in three steps.",
+      "One professional profile. Multiple opportunities.",
+      "For employers",
+      "Your Workforce. Your Network. One Platform.",
+    ]);
     const tops = await main.locator("h1, h2").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top));
     expect(tops).toEqual([...tops].sort((a, b) => a - b));
   });
 
-  test("says nothing of a later phase, invents no claim and lists no vacancy: the search is the way to them", async ({ page }) => {
+  test("says nothing of a later phase, invents no claim, asks no question and lists no vacancy: the search is the way to them", async ({ page }) => {
     await page.goto("/en");
     const text = (await page.getByRole("main").innerText()).toLowerCase();
     for (const phrase of NEVER_SAID) expect(text, phrase).not.toContain(phrase.toLowerCase());
+    await expect(page.getByRole("main").locator("details")).toHaveCount(0);
     const vacancyLinks = await page.getByRole("main").locator("a").evaluateAll((links) => links.filter((link) => /^\/en\/jobs\/[0-9a-f-]{36}$/.test(link.getAttribute("href") ?? "")).length);
     expect(vacancyLinks).toBe(0);
   });
@@ -62,17 +77,17 @@ test.describe("the home page (U71)", () => {
       const context = await browser.newContext({ javaScriptEnabled });
       const page = await context.newPage();
       await page.goto("/en");
-      await search(page).getByLabel("Job title, skill or occupation").fill(marker);
-      await search(page).getByLabel("City or country").fill("netherlands");
-      await search(page).getByLabel("City or country").press("Enter");
+      await search(page).getByLabel("What: Job title, skill or occupation").fill(marker);
+      await search(page).getByLabel("Where: City or country").fill("netherlands");
+      await search(page).getByLabel("Where: City or country").press("Enter");
       await expect(page).toHaveURL(`/en/jobs?q=${marker}&country=NL`);
       await expect(page.getByRole("list", { name: "Active filters" })).toContainText("Netherlands");
 
       await page.goto("/en");
-      await search(page).getByLabel("Job title, skill or occupation").fill(marker);
-      await search(page).getByLabel("City or country").fill("Hamburg");
+      await search(page).getByLabel("What: Job title, skill or occupation").fill(marker);
+      await search(page).getByLabel("Where: City or country").fill("Hamburg");
       if (javaScriptEnabled) await search(page).getByRole("button", { name: "Search jobs" }).click();
-      else await search(page).getByLabel("City or country").press("Enter");
+      else await search(page).getByLabel("Where: City or country").press("Enter");
       await expect(page).toHaveURL(`/en/jobs?q=${marker}&city=Hamburg`);
       await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
       if (javaScriptEnabled) {
@@ -94,49 +109,34 @@ test.describe("the home page (U71)", () => {
     await expect(page.getByRole("list", { name: "Active filters" })).toHaveCount(0);
   });
 
-  test("Who are you? gives each side the steps of How Chara Pinnacle works and a button to its own sign-up", async ({ page }) => {
-    await page.goto("/en/how-it-works");
-    const stepsOf = (scope: Locator) => scope.getByRole("listitem").locator("h3").allInnerTexts();
-    const section = (heading: string) => page.locator("section", { has: page.getByRole("heading", { level: 2, name: heading }) });
-    const workerSteps = await stepsOf(section("For workers"));
-    const employerSteps = await stepsOf(section("For employers"));
-    expect(workerSteps).toHaveLength(4);
-
+  test("How it works gives a candidate's three steps and one button, which opens the candidate sign-up", async ({ page }) => {
     await page.goto("/en");
-    const who = region(page, "Who are you?");
-    const employer = region(page, "Employer");
-    const worker = region(page, "Worker");
-    await expect(employer.getByRole("listitem").locator(".text-h3")).toHaveText(employerSteps);
-    await expect(worker.getByRole("listitem").locator(".text-h3")).toHaveText(workerSteps);
-    await expect(employer).toContainText("Two-step verification is required for owners and administrators.");
-    await expect(worker).toContainText("Workers never pay.");
-
-    await who.getByRole("link", { name: "How Chara Pinnacle works" }).click();
-    await expect(page).toHaveURL("/en/how-it-works");
-
-    await page.goto("/en");
-    await employer.getByRole("link", { name: "I'm an employer" }).click();
-    await expect(page).toHaveURL("/en/signup?kind=company");
-    await expect(page.getByRole("radio", { name: "I'm an employer" })).toBeChecked();
-    await page.goto("/en");
-    await worker.getByRole("link", { name: "I'm a worker" }).click();
+    const how = region(page, "From profile to offer, in three steps.");
+    await expect(how.getByRole("listitem").getByRole("heading", { level: 3 })).toHaveText([
+      "Create your CHARA Passport",
+      "Apply with the documents you choose",
+      "Follow every stage of your application",
+    ]);
+    await expect(how.getByRole("link")).toHaveCount(1);
+    await how.getByRole("link", { name: "Create your CHARA Passport" }).click();
     await expect(page).toHaveURL("/en/signup?kind=worker");
     await expect(page.getByRole("radio", { name: "I'm a worker" })).toBeChecked();
   });
 
-  test("the network shows the two dashboards with fictional data under a caption, and the passport section leads to the worker sign-up", async ({ page }) => {
+  test("the passport section states the four facts and nothing else; the employer band leads to the employer sign-up and to For employers", async ({ page }) => {
     await page.goto("/en");
-    const network = region(page, "Workers and employers, connected");
-    await expect(network.getByRole("figure")).toHaveAccessibleName("Screens of Chara Pinnacle, shown with fictional data.");
-    await expect(network.locator("[inert]")).toContainText("Employer dashboard");
-    await expect(network.locator("[inert]")).toContainText("Worker dashboard");
-    await expect(network.locator("[inert] tbody th")).toHaveText(["Applied", "Viewed", "Shortlisted", "Interview", "Offer", "Hired", "Not selected", "Withdrawn"]);
-
     const passport = region(page, "One professional profile. Multiple opportunities.");
-    await expect(passport.getByRole("list", { name: "What your CHARA Passport holds" }).getByRole("listitem")).toHaveCount(6);
-    await expect(passport).toContainText("You choose which ones an employer sees, application by application.");
-    await passport.getByRole("link", { name: "Create your CHARA Passport" }).click();
-    await expect(page).toHaveURL("/en/signup?kind=worker");
+    await expect(passport.getByRole("list", { name: "What your CHARA Passport gives you" }).getByRole("listitem")).toHaveCount(4);
+    await expect(passport).toContainText("Workers never pay");
+    await expect(passport).toContainText("Your access log shows which organisation opened which document, and when.");
+    await expect(passport.getByRole("link")).toHaveCount(0);
+
+    const band = region(page, "For employers");
+    await expect(band).toContainText("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
+    await expect(band.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await band.getByRole("link", { name: "For employers" }).click();
+    await expect(page).toHaveURL("/en/employers");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hire from the Global Workforce Network.");
   });
 
   test("the closing call offers Join Chara Pinnacle and Start hiring, each to its sign-up", async ({ page }) => {
@@ -148,27 +148,24 @@ test.describe("the home page (U71)", () => {
     await expectNoAxeViolations(page);
   });
 
-  test("the footer sets Platform, Company and Legal in three columns, and nothing credits a photograph any more", async ({ page }) => {
+  test("the footer sets Platform, Company and Legal in three columns, For employers among the Platform links", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en");
     const footer = page.getByRole("contentinfo");
     for (const [title, links] of [
-      ["Platform", ["Find Jobs", "How Chara Pinnacle works", "Pricing"]],
+      ["Platform", ["Find Jobs", "For employers", "How Chara Pinnacle works", "Pricing"]],
       ["Company", ["About", "Trust & Safety", "Contact"]],
       ["Legal", ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"]],
     ] as const) {
       await expect(footer.getByRole("list", { name: title }).getByRole("link")).toHaveText([...links]);
     }
+    await expect(footer.getByRole("link")).toHaveText(FOOTER_LABELS);
     const lefts = await footer.getByRole("list").evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().left)));
     expect(new Set(lefts).size).toBe(3);
     await expect(footer.getByText(`© ${new Date().getFullYear()} Chara Pinnacle`)).toBeVisible();
-
-    await page.goto("/en/imprint");
-    await expect(page.getByRole("heading", { name: "Photo credits" })).toHaveCount(0);
-    expect((await page.request.get("/images/home/hero-welder-1920.webp")).status()).toBe(404);
   });
 
-  test("from the top the keyboard reaches the header, then the search, which Enter sends, then Post a Job", async ({ page }) => {
+  test("from the top the keyboard reaches the header, then the search, which Enter sends, then the employer line", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en");
     const stops: string[] = [];
@@ -176,23 +173,19 @@ test.describe("the home page (U71)", () => {
       await page.keyboard.press("Tab");
       const stop = await page.evaluate(() => {
         const element = document.activeElement as HTMLElement;
-        return `${element.closest("main") ? "main" : element.closest("header") ? "header" : "other"}:${element.getAttribute("aria-label") ?? element.getAttribute("placeholder") ?? element.innerText.trim()}`;
+        return `${element.closest("main") ? "main" : element.closest("header") ? "header" : "other"}:${element.getAttribute("placeholder") ?? element.innerText.trim()}`;
       });
       stops.push(stop);
-      if (stop === "main:Post a Job") break;
+      if (stop === "main:Post a job") break;
     }
     expect(stops).toEqual([
       "other:Skip to main content",
       "header:Chara Pinnacle\nCHARA",
-      "header:Find Jobs",
-      "header:How Chara Pinnacle works",
-      "header:Post a Job",
-      "header:Login",
-      "header:Sign up",
+      ...HEADER_LABELS.map((label) => `header:${label}`),
       "main:Job title, skill or occupation",
       "main:City or country",
       "main:Search jobs",
-      "main:Post a Job",
+      "main:Post a job",
     ]);
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
