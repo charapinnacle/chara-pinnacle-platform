@@ -1,7 +1,7 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { formatCount } from "@/lib/i18n/format";
 
-type PlatformCounts = Pick<Database["public"]["Views"]["v_platform_counts"]["Row"], "active_jobs" | "employers" | "workers">;
+type PlatformCounts = Database["public"]["Views"]["v_platform_counts"]["Row"];
 export type StatisticTile = { label: string; value: string };
 
 // The smallest live figure the home page shows (OPEN_QUESTIONS.md D87): the database already holds back every count below
@@ -9,23 +9,18 @@ export type StatisticTile = { label: string; value: string };
 // page leaves it out until it reaches this. It is the one place to change it.
 export const CREDIBLE_MINIMUM = 100;
 
-// The countries of the view (those of the open vacancies) are not a tile: the home page lists those countries by name and
-// gives the count of the countries of the reference data (D87).
 const columns = [
   ["workers", "Workers"],
   ["employers", "Employers"],
   ["active_jobs", "Active jobs"],
+  ["countries", "Countries"],
 ] as const;
-
-export function credibleCount(count: number | null): number | null {
-  return count !== null && count >= CREDIBLE_MINIMUM ? count : null;
-}
 
 // A value the database holds back (null, because its count is below the threshold) or one below the credible minimum gets
 // no tile at all, so the block never shows a zero, a dash or an empty place for it (FR-H4 AC3).
 export function statisticTiles(counts: PlatformCounts): StatisticTile[] {
   return columns.flatMap(([column, label]) => {
-    const count = credibleCount(counts[column]);
-    return count === null ? [] : [{ label, value: formatCount(count) }];
+    const count = counts[column];
+    return count === null || count < CREDIBLE_MINIMUM ? [] : [{ label, value: formatCount(count) }];
   });
 }
