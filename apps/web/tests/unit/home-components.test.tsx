@@ -102,13 +102,14 @@ describe("the network", () => {
     expect(textOf(markup)).toContain("journey tracker");
   });
 
-  it("draws the employer's stage table and the worker's applications with the components of the real dashboards, inert", () => {
+  it("draws the employer's stage table and the worker's applications with the components of the real dashboards, inert and without links", () => {
     expect(preview).not.toBe("");
     expect([...preview.matchAll(/<th scope="row"[^>]*>([^<]+)<\/th>/g)].map(([, label]) => label)).toEqual([...Object.values(applicationStatusLabels), "Total"]);
     expect(preview).toMatch(/<th scope="row"[^>]*>Total<\/th><td[^>]*>43<\/td>/);
     expect(textOf(preview)).toContain("TIG welder Northwind Shipyard Interview");
     expect(preview).toContain(">Updated 2 hours ago<");
-    expect(preview).toContain(">View all applications<");
+    expect(preview).not.toContain("<a ");
+    expect(preview).not.toContain("View all applications");
   });
 
   it("says that the screens hold fictional data, outside the inert picture so that everyone reads it", () => {

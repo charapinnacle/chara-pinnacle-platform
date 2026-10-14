@@ -145,17 +145,24 @@ test.describe("the layout of the home page (U71)", () => {
     expect(small).toEqual([]);
   });
 
-  test("the product screens are a picture: the keyboard passes over them and assistive technology reads only the caption", async ({ page }) => {
+  test("the product screens are a picture: no link, nothing the keyboard reaches, only the caption read, no private route fetched", async ({ page }) => {
+    const privateRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.startsWith("/en/applications")) privateRequests.push(request.url());
+    });
     await page.goto("/en");
     const figure = page.getByRole("figure", { name: "Screens of Chara Pinnacle, shown with fictional data." });
     await expect(figure).toBeVisible();
-    await expect(figure.getByRole("link")).toHaveCount(0);
     await expect(figure.getByRole("heading")).toHaveCount(0);
     await expect(figure.getByRole("table")).toHaveCount(0);
-    const hidden = figure.locator("[inert] a");
-    expect(await hidden.count()).toBeGreaterThan(0);
-    await hidden.first().focus();
-    await expect(hidden.first()).not.toBeFocused();
+    await expect(figure.locator("a")).toHaveCount(0);
+    expect(await (await page.request.get("/en")).text()).not.toMatch(/href="\/en\/applications/);
+    const row = figure.locator("[inert] li").first();
+    await expect(row).toContainText("TIG welder");
+    await expect(figure.locator('[inert][aria-hidden="true"]')).toHaveCount(1);
+    await figure.scrollIntoViewIfNeeded();
+    await page.waitForLoadState("networkidle");
+    expect(privateRequests).toEqual([]);
   });
 
   test("a keyboard user sees a 2 px focus ring: bronze on the light page, gold on the near-black closing call and the footer", async ({ page }) => {

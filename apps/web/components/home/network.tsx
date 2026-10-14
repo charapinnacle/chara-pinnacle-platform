@@ -20,9 +20,9 @@ function workerApplications(now: Date): MyApplication[] {
 }
 
 // The two sides of one application, drawn by the components of the real dashboards (the employer's Applications by stage,
-// the worker's Applications with the journey tracker stage of each). They are inert and hidden: a picture of the product, which
-// the keyboard and assistive technology pass over, so their links and headings are not part of the page; the caption says what
-// it shows.
+// the worker's Applications with the journey tracker stage of each), without their links so that nothing prefetches a private
+// route. They are inert and hidden: a picture of the product, which the keyboard and assistive technology pass over; the caption
+// says what it shows.
 export function Network({ lang, now }: { lang: string; now: Date }) {
   return (
     <Band aria-labelledby="home-network-heading" className="grid gap-12 sm:gap-16">

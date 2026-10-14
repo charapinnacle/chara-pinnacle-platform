@@ -16,7 +16,7 @@ import { countSavedJobs } from "@/lib/dal/saved-jobs";
 import { sumOf } from "@/lib/dashboard/stage-counts";
 import { savedPath } from "@/lib/jobs/saved";
 import type { Completeness } from "@/lib/passport/completeness";
-import { applicationsPath } from "@/lib/routes";
+import { applicationPath, applicationsPath } from "@/lib/routes";
 
 type WorkerDashboardProps = {
   lang: string;
@@ -55,7 +55,7 @@ function WorkerApplications({ lang, completeness, stages }: { lang: string; comp
         ) : (
           <div className="animate-stagger grid items-start gap-6 lg:grid-cols-12">
             <div className="lg:col-span-7 xl:col-span-8">
-              <RecentApplications lang={lang} applications={applications} now={now} />
+              <RecentApplications lang={lang} applications={applications} now={now} hrefFor={(id) => applicationPath(lang, id)} />
             </div>
             <div className="lg:col-span-5 xl:col-span-4">
               <StageTable
