@@ -43,6 +43,9 @@ const actions = await import("@/lib/actions/passport");
 const userId = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const skillId = "0a1b2c3d-0000-4000-8000-000000000001";
 const GENERIC = "We could not complete this request. Try again.";
+const FAULT = {
+  message: expect.stringMatching(/^Something went wrong on our side and nothing was changed\. Please try again later\. Reference: [0-9A-F]{8}\.$/),
+};
 
 function failure(message: string, code = "P0001", details: string | null = null) {
   return { data: null, error: { message, code, details } };
@@ -83,7 +86,7 @@ describe("createPassport", () => {
   it("returns a message and stays when the database refuses", async () => {
     rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN"));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    await expect(actions.createPassport(input)).resolves.toEqual({ message: GENERIC });
+    await expect(actions.createPassport(input)).resolves.toEqual(FAULT);
     expect(redirectMock).not.toHaveBeenCalled();
     expect(rememberWelcomeMock).not.toHaveBeenCalled();
   });
@@ -264,9 +267,11 @@ describe("refusals of the database", () => {
     });
   });
 
-  it("does not show anything else to the person", async () => {
+  it("shows anything else as a system fault with a reference and none of the database text", async () => {
     outcome = failure("relation does not exist", "42P01");
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    await expect(actions.addPreferredCountry({ country: "DE" })).resolves.toEqual({ message: GENERIC });
+    const result = await actions.addPreferredCountry({ country: "DE" });
+    expect(result).toEqual(FAULT);
+    expect(result.message).not.toContain("relation");
   });
 });

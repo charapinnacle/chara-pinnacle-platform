@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { requireUser } from "@/lib/dal/session";
+import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { homePath, onboardingPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -58,8 +59,7 @@ function refusal(error: PostgrestError): PassportResult {
   if (error.code === "23514" || error.code === "23503" || error.message === "CHARA_INVALID_INPUT") {
     return { message: CHECK_VALUES };
   }
-  console.error("Passport action failed", { code: error.code, message: error.message });
-  return { message: GENERIC_FAILURE };
+  return { message: faultMessage(logFault("Passport action", error)) };
 }
 
 function settle(error: PostgrestError | null): PassportResult {
