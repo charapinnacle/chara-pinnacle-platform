@@ -16,8 +16,8 @@ const titleOf = (metadata: Metadata) => {
 const canonicalOf = (metadata: { alternates?: { canonical?: unknown } | null }) => String(metadata.alternates?.canonical);
 
 describe("the metadata of the static pages (FR-H5 AC1)", () => {
-  it("has a title of at most 60 characters and a description of 50 to 160 on each of the eight pages", () => {
-    expect(keys).toHaveLength(8);
+  it("has a title of at most 60 characters and a description of 50 to 160 on each of the nine pages", () => {
+    expect(keys).toHaveLength(9);
     for (const key of keys) {
       const metadata = staticPageMetadata(key, "en");
       const { description } = metadata;
@@ -40,6 +40,7 @@ describe("the metadata of the static pages (FR-H5 AC1)", () => {
       `${SITE}/en/jobs`,
       `${SITE}/en/pricing`,
       `${SITE}/en/how-it-works`,
+      `${SITE}/en/employers`,
       `${SITE}/en/trust-safety`,
       `${SITE}/en/about`,
       `${SITE}/en/contact`,

@@ -21,7 +21,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker, PHONE);
     await page.goto("/en/dashboard/worker");
-    const menu = page.getByRole("button", { name: "Menu" });
+    const menu = page.getByRole("button", { name: "Menu", exact: true });
     await waitForHydration(menu);
     await expect(mainNavigation(page)).toBeHidden();
 
@@ -54,7 +54,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await registerOrganization(team.owner, `${second} GmbH`, second);
     const { context, page } = await signedInPage(browser, team.owner, PHONE);
     await page.goto(`/en/dashboard/employer?org=${team.slug}`);
-    const menu = page.getByRole("button", { name: "Menu" });
+    const menu = page.getByRole("button", { name: "Menu", exact: true });
     await waitForHydration(menu);
     await menu.click();
 
@@ -77,7 +77,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker, { ...PHONE, javaScriptEnabled: false });
     await page.goto("/en/dashboard/worker");
-    await expect(page.getByRole("button", { name: "Menu" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
     expect(await linkLabels(mainNavigation(page))).toEqual(WORKER_LINKS);
     await expect(mainNavigation(page).getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
     await mainNavigation(page).getByRole("link", { name: "Applications" }).click();
@@ -172,11 +172,12 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await context.close();
   });
 
-  test("the header of a signed-in person on a public page has Go to my area and Log out instead of Log in and Sign up", async ({ browser, page }) => {
+  test("the header of a signed-in person on a public page has Go to my area and Log out instead of Sign in, and the menu offers them instead of Sign in and Sign up", async ({ browser, page }) => {
     await page.goto("/en/pricing");
-    await expect(mainNavigation(page).getByRole("link", { name: "Login", exact: true })).toBeVisible();
-    await expect(mainNavigation(page).getByRole("link", { name: "Sign up" })).toBeVisible();
+    await expect(mainNavigation(page).getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Log out" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/en/signup");
 
     const worker = await createCommittedUser("worker");
     const session = await signedInPage(browser, worker);
@@ -184,9 +185,15 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     const navigation = mainNavigation(session.page);
     await expect(navigation.getByRole("link", { name: "Go to my area" })).toHaveAttribute("href", "/en/dashboard/worker");
     await expect(navigation.getByRole("button", { name: "Log out" })).toBeVisible();
-    await expect(navigation.getByRole("link", { name: "Login", exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
     await expect(navigation.getByRole("link", { name: "Sign up" })).toHaveCount(0);
     await expectNoAxeViolations(session.page);
+    await session.page.getByRole("button", { name: "Menu", exact: true }).click();
+    const panel = session.page.getByRole("dialog", { name: "Menu" });
+    await expect(panel.getByRole("link", { name: "Go to my area" })).toHaveAttribute("href", "/en/dashboard/worker");
+    await expect(panel.getByRole("button", { name: "Log out" })).toBeVisible();
+    await expect(panel.getByRole("link", { name: /^Sign (in|up)$/ })).toHaveCount(0);
+    await session.page.keyboard.press("Escape");
 
     await navigation.getByRole("link", { name: "Go to my area" }).click();
     await expect(session.page).toHaveURL("/en/dashboard/worker");
@@ -243,7 +250,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
       expect(box && box.x >= 0 && box.x + box.width <= PHONE.viewport.width, await link.innerText()).toBe(true);
     }
     await expect(accountButton(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Menu" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Menu", exact: true })).toHaveCount(0);
     await expectNoAxeViolations(page);
   });
 });

@@ -10,7 +10,7 @@ export async function expectNoAxeViolations(page: Page): Promise<void> {
   await expect(page).toHaveTitle(/\S/);
   // A part that streams in rises from opacity 0, and axe would measure a text half faded in: wait until no part is still
   // loading, then for the animations that end (the shimmer of a skeleton never does, and one that follows the scroll position
-  // of the page, as the header of the home page does, ends only where the page is scrolled to).
+  // of the page ends only where the page is scrolled to).
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
   await page.evaluate(() =>
     Promise.all(

@@ -1,36 +1,17 @@
 import type { Step } from "@/lib/public/steps";
 
-type StepListProps = { steps: readonly Step[]; titleAs?: "h3" | "h4"; compact?: boolean };
-
-// compact keeps the numbered titles and leaves out the sentence under each (the home page, where the numbers are set in the
-// serif; the How it works page has them in full).
-export function StepList({ steps, titleAs: Title = "h3", compact = false }: StepListProps) {
-  if (compact) {
-    return (
-      <ol className="grid">
-        {steps.map(({ title }, index) => (
-          <li key={title} className="flex items-center gap-5 border-t py-4 first:border-t-0">
-            <span aria-hidden className="w-10 font-serif text-section text-brand-ink tabular-nums">
-              {index + 1}
-            </span>
-            <span className="text-lead">{title}</span>
-          </li>
-        ))}
-      </ol>
-    );
-  }
+export function StepList({ steps }: { steps: readonly Step[] }) {
   return (
-    <ol className="grid animate-stagger gap-6">
+    <ol className="grid">
       {steps.map(({ title, text }, index) => (
-        <li key={title} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-4">
-          <span
-            aria-hidden
-            className="row-span-2 flex size-9 items-center justify-center rounded-lg bg-brand-gradient text-small font-semibold text-inverse tabular-nums"
-          >
+        <li key={title} className="grid grid-cols-[2rem_minmax(0,1fr)] border-t py-4">
+          <span aria-hidden className="text-small leading-6 font-semibold text-muted-foreground tabular-nums">
             {index + 1}
           </span>
-          <Title className="pt-1.5 text-h3">{title}</Title>
-          <p className="text-body leading-6 text-muted-foreground">{text}</p>
+          <div className="grid gap-1">
+            <h3 className="text-h3">{title}</h3>
+            <p className="text-small text-muted-foreground">{text}</p>
+          </div>
         </li>
       ))}
     </ol>

@@ -1,26 +1,16 @@
-import { cn } from "@/lib/utils";
-
 type SectionHeadingProps = {
   id: string;
-  eyebrow?: string;
+  eyebrow: string;
   title: string;
-  description?: React.ReactNode;
-  tone?: "default" | "inverse";
 };
 
-export function SectionHeading({ id, eyebrow, title, description, tone = "default" }: SectionHeadingProps) {
-  const inverse = tone === "inverse";
+export function SectionHeading({ id, eyebrow, title }: SectionHeadingProps) {
   return (
-    <div className="grid max-w-2xl gap-3">
-      {eyebrow ? (
-        <p className={cn("text-eyebrow uppercase", inverse ? "text-brand" : "text-brand-ink")}>{eyebrow}</p>
-      ) : null}
-      <h2 id={id} className={cn("text-h1 text-balance", inverse && "text-inverse-foreground")}>
+    <div className="grid content-start gap-4">
+      <p className="text-eyebrow text-brand-ink uppercase">{eyebrow}</p>
+      <h2 id={id} className="max-w-[18ch] text-section text-balance">
         {title}
       </h2>
-      {description ? (
-        <p className={cn("text-lead text-pretty", inverse ? "text-inverse-muted" : "text-muted-foreground")}>{description}</p>
-      ) : null}
     </div>
   );
 }

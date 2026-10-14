@@ -1,30 +1,30 @@
 import { HeroSearch } from "@/components/home/hero-search";
-import { JourneyPreview } from "@/components/home/journey-preview";
-import { LinkButton } from "@/components/layout/link-button";
-import { signUpPath } from "@/lib/routes";
+import { TextLink } from "@/components/forms/text-link";
+import { PageContainer } from "@/components/layout/page-container";
+import { EMPLOYERS_PATH } from "@/lib/public/navigation";
 
-// data-hero tells the header (home.css) that it lies over a dark surface.
+// The page is for the person looking for work, as Indeed's and Glassdoor's are: the client's headline and line, the search
+// as the one action, and one quiet line that sends an employer to their own page.
 export function Hero({ lang }: { lang: string }) {
   return (
-    <header data-hero className="dark relative isolate overflow-hidden bg-background text-foreground">
-      <div aria-hidden className="band-texture absolute inset-0 -z-10" />
-      <div className="mx-auto grid w-full max-w-6xl gap-14 px-4 pt-14 pb-16 sm:px-6 sm:pt-20 sm:pb-24 md:pt-40 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-center lg:gap-16">
-        <div className="grid animate-rise content-start gap-6">
-          <h1 className="font-serif text-hero text-balance">
-            The Global <span className="bg-brand-gradient bg-clip-text text-transparent">Workforce</span> Network
-          </h1>
-          <p className="max-w-[36ch] text-lead text-balance text-muted-foreground">
-            Connect with the people and companies that can build your workforce.
-          </p>
-          <div className="grid max-w-xl gap-4 pt-2">
-            <HeroSearch lang={lang} />
-            <LinkButton href={signUpPath(lang, "company")} variant="secondary" className="lift justify-self-start bg-transparent hover:bg-secondary">
-              Post a Job
-            </LinkButton>
-          </div>
+    <section aria-labelledby="home-heading">
+      <PageContainer className="grid justify-items-center pt-20 pb-16 text-center sm:pt-28 sm:pb-24 lg:pt-36 lg:pb-28">
+        <h1 id="home-heading" className="max-w-[14ch] text-hero text-balance">
+          The Global Workforce Network
+        </h1>
+        <p className="mt-6 max-w-[34ch] text-lead text-balance text-muted-foreground">
+          Connect with the people and companies that can build your workforce.
+        </p>
+        <div className="mt-11 w-full max-w-4xl">
+          <HeroSearch lang={lang} />
         </div>
-        <JourneyPreview />
-      </div>
-    </header>
+        <p className="mt-4 flex items-center gap-1.5 text-body text-muted-foreground">
+          Hiring?
+          <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>
+            Post a job
+          </TextLink>
+        </p>
+      </PageContainer>
+    </section>
   );
 }

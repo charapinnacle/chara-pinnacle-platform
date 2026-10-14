@@ -178,6 +178,30 @@ export function parseSearchParams(raw: RawParams): { filters: JobSearchFilters; 
   return { filters, errors };
 }
 
+const sameText = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" }) === 0;
+
+type Country = { code: string; name: string };
+
+// A code counts only as typed in capitals ("DE"): in lower case, two letters are as often a city's short form ("la") or a
+// word ("no", "in") as a country.
+const countryOf = (place: string, countries: readonly Country[]) =>
+  countries.find(({ code, name }) => sameText(name, place) || code === place);
+
+// The one place field of the home search (where): a country name (in any case, with or without accents) or code becomes
+// the country filter, "City, Country" both filters, anything else the city. It replaces a country or city of the same
+// address. Other names of a country ("UK", "Holland") are not known to the reference data and stay a city (D87).
+export function resolvePlace(raw: RawParams, countries: readonly Country[]): RawParams {
+  const { where, ...rest } = raw;
+  const place = first(where)?.trim();
+  if (!place) return rest;
+  const country = countryOf(place, countries);
+  if (country) return { ...rest, country: country.code, city: undefined };
+  const comma = place.lastIndexOf(",");
+  const city = place.slice(0, comma).trim();
+  const inCountry = comma > 0 && city ? countryOf(place.slice(comma + 1).trim(), countries) : undefined;
+  return inCountry ? { ...rest, city, country: inCountry.code } : { ...rest, city: place, country: undefined };
+}
+
 const QUERY_ORDER = [
   "q", "country", "city", "employer", "occupation", "industry", "employment_type", "salary_min", "salary_currency", "salary_period",
   "accommodation", "visa_support", "recruitment", "cursor",

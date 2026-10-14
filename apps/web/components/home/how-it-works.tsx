@@ -1,33 +1,36 @@
-import { Band } from "@/components/home/band";
-import { TextLink } from "@/components/forms/text-link";
-import { StepList } from "@/components/public/step-list";
-import { employerSteps, workerSteps } from "@/lib/public/steps";
-import { BRAND_NAME } from "@/lib/brand";
+import { Band } from "@/components/public/band";
+import { LinkButton } from "@/components/layout/link-button";
+import { NumberedSteps } from "@/components/public/numbered-steps";
+import { SectionHeading } from "@/components/public/section-heading";
+import { signUpPath } from "@/lib/routes";
 
-const columns = [
-  { id: "home-workers", heading: "For workers", steps: workerSteps },
-  { id: "home-employers", heading: "For employers", steps: employerSteps },
+// What a candidate does, in the words of the product: the passport (FR-B1), the documents chosen per application (FR-D1)
+// and the journey tracker (FR-D3).
+const steps = [
+  {
+    title: "Create your CHARA Passport",
+    text: "Add your occupation, skills, languages, experience and the countries where you may work.",
+  },
+  {
+    title: "Apply with the documents you choose",
+    text: "Pick which of your documents each employer may see. The others stay private.",
+  },
+  {
+    title: "Follow every stage of your application",
+    text: "See when it is viewed, shortlisted, invited to interview and decided.",
+  },
 ] as const;
 
 export function HowItWorks({ lang }: { lang: string }) {
   return (
-    <Band aria-labelledby="home-how-heading" className="grid gap-14">
-      <h2 id="home-how-heading" className="font-serif text-section text-balance">
-        How {BRAND_NAME} works
-      </h2>
-      <div className="grid gap-12 md:grid-cols-2 md:gap-16">
-        {columns.map(({ id, heading, steps }) => (
-          <section key={id} aria-labelledby={id} className="grid content-start gap-6 border-t border-brand pt-6">
-            <h3 id={id} className="text-eyebrow text-brand-ink uppercase">
-              {heading}
-            </h3>
-            <StepList steps={steps} compact />
-          </section>
-        ))}
+    <Band aria-labelledby="home-how-heading" className="grid gap-12 sm:gap-16 lg:gap-20">
+      <SectionHeading id="home-how-heading" eyebrow="How it works" title="From profile to offer, in three steps." />
+      <NumberedSteps steps={steps} />
+      <div>
+        <LinkButton href={signUpPath(lang, "worker")} prefetch={false} className="min-h-12 px-6">
+          Create your CHARA Passport
+        </LinkButton>
       </div>
-      <TextLink standalone href={`/${lang}/how-it-works`}>
-        How {BRAND_NAME} works in detail
-      </TextLink>
     </Band>
   );
 }

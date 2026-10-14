@@ -10,7 +10,7 @@ import { expect, test } from "./support/test";
 // of their own that follows the others (playwright.config.ts), and run one after the other.
 test.describe.configure({ mode: "serial" });
 
-const STATIC_PATHS = ["/en", "/en/jobs", "/en/pricing", "/en/how-it-works", "/en/trust-safety", "/en/about", "/en/contact", "/en/imprint"];
+const STATIC_PATHS = ["/en", "/en/jobs", "/en/pricing", "/en/how-it-works", "/en/trust-safety", "/en/about", "/en/contact", "/en/imprint", "/en/employers"];
 
 interface Entry {
   loc: string;
@@ -74,7 +74,7 @@ test.describe("robots.txt", () => {
 });
 
 test.describe("sitemap.xml", () => {
-  test("FR-H5 AC3: lists the eight pages, the ten legal pages and the open visible vacancies, and no other vacancy", async ({ page, request }) => {
+  test("FR-H5 AC3: lists the nine pages (For employers among them), the ten legal pages and the open visible vacancies, and no other vacancy", async ({ page, request }) => {
     const company = await newCompany();
     const listed = [
       seedJob(company, { title: "Sitemap listed one", status: "open" }),

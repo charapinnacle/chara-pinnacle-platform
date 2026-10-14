@@ -78,7 +78,7 @@ describe.each(themes)("design tokens meet WCAG 2.2 AA contrast in the %s theme (
   });
 });
 
-describe("the dark bands of the home page (NFR-U1)", () => {
+describe("the dark surfaces: the closing call of the home page, the footer and the sign-in panel (NFR-U1)", () => {
   it.each([
     ["foreground", "background"],
     ["muted-foreground", "background"],
@@ -92,7 +92,7 @@ describe("the dark bands of the home page (NFR-U1)", () => {
     ["primary-foreground", "primary"],
     ["primary-foreground", "primary-hover"],
     ["inverse", "brand"],
-  ])("text %s on %s is at least 4.5:1 inside a dark band, the footer or the header over the hero", (foreground, background) => {
+  ])("text %s on %s is at least 4.5:1 on a dark surface (the closing call, the footer, the sign-in panel)", (foreground, background) => {
     expect(contrast("dark", foreground, background)).toBeGreaterThanOrEqual(4.5);
   });
 
@@ -101,16 +101,13 @@ describe("the dark bands of the home page (NFR-U1)", () => {
     ["brand", "card"],
     ["ring", "background"],
     ["ring", "inverse"],
-  ])("the boundary %s against %s is at least 3:1 on a dark band", (foreground, background) => {
+  ])("the boundary %s against %s is at least 3:1 on a dark surface", (foreground, background) => {
     expect(contrast("dark", foreground, background)).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps the light card of the hero search and the passport preview readable: the light set is put back inside it", () => {
-    expect(declared("light", "card")).toBe("oklch(1 0 0)");
-    expect(css).toMatch(/:root,\s*\.light\s*\{/);
-    for (const [foreground, background] of [["foreground", "card"], ["muted-foreground", "card"], ["brand-ink", "card"]]) {
-      expect(contrast("light", foreground, background)).toBeGreaterThanOrEqual(4.5);
-    }
+  it("is the one dark scope: no page repaints the header or puts the light set back inside a dark surface (U71)", () => {
+    expect(css).toMatch(/\n\.dark \{/);
+    expect(css).not.toMatch(/\.light\b|data-hero|\.site-header/);
   });
 });
 
@@ -133,7 +130,7 @@ describe("the contrast helper", () => {
 });
 
 describe("the type scale and spacing tokens (DS-02)", () => {
-  it.each(["hero", "section", "numeral", "display", "h1", "h2", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
+  it.each(["hero", "section", "display", "h1", "h2", "title", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
     expect(css).toMatch(new RegExp(`--text-${size}:\\s*[\\d.]+rem;`));
   });
 
@@ -141,17 +138,25 @@ describe("the type scale and spacing tokens (DS-02)", () => {
     expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 2rem;/);
   });
 
-  it("steps the serif display sizes up from the sm and the lg breakpoint", () => {
-    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-hero: 3.75rem;[^}]*--text-section: 2.25rem;[^}]*--text-numeral: 4rem;/);
-    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4.75rem;\s*--text-section: 2.5rem;\s*--text-numeral: 4.5rem;/);
+  it("steps the home headline from 44 to 56, 72 and 80 px and the section headings from 32 to 36, 44 and 52 px at the sm, lg and xl breakpoints (U73)", () => {
+    expect(css).toMatch(/--text-hero: 2.75rem;/);
+    expect(css).toMatch(/--text-section: 2rem;/);
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-hero: 3.5rem;[^}]*--text-section: 2.25rem;/);
+    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4.5rem;\s*--text-section: 2.75rem;\s*\}/);
+    expect(css).toMatch(/@media \(min-width: 80rem\)\s*\{\s*:root\s*\{\s*--text-hero: 5rem;\s*--text-section: 3.25rem;\s*\}/);
   });
 
-  it.each(["hero", "section", "numeral"])("sets the %s size in weight 400, the one weight of the serif that is loaded, so no bold is synthesised", (size) => {
-    expect(css).toMatch(new RegExp(`--text-${size}--font-weight:\\s*400;`));
+  it("has the 24 px title size for a step and a short statement, and the 420 px breakpoint of the public header", () => {
+    expect(css).toMatch(/--text-title: 1.5rem;/);
+    expect(css).toMatch(/--breakpoint-xs: 26.25rem;/);
   });
 
-  it("declares the serif as a token that falls back to a system serif, and keeps the body in the sans", () => {
-    expect(css).toMatch(/--font-serif:\s*var\(--font-newsreader\),[^;]*\bserif;/);
+  it.each(["hero", "section", "title"])("sets the %s size semibold, like every other heading of the one type family", (size) => {
+    expect(css).toMatch(new RegExp(`--text-${size}--font-weight:\\s*600;`));
+  });
+
+  it("has one type family: no serif token, the headings in the sans, and no size, motion or scope that only the home page used", () => {
+    expect(css).not.toMatch(/--font-serif|newsreader|--text-numeral|@utility lift/);
     expect(css).toMatch(/--font-heading:\s*var\(--font-sans\);/);
   });
 

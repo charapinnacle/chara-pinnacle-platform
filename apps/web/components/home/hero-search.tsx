@@ -1,15 +1,14 @@
-import { MapPin, Search } from "lucide-react";
 import { FormButton } from "@/components/forms/form-button";
 import { Input } from "@/components/ui/input";
 
 const fields = [
-  { name: "q", id: "hero-keyword", label: "Keyword", placeholder: "Job title or skill", icon: Search },
-  { name: "city", id: "hero-city", label: "City", placeholder: "City", icon: MapPin },
+  { name: "q", id: "hero-what", label: "What", hint: "Job title, skill or occupation" },
+  { name: "where", id: "hero-where", label: "Where", hint: "City or country" },
 ] as const;
 
-// A plain GET form to Find Jobs: it works without JavaScript and loads none, and Find Jobs validates the address it
-// receives as it does every other (the 100 characters below are its limit too). The light token set is put back inside
-// the pill so that it stands out on the dark hero.
+// A plain GET form to Find Jobs: it works without JavaScript and loads none. Find Jobs validates the address it receives as
+// it does every other (100 characters is its limit too) and turns the place into a country or a city filter. The short
+// visible label starts the accessible name and the hint completes it, so a screen reader hears what the placeholder shows.
 export function HeroSearch({ lang }: { lang: string }) {
   return (
     <form
@@ -17,25 +16,25 @@ export function HeroSearch({ lang }: { lang: string }) {
       method="get"
       role="search"
       aria-label="Search jobs"
-      className="light grid gap-1 rounded-3xl border border-transparent bg-card p-2 text-foreground shadow-[0_24px_48px_-24px_rgb(0_0_0/0.6)] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center sm:rounded-full"
+      className="grid rounded-2xl border bg-card p-2 text-start shadow-card md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
     >
-      {fields.map(({ name, id, label, placeholder, icon: Icon }) => (
-        <div key={name} className="relative sm:first:border-e sm:first:border-border">
-          <label htmlFor={id} className="sr-only">
+      {fields.map(({ name, id, label, hint }) => (
+        <div key={name} className="grid px-4 py-2 max-md:not-first:border-t md:not-first:border-s">
+          <label htmlFor={id} className="text-caption font-semibold">
             {label}
+            <span className="sr-only">: {hint}</span>
           </label>
-          <Icon aria-hidden className="pointer-events-none absolute start-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id={id}
             name={name}
             maxLength={100}
             autoComplete="off"
-            placeholder={placeholder}
-            className="h-12 rounded-full border-transparent bg-transparent ps-11 text-base shadow-none hover:border-transparent focus-visible:ring-0 md:text-base dark:bg-transparent"
+            placeholder={hint}
+            className="h-11 rounded-none border-transparent bg-transparent px-0 md:h-8 text-base shadow-none hover:border-transparent focus-visible:ring-0 md:text-base"
           />
         </div>
       ))}
-      <FormButton type="submit" className="rounded-full sm:w-auto sm:px-8">
+      <FormButton type="submit" className="min-h-14 text-base max-md:mt-1.5 md:w-auto md:px-7">
         Search jobs
       </FormButton>
     </form>

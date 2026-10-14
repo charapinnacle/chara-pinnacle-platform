@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ActiveFilters } from "@/components/jobs/active-filters";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
@@ -9,7 +10,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { filterChips } from "@/lib/jobs/filter-chips";
-import { parseSearchParams, searchQuery } from "@/lib/jobs/search-params";
+import { parseSearchParams, resolvePlace, searchPath, searchQuery } from "@/lib/jobs/search-params";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/jobs">): Promise<Metadata> {
@@ -18,14 +19,17 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/jobs">): P
 
 export default async function FindJobsPage({ params, searchParams }: PageProps<"/[lang]/jobs">) {
   const [{ lang }, rawParams] = await Promise.all([params, searchParams]);
-  const { filters, errors } = parseSearchParams(rawParams);
   const [occupations, industries, countries, currencies] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getCurrencies(),
   ]);
+  const { filters, errors } = parseSearchParams(resolvePlace(rawParams, countries));
   const ignored = Object.values(errors);
+  // The home search names its place in one field; the address of the filters it stands for replaces it, so that the
+  // address can be shared and the form shows the country or the city.
+  if (rawParams.where !== undefined && ignored.length === 0) redirect(searchPath(lang, filters));
   const chips = filterChips(lang, filters, {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     occupations: new Map(occupations.map(({ code, label }) => [code, `${code} · ${label}`])),

@@ -21,11 +21,11 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("getPlatformStatistics (FR-H4 AC12)", () => {
-  it("reads the four columns of the public view and returns a tile for each value that is not null", async () => {
-    result = { data: { active_jobs: 15, employers: null, workers: 1230, countries: null }, error: null };
+  it("reads the four columns of the public view and returns a tile for each value that is not null and credible", async () => {
+    result = { data: { active_jobs: 150, employers: null, workers: 1230, countries: 12 }, error: null };
     expect(await getPlatformStatistics()).toEqual([
       { label: "Workers", value: "1,230" },
-      { label: "Active jobs", value: "15" },
+      { label: "Active jobs", value: "150" },
     ]);
     expect(from).toHaveBeenCalledWith("v_platform_counts");
     expect(select).toHaveBeenCalledWith("active_jobs, employers, workers, countries");

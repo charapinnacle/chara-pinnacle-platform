@@ -1,39 +1,39 @@
 import type { Metadata } from "next";
-import "@/components/home/home.css";
-import { ClosingCall } from "@/components/home/closing-call";
+import { ClosingCall } from "@/components/public/closing-call";
+import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { PassportSection } from "@/components/home/passport-section";
-import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { StatisticsBlock } from "@/components/home/statistics-block";
-import { TrustStrip } from "@/components/home/trust-strip";
-import { WhoAreYou } from "@/components/home/who-are-you";
+import { BRAND_NAME } from "@/lib/brand";
+import { getPostJobHref } from "@/lib/dal/organizations";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
-import { newsreader } from "@/lib/display-font";
+import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
   return staticPageMetadata("home", (await params).lang);
 }
 
-async function Statistics() {
-  const tiles = await getPlatformStatistics();
-  return tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null;
-}
-
-// The serif is attached to this page alone (its class sets the variable for the page below it), so no other page loads it.
+// One audience and one job, as Indeed's and Glassdoor's home pages have (OPEN_QUESTIONS.md D90): the search for the person
+// looking for work, how it works, the passport, one line for employers, the live figures when they are credible, and the
+// closing call. The employer's story is the For employers page.
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
+  const [tiles, postJobHref] = await Promise.all([getPlatformStatistics(), getPostJobHref(lang)]);
   return (
-    <div className={newsreader.variable}>
+    <>
       <Hero lang={lang} />
-      <TrustStrip />
-      <WhoAreYou lang={lang} />
-      <PassportSection lang={lang} />
       <HowItWorks lang={lang} />
-      <Statistics />
-      <ClosingCall lang={lang} />
-      <RevealOnScroll />
-    </div>
+      <PassportSection />
+      <EmployerBand lang={lang} postJobHref={postJobHref} />
+      {tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null}
+      <ClosingCall
+        id="home-start-heading"
+        title="Your Workforce. Your Network. One Platform."
+        primary={{ href: signUpPath(lang), label: `Join ${BRAND_NAME}` }}
+        secondary={postJobHref ? { href: postJobHref, label: "Start hiring" } : null}
+      />
+    </>
   );
 }

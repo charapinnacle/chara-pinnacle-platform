@@ -10,7 +10,7 @@ describe("cn", () => {
     expect(cn("text-body", "text-sm")).toBe("text-sm");
   });
 
-  it.each(["display", "h1", "h2", "h3", "small", "caption"])("keeps the %s size beside a text colour", (size) => {
+  it.each(["hero", "section", "display", "h1", "h2", "title", "h3", "small", "caption"])("keeps the %s size beside a text colour", (size) => {
     expect(cn(`text-${size} text-muted-foreground`)).toBe(`text-${size} text-muted-foreground`);
   });
 

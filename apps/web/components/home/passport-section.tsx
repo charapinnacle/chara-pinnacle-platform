@@ -1,23 +1,28 @@
-import { Band } from "@/components/home/band";
-import { PassportPreview } from "@/components/home/passport-preview";
-import { LinkButton } from "@/components/layout/link-button";
-import { signUpPath } from "@/lib/routes";
+import { Band } from "@/components/public/band";
+import { FactList } from "@/components/public/fact-list";
+import { SectionHeading } from "@/components/public/section-heading";
 
-export function PassportSection({ lang }: { lang: string }) {
+// Only what the code enforces: one profile (FR-B1), documents private and shared per application (FR-B3, FR-D1), the access
+// log (FR-B5; repeated openings within seconds share one entry, so it does not say "every"), and that workers never pay (FR-G6).
+const facts = [
+  { title: "One profile for every application", text: "Describe your work once, then apply to any open vacancy without retyping it." },
+  {
+    title: "You decide who sees your documents",
+    text: "Documents are private by default and shared only with the employer of an application you send.",
+  },
+  { title: "You see who opened them", text: "Your access log shows which organisation opened which document, and when." },
+  { title: "Workers never pay", text: "Creating a profile, searching and applying are free." },
+] as const;
+
+export function PassportSection() {
   return (
-    <Band tone="dark" aria-labelledby="home-passport-heading" className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
-      <div className="grid content-center justify-items-start gap-6">
-        <h2 id="home-passport-heading" className="font-serif text-section text-balance">
-          One professional profile. Multiple opportunities.
-        </h2>
-        <p className="max-w-[40ch] text-lead text-pretty text-muted-foreground">
-          Create your CHARA Passport once and use it for every application.
-        </p>
-        <LinkButton href={signUpPath(lang, "worker")} className="lift mt-2">
-          Create CHARA Passport
-        </LinkButton>
+    <Band aria-labelledby="home-passport-heading" className="grid gap-12 lg:grid-cols-12 lg:gap-8">
+      <div className="lg:col-span-5">
+        <SectionHeading id="home-passport-heading" eyebrow="CHARA Passport" title="One professional profile. Multiple opportunities." />
       </div>
-      <PassportPreview />
+      <div className="lg:col-span-6 lg:col-start-7">
+        <FactList label="What your CHARA Passport gives you" facts={facts} />
+      </div>
     </Band>
   );
 }
