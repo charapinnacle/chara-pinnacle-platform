@@ -29,12 +29,28 @@ test.describe("the layout of the home page (U71)", () => {
     await context.close();
   });
 
-  test("under reduced motion nothing animates, and axe passes at 1280 and 360 px", async ({ browser }) => {
+  test("nothing animates on load outside the product picture, nothing at all under reduced motion, and axe passes at 1280 and 360 px", async ({ browser, page: moving }) => {
+    // The picture keeps the entrance of the shared dashboard list (D88, departure 10).
+    const animated = (page: Page, outsideFigure: boolean) =>
+      page.locator("main *").evaluateAll(
+        (nodes, outside) =>
+          nodes
+            .filter((node) => !(outside && node.closest("figure")))
+            .filter((node) => {
+              const style = getComputedStyle(node);
+              return style.animationName !== "none" && style.animationDuration !== "1e-05s";
+            })
+            .map((node) => `${node.tagName} ${node.className}`),
+        outsideFigure,
+      );
+    await moving.goto("/en");
+    expect(await animated(moving, true)).toEqual([]);
+
     const context = await browser.newContext({ reducedMotion: "reduce" });
     const page = await context.newPage();
     await page.goto("/en");
     await expect(page.locator("main h1")).toBeVisible();
-    expect(await page.locator("main h1").locator("..").evaluate((node) => getComputedStyle(node).animationDuration)).toBe("1e-05s");
+    expect(await animated(page, false)).toEqual([]);
     for (const width of [1280, 360]) {
       await page.setViewportSize({ width, height: 800 });
       await expectNoAxeViolations(page);

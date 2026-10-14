@@ -8,7 +8,7 @@ export function Hero({ lang, postJobHref }: { lang: string; postJobHref: string 
   return (
     <section aria-labelledby="home-heading">
       <PageContainer className="grid gap-10 pt-16 pb-20 sm:gap-12 sm:pt-24 sm:pb-28 lg:pt-32">
-        <div className="grid max-w-4xl animate-rise gap-6">
+        <div className="grid max-w-4xl gap-6">
           <h1 id="home-heading" className="text-hero text-balance">
             The Global Workforce Network
           </h1>
