@@ -24,6 +24,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   account_suspended: { reasons: "Repeated fake profile reports." },
   account_reinstated: { reasons: "Identity confirmed after the complaint." },
   member_invitation: { org_name: "Acme Bau", role: "member", expires_at: "2026-10-15T09:30:00+00:00", token: TOKEN, invitation_id: ACCOUNT },
+  account_exists: {},
 };
 
 const LEAKS = {
@@ -105,6 +106,7 @@ describe("notification templates", () => {
       account_reinstated: "/en/login",
       deletion_requested: settingsPath("en"),
       member_invitation: `/en/invitations/${TOKEN}`,
+      account_exists: "/en/login",
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -316,5 +318,18 @@ describe("notification templates", () => {
     expect(email.html.match(/href="/g)).toHaveLength(1);
     expect(email.html).toContain(`href="${SITE}/en/login"`);
     expect(email.text).not.toMatch(/\b\d{6,}\b|secret|token|otp|recovery code|backup code|skip/i);
+  });
+
+  it("account_exists says the address already has an account, with a Log in button and a reset link, and no address or secret", async () => {
+    const email = await renderEmail("account_exists", {}, SITE);
+    expect(email.subject).toBe("You already have a Chara Pinnacle account");
+    expect(email.text).toContain("already belongs to an account");
+    expect(email.text).toContain("No new account was created and nothing in your account was changed.");
+    expect(email.html).toContain(`href="${SITE}/en/login"`);
+    expect(email.text).toContain(`Log in ${SITE}/en/login`);
+    expect(email.html).toContain(`<a href="${SITE}/en/forgot-password">Reset your password</a>`);
+    expect(email.html.match(/href="/g)).toHaveLength(2);
+    expect(email.text).toMatch(/if it was not you, you can ignore this email/i);
+    expect(`${email.subject}${email.text}`).not.toMatch(/@|password:|token|\b\d{6,}\b/i);
   });
 });
