@@ -14,9 +14,15 @@ export const LEGAL_SLUGS = [
   "account-suspension-and-termination-rules",
 ] as const;
 
-// The owner keeps the header to the two ways in and the account links (OPEN_QUESTIONS.md, owner decision 2026-10-10), with
-// Post a Job from the client's website structure (D81); the pages about Chara Pinnacle are in the footer.
-export const HEADER_LABELS = ["Find Jobs", "How Chara Pinnacle works", "Post a Job", "Login", "Sign up"];
+// The links of the header of a visitor (OPEN_QUESTIONS.md D90): two links, Post a Job and Sign in, then the Menu button; on
+// the For employers page For job seekers replaces Find Jobs and For employers. The pages about Chara Pinnacle are in the
+// footer (P18).
+export const HEADER_LABELS = ["Find Jobs", "For employers", "Post a Job", "Sign in"];
+export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "Post a Job", "Sign in"];
+
+// The menu panel: the Explore links, the client's later-phase navigation as text, and the account actions.
+export const MENU_LINKS = ["Home", "Find Jobs", "For employers", "For job seekers", "How Chara Pinnacle works"];
+export const LATER_PHASE = ["Find Workers", "Request Workers", "Find Companies", "Recruitment Partners", "Staffing Partners", "Workforce Corridors", "Job Orders"];
 
 // The footer reads in three columns: Platform, Company and Legal.
 export const FOOTER_LABELS = [

@@ -2,17 +2,40 @@ import { BRAND_NAME } from "@/lib/brand";
 
 export const EMPLOYERS_PATH = "employers";
 
-// The links of the header that are the same for everybody, and the two that only a visitor needs. The owner keeps the
-// header to the two ways in (OPEN_QUESTIONS.md, owner decision 2026-10-10): the pages about the platform are in the footer.
-// Post a Job, between them and the account links, comes from the client's website structure (OPEN_QUESTIONS.md D81, question P22).
-export const siteLinks = [
+// The header shows a few links and a Menu button that opens the rest, as the client asked (OPEN_QUESTIONS.md D90, which
+// replaces the header lists of P18 and P22): Find Jobs and For employers on every public page, For job seekers instead of
+// both on the For employers page, then Post a Job, Sign in and Menu. Pricing, Trust & Safety, About and Contact stay in the
+// footer only (P18).
+export const headerLinks = [
   { path: "jobs", label: "Find Jobs" },
+  { path: EMPLOYERS_PATH, label: "For employers" },
+] as const;
+
+export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
+
+export const guestLinks = [
+  { path: "login", label: "Sign in" },
+  { path: "signup", label: "Sign up" },
+] as const;
+
+export const menuLinks = [
+  { path: "", label: "Home" },
+  { path: "jobs", label: "Find Jobs" },
+  { path: EMPLOYERS_PATH, label: "For employers" },
+  jobSeekersLink,
   { path: "how-it-works", label: `How ${BRAND_NAME} works` },
 ] as const;
 
-export const guestLinks = [
-  { path: "login", label: "Login" },
-  { path: "signup", label: "Sign up" },
+// The navigation of the client's structure (section 2) that Phase 1 does not have: named in the menu so the client sees
+// where they will go, never a link.
+export const laterPhaseFeatures = [
+  "Find Workers",
+  "Request Workers",
+  "Find Companies",
+  "Recruitment Partners",
+  "Staffing Partners",
+  "Workforce Corridors",
+  "Job Orders",
 ] as const;
 
 export const LEGAL_INDEX_PATH = "legal";

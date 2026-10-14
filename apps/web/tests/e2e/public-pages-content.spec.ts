@@ -105,8 +105,8 @@ test.describe("the accessibility of the public pages", () => {
   test("FR-H1 AC4: the pages are accessible at 360 px with the menu open", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/en");
-    await page.getByRole("button", { name: "Menu" }).click();
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How Chara Pinnacle works" })).toBeVisible();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "How Chara Pinnacle works" })).toBeVisible();
     await expectNoAxeViolations(page);
   });
 });

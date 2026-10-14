@@ -92,14 +92,15 @@ test.describe("the layout of the home page (U73)", () => {
     expect((await headerLook(page)).height).toBe(pricing.height);
   });
 
-  test("on a phone the open menu is part of the page: axe passes and its last link can be scrolled to, even at 320 by 256 px", async ({ page }) => {
+  test("on a phone the open menu panel passes axe and its last control can be scrolled to, even at 320 by 256 px", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/en");
-    await page.getByRole("button", { name: "Menu" }).click();
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Find Jobs" })).toBeVisible();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const panel = page.getByRole("dialog", { name: "Menu" });
+    await expect(panel.getByRole("link", { name: "Find Jobs" })).toBeVisible();
     await expectNoAxeViolations(page);
     await page.setViewportSize({ width: 320, height: 256 });
-    const last = page.getByRole("navigation", { name: "Main" }).getByRole("link").last();
+    const last = panel.getByRole("link").last();
     await last.scrollIntoViewIfNeeded();
     await expect(last).toBeInViewport();
   });

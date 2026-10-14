@@ -1,44 +1,21 @@
 import Link from "next/link";
 import { FormButton } from "@/components/forms/form-button";
-import { HeaderMenu } from "@/components/layout/header-menu";
+import { AudienceLinks } from "@/components/layout/audience-links";
 import { LinkButton } from "@/components/layout/link-button";
+import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
-import { guestLinks, siteLinks } from "@/lib/public/navigation";
+import { guestLinks, laterPhaseFeatures, menuLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 const linkClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground";
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-secondary";
 
-// Not behind a Suspense boundary, like the account items below.
-async function PostJob({ lang }: { lang: string }) {
-  const href = await getPostJobHref(lang);
-  if (!href) return null;
-  return (
-    <li>
-      <LinkButton href={href} size="default" className="min-h-11 px-4 md:ms-2">
-        Post a Job
-      </LinkButton>
-    </li>
-  );
-}
+const groupTitleClassName = "mb-1.5 text-eyebrow text-muted-foreground uppercase";
 
-function GuestItems({ lang }: { lang: string }) {
-  return guestLinks.map(({ path, label }) => (
-    <li key={path}>
-      {path === "signup" ? (
-        <LinkButton href={`/${lang}/${path}`} variant="secondary" size="default" className="min-h-11 px-4 md:ms-1">
-          {label}
-        </LinkButton>
-      ) : (
-        <Link href={`/${lang}/${path}`} className={linkClassName}>
-          {label}
-        </Link>
-      )}
-    </li>
-  ));
-}
+const [signIn, signUp] = guestLinks;
 
 // A plain form around the server action instead of LogoutButton: a visitor downloads no log-out code, and it works without
 // JavaScript.
@@ -47,46 +24,125 @@ async function logOut() {
   await signOut();
 }
 
-// A signed-in person is offered the way back to their own area and the way out instead of Login and Sign up. Not behind a
-// Suspense boundary: React streams a finished boundary separately once the page passes about 12.8 kB of HTML, and a
-// streamed part stays hidden without JavaScript and appears only after the load event with it.
-async function AccountItems({ lang }: { lang: string }) {
-  const user = await getCurrentUser();
-  if (!user) return <GuestItems lang={lang} />;
+function LogOut({ className, buttonClassName }: { className?: string; buttonClassName?: string }) {
+  return (
+    <form action={logOut} className={className}>
+      <FormButton type="submit" variant="secondary" className={cn("min-h-11 w-full min-w-0 px-3 text-small", buttonClassName)}>
+        Log out
+      </FormButton>
+    </form>
+  );
+}
+
+// The account items of the header: Sign in for a visitor (the login page links to the sign-up), the way back to their own
+// area for a signed-in person, with Log out from 768 px (in the menu on a phone). Not behind a Suspense boundary: React
+// streams a finished boundary separately once the page passes about 12.8 kB of HTML, and a streamed part stays hidden
+// without JavaScript and appears only after the load event with it.
+function AccountItems({ lang, area }: { lang: string; area: string | null }) {
+  if (!area) {
+    return (
+      <li>
+        <Link href={`/${lang}/${signIn.path}`} className={linkClassName}>
+          {signIn.label}
+        </Link>
+      </li>
+    );
+  }
   return (
     <>
-      <li>
-        <Link href={homePath(lang, user.accountKind)} className={linkClassName}>
+      <li className="max-xs:hidden">
+        <Link href={area} className={linkClassName}>
           Go to my area
         </Link>
       </li>
-      <li>
-        <form action={logOut}>
-          <FormButton type="submit" variant="secondary" className="min-h-11 w-full min-w-0 px-3 text-small md:w-auto">
-            Log out
-          </FormButton>
-        </form>
+      <li className="max-md:hidden">
+        <LogOut />
       </li>
     </>
   );
 }
 
-export function PublicNav({ lang }: { lang: string }) {
+function MenuActions({ lang, area, postJobHref }: { lang: string; area: string | null; postJobHref: string | null }) {
   return (
-    <HeaderMenu>
+    <div className="mt-auto grid grid-cols-2 gap-2.5 pt-6">
+      {postJobHref ? (
+        <LinkButton href={postJobHref} className="col-span-2 xs:hidden">
+          Post a Job
+        </LinkButton>
+      ) : null}
+      {area ? (
+        <>
+          <LinkButton href={area} variant="secondary" className="min-h-12">
+            Go to my area
+          </LinkButton>
+          <LogOut className="grid" buttonClassName="min-h-12 text-base" />
+        </>
+      ) : (
+        <>
+          <LinkButton href={`/${lang}/${signIn.path}`} variant="secondary" className="min-h-12">
+            {signIn.label}
+          </LinkButton>
+          <LinkButton href={`/${lang}/${signUp.path}`}>{signUp.label}</LinkButton>
+        </>
+      )}
+    </div>
+  );
+}
+
+// The public header (OPEN_QUESTIONS.md D90): a few links, Post a Job and Sign in, then Menu, which opens the side panel with
+// everything a visitor can explore, the client's later-phase navigation as plain text, and the account actions. Below
+// 768 px only the logo, Post a Job, Sign in and Menu stay; below 420 px Post a Job moves into the panel.
+export async function PublicNav({ lang }: { lang: string }) {
+  const [user, postJobHref] = await Promise.all([getCurrentUser(), getPostJobHref(lang)]);
+  const area = user ? homePath(lang, user.accountKind) : null;
+  return (
+    <div className="flex items-center gap-1">
       <nav aria-label="Main">
-        <ul className="flex flex-col md:flex-row md:items-center md:gap-1">
-          {siteLinks.map(({ path, label }) => (
-            <li key={path}>
-              <Link href={`/${lang}/${path}`} className={linkClassName}>
-                {label}
-              </Link>
+        <ul className="flex items-center gap-1">
+          <AudienceLinks lang={lang} className={linkClassName} />
+          {postJobHref ? (
+            <li className="max-xs:hidden">
+              <LinkButton href={postJobHref} size="default" className="min-h-11 px-4 md:mx-1">
+                Post a Job
+              </LinkButton>
             </li>
-          ))}
-          <PostJob lang={lang} />
-          <AccountItems lang={lang} />
+          ) : null}
+          <AccountItems lang={lang} area={area} />
         </ul>
       </nav>
-    </HeaderMenu>
+      <SiteMenu homeHref={`/${lang}`}>
+        <nav aria-labelledby="menu-explore" className="border-t pt-5 pb-3">
+          <p id="menu-explore" className={groupTitleClassName}>
+            Explore
+          </p>
+          <ul>
+            {menuLinks.map(({ path, label }) => (
+              <li key={label}>
+                <Link
+                  href={path ? `/${lang}/${path}` : `/${lang}`}
+                  className="flex min-h-11 items-center text-title transition-colors duration-150 hover:text-brand-ink"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="border-t pt-5 pb-3">
+          <p id="menu-later" className={groupTitleClassName}>
+            Coming in a later phase
+          </p>
+          <ul aria-labelledby="menu-later">
+            {laterPhaseFeatures.map((feature) => (
+              <li key={feature} className="flex min-h-10 items-center justify-between gap-3 text-body text-muted-foreground">
+                {feature}
+                <span className="shrink-0 rounded-full border px-2.5 py-0.5 text-caption font-medium">Not yet available</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <MenuActions lang={lang} area={area} postJobHref={postJobHref} />
+      </SiteMenu>
+    </div>
   );
 }
