@@ -1,4 +1,5 @@
 import { NOT_ACCEPTING, profileFields } from "@/lib/applications/presentation";
+import { tryAgainIn } from "@/lib/auth-errors";
 import { settingsPath } from "@/lib/routes";
 import type { FieldErrors } from "@/lib/validation/sign-up";
 
@@ -21,12 +22,6 @@ function inWords(items: string[]): string {
   return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
-function waitText(seconds: number | null): string {
-  if (seconds === null) return "later";
-  const minutes = Math.ceil(seconds / 60);
-  return `in ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
-}
-
 export function applyRefusalResult(refusal: ApplyRefusal, lang: string): ApplyActionResult {
   switch (refusal.kind) {
     case "not_open":
@@ -42,7 +37,7 @@ export function applyRefusalResult(refusal: ApplyRefusal, lang: string): ApplyAc
       };
     }
     case "rate_limited":
-      return { message: `You have sent many applications in a short time. Try again ${waitText(refusal.retryAfterSeconds)}.` };
+      return { message: `You have sent many applications in a short time. Try again ${refusal.retryAfterSeconds === null ? "later" : tryAgainIn(refusal.retryAfterSeconds)}.` };
     case "document_not_found":
       return { message: "One of the selected documents is no longer available. Reload the page and choose again." };
     case "not_candidate":

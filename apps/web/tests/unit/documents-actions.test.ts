@@ -256,11 +256,11 @@ describe("getDocumentDownload", () => {
     expect(signMock).not.toHaveBeenCalled();
   });
 
-  it("answers a system fault when the grant refuses for another reason, and generically when it answers nothing", async () => {
+  it("answers a system fault when the grant refuses for another reason, and that the document is gone when it answers nothing", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { code: "42501", message: "CHARA_FORBIDDEN" } });
     expect(await actions.getDocumentDownload(documentId)).toEqual(FAULT);
     rpcMock.mockResolvedValue({ data: [], error: null });
-    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: GENERIC });
+    expect(await actions.getDocumentDownload(documentId)).toEqual({ message: "This document no longer exists." });
     expect(signMock).not.toHaveBeenCalled();
   });
 

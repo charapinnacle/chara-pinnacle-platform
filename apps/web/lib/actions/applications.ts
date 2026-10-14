@@ -21,7 +21,7 @@ export async function applyToVacancy(jobId: string, input: ApplyFormInput): Prom
   const id = jobIdSchema.safeParse(jobId);
   if (!id.success) return applyRefusalResult({ kind: "not_open" }, defaultLocale);
   const user = await requireUser(defaultLocale);
-  if (user.accountKind !== "worker") return { message: "Only candidates can apply for vacancies." };
+  if (user.accountKind !== "worker") return applyRefusalResult({ kind: "not_candidate" }, defaultLocale);
 
   const parsed = applyInputSchema(await getApplyLimits()).safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };

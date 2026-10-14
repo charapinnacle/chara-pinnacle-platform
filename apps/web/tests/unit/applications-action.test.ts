@@ -75,7 +75,7 @@ describe("applyToVacancy", () => {
 
   it("refuses an account that is not a candidate before it reads anything else", async () => {
     requireUserMock.mockResolvedValue({ id: "u", accountKind: "company" });
-    expect(await applyToVacancy(jobId, valid)).toEqual({ message: "Only candidates can apply for vacancies." });
+    expect(await applyToVacancy(jobId, valid)).toEqual({ message: "Only an active candidate account can apply." });
     expect(applyMock).not.toHaveBeenCalled();
   });
 

@@ -96,7 +96,7 @@ async function updateProfile(values: ProfileUpdate): Promise<PassportResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("worker_profiles").update(values).eq("user_id", id).select("user_id");
   if (error) return refusal(error);
-  if (data.length === 0) return { message: GENERIC_FAILURE };
+  if (data.length === 0) redirect(onboardingPath(defaultLocale));
   return settle(null);
 }
 

@@ -20,6 +20,7 @@ const forgetEmailMock = vi.hoisted(() => vi.fn());
 const resendPendingMock = vi.hoisted(() => vi.fn());
 const offerEmailMock = vi.hoisted(() => vi.fn());
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock, visitorProof: proofMock }));
@@ -205,12 +206,17 @@ describe("signUp action", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("D89: a failed account email is logged without the address and the visitor sees the same page", async () => {
+  it("D89: a failed account email is logged as a fault with a reference, without the address, and the visitor sees the same page", async () => {
     signUpMock.mockResolvedValue({ data: { user: { identities: [] }, session: null }, error: null });
     rpcMock.mockResolvedValue({ data: null, error: { code: "P0001", message: "CHARA_SETTING_MISSING", details: "x" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(signUp(input)).rejects.toThrow("REDIRECT:/en/verify-email");
-    expect(log).toHaveBeenCalledWith("Existing-account email failed", { code: "P0001", message: "CHARA_SETTING_MISSING" });
+    expect(log).toHaveBeenCalledWith("Existing-account email failed", {
+      reference: expect.stringMatching(/^[0-9A-F]{8}$/),
+      code: "P0001",
+      message: "CHARA_SETTING_MISSING",
+      detail: "x",
+    });
     expect(JSON.stringify(log.mock.calls)).not.toContain("ana@example.com");
   });
 

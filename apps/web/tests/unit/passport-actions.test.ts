@@ -115,11 +115,11 @@ describe("profile sections", () => {
     expect(revalidateMock).toHaveBeenCalledWith("/en/dashboard/worker");
   });
 
-  it("reports a failure when no profile row was updated", async () => {
+  it("D89: sends the candidate to create a passport when no profile row was updated", async () => {
     outcome = { data: [], error: null };
     await expect(
       actions.saveBasics({ firstName: "Amina", lastName: "Okafor", country: "NG", headline: "" }),
-    ).resolves.toEqual({ message: GENERIC });
+    ).rejects.toThrow("REDIRECT:/en/onboarding");
     expect(revalidateMock).not.toHaveBeenCalled();
   });
 

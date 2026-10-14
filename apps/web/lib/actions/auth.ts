@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth-errors";
 import { getSignupDocuments } from "@/lib/dal/legal";
 import { isThrottled, visitorProof } from "@/lib/dal/rate-limit";
+import { logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { rememberInvitation } from "@/lib/invitation-cookie";
 import {
@@ -105,7 +106,7 @@ async function tellExistingAccount(email: string): Promise<void> {
   const { key, proof } = await visitorProof("account_exists");
   const supabase = await createClient();
   const { error } = await supabase.rpc("notify_existing_account", { p_email: email, p_key: key, p_proof: proof });
-  if (error) console.error("Existing-account email failed", { code: error.code, message: error.message });
+  if (error) logFault("Existing-account email", error);
 }
 
 function refusal(error: AuthError): AuthActionResult {

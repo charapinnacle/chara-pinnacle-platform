@@ -124,7 +124,7 @@ export async function getDocumentDownload(documentId: string): Promise<DownloadR
     return refusal(error);
   }
   const grant = data[0];
-  if (!grant) return { message: GENERIC_FAILURE };
+  if (!grant) return { message: "This document no longer exists." };
   const { data: signed, error: signError } = await supabase.storage
     .from(grant.bucket_id)
     .createSignedUrl(grant.object_path, 60, { download: grant.file_name });
