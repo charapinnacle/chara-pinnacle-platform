@@ -1,10 +1,19 @@
 -- D89: private.missing_reference_data() is empty on a complete environment (the local database after migrations and
--- supabase/seeds/ref) and names each legal document, reference table and setting that is missing, so a hosted database
--- without its seeds is caught by the deployment check before a candidate meets CHARA_SETTING_MISSING.
+-- supabase/seeds/ref, plus the Vault secret) and names each legal document, reference table, setting and secret that is
+-- missing, so a hosted database without its seeds is caught by the deployment check before a candidate meets CHARA_SETTING_MISSING.
 begin;
-select plan(8);
+select plan(11);
 
-select is_empty('select * from private.missing_reference_data()', 'the seeded database is complete');
+create temp table t_seeded_slugs as select distinct slug from public.legal_documents;
+
+-- A local stack has no Vault secret (D79); a hosted one must.
+select results_eq(
+  'select kind, name from private.missing_reference_data()',
+  $$values ('vault_secret'::text, 'rate_limit_proof_key'::text)$$,
+  'without the Vault secret rate_limit_proof_key the check names it'
+);
+select vault.create_secret(repeat('0', 64), 'rate_limit_proof_key') is not null as vault_set \gset
+select is_empty('select * from private.missing_reference_data()', 'the seeded database with the Vault secret is complete');
 
 select function_privs_are('private', 'missing_reference_data', array[]::text[], 'anon', array[]::text[], 'anon cannot run the check');
 select function_privs_are('private', 'missing_reference_data', array[]::text[], 'authenticated', array[]::text[],
@@ -23,6 +32,16 @@ select results_eq(
   'a sharing notice without a published version is named'
 );
 
+-- Every slug of supabase/seeds/ref/legal_documents.sql is checked: a slug the seed gains without this list fails here.
+alter table public.legal_documents disable trigger user;
+delete from public.legal_documents;
+alter table public.legal_documents enable trigger user;
+select set_eq(
+  $$select name from private.missing_reference_data() where kind = 'legal_document'$$,
+  'select slug from t_seeded_slugs',
+  'with no legal document published, the check names every slug of the seed'
+);
+
 -- An empty reference table of the seed.
 delete from public.industries;
 select results_eq(
@@ -37,6 +56,11 @@ select results_eq(
   $$select kind, name from private.missing_reference_data() where kind = 'setting'$$,
   $$values ('setting'::text, 'apply_rate_limit_max'::text), ('setting', 'rate_limit_signup_seconds')$$,
   'a missing setting that apply_to_job reads and a missing throttle setting are named'
+);
+delete from private.settings where key = 'worker_languages_max';
+select ok(
+  exists (select 1 from private.missing_reference_data() where kind = 'setting' and name = 'worker_languages_max'),
+  'a missing setting that a trigger passes to worker_list_limit is named'
 );
 
 -- A key that a function names inside a longer column name (limit_key) is not taken for a setting.
