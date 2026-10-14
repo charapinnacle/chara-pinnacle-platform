@@ -4,17 +4,16 @@ type StepListProps = { steps: readonly Step[]; titleAs?: "h3" | "h4" };
 
 export function StepList({ steps, titleAs: Title = "h3" }: StepListProps) {
   return (
-    <ol className="grid animate-stagger gap-6">
+    <ol className="grid">
       {steps.map(({ title, text }, index) => (
-        <li key={title} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-4">
-          <span
-            aria-hidden
-            className="row-span-2 flex size-9 items-center justify-center rounded-lg bg-brand-gradient text-small font-semibold text-inverse tabular-nums"
-          >
+        <li key={title} className="grid grid-cols-[2rem_minmax(0,1fr)] border-t py-4">
+          <span aria-hidden className="text-small leading-6 font-semibold text-muted-foreground tabular-nums">
             {index + 1}
           </span>
-          <Title className="pt-1.5 text-h3">{title}</Title>
-          <p className="text-body leading-6 text-muted-foreground">{text}</p>
+          <div className="grid gap-1">
+            <Title className="text-h3">{title}</Title>
+            <p className="text-small text-muted-foreground">{text}</p>
+          </div>
         </li>
       ))}
     </ol>

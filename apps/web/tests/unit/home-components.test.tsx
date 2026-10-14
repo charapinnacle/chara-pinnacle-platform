@@ -78,7 +78,7 @@ describe("Who are you?", () => {
   });
 
   it("lists the steps of How it works for each side in order, from the one source of that page", () => {
-    const lists = [...markup.matchAll(/<ol[^>]*>(.*?)<\/ol>/g)].map(([, list]) => [...list.matchAll(/<span class="text-h3">([^<]+)<\/span>/g)].map(([, title]) => title));
+    const lists = [...markup.matchAll(/<ol[^>]*>(.*?)<\/ol>/g)].map(([, list]) => [...list.matchAll(/<h4 class="text-h3">([^<]+)<\/h4>/g)].map(([, title]) => title));
     expect(lists).toEqual([employerSteps.map(({ title }) => title), workerSteps.map(({ title }) => title)]);
     for (const { text } of [...employerSteps, ...workerSteps]) expect(markup).toContain(text);
     expect(markup).toMatch(/<a [^>]*href="\/en\/how-it-works"[^>]*>How Chara Pinnacle works<\/a>/);

@@ -1,8 +1,9 @@
 import { Band } from "@/components/home/band";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
+import { StepList } from "@/components/public/step-list";
 import { BRAND_NAME } from "@/lib/brand";
-import { employerSteps, workerSteps, type Step } from "@/lib/public/steps";
+import { employerSteps, workerSteps } from "@/lib/public/steps";
 import { signUpPath } from "@/lib/routes";
 
 // The two user types of Phase 1 in the order of the client's structure, each with the steps of How it works for its side
@@ -29,24 +30,6 @@ const audiences = [
   },
 ] as const;
 
-function Steps({ steps }: { steps: readonly Step[] }) {
-  return (
-    <ol className="grid">
-      {steps.map(({ title, text }, index) => (
-        <li key={title} className="grid grid-cols-[2rem_minmax(0,1fr)] border-t py-4">
-          <span aria-hidden className="text-small leading-6 font-semibold text-muted-foreground tabular-nums">
-            {index + 1}
-          </span>
-          <span className="grid gap-1">
-            <span className="text-h3">{title}</span>
-            <span className="text-small text-muted-foreground">{text}</span>
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function WhoAreYou({ lang }: { lang: string }) {
   return (
     <Band aria-labelledby="home-who-heading" className="grid gap-12 sm:gap-16">
@@ -67,7 +50,7 @@ export function WhoAreYou({ lang }: { lang: string }) {
               </h3>
               <p className="text-lead text-muted-foreground">{line}</p>
             </div>
-            <Steps steps={steps} />
+            <StepList steps={steps} titleAs="h4" />
             <div className="grid content-start justify-items-start gap-6">
               <p className="text-small font-medium">{fact}</p>
               <LinkButton href={signUpPath(lang, kind)} prefetch={false}>

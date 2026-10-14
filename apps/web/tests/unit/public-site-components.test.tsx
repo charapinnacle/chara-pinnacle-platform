@@ -34,7 +34,7 @@ describe("StepList", () => {
     const markup = html(<StepList steps={workerSteps} />);
     expect(markup.startsWith("<ol")).toBe(true);
     expect(markup.match(/<li/g)).toHaveLength(4);
-    expect(markup).toMatch(/<span aria-hidden="true"[^>]*>1<\/span><h3[^>]*>Create your profile<\/h3>/);
+    expect(markup).toMatch(/<span aria-hidden="true"[^>]*>1<\/span><div[^>]*><h3[^>]*>Create your profile<\/h3>/);
     expect(markup.indexOf("Search vacancies")).toBeLessThan(markup.indexOf("Follow your application"));
   });
 
