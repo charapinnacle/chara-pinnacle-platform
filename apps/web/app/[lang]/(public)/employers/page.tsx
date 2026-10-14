@@ -8,7 +8,8 @@ import { ClosingCall } from "@/components/public/closing-call";
 import { FactList } from "@/components/public/fact-list";
 import { NumberedSteps } from "@/components/public/numbered-steps";
 import { SectionHeading } from "@/components/public/section-heading";
-import { planCard, type PlanCard } from "@/lib/billing/pricing";
+import { daysText, oneTrialRule, trialConversion } from "@/lib/billing/presentation";
+import { planCard, type PublicPlan } from "@/lib/billing/pricing";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { staticPageMetadata } from "@/lib/seo/metadata";
@@ -32,13 +33,17 @@ const steps = [
   },
 ] as const;
 
-// Only what the code enforces: invitations by role (FR-A5), two-step verification on every organisation page for owners and
-// administrators (FR-A4), documents opened through time-limited links and logged for the candidate (FR-B5), and reports
+// Only what the code enforces: invitations by role within the team size of the plan (FR-A5, FR-G1), two-step verification
+// for owners and administrators before applicants, the team, the company profile and billing (FR-A4; vacancy pages are not
+// gated, FR-A4 AC3), documents opened through time-limited links and logged for the candidate (FR-B5), and reports
 // (FR-F4) with moderation that needs a written statement of reasons (FR-C7). The access log merges openings within
 // seconds, so nothing here says "every opening".
 const facts = [
-  { title: "Your team, with roles", text: "Invite colleagues to your organisation as administrators or members." },
-  { title: "Two-step verification", text: "Owners and administrators confirm a second step on every page of the organisation." },
+  { title: "Your team, with roles", text: "Invite colleagues as administrators or members, up to the team size of your plan." },
+  {
+    title: "Two-step verification",
+    text: "Owners and administrators confirm a second step before they open applicants, the team, the company profile or billing.",
+  },
   {
     title: "Documents opened safely",
     text: "Candidate documents open through time-limited links, and the candidate sees which organisation opened them.",
@@ -49,11 +54,10 @@ const facts = [
 // The lowest price an employer can start with, read from the plan records like the pricing page (FR-H2): a plan whose price
 // is on request is not a starting price. A failed read leaves the teaser to the link, so the page is still served; what
 // Next.js throws to stop a render (a dynamic read during the build) is passed on.
-async function startingPlan(): Promise<PlanCard | null> {
+async function startingPlan(): Promise<PublicPlan | null> {
   try {
     const plans = await listPublicPlans();
-    const lowest = plans.filter((plan) => !plan.contactSales).sort((a, b) => a.priceMinor - b.priceMinor)[0];
-    return lowest ? planCard(lowest) : null;
+    return plans.filter((plan) => !plan.contactSales).sort((a, b) => a.priceMinor - b.priceMinor)[0] ?? null;
   } catch (error) {
     unstable_rethrow(error);
     console.error("The plans of the For employers page could not be loaded", error);
@@ -61,22 +65,23 @@ async function startingPlan(): Promise<PlanCard | null> {
   }
 }
 
-function PricingTeaser({ lang, plan }: { lang: string; plan: PlanCard | null }) {
-  const [trial, , conversion] = plan?.trial ?? [];
+function PricingTeaser({ lang, plan }: { lang: string; plan: PublicPlan | null }) {
+  const card = plan ? planCard(plan) : null;
+  const trial = plan && plan.trialDays > 0 ? [`${daysText(plan.trialDays)} free trial.`, `${trialConversion(plan.name)} ${oneTrialRule}`] : [];
   return (
     <Band id="pricing" aria-labelledby="employers-pricing-heading" className="grid items-end gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12">
       <div className="grid gap-4">
         <h2 id="employers-pricing-heading" className="text-eyebrow text-brand-ink uppercase">
           Pricing
         </h2>
-        {plan?.price ? (
+        {card?.price ? (
           <>
             <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="text-section tabular-nums">{plan.price}</span>
-              <span className="text-body text-muted-foreground">{`${plan.per}, excluding VAT`}</span>
+              <span className="text-section tabular-nums">{card.price}</span>
+              <span className="text-body text-muted-foreground">{`${card.per}, excluding VAT`}</span>
             </p>
             <p className="max-w-[60ch] text-body text-pretty text-muted-foreground">
-              {[`${plan.name} plan.`, trial ? `${trial}.` : null, conversion, "Higher plans are on the pricing page."].filter(Boolean).join(" ")}
+              {[`${card.name} plan.`, ...trial, "Higher plans are on the pricing page."].join(" ")}
             </p>
           </>
         ) : (

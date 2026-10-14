@@ -81,7 +81,7 @@ describe("the For employers page (U73, FR-H1, FR-H2)", () => {
   it("shows the price of the lowest plan with a price, its name and its trial terms from the records, and links to the pricing page", async () => {
     const teaser = teaserOf(await render());
     expect(textOf(teaser)).toContain("EUR 39.00 per month, excluding VAT");
-    expect(textOf(teaser)).toContain("Basic plan. 30 days free trial. When the trial ends, your subscription converts to the paid Basic plan");
+    expect(textOf(teaser)).toContain("Basic plan. 30 days free trial. When the trial ends, your subscription converts to the paid Basic plan and your payment method is charged automatically. One free trial is granted for each legal entity. Higher plans are on the pricing page.");
     expect(textOf(teaser)).not.toContain("EUR 1.00");
     expect(teaser).toMatch(/<a [^>]*href="\/en\/pricing"[^>]*>See all plans<\/a>/);
   });
@@ -108,7 +108,9 @@ describe("the For employers page (U73, FR-H1, FR-H2)", () => {
     const html = await render();
     const text = textOf(html);
     for (const fact of ["Your team, with roles", "Two-step verification", "Documents opened safely", "Reporting and moderation"]) expect(text).toContain(fact);
-    for (const phrase of ["recruitment", "staffing", "verified", "every opening", "CHARA Match", "corridor"]) expect(text.toLowerCase()).not.toContain(phrase.toLowerCase());
+    expect(text).toContain("Invite colleagues as administrators or members, up to the team size of your plan.");
+    expect(text).toContain("Owners and administrators confirm a second step before they open applicants, the team, the company profile or billing.");
+    for (const phrase of ["recruitment", "staffing", "verified", "every opening", "every page", "CHARA Match", "corridor"]) expect(text.toLowerCase()).not.toContain(phrase.toLowerCase());
     expect(html).not.toMatch(/<(img|picture)\b|\sstyle=/);
   });
 });
