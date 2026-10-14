@@ -1,5 +1,5 @@
 -- The refusal of an application for too many attempts says how long to wait (FR-D1, FR-D7 AC8; OPEN_QUESTIONS.md D89):
--- CHARA_RATE_LIMITED carries in its detail the seconds until the oldest attempt of the window leaves it, as submit_report
+-- CHARA_RATE_LIMITED carries in its detail the seconds until the count of the window falls under the limit, as submit_report
 -- does. The function is the one of 20261028100000 with only that change; its grants are unchanged.
 create or replace function public.apply_to_job(p_job_id uuid, p_note text default null, p_document_ids uuid[] default null)
 returns table (application_id uuid, outcome text)
@@ -41,11 +41,19 @@ begin
   if v_max is null or v_window is null then
     raise exception 'CHARA_SETTING_MISSING' using detail = 'apply_rate_limit';
   end if;
-  select count(*), min(l.created_at) into v_attempts, v_oldest
+  select count(*) into v_attempts
   from audit.log l
   where l.actor_id = v_uid and l.action in ('application.submitted', 'application.duplicate_attempt')
     and l.created_at > now() - make_interval(secs => v_window);
   if v_attempts >= v_max then
+    -- The count falls under the limit only when the v_max-th newest attempt leaves the window: the oldest one is not enough
+    -- once the limit has been lowered below the count.
+    select l.created_at into v_oldest
+    from audit.log l
+    where l.actor_id = v_uid and l.action in ('application.submitted', 'application.duplicate_attempt')
+      and l.created_at > now() - make_interval(secs => v_window)
+    order by l.created_at desc
+    offset v_max - 1 limit 1;
     raise exception 'CHARA_RATE_LIMITED'
       using detail = greatest(1, ceil(extract(epoch from v_oldest + make_interval(secs => v_window) - now())))::integer::text;
   end if;
