@@ -130,7 +130,7 @@ describe("the contrast helper", () => {
 });
 
 describe("the type scale and spacing tokens (DS-02)", () => {
-  it.each(["hero", "section", "display", "h1", "h2", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
+  it.each(["hero", "section", "display", "h1", "h2", "title", "h3", "body", "small", "caption", "eyebrow"])("declares the %s size", (size) => {
     expect(css).toMatch(new RegExp(`--text-${size}:\\s*[\\d.]+rem;`));
   });
 
@@ -138,13 +138,20 @@ describe("the type scale and spacing tokens (DS-02)", () => {
     expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-display: 3rem;[^}]*--text-h1: 2rem;/);
   });
 
-  it("steps the home headline to 56 and 64 px and the home section headings to 36 and 40 px from the sm and the lg breakpoint", () => {
-    expect(css).toMatch(/--text-hero: 2.5rem;/);
+  it("steps the home headline from 44 to 56, 72 and 80 px and the section headings from 32 to 36, 44 and 52 px at the sm, lg and xl breakpoints (U73)", () => {
+    expect(css).toMatch(/--text-hero: 2.75rem;/);
+    expect(css).toMatch(/--text-section: 2rem;/);
     expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*:root\s*\{[^}]*--text-hero: 3.5rem;[^}]*--text-section: 2.25rem;/);
-    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4rem;\s*--text-section: 2.5rem;\s*\}/);
+    expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{\s*:root\s*\{\s*--text-hero: 4.5rem;\s*--text-section: 2.75rem;\s*\}/);
+    expect(css).toMatch(/@media \(min-width: 80rem\)\s*\{\s*:root\s*\{\s*--text-hero: 5rem;\s*--text-section: 3.25rem;\s*\}/);
   });
 
-  it.each(["hero", "section"])("sets the %s size semibold, like every other heading of the one type family", (size) => {
+  it("has the 24 px title size for a step and a short statement, and the 420 px breakpoint of the public header", () => {
+    expect(css).toMatch(/--text-title: 1.5rem;/);
+    expect(css).toMatch(/--breakpoint-xs: 26.25rem;/);
+  });
+
+  it.each(["hero", "section", "title"])("sets the %s size semibold, like every other heading of the one type family", (size) => {
     expect(css).toMatch(new RegExp(`--text-${size}--font-weight:\\s*600;`));
   });
 

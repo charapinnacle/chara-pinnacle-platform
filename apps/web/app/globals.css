@@ -78,18 +78,18 @@
 }
 
 /* The type scale, one family (Geist): display and h1 step up at the sm breakpoint, hero and section at sm and lg (the :root
-   overrides in the base layer below), and the headings carry their weight and tracking, so a heading is one utility:
+   overrides in the base layer below, and xl for the two), and the headings carry their weight and tracking, so a heading is one utility:
    text-hero (the one headline of the home page), text-section (its section headings and live figures), text-display,
-   text-h1, text-h2, text-h3. text-figure is the size of a number shown on its own (a count, a price tile). text-eyebrow is
+   text-h1, text-h2, text-title (a step or a short statement of the home and For employers pages), text-h3. text-figure is the size of a number shown on its own (a count, a price tile). text-eyebrow is
    the small upper-case label above a section heading. text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the two gaps
    between the blocks of a page (page, and section for a page of several sections). docs/runbooks/design-system.md documents each token. */
 @theme {
-  --text-hero: 2.5rem;
-  --text-hero--line-height: 1.05;
+  --text-hero: 2.75rem;
+  --text-hero--line-height: 1.04;
   --text-hero--font-weight: 600;
   --text-hero--letter-spacing: -0.04em;
-  --text-section: 1.875rem;
-  --text-section--line-height: 1.15;
+  --text-section: 2rem;
+  --text-section--line-height: 1.08;
   --text-section--font-weight: 600;
   --text-section--letter-spacing: -0.03em;
   --text-display: 2.25rem;
@@ -104,6 +104,10 @@
   --text-h2--line-height: 1.55;
   --text-h2--font-weight: 600;
   --text-h2--letter-spacing: -0.012em;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.25;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.02em;
   --text-h3: 1rem;
   --text-h3--line-height: 1.5;
   --text-h3--font-weight: 600;
@@ -122,6 +126,7 @@
   --text-eyebrow--line-height: 1.33;
   --text-eyebrow--font-weight: 600;
   --text-eyebrow--letter-spacing: 0.14em;
+  --breakpoint-xs: 26.25rem;
   --spacing-card-sm: 0.75rem;
   --spacing-card: 1rem;
   --spacing-card-lg: 1.25rem;
@@ -289,8 +294,14 @@
   }
   @media (min-width: 64rem) {
     :root {
-      --text-hero: 4rem;
-      --text-section: 2.5rem;
+      --text-hero: 4.5rem;
+      --text-section: 2.75rem;
+    }
+  }
+  @media (min-width: 80rem) {
+    :root {
+      --text-hero: 5rem;
+      --text-section: 3.25rem;
     }
   }
   @media (prefers-reduced-motion: reduce) {
