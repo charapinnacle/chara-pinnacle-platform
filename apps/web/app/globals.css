@@ -25,7 +25,6 @@
 @theme inline {
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
-  --font-serif: var(--font-newsreader), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -78,27 +77,21 @@
     0 1px 2px oklch(0.2 0.01 85 / 0.04), 0 8px 24px -12px oklch(0.2 0.01 85 / 0.1);
 }
 
-/* The type scale: display and h1 step up at the sm breakpoint (the :root override in the base layer below), and the
-   headings carry their weight and tracking, so a heading is one utility: text-display, text-h1, text-h2, text-h3.
-   text-figure is the size of a number shown on its own (a count, a price tile). text-eyebrow is the small upper-case label above
-   a section heading. The serif (--font-serif, Newsreader, one weight) is for the display headings of the home page only and
-   never for body text or controls: text-hero is its one headline (it steps up at sm and lg), text-section its section
-   headings and the numbers of the steps, text-numeral its large figures; all three are weight 400, the weight that is loaded.
-   text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the two gaps
+/* The type scale, one family (Geist): display and h1 step up at the sm breakpoint, hero and section at sm and lg (the :root
+   overrides in the base layer below), and the headings carry their weight and tracking, so a heading is one utility:
+   text-hero (the one headline of the home page), text-section (its section headings and live figures), text-display,
+   text-h1, text-h2, text-h3. text-figure is the size of a number shown on its own (a count, a price tile). text-eyebrow is
+   the small upper-case label above a section heading. text-body, text-small and text-caption are the running-text sizes. Spacing: the three card paddings and the two gaps
    between the blocks of a page (page, and section for a page of several sections). docs/runbooks/design-system.md documents each token. */
 @theme {
-  --text-hero: 2.75rem;
-  --text-hero--line-height: 1.04;
-  --text-hero--font-weight: 400;
-  --text-hero--letter-spacing: -0.025em;
+  --text-hero: 2.5rem;
+  --text-hero--line-height: 1.05;
+  --text-hero--font-weight: 600;
+  --text-hero--letter-spacing: -0.04em;
   --text-section: 1.875rem;
   --text-section--line-height: 1.15;
-  --text-section--font-weight: 400;
-  --text-section--letter-spacing: -0.02em;
-  --text-numeral: 3rem;
-  --text-numeral--line-height: 1;
-  --text-numeral--font-weight: 400;
-  --text-numeral--letter-spacing: -0.03em;
+  --text-section--font-weight: 600;
+  --text-section--letter-spacing: -0.03em;
   --text-display: 2.25rem;
   --text-display--line-height: 1.15;
   --text-display--font-weight: 600;
@@ -185,10 +178,8 @@
 
 /* The CHARA Pinnacle palette, derived from the gold-on-black monogram: near-black ink, warm off-white surfaces and gold as
    the single accent. Gold is never text on a light surface: --brand-ink, a deep bronze, is. Status colours are semantic
-   only. Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. .light puts the light
-   set back inside a dark surface (the white search bar and the passport card of the home page). */
-:root,
-.light {
+   only. Every foreground/background pair is checked for WCAG AA contrast in tests/unit/tokens.test.ts. */
+:root {
   --background: oklch(0.982 0.004 85);
   --foreground: oklch(0.15 0.003 85);
   --card: oklch(1 0 0);
@@ -236,11 +227,10 @@
   --radius: 0.625rem;
 }
 
-/* The dark set is complete and tested. It is applied by the dark class on a surface, as on the dark bands of the home page
-   and its footer, and on the header over the dark hero; the page itself stays light (no theme switch exists). Gold becomes the
-   primary there, as on the brand tile. */
-.dark,
-.site-header:has(~ main [data-hero]) {
+/* The dark set is complete and tested. It is applied by the dark class on a surface, as on the closing call of the home page
+   and the footer; the page itself stays light (no theme switch exists). Gold becomes the primary there, as on the brand
+   tile. */
+.dark {
   --background: oklch(0.15 0.003 85);
   --foreground: oklch(0.96 0.004 85);
   --card: oklch(0.19 0.004 85);
@@ -291,18 +281,16 @@
   }
   @media (min-width: 40rem) {
     :root {
-      --text-hero: 3.75rem;
+      --text-hero: 3.5rem;
       --text-section: 2.25rem;
-      --text-numeral: 4rem;
       --text-display: 3rem;
       --text-h1: 2rem;
     }
   }
   @media (min-width: 64rem) {
     :root {
-      --text-hero: 4.75rem;
+      --text-hero: 4rem;
       --text-section: 2.5rem;
-      --text-numeral: 4.5rem;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -329,16 +317,4 @@
 :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
-}
-
-@utility lift {
-  @media (prefers-reduced-motion: no-preference) and (hover: hover) {
-    transition:
-      transform 200ms var(--ease-brand),
-      box-shadow 200ms var(--ease-brand);
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-card);
-    }
-  }
 }
