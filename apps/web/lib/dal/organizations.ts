@@ -44,7 +44,7 @@ export function publishingOrganization(organizations: Organization[]): Organizat
 // Where Post a Job leads, for the header and the home page alike. A visitor starts as an employer; a signed-in employer goes
 // through /post-job, which finds the new-vacancy page of the organisation (the address of an organisation is not put on a
 // public page). A candidate, a suspended account and a member who cannot publish are offered nothing (null).
-export async function getPostJobHref(lang: string): Promise<string | null> {
+export const getPostJobHref = cache(async (lang: string): Promise<string | null> => {
   const user = await getCurrentUser();
   if (!user) return signUpPath(lang, "company");
   if (user.suspended || user.accountKind !== "company") return null;
@@ -56,7 +56,7 @@ export async function getPostJobHref(lang: string): Promise<string | null> {
     console.error("The organisations of Post a Job could not be loaded", error);
     return `/${lang}/post-job`;
   }
-}
+});
 
 export async function getOrganizationSlug(organizationId: string): Promise<string | null> {
   const supabase = await createClient();
