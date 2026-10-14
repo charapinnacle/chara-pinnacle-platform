@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CREDIBLE_MINIMUM, statisticTiles } from "@/lib/statistics/tiles";
+import { statisticTiles } from "@/lib/statistics/tiles";
 
 describe("the statistics tiles (FR-H4 AC12, D87)", () => {
   it("builds a tile for each value that is a number and none for the values the database holds back", () => {
@@ -28,7 +28,6 @@ describe("the statistics tiles (FR-H4 AC12, D87)", () => {
   });
 
   it("leaves out a value the database shows but that is below the credible minimum of 100, and keeps 100", () => {
-    expect(CREDIBLE_MINIMUM).toBe(100);
     expect(statisticTiles({ active_jobs: 99, employers: 100, workers: 30, countries: 6 })).toEqual([{ label: "Employers", value: "100" }]);
     expect(statisticTiles({ active_jobs: 0, employers: 5, workers: 10, countries: 1 })).toEqual([]);
   });

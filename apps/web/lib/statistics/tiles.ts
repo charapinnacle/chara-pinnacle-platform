@@ -7,7 +7,7 @@ export type StatisticTile = { label: string; value: string };
 // The smallest live figure the home page shows (OPEN_QUESTIONS.md D87): the database already holds back every count below
 // the privacy threshold (stats_min_count, at least 5); a count that is public but small reads as an empty platform, so the
 // page leaves it out until it reaches this. It is the one place to change it.
-export const CREDIBLE_MINIMUM = 100;
+const CREDIBLE_MINIMUM = 100;
 
 const columns = [
   ["workers", "Workers"],

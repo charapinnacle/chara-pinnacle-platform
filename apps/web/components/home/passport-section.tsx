@@ -14,7 +14,7 @@ const contents = [
 
 const privacy = [
   "Your documents are private. You choose which ones an employer sees, application by application.",
-  "Every time an organisation opens one of your documents, it is recorded in your access log.",
+  "When an organisation opens one of your documents, your access log shows who opened it and when.",
 ] as const;
 
 export function PassportSection({ lang }: { lang: string }) {

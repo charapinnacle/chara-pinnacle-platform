@@ -132,7 +132,7 @@ describe("the CHARA Passport", () => {
       "CV and certificates",
     ]);
     expect(textOf(markup)).toContain("You choose which ones an employer sees, application by application.");
-    expect(textOf(markup)).toContain("it is recorded in your access log");
+    expect(textOf(markup)).toContain("When an organisation opens one of your documents, your access log shows who opened it and when.");
     expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=worker"[^>]*>Create your CHARA Passport<\/a>/);
   });
 });
