@@ -319,7 +319,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
                 name="salary_currency"
                 id="search-salary-currency"
                 label="Currency"
-                placeholder="Choose a currency"
+                placeholder="Choose"
                 options={currencies.map(({ code, name }) => ({ value: code, label: `${code} · ${name}` }))}
               />
               <SelectField
@@ -327,7 +327,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
                 name="salary_period"
                 id="search-salary-period"
                 label="Pay period"
-                placeholder="Choose a pay period"
+                placeholder="Choose"
                 options={salaryPeriodOptions}
               />
             </fieldset>

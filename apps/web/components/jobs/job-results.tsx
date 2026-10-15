@@ -32,8 +32,8 @@ function ResultRow({ job, lang, countryName, current, panelHref }: ResultRowProp
   return (
     <li
       className={cn(
-        "relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 rounded-2xl border border-transparent p-4 transition-colors hover:border-border hover:bg-card has-data-pending:border-border has-data-pending:bg-card",
-        current && "lg:border-border lg:bg-card lg:shadow-card",
+        "relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 rounded-2xl border bg-card p-4 transition-colors hover:border-input has-data-pending:border-input",
+        current && "lg:border-foreground lg:hover:border-foreground",
       )}
     >
       <EmployerMark name={job.employerName} />
@@ -109,7 +109,7 @@ export async function JobResults({ lang, filters, selected }: { lang: string; fi
         <p role="status" aria-live="polite" className="px-1 text-small text-muted-foreground">
           {countText(results.length, nextCursor !== null)}
         </p>
-        <ul aria-label="Vacancies" className="animate-stagger grid gap-1">
+        <ul aria-label="Vacancies" className="animate-stagger grid gap-2">
           {results.map((job) => (
             <ResultRow
               key={job.id}
