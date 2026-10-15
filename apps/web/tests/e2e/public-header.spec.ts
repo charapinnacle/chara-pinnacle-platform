@@ -9,12 +9,13 @@ import { expect, test } from "./support/test";
 const nav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Main" });
 
 test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
-  test("a visitor sees Find Jobs, For employers, Post a Job, Sign in and Menu, and Post a Job opens the employer sign-up", async ({ page }) => {
+  test("a visitor sees Find Jobs, For employers, How it works, Post a Job and Sign in and no Menu, and Post a Job opens the employer sign-up", async ({ page }) => {
     await page.goto("/en/pricing");
     await expect(nav(page).getByRole("link")).toHaveText(HEADER_LABELS);
     await expect(nav(page).getByRole("link", { name: "For employers" })).toHaveAttribute("href", "/en/employers");
-    await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeVisible();
-    await expect(nav(page).getByRole("link", { name: "How Chara Pinnacle works" })).toHaveCount(0);
+    await expect(nav(page).getByRole("link", { name: "How it works" })).toHaveAttribute("href", "/en/how-it-works");
+    await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
+    await expect(page.locator('button[aria-controls="site-menu"]')).toHaveCount(1);
     await nav(page).getByRole("link", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL("/en/login");
     await page.getByRole("main").getByRole("link", { name: "Create an account" }).click();
@@ -71,7 +72,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link")).toHaveText(["Find Jobs", "For employers", "Go to my area"]);
+    await expect(nav(page).getByRole("link")).toHaveText(["Find Jobs", "For employers", "How it works", "Go to my area"]);
     await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveCount(0);
     await page.goto("/en/post-job");
     await expect(page).toHaveURL("/en/dashboard/worker");
@@ -94,8 +95,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await expect(nav(page).getByRole("link")).toHaveText(HEADER_LABELS);
   });
 
-  test("the Menu opens a side panel that holds focus, names the later-phase navigation without links and closes by Escape, the close button and the backdrop", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
+  test("on a phone the Menu opens a panel that holds focus, names the later-phase navigation without links and closes by Escape, the close button and the backdrop", async ({ page }) => {
+    await page.setViewportSize({ width: 600, height: 800 });
     await page.goto("/en/about");
     const menu = page.getByRole("button", { name: "Menu", exact: true });
     const panel = page.getByRole("dialog", { name: "Menu" });
@@ -111,12 +112,13 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await expect(panel.getByRole("navigation", { name: "Explore" }).getByRole("link")).toHaveText(MENU_LINKS);
     await expect(panel.getByRole("navigation", { name: "Explore" }).getByRole("link", { name: "For job seekers" })).toHaveAttribute("href", "/en");
     const later = panel.getByRole("list", { name: "Coming in a later phase" });
-    await expect(later.getByRole("listitem")).toHaveText(LATER_PHASE.map((feature) => `${feature}Not yet available`));
+    await expect(later.getByRole("listitem")).toHaveText(LATER_PHASE);
+    await expect(panel.getByText("Not yet available", { exact: true })).toBeVisible();
     await expect(later.locator("a")).toHaveCount(0);
     for (const footerOnly of ["Pricing", "Trust & Safety", "About", "Contact"]) await expect(panel.getByRole("link", { name: footerOnly, exact: true })).toHaveCount(0);
     await expect(panel.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/en/login");
     await expect(panel.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/en/signup");
-    // At 1280 px Post a Job is in the header; the panel's own is for phones.
+    // At 600 px Post a Job is in the header; the panel's own is for phones narrower than 420 px.
     await expect(panel.getByRole("link", { name: "Post a Job" })).toBeHidden();
     await expectNoAxeViolations(page);
 

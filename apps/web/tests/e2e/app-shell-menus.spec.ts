@@ -176,6 +176,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await page.goto("/en/pricing");
     await expect(mainNavigation(page).getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Log out" })).toHaveCount(0);
+    await page.setViewportSize({ width: 375, height: 800 });
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/en/signup");
 
@@ -188,12 +189,15 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await expect(navigation.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
     await expect(navigation.getByRole("link", { name: "Sign up" })).toHaveCount(0);
     await expectNoAxeViolations(session.page);
+    await expect(session.page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
+    await session.page.setViewportSize({ width: 375, height: 800 });
     await session.page.getByRole("button", { name: "Menu", exact: true }).click();
     const panel = session.page.getByRole("dialog", { name: "Menu" });
     await expect(panel.getByRole("link", { name: "Go to my area" })).toHaveAttribute("href", "/en/dashboard/worker");
     await expect(panel.getByRole("button", { name: "Log out" })).toBeVisible();
     await expect(panel.getByRole("link", { name: /^Sign (in|up)$/ })).toHaveCount(0);
     await session.page.keyboard.press("Escape");
+    await session.page.setViewportSize({ width: 1280, height: 720 });
 
     await navigation.getByRole("link", { name: "Go to my area" }).click();
     await expect(session.page).toHaveURL("/en/dashboard/worker");

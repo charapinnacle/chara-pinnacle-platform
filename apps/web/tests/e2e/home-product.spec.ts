@@ -165,10 +165,11 @@ test.describe("the home page (U73)", () => {
     await expect(footer.getByText(`© ${new Date().getFullYear()} Chara Pinnacle`)).toBeVisible();
   });
 
-  test("from the top the keyboard reaches the header and the Menu, then the search, which Enter sends, then the employer line", async ({ page }) => {
+  test("from the top the keyboard reaches the header, then the search, which Enter sends, then the employer line", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en");
-    await page.getByRole("button", { name: "Menu", exact: true }).waitFor();
+    // The Menu is a phone's and not displayed here; its button replaces the no-JavaScript link once the page is hydrated.
+    await page.locator('button[aria-controls="site-menu"]').waitFor({ state: "attached" });
     const stops: string[] = [];
     for (let press = 0; press < 12; press++) {
       await page.keyboard.press("Tab");
@@ -183,7 +184,6 @@ test.describe("the home page (U73)", () => {
       "other:Skip to main content",
       "header:Chara Pinnacle\nCHARA",
       ...HEADER_LABELS.map((label) => `header:${label}`),
-      "header:Menu",
       "main:Job title, skill or occupation",
       "main:City or country",
       "main:Search jobs",
