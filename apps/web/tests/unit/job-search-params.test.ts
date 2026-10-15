@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   formDefaults,
   formFilters,
+  formSearchPath,
   parseSearchParams,
+  placeText,
   resolvePlace,
   searchFormSchema,
   searchQuery,
@@ -247,23 +249,54 @@ describe("usedFilters", () => {
   });
 });
 
+const countryNames = new Map([["DE", "Germany"], ["GB", "United Kingdom"]]);
+
 describe("formDefaults", () => {
   it("shows the filters of an address in the form and leaves the rest empty", () => {
-    expect(formDefaults("country=DE&salary_min=3000&salary_currency=EUR&salary_period=month&visa_support=true")).toEqual({
-      q: "", country: "DE", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "3000",
+    expect(formDefaults("country=DE&salary_min=3000&salary_currency=EUR&salary_period=month&visa_support=true", countryNames)).toEqual({
+      q: "", where: "Germany", country: "DE", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "3000",
       salary_currency: "EUR", salary_period: "month", accommodation: false, visa_support: true, recruitment: "",
     });
   });
 
   it("drops what the address cannot carry, so the form never shows an invalid value", () => {
-    expect(formDefaults("country=DEU&salary_min=3000").salary_min).toBe("");
-    expect(formDefaults("country=DEU").country).toBe("");
+    expect(formDefaults("country=DEU&salary_min=3000", countryNames).salary_min).toBe("");
+    expect(formDefaults("country=DEU", countryNames).country).toBe("");
+    expect(formDefaults("country=DEU", countryNames).where).toBe("");
+  });
+});
+
+describe("the Where field of Find Jobs", () => {
+  it("shows the place in the form resolvePlace reads back", () => {
+    expect(placeText({ city: "London", country: "GB" }, countryNames)).toBe("London, United Kingdom");
+    expect(placeText({ country: "DE" }, countryNames)).toBe("Germany");
+    expect(placeText({ city: "Manila" }, countryNames)).toBe("Manila");
+    expect(placeText({}, countryNames)).toBe("");
+    const countries = [...countryNames].map(([code, name]) => ({ code, name }));
+    expect(resolvePlace({ where: placeText({ city: "London", country: "GB" }, countryNames) }, countries)).toEqual({ city: "London", country: "GB" });
+  });
+
+  it("sends the place as where and leaves the country and the city to the page", () => {
+    const values = searchFormSchema.parse({
+      q: "plumber", where: "London, United Kingdom", country: "GB", city: "London", employer: "", occupation: "7126", industry: "",
+      employment_type: "", salary_min: "", salary_currency: "", salary_period: "", accommodation: false, visa_support: false, recruitment: "",
+    });
+    expect(formSearchPath("en", values)).toBe("/en/jobs?q=plumber&occupation=7126&where=London%2C+United+Kingdom");
+    expect(formSearchPath("en", { ...values, where: "" })).toBe("/en/jobs?q=plumber&occupation=7126");
+  });
+
+  it("refuses a place longer than 100 characters", () => {
+    const result = searchFormSchema.safeParse({
+      q: "", where: "x".repeat(101), country: "", city: "", employer: "", occupation: "", industry: "", employment_type: "",
+      salary_min: "", salary_currency: "", salary_period: "", accommodation: false, visa_support: false, recruitment: "",
+    });
+    expect(!result.success && result.error.issues.map((issue) => issue.path[0])).toEqual(["where"]);
   });
 });
 
 describe("searchFormSchema", () => {
   const empty = {
-    q: "", country: "", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "",
+    q: "", where: "", country: "", city: "", employer: "", occupation: "", industry: "", employment_type: "", salary_min: "",
     salary_currency: "", salary_period: "", accommodation: false, visa_support: false, recruitment: "",
   };
 
