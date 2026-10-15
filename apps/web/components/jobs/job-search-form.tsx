@@ -43,10 +43,12 @@ const chipClassName =
   "inline-flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border bg-card px-4 text-small font-medium whitespace-nowrap transition-colors select-none hover:border-input group-open:border-foreground [&::-webkit-details-marker]:hidden";
 const activeChipClassName = "border-primary bg-primary text-primary-foreground hover:border-primary group-open:border-primary";
 
-// A menu below its chip from 768 px; on a phone a sheet from the foot of the screen, which a row that scrolls sideways
-// cannot clip.
+// A menu below its chip from 768 px; on a phone a sheet from the foot of the screen over a dimmed page, which a row that
+// scrolls sideways cannot clip, tall enough for the list of a combobox to open inside it.
 const menuClassName =
-  "z-30 grid gap-4 border bg-card p-4 shadow-card max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[85dvh] max-md:overflow-y-auto max-md:rounded-t-2xl max-md:pb-[max(1rem,env(safe-area-inset-bottom))] md:absolute md:start-0 md:top-full md:mt-2 md:w-80 md:rounded-2xl";
+  "z-40 grid content-start gap-4 border bg-card p-4 shadow-card max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:h-[70dvh] max-md:overflow-y-auto max-md:rounded-t-3xl max-md:p-5 max-md:pb-[max(1.25rem,env(safe-area-inset-bottom))] md:absolute md:start-0 md:top-full md:mt-2 md:w-80 md:rounded-2xl";
+const scrimClassName =
+  "max-md:open:before:fixed max-md:open:before:inset-0 max-md:open:before:z-30 max-md:open:before:bg-inverse/30 max-md:open:before:content-['']";
 
 type FilterMenuProps = {
   label: string;
@@ -59,7 +61,7 @@ type FilterMenuProps = {
 // JavaScript a choice searches at once (see the watch in JobSearchForm).
 function FilterMenu({ label, value, className, children }: FilterMenuProps) {
   return (
-    <details className={cn("group relative shrink-0", className)} data-filter-menu>
+    <details className={cn("group shrink-0 md:relative", scrimClassName, className)} data-filter-menu>
       <summary className={cn(chipClassName, value && activeChipClassName)}>
         {value ? (
           <>
@@ -175,8 +177,10 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         if (menu !== opened) menu.open = false;
       });
     };
+    // The dimmed page of a phone sheet is drawn by its details element, so a press there lands on the element itself.
     const onPointer = (event: PointerEvent) => {
-      if (!(event.target as Element).closest("details[data-filter-menu]")) closeMenus();
+      const target = event.target as Element;
+      if (target.matches("details[data-filter-menu]") || !target.closest("details[data-filter-menu]")) closeMenus();
     };
     const onKey = (event: KeyboardEvent) => {
       // An open list of a combobox takes Escape first and marks it handled.
@@ -289,7 +293,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         <details
           open={moreOpen}
           onToggle={(event) => setMoreOpen(event.currentTarget.open)}
-          className="group shrink-0 md:relative"
+          className={cn("group shrink-0 md:relative", scrimClassName)}
           data-filter-menu
         >
           <summary className={cn(chipClassName, moreCount > 0 && activeChipClassName)}>

@@ -32,7 +32,7 @@ function ResultRow({ job, lang, countryName, current, panelHref }: ResultRowProp
   return (
     <li
       className={cn(
-        "relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 rounded-2xl border border-transparent p-4 transition-colors hover:border-border hover:bg-card",
+        "relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 rounded-2xl border border-transparent p-4 transition-colors hover:border-border hover:bg-card has-data-pending:border-border has-data-pending:bg-card",
         current && "lg:border-border lg:bg-card lg:shadow-card",
       )}
     >
@@ -104,7 +104,7 @@ export async function JobResults({ lang, filters, selected }: { lang: string; fi
 
   const current = results.some((job) => job.id === selected) ? selected : results[0].id;
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start [&:has([data-pending])_aside]:opacity-60 [&_aside]:transition-opacity">
       <div className="grid gap-3">
         <p role="status" aria-live="polite" className="px-1 text-small text-muted-foreground">
           {countText(results.length, nextCursor !== null)}
