@@ -45,8 +45,9 @@ const activeChipClassName = "border-primary bg-primary text-primary-foreground h
 
 // A menu below its chip from 768 px; on a phone a sheet from the foot of the screen over a dimmed page, which a row that
 // scrolls sideways cannot clip, tall enough for the list of a combobox to open inside it.
+// The fields inside are a size smaller than those of a page form: 40 px high, small text.
 const menuClassName =
-  "z-40 grid content-start gap-4 border bg-card p-4 shadow-card max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:h-[70dvh] max-md:overflow-y-auto max-md:rounded-t-3xl max-md:p-5 max-md:pb-[max(1.25rem,env(safe-area-inset-bottom))] md:absolute md:start-0 md:top-full md:mt-2 md:w-80 md:rounded-2xl";
+  "z-40 grid content-start gap-3 border bg-card p-3 text-small shadow-card max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:h-[60dvh] max-md:overflow-y-auto max-md:rounded-t-3xl max-md:p-4 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] md:absolute md:start-0 md:top-full md:mt-2 md:w-64 md:rounded-xl [&_button[data-slot]]:h-10 [&_input:not([type=checkbox])]:h-10 [&_input]:text-small [&_label]:text-small [&_select]:h-10 [&_select]:text-small";
 const scrimClassName =
   "max-md:open:before:fixed max-md:open:before:inset-0 max-md:open:before:z-30 max-md:open:before:bg-inverse/30 max-md:open:before:content-['']";
 
@@ -177,9 +178,12 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         if (menu !== opened) menu.open = false;
       });
     };
-    // The dimmed page of a phone sheet is drawn by its details element, so a press there lands on the element itself.
+    // A press outside the menus closes them, except on Search jobs: the search closes them itself and keeps More filters
+    // open when a field there is refused. The dimmed page of a phone sheet is drawn by its details element, so a press
+    // there lands on the element itself.
     const onPointer = (event: PointerEvent) => {
       const target = event.target as Element;
+      if (target.closest("button[type=submit]")) return;
       if (target.matches("details[data-filter-menu]") || !target.closest("details[data-filter-menu]")) closeMenus();
     };
     const onKey = (event: KeyboardEvent) => {
@@ -301,7 +305,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
             More filters
             {moreCount > 0 ? <span className="tabular-nums">· {moreCount}</span> : null}
           </summary>
-          <div className={cn(menuClassName, "gap-5 md:w-[min(34rem,calc(100vw-4rem))]")}>
+          <div className={cn(menuClassName, "gap-4 md:w-[min(26rem,calc(100vw-4rem))]")}>
             <InputField
               control={control}
               name="employer"
@@ -311,9 +315,11 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
               autoComplete="off"
             />
 
-            <fieldset className="grid gap-3 sm:grid-cols-3">
-              <legend className="mb-3 text-h3">Minimum salary</legend>
-              <InputField control={control} name="salary_min" id="search-salary-min" label="Salary at least" inputMode="decimal" />
+            <fieldset className="grid grid-cols-2 gap-2">
+              <legend className="mb-2 font-semibold">Minimum salary</legend>
+              <div className="col-span-2">
+                <InputField control={control} name="salary_min" id="search-salary-min" label="Salary at least" inputMode="decimal" />
+              </div>
               <ComboboxField
                 control={control}
                 name="salary_currency"
@@ -341,7 +347,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
               </CheckboxField>
             </div>
 
-            <FormButton type="submit" busy={searching} className="w-auto justify-self-start max-md:w-full">
+            <FormButton type="submit" busy={searching} className="h-10 w-auto justify-self-start max-md:w-full">
               Show vacancies
             </FormButton>
           </div>

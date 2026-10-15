@@ -224,7 +224,7 @@ test.describe("the public pages", () => {
     execute(`update public.jobs set deleted_at = now() where id = ${literal(ids.deleted)}`);
 
     await page.goto(`/en/jobs?q=${marker}`);
-    await expect(page.getByRole("heading", { level: 2 })).toHaveText([title("Visible")]);
+    await expect(page.getByRole("list", { name: "Vacancies" }).getByRole("heading", { level: 2 })).toHaveText([title("Visible")]);
     await expect(page.getByRole("link", { name: title("Visible") })).toHaveAttribute("href", `/en/jobs/${ids.visible}`);
 
     const statuses = Object.fromEntries(

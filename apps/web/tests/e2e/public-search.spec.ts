@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
-import { chooseFromList, newCompany, openMoreFilters, seedJob, type Company } from "./support/jobs";
+import { chooseFromList, newCompany, openFilter, openMoreFilters, seedJob, type Company } from "./support/jobs";
 import { logIn, overflow } from "./support/login-page";
 import { organizationRows, uniqueToken } from "./support/organizations";
 import { expect, test } from "./support/test";
@@ -36,8 +36,11 @@ test.describe("public vacancy search", () => {
     await page.goto("/en/jobs");
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
-    await chooseFromList(page, "Country", "Germany", /^Germany$/);
+    await page.getByLabel("Where", { exact: true }).fill("Germany");
+    // A choice in a filter menu searches at once, with what the bar holds.
+    await openFilter(page, "Employment type");
     await page.getByLabel("Employment type").selectOption("full_time");
+    await expect.poll(() => params(page)).toEqual({ q: marker, country: "DE", employment_type: "full_time" });
     await openMoreFilters(page);
     await page.getByLabel("Salary at least").fill("3000");
     await chooseFromList(page, "Currency", "EUR", /^EUR /);
@@ -73,16 +76,18 @@ test.describe("public vacancy search", () => {
     await expect(cards(page, marker)).toHaveCount(20);
     expect(page.url()).toBe(firstPageUrl);
     await expect(page.getByLabel("Keyword", { exact: true })).toHaveValue(marker);
-    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveValue("Germany");
+    await expect(page.getByLabel("Where", { exact: true })).toHaveValue("Germany");
     await expect(page.getByLabel("Employment type")).toHaveValue("full_time");
     await expect(page.getByLabel("Salary at least")).toHaveValue("3000");
 
-    await page.getByLabel("City", { exact: true }).fill("Hamburg");
+    await page.getByLabel("Where", { exact: true }).fill("Hamburg, Germany");
     await page.getByRole("button", { name: "Search jobs" }).click();
     await expect.poll(() => params(page).city).toBe("Hamburg");
+    expect(params(page).country).toBe("DE");
     await expect(cards(page, marker)).toHaveCount(20);
+    await expect(page.getByLabel("Where", { exact: true })).toHaveValue("Hamburg, Germany");
     await page.goBack();
-    await expect(page.getByLabel("City", { exact: true })).toHaveValue("");
+    await expect(page.getByLabel("Where", { exact: true })).toHaveValue("Germany");
     expect(page.url()).toBe(firstPageUrl);
 
     const visitor = await browser.newContext();
@@ -131,10 +136,15 @@ test.describe("public vacancy search", () => {
     expect(text).not.toContain(organization.legal_name);
     expect(text).not.toContain(company.owner.email);
 
-    for (const label of ["Country", "Occupation", "Industry"]) {
+    for (const label of ["Keyword", "Where"]) {
+      await expect(page.getByLabel(label, { exact: true }), label).toBeVisible();
+    }
+    for (const label of ["Occupation", "Industry"]) {
+      await openFilter(page, label);
       await expect(page.getByRole("combobox", { name: label, exact: true }), label).toBeVisible();
     }
-    for (const label of ["Keyword", "City", "Employment type", "Recruitment"]) {
+    for (const [chip, label] of [["Employment type", "Employment type"], ["Open to", "Recruitment"]]) {
+      await openFilter(page, chip);
       await expect(page.getByLabel(label, { exact: true }), label).toBeVisible();
     }
     await openMoreFilters(page);
@@ -156,13 +166,8 @@ test.describe("public vacancy search", () => {
     await keyword.focus();
     await page.keyboard.type(marker);
     await page.keyboard.press("Tab");
-    await expect(page.getByLabel("City", { exact: true })).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toBeFocused();
+    await expect(page.getByLabel("Where", { exact: true })).toBeFocused();
     await page.keyboard.type("Germany");
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveValue("Germany");
-    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await expect(keyword).toBeFocused();
     await page.keyboard.press("Enter");
@@ -236,7 +241,7 @@ test.describe("public vacancy search", () => {
     await expect(notice).toContainText("Select a currency for the minimum salary.");
     await expect(notice).toContainText("Select a pay period for the minimum salary.");
     await expect(cards(page, marker)).toHaveCount(1);
-    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveValue("");
+    await expect(page.getByLabel("Where", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Salary at least")).toHaveValue("");
   });
 

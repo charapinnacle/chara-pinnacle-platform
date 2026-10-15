@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import { ActiveFilters } from "@/components/jobs/active-filters";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
+import { JobDialog } from "@/components/jobs/job-dialog";
 import { JobResults } from "@/components/jobs/job-results";
 import { JobSearchForm } from "@/components/jobs/job-search-form";
+import { PageHeader } from "@/components/layout/page-header";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { filterChips } from "@/lib/jobs/filter-chips";
 import { parseSearchParams, resolvePlace, searchPath, searchQuery } from "@/lib/jobs/search-params";
@@ -40,7 +42,7 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
   // would take half of it.
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 pt-8 pb-16 sm:px-6 sm:pt-12">
-      <h1 className="animate-rise text-section font-semibold tracking-tight">Find jobs</h1>
+      <PageHeader title="Find jobs" className="animate-rise" />
 
       <div className="-mx-4 grid gap-3 bg-background/95 px-4 py-3 sm:-mx-6 sm:px-6 md:sticky md:top-0 md:z-20">
         <JobSearchForm
@@ -66,8 +68,13 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
       ) : null}
 
       <Suspense key={searchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>
-        <JobResults lang={lang} filters={filters} selected={selected.success ? selected.data : undefined} />
+        <JobResults lang={lang} filters={filters} />
       </Suspense>
+      {selected.success ? (
+        <Suspense key={selected.data} fallback={null}>
+          <JobDialog id={selected.data} lang={lang} closeHref={searchPath(lang, filters)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
