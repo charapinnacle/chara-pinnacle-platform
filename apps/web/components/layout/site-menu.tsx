@@ -12,7 +12,7 @@ const SITE_MENU_ID = "site-menu";
 const controlClassName =
   "inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border bg-card text-small font-medium transition-colors duration-150 hover:border-input";
 
-// The menu of the public header as a side panel: a modal dialog, so the rest of the page is inert while it is open, focus
+// The menu of the public header on a phone (below 768 px; wider, the header shows its links): a modal dialog, so the rest of the page is inert while it is open, focus
 // stays inside it and Escape closes it; closed, it is not displayed, so neither the keyboard nor assistive technology
 // reaches it. Without JavaScript the button and the close control are links to the panel and away from it, which shows
 // the panel through :target (the server render and the hydration pass see the links).
@@ -49,8 +49,8 @@ export function SiteMenu({ homeHref, children }: { homeHref: string; children: R
 
   const label = (
     <>
-      <Menu aria-hidden className="size-4" />
-      <span className="max-md:sr-only">Menu</span>
+      <Menu aria-hidden className="size-5" />
+      <span className="sr-only">Menu</span>
     </>
   );
 
@@ -64,12 +64,12 @@ export function SiteMenu({ homeHref, children }: { homeHref: string; children: R
           aria-controls={SITE_MENU_ID}
           aria-haspopup="dialog"
           onClick={show}
-          className={cn(controlClassName, "px-3.5")}
+          className={cn(controlClassName, "size-11 md:hidden")}
         >
           {label}
         </button>
       ) : (
-        <a href={`#${SITE_MENU_ID}`} className={cn(controlClassName, "px-3.5")}>
+        <a href={`#${SITE_MENU_ID}`} className={cn(controlClassName, "size-11 md:hidden")}>
           {label}
         </a>
       )}
@@ -80,13 +80,13 @@ export function SiteMenu({ homeHref, children }: { homeHref: string; children: R
         onClose={onClose}
         onClick={onClick}
         className={cn(
-          "fixed inset-y-0 start-auto end-0 m-0 h-dvh outline-none max-h-none w-full max-w-md flex-col overflow-y-auto border-s bg-background px-7 pt-5 pb-6 text-foreground",
+          "fixed inset-y-0 start-auto end-0 m-0 h-dvh outline-none max-h-none w-full max-w-md flex-col overflow-y-auto border-s bg-background px-5 text-foreground",
           "translate-x-full transition-[translate,display,overlay] transition-discrete duration-300 ease-brand open:flex open:translate-x-0 starting:open:translate-x-full",
           "backdrop:bg-inverse/30",
           !interactive && "target:flex target:translate-x-0",
         )}
       >
-        <div className="mb-7 flex min-h-11 items-center justify-between">
+        <div className="sticky top-0 z-10 -mx-5 flex min-h-16 shrink-0 items-center justify-between border-b bg-background px-5">
           <BrandLink href={homeHref} />
           {interactive ? (
             <button ref={close} type="button" onClick={() => dialog.current?.close()} className={cn(controlClassName, "size-11")}>

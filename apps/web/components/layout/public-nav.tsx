@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { FormButton } from "@/components/forms/form-button";
 import { AudienceLinks } from "@/components/layout/audience-links";
@@ -6,7 +7,7 @@ import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
-import { guestLinks, laterPhaseFeatures, menuLinks } from "@/lib/public/navigation";
+import { guestLinks, howItWorksLink, laterPhaseFeatures, menuLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -62,9 +63,10 @@ function AccountItems({ lang, area }: { lang: string; area: string | null }) {
   );
 }
 
+// Pinned to the foot of the panel, so the account actions stay in reach however long the lists above grow.
 function MenuActions({ lang, area, postJobHref }: { lang: string; area: string | null; postJobHref: string | null }) {
   return (
-    <div className="mt-auto grid grid-cols-2 gap-2.5 pt-6">
+    <div className="sticky bottom-0 -mx-5 mt-auto grid grid-cols-2 gap-2.5 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {postJobHref ? (
         <LinkButton href={postJobHref} className="col-span-2 xs:hidden">
           Post a Job
@@ -89,9 +91,10 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
   );
 }
 
-// The public header (OPEN_QUESTIONS.md D90): a few links, Post a Job and Sign in, then Menu, which opens the side panel with
-// everything a visitor can explore, the client's later-phase navigation as plain text, and the account actions. Below
-// 768 px only the logo, Post a Job, Sign in and Menu stay; below 420 px Post a Job moves into the panel.
+// The public header (OPEN_QUESTIONS.md D90): from 768 px the links, Post a Job and Sign in, with How it works from 1024 px,
+// and no Menu. Below 768 px only the logo, Post a Job, Sign in and Menu stay, and Menu opens the panel with everything a
+// visitor can explore, the client's later-phase navigation as plain text, and the account actions; below 420 px Post a Job
+// moves into the panel.
 export async function PublicNav({ lang }: { lang: string }) {
   const [user, postJobHref] = await Promise.all([getCurrentUser(), getPostJobHref(lang)]);
   const area = user ? homePath(lang, user.accountKind) : null;
@@ -100,6 +103,11 @@ export async function PublicNav({ lang }: { lang: string }) {
       <nav aria-label="Main">
         <ul className="flex items-center gap-1">
           <AudienceLinks lang={lang} className={linkClassName} />
+          <li className="max-lg:hidden">
+            <Link href={`/${lang}/${howItWorksLink.path}`} className={linkClassName}>
+              {howItWorksLink.label}
+            </Link>
+          </li>
           {postJobHref ? (
             <li className="max-xs:hidden">
               <LinkButton href={postJobHref} size="default" className="min-h-11 px-4 md:mx-1">
@@ -111,32 +119,35 @@ export async function PublicNav({ lang }: { lang: string }) {
         </ul>
       </nav>
       <SiteMenu homeHref={`/${lang}`}>
-        <nav aria-labelledby="menu-explore" className="border-t pt-5 pb-3">
+        <nav aria-labelledby="menu-explore" className="pt-6 pb-2">
           <p id="menu-explore" className={groupTitleClassName}>
             Explore
           </p>
-          <ul>
+          <ul className="divide-y">
             {menuLinks.map(({ path, label }) => (
               <li key={label}>
                 <Link
                   href={path ? `/${lang}/${path}` : `/${lang}`}
-                  className="flex min-h-11 items-center text-title transition-colors duration-150 hover:text-brand-ink"
+                  className="flex min-h-13 items-center justify-between gap-3 text-lead font-medium transition-colors duration-150 hover:text-brand-ink"
                 >
                   {label}
+                  <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
-        <div className="border-t pt-5 pb-3">
-          <p id="menu-later" className={groupTitleClassName}>
-            Coming in a later phase
-          </p>
-          <ul aria-labelledby="menu-later">
+        <div className="pt-6 pb-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p id="menu-later" className={cn(groupTitleClassName, "mb-0")}>
+              Coming in a later phase
+            </p>
+            <span className="shrink-0 rounded-full border px-2.5 py-0.5 text-caption font-medium text-muted-foreground">Not yet available</span>
+          </div>
+          <ul aria-labelledby="menu-later" className="flex flex-wrap gap-2">
             {laterPhaseFeatures.map((feature) => (
-              <li key={feature} className="flex min-h-10 items-center justify-between gap-3 text-body text-muted-foreground">
+              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small text-muted-foreground">
                 {feature}
-                <span className="shrink-0 rounded-full border px-2.5 py-0.5 text-caption font-medium">Not yet available</span>
               </li>
             ))}
           </ul>

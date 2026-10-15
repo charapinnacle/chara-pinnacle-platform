@@ -3,6 +3,7 @@ import {
   appFooterLinks,
   guestLinks,
   headerLinks,
+  howItWorksLink,
   jobSeekersLink,
   laterPhaseFeatures,
   legalGroups,
@@ -18,6 +19,7 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
     expect(headerLinks.map(({ label }) => label)).toEqual(["Find Jobs", "For employers"]);
     expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "employers"]);
     expect(jobSeekersLink).toEqual({ path: "", label: "For job seekers" });
+    expect(howItWorksLink).toEqual({ path: "how-it-works", label: "How it works" });
     expect(guestLinks).toEqual([
       { path: "login", label: "Sign in" },
       { path: "signup", label: "Sign up" },
@@ -25,13 +27,13 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
   });
 
   it("keeps Pricing, Trust & Safety, About and Contact out of the header and the menu (P18)", () => {
-    const labels = [...headerLinks, ...menuLinks].map(({ label }) => label);
+    const labels = [...headerLinks, howItWorksLink, ...menuLinks].map(({ label }) => label);
     for (const footerOnly of ["Pricing", "Trust & Safety", "About", "Contact"]) expect(labels).not.toContain(footerOnly);
   });
 
-  it("explores Home, Find Jobs, For employers, For job seekers and How Chara Pinnacle works from the menu", () => {
-    expect(menuLinks.map(({ label }) => label)).toEqual(["Home", "Find Jobs", "For employers", "For job seekers", "How Chara Pinnacle works"]);
-    expect(menuLinks.map(({ path }) => path)).toEqual(["", "jobs", "employers", "", "how-it-works"]);
+  it("explores Find Jobs, For employers, For job seekers and How Chara Pinnacle works from the menu (the logo leads home)", () => {
+    expect(menuLinks.map(({ label }) => label)).toEqual(["Find Jobs", "For employers", "For job seekers", "How Chara Pinnacle works"]);
+    expect(menuLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "", "how-it-works"]);
   });
 
   it("names the client's later-phase navigation as text only: none of it is a path of the site", () => {

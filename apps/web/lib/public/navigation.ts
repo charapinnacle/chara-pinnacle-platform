@@ -2,9 +2,9 @@ import { BRAND_NAME } from "@/lib/brand";
 
 export const EMPLOYERS_PATH = "employers";
 
-// The header shows a few links and a Menu button that opens the rest, as the client asked (OPEN_QUESTIONS.md D90, which
-// replaces the header lists of P18 and P22): Find Jobs and For employers on every public page, For job seekers instead of
-// both on the For employers page, then Post a Job, Sign in and Menu. Pricing, Trust & Safety, About and Contact stay in the
+// The header shows a few links (OPEN_QUESTIONS.md D90, which replaces the header lists of P18 and P22): Find Jobs and For
+// employers on every public page, For job seekers instead of both on the For employers page, How it works, then Post a Job
+// and Sign in; on a phone a Menu button opens the rest. Pricing, Trust & Safety, About and Contact stay in the
 // footer only (P18).
 export const headerLinks = [
   { path: "jobs", label: "Find Jobs" },
@@ -13,13 +13,14 @@ export const headerLinks = [
 
 export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
 
+export const howItWorksLink = { path: "how-it-works", label: "How it works" } as const;
+
 export const guestLinks = [
   { path: "login", label: "Sign in" },
   { path: "signup", label: "Sign up" },
 ] as const;
 
 export const menuLinks = [
-  { path: "", label: "Home" },
   { path: "jobs", label: "Find Jobs" },
   { path: EMPLOYERS_PATH, label: "For employers" },
   jobSeekersLink,

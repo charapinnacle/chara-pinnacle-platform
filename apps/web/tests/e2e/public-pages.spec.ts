@@ -164,7 +164,7 @@ test.describe("the public pages", () => {
     }
     const inRegion = (region: string) => stops.filter((stop) => stop.region === region).map((stop) => stop.text);
     // The logo link's text is its name for assistive technology, then the CHARA lock-up drawn in type (hidden from it).
-    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA", ...HEADER_LABELS, "Menu"]);
+    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA", ...HEADER_LABELS]);
     expect(inRegion("footer")).toEqual(FOOTER_LABELS);
     const regions = stops.map((stop) => stop.region);
     expect(regions.lastIndexOf("header")).toBeLessThan(regions.indexOf("footer"));
@@ -260,7 +260,7 @@ test.describe("the public pages at 360 px", () => {
       await expect(panel.getByRole("link", { name: "How Chara Pinnacle works" })).toBeVisible();
       await expect(panel.getByRole("button", { name: "Close menu" })).toBeFocused();
       await page.keyboard.press("Tab");
-      await expect(panel.getByRole("link", { name: "Home" })).toBeFocused();
+      await expect(panel.getByRole("link", { name: "Find Jobs" })).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(menu).toHaveAttribute("aria-expanded", "false");
       await expect(menu).toBeFocused();
