@@ -77,14 +77,14 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     await page.goto("/en");
     expect(await sizeOf("The Global Workforce Network")).toBe("80px");
     await page.goto("/en/jobs");
-    expect(await sizeOf("Find Your Next Opportunity")).toBe("32px");
+    expect(await sizeOf("Find jobs")).toBe("32px");
     await page.goto("/en/pricing");
     expect(await sizeOf("Choose how you want to grow on Chara Pinnacle")).toBe("48px");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/en");
     expect(await sizeOf("The Global Workforce Network")).toBe("44px");
     await page.goto("/en/jobs");
-    expect(await sizeOf("Find Your Next Opportunity")).toBe("26px");
+    expect(await sizeOf("Find jobs")).toBe("26px");
   });
 
   test("DS-01: the search of the hero is the primary action, Start hiring of the closing call is a secondary link-button of the button height, and a click follows the link", async ({ page }) => {

@@ -1,6 +1,8 @@
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { ApplyButton } from "@/components/jobs/apply-button";
+import { EmployerMark } from "@/components/jobs/employer-mark";
+import { ResultLink } from "@/components/jobs/result-link";
 import { SaveJob } from "@/components/jobs/save-job";
 import { getApplicationStates, type ApplicationState } from "@/lib/dal/applications";
 import { searchJobs, type JobSearchResult } from "@/lib/dal/hiring";
@@ -17,37 +19,43 @@ type ResultRowProps = {
   job: JobSearchResult;
   lang: string;
   countryName: string;
+  dialogHref: string;
   viewer: Viewer;
   saved: boolean;
   application: ApplicationState | undefined;
   next: string;
 };
 
-// A row says what a person decides on: the title, the employer, the place, the pay and the date. The facts of the vacancy
-// page (employment type, accommodation, visa support) are filters of the search and stay there.
-function ResultRow({ job, lang, countryName, viewer, saved, application, next }: ResultRowProps) {
+// A row says what a person decides on: the title, the employer, the place, the pay and the date, with Apply and Save. The
+// facts of the vacancy (employment type, accommodation, visa support) are filters of the search and in the vacancy's
+// dialog. The title's link covers the row; the actions sit above it.
+function ResultRow({ job, lang, countryName, dialogHref, viewer, saved, application, next }: ResultRowProps) {
   const salary = formatSalary(job);
   return (
-    <li className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-6">
-      <div className="grid min-w-0 gap-1">
-        <h2 className="text-h2">
-          <TextLink href={`/${lang}/jobs/${job.id}`} className="break-words">
+    <li className="relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-2xl border bg-card p-4 transition-colors hover:border-input has-data-pending:border-input has-data-pending:opacity-70 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+      <EmployerMark name={job.employerName} />
+      <div className="grid min-w-0 gap-0.5">
+        <h2 className="text-lead font-semibold tracking-tight break-words">
+          <ResultLink
+            href={`/${lang}/jobs/${job.id}`}
+            dialogHref={dialogHref}
+            className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-ring"
+          >
             {job.title}
-          </TextLink>
+          </ResultLink>
         </h2>
-        <p className="text-body break-words text-muted-foreground">
+        <p className="text-small break-words text-muted-foreground">
           {job.employerName} · {job.city}, {countryName}
         </p>
-        <p className="text-body">
-          {salary ? <span className="tabular-nums">{salary}</span> : null}
-          {salary ? " · " : null}
+        <p className="mt-1 flex flex-wrap gap-x-2 text-small">
+          {salary ? <span className="font-medium tabular-nums">{salary}</span> : null}
           <span className="text-muted-foreground">
             Posted <time dateTime={job.createdAt}>{formatDate(job.createdAt)}</time>
           </span>
         </p>
       </div>
       {viewer === "company" ? null : (
-        <div className="flex flex-wrap gap-3">
+        <div className="relative z-10 col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:justify-end [&_a[data-slot]]:h-10 [&_button]:h-10 [&_button]:px-4">
           {application ? (
             <TextLink standalone href={applicationPath(lang, application.id)} aria-label={`View application: ${job.title}`}>
               View application
@@ -68,6 +76,10 @@ function applicationOf(state: ApplicationState | undefined): ApplicationState | 
 
 function countText(count: number, hasMore: boolean): string {
   return `${count} ${count === 1 ? "vacancy" : "vacancies"} shown${hasMore ? ", more on the next page" : ""}`;
+}
+
+function withJob(path: string, id: string): string {
+  return `${path}${path.includes("?") ? "&" : "?"}job=${id}`;
 }
 
 // The results of one address: streamed behind a skeleton by the page, and an error here reaches the error boundary of
@@ -102,17 +114,18 @@ export async function JobResults({ lang, filters }: { lang: string; filters: Job
   }
 
   return (
-    <div className="grid gap-4">
-      <p role="status" aria-live="polite" className="text-body text-muted-foreground">
+    <div className="grid gap-3">
+      <p role="status" aria-live="polite" className="px-1 text-small text-muted-foreground">
         {countText(results.length, nextCursor !== null)}
       </p>
-      <ul className="animate-stagger divide-y border-y">
+      <ul aria-label="Vacancies" className="animate-stagger grid gap-3">
         {results.map((job) => (
           <ResultRow
             key={job.id}
             job={job}
             lang={lang}
             countryName={countryNames.get(job.countryCode) ?? job.countryCode}
+            dialogHref={withJob(here, job.id)}
             viewer={viewer}
             saved={saved.has(job.id)}
             application={applicationOf(states.get(job.id))}
@@ -120,7 +133,7 @@ export async function JobResults({ lang, filters }: { lang: string; filters: Job
           />
         ))}
       </ul>
-      <div className="flex flex-wrap items-center gap-x-6">
+      <div className="flex flex-wrap items-center gap-x-6 px-1">
         {nextCursor ? (
           <TextLink standalone href={searchPath(lang, { ...filters, cursor: nextCursor })}>
             Show more vacancies

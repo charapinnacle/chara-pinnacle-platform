@@ -279,7 +279,7 @@ test.describe("saved vacancies", () => {
     const title = `Welder ${marker} keyboard`;
     openJob(company, title);
     await page.goto(`/en/jobs?q=${marker}+keyboard`);
-    const save = saveButton(page, title);
+    const save = saveButton(rows(page).filter({ hasText: title }), title);
     await waitForHydration(save);
     await save.focus();
     await page.keyboard.press("Enter");
