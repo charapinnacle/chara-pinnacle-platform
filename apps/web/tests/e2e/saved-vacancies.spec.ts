@@ -124,7 +124,7 @@ test.describe("saved vacancies", () => {
 
     await row(page, `Welder ${marker} first`).getByRole("button", { name: "Unsave" }).click();
     await expect(page.getByRole("heading", { name: "No saved vacancies yet", level: 2 })).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: "Find Jobs" })).toHaveAttribute("href", "/en/jobs");
+    await expect(page.getByRole("main").getByRole("link", { name: "Find jobs" })).toHaveAttribute("href", "/en/jobs");
     await expect(rows(page)).toHaveCount(0);
     expect(savedJobIds(candidate.id)).toEqual([]);
     await page.reload();
@@ -261,7 +261,7 @@ test.describe("saved vacancies", () => {
       await route.continue();
     });
     await page.getByRole("main").getByRole("link", { name: /^Saved jobs/ }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(rows(page)).toHaveCount(20);
     navigationDelay = 0;
     await expect(rows(page).first()).toContainText(`Welder ${marker} 01`);

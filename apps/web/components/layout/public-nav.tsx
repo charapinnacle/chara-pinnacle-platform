@@ -69,7 +69,7 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
     <div className="sticky bottom-0 -mx-5 mt-auto grid grid-cols-2 gap-2.5 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {postJobHref ? (
         <LinkButton href={postJobHref} className="col-span-2 xs:hidden">
-          Post a Job
+          Post a job
         </LinkButton>
       ) : null}
       {area ? (
@@ -91,9 +91,9 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
   );
 }
 
-// The public header (OPEN_QUESTIONS.md D90): from 768 px the links, Post a Job and Sign in, with How it works from 1024 px,
-// and no Menu. Below 768 px only the logo, Post a Job, Sign in and Menu stay, and Menu opens the panel with everything a
-// visitor can explore, the client's later-phase navigation as plain text, and the account actions; below 420 px Post a Job
+// The public header (OPEN_QUESTIONS.md D90): from 768 px the links, Post a job and Sign in, with How it works from 1024 px,
+// and no Menu. Below 768 px only the logo, Post a job, Sign in and Menu stay, and Menu opens the panel with everything a
+// visitor can explore, the client's later-phase navigation as plain text, and the account actions; below 420 px Post a job
 // moves into the panel.
 export async function PublicNav({ lang }: { lang: string }) {
   const [user, postJobHref] = await Promise.all([getCurrentUser(), getPostJobHref(lang)]);
@@ -111,7 +111,7 @@ export async function PublicNav({ lang }: { lang: string }) {
           {postJobHref ? (
             <li className="max-xs:hidden">
               <LinkButton href={postJobHref} size="default" className="min-h-11 px-4 md:mx-1">
-                Post a Job
+                Post a job
               </LinkButton>
             </li>
           ) : null}

@@ -16,7 +16,7 @@ const footerLinks = legalGroups.flatMap(({ links }) => links);
 
 describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
   it("shows Find Jobs and For employers in the header, For job seekers on the For employers page, and only Sign in of the account links", () => {
-    expect(headerLinks.map(({ label }) => label)).toEqual(["Find Jobs", "For employers"]);
+    expect(headerLinks.map(({ label }) => label)).toEqual(["Find jobs", "For employers"]);
     expect(headerLinks.map(({ path }) => path)).toEqual(["jobs", "employers"]);
     expect(jobSeekersLink).toEqual({ path: "", label: "For job seekers" });
     expect(howItWorksLink).toEqual({ path: "how-it-works", label: "How it works" });
@@ -32,19 +32,19 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
   });
 
   it("explores Find Jobs, For employers, For job seekers and How Chara Pinnacle works from the menu (the logo leads home)", () => {
-    expect(menuLinks.map(({ label }) => label)).toEqual(["Find Jobs", "For employers", "For job seekers", "How Chara Pinnacle works"]);
+    expect(menuLinks.map(({ label }) => label)).toEqual(["Find jobs", "For employers", "For job seekers", "How Chara Pinnacle works"]);
     expect(menuLinks.map(({ path }) => path)).toEqual(["jobs", "employers", "", "how-it-works"]);
   });
 
   it("names the client's later-phase navigation as text only: none of it is a path of the site", () => {
     expect(laterPhaseFeatures).toEqual([
-      "Find Workers",
-      "Request Workers",
-      "Find Companies",
-      "Recruitment Partners",
-      "Staffing Partners",
-      "Workforce Corridors",
-      "Job Orders",
+      "Find workers",
+      "Request workers",
+      "Find companies",
+      "Recruitment partners",
+      "Staffing partners",
+      "Workforce corridors",
+      "Job orders",
     ]);
     const footer: readonly { label: string }[] = publicFooterColumns.flatMap(({ links }): readonly { label: string }[] => links);
     const labels = [...headerLinks, ...menuLinks, ...footer].map(({ label }) => label);
@@ -54,7 +54,7 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
   it("sets the public footer in three columns, Platform, Company and Legal, and ends it with the index of all legal documents (every document is two clicks away)", () => {
     expect(publicFooterColumns.map(({ title }) => title)).toEqual(["Platform", "Company", "Legal"]);
     expect(publicFooterColumns.map(({ links }) => links.map(({ label }) => label))).toEqual([
-      ["Find Jobs", "For employers", "How Chara Pinnacle works", "Pricing"],
+      ["Find jobs", "For employers", "How Chara Pinnacle works", "Pricing"],
       ["About", "Trust & Safety", "Contact"],
       ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"],
     ]);
