@@ -11,6 +11,7 @@ import {
   setupBulk,
 } from "./support/bulk";
 import { statusMessages } from "./support/applicants";
+import { execute, literal } from "./support/db";
 import { signInBrowser } from "./support/session";
 import { expect, test } from "./support/test";
 
@@ -136,12 +137,10 @@ test.describe("bulk actions on applicants", () => {
       expect(statusMessages(id)).toEqual([{ user_id: user.id, status: "rejected", note: null }]);
     }
 
+    // A decided applicant has no move left, so the list offers none for them, as "Change stage" offers none.
     for (const name of ["Dev Rao", "Eli Cohen"]) await selectBox(page, name).check();
-    await chooseBulk(page, "Move to Offer");
-    await reviewButton(page).click();
-    await bulkDialog(page).getByRole("button", { name: "Confirm" }).click();
-    await expect(bulkToolbar(page).getByText("0 updated, 2 refused", { exact: true })).toBeVisible();
-    await expect(bulkToolbar(page).getByText("Dev Rao: Not allowed from Not selected")).toBeVisible();
+    const action = bulkToolbar(page).getByLabel("Action", { exact: true });
+    await expect(action.locator("option")).toHaveText(["No action fits all the selected applicants"]);
     expect(statusOf(people.Dev.id)).toBe("rejected");
     expect(statusMessages(people.Dev.id)).toHaveLength(1);
 
@@ -156,26 +155,29 @@ test.describe("bulk actions on applicants", () => {
   });
 
   test("FR-E3 AC5: the summary reports a refused item, which stays selected, and the moved one is deselected", async ({ browser }) => {
-    const { company, member, jobId, people } = await setupBulk([["Ana Silva", "applied"], ["Ben Okoro", "interview"]]);
+    const { company, member, jobId, people } = await setupBulk([["Ana Silva", "interview"], ["Ben Okoro", "interview"]]);
     const page = await openApplicants(browser, member, applicantsUrl(company.slug, `?job=${jobId}`), (p) => reviewButton(p));
 
     for (const name of ["Ana Silva", "Ben Okoro"]) await selectBox(page, name).check();
     await chooseBulk(page, "Move to Offer");
+    // A colleague declines Ana in the meantime, through the same database function a decline uses.
+    const eventsBefore = eventCount(people.Ana.id) + eventCount(people.Ben.id);
+    execute(
+      `begin; select set_config('chara.actor_fn', 'set_application_status', true); update public.job_applications set status = 'rejected' where id = ${literal(people.Ana.id)}; commit;`,
+    );
     await reviewButton(page).click();
     await bulkDialog(page).getByRole("button", { name: "Confirm" }).click();
 
     const toolbar = bulkToolbar(page);
     await expect(toolbar.getByText("1 updated, 1 refused", { exact: true })).toBeVisible();
-    await expect(toolbar.getByText("Ana Silva: Not allowed from Applied")).toBeVisible();
+    await expect(toolbar.getByText("Ana Silva: Not allowed from Not selected")).toBeVisible();
     await expect(listRows(page).filter({ hasText: "Ben Okoro" })).toContainText("Offer");
-    await expect(listRows(page).filter({ hasText: "Ana Silva" })).toContainText("Applied");
     await expect(selectBox(page, "Ana Silva")).toBeChecked();
     await expect(selectBox(page, "Ben Okoro")).not.toBeChecked();
     await expect(toolbar.getByText("1 selected", { exact: true })).toBeVisible();
-    expect(statusOf(people.Ana.id)).toBe("applied");
+    expect(statusOf(people.Ana.id)).toBe("rejected");
     expect(statusOf(people.Ben.id)).toBe("offer");
-    expect(eventCount(people.Ana.id) + eventCount(people.Ben.id)).toBe(3);
-    expect(statusMessages(people.Ana.id)).toHaveLength(0);
+    expect(eventCount(people.Ana.id) + eventCount(people.Ben.id)).toBe(eventsBefore + 1);
     expect(statusMessages(people.Ben.id)).toHaveLength(1);
     await expect(page.getByText("Something went wrong")).toHaveCount(0);
 
