@@ -6,7 +6,9 @@ import { HowItWorks } from "@/components/home/how-it-works";
 import { PassportSection } from "@/components/home/passport-section";
 import { StatisticsBlock } from "@/components/home/statistics-block";
 import { BRAND_NAME } from "@/lib/brand";
+import { getSearchSuggestions } from "@/lib/dal/hiring";
 import { getPostJobHref } from "@/lib/dal/organizations";
+import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
 import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
@@ -20,10 +22,26 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
 // closing call. The employer's story is the For employers page.
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
-  const [tiles, postJobHref] = await Promise.all([getPlatformStatistics(), getPostJobHref(lang)]);
+  const [tiles, postJobHref, suggestions, countries, occupations] = await Promise.all([
+    getPlatformStatistics(),
+    getPostJobHref(lang),
+    getSearchSuggestions(),
+    getCountries(),
+    getOccupations(),
+  ]);
+  // Vacancy titles come before the occupations, and an occupation is offered by its name without the ISCO code.
+  const what = [
+    ...suggestions.titles.map((title) => ({ value: `title:${title}`, label: title })),
+    ...occupations.map((occupation) => ({ value: `isco:${occupation.code}`, label: occupation.label, keywords: occupation.synonyms.join(" ") })),
+  ];
   return (
     <>
-      <Hero lang={lang} />
+      <Hero
+        lang={lang}
+        what={what}
+        countries={countries.map((country) => ({ value: country.code, label: country.name }))}
+        citiesByCountry={suggestions.citiesByCountry}
+      />
       <HowItWorks lang={lang} />
       <PassportSection />
       <EmployerBand lang={lang} postJobHref={postJobHref} />

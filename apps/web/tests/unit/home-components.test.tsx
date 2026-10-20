@@ -38,7 +38,7 @@ const NEVER_SAID = [
 ];
 
 const sections = () => [
-  html(<Hero lang="en" />),
+  html(<Hero lang="en" what={[]} countries={[]} citiesByCountry={{}} />),
   html(<HowItWorks lang="en" />),
   html(<PassportSection />),
   html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />),
@@ -49,7 +49,7 @@ const headingsOf = (markup: string, level: number) =>
   [...markup.matchAll(new RegExp(`<h${level}[^>]*>([^<]+)</h${level}>`, "g"))].map(([, text]) => text);
 
 describe("the hero", () => {
-  const markup = html(<Hero lang="en" />);
+  const markup = html(<Hero lang="en" what={[]} countries={[]} citiesByCountry={{}} />);
 
   it("holds the one h1, the client's line, the search and one quiet line that leads an employer to For employers", () => {
     expect(markup.match(/<h1/g)).toHaveLength(1);
@@ -113,11 +113,11 @@ describe("the employer band", () => {
     const markup = html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />);
     expect(markup).toMatch(/^<section class="border-t" aria-label="For employers">/);
     expect(textOf(markup)).toContain("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
-    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a Job<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a job<\/a>/);
     expect(markup).toMatch(/<a [^>]*href="\/en\/employers"[^>]*>For employers<\/a>/);
-    expect(html(<EmployerBand lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*>Post a Job<\/a>/);
+    expect(html(<EmployerBand lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*>Post a job<\/a>/);
     const none = html(<EmployerBand lang="en" postJobHref={null} />);
-    expect(none).not.toContain("Post a Job");
+    expect(none).not.toContain("Post a job");
     expect(none).toContain('href="/en/employers"');
   });
 });
@@ -140,7 +140,7 @@ describe("the closing call", () => {
   });
 
   it("leaves out an action that is not offered, and the buttons altogether when there is none", () => {
-    const one = html(<ClosingCall id="x" title="Ready to hire?" primary={{ href: "/en/post-job", label: "Post a Job" }} secondary={null} />);
+    const one = html(<ClosingCall id="x" title="Ready to hire?" primary={{ href: "/en/post-job", label: "Post a job" }} secondary={null} />);
     expect(one.match(/<a /g)).toHaveLength(1);
     const none = html(<ClosingCall id="x" title="Ready to hire?" primary={null} />);
     expect(none).not.toContain("<a ");
@@ -159,7 +159,8 @@ describe("every section of the home page", () => {
     for (const markup of sections()) {
       expect(markup).not.toMatch(/<(img|picture|svg)\b(?![^>]*aria-hidden)/);
       expect(markup).not.toMatch(/\sstyle=/);
-      expect(markup).not.toMatch(/gradient|shadow-\[|rounded-\[|text-\[|rounded-3xl/);
+      // The autofill shadow is part of every text control (control-class.ts), not a look of the page.
+      expect(markup).not.toMatch(/gradient|(?<!autofill:)shadow-\[|rounded-\[|text-\[|rounded-3xl/);
     }
   });
 
@@ -181,7 +182,7 @@ describe("the footer", () => {
       "footer-legal",
     ]);
     const platform = /<ul aria-labelledby="footer-platform">(.*?)<\/ul>/.exec(markup)?.[1] ?? "";
-    expect([...platform.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map(([, label]) => label)).toEqual(["Find Jobs", "For employers", "How Chara Pinnacle works", "Pricing"]);
+    expect([...platform.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map(([, label]) => label)).toEqual(["Find jobs", "For employers", "How Chara Pinnacle works", "Pricing"]);
     expect(markup).toContain('href="/en/employers"');
     expect(markup).toContain('href="/en/legal"');
   });

@@ -9,6 +9,11 @@ const getPostJobHref = vi.hoisted(() => vi.fn());
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
+vi.mock("@/lib/dal/hiring", () => ({ getSearchSuggestions: async () => ({ titles: ["Plumber"], citiesByCountry: { DE: ["Hamburg"] } }) }));
+vi.mock("@/lib/dal/reference", () => ({
+  getCountries: async () => [{ code: "DE", name: "Germany" }],
+  getOccupations: async () => [{ code: "7126", label: "Plumbers and pipe fitters", synonyms: ["plumber"] }],
+}));
 
 const { default: Home } = await import("@/app/[lang]/(public)/page");
 
@@ -70,6 +75,8 @@ describe("the home page (U73)", () => {
     expect(html).not.toMatch(/<(img|picture)\b/);
     expect(html).not.toMatch(/rel="preload" as="image"/);
     expect(html).not.toMatch(/href="\/en\/jobs\/[0-9a-f-]{36}"/);
+    // Vacancy titles only feed the suggestions of the What field, which open while typing; no vacancy is listed.
+    expect(html).not.toContain(">Plumber<");
     expect(html).not.toContain("/images/");
   });
 
@@ -80,7 +87,9 @@ describe("the home page (U73)", () => {
     expect(employer.match(/href="\/en\/post-job"/g)).toHaveLength(2);
     getPostJobHref.mockResolvedValue(null);
     const candidate = await renderHome();
-    expect(candidate).not.toContain("Post a Job");
+    // Only the hero's quiet line remains, and it leads to For employers, not to posting.
+    expect(candidate.match(/>Post a job</g)).toHaveLength(1);
+    expect(candidate).toContain('href="/en/employers">Post a job</a>');
     expect(candidate).not.toContain("Start hiring");
     expect(candidate).toContain('role="search"');
   });
