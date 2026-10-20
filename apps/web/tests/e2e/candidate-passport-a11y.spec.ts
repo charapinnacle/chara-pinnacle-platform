@@ -26,7 +26,7 @@ test.describe("candidate passport: states and keyboard", () => {
       },
     );
     await page.getByRole("main").getByRole("link", { name: "Update passport" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "CHARA Worker Passport", level: 1 })).toBeVisible();
 
     for (const name of ["First name", "Last name", "Headline", "Years of experience"]) {
@@ -63,7 +63,7 @@ test.describe("candidate passport: states and keyboard", () => {
     await expect(first).toHaveAttribute("aria-invalid", "true");
 
     const skills = page.getByRole("combobox", { name: "Skills", exact: true });
-    await skills.fill("wel");
+    await skills.fill("arc wel");
     await skills.press("ArrowDown");
     await expect(page.getByRole("option", { name: "Arc welding" })).toHaveAttribute("aria-selected", "true");
     await skills.press("Enter");

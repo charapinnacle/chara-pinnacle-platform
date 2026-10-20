@@ -29,10 +29,10 @@ test.describe("the applicant list when the database is slow or fails", () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     await page.goto(applicantsUrl(company.slug, `?job=${job}`), { waitUntil: "commit" });
-    await expect(page.getByRole("status").getByText("Loading")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(0);
     await expect(listRows(page)).toHaveCount(1, { timeout: 15_000 });
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
     await context.close();
   });

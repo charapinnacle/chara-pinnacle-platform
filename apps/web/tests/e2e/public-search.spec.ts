@@ -178,7 +178,7 @@ test.describe("public vacancy search", () => {
     seedJob(company, { title: `Welder ${marker}`, status: "open" });
 
     const html = await (await page.request.get(`/en/jobs?q=${marker}`)).text();
-    const skeleton = html.indexOf('<span class="sr-only">Loading</span>');
+    const skeleton = html.indexOf('aria-label="Loading"');
     expect(skeleton).toBeGreaterThan(-1);
     expect(html.indexOf(`Welder ${marker}`)).toBeGreaterThan(skeleton);
   });

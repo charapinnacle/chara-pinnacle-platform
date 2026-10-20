@@ -29,7 +29,7 @@ test.describe("the billing page when the database is slow or fails (FR-G5 AC11)"
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     await page.goto(billingPath(team.slug), { waitUntil: "commit" });
-    const skeleton = page.getByRole("status").filter({ hasText: "Loading" });
+    const skeleton = page.getByRole("status", { name: "Loading" });
     await expect(skeleton).toHaveAttribute("aria-busy", "true");
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toHaveCount(0);
 
