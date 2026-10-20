@@ -7,7 +7,7 @@ export const EMPLOYERS_PATH = "employers";
 // and Sign in; on a phone a Menu button opens the rest. Pricing, Trust & Safety, About and Contact stay in the
 // footer only (P18).
 export const headerLinks = [
-  { path: "jobs", label: "Find Jobs" },
+  { path: "jobs", label: "Find jobs" },
   { path: EMPLOYERS_PATH, label: "For employers" },
 ] as const;
 
@@ -21,7 +21,7 @@ export const guestLinks = [
 ] as const;
 
 export const menuLinks = [
-  { path: "jobs", label: "Find Jobs" },
+  { path: "jobs", label: "Find jobs" },
   { path: EMPLOYERS_PATH, label: "For employers" },
   jobSeekersLink,
   { path: "how-it-works", label: `How ${BRAND_NAME} works` },
@@ -30,13 +30,13 @@ export const menuLinks = [
 // The navigation of the client's structure (section 2) that Phase 1 does not have: named in the menu so the client sees
 // where they will go, never a link.
 export const laterPhaseFeatures = [
-  "Find Workers",
-  "Request Workers",
-  "Find Companies",
-  "Recruitment Partners",
-  "Staffing Partners",
-  "Workforce Corridors",
-  "Job Orders",
+  "Find workers",
+  "Request workers",
+  "Find companies",
+  "Recruitment partners",
+  "Staffing partners",
+  "Workforce corridors",
+  "Job orders",
 ] as const;
 
 export const LEGAL_INDEX_PATH = "legal";
@@ -50,7 +50,7 @@ export const publicFooterColumns = [
   {
     title: "Platform",
     links: [
-      { path: "jobs", label: "Find Jobs" },
+      { path: "jobs", label: "Find jobs" },
       { path: EMPLOYERS_PATH, label: "For employers" },
       { path: "how-it-works", label: `How ${BRAND_NAME} works` },
       { path: "pricing", label: "Pricing" },

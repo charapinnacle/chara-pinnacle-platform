@@ -338,3 +338,23 @@ export async function searchJobs(
     nextCursor: data.at(-1)?.next_cursor ?? null,
   };
 }
+
+export type SearchSuggestions = { titles: string[]; citiesByCountry: Record<string, string[]> };
+
+// What the home search suggests while a visitor types: the titles of open vacancies and, per country, the cities that
+// have one. A failure leaves the search without suggestions instead of breaking the home page.
+// ponytail: reads one page (50) of the public search; a distinct-values function when the board outgrows it.
+export async function getSearchSuggestions(): Promise<SearchSuggestions> {
+  try {
+    const { results } = await searchJobs({ limit: 50 });
+    const citiesByCountry: Record<string, string[]> = {};
+    for (const { countryCode, city } of results) {
+      const cities = (citiesByCountry[countryCode] ??= []);
+      if (!cities.includes(city)) cities.push(city);
+    }
+    return { titles: [...new Set(results.map(({ title }) => title))], citiesByCountry };
+  } catch (error) {
+    console.error("The search suggestions could not be loaded", error);
+    return { titles: [], citiesByCountry: {} };
+  }
+}

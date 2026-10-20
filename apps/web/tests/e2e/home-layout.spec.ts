@@ -97,7 +97,7 @@ test.describe("the layout of the home page (U73)", () => {
     await page.goto("/en");
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const panel = page.getByRole("dialog", { name: "Menu" });
-    await expect(panel.getByRole("link", { name: "Find Jobs" })).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Find jobs" })).toBeVisible();
     await expectNoAxeViolations(page);
     await page.setViewportSize({ width: 320, height: 256 });
     const last = panel.getByRole("link").last();
@@ -198,7 +198,7 @@ test.describe("the layout of the home page (U73)", () => {
     const rings: string[] = [];
     for (const target of [
       search(page).getByLabel("Job title, skill or occupation"),
-      page.getByRole("main").getByRole("link", { name: "Post a job", exact: true }),
+      page.getByRole("region", { name: "For employers" }).getByRole("link", { name: "Post a job", exact: true }),
       page.getByRole("link", { name: "Create your CHARA Passport" }),
       page.getByRole("link", { name: "Join Chara Pinnacle" }),
       page.getByRole("contentinfo").getByRole("link", { name: "Pricing" }),

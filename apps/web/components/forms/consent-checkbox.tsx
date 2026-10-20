@@ -32,7 +32,7 @@ export function ConsentCheckbox<T extends FieldValues>({
 }: ConsentCheckboxProps<T>) {
   if (document.slug === AGE_ATTESTATION_SLUG) {
     return (
-      <CheckboxField control={control} name={name} id={id} className="py-3.5">
+      <CheckboxField control={control} name={name} id={id} compact className="py-1.5">
         {ageConfirmationLabel(document, attestationWording)}
       </CheckboxField>
     );
@@ -42,7 +42,8 @@ export function ConsentCheckbox<T extends FieldValues>({
       control={control}
       name={name}
       id={id}
-      className="py-3.5"
+      compact
+      className="py-1.5"
       meta={
         <>
           <span>

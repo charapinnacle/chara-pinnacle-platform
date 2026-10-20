@@ -99,8 +99,8 @@ test.describe("design system (NFR-U1, DS-01 to DS-03, UX-07)", () => {
     expect(await backgroundOf(post)).toBe("rgba(0, 0, 0, 0)");
     expect(await post.evaluate((link) => getComputedStyle(link).borderTopWidth)).toBe("1px");
     await post.click();
-    await expect(page).toHaveURL("/en/signup?kind=company");
-    await expect(page.getByRole("heading", { level: 1, name: "Create your account" })).toBeVisible();
+    await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
+    await expect(page.getByRole("heading", { level: 1, name: "Log in" })).toBeVisible();
   });
 
   test("DS-02: the stage badges of a candidate's applications say the stage and colour it by status", async ({ page }) => {

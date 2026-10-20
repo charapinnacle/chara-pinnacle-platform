@@ -114,7 +114,7 @@ export default async function EmployersPage({ params }: PageProps<"/[lang]/emplo
           <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
             {postJobHref ? (
               <LinkButton href={postJobHref} prefetch={false} className="min-h-12 px-6">
-                Post a Job
+                Post a job
               </LinkButton>
             ) : null}
             <TextLink href="#pricing" standalone>
@@ -136,7 +136,7 @@ export default async function EmployersPage({ params }: PageProps<"/[lang]/emplo
         </div>
       </Band>
       <PricingTeaser lang={lang} plan={plan} />
-      <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: "Post a Job" } : null} />
+      <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: "Post a job" } : null} />
     </>
   );
 }

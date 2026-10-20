@@ -17,16 +17,16 @@ export const LEGAL_SLUGS = [
 // The links of the header of a visitor on a desktop (OPEN_QUESTIONS.md D90): three links, Post a Job and Sign in, and no
 // Menu button (a phone's); on the For employers page For job seekers replaces Find Jobs and For employers. The other pages
 // about Chara Pinnacle are in the footer (P18).
-export const HEADER_LABELS = ["Find Jobs", "For employers", "How it works", "Post a Job", "Sign in"];
-export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a Job", "Sign in"];
+export const HEADER_LABELS = ["Find jobs", "For employers", "How it works", "Post a job", "Sign in"];
+export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a job", "Sign in"];
 
 // The menu panel: the Explore links, the client's later-phase navigation as text, and the account actions.
-export const MENU_LINKS = ["Find Jobs", "For employers", "For job seekers", "How Chara Pinnacle works"];
-export const LATER_PHASE = ["Find Workers", "Request Workers", "Find Companies", "Recruitment Partners", "Staffing Partners", "Workforce Corridors", "Job Orders"];
+export const MENU_LINKS = ["Find jobs", "For employers", "For job seekers", "How Chara Pinnacle works"];
+export const LATER_PHASE = ["Find workers", "Request workers", "Find companies", "Recruitment partners", "Staffing partners", "Workforce corridors", "Job orders"];
 
 // The footer reads in three columns: Platform, Company and Legal.
 export const FOOTER_LABELS = [
-  "Find Jobs",
+  "Find jobs",
   "For employers",
   "How Chara Pinnacle works",
   "Pricing",

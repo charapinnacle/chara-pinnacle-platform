@@ -10,27 +10,41 @@ import { workerSteps } from "@/lib/public/steps";
 const html = renderToStaticMarkup;
 
 describe("HeroSearch", () => {
-  it("is a GET search form to Find Jobs with a labelled What field (the keyword) and Where field (the place)", () => {
-    const markup = html(<HeroSearch lang="en" />);
+  const props = {
+    lang: "en",
+    what: [{ value: "title:Plumber", label: "Plumber" }],
+    countries: [{ value: "DE", label: "Germany" }],
+    citiesByCountry: { DE: ["Hamburg"] },
+  };
+
+  it("is a GET search form to Find Jobs with labelled What, Country and City fields", () => {
+    const markup = html(<HeroSearch {...props} />);
     const form = /^<form [^>]*>/.exec(markup)?.[0] ?? "";
     for (const attribute of ['action="/en/jobs"', 'method="get"', 'role="search"', 'aria-label="Search jobs"']) {
       expect(form).toContain(attribute);
     }
     for (const [id, name] of [
       ["hero-what", "q"],
-      ["hero-where", "where"],
+      ["hero-city", "city"],
     ]) {
       expect(markup).toContain(`<label for="${id}"`);
       const input = new RegExp(`<input[^>]*id="${id}"[^>]*>`).exec(markup)?.[0] ?? "";
       expect(input).toContain(`name="${name}"`);
       expect(input).toContain('maxLength="100"');
+      expect(input).toContain('role="combobox"');
     }
     // The visible word starts the accessible name and the hint, which the placeholder shows, completes it (WCAG 2.5.3).
     expect(markup).toMatch(/<label for="hero-what"[^>]*>What<span class="sr-only">: Job title, skill or occupation<\/span><\/label>/);
-    expect(markup).toMatch(/<label for="hero-where"[^>]*>Where<span class="sr-only">: City or country<\/span><\/label>/);
+    expect(markup).toMatch(/<label for="hero-country"[^>]*>Country<span class="sr-only">: Any country<\/span><\/label>/);
     expect(markup).toMatch(/<input[^>]*id="hero-what"[^>]*placeholder="Job title, skill or occupation"/);
-    expect(markup).not.toContain("<svg");
     expect(markup).toMatch(/<button[^>]*type="submit"[^>]*>Search jobs<\/button>/);
+  });
+
+  it("sends the country from a native select without JavaScript, and its hidden input only once a country is chosen", () => {
+    const markup = html(<HeroSearch {...props} />);
+    expect(markup).toMatch(/<noscript>[^]*<select[^>]*name="country"/);
+    const hidden = /<input[^>]*type="hidden"[^>]*name="country"[^>]*>/.exec(markup)?.[0] ?? "";
+    expect(hidden).toContain("disabled");
   });
 });
 

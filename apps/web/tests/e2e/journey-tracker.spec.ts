@@ -156,7 +156,7 @@ test.describe("the candidate's journey tracker", () => {
     await logIn(page, candidate, APPLICATIONS_URL);
     await expect(rows(page)).toHaveCount(1);
     const html = await (await page.request.get(APPLICATIONS_URL)).text();
-    const skeleton = html.indexOf('<span class="sr-only">Loading</span>');
+    const skeleton = html.indexOf('aria-label="Loading"');
     expect(skeleton).toBeGreaterThan(-1);
     expect(html.indexOf("Streamed welder")).toBeGreaterThan(skeleton);
 

@@ -253,7 +253,7 @@ test.describe("onboarding commit", () => {
         return route.abort();
       });
       await page.goto("/en/onboarding");
-      await expect(page.getByRole("status")).toContainText("Loading");
+      await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
       await expect(page.getByText("Could not set up your account", { exact: true })).toBeVisible();
       expect(accountRows(user.id).account.account_kind).toBeNull();
 

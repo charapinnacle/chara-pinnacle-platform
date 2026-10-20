@@ -35,16 +35,16 @@ test.describe("the public pages without JavaScript", () => {
     await page.goto("/en");
     const nav = page.getByRole("navigation", { name: "Main" });
     await expect(nav.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Find Jobs" })).toBeHidden();
+    await expect(nav.getByRole("link", { name: "Find jobs" })).toBeHidden();
     await expect(page.getByRole("button", { name: "Menu", exact: true })).toHaveCount(0);
     const menu = page.getByRole("dialog", { name: "Menu" });
     await expect(menu).toBeHidden();
     await page.getByRole("link", { name: "Menu", exact: true }).click();
     await expect(page).toHaveURL("/en#site-menu");
     await expect(menu.getByRole("navigation", { name: "Explore" }).getByRole("link")).toHaveText(MENU_LINKS);
-    await expect(menu.getByRole("link", { name: "Post a Job" })).toBeVisible();
+    await expect(menu.getByRole("link", { name: "Post a job" })).toBeVisible();
     await expect(menu.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/en/signup");
-    await menu.getByRole("link", { name: "Find Jobs" }).click();
+    await menu.getByRole("link", { name: "Find jobs" }).click();
     await expect(page).toHaveURL("/en/jobs");
     await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
   });
@@ -260,7 +260,7 @@ test.describe("the public pages at 360 px", () => {
       await expect(panel.getByRole("link", { name: "How Chara Pinnacle works" })).toBeVisible();
       await expect(panel.getByRole("button", { name: "Close menu" })).toBeFocused();
       await page.keyboard.press("Tab");
-      await expect(panel.getByRole("link", { name: "Find Jobs" })).toBeFocused();
+      await expect(panel.getByRole("link", { name: "Find jobs" })).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(menu).toHaveAttribute("aria-expanded", "false");
       await expect(menu).toBeFocused();

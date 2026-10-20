@@ -22,11 +22,11 @@ test.describe("the staff page when the database is slow or fails and when the li
 
     await page.goto("/en/admin/staff", { waitUntil: "commit" });
     await expect(page.getByRole("heading", { name: "Staff", level: 1 })).toBeVisible();
-    await expect(page.getByRole("status").getByText("Loading")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(0);
 
     await expect(page.getByRole("table", { name: "Platform staff roles, newest first" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
   });
 
