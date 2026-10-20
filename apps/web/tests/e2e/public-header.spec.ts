@@ -26,7 +26,10 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     }
     await expectNoAxeViolations(page);
 
-    await nav(page).getByRole("link", { name: "Post a Job" }).click();
+    // A visitor logs in first; the login page's sign-up link starts a new employer as one.
+    await nav(page).getByRole("link", { name: "Post a job" }).click();
+    await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
+    await page.getByRole("link", { name: "Create an account" }).click();
     await expect(page).toHaveURL("/en/signup?kind=company");
     await expect(page.getByRole("radio", { name: "I'm an employer" })).toBeChecked();
     await expect(page.getByRole("radio", { name: "I'm a worker" })).not.toBeChecked();
@@ -37,12 +40,12 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const company = await newCompany();
     const { context, page } = await signedInPage(browser, company.owner);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
+    await expect(nav(page).getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
     expect(await page.content()).not.toContain(company.slug);
     await expect(nav(page).getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
     await expect(nav(page).getByRole("link", { name: "Sign up" })).toHaveCount(0);
     await expectNoAxeViolations(page);
-    await nav(page).getByRole("link", { name: "Post a Job" }).click();
+    await nav(page).getByRole("link", { name: "Post a job" }).click();
     await expect(page).toHaveURL(`/en/org/${company.slug}/jobs/new`);
     await expect(page.getByRole("heading", { name: "New vacancy" })).toBeVisible();
     await context.close();
@@ -52,8 +55,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const employer = await createCommittedUser("company");
     const { context, page } = await signedInPage(browser, employer);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
-    await nav(page).getByRole("link", { name: "Post a Job" }).click();
+    await expect(nav(page).getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
+    await nav(page).getByRole("link", { name: "Post a job" }).click();
     await expect(page).toHaveURL("/en/dashboard/employer");
     await context.close();
   });
@@ -64,7 +67,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const memberSession = await signedInPage(browser, member);
     await memberSession.page.goto("/en/about");
     await expect(nav(memberSession.page).getByRole("link", { name: "Go to my area" })).toBeVisible();
-    await expect(nav(memberSession.page).getByRole("link", { name: "Post a Job" })).toHaveCount(0);
+    await expect(nav(memberSession.page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await memberSession.page.goto("/en/post-job");
     await expect(memberSession.page).toHaveURL(/\/en\/dashboard\/employer/);
     await memberSession.context.close();
@@ -72,8 +75,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link")).toHaveText(["Find Jobs", "For employers", "How it works", "Go to my area"]);
-    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toHaveCount(0);
+    await expect(nav(page).getByRole("link")).toHaveText(["Find jobs", "For employers", "How it works", "Go to my area"]);
+    await expect(nav(page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await page.goto("/en/post-job");
     await expect(page).toHaveURL("/en/dashboard/worker");
     await context.close();
@@ -119,7 +122,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await expect(panel.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/en/login");
     await expect(panel.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/en/signup");
     // At 600 px Post a Job is in the header; the panel's own is for phones narrower than 420 px.
-    await expect(panel.getByRole("link", { name: "Post a Job" })).toBeHidden();
+    await expect(panel.getByRole("link", { name: "Post a job" })).toBeHidden();
     await expectNoAxeViolations(page);
 
     // Focus cannot leave the open panel: Tab from its last control comes back inside it.
@@ -148,16 +151,16 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto("/en");
     await expect(nav(page).getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
-    for (const hidden of ["Find Jobs", "For employers", "Post a Job"]) await expect(nav(page).getByRole("link", { name: hidden }), hidden).toBeHidden();
+    for (const hidden of ["Find jobs", "For employers", "Post a job"]) await expect(nav(page).getByRole("link", { name: hidden }), hidden).toBeHidden();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const panel = page.getByRole("dialog", { name: "Menu" });
-    await expect(panel.getByRole("link", { name: "Post a Job" })).toBeVisible();
-    await panel.getByRole("link", { name: "Post a Job" }).click();
-    await expect(page).toHaveURL("/en/signup?kind=company");
+    await expect(panel.getByRole("link", { name: "Post a job" })).toBeVisible();
+    await panel.getByRole("link", { name: "Post a job" }).click();
+    await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
 
     await page.setViewportSize({ width: 600, height: 800 });
     await page.goto("/en");
-    await expect(nav(page).getByRole("link", { name: "Post a Job" })).toBeVisible();
-    await expect(nav(page).getByRole("link", { name: "Find Jobs" })).toBeHidden();
+    await expect(nav(page).getByRole("link", { name: "Post a job" })).toBeVisible();
+    await expect(nav(page).getByRole("link", { name: "Find jobs" })).toBeHidden();
   });
 });
