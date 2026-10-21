@@ -196,18 +196,22 @@ test.describe("the layout of the home page (U73)", () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en");
     const rings: string[] = [];
-    for (const target of [
-      search(page).getByLabel("Job title, skill or occupation"),
-      page.getByRole("region", { name: "For employers" }).getByRole("link", { name: "Post a job", exact: true }),
-      page.getByRole("link", { name: "Create your CHARA Passport" }),
-      page.getByRole("link", { name: "Join Chara Pinnacle" }),
-      page.getByRole("contentinfo").getByRole("link", { name: "Pricing" }),
-    ] as Locator[]) {
+    const what = search(page).getByLabel("Job title, skill or occupation");
+    // A field of the search shows focus on its whole cell (the label and the input), not on the input itself.
+    for (const [target, ringed] of [
+      [what, what.locator("xpath=../..")],
+      ...[
+        page.getByRole("region", { name: "For employers" }).getByRole("link", { name: "Post a job", exact: true }),
+        page.getByRole("link", { name: "Create your CHARA Passport" }),
+        page.getByRole("link", { name: "Join Chara Pinnacle" }),
+        page.getByRole("contentinfo").getByRole("link", { name: "Pricing" }),
+      ].map((link) => [link, link]),
+    ] as [Locator, Locator][]) {
       await target.focus();
       await expect(target).toBeFocused();
       // A field fades its outline colour in over 150 ms.
-      await expect.poll(() => target.evaluate((node) => node.getAnimations().length)).toBe(0);
-      const found = await target.evaluate((node) => {
+      await expect.poll(() => ringed.evaluate((node) => node.getAnimations().length)).toBe(0);
+      const found = await ringed.evaluate((node) => {
         const style = getComputedStyle(node);
         return { style: style.outlineStyle, width: style.outlineWidth, color: style.outlineColor };
       });

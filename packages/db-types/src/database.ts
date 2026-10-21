@@ -67,6 +67,25 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"cities": {
+                  Row: {
+                    "country_code": string,"id": number,"name": string,"population": number
+                  }
+                  Insert: {
+                    "country_code": string,"id": number,"name": string,"population"?: number
+                  }
+                  Update: {
+                    "country_code"?: string,"id"?: number,"name"?: string,"population"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "cities_country_code_fkey"
+      columns: ["country_code"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    }
+                  ]
                 },"consents": {
                   Row: {
                     "action": Database["public"]['Enums']["consent_action"],"created_at": string,"id": number,"purpose": string,"user_id": string,"version": number
@@ -1237,6 +1256,9 @@ isOneToOne: false
 { Args: { "p_application"?: string,"p_category": Database["public"]['Enums']["report_category"],"p_details": string,"p_email"?: string,"p_good_faith": boolean,"p_job"?: string,"p_key": string,"p_path"?: string,"p_proof"?: string,"p_target_type": Database["public"]['Enums']["report_target_type"] }; Returns: {
               "is_duplicate": boolean,"reference": string
             }[]
+                           },
+"suggest_cities":
+{ Args: { "p_country": string,"p_query"?: string }; Returns: string[]
                            },
 "suspend_organization":
 { Args: { "p_org": string,"p_reason": string }; Returns: undefined

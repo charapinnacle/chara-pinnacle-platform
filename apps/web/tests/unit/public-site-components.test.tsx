@@ -14,7 +14,6 @@ describe("HeroSearch", () => {
     lang: "en",
     what: [{ value: "title:Plumber", label: "Plumber" }],
     countries: [{ value: "DE", label: "Germany" }],
-    citiesByCountry: { DE: ["Hamburg"] },
   };
 
   it("is a GET search form to Find Jobs with labelled What, Country and City fields", () => {

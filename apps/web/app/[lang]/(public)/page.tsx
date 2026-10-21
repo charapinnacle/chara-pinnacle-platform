@@ -45,7 +45,6 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         lang={lang}
         what={what}
         countries={countries.map((country) => ({ value: country.code, label: country.name }))}
-        citiesByCountry={suggestions.citiesByCountry}
       />
       {kind === "company" ? null : (
         <>

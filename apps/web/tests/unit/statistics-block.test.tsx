@@ -11,7 +11,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
-vi.mock("@/lib/dal/hiring", () => ({ getSearchSuggestions: async () => ({ titles: ["Plumber"], citiesByCountry: { DE: ["Hamburg"] } }) }));
+vi.mock("@/lib/dal/hiring", () => ({ getSearchSuggestions: async () => ({ titles: ["Plumber"] }) }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [{ code: "DE", name: "Germany" }],
   getOccupations: async () => [{ code: "7126", label: "Plumbers and pipe fitters", synonyms: ["plumber"] }],

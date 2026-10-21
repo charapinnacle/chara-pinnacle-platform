@@ -38,7 +38,7 @@ const NEVER_SAID = [
 ];
 
 const sections = () => [
-  html(<Hero showHiringLine lang="en" what={[]} countries={[]} citiesByCountry={{}} />),
+  html(<Hero showHiringLine lang="en" what={[]} countries={[]} />),
   html(<HowItWorks lang="en" />),
   html(<PassportSection />),
   html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />),
@@ -49,7 +49,7 @@ const headingsOf = (markup: string, level: number) =>
   [...markup.matchAll(new RegExp(`<h${level}[^>]*>([^<]+)</h${level}>`, "g"))].map(([, text]) => text);
 
 describe("the hero", () => {
-  const markup = html(<Hero showHiringLine lang="en" what={[]} countries={[]} citiesByCountry={{}} />);
+  const markup = html(<Hero showHiringLine lang="en" what={[]} countries={[]} />);
 
   it("holds the one h1, the client's line, the search and one quiet line that leads an employer to For employers", () => {
     expect(markup.match(/<h1/g)).toHaveLength(1);
@@ -191,6 +191,8 @@ describe("the footer", () => {
     const markup = html(<SiteFooter />);
     expect(markup).toContain("Chara Pinnacle");
     expect(markup).toContain(`© ${new Date().getFullYear()} Chara Pinnacle`);
+    expect(textOf(markup)).toContain("City names from GeoNames , CC BY 4.0");
+    expect(markup).toContain('<a href="https://www.geonames.org"');
     expect(markup).not.toContain("<nav");
   });
 });

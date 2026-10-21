@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { controlClassName } from "@/components/forms/control-class";
 import { NativeSelect } from "@/components/forms/native-select";
 import { Input } from "@/components/ui/input";
 import {
+  COMBOBOX_LIMIT,
   listStart,
   matchOptions,
   moveActive,
@@ -21,6 +22,12 @@ export type ComboboxProps = {
   // A form that is sent by the browser (not React Hook Form) names the visible input, which in free-text mode carries the value.
   inputName?: string;
   inputClassName?: string;
+  // The popup and its rows, for a form that styles them its own way; the chosen option then shows a check.
+  listClassName?: string;
+  optionClassName?: string;
+  checkChosen?: boolean;
+  // The options were already matched to the typed text (by the server) and are listed as given, in their order.
+  prefiltered?: boolean;
   maxLength?: number;
   label: string;
   placeholder: string;
@@ -52,6 +59,10 @@ export function Combobox({
   name,
   inputName,
   inputClassName,
+  listClassName,
+  optionClassName,
+  checkChosen = false,
+  prefiltered = false,
   maxLength,
   label,
   placeholder,
@@ -73,9 +84,11 @@ export function Combobox({
   const selected = freeText ? undefined : options.find((option) => option.value === value);
   const text = freeText ? value : (query ?? selected?.label ?? "");
   const selectedIndex = selected ? options.indexOf(selected) : -1;
-  const matches = open
-    ? matchOptions(options, freeText ? value : (query ?? ""), query === null ? selectedIndex : -1)
-    : NO_MATCHES;
+  const matches = !open
+    ? NO_MATCHES
+    : prefiltered
+      ? { shown: options.slice(0, COMBOBOX_LIMIT), total: options.length }
+      : matchOptions(options, freeText ? value : (query ?? ""), query === null ? selectedIndex : -1);
   const count = matches.shown.length;
   const active = Math.min(activeIndex, count - 1);
   const listed = open && !(freeText && matches.total === 0);
@@ -186,7 +199,10 @@ export function Combobox({
       </div>
       {listed ? (
         <div
-          className="absolute inset-x-0 z-20 mt-1 overflow-hidden rounded-control border border-input bg-card text-base shadow-md"
+          className={cn(
+            "absolute inset-x-0 z-20 mt-1 overflow-hidden rounded-control border border-input bg-card text-base shadow-md",
+            listClassName,
+          )}
           onMouseDown={(event) => event.preventDefault()}
         >
           <ul id={`${id}-listbox`} role="listbox" aria-label={label} className="max-h-60 overflow-auto py-1">
@@ -195,21 +211,32 @@ export function Combobox({
                 {emptyText}
               </li>
             ) : (
-              matches.shown.map((option, index) => (
-                <li
-                  key={option.value}
-                  id={optionId(id, index)}
-                  role="option"
-                  aria-selected={index === active}
-                  onClick={() => choose(option)}
-                  className={cn(
-                    "min-h-11 cursor-pointer px-4 py-2.5 hover:bg-accent",
-                    index === active && "bg-accent text-accent-foreground",
-                  )}
-                >
-                  {option.label}
-                </li>
-              ))
+              matches.shown.map((option, index) => {
+                const chosen = checkChosen && (freeText ? option.label === value : option.value === value);
+                return (
+                  <li
+                    key={option.value}
+                    id={optionId(id, index)}
+                    role="option"
+                    aria-selected={index === active}
+                    onClick={() => choose(option)}
+                    className={cn(
+                      "min-h-11 cursor-pointer px-4 py-2.5 hover:bg-accent",
+                      optionClassName,
+                      index === active && "bg-accent text-accent-foreground",
+                    )}
+                  >
+                    {checkChosen ? (
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="min-w-0">{option.label}</span>
+                        {chosen ? <Check aria-hidden className="size-4 shrink-0" /> : null}
+                      </span>
+                    ) : (
+                      option.label
+                    )}
+                  </li>
+                );
+              })
             )}
           </ul>
           {matches.total > count ? (
