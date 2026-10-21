@@ -5,7 +5,7 @@ import { EMPLOYERS_PATH } from "@/lib/public/navigation";
 
 // The page is for the person looking for work, as Indeed's and Glassdoor's are: the client's headline and line, the search
 // as the one action, and one quiet line that sends an employer to their own page.
-export function Hero(search: HeroSearchProps) {
+export function Hero({ showHiringLine, ...search }: HeroSearchProps & { showHiringLine: boolean }) {
   const { lang } = search;
   return (
     <section aria-labelledby="home-heading">
@@ -19,12 +19,14 @@ export function Hero(search: HeroSearchProps) {
         <div className="mt-11 w-full max-w-4xl">
           <HeroSearch {...search} />
         </div>
-        <p className="mt-4 flex items-center gap-1.5 text-body text-muted-foreground">
-          Hiring?
-          <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>
-            Post a job
-          </TextLink>
-        </p>
+        {showHiringLine ? (
+          <p className="mt-4 flex items-center gap-1.5 text-body text-muted-foreground">
+            Hiring?
+            <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>
+              Post a job
+            </TextLink>
+          </p>
+        ) : null}
       </PageContainer>
     </section>
   );

@@ -66,7 +66,8 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const member = await addCompanyUser(company, "member");
     const memberSession = await signedInPage(browser, member);
     await memberSession.page.goto("/en/about");
-    await expect(nav(memberSession.page).getByRole("link", { name: "Go to my area" })).toBeVisible();
+    // A company is offered only the employer's side, a worker only the job seeker's.
+    await expect(nav(memberSession.page).getByRole("link")).toHaveText(["For employers", "How it works", "Go to my area"]);
     await expect(nav(memberSession.page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await memberSession.page.goto("/en/post-job");
     await expect(memberSession.page).toHaveURL(/\/en\/dashboard\/employer/);
@@ -75,7 +76,7 @@ test.describe("the header of the public pages (FR-H1 AC3, D81, D90)", () => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker);
     await page.goto("/en/about");
-    await expect(nav(page).getByRole("link")).toHaveText(["Find jobs", "For employers", "How it works", "Go to my area"]);
+    await expect(nav(page).getByRole("link")).toHaveText(["Find jobs", "How it works", "Go to my area"]);
     await expect(nav(page).getByRole("link", { name: "Post a job" })).toHaveCount(0);
     await page.goto("/en/post-job");
     await expect(page).toHaveURL("/en/dashboard/worker");

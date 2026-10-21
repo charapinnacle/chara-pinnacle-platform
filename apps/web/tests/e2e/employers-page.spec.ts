@@ -78,7 +78,7 @@ test.describe("the For employers page (U73)", () => {
     await context.close();
   });
 
-  test("a signed-in owner is sent by Post a Job to the new-vacancy page, and a candidate is offered none", async ({ browser }) => {
+  test("a signed-in owner is sent by Post a Job to the new-vacancy page, and a candidate is sent home with no employer line", async ({ browser }) => {
     const company = await newCompany();
     const owner = await signedInPage(browser, company.owner);
     await owner.page.goto("/en/employers");
@@ -92,8 +92,11 @@ test.describe("the For employers page (U73)", () => {
     const worker = await createCommittedUser("worker");
     const candidate = await signedInPage(browser, worker);
     await candidate.page.goto("/en/employers");
+    await expect(candidate.page).toHaveURL("/en");
+    await expect(candidate.page.getByRole("search", { name: "Search jobs" })).toBeVisible();
     await expect(candidate.page.getByRole("main").getByRole("link", { name: "Post a job" })).toHaveCount(0);
-    await expect(candidate.page.getByRole("heading", { level: 2, name: "Ready to hire?" })).toBeVisible();
+    await expect(candidate.page.getByRole("region", { name: "For employers" })).toHaveCount(0);
+    await expect(candidate.page.getByText("Hiring?")).toHaveCount(0);
     await candidate.context.close();
   });
 });

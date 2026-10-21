@@ -38,7 +38,7 @@ const NEVER_SAID = [
 ];
 
 const sections = () => [
-  html(<Hero lang="en" what={[]} countries={[]} citiesByCountry={{}} />),
+  html(<Hero showHiringLine lang="en" what={[]} countries={[]} citiesByCountry={{}} />),
   html(<HowItWorks lang="en" />),
   html(<PassportSection />),
   html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />),
@@ -49,7 +49,7 @@ const headingsOf = (markup: string, level: number) =>
   [...markup.matchAll(new RegExp(`<h${level}[^>]*>([^<]+)</h${level}>`, "g"))].map(([, text]) => text);
 
 describe("the hero", () => {
-  const markup = html(<Hero lang="en" what={[]} countries={[]} citiesByCountry={{}} />);
+  const markup = html(<Hero showHiringLine lang="en" what={[]} countries={[]} citiesByCountry={{}} />);
 
   it("holds the one h1, the client's line, the search and one quiet line that leads an employer to For employers", () => {
     expect(markup.match(/<h1/g)).toHaveLength(1);

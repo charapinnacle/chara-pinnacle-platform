@@ -7,7 +7,7 @@ import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
-import { guestLinks, howItWorksLink, laterPhaseFeatures, menuLinks } from "@/lib/public/navigation";
+import { forAccountKind, guestLinks, howItWorksLink, laterPhaseFeatures, menuLinks } from "@/lib/public/navigation";
 import { homePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -102,7 +102,7 @@ export async function PublicNav({ lang }: { lang: string }) {
     <div className="flex items-center gap-1">
       <nav aria-label="Main">
         <ul className="flex items-center gap-1">
-          <AudienceLinks lang={lang} className={linkClassName} />
+          <AudienceLinks lang={lang} accountKind={user?.accountKind} className={linkClassName} />
           <li className="max-lg:hidden">
             <Link href={`/${lang}/${howItWorksLink.path}`} className={linkClassName}>
               {howItWorksLink.label}
@@ -124,7 +124,7 @@ export async function PublicNav({ lang }: { lang: string }) {
             Explore
           </p>
           <ul className="divide-y">
-            {menuLinks.map(({ path, label }) => (
+            {forAccountKind(menuLinks, user?.accountKind).map(({ path, label }) => (
               <li key={label}>
                 <Link
                   href={path ? `/${lang}/${path}` : `/${lang}`}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { unstable_rethrow } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
@@ -12,6 +12,7 @@ import { daysText, oneTrialRule, trialConversion } from "@/lib/billing/presentat
 import { planCard, type PublicPlan } from "@/lib/billing/pricing";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { listPublicPlans } from "@/lib/dal/pricing";
+import { getCurrentUser } from "@/lib/dal/session";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/employers">): Promise<Metadata> {
@@ -99,6 +100,8 @@ function PricingTeaser({ lang, plan }: { lang: string; plan: PublicPlan | null }
 // product enforces, the starting price from the plan records, and a last call. Post a Job leads where the header's does.
 export default async function EmployersPage({ params }: PageProps<"/[lang]/employers">) {
   const { lang } = await params;
+  // A worker's account cannot hire, so the employer's page is not theirs (the header offers it only to the others).
+  if ((await getCurrentUser())?.accountKind === "worker") redirect(`/${lang}`);
   const [postJobHref, plan] = await Promise.all([getPostJobHref(lang), startingPlan()]);
   return (
     <>
