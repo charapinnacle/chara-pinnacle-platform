@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { newCompany, seedJob } from "./support/jobs";
 import { uniqueToken } from "./support/organizations";
-import { FOOTER_LABELS, HEADER_SHOWN, HOME_SECTION_HEADINGS } from "./support/public-pages";
+import { FOOTER_ALL_LABELS, HEADER_SHOWN, HOME_SECTION_HEADINGS } from "./support/public-pages";
 import { waitForHydration } from "./support/hydration";
 import { expect, test } from "./support/test";
 
@@ -130,6 +130,25 @@ test.describe("the home page (U73)", () => {
     const cities = search(page).getByRole("listbox", { name: "City" }).getByRole("option");
     await expect(cities.filter({ hasText: "Hamburg" })).toHaveCount(1);
     await expect(cities.filter({ hasText: "Rotterdam" })).toHaveCount(0);
+
+    // Typing asks for the cities of the country that match, from the GeoNames list as well as the vacancies.
+    await city.fill("Berl");
+    await expect(search(page).getByRole("option", { name: "Berlin", exact: true })).toBeVisible();
+    await expect(cities.filter({ hasText: "Hamburg" })).toHaveCount(0);
+    await search(page).getByRole("option", { name: "Berlin", exact: true }).click();
+    await expect(city).toHaveValue("Berlin");
+  });
+
+  test("without a country City suggests nothing and takes any text", async ({ page }) => {
+    await page.goto("/en");
+    const city = search(page).getByLabel("City: Any city");
+    await waitForHydration(city);
+    await city.fill("Ber");
+    // Longer than the pause before a request, so a list that a request opened would be shown by now.
+    await page.waitForTimeout(500);
+    await expect(city).toHaveAttribute("aria-expanded", "false");
+    await expect(search(page).getByRole("listbox", { name: "City" })).toHaveCount(0);
+    await expect(city).toHaveValue("Ber");
   });
 
   test("the search with both fields empty opens the whole list without a warning or filter chips", async ({ page }) => {
@@ -193,7 +212,7 @@ test.describe("the home page (U73)", () => {
     ] as const) {
       await expect(footer.getByRole("list", { name: title }).getByRole("link")).toHaveText([...links]);
     }
-    await expect(footer.getByRole("link")).toHaveText(FOOTER_LABELS);
+    await expect(footer.getByRole("link")).toHaveText(FOOTER_ALL_LABELS);
     const lefts = await footer.getByRole("list").evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().left)));
     expect(new Set(lefts).size).toBe(3);
     await expect(footer.getByText(`© ${new Date().getFullYear()} Chara Pinnacle`)).toBeVisible();

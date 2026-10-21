@@ -43,6 +43,9 @@ export const FOOTER_LABELS = [
   "All legal documents",
 ];
 
+// Every link of the footer: its columns, then the credit of the city names under the copyright line.
+export const FOOTER_ALL_LABELS = [...FOOTER_LABELS, "GeoNames"];
+
 // The h2 of the home page's sections in reading order when no live figure is credible (U73, OPEN_QUESTIONS.md D90); the
 // employer band between the passport and the closing call is named by its aria-label, not a heading.
 export const HOME_SECTION_HEADINGS = [
