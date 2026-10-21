@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appFooterLinks,
+  forAccountKind,
   guestLinks,
   headerLinks,
   howItWorksLink,
@@ -104,5 +105,16 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
     expect(slugs).toHaveLength(10);
     expect(new Set(slugs).size).toBe(10);
     for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+  });
+});
+
+describe("the links for an account kind", () => {
+  const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
+
+  it("offers a worker no employer's page, a company no job seeker's page, and everyone else every link", () => {
+    expect(labels(forAccountKind(menuLinks, "worker"))).toEqual(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
+    expect(labels(forAccountKind(menuLinks, "company"))).toEqual(["For employers", "How Chara Pinnacle works"]);
+    expect(labels(forAccountKind(menuLinks, null))).toEqual(labels(menuLinks));
+    expect(labels(forAccountKind(headerLinks, undefined))).toEqual(labels(headerLinks));
   });
 });

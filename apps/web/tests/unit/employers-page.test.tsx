@@ -5,10 +5,12 @@ import type { PublicPlan } from "@/lib/billing/pricing";
 let plans: PublicPlan[] = [];
 let failure: Error | null = null;
 const getPostJobHref = vi.hoisted(() => vi.fn());
+const getCurrentUser = vi.hoisted(() => vi.fn());
 const logged = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
+vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
 vi.mock("@/lib/dal/pricing", () => ({
   listPublicPlans: async () => {
     if (failure) throw failure;
@@ -47,11 +49,19 @@ beforeEach(() => {
   ];
   failure = null;
   getPostJobHref.mockResolvedValue("/en/signup?kind=company");
+  getCurrentUser.mockResolvedValue(null);
   vi.spyOn(console, "error").mockImplementation(logged);
   logged.mockClear();
 });
 
 describe("the For employers page (U73, FR-H1, FR-H2)", () => {
+  it("sends a signed-in worker to the home page, and serves a company and a visitor", async () => {
+    getCurrentUser.mockResolvedValue({ accountKind: "worker" });
+    await expect(render()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT;replace;/en;") });
+    getCurrentUser.mockResolvedValue({ accountKind: "company" });
+    expect(await render()).toContain("employers-heading");
+  });
+
   it("has one h1 and the sections in order: steps, what you get, pricing, the closing call", async () => {
     const html = await render();
     expect(html.match(/<h1/g)).toHaveLength(1);

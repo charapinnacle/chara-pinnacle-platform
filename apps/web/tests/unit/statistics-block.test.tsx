@@ -5,10 +5,12 @@ import { StatisticsBlock } from "@/components/home/statistics-block";
 
 const getPlatformStatistics = vi.hoisted(() => vi.fn());
 const getPostJobHref = vi.hoisted(() => vi.fn());
+const getCurrentUser = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
+vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
 vi.mock("@/lib/dal/hiring", () => ({ getSearchSuggestions: async () => ({ titles: ["Plumber"] }) }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [{ code: "DE", name: "Germany" }],
@@ -27,6 +29,7 @@ const textOf = (markup: string) => markup.replace(/<[^>]*>/g, " ").replace(/\s+/
 beforeEach(() => {
   getPlatformStatistics.mockResolvedValue([]);
   getPostJobHref.mockResolvedValue("/en/signup?kind=company");
+  getCurrentUser.mockResolvedValue(null);
 });
 
 describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
@@ -96,5 +99,30 @@ describe("the home page (U73)", () => {
 
   it("writes no style attribute, which the page's policy would block", async () => {
     expect(await renderHome()).not.toMatch(/<[^>]+\sstyle=/);
+  });
+  it("shows a signed-in worker only the job seeker's side: no employer line, band or call to join", async () => {
+    getCurrentUser.mockResolvedValue({ accountKind: "worker" });
+    getPostJobHref.mockResolvedValue(null);
+    const html = await renderHome();
+    expect(html).toContain('role="search"');
+    expect(html).toContain("home-how-heading");
+    expect(html).toContain("home-passport-heading");
+    expect(html).not.toContain("Hiring?");
+    expect(html).not.toContain('aria-label="For employers"');
+    expect(html).not.toContain('href="/en/employers"');
+    expect(html).not.toContain("home-start-heading");
+  });
+
+  it("shows a signed-in company only the employer's side: no job seeker's steps, passport or call to join", async () => {
+    getCurrentUser.mockResolvedValue({ accountKind: "company" });
+    getPostJobHref.mockResolvedValue("/en/post-job");
+    const html = await renderHome();
+    expect(html).toContain('role="search"');
+    expect(html).toContain('aria-label="For employers"');
+    expect(html).toContain('href="/en/post-job"');
+    expect(html).not.toContain("home-how-heading");
+    expect(html).not.toContain("home-passport-heading");
+    expect(html).not.toContain("home-start-heading");
+    expect(html).not.toContain("Hiring? Post a job");
   });
 });
