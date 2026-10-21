@@ -18,6 +18,9 @@ export const LEGAL_SLUGS = [
 // Menu button (a phone's); on the For employers page For job seekers replaces Find Jobs and For employers. The other pages
 // about Chara Pinnacle are in the footer (P18).
 export const HEADER_LABELS = ["Find jobs", "For employers", "How it works", "Post a job", "Sign in"];
+// What innerText reads: buttons and header links are drawn in Title Case (text-transform), their text stays as written.
+export const titleCase = (label: string) => label.replace(/(^|\s)\S/g, (start) => start.toUpperCase());
+export const HEADER_SHOWN = HEADER_LABELS.map(titleCase);
 export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a job", "Sign in"];
 
 // The menu panel: the Explore links, the client's later-phase navigation as text, and the account actions.

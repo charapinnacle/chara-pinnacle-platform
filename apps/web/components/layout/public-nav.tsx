@@ -12,7 +12,7 @@ import { homePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 const linkClassName =
-  "inline-flex min-h-11 items-center rounded-lg px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-secondary";
+  "inline-flex min-h-11 items-center rounded-lg px-3 text-small capitalize font-medium text-foreground transition-colors duration-150 hover:bg-secondary";
 
 const groupTitleClassName = "mb-1.5 text-eyebrow text-muted-foreground uppercase";
 
