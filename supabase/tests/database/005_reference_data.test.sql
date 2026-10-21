@@ -28,7 +28,7 @@ select is_empty(
   $$
     select r.rolname, t.tbl, p.priv
     from unnest(array['anon', 'authenticated', 'service_role']) as r(rolname)
-    cross join unnest(array['countries', 'languages', 'currencies', 'industries']) as t(tbl)
+    cross join unnest(array['countries', 'languages', 'currencies', 'industries', 'cities']) as t(tbl)
     cross join unnest(array['insert', 'update', 'delete', 'truncate']) as p(priv)
     where has_table_privilege(r.rolname, format('public.%I', t.tbl)::regclass, p.priv)
   $$,
@@ -37,7 +37,7 @@ select is_empty(
 select is_empty(
   $$
     select t.tbl
-    from unnest(array['countries', 'languages', 'currencies', 'industries']) as t(tbl)
+    from unnest(array['countries', 'languages', 'currencies', 'industries', 'cities']) as t(tbl)
     where has_table_privilege('service_role', format('public.%I', t.tbl)::regclass, 'select')
        or (select count(*) from pg_policies where schemaname = 'public' and tablename = t.tbl and cmd = 'SELECT') <> 1
        or (select count(*) from pg_policies where schemaname = 'public' and tablename = t.tbl) <> 1

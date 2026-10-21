@@ -3,7 +3,7 @@ import { newCompany, seedJob } from "./support/jobs";
 import { overflow } from "./support/login-page";
 import { waitForHydration } from "./support/hydration";
 import { uniqueToken } from "./support/organizations";
-import { EMPLOYERS_HEADER_LABELS, FOOTER_LABELS, HEADER_LABELS, LEGAL_SLUGS, legalPaths, MENU_LINKS, openVacancyId, sitePaths } from "./support/public-pages";
+import { EMPLOYERS_HEADER_LABELS, FOOTER_ALL_LABELS, FOOTER_LABELS, HEADER_LABELS, LEGAL_SLUGS, legalPaths, MENU_LINKS, openVacancyId, sitePaths } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
 test.describe("the public pages without JavaScript", () => {
@@ -103,13 +103,15 @@ test.describe("the public pages", () => {
       });
     }
     expect(seen[0].header).toEqual(HEADER_LABELS);
-    expect(seen[0].footer).toEqual(FOOTER_LABELS);
+    expect(seen[0].footer).toEqual(FOOTER_ALL_LABELS);
     expect(seen[1]).toEqual(seen[0]);
     expect(seen[2]).toEqual(seen[0]);
     await page.goto("/en/employers");
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText(EMPLOYERS_HEADER_LABELS);
-    await expect(page.getByRole("contentinfo").getByRole("link")).toHaveText(FOOTER_LABELS);
-    for (const target of [...seen[0].headerTargets, ...seen[0].footerTargets]) {
+    await expect(page.getByRole("contentinfo").getByRole("link")).toHaveText(FOOTER_ALL_LABELS);
+    // The one link out of the site is the credit of the city names (CC BY 4.0).
+    expect(seen[0].footerTargets.at(-1)).toBe("https://www.geonames.org");
+    for (const target of [...seen[0].headerTargets, ...seen[0].footerTargets.slice(0, -1)]) {
       expect(target, target).toMatch(/^\/en\//);
       const response = await page.request.get(target);
       expect(response.status(), target).toBe(200);
