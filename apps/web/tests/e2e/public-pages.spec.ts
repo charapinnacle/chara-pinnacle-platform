@@ -3,7 +3,7 @@ import { newCompany, seedJob } from "./support/jobs";
 import { overflow } from "./support/login-page";
 import { waitForHydration } from "./support/hydration";
 import { uniqueToken } from "./support/organizations";
-import { EMPLOYERS_HEADER_LABELS, FOOTER_LABELS, HEADER_LABELS, LEGAL_SLUGS, legalPaths, MENU_LINKS, openVacancyId, sitePaths } from "./support/public-pages";
+import { EMPLOYERS_HEADER_LABELS, FOOTER_LABELS, HEADER_SHOWN, LEGAL_SLUGS, legalPaths, MENU_LINKS, openVacancyId, sitePaths } from "./support/public-pages";
 import { expect, test } from "./support/test";
 
 test.describe("the public pages without JavaScript", () => {
@@ -102,7 +102,7 @@ test.describe("the public pages", () => {
         footerTargets: await footer.evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? "")),
       });
     }
-    expect(seen[0].header).toEqual(HEADER_LABELS);
+    expect(seen[0].header).toEqual(HEADER_SHOWN);
     expect(seen[0].footer).toEqual(FOOTER_LABELS);
     expect(seen[1]).toEqual(seen[0]);
     expect(seen[2]).toEqual(seen[0]);
@@ -164,7 +164,7 @@ test.describe("the public pages", () => {
     }
     const inRegion = (region: string) => stops.filter((stop) => stop.region === region).map((stop) => stop.text);
     // The logo link's text is its name for assistive technology, then the CHARA lock-up drawn in type (hidden from it).
-    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA", ...HEADER_LABELS]);
+    expect(inRegion("header")).toEqual(["Chara Pinnacle\nCHARA", ...HEADER_SHOWN]);
     expect(inRegion("footer")).toEqual(FOOTER_LABELS);
     const regions = stops.map((stop) => stop.region);
     expect(regions.lastIndexOf("header")).toBeLessThan(regions.indexOf("footer"));

@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { newCompany, seedJob } from "./support/jobs";
 import { uniqueToken } from "./support/organizations";
-import { FOOTER_LABELS, HEADER_LABELS, HOME_SECTION_HEADINGS } from "./support/public-pages";
+import { FOOTER_LABELS, HEADER_SHOWN, HOME_SECTION_HEADINGS } from "./support/public-pages";
 import { waitForHydration } from "./support/hydration";
 import { expect, test } from "./support/test";
 
@@ -217,11 +217,11 @@ test.describe("the home page (U73)", () => {
     expect(stops).toEqual([
       "other:Skip to main content",
       "header:Chara Pinnacle\nCHARA",
-      ...HEADER_LABELS.map((label) => `header:${label}`),
+      ...HEADER_SHOWN.map((label) => `header:${label}`),
       "main:Job title, skill or occupation",
       "main:Any country",
       "main:Any city",
-      "main:Search jobs",
+      "main:Search Jobs",
       "main:Post a job",
     ]);
     // Back to Country: typing narrows the list, Enter picks the first match, and Enter again sends the search.
