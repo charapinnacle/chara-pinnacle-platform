@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Combobox } from "@/components/forms/combobox";
 import { FormButton } from "@/components/forms/form-button";
+import { useCitySuggestions } from "@/components/forms/use-city-suggestions";
 import type { ComboboxOption } from "@/lib/combobox";
 
 export type HeroSearchProps = {
@@ -27,11 +28,6 @@ const popup = { listClassName, optionClassName, checkChosen: true } as const;
 const aria = { "aria-invalid": false, "aria-describedby": undefined } as const;
 const ignore = () => {};
 
-// The pause after a keystroke before City asks for suggestions, so that typing a name sends one request, not one a letter.
-const CITY_DEBOUNCE_MS = 150;
-
-type CitySuggestions = { country: string; options: ComboboxOption[] };
-
 // A GET form to Find Jobs, which validates the address it receives as it does every other. What suggests vacancy titles
 // and occupations as the visitor types, names that start with the text first; Country is chosen from the list; once a
 // country is chosen, City suggests its cities from /api/cities as the visitor types, the cities with a vacancy first,
@@ -41,31 +37,7 @@ export function HeroSearch({ lang, what, countries }: HeroSearchProps) {
   const [q, setQ] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
-  const [suggested, setSuggested] = useState<CitySuggestions | null>(null);
-
-  // An answer is kept with the country it is for, so a list of the previous country is never shown; a request that a
-  // newer keystroke or country replaced is aborted, so a late answer cannot overwrite a newer one.
-  useEffect(() => {
-    if (!country) return;
-    const controller = new AbortController();
-    const query = city.trim();
-    const timer = setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/cities?${new URLSearchParams({ country, q: query })}`, { signal: controller.signal });
-        if (!response.ok) return;
-        const { cities } = (await response.json()) as { cities: string[] };
-        setSuggested({ country, options: cities.map((name) => ({ value: name, label: name })) });
-      } catch {
-        // Aborted or offline: City keeps the last list and still takes the typed text.
-      }
-    }, CITY_DEBOUNCE_MS);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [country, city]);
-
-  const cities = country && suggested?.country === country ? suggested.options : [];
+  const cities = useCitySuggestions(country, city);
 
   // An empty field is left out of the address, so an empty search opens Find Jobs at /en/jobs. The browser reads the form
   // when it is submitted, so the fields are enabled again straight after, for a visitor who comes back with Back.

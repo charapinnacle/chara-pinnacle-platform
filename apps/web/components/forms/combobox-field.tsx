@@ -14,7 +14,7 @@ type ComboboxFieldProps<T extends FieldValues, N extends FieldPath<T>> = Omit<
   emptyText?: string;
   freeText?: boolean;
   noScriptSelect?: boolean;
-};
+} & Pick<React.ComponentProps<typeof Combobox>, "inputName" | "maxLength" | "prefiltered">;
 
 export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
   placeholder,
@@ -22,6 +22,9 @@ export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
   emptyText = "No match",
   freeText = false,
   noScriptSelect = false,
+  inputName,
+  maxLength,
+  prefiltered,
   ...fieldProps
 }: ComboboxFieldProps<T, N>) {
   return (
@@ -37,6 +40,9 @@ export function ComboboxField<T extends FieldValues, N extends FieldPath<T>>({
           emptyText={emptyText}
           freeText={freeText}
           noScriptSelect={noScriptSelect}
+          inputName={inputName}
+          maxLength={maxLength}
+          prefiltered={prefiltered}
         />
       )}
     </FormField>

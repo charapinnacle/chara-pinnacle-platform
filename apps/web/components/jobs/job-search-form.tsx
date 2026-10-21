@@ -4,12 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { InputField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
+import { useCitySuggestions } from "@/components/forms/use-city-suggestions";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import {
   formDefaults,
@@ -46,6 +47,8 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
     defaultValues: formDefaults(query),
   });
   const { control, handleSubmit, reset } = form;
+  const [country, city] = useWatch({ control, name: ["country", "city"] });
+  const cities = useCitySuggestions(country ?? "", city ?? "");
 
   useEffect(() => {
     reset(formDefaults(query));
@@ -65,7 +68,6 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
     >
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
         <InputField control={control} name="q" id="search-q" label="Keyword" hideLabel placeholder="Job title or skill" autoComplete="off" />
-        <InputField control={control} name="city" id="search-city" label="City" hideLabel placeholder="City" autoComplete="off" />
         <ComboboxField
           control={control}
           name="country"
@@ -75,6 +77,21 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
           placeholder="Any country"
           options={toOptions(countries)}
           noScriptSelect
+        />
+        {/* Country comes first: once one is chosen, City suggests its cities and still takes any city typed. */}
+        <ComboboxField
+          control={control}
+          name="city"
+          id="search-city"
+          label="City"
+          hideLabel
+          placeholder="Any city"
+          emptyText="No suggestion"
+          options={cities}
+          inputName="city"
+          maxLength={100}
+          prefiltered
+          freeText
         />
         <FormButton type="submit" busy={searching} className="md:w-auto md:px-8">
           {searching ? "Searching..." : "Search jobs"}
