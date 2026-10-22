@@ -1,5 +1,5 @@
 begin;
-select plan(89);
+select plan(91);
 
 \ir organizations_fixture.inc
 
@@ -412,10 +412,22 @@ select is(jsonb_array_length(pg_temp.json_as(:'own1', 'select m.payload from rea
 select set_config('realtime.topic', 'user:' || :'own2', true);
 select is(pg_temp.json_as(null, 'select m.payload from realtime.messages m'), '[]'::jsonb, 'NFR-S8: a visitor receives nothing');
 select set_config('realtime.topic', 'user:' || :'own2', true);
-select alike(
+select case when pg_temp.realtime_ready() then alike(
   pg_temp.call_as(:'own2', 'authenticated', format($$insert into realtime.messages (topic, extension, event, payload, private) values ('user:%s', 'broadcast', 'unread_count', '{"unread": 99}', true)$$, :'own2'), 'aal1'),
   '42501|%', 'realtime: a client cannot send on a topic, even its own'
+) else skip('no partition of realtime.messages covers today') end;
+select is(
+  (select count(*) from pg_policy p where p.polrelid = 'realtime.messages'::regclass and p.polcmd in ('a', 'w', '*')), 0::bigint,
+  'realtime: no policy on realtime.messages allows insert, update or all, so no client sends'
 );
+-- A topic that only starts with the user's own is another topic.
+select realtime.send('{"unread": 7}'::jsonb, 'unread_count', 'user:' || :'own2' || 'x', true);
+select set_config('realtime.topic', 'user:' || :'own2' || 'x', true);
+select case when pg_temp.realtime_ready() then is(
+  (select count(*)::int from realtime.messages where topic = 'user:' || :'own2' || 'x') * 10
+    + jsonb_array_length(pg_temp.json_as(:'own2', 'select m.payload from realtime.messages m')),
+  10, 'NFR-S8: a broadcast on user:<id>x exists and the user <id> receives none of it'
+) else skip('no partition of realtime.messages covers today') end;
 update private.settings set value = 'false' where key = 'release_partner_directories';
 select set_config('t.before', (select count(*) from realtime.messages where topic = 'user:' || :'adm')::text, true);
 select pg_temp.send(:'adm', 'mfa_reset');
