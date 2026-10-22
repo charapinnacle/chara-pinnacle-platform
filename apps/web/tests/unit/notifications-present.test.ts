@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
-import { badgeText, bellLabel, presentedKinds, presentNotification } from "@/lib/notifications/present";
+import { badgeText, bellLabel } from "@/lib/notifications/bell";
+import { presentedKinds, presentNotification } from "@/lib/notifications/present";
 import { applicantPath, applicationPath, billingPath, homePath, jobPath, mfaPath, settingsPath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";

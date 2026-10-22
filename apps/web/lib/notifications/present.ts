@@ -8,9 +8,6 @@ type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 
-// How often the header bell asks for the unread count while the Realtime channel is not connected.
-export const UNREAD_POLL_MS = 60_000;
-
 export type NotificationItem = {
   id: string;
   kind: string;
@@ -145,12 +142,3 @@ export function presentNotification(item: Pick<NotificationItem, "kind" | "paylo
 }
 
 export const presentedKinds: readonly string[] = Object.keys(PRESENTERS);
-
-// The accessible name of the header bell (FR-T1 AC9).
-export function bellLabel(unread: number): string {
-  return unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
-}
-
-export function badgeText(unread: number): string {
-  return unread > 99 ? "99+" : String(unread);
-}

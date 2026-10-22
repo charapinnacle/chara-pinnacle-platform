@@ -4,7 +4,7 @@ import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchUnreadNotificationCount } from "@/lib/actions/notifications";
-import { badgeText, bellLabel, UNREAD_POLL_MS } from "@/lib/notifications/present";
+import { badgeText, bellLabel, UNREAD_POLL_MS } from "@/lib/notifications/bell";
 import { subscribeUnreadCount, UNREAD_CHANGED_EVENT } from "@/lib/notifications/unread-channel";
 import { notificationsPath } from "@/lib/routes";
 
