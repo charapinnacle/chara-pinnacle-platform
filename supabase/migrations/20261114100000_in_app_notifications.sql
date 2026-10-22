@@ -84,7 +84,9 @@ update public.notifications set mandatory = false where kind = 'application_rece
 -- The rows written before the list existed were never shown in the app, so they do not count as unread.
 update public.notifications set read_at = created_at;
 
-create unique index notifications_dedupe_idx on public.notifications (user_id, kind, dedupe_key) where dedupe_key is not null;
+-- nulls not distinct: a key also de-duplicates the rows without a user (an email to an address).
+create unique index notifications_dedupe_idx on public.notifications (user_id, kind, dedupe_key) nulls not distinct
+  where dedupe_key is not null;
 create index notifications_unread_idx on public.notifications (user_id) where read_at is null;
 
 grant select (read_at, email_status, mandatory) on public.notifications to authenticated;
@@ -397,7 +399,7 @@ grant execute on function public.notification_kind_catalogue() to authenticated;
 
 -- The caller's email choice per optional kind, {kind: boolean}, merged into what is stored; kinds left out keep their
 -- choice. Only workers and company users choose, and only kinds of their audience. A mandatory kind is refused whatever
--- the value. A save that changes nothing writes nothing; a change is audited with each kind's old and new value. The
+-- the value. A save that changes no choice is not audited; a change is audited with each kind's old and new value. The
 -- digest choice of employer users stays with set_notification_preferences(p_digest).
 --   CHARA_FORBIDDEN (no session: 42501; detail release_off, account_kind_required)
 --   CHARA_INVALID_INPUT (detail p_kinds: not an object, empty, an unknown kind or one of another audience, or a value that
@@ -433,8 +435,9 @@ begin
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_kinds';
   end if;
 
+  -- The row exists before it is locked, so two first saves at once queue on the lock instead of one failing.
+  insert into public.notification_preferences (user_id) values (v_uid) on conflict (user_id) do nothing;
   select p.email_kinds into v_old from public.notification_preferences p where p.user_id = v_uid for update;
-  v_old := coalesce(v_old, '{}');
   select jsonb_object_agg(e.key, jsonb_build_object(
            'from', coalesce(case when jsonb_typeof(v_old -> e.key) = 'boolean' then v_old -> e.key end, to_jsonb(k.default_email)),
            'to', e.value))
@@ -447,8 +450,7 @@ begin
   if v_new = v_old then
     return;
   end if;
-  insert into public.notification_preferences (user_id, email_kinds) values (v_uid, v_new)
-  on conflict (user_id) do update set email_kinds = excluded.email_kinds;
+  update public.notification_preferences set email_kinds = v_new where user_id = v_uid;
   if v_changes is not null then
     perform audit.record(
       'notification_preferences.changed', 'notification_preferences', v_uid::text, jsonb_build_object('kinds', v_changes)
