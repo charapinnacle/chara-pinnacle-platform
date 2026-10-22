@@ -43,6 +43,11 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
           title="New applications"
           description="Choose how you hear about applications to your vacancies. This applies to you only."
         >
+          {kinds ? (
+            <p className="text-small text-muted-foreground">
+              This choice applies only while the &ldquo;New applications&rdquo; emails are switched on under Email notifications.
+            </p>
+          ) : null}
           <NotificationForm delivery={delivery} />
         </Section>
       ) : (

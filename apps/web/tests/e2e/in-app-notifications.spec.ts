@@ -186,6 +186,7 @@ test.describe("in-app notifications (FR-T1)", () => {
       await expect(row.getByRole("switch")).toHaveCount(0);
     }
     await expect(section.getByText("Application updates")).toHaveCount(0);
+    await expect(page.getByText("This choice applies only while the “New applications” emails are switched on under Email notifications.")).toBeVisible();
     await expectNoAxeViolations(page);
 
     await waitForHydration(applications);
@@ -263,6 +264,7 @@ test.describe("in-app notifications (FR-T1)", () => {
       await page.goto(SETTINGS);
       await expect(page.getByRole("radio", { name: "Immediately" })).toBeVisible();
       await expect(page.locator("#email-notifications")).toHaveCount(0);
+      await expect(page.getByText(/This choice applies only while/)).toHaveCount(0);
     } finally {
       setRelease(true);
     }
