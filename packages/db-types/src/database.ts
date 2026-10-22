@@ -277,26 +277,26 @@ isOneToOne: false
                   ]
                 },"notification_preferences": {
                   Row: {
-                    "digest": boolean,"email_undeliverable_at": string | null,"user_id": string
+                    "digest": boolean,"email_kinds": NonNullable<Json>,"email_undeliverable_at": string | null,"user_id": string
                   }
                   Insert: {
-                    "digest"?: boolean,"email_undeliverable_at"?: string | null,"user_id": string
+                    "digest"?: boolean,"email_kinds"?: NonNullable<Json>,"email_undeliverable_at"?: string | null,"user_id": string
                   }
                   Update: {
-                    "digest"?: boolean,"email_undeliverable_at"?: string | null,"user_id"?: string
+                    "digest"?: boolean,"email_kinds"?: NonNullable<Json>,"email_undeliverable_at"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     
                   ]
                 },"notifications": {
                   Row: {
-                    "attempts": number,"created_at": string,"delivery": string | null,"id": string,"kind": string,"last_error": string | null,"msg_id": number | null,"payload": NonNullable<Json>,"provider_message_id": string | null,"sent_at": string | null,"status": string,"user_id": string | null
+                    "attempts": number,"created_at": string,"dedupe_key": string | null,"delivery": string | null,"email_status": string | null,"id": string,"kind": string,"last_error": string | null,"mandatory": boolean,"msg_id": number | null,"payload": NonNullable<Json>,"provider_message_id": string | null,"read_at": string | null,"sent_at": string | null,"status": string,"user_id": string | null
                   }
                   Insert: {
-                    "attempts"?: number,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind": string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
+                    "attempts"?: number,"created_at"?: string,"dedupe_key"?: string | null,"delivery"?: string | null,"email_status"?: string | null,"id"?: string,"kind": string,"last_error"?: string | null,"mandatory"?: boolean,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"read_at"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
                   }
                   Update: {
-                    "attempts"?: number,"created_at"?: string,"delivery"?: string | null,"id"?: string,"kind"?: string,"last_error"?: string | null,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
+                    "attempts"?: number,"created_at"?: string,"dedupe_key"?: string | null,"delivery"?: string | null,"email_status"?: string | null,"id"?: string,"kind"?: string,"last_error"?: string | null,"mandatory"?: boolean,"msg_id"?: number | null,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"read_at"?: string | null,"sent_at"?: string | null,"status"?: string,"user_id"?: string | null
                   }
                   Relationships: [
                     
@@ -1129,6 +1129,11 @@ isOneToOne: false
               "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
             }[]
                            },
+"list_my_notifications":
+{ Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
+              "created_at": string,"id": string,"kind": string,"next_cursor": string,"payload": Json,"read_at": string
+            }[]
+                           },
 "list_my_reports":
 { Args: { "p_after_created"?: string,"p_after_id"?: number,"p_limit"?: number }; Returns: {
               "category": Database["public"]['Enums']["report_category"],"created_at": string,"handled_at": string,"id": number,"reference": string,"resolution_note": string,"status": Database["public"]['Enums']["report_status"],"target_label": string,"target_type": Database["public"]['Enums']["report_target_type"]
@@ -1160,6 +1165,9 @@ isOneToOne: false
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
                            },
+"mark_notifications_read":
+{ Args: { "p_ids"?: (string)[] }; Returns: number
+                           },
 "moderate_job":
 { Args: { "p_action": string,"p_job": string,"p_reason": string }; Returns: undefined
                            },
@@ -1175,6 +1183,11 @@ isOneToOne: false
                            },
 "my_platform_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]
+                           },
+"notification_kind_catalogue":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "audience": string,"default_email": boolean,"email_enabled": boolean,"kind": string,"label": string,"mandatory": boolean
+            }[]
                            },
 "notify_ack":
 { Args: { "p_attempts"?: number,"p_error"?: string,"p_notification_id"?: string,"p_outcome": string,"p_provider_message_id"?: string }; Returns: boolean
@@ -1246,6 +1259,8 @@ isOneToOne: false
                            },
 "set_notification_preferences":
 { Args: { "p_digest": boolean }; Returns: undefined
+                           } |
+{ Args: { "p_kinds": Json }; Returns: undefined
                            },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"] }; Returns: {
@@ -1273,6 +1288,9 @@ isOneToOne: false
                            },
 "transfer_ownership":
 { Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
+                           },
+"unread_notification_count":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "update_organization_profile":
 { Args: { "p_based_in_country": string,"p_description": string,"p_display_name": string,"p_industry_code": string,"p_legal_name": string,"p_org": string,"p_website": string }; Returns: Json
