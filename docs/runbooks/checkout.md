@@ -27,7 +27,7 @@ No Stripe account existed when this was built. The adapter was tested with respo
 
 ## 3. Mirroring the plans and the go-live check
 
-Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (public, priced, not contact-sales) and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
+Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (an employer plan that is public, priced and not contact-sales; the partner plans of FR-R1 are seeded but not mirrored until partner checkout exists) and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
 
 ```sh
 DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs

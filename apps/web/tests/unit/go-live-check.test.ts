@@ -14,6 +14,7 @@ type Plan = Record<string, unknown>;
 
 const sold = (code: string, price: number, overrides: Plan = {}): Plan => ({
   code,
+  org_type: "employer",
   is_public: true,
   contact_sales: false,
   price_minor: price,
@@ -24,8 +25,8 @@ const sold = (code: string, price: number, overrides: Plan = {}): Plan => ({
 });
 
 const notSold: Plan[] = [
-  { code: "free_employer", is_public: false, contact_sales: false, price_minor: 0, limits: {}, price_ref: null, stripe_amount: null },
-  { code: "employer_enterprise", is_public: false, contact_sales: true, price_minor: 0, limits: {}, price_ref: null, stripe_amount: null },
+  { code: "free_employer", org_type: "employer", is_public: false, contact_sales: false, price_minor: 0, limits: {}, price_ref: null, stripe_amount: null },
+  { code: "employer_enterprise", org_type: "employer", is_public: false, contact_sales: true, price_minor: 0, limits: {}, price_ref: null, stripe_amount: null },
 ];
 
 const MIRRORED: Plan[] = [...notSold, sold("employer_starter", 3900), sold("employer_professional", 7900)];
@@ -123,6 +124,13 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
 
   it("passes when every sold plan has both limit rows, a stored price reference and the amount at Stripe", () => {
     const result = run(ENFORCED);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+  });
+
+  it("does not require a Stripe price for a partner plan, which is not sold yet (FR-R1)", () => {
+    const partner = sold("recruitment_partner", 4900, { org_type: "recruitment_company", limits: {}, price_ref: null, stripe_amount: null });
+    const result = run(ENFORCED, [...MIRRORED, partner]);
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
   });
