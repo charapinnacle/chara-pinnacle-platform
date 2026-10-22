@@ -16,12 +16,13 @@ function planData() {
   return row;
 }
 
-test("FR-G1 AC1: loading the plan seed a second time changes no plan, limit or feature and writes no audit row", () => {
+test("FR-G1 AC1, FR-R1 AC1: loading the plan seed a second time changes no plan, limit or feature and writes no audit row", () => {
   const before = planData();
-  expect(query("select code from billing.plans")).toHaveLength(4);
+  expect(query("select code from billing.plans")).toHaveLength(12);
 
   execute(seed);
 
   expect(planData()).toEqual(before);
-  expect(query("select code from billing.plans")).toHaveLength(4);
+  expect(query("select code from billing.plans")).toHaveLength(12);
+  expect(query("select code from billing.plans where org_type = 'employer'")).toHaveLength(4);
 });
