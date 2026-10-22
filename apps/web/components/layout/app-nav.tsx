@@ -6,6 +6,7 @@ import { AccountMenu, AccountPanel } from "@/components/layout/account-panel";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { MenuDisclosure } from "@/components/layout/menu-disclosure";
 import { NavLink } from "@/components/layout/nav-link";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { accountLinks, currentOrganization, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
 import { employerDashboardPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,8 @@ export type AppNavProps = {
   email: string | null;
   accountKind: "worker" | "company" | null;
   organizations: readonly NavOrganization[];
+  // The bell of the in-app notifications, while they are released and the person is a worker or a company user.
+  notifications?: { userId: string; initialUnread: number } | null;
 };
 
 // What the header and the sidebar offer, for who is signed in: a candidate, or the role in the organisation named by the
@@ -56,11 +59,11 @@ export function OrganizationList({ lang, organizations, current }: { lang: strin
 // row of links with the organisation switcher and the account menu above; from 1024 px the sidebar has the links and the
 // switcher, and the header keeps the account menu.
 export function AppNav(props: AppNavProps) {
-  const { lang, organizations } = props;
+  const { lang, organizations, notifications } = props;
   const { links, switcher, account } = useAppNavigation(props);
 
   return (
-    <HeaderMenu>
+    <HeaderMenu actions={notifications ? <NotificationBell lang={lang} {...notifications} /> : null}>
       <div className="grid gap-2 md:flex md:items-center md:gap-1">
         {links.length > 0 ? (
           <nav aria-label="Main" className="lg:hidden">

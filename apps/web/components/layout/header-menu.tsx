@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 const subscribe = () => () => {};
 
 // The server render and the hydration pass see false, so without JavaScript the links stay visible and the button,
-// which would do nothing, stays hidden.
-export function HeaderMenu({ children }: { children: React.ReactNode }) {
+// which would do nothing, stays hidden. actions stay in the bar at every width, next to the menu button below 768 px.
+export function HeaderMenu({ actions, children }: { actions?: React.ReactNode; children: React.ReactNode }) {
   const interactive = useSyncExternalStore(subscribe, () => true, () => false);
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -27,6 +27,7 @@ export function HeaderMenu({ children }: { children: React.ReactNode }) {
   const Icon = open ? X : Menu;
   return (
     <div className="contents md:flex md:items-center" onKeyDown={onKeyDown}>
+      {actions ? <div className="ms-auto flex items-center md:ms-0">{actions}</div> : null}
       <button
         ref={button}
         type="button"
@@ -34,7 +35,8 @@ export function HeaderMenu({ children }: { children: React.ReactNode }) {
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "-me-2 ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-small font-medium hover:bg-accent md:hidden",
+          "-me-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-small font-medium hover:bg-accent md:hidden",
+          actions ? "ms-1" : "ms-auto",
           !interactive && "hidden",
         )}
       >
