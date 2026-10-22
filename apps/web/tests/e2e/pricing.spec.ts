@@ -142,8 +142,9 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
     setPlan("employer_enterprise", "is_public = true, contact_sales = false, price_minor = 19900");
     execute(`
       insert into billing.plan_features (plan_code, feature_key)
-      values ('employer_starter', 'chara_match'), ('employer_starter', 'corridors'), ('employer_starter', 'advanced_worker_search');
-      insert into billing.plan_limits (plan_code, limit_key, limit_value) values ('employer_starter', 'active_requirements', 4);
+      values ('employer_starter', 'chara_match'), ('employer_starter', 'corridors'), ('employer_starter', 'advanced_worker_search')
+      on conflict do nothing;
+      update billing.plan_limits set limit_value = 4 where plan_code = 'employer_starter' and limit_key = 'active_requirements';
       update billing.plan_limits set limit_value = null where plan_code = 'employer_enterprise' and limit_key = 'active_jobs';
     `);
 
