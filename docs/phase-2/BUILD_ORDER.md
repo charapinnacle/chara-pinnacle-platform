@@ -1,6 +1,6 @@
 # Phase 2 build order (provisional)
 
-Version 0.1, 22 October 2026. The order in which the Phase 2 requirements (FR-J1 to FR-T1) are built, one pull request per unit, after the Phase 1 units of `docs/phase-1/BUILD_ORDER.md`. Data model, names and gates: `DATA_MODEL.md`. **Provisional:** no unit starts until CHARA has answered the Phase 2 decisions; a unit whose decisions change is re-planned first. Progress is read from merged pull requests, whose titles end with the unit id, for example `feat(FR-J1): partner registration [V05]`.
+Version 0.2, 22 October 2026. The order in which the Phase 2 requirements (FR-J1 to FR-T1) are built, one pull request per unit (80 units; V77 to V80 were added for the non-functional requirements and sit at the end of their release), after the Phase 1 units of `docs/phase-1/BUILD_ORDER.md`. Data model, names and gates: `DATA_MODEL.md`. **Provisional:** no unit starts until CHARA has answered the Phase 2 decisions; a unit whose decisions change is re-planned first. Progress is read from merged pull requests, whose titles end with the unit id, for example `feat(FR-J1): partner registration [V05]`.
 
 ## Rules for every unit
 
@@ -10,6 +10,7 @@ The Phase 1 rules apply unchanged (branches, authorship, migrations, RLS, pgTAP 
 - New screens and RPCs of a release stay behind its `release_*` setting until go-live.
 - New dependencies: none expected. Realtime uses the installed `@supabase/supabase-js`. Anything else needs approval first.
 - The acceptance-criteria text is corrected to the canonical names of `DATA_MODEL.md` section 2 in the same pull request.
+- Non-functional requirements that bind every unit (section "Non-functional requirements" below): every new table gets cross-tenant pgTAP tests with two employers, two partners, two candidates and anonymous, and the RLS coverage test stays at 100 % (NFR-S8); every plan limit is enforced in the database in the same transaction, with a pgTAP concurrency test at the boundary (NFR-A4); every email is queued in the same transaction as its change (NFR-A3); every new page passes the axe checks (NFR-U3); every geography, occupation, industry, language and service type is a foreign key to a code list (NFR-M3); no ordering reads `billing.*` (NFR-C8); every value an administrator may change is a setting with an audited editor, not a constant (NFR-O5).
 
 ## Units
 
@@ -48,6 +49,8 @@ Release 2a: partner accounts and discovery
 | V29 | `feat/data-export` | FR-S3: data export of Phase 1 data (closes a Phase 1 gap), `dsar-exports` bucket, `data_export_ready` | V02 |
 | V30 | `feat/partner-dashboards` | FR-R3, FR-R4 (2a parts): recruitment and staffing dashboards, routing by organisation type | V13, V20, V12 |
 | V31 | `feat/admin-network-statistics` | FR-S2: partner organisation metrics | V11 |
+| V77 | `feat/ranking-transparency-page` | NFR-C8: public page describing the main ranking parameters of Find Partners (extended for the job order board in V79 and Find Workers in V80); test that paid and unpaid organisations rank the same | V21 |
+| V78 | `chore/release-2a-readiness` | NFR-O4: end-to-end journey partner sign-up to approval to public profile in CI; NFR-P3: load test of Find Partners at 5,000 partner organisations with query plans; NFR-U3: manual accessibility audit checklist of the 2a pages; NFR-C7: review of the approval and moderation flows | V11, V21, V22, V27 |
 
 Release 2b: workforce requirements, job orders, invitations, responses, submissions
 
@@ -82,6 +85,7 @@ Release 2b: workforce requirements, job orders, invitations, responses, submissi
 | V58 | `feat/network-retention-submissions` | FR-S3, FR-S2 (2b parts): retention, erasure and export of submissions; job order metrics | V19, V29, V31, V50 |
 | V59 | `feat/job-order-notifications` | FR-T1 (2b kinds) | V02, V41 to V50, V33 |
 | V60 | `feat/network-analytics-page` | FR-R6: analytics page and export (may move to Phase 3) | V20, V41, V44 |
+| V79 | `chore/release-2b-readiness` | NFR-O4: journeys requirement to invitation to response to selection, and candidate submission with worker approval, in CI; NFR-P3: load test of the job order board at 2,000 open requirements; NFR-S11: page-source and network checks for an uninvited partner; NFR-U3 audit of 2b pages; NFR-C8 page extended | V47, V50, V77 |
 
 Release 2c: messaging and Find Workers
 
@@ -103,6 +107,85 @@ Release 2c: messaging and Find Workers
 | V74 | `feat/messaging-retention-erasure` | FR-P3, FR-S3, FR-S2 (2c parts): conversation purge, erasure, export, metrics | V58, V63, V68, V70 |
 | V75 | `feat/messaging-dashboard-blocks` | FR-R3, FR-R4, FR-R5 (2c parts): unread messages, matching workers, partner requests | V55, V56, V63, V71, V68 |
 | V76 | `feat/analytics-inquiries` | FR-R6: inquiries metric | V60, V71 |
+| V80 | `chore/release-2c-readiness` | NFR-O4: contact request and messaging journeys in CI; NFR-P3: load test of Find Workers at 100,000 visible profiles; NFR-P4: message shown within 5 s and conversation list within 500 ms at 10,000 conversations; NFR-P5: capacity review at 2,000 partners and 50,000 messages a day; NFR-S9: page-source, network and notification payload checks; NFR-U3 audit of 2c pages; NFR-C8 page extended | V67, V70, V71, V79 |
+
+## Coverage
+
+Every Phase 2 functional requirement and its SOP (Notion database 3, P2-01 to P2-45, one SOP per requirement) is delivered by these units:
+
+| Requirement | SOP | Units |
+|---|---|---|
+| FR-J1 | P2-01 | V05, V09 |
+| FR-J2 | P2-02 | V10, V44 |
+| FR-J3 | P2-03 | V08, V54, V73 |
+| FR-J4 | P2-04 | V11 |
+| FR-K1 | P2-05 | V06, V72 |
+| FR-K2 | P2-06 | V07 |
+| FR-K3 | P2-07 | V12, V22 |
+| FR-K4 | P2-08 | V18 |
+| FR-K5 | P2-09 | V23, V54 |
+| FR-L1 | P2-10 | V21 |
+| FR-L2 | P2-11 | V22 |
+| FR-L3 | P2-12 | V53 |
+| FR-L4 | P2-13 | V24, V54 |
+| FR-L5 | P2-14 | V25 |
+| FR-M1 | P2-15 | V32, V35 |
+| FR-M2 | P2-16 | V33, V43 |
+| FR-M3 | P2-17 | V36 |
+| FR-M4 | P2-18 | V34 |
+| FR-N1 | P2-19 | V39, V40 |
+| FR-N2 | P2-20 | V44, V46 |
+| FR-O1 | P2-21 | V41, V42 |
+| FR-O2 | P2-22 | V44, V45, V46 |
+| FR-O3 | P2-23 | V47 |
+| FR-O4 | P2-24 | V48, V49 |
+| FR-O5 | P2-25 | V50 |
+| FR-P1 | P2-26 | V63, V64, V65 |
+| FR-P2 | P2-27 | V71 |
+| FR-P3 | P2-28 | V66, V74 |
+| FR-P4 | P2-29 | V67 |
+| FR-Q1 | P2-30 | V68 |
+| FR-Q2 | P2-31 | V69 |
+| FR-Q3 | P2-32 | V70 |
+| FR-Q4 | P2-33 | V61, V62 |
+| FR-Q5 | P2-34 | V37, V38, V72 |
+| FR-R1 | P2-35 | V01, V13, V15, V51 |
+| FR-R2 | P2-36 | V16, V17 |
+| FR-R3 | P2-37 | V30, V55, V75 |
+| FR-R4 | P2-38 | V30, V55, V75 |
+| FR-R5 | P2-39 | V56, V75 |
+| FR-R6 | P2-40 | V20, V60, V76 |
+| FR-S1 | P2-41 | V26, V27, V28, V57, V73 |
+| FR-S2 | P2-42 | V31, V58, V74 |
+| FR-S3 | P2-43 | V19, V29, V58, V74 |
+| FR-S4 | P2-44 | V04, V52 |
+| FR-T1 | P2-45 | V02, V14, V59, V67 |
+
+## Non-functional requirements
+
+The 19 Phase 2 non-functional requirements (Notion database 2, Phase 2):
+
+| NFR | Name | Where it is met |
+|---|---|---|
+| NFR-S8 | Tenant isolation in the partner network | every unit (rule); `DATA_MODEL.md` section 6 access column |
+| NFR-S9 | Worker identity protection | V48, V68, V69, V70; checks in V80 |
+| NFR-S10 | Messaging abuse control | V65 (plain text, escaped, links as text), V66 (limits, throttle, block, report) |
+| NFR-S11 | Hidden employer name on job orders | V39, V41, V47; checks in V79 |
+| NFR-P3 | Network search response time | V78 (Find Partners), V79 (job order board), V80 (Find Workers) |
+| NFR-P4 | Message delivery time | V64, V65; measured in V80 |
+| NFR-P5 | Phase 2 capacity | V80 |
+| NFR-A3 | Event and email delivery | every unit that queues an email (rule); V02, V14, V59, V67 |
+| NFR-A4 | Limit consistency under load | every limit unit (rule): V06, V07, V12, V13, V34, V41, V44, V48, V51, V66 |
+| NFR-C4 | Worker consent for visibility and submissions | V48 (submission approval and withdrawal), V68 (Find Workers opt-in and withdrawal) |
+| NFR-C5 | Message retention and staff access | V73 (reported message context, audited), V74 (24-month purge, setting) |
+| NFR-C6 | Fair recruitment and employer pays | V08, V26 (fee reports first), V37, V72, V52 |
+| NFR-C7 | Business user traceability and moderation | V03, V11 (identity checked before listing), V27, V57, V73; review in V78 |
+| NFR-C8 | Ranking transparency | V77; rule for every search unit (V21, V22, V39, V53, V69) |
+| NFR-U3 | Accessibility of Phase 2 pages | every unit (axe rule); manual audit in V78, V79, V80 |
+| NFR-U4 | Clear status and next step | V42, V46, V47, V49, V50, V70 (status labels and next action, Playwright checks) |
+| NFR-O4 | Phase 2 test coverage | V78, V79, V80 (journeys in CI) |
+| NFR-O5 | Configuration without deployment | V16 (plans, limits, settings), V19 (retention), V33 (requirement duration settings), V37 (direct-contact rules) |
+| NFR-M3 | Code lists for the partner network | V06, V07, V12, V32 (foreign keys to code lists, rule) |
 
 ## Outside the code
 
