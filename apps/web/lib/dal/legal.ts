@@ -11,6 +11,7 @@ import {
 } from "@/lib/validation/consents";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
+type OrganizationType = Database["public"]["Enums"]["organization_type"];
 
 type DocumentRow =
   Database["public"]["Functions"]["signup_documents"]["Returns"][number];
@@ -34,10 +35,12 @@ function toSummary(row: DocumentRow): LegalDocumentSummary {
 
 export async function getSignupDocuments(
   kind: AccountKind,
+  organizationType?: OrganizationType,
 ): Promise<LegalDocumentSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("signup_documents", {
     p_kind: kind,
+    p_org_type: organizationType,
   });
   if (error) throw new Error("The sign-up documents could not be loaded", { cause: error });
   return data.map(toSummary);
@@ -76,11 +79,12 @@ export async function getOnboardingDocuments(
   kind: AccountKind,
 ): Promise<DocumentsToAccept> {
   const supabase = await createClient();
-  const [documents, { data: profile, error }] = await Promise.all([
-    getSignupDocuments(kind),
-    supabase.from("profiles").select("pending_consents").single(),
-  ]);
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("pending_consents, intended_organization_type")
+    .single();
   if (error) throw new Error("The sign-up consents could not be loaded", { cause: error });
+  const documents = await getSignupDocuments(kind, profile.intended_organization_type ?? undefined);
   const entries = consentEntriesSchema.safeParse(profile.pending_consents);
   const stale = unacceptedDocuments(
     documents,

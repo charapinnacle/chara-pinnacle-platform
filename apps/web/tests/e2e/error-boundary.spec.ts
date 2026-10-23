@@ -7,7 +7,7 @@ import { expect, test } from "./support/test";
 
 const PASSPORT_LIMITS = "public.passport_limits()";
 const MEMBERS_TABLE = "public.organization_members";
-const SIGNUP_DOCUMENTS = "public.signup_documents(public.account_kind)";
+const SIGNUP_DOCUMENTS = "public.signup_documents(public.account_kind, public.organization_type)";
 
 // A function is withdrawn from the API roles for the whole database while these tests run, so this file has a project of
 // its own that follows the others (playwright.config.ts).
