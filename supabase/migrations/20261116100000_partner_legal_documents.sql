@@ -10,8 +10,8 @@
 --
 -- The release gate: private.legal_release_gaps(feature) names each document of a release feature that has no published
 -- version or whose current version is a draft; scripts/check-go-live.mjs refuses a switched-on release while it returns a
--- row. The Phase 2 slugs are deliberately not added to private.missing_reference_data: a missing Phase 2 document stops
--- its release, not the Phase 1 deployment, which goes on while counsel works on the texts.
+-- row. private.missing_reference_data also names the seven slugs, as for every seeded document: they are published here
+-- as drafts, so the deployment check only fails when a row is missing; drafts are the release gate's concern.
 
 insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
 select
@@ -47,17 +47,71 @@ insert into private.settings (key, value) values ('partner_dpa_required', 'false
 
 -- The documents each release feature needs before it goes live (FR-S4 AC9; decisions 6.1 and 7.1): partner accounts and
 -- Find Partners (release 2a) may go live before the legal opinion, the job orders board with candidate submissions
--- (2b) and Find Workers (2c) wait for it. The immigration disclaimer is also part of 2a because the public partner
--- profile links to it (AC10). partner-dpa joins job_orders and find_workers while partner_dpa_required is true.
+-- (2b) and Find Workers (2c) wait for it. partner-dpa joins job_orders and find_workers while partner_dpa_required is
+-- true.
 insert into private.settings (key, value) values (
   'legal_release_documents',
   '{
     "partner_accounts": ["privacy-policy", "acceptable-use-policy", "partner-terms", "recruitment-company-terms",
-      "staffing-company-terms", "employer-pays-commitment", "immigration-disclaimer"],
-    "job_orders": ["worker-terms", "immigration-disclaimer"],
+      "staffing-company-terms", "employer-pays-commitment"],
+    "job_orders": ["worker-terms", "worker-visibility-consent", "immigration-disclaimer"],
     "find_workers": ["worker-terms", "worker-visibility-consent", "immigration-disclaimer"]
   }'
 ) on conflict (key) do nothing;
+
+-- The deployment check (20261112100000_cities.sql) with the seven partner documents in its list of seeded slugs.
+create or replace function private.missing_reference_data()
+returns table (kind text, name text)
+language sql
+stable
+set search_path = ''
+as $$
+  select 'legal_document', d.slug
+  from unnest(array[
+    'terms-of-service', 'privacy-policy', 'cookie-policy', 'platform-rules', 'acceptable-use-policy',
+    'subscription-and-billing-terms', 'employer-terms', 'worker-terms', 'complaints-and-dispute-process',
+    'account-suspension-and-termination-rules', 'sharing-notice', 'age-18-plus',
+    'partner-terms', 'recruitment-company-terms', 'staffing-company-terms', 'employer-pays-commitment', 'partner-dpa',
+    'worker-visibility-consent', 'immigration-disclaimer'
+  ]) as d (slug)
+  where private.current_legal_version(d.slug) is null
+  union all
+  select 'reference_table', t.name
+  from (values
+    ('public.countries', not exists (select 1 from public.countries)),
+    ('public.languages', not exists (select 1 from public.languages)),
+    ('public.currencies', not exists (select 1 from public.currencies)),
+    ('public.industries', not exists (select 1 from public.industries)),
+    ('public.occupations', not exists (select 1 from public.occupations)),
+    ('public.cities', not exists (select 1 from public.cities)),
+    ('billing.plans', not exists (select 1 from billing.plans))
+  ) as t (name, empty)
+  where t.empty
+  union all
+  select 'setting', k.key
+  from (
+    select m[1] as key
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    cross join lateral regexp_matches(p.prosrc, '\mkey\s*=\s*''([a-z0-9_]*[a-z0-9])''', 'g') as m
+    where n.nspname in ('public', 'private', 'billing', 'audit', 'stats')
+    union
+    select (regexp_match(encode(t.tgargs, 'escape'), '^([a-z0-9_]+)\\000'))[1]
+    from pg_catalog.pg_trigger t
+    where t.tgfoid = 'private.worker_list_limit()'::regprocedure
+    union
+    select 'rate_limit_' || a || s
+    from unnest(array['signup', 'resend', 'login', 'forgot_password', 'reset_password', 'mfa_code', 'report', 'document_access']) as a
+    cross join unnest(array['_max', '_seconds']) as s
+  ) as k
+  where not exists (select 1 from private.settings st where st.key = k.key)
+  union all
+  select 'vault_secret', 'rate_limit_proof_key'
+  where not exists (select 1 from vault.secrets v where v.name = 'rate_limit_proof_key')
+  order by 1, 2
+$$;
+
+revoke all on function private.missing_reference_data() from public, anon, authenticated, service_role;
 
 -- One row per document of the feature that cannot go live: 'missing' (no published version) or 'draft' (the current
 -- version is a draft, also when an older version was approved, because the draft is what users read). No row means the
