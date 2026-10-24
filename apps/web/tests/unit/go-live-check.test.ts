@@ -42,7 +42,12 @@ const ENTITY = {
 const settings = (enforced: unknown, entity: Record<string, unknown> = ENTITY) =>
   JSON.stringify({ entitlements_enforced: enforced, ...entity });
 
-type Release = { active_administrators?: unknown; current_legal_documents?: unknown; rate_limit_proof_key_set?: unknown };
+type Release = {
+  active_administrators?: unknown;
+  current_legal_documents?: unknown;
+  rate_limit_proof_key_set?: unknown;
+  legal_release_gaps?: unknown;
+};
 
 const PUBLISHED: Release = {
   active_administrators: 2,
@@ -266,5 +271,101 @@ describe("the go-live gate for the administrators and the legal texts (security 
     expect(run(ENFORCED, MIRRORED, null).stderr).toContain("Usage");
     expect(run(ENFORCED, MIRRORED, "not json").stderr).toContain("release.json is not a readable JSON export");
     expect(run(ENFORCED, MIRRORED, { active_administrators: 1 }).status).toBe(2);
+  });
+});
+
+describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
+  const NO_GAPS = { partner_accounts: [], job_orders: [], find_workers: [] };
+  const GAPS = {
+    partner_accounts: [
+      { slug: "partner-terms", state: "draft" },
+      { slug: "employer-pays-commitment", state: "draft" },
+    ],
+    job_orders: [{ slug: "partner-dpa", state: "missing" }],
+    find_workers: [{ slug: "worker-visibility-consent", state: "missing" }],
+  };
+  // The Phase 2 drafts are current versions in the export, beside the approved Phase 1 texts.
+  const WITH_PHASE_2_DRAFTS: Release = {
+    ...PUBLISHED,
+    current_legal_documents: [
+      ...(PUBLISHED.current_legal_documents as unknown[]),
+      { slug: "partner-terms", version: 0, is_draft: true },
+      { slug: "immigration-disclaimer", version: 0, is_draft: true },
+      { slug: "worker-visibility-consent", version: 0, is_draft: true },
+    ],
+    legal_release_gaps: GAPS,
+  };
+  const released = (switches: Record<string, unknown>) =>
+    JSON.stringify({ entitlements_enforced: true, ...ENTITY, ...switches });
+
+  it("does not make the Phase 1 gate fail while every release switch is off, and names the pending documents", () => {
+    const result = run(released({ release_partner_directories: false }), MIRRORED, WITH_PHASE_2_DRAFTS);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Go-live check passed");
+    expect(result.stdout).toContain(
+      "Phase 2 legal documents not yet approved (release switch off): partner_accounts: partner-terms (draft), employer-pays-commitment (draft); job_orders: partner-dpa (missing); find_workers: worker-visibility-consent (missing)",
+    );
+  });
+
+  it("passes the Phase 1 gate with an export made before Phase 2 (no legal_release_gaps)", () => {
+    const result = run(settings(true), MIRRORED, PUBLISHED);
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toContain("Phase 2");
+  });
+
+  it("still fails a Phase 1 draft, while a Phase 2 draft is not counted as one", () => {
+    const release = {
+      ...WITH_PHASE_2_DRAFTS,
+      current_legal_documents: [...(WITH_PHASE_2_DRAFTS.current_legal_documents as unknown[]), { slug: "cookie-policy", version: 0, is_draft: true }],
+    };
+    const result = run(settings(true), MIRRORED, release);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("legal documents are drafts: cookie-policy v0 (publish");
+    expect(result.stderr).not.toContain("partner-terms v0");
+  });
+
+  it.each([
+    ["true", true],
+    ["the text on", "on"],
+  ])("fails a switched-on release (%s) while its documents have gaps, naming each, even with --allow-draft-legal", (_, value) => {
+    const result = run(released({ release_partner_directories: value }), MIRRORED, WITH_PHASE_2_DRAFTS, ["--allow-draft-legal"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      "Phase 2 go-live check failed: partner_accounts is switched on (release_partner_directories) but its legal documents are not approved: partner-terms (draft), employer-pays-commitment (draft)",
+    );
+    expect(result.stderr).not.toContain("job_orders");
+    expect(result.stdout).toContain("Go-live check passed");
+    expect(result.stdout).toContain("job_orders: partner-dpa (missing)");
+  });
+
+  it("checks each feature against its own switches", () => {
+    const result = run(released({ release_partner_directories: true, release_candidate_submissions: "true", release_messaging: "yes" }), MIRRORED, {
+      ...PUBLISHED,
+      legal_release_gaps: { ...NO_GAPS, job_orders: GAPS.job_orders, find_workers: GAPS.find_workers },
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).not.toContain("partner_accounts");
+    expect(result.stderr).toContain("job_orders is switched on (release_candidate_submissions) but its legal documents are not approved: partner-dpa (missing)");
+    expect(result.stderr).toContain("find_workers is switched on (release_messaging) but its legal documents are not approved: worker-visibility-consent (missing)");
+  });
+
+  it("passes a switched-on release whose documents are approved", () => {
+    const result = run(released({ release_partner_directories: true }), MIRRORED, { ...PUBLISHED, legal_release_gaps: NO_GAPS });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+  });
+
+  it("fails a switched-on release when the export has no gate result for it", () => {
+    const result = run(released({ release_find_workers: true }), MIRRORED, PUBLISHED);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("find_workers is switched on (release_find_workers) but release.json has no legal_release_gaps for it");
+  });
+
+  it("reports the Phase 1 and the Phase 2 failures together", () => {
+    const result = run(released({ release_partner_directories: true, entitlements_enforced: false }), MIRRORED, WITH_PHASE_2_DRAFTS);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Go-live check failed: entitlements_enforced must be true");
+    expect(result.stderr).toContain("Phase 2 go-live check failed: partner_accounts is switched on");
   });
 });
