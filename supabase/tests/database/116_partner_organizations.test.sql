@@ -1,5 +1,5 @@
 begin;
-select plan(66);
+select plan(67);
 
 \ir organizations_fixture.inc
 
@@ -418,11 +418,12 @@ select is(
 -- FR-J1 AC4: the type is fixed; only a Platform Administrator at aal2 corrects it ----------------------------------------
 update public.organizations set review_status = 'listed' where id = :'rec1';
 select is(
-  pg_temp.call_as(:'p1', 'authenticated', format($$update public.organizations set type = 'staffing_company' where id = %L$$, :'rec1'))
-    || ' ' || (select type::text from public.organizations where id = :'rec1'),
-  '42501|permission denied for table organizations| recruitment_company',
+  pg_temp.call_as(:'p1', 'authenticated', format($$update public.organizations set type = 'staffing_company' where id = %L$$, :'rec1')),
+  '42501|permission denied for table organizations|',
   'the owner cannot update the type directly (no update grant)'
 );
+-- A separate statement: a subquery in the statement above would read the snapshot taken before the call.
+select is((select type::text from public.organizations where id = :'rec1'), 'recruitment_company', 'the type is unchanged');
 select is(
   pg_temp.call_as(:'p1', 'authenticated', format($$select public.admin_set_organization_type(%L, 'staffing_company', %L)$$,
     :'rec1', 'Registered under the wrong type, confirmed by email'))
