@@ -1,3 +1,4 @@
+import { signInStaff } from "./support/admin";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute } from "./support/db";
 import { expect, test } from "./support/test";
@@ -89,5 +90,28 @@ test.describe("the partner legal pages (FR-S4)", () => {
     } finally {
       unpublish("staffing-company-terms", approved);
     }
+  });
+
+  test("AC11: the administrator sees each partner document with its state and the users on its current version, and filters them", async ({ page }) => {
+    await signInStaff(page, "admin", "/en/admin/legal");
+    const table = page.getByRole("table", { name: "Current versions of the legal documents" });
+    const partnerTerms = table.getByRole("row", { name: /^partner-terms / });
+    await expect(partnerTerms).toContainText("Draft");
+    await expect(partnerTerms).toContainText(/Recruitment companies: \d+ of \d+/);
+    await expect(partnerTerms).toContainText(/Staffing companies: \d+ of \d+/);
+    await expect(table.getByRole("row", { name: /^employer-pays-commitment / })).toContainText(/Recruitment company organisations: \d+ of \d+/);
+    await expect(table.getByRole("row", { name: /^immigration-disclaimer / })).toContainText("Shown only");
+    await expect(table.getByRole("row", { name: /^privacy-policy / })).toContainText(/Workers: \d+ of \d+/);
+    await expectNoAxeViolations(page);
+
+    await page.getByRole("combobox", { name: "Documents", exact: true }).selectOption("Partner network");
+    await page.getByRole("button", { name: "Apply filter" }).click();
+    await expect(page).toHaveURL(/\/en\/admin\/legal\?group=partner$/);
+    await expect(table.getByRole("row")).toHaveCount(8);
+    for (const slug of ["partner-terms", "recruitment-company-terms", "staffing-company-terms", "employer-pays-commitment", "partner-dpa", "worker-visibility-consent", "immigration-disclaimer"]) {
+      await expect(table.getByRole("row", { name: new RegExp(`^${slug} `) })).toContainText("Draft");
+    }
+    await expect(table.getByRole("row", { name: /^privacy-policy / })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Documents", exact: true })).toHaveValue("partner");
   });
 });

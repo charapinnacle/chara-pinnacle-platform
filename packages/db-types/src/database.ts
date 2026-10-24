@@ -907,6 +907,11 @@ isOneToOne: false
               "account_kind": Database["public"]['Enums']["account_kind"],"applications_submitted": number,"created_at": string,"display_name": string,"email": string,"id": string,"memberships": Json,"status": Database["public"]['Enums']["profile_status"],"vacancies_created": number
             }[]
                            },
+"admin_legal_acceptance":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "accepted": number,"audience": string,"slug": string,"total": number
+            }[]
+                           },
 "admin_list_legal_documents":
 { Args: Record<PropertyKey, never>; Returns: {
               "is_draft": boolean,"published_at": string,"slug": string,"title": string,"version": number

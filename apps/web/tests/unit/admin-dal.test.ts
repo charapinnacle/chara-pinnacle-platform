@@ -345,6 +345,30 @@ describe("the log of suspensions and the staff", () => {
     ]);
     expect(rpcMock).toHaveBeenCalledWith("admin_list_legal_documents");
   });
+
+  it("group the acceptance counts of the legal documents by slug, in the order the database gives (FR-S4 AC11)", async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        { slug: "partner-terms", audience: "recruitment_company", accepted: 3, total: 4 },
+        { slug: "partner-terms", audience: "staffing_company", accepted: 0, total: 2 },
+        { slug: "employer-pays-commitment", audience: "org:staffing_company", accepted: 1, total: 2 },
+      ],
+      error: null,
+    });
+    const counts = await dal.listLegalAcceptance();
+    expect(rpcMock).toHaveBeenCalledWith("admin_legal_acceptance");
+    expect(counts.get("partner-terms")).toEqual([
+      { audience: "recruitment_company", accepted: 3, total: 4 },
+      { audience: "staffing_company", accepted: 0, total: 2 },
+    ]);
+    expect(counts.get("employer-pays-commitment")).toEqual([{ audience: "org:staffing_company", accepted: 1, total: 2 }]);
+    expect(counts.get("cookie-policy")).toBeUndefined();
+  });
+
+  it("throw a plain error when the acceptance counts cannot be read", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { code: "P0001", message: "CHARA_FORBIDDEN" } });
+    await expect(dal.listLegalAcceptance()).rejects.toThrow("The acceptance counts");
+  });
 });
 
 describe("the reports of Trust & Safety", () => {
