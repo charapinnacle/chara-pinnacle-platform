@@ -243,8 +243,9 @@ revoke all on table private.organization_identifier_links from public, anon, aut
 
 -- 20261006100000 with the partner types: a company user creates the type named at sign-up and no other
 -- (organization_type_mismatch), a partner needs the legal-entity identifier, starts in review_status onboarding, and an
--- identifier another organisation already named is recorded in the staff-only links and the audit row, never in the
--- result. While release 2a is off the partner types are refused as in Phase 1.
+-- identifier another organisation already named is recorded in the staff-only links (and, for a partner, in the audit
+-- row), never in the result. The audit row of an employer is the Phase 1 row. While release 2a is off the partner types
+-- are refused as in Phase 1.
 create or replace function public.create_organization(
   p_type public.organization_type,
   p_legal_name text,
@@ -375,8 +376,7 @@ begin
     'organization_created', 'organization', v_id::text,
     jsonb_build_object(
       'slug', v_slug, 'type', p_type, 'duplicate_legal_name', v_duplicate, 'legal_entity_trial_used', v_trial_used
-    ) || case when v_identifier is null then '{}'::jsonb
-      else jsonb_build_object('duplicate_identifier_same_type', v_same_type) end
+    ) || case when v_partner then jsonb_build_object('duplicate_identifier_same_type', v_same_type) else '{}'::jsonb end
   );
   return jsonb_build_object('organization_id', v_id, 'slug', v_slug, 'duplicate_legal_name', v_duplicate);
 end;

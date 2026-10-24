@@ -1,5 +1,5 @@
 begin;
-select plan(58);
+select plan(60);
 
 \ir organizations_fixture.inc
 
@@ -294,6 +294,20 @@ select is(
      and (metadata::text like '%' || :'stf1' || '%' or metadata::text like '%' || :'emp_dup' || '%')),
   0::bigint,
   'the audit row of the creation names no other organisation'
+);
+select is(
+  pg_temp.call_as(:'own1', 'authenticated',
+    $$select public.create_organization('employer', 'Identified Employer GmbH', null, 'DE', 'F', null, 'DE123456789', 'vat_number')$$, 'aal1'),
+  'ok',
+  'an employer with the same identifier is created as before'
+);
+select results_eq(
+  $$select (select array_agg(k order by k) from jsonb_object_keys(l.metadata) k),
+      (select count(*) from private.organization_identifier_links x where x.organization_id = o.id)
+    from public.organizations o join audit.log l on l.entity_id = o.id::text and l.action = 'organization_created'
+    where o.legal_name = 'Identified Employer GmbH'$$,
+  $$values (array['duplicate_legal_name', 'legal_entity_trial_used', 'slug', 'type']::text[], 4::bigint)$$,
+  'the employer audit row keeps its Phase 1 keys, while the staff-only links still record the four matches'
 );
 
 -- NFR-S8: the links are never readable through the API -------------------------------------------------------------
