@@ -5,16 +5,24 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { SettingDetails } from "@/components/public/setting-details";
 import { getLegalDocument } from "@/lib/dal/legal";
+import { isReleased } from "@/lib/dal/release";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { formatDate } from "@/lib/i18n/format";
 import { parseLegalBody } from "@/lib/public/legal-body";
+import { partnerLegalSlugs } from "@/lib/public/navigation";
 import { PRIVACY_FIELDS, PRIVACY_POLICY_SLUG, settingRows } from "@/lib/public/setting-rows";
 import { legalPageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils";
 
+// A partner document has no page while release 2a is off (lib/public/navigation.ts); only then is the switch read.
+async function findDocument(slug: string) {
+  if (partnerLegalSlugs.includes(slug) && !(await isReleased("release_partner_directories"))) return null;
+  return getLegalDocument(slug);
+}
+
 export async function generateMetadata({ params }: PageProps<"/[lang]/legal/[slug]">): Promise<Metadata> {
   const { lang, slug } = await params;
-  const document = await getLegalDocument(slug);
+  const document = await findDocument(slug);
   return document ? legalPageMetadata(lang, slug, document) : {};
 }
 
@@ -48,7 +56,7 @@ export default async function LegalPage({
   params,
 }: PageProps<"/[lang]/legal/[slug]">) {
   const { slug } = await params;
-  const document = await getLegalDocument(slug);
+  const document = await findDocument(slug);
   if (!document) notFound();
   const contacts = slug === PRIVACY_POLICY_SLUG ? settingRows(await getPublicSettings(), PRIVACY_FIELDS) : [];
   let sections = 0;

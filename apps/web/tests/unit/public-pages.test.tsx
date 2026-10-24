@@ -115,6 +115,24 @@ describe("the legal page (FR-H1 AC7)", () => {
   });
 });
 
+describe("the partner legal pages (FR-S4 AC2)", () => {
+  it("are not found while release 2a is off, although a version is published", async () => {
+    legalDocument = legalFixture({ title: "DRAFT: Partner Terms", isDraft: true });
+    settings = { release_partner_directories: "false" };
+    await expect(LegalPage(legalProps("partner-terms"))).rejects.toThrow("NEXT_NOT_FOUND");
+    settings = {};
+    await expect(LegalPage(legalProps("immigration-disclaimer"))).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("show the version with the draft banner once release 2a is on", async () => {
+    legalDocument = legalFixture({ title: "DRAFT: Partner Terms", version: 0, isDraft: true });
+    settings = { release_partner_directories: "true" };
+    const html = renderToStaticMarkup(await LegalPage(legalProps("partner-terms")));
+    expect(html).toContain("DRAFT: Partner Terms");
+    expect(html).toContain("Draft - not yet approved by legal counsel");
+  });
+});
+
 describe("the legal page (FR-H3)", () => {
   it("shows the version, the UTC date, the change summary, the headings and paragraphs of the body, and the change log newest first (AC1)", async () => {
     legalDocument = legalFixture({

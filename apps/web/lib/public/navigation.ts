@@ -127,5 +127,35 @@ export const legalGroups: readonly { title: string; links: readonly { path: stri
   },
 ];
 
+const slugsOf = (groups: typeof legalGroups) =>
+  groups.flatMap(({ links }) => links).flatMap(({ path }) => (path.startsWith("legal/") ? [path.slice("legal/".length)] : []));
+
 // The slugs of the legal pages that the index links to; the sitemap asks the database which of them are published.
-export const legalSlugs = legalGroups.flatMap(({ links }) => links).flatMap(({ path }) => (path.startsWith("legal/") ? [path.slice("legal/".length)] : []));
+export const legalSlugs = slugsOf(legalGroups);
+
+export const IMMIGRATION_DISCLAIMER_PATH = "legal/immigration-disclaimer";
+
+// The partner legal documents of Phase 2 (FR-S4). Their pages exist, and the index lists them, only while release 2a
+// (release_partner_directories) is on: until then they are drafts about features nobody can use, so they are not
+// published to visitors or to the sitemap.
+export const partnerLegalGroups: typeof legalGroups = [
+  {
+    title: "Partner network",
+    links: [
+      { path: "legal/partner-terms", label: "Partner Terms" },
+      { path: "legal/recruitment-company-terms", label: "Recruitment Company Terms" },
+      { path: "legal/staffing-company-terms", label: "Staffing Company Terms" },
+      { path: "legal/employer-pays-commitment", label: "Employer-Pays Commitment" },
+    ],
+  },
+  {
+    title: "Partner data and notices",
+    links: [
+      { path: "legal/partner-dpa", label: "Data Processing Agreement for Partners" },
+      { path: "legal/worker-visibility-consent", label: "Worker Visibility Consent" },
+      { path: IMMIGRATION_DISCLAIMER_PATH, label: "Immigration, Visa and Legal Advice Disclaimer" },
+    ],
+  },
+];
+
+export const partnerLegalSlugs = slugsOf(partnerLegalGroups);
