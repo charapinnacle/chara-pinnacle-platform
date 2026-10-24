@@ -32,17 +32,14 @@ select results_eq(
   'a sharing notice without a published version is named'
 );
 
--- Every Phase 1 slug of supabase/seeds/ref/legal_documents.sql is checked: a slug the seed gains without this list fails
--- here. The partner documents of Phase 2 are reported by private.legal_release_gaps instead (V04, pgTAP 119), so that a
--- missing one stops its release and not a Phase 1 deployment.
+-- Every slug of supabase/seeds/ref/legal_documents.sql is checked: a slug the seed gains without this list fails here.
 alter table public.legal_documents disable trigger user;
 delete from public.legal_documents;
 alter table public.legal_documents enable trigger user;
 select set_eq(
   $$select name from private.missing_reference_data() where kind = 'legal_document'$$,
-  $$select slug from t_seeded_slugs where slug <> all (array['partner-terms', 'recruitment-company-terms',
-    'staffing-company-terms', 'employer-pays-commitment', 'partner-dpa', 'worker-visibility-consent', 'immigration-disclaimer'])$$,
-  'with no legal document published, the check names every Phase 1 slug of the seed'
+  'select slug from t_seeded_slugs',
+  'with no legal document published, the check names every slug of the seed'
 );
 
 -- An empty reference table of the seed.

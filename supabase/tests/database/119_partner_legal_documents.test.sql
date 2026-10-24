@@ -245,7 +245,7 @@ select is(
 select is(
   pg_temp.gaps('partner_accounts') || ' | ' || pg_temp.gaps('job_orders') || ' | ' || pg_temp.gaps('find_workers'),
   'privacy-policy:draft,acceptable-use-policy:draft,recruitment-company-terms:draft,staffing-company-terms:draft,'
-    || 'employer-pays-commitment:draft,immigration-disclaimer:draft | worker-terms:draft,immigration-disclaimer:draft | '
+    || 'employer-pays-commitment:draft | worker-terms:draft,worker-visibility-consent:draft,immigration-disclaimer:draft | '
     || 'worker-terms:draft,worker-visibility-consent:draft,immigration-disclaimer:draft',
   'AC9: each feature lists its documents whose current version is a draft, in the order of the setting (partner-terms is approved now)'
 );
@@ -265,20 +265,20 @@ select is(
 select pg_temp.remove('worker-visibility-consent');
 select is(
   pg_temp.gaps('find_workers') || ' | ' || pg_temp.gaps('job_orders'),
-  'worker-visibility-consent:missing | ',
-  'AC9: a document without a published version is reported as missing'
+  'worker-visibility-consent:missing | worker-visibility-consent:missing',
+  'AC9: a document without a published version is reported as missing by both features that need it'
 );
 select pg_temp.remove('partner-dpa');
 update private.settings set value = 'true' where key = 'partner_dpa_required';
 select is(
   pg_temp.gaps('job_orders') || ' | ' || pg_temp.gaps('find_workers') || ' | ' || pg_temp.gaps('partner_accounts'),
-  'partner-dpa:missing | worker-visibility-consent:missing,partner-dpa:missing | partner-terms:draft',
+  'worker-visibility-consent:missing,partner-dpa:missing | worker-visibility-consent:missing,partner-dpa:missing | partner-terms:draft',
   'AC9: with partner_dpa_required true and no partner-dpa, the job orders board and Find Workers report it'
 );
 select pg_temp.publish('partner-dpa', false);
 select is(
   pg_temp.gaps('job_orders'),
-  '',
+  'worker-visibility-consent:missing',
   'AC9: an approved partner-dpa closes that gap'
 );
 update private.settings set value = 'false' where key = 'partner_dpa_required';
@@ -297,11 +297,10 @@ select ok(
   exists (select 1 from private.missing_reference_data() where kind = 'setting' and name = 'legal_release_documents'),
   'the deployment check names the missing setting of the gate'
 );
-select is_empty(
-  $$select 1 from private.missing_reference_data() where kind = 'legal_document'
-      and name in ('worker-visibility-consent', 'partner-terms', 'recruitment-company-terms', 'staffing-company-terms',
-                   'employer-pays-commitment', 'partner-dpa', 'immigration-disclaimer')$$,
-  'a missing Phase 2 document is not a Phase 1 deployment gap: legal_release_gaps reports it'
+select results_eq(
+  $$select name from private.missing_reference_data() where kind = 'legal_document'$$,
+  $$values ('worker-visibility-consent'::text)$$,
+  'the deployment check names a partner document without a published version, and not one whose current version is a draft'
 );
 select is(
   (select string_agg(r.role || ':' || has_function_privilege(r.role, 'private.legal_release_gaps(text)', 'execute'), ',')
