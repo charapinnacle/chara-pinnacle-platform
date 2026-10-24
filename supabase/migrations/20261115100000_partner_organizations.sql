@@ -7,21 +7,6 @@
 -- Partner organisations belong to release 2a: create_organization refuses the partner types while the setting
 -- release_partner_directories is false, exactly as Phase 1 did, and so does a sign-up that names a partner type.
 
--- The release switch and its reader, as in 20261114100000_in_app_notifications.sql (the same body, so whichever of the two
--- migrations runs second leaves the function as it was).
-insert into private.settings (key, value) values ('release_partner_directories', 'false') on conflict (key) do nothing;
-
-create or replace function private.release_on(p_key text) returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select coalesce((select (s.value #>> '{}')::boolean from private.settings s where s.key = p_key), false)
-$$;
-
-revoke all on function private.release_on(text) from public, anon, authenticated, service_role;
-
 create type public.partner_review_status as enum (
   'onboarding', 'pending_review', 'info_requested', 'listed', 're_review', 'declined'
 );
@@ -147,6 +132,9 @@ alter table public.organizations
     )
   ) not valid,
   add constraint organizations_public_page_employer_only check (not public_page_enabled or type = 'employer') not valid;
+-- No partner organisation should exist yet, but one inserted outside create_organization would fail the validation.
+update public.organizations set review_status = 'onboarding', moderation_state = 'visible'
+where type <> 'employer' and review_status is null;
 alter table public.organizations validate constraint organizations_review_status_partner_only;
 alter table public.organizations validate constraint organizations_moderation_state_partner_only;
 alter table public.organizations validate constraint organizations_partner_columns_partner_only;
