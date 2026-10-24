@@ -88,6 +88,7 @@ export default defineConfig({
         "**/search-engine-sitemap.spec.ts",
         "**/perf-smoke.spec.ts",
         "**/in-app-notifications.spec.ts",
+        "**/partner-legal-documents.spec.ts",
       ],
     },
     {
@@ -258,13 +259,20 @@ export default defineConfig({
       testMatch: "**/in-app-notifications.spec.ts",
       dependencies: ["billing-failure"],
     },
+    // The same release switch is set for the partner legal pages (FR-S4), so this spec follows the one above.
+    {
+      name: "partner-legal-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-legal-documents.spec.ts",
+      dependencies: ["notifications-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["notifications-release"],
+      dependencies: ["partner-legal-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
