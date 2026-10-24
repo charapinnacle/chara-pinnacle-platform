@@ -2,8 +2,8 @@ begin;
 select plan(30);
 
 -- Consents per organisation type (V03; FR-J1 AC7, the per-type parts of FR-S4 AC3, AC6 and AC8;
--- docs/phase-2/DATA_MODEL.md section 4). The partner documents themselves are published by V04; here they are inserted
--- as versions of the test so that the lists can be exercised.
+-- docs/phase-2/DATA_MODEL.md section 4). V04 seeds the partner documents as version 0 drafts; here further versions are
+-- inserted by the test so that the lists can be exercised.
 
 create function pg_temp.new_user(p_id uuid, p_kind text, p_type text, p_pending jsonb, p_commit boolean default false)
 returns void
@@ -126,9 +126,9 @@ select is(
 );
 select pg_temp.release(true);
 select is(
-  pg_temp.call_as(null, 'anon', $$select * from public.signup_documents('company', 'staffing_company')$$),
-  'P0001|CHARA_INVALID_INPUT|a required document has no published version',
-  'until V04 publishes the partner documents, partner sign-up stays closed'
+  pg_temp.read_as(null, 'anon', $$select string_agg(slug || ':' || version, ',') from public.signup_documents('company', 'staffing_company')$$),
+  'terms-of-service:0,privacy-policy:0,partner-terms:0,staffing-company-terms:0',
+  'with release 2a on, the partner list returns the draft placeholders that V04 seeds'
 );
 select pg_temp.publish('partner-terms', 1);
 select pg_temp.publish('recruitment-company-terms', 1);

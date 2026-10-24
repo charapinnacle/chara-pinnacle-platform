@@ -17,8 +17,10 @@ select set_eq(
   $$values
     ('account-suspension-and-termination-rules'), ('acceptable-use-policy'), ('age-18-plus'), ('complaints-and-dispute-process'),
     ('cookie-policy'), ('employer-terms'), ('platform-rules'), ('privacy-policy'),
-    ('sharing-notice'), ('subscription-and-billing-terms'), ('terms-of-service'), ('worker-terms')$$,
-  'version 0 exists for every Phase 1 legal document and the age attestation'
+    ('sharing-notice'), ('subscription-and-billing-terms'), ('terms-of-service'), ('worker-terms'),
+    ('partner-terms'), ('recruitment-company-terms'), ('staffing-company-terms'), ('employer-pays-commitment'),
+    ('partner-dpa'), ('worker-visibility-consent'), ('immigration-disclaimer')$$,
+  'version 0 exists for every Phase 1 legal document, the age attestation and the Phase 2 partner documents'
 );
 select is_empty(
   $$select 1 from public.legal_documents where version = 0 and (title not like 'DRAFT%' or published_at is null or not is_draft)$$,
