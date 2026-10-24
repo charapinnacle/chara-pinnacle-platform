@@ -100,7 +100,7 @@ test.describe("the partner legal pages (FR-S4)", () => {
     await expect(partnerTerms).toContainText(/Recruitment companies: \d+ of \d+/);
     await expect(partnerTerms).toContainText(/Staffing companies: \d+ of \d+/);
     await expect(table.getByRole("row", { name: /^employer-pays-commitment / })).toContainText(/Recruitment company organisations: \d+ of \d+/);
-    await expect(table.getByRole("row", { name: /^immigration-disclaimer / })).toContainText("Shown only");
+    await expect(table.getByRole("row", { name: /^immigration-disclaimer / })).toContainText("Not in a sign-up list");
     await expect(table.getByRole("row", { name: /^privacy-policy / })).toContainText(/Workers: \d+ of \d+/);
     await expectNoAxeViolations(page);
 

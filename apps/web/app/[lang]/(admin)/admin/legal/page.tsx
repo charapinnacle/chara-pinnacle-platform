@@ -66,7 +66,7 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
                   <span key={row.audience} className="block whitespace-nowrap">
                     {acceptanceLine(row)}
                   </span>
-                )) ?? <span className="text-muted-foreground">Shown only</span>}
+                )) ?? <span className="text-muted-foreground">Not in a sign-up list</span>}
               </td>
               <td className={cell}>
                 <TextLink href={`${adminPath(lang, "legal")}?slug=${document.slug}#publish`}>
