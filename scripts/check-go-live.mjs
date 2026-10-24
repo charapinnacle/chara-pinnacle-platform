@@ -150,8 +150,8 @@ if (phase2.pending.length > 0) {
 }
 if (failures.length > 0) {
   process.stderr.write(failures.map((failure) => `Go-live check failed: ${failure}\n`).join(""));
-  process.exit(1);
 }
+if (failures.length > 0 || phase2.failures.length > 0) process.exit(1);
 process.stdout.write(
   "Go-live check passed: entitlements_enforced is on, every sold plan is mirrored at Stripe, the legal-entity details are set, an administrator is active and the throttle proof key is set\n",
 );
@@ -159,4 +159,3 @@ if (drafts.length > 0) {
   process.stdout.write(`Draft legal documents allowed by ${ALLOW_DRAFT_LEGAL}: ${drafts.join(", ")}\n`);
 }
 process.stdout.write("Check the Auth settings by hand: docs/runbooks/security-checklist.md section 3\n");
-if (phase2.failures.length > 0) process.exit(1);
