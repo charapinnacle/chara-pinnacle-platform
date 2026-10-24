@@ -55,3 +55,18 @@ describe("the immigration notice (FR-S4 AC10)", () => {
     expect(html).not.toMatch(/<input|<button|checkbox/);
   });
 });
+
+describe("the acceptance counts of the administration page (FR-S4 AC11)", () => {
+  it("name each audience and filter the partner network documents", async () => {
+    const { acceptanceLine, inLegalDocumentGroup, legalDocumentGroup } = await import("@/lib/admin/legal-acceptance");
+    expect(acceptanceLine({ audience: "recruitment_company", accepted: 3, total: 4 })).toBe("Recruitment companies: 3 of 4");
+    expect(acceptanceLine({ audience: "org:staffing_company", accepted: 1, total: 2 })).toBe("Staffing company organisations: 1 of 2");
+    expect(acceptanceLine({ audience: "worker", accepted: 0, total: 0 })).toBe("Workers: 0 of 0");
+    expect(legalDocumentGroup("partner")).toBe("partner");
+    expect(legalDocumentGroup(["partner"])).toBe("all");
+    expect(legalDocumentGroup(undefined)).toBe("all");
+    expect(PARTNER_SLUGS.every((slug) => inLegalDocumentGroup(slug, "partner"))).toBe(true);
+    expect(inLegalDocumentGroup("privacy-policy", "partner")).toBe(false);
+    expect(inLegalDocumentGroup("privacy-policy", "all")).toBe(true);
+  });
+});

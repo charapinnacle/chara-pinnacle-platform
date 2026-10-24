@@ -73,6 +73,8 @@ export type StaffRow = {
 
 export type LegalDocumentRow = { slug: string; version: number; title: string; publishedAt: string; isDraft: boolean };
 
+export type LegalAcceptance = { audience: string; accepted: number; total: number };
+
 const memberRole = z.enum(["owner", "admin", "member"]);
 const membershipsSchema = z.array(z.object({ organization_id: z.uuid(), name: z.string(), role: memberRole }));
 const membersSchema = z.array(
@@ -306,6 +308,19 @@ export async function listStaff(after: number | null): Promise<Page<StaffRow, nu
     }),
   );
   return paged(rows, (row) => row.id);
+}
+
+// The users (or, for an organisation-level document, the organisations) on the current version of each required
+// document, by slug, in the order the database gives.
+export async function listLegalAcceptance(): Promise<Map<string, LegalAcceptance[]>> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.rpc("admin_legal_acceptance");
+  if (error) throw failure("The acceptance counts", error);
+  const bySlug = new Map<string, LegalAcceptance[]>();
+  for (const row of data) {
+    bySlug.set(row.slug, [...(bySlug.get(row.slug) ?? []), { audience: row.audience, accepted: row.accepted, total: row.total }]);
+  }
+  return bySlug;
 }
 
 export async function listLegalDocuments(): Promise<LegalDocumentRow[]> {
