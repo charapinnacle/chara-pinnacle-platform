@@ -48,6 +48,8 @@ type CheckboxRowProps = {
   meta?: React.ReactNode;
   // Consents use the small type size, as sign-up forms commonly do, so a list of documents stays compact.
   compact?: boolean;
+  // An on/off setting that takes effect when saved is announced as a switch.
+  asSwitch?: boolean;
   className?: string;
   children: React.ReactNode;
 };
@@ -66,6 +68,7 @@ export function CheckboxRow({
   error,
   meta,
   compact = false,
+  asSwitch = false,
   className,
   children,
 }: CheckboxRowProps) {
@@ -82,6 +85,7 @@ export function CheckboxRow({
           id={id}
           ref={inputRef}
           name={name}
+          role={asSwitch ? "switch" : undefined}
           checked={checked}
           onChange={(event) => onChange(event.target.checked)}
           onBlur={onBlur}

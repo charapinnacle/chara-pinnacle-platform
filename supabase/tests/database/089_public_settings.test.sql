@@ -58,8 +58,8 @@ reset role;
 set local role anon;
 select is(
   (select array_agg(key order by key) from public.get_public_settings()),
-  (select array_agg(key order by key) from t_public_keys),
-  'an anonymous visitor gets exactly the seven public keys'
+  (select array_agg(key order by key) from (select key from t_public_keys union all select 'release_partner_directories') k),
+  'an anonymous visitor gets exactly the seven public keys and the release switch (FR-T1)'
 );
 select is(
   (select count(*) from public.get_public_settings() where key in ('entitlements_enforced', 'share_expiry_days_after_final')),
@@ -74,8 +74,8 @@ reset role;
 set local role authenticated;
 select is(
   (select array_agg(key order by key) from public.get_public_settings()),
-  (select array_agg(key order by key) from t_public_keys),
-  'a signed-in user gets the same seven keys'
+  (select array_agg(key order by key) from (select key from t_public_keys union all select 'release_partner_directories') k),
+  'a signed-in user gets the same keys'
 );
 reset role;
 

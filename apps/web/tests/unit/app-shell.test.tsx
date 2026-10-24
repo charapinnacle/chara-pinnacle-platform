@@ -11,6 +11,8 @@ import type { NavOrganization } from "@/lib/app/navigation";
 const navigation = vi.hoisted(() => ({ pathname: "/en/dashboard/worker", org: null as string | null }));
 const userMock = vi.hoisted(() => vi.fn());
 const organizationsMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
+const unreadMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
@@ -20,6 +22,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/actions/login", () => ({ signOut: vi.fn() }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser: userMock }));
 vi.mock("@/lib/dal/organizations", () => ({ getMyOrganizations: organizationsMock }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/notifications", () => ({ getUnreadNotificationCount: unreadMock }));
+vi.mock("@/lib/actions/notifications", () => ({ fetchUnreadNotificationCount: vi.fn() }));
 
 const acme: NavOrganization = { slug: "acme", displayName: "Acme Bau", role: "owner", roleLabel: "Owner", suspended: false };
 const beta: NavOrganization = { slug: "beta", displayName: "Beta GmbH", role: "member", roleLabel: "Member", suspended: false };
@@ -119,6 +124,49 @@ describe("the layout of the signed-in area", () => {
   beforeEach(() => {
     userMock.mockReset();
     organizationsMock.mockReset();
+    releasedMock.mockReset().mockResolvedValue(false);
+    unreadMock.mockReset();
+  });
+
+  it("shows no notification bell while the in-app notifications are not released (FR-T1)", async () => {
+    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
+    const props = await shell();
+    expect(props.headerActions?.props.notifications).toBeNull();
+    expect(releasedMock).toHaveBeenCalledWith("release_partner_directories");
+    expect(unreadMock).not.toHaveBeenCalled();
+  });
+
+  it("gives a worker and a company user the bell with the unread count once released (FR-T1 AC9)", async () => {
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockResolvedValue(4);
+    for (const accountKind of ["worker", "company"] as const) {
+      userMock.mockResolvedValue({ ...user, accountKind });
+      organizationsMock.mockResolvedValue([]);
+      const props = await shell();
+      expect(props.headerActions?.props.notifications).toEqual({ userId: "u1", initialUnread: 4 });
+      const html = renderToStaticMarkup(props.headerActions);
+      expect(html).toMatch(/<a aria-label="Notifications, 4 unread"[^>]*href="\/en\/notifications"/);
+    }
+  });
+
+  it("leaves the bell out, and keeps the header, when the unread count cannot be read", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockRejectedValue(new Error("The unread notifications could not be counted"));
+    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
+    const props = await shell();
+    expect(props.headerActions?.props.notifications).toBeNull();
+    expect(renderToStaticMarkup(props.headerActions)).toContain("Log out");
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
+  });
+
+  it("gives an account whose kind is not chosen no bell", async () => {
+    releasedMock.mockResolvedValue(true);
+    userMock.mockResolvedValue({ ...user, accountKind: null });
+    const props = await shell();
+    expect(props.headerActions?.props.notifications).toBeNull();
+    expect(releasedMock).not.toHaveBeenCalled();
   });
 
   it("sends a candidate's logo to the worker dashboard and reads no organisations", async () => {

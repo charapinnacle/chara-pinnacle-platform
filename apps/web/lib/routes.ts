@@ -49,6 +49,11 @@ export function notificationSettingsPath(lang: string, orgSlug?: string): string
   return orgSlug ? `${path}?org=${encodeURIComponent(orgSlug)}` : path;
 }
 
+// The in-app notifications, optionally from a keyset cursor on.
+export function notificationsPath(lang: string, cursor?: string): string {
+  return cursor ? `/${lang}/notifications?cursor=${encodeURIComponent(cursor)}` : `/${lang}/notifications`;
+}
+
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
 // The list of the vacancies of an organisation, optionally of one status, optionally from a keyset cursor on.
