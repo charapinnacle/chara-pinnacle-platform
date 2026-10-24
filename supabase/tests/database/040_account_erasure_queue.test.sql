@@ -125,7 +125,7 @@ select is(
   (select array_agg(a.attname::text order by a.attname) from pg_attribute a
    where a.attrelid = 'public.profiles'::regclass and a.attnum > 0 and not a.attisdropped
      and has_column_privilege('authenticated', a.attrelid, a.attnum, 'select')),
-  array['account_kind', 'created_at', 'deleted_at', 'display_name', 'id', 'intended_account_kind', 'pending_consents', 'preferred_lang', 'status'],
+  array['account_kind', 'created_at', 'deleted_at', 'display_name', 'id', 'intended_account_kind', 'intended_organization_type', 'pending_consents', 'preferred_lang', 'status'],
   'the columns of profiles the client may read are listed on purpose: a new column needs its own grant'
 );
 
