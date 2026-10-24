@@ -1,5 +1,5 @@
 begin;
-select plan(60);
+select plan(66);
 
 \ir organizations_fixture.inc
 
@@ -522,10 +522,47 @@ select is(
   'the administrator corrects a partner in pending review'
 );
 select is(
-  (select same_type::text from private.organization_identifier_links where other_organization_id = :'rec3')
+  (select string_agg(same_type::text, ',') from private.organization_identifier_links
+     where organization_id = :'rec3' or other_organization_id = :'rec3')
     || ' ' || (select review_status::text from public.organizations where id = :'rec3'),
   'false pending_review',
   'after a correction the link is re-evaluated; a partner that was not listed keeps its review status'
+);
+
+-- The links follow a later change of the identifier (set_legal_entity_identifier), in both directions
+select pg_temp.org_of(:'pa', 'Link Recruitment Two') as rec4 \gset
+select is(
+  pg_temp.val_as(:'pa', 'aal2', format($$select coalesce(public.set_legal_entity_identifier(%L, 'de 123 456 789', 'vat_number')::text, 'null')$$, :'rec4')),
+  '',
+  'the owner sets an identifier another organisation already uses, and the call returns nothing'
+);
+select is(
+  (select count(*) || '|' || count(*) filter (where same_type) || '|' || bool_or(organization_id = :'rec3' or other_organization_id = :'rec3')
+   from private.organization_identifier_links where organization_id = :'rec4' or other_organization_id = :'rec4'),
+  '5|1|false',
+  'the links now name the five organisations with that identifier (one of the same type) and no longer the old match'
+);
+select is(
+  pg_temp.audit_of(:'rec4', 'partner.duplicate_identifier'),
+  '[{"duplicate_identifier_same_type": true}]'::jsonb,
+  'the new same-type match is audited once, without naming the other organisation'
+);
+select is(
+  pg_temp.call_as(:'pa', 'authenticated', format($$select public.set_legal_entity_identifier(%L, 'FRESH12345', 'registration_number')$$, :'rec4')),
+  'ok',
+  'the owner changes the identifier away'
+);
+select is(
+  (select count(*) from private.organization_identifier_links where organization_id = :'rec4' or other_organization_id = :'rec4')
+    || '|' || jsonb_array_length(pg_temp.audit_of(:'rec4', 'partner.duplicate_identifier')),
+  '0|1',
+  'changing away removes the links in both directions and audits nothing new'
+);
+select is(
+  (select count(*) from private.organization_identifier_links l
+   where l.organization_id = :'rec2' and l.other_organization_id = :'rec4'),
+  0::bigint,
+  'the other organisation keeps no link to it either'
 );
 
 -- FR-J4 AC8 (database part): the one listed predicate ------------------------------------------------------------------

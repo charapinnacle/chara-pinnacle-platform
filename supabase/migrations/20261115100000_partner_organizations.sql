@@ -209,9 +209,9 @@ grant execute on function private.public_partner_ids() to anon, authenticated;
 
 -- Identifier links -------------------------------------------------------------------------------------------------
 
--- One row per pair of organisations that named the same legal-entity identifier, written by create_organization for the
--- new organisation against every earlier one (decision 2.4: a second type is a second account with the same identifier,
--- which staff see linked). Read only by the staff review (V11); never returned to the partner.
+-- One row per pair of organisations that name the same legal-entity identifier (decision 2.4: a second type is a second
+-- account with the same identifier, which staff see linked), kept current by the trigger below. Read only by the staff
+-- review (V11); never returned to the partner.
 create table private.organization_identifier_links (
   organization_id uuid not null references public.organizations (id) on delete cascade,
   other_organization_id uuid not null references public.organizations (id) on delete cascade,
@@ -226,6 +226,56 @@ create index organization_identifier_links_other_idx on private.organization_ide
 alter table private.organization_identifier_links enable row level security;
 alter table private.organization_identifier_links force row level security;
 revoke all on table private.organization_identifier_links from public, anon, authenticated, service_role;
+
+-- Whenever an organisation is created or its identifier or type changes (create_organization, set_legal_entity_identifier,
+-- admin_set_organization_type or a ticketed statement), its links are rebuilt in both directions against every other
+-- organisation with the same identifier. A partner that gains a same-type match through a change is audited
+-- (partner.duplicate_identifier) without naming the other organisation; at creation create_organization records it in
+-- its own audit row. Definer rights: the table has no grants.
+create function private.organizations_identifier_links() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_had_same_type boolean := false;
+begin
+  if tg_op = 'UPDATE' then
+    if new.legal_entity_identifier is not distinct from old.legal_entity_identifier and new.type = old.type then
+      return null;
+    end if;
+    v_had_same_type := exists (
+      select 1 from private.organization_identifier_links l
+      where (l.organization_id = new.id or l.other_organization_id = new.id) and l.same_type
+    );
+  end if;
+
+  delete from private.organization_identifier_links l
+  where l.organization_id = new.id or l.other_organization_id = new.id;
+  if new.legal_entity_identifier is not null then
+    insert into private.organization_identifier_links (organization_id, other_organization_id, same_type)
+    select new.id, o.id, o.type = new.type
+    from public.organizations o
+    where o.legal_entity_identifier = new.legal_entity_identifier and o.id <> new.id;
+  end if;
+
+  if tg_op = 'UPDATE' and new.type <> 'employer' and not v_had_same_type and exists (
+    select 1 from private.organization_identifier_links l where l.organization_id = new.id and l.same_type
+  ) then
+    perform audit.record('partner.duplicate_identifier', 'organization', new.id::text,
+      jsonb_build_object('duplicate_identifier_same_type', true));
+  end if;
+  return null;
+end;
+$$;
+
+revoke all on function private.organizations_identifier_links() from public, anon, authenticated, service_role;
+
+create trigger organizations_identifier_links
+  after insert or update of legal_entity_identifier, type on public.organizations
+  for each row execute function private.organizations_identifier_links();
+
+alter table public.organizations enable always trigger organizations_identifier_links;
 
 -- create_organization ----------------------------------------------------------------------------------------------
 
@@ -350,15 +400,10 @@ begin
   insert into public.organization_members (organization_id, user_id, role, accepted_at)
   values (v_id, v_uid, 'owner', now());
 
-  if v_identifier is not null then
-    insert into private.organization_identifier_links (organization_id, other_organization_id, same_type)
-    select v_id, o.id, o.type = p_type
-    from public.organizations o
-    where o.legal_entity_identifier = v_identifier and o.id <> v_id;
-    v_same_type := exists (
-      select 1 from private.organization_identifier_links l where l.organization_id = v_id and l.same_type
-    );
-  end if;
+  -- The links were written by the trigger organizations_identifier_links.
+  v_same_type := exists (
+    select 1 from private.organization_identifier_links l where l.organization_id = v_id and l.same_type
+  );
 
   perform audit.record(
     'organization_created', 'organization', v_id::text,
@@ -417,7 +462,7 @@ alter table public.organizations enable always trigger organizations_return_to_r
 
 -- The partner type is fixed at sign-up (decision 2.4); only a Platform Administrator at aal2 corrects it, between the two
 -- partner types, with a statement of reasons, never on an organisation the administrator belongs to. The trigger above
--- returns a listed partner to review. The identifier links of the organisation are re-evaluated, and the members whose
+-- returns a listed partner to review and the links trigger re-evaluates the identifier links; the members whose
 -- intended type was the old type move to the new one, so their sign-up documents follow the organisation.
 create function public.admin_set_organization_type(
   p_org uuid, p_type public.organization_type, p_reason text
@@ -453,13 +498,6 @@ begin
   end if;
 
   update public.organizations set type = p_type where id = p_org;
-
-  update private.organization_identifier_links l
-  set same_type = (
-    select a.type = b.type from public.organizations a, public.organizations b
-    where a.id = l.organization_id and b.id = l.other_organization_id
-  )
-  where l.organization_id = p_org or l.other_organization_id = p_org;
 
   perform set_config('chara.correct_organization_type', 'on', true);
   update public.profiles p set intended_organization_type = p_type
