@@ -335,7 +335,7 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
       "Phase 2 go-live check failed: partner_accounts is switched on (release_partner_directories) but its legal documents are not approved: partner-terms (draft), employer-pays-commitment (draft)",
     );
     expect(result.stderr).not.toContain("job_orders");
-    expect(result.stdout).toContain("Go-live check passed");
+    expect(result.stdout).not.toContain("passed");
     expect(result.stdout).toContain("job_orders: partner-dpa (missing)");
   });
 
@@ -348,6 +348,7 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     expect(result.stderr).not.toContain("partner_accounts");
     expect(result.stderr).toContain("job_orders is switched on (release_candidate_submissions) but its legal documents are not approved: partner-dpa (missing)");
     expect(result.stderr).toContain("find_workers is switched on (release_messaging) but its legal documents are not approved: worker-visibility-consent (missing)");
+    expect(result.stdout).not.toContain("passed");
   });
 
   it("passes a switched-on release whose documents are approved", () => {
@@ -360,6 +361,7 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     const result = run(released({ release_find_workers: true }), MIRRORED, PUBLISHED);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("find_workers is switched on (release_find_workers) but release.json has no legal_release_gaps for it");
+    expect(result.stdout).not.toContain("passed");
   });
 
   it("reports the Phase 1 and the Phase 2 failures together", () => {
