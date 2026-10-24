@@ -26,6 +26,6 @@
     "go-live:check": "node scripts/check-go-live.mjs"
   },
   "devDependencies": {
-    "supabase": "2.119.0"
+    "supabase": "2.121.0"
   }
 }
