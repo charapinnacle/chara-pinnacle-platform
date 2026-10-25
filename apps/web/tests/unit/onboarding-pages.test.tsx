@@ -33,7 +33,7 @@ vi.mock("@/lib/dal/legal", () => ({ getOnboardingDocuments: vi.fn(), getSignUpFo
 vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: vi.fn() }));
 vi.mock("@/lib/invitation-cookie", () => ({ pendingInvitationToken: async () => null }));
 vi.mock("@/lib/welcome-cookie", () => ({ welcomeIsDue: welcomeDueMock }));
-vi.mock("@/lib/actions/organizations", () => ({ createOrganization: vi.fn() }));
+vi.mock("@/lib/actions/organizations", () => ({ createOrganization: vi.fn(), createPartnerOrganization: vi.fn() }));
 vi.mock("@/lib/actions/passport", () => ({ createPassport: vi.fn() }));
 vi.mock("@/lib/actions/consents", () => ({ commitAccountKind: vi.fn(), chooseAccountKind: vi.fn() }));
 vi.mock("@/lib/actions/mfa", () => ({ startFactorEnrolment: vi.fn(), verifyEnrolment: vi.fn() }));
@@ -52,7 +52,7 @@ async function render(page: PageComponent) {
   return (await new Response(prelude).text()).replace(/<!-- -->/g, "");
 }
 
-const owner = { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", role: "owner", suspended: false };
+const owner = { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", type: "employer", role: "owner", suspended: false };
 const currentStep = (html: string) => /<li aria-current="step"[^>]*>.*?Step \d of \d: <\/span>([^<]+)/.exec(html)?.[1];
 
 beforeEach(() => {
@@ -107,6 +107,59 @@ describe("the first step of onboarding (resume)", () => {
     expect(html).not.toContain("Your account type is");
     passportMock.mockResolvedValue({ firstName: "Amira" });
     await expect(render(OnboardingPage)).rejects.toThrow("REDIRECT:/en/dashboard/worker");
+  });
+});
+
+describe("the partner journey of onboarding (FR-J1)", () => {
+  const partner = (type: "recruitment_company" | "staffing_company") => ({
+    id: "user-2",
+    email: "rita@example.test",
+    accountKind: "company",
+    intendedAccountKind: "company",
+    intendedOrganizationType: type,
+  });
+
+  it("asks a recruitment company for its company on step 1 of 5, with the type fixed and the identifier required", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Company");
+    expect(html).toContain("Step 5 of 5: </span>Ready");
+    expect(html).toContain("Step 2 of 5: </span>Where you serve");
+    expect(html).toContain("Company type: <strong");
+    expect(html).toContain(">Recruitment company</strong>");
+    expect(html).toContain("Country where you are based");
+    expect(html).toContain("Company registration number, VAT number or other identifier");
+    expect(html).not.toContain("optional until you start your trial");
+    expect(html).toContain("About your company (optional)");
+    expect(html).not.toMatch(/name="type"|organization_type/);
+  });
+
+  it("names the staffing type for a staffing company", async () => {
+    requireUserMock.mockResolvedValue(partner("staffing_company"));
+    expect(await render(OnboardingPage)).toContain(">Staffing company</strong>");
+  });
+
+  it("puts a partner with a company on the pending Where you serve step, never on Security or the dashboard", async () => {
+    requireUserMock.mockResolvedValue(partner("staffing_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Where you serve");
+    expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toContain(">Next: Where you serve</h1>");
+    expect(html).toContain("Manila Staff is saved.");
+    expect(html).toContain('role="status"');
+    expect(html).toMatch(/<a[^>]*href="\/en"[^>]*>Go to the home page/);
+    expect(redirectMock).not.toHaveBeenCalled();
+
+    await expect(render(SecurityPage)).rejects.toThrow("REDIRECT:/en/onboarding");
+    await expect(render(WelcomePage)).rejects.toThrow("REDIRECT:/en/onboarding");
+  });
+
+  it("titles the commit step after the partner type", async () => {
+    requireUserMock.mockResolvedValue({ ...partner("recruitment_company"), accountKind: null });
+    const { getOnboardingDocuments } = await import("@/lib/dal/legal");
+    vi.mocked(getOnboardingDocuments).mockResolvedValue({ documents: [], attestationWording: null });
+    expect(await render(OnboardingPage)).toContain(">Set up your Recruitment company account</h1>");
   });
 });
 

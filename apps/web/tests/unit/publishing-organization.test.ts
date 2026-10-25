@@ -9,6 +9,7 @@ const organization = (slug: string, role: "owner" | "admin" | "member", suspende
   id: slug,
   slug,
   displayName: slug,
+  type: "employer" as const,
   role,
   suspended,
 });

@@ -1,11 +1,19 @@
 import "server-only";
+import type { Database } from "@chara-pinnacle/db-types";
 import { cache } from "react";
 import { getCurrentUser } from "@/lib/dal/session";
 import { createClient } from "@/lib/supabase/server";
 import type { OrganizationProfileInput } from "@/lib/validation/organization";
 import type { MemberRole } from "@/lib/validation/team";
 
-type Organization = { id: string; slug: string; displayName: string; role: MemberRole; suspended: boolean };
+type Organization = {
+  id: string;
+  slug: string;
+  displayName: string;
+  type: Database["public"]["Enums"]["organization_type"];
+  role: MemberRole;
+  suspended: boolean;
+};
 
 const MAX_LISTED_ORGANIZATIONS = 20;
 
@@ -14,7 +22,7 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_members")
-    .select("role, organizations(id, slug, display_name, status)")
+    .select("role, organizations(id, slug, display_name, type, status)")
     .eq("user_id", userId)
     .not("accepted_at", "is", null)
     .order("accepted_at")
@@ -27,6 +35,7 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
             id: organizations.id,
             slug: organizations.slug,
             displayName: organizations.display_name,
+            type: organizations.type,
             role,
             suspended: organizations.status === "suspended",
           },

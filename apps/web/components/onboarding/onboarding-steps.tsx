@@ -4,8 +4,10 @@ import { cn } from "@/lib/utils";
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
 // page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Below
 // 640 px only the current step is named beside the circles, under "Step 2 of 3"; the other names stay for screen readers.
+// A recruitment or staffing company (FR-J1) has the five steps of its own journey.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
+  partner: ["Company", "Where you serve", "Commitments", "Security", "Ready"],
   worker: ["Your profile", "Ready"],
 } as const;
 
