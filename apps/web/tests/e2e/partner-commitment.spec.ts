@@ -202,10 +202,16 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
       await expect(page.getByRole("heading", { name: "Reporting a fee demand", level: 3 })).toBeVisible();
       await expect(page.getByText(DRAFT_NOTICE)).toHaveCount(0);
       await expectAccessibleAtBothWidths(page);
-      await page.getByRole("checkbox", { name: COMMITMENT, exact: true }).check();
-      await page.getByRole("button", { name: "Accept and continue" }).click();
+      const box = page.getByRole("checkbox", { name: COMMITMENT, exact: true });
+      await box.focus();
+      await page.keyboard.press("Space");
+      await expect(box).toBeChecked();
+      await page.getByRole("button", { name: "Accept and continue" }).focus();
+      await page.keyboard.press("Enter");
       await expect(page.getByRole("heading", { name: "Next: Security", level: 1 })).toBeVisible();
-      expect(commitmentRows(partner.user.id).map((row) => row.version)).toEqual([0, version]);
+      const rows = commitmentRows(partner.user.id);
+      expect(rows.map((row) => row.version)).toEqual([0, version]);
+      expect(rows.at(-1)).toEqual({ purpose: SLUG, version, action: "granted", user_id: partner.user.id });
       expect(acceptanceAudits(partner.id).map(({ metadata }) => metadata)).toEqual([{ version: 0 }, { version }]);
 
       await page.goto(profilePath);
