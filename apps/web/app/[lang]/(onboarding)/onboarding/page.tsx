@@ -9,13 +9,16 @@ import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { TextLink } from "@/components/forms/text-link";
 import { OnboardingPanel } from "@/components/onboarding/onboarding-panel";
 import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
+import { CommitmentDocument } from "@/components/organization/commitment-document";
+import { CommitmentForm } from "@/components/organization/commitment-form";
 import { OrganizationForm } from "@/components/organization/organization-form";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { CreatePassportForm } from "@/components/passport/create-passport-form";
 import { commitAccountKind } from "@/lib/actions/consents";
 import { geographiesComplete, getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
-import { getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
+import { getCommitmentStatus } from "@/lib/dal/commitment";
+import { getLegalDocument, getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganization, getOrganizationProfile } from "@/lib/dal/organizations";
 import { getPassport } from "@/lib/dal/passport";
@@ -33,6 +36,7 @@ import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
 import { billingPath, homePath, onboardingPath, whatYouOfferPath, whereYouServePath } from "@/lib/routes";
 import { BRAND_NAME } from "@/lib/brand";
+import { COMMITMENT_SLUG, commitmentOutdated, WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
 
 export const metadata: Metadata = { title: "Welcome" };
@@ -42,7 +46,7 @@ const kindLabel = { worker: "Worker", company: "Employer" } as const;
 // The first step that is not done yet: a person who left half-way and comes back lands on it. An owner who created the
 // company but has no authenticator yet continues with the two-step set-up. A recruitment or staffing company (FR-J1)
 // goes Company, Where you serve (the countries, then what it offers), Commitments, Security, Ready; after Where you serve
-// it waits on Commitments, from where ?step=where-you-serve reopens the countries and ?step=what-you-offer the offer.
+// it continues with Commitments, from where ?step=where-you-serve reopens the countries and ?step=what-you-offer the offer.
 export default async function OnboardingPage({
   params,
   searchParams,
@@ -173,8 +177,9 @@ type PartnerNextStepProps = {
 
 // The steps after Company for a partner: Where you serve (FR-K1) until both lists hold a country, then What you offer
 // (FR-K2) until it names an occupation and the recruitment type, both within the step Where you serve of the indicator;
-// then the Commitments step, which is built next (V08); until then that page says what comes and that nothing is lost.
-// Only the owner or an admin saves; while release 2a is off the step stays closed.
+// then Commitments (FR-J3), where the owner alone accepts the employer-pays commitment and an admin or a member reads it
+// and is told so; then Security, which is built next (V09), so that page says what comes and that nothing is lost. Only
+// the owner or an admin saves the details; while release 2a is off the steps stay closed.
 async function PartnerNextStep({ lang, organization, countries, reopen }: PartnerNextStepProps) {
   if (!(await isReleased("release_partner_directories"))) {
     return (
@@ -255,17 +260,68 @@ async function PartnerNextStep({ lang, organization, countries, reopen }: Partne
     );
   }
 
+  const [commitment, document] = await Promise.all([
+    getCommitmentStatus(organization.id),
+    getLegalDocument(COMMITMENT_SLUG),
+  ]);
+  if (!document) throw new Error("The employer-pays commitment has no published version");
+  if (commitment.accepted) {
+    return (
+      <StepPending
+        lang={lang}
+        current={3}
+        title="Next: Security"
+        description={`${organization.displayName} has accepted the employer-pays commitment. ${WORKERS_NEVER_PAY}.`}
+        changeLinks={!member}
+      >
+        This step is not open yet. Your details are saved, and your company is not listed until you finish onboarding and our
+        team has reviewed it. Come back to this page to continue.
+      </StepPending>
+    );
+  }
+
+  const outdated = commitmentOutdated(commitment);
+  const owner = organization.role === "owner";
   return (
-    <StepPending
-      lang={lang}
-      current={2}
-      title="Next: Commitments"
-      description={`${organization.displayName}, the countries where you serve and what you offer are saved. In the next step you accept the commitments every partner makes, such as never charging workers a fee.`}
-      changeLinks={!member}
+    <OnboardingPanel
+      steps={<OnboardingSteps kind="partner" current={2} />}
+      title="Commitments"
+      description={
+        outdated
+          ? `The employer-pays commitment has changed since ${organization.displayName} accepted it. ${WORKERS_NEVER_PAY}, so every recruitment and staffing company accepts the current version.`
+          : `${WORKERS_NEVER_PAY}. Every recruitment and staffing company commits to this before it is listed.`
+      }
     >
-      This step is not open yet. Your details are saved, and your company is not listed until you finish onboarding and our
-      team has reviewed it. Come back to this page to continue.
-    </StepPending>
+      {document.isDraft ? (
+        <Notice role="note" tone="info">
+          Draft - not yet approved by legal counsel. The commitment below is a draft; you accept the version shown.
+        </Notice>
+      ) : null}
+      <CommitmentDocument document={document} outdated={outdated} />
+      {owner ? (
+        <CommitmentForm slug={organization.slug} version={document.version} />
+      ) : (
+        <Notice tone="info" role="status">
+          Only the owner of {organization.displayName} can accept the commitment. Ask them to sign in and accept it, then come
+          back to this page.
+        </Notice>
+      )}
+      <div className="flex flex-wrap gap-x-6 gap-y-3">
+        {member ? null : (
+          <>
+            <TextLink standalone href={whereYouServePath(lang)}>
+              Change where you serve
+            </TextLink>
+            <TextLink standalone href={whatYouOfferPath(lang)}>
+              Change what you offer
+            </TextLink>
+          </>
+        )}
+        <TextLink standalone href={`/${lang}`}>
+          Go to the home page
+        </TextLink>
+      </div>
+    </OnboardingPanel>
   );
 }
 
