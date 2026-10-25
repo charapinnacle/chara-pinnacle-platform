@@ -92,6 +92,7 @@ export default defineConfig({
         "**/partner-registration.spec.ts",
         "**/partner-geographies.spec.ts",
         "**/partner-workforce-offer.spec.ts",
+        "**/partner-commitment.spec.ts",
       ],
     },
     {
@@ -291,13 +292,21 @@ export default defineConfig({
       testMatch: "**/partner-workforce-offer.spec.ts",
       dependencies: ["partner-geographies-release"],
     },
+    // The same release switch is set for the employer-pays commitment (FR-J3), whose spec also publishes a version of the
+    // commitment for a while, so this spec follows the one above.
+    {
+      name: "partner-commitment-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-commitment.spec.ts",
+      dependencies: ["partner-workforce-offer-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-workforce-offer-release"],
+      dependencies: ["partner-commitment-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

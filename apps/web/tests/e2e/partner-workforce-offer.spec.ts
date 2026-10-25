@@ -138,7 +138,7 @@ test.describe("What you offer (FR-K2)", () => {
 
     // AC1: the save stores the rows, audits them once, stamps the profile date and moves on to Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Next: Commitments", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
     await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
     expect(offer(id)).toBe("7126,7212|C,F|ar,en,tl|staffing,temporary|international");
     expect(offerAudits(id)).toEqual([
@@ -165,7 +165,7 @@ test.describe("What you offer (FR-K2)", () => {
     await page.getByRole("checkbox", { name: STAFFING_SERVICE }).uncheck();
     await expect(page.getByRole("group", { name: STAFFING_TYPES })).toHaveCount(0);
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Next: Commitments", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
     expect(offer(id)).toBe("7126,7212|C,F|ar,en,tl||international");
   });
 

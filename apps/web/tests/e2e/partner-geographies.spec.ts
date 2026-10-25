@@ -122,7 +122,7 @@ test.describe("Where you serve (FR-K1)", () => {
     expect(geographies(id)).toBe("|");
 
     // AC1: the save stores the rows, audits them once and moves on to What you offer, still on step 2 (FR-K2); once the
-    // offer is saved the partner waits on Commitments.
+    // offer is saved the partner continues with Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
     await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
@@ -135,7 +135,7 @@ test.describe("Where you serve (FR-K1)", () => {
       p_service_types: [],
     });
     await page.goto("/en/onboarding");
-    await expect(page.getByRole("heading", { name: "Next: Commitments", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
     await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
     expect(geographies(id)).toBe("NP,PH|AE,DE,SA");
     const [organization] = organizationRows(user.id);
@@ -157,7 +157,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, RECRUITS_FOR)).toHaveText(["United Arab Emirates", "Germany", "Saudi Arabia"]);
     await page.getByRole("button", { name: "Remove Saudi Arabia" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Next: Commitments", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
     expect(geographies(id)).toBe("NP,PH|AE,DE");
   });
 
