@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 
 \ir organizations_fixture.inc
 
@@ -256,9 +256,17 @@ set local lock_timeout = '300ms';
 select is(split_part(pg_temp.submit(:'ow6', :'org_lock'), '|', 1), '55P03',
   'a submission of the same partner waits for the one in progress');
 select is(pg_temp.submit(:'ow2', :'rival'), 'ok', 'a submission of another partner does not wait');
-reset lock_timeout;
 select l from extensions.dblink('holder',
   format('select pg_advisory_unlock(hashtextextended(%L, 0))::text', 'partner_review_submission:' || :'org_lock')) as t (l text);
+-- A save of the countries in progress holds the geographies lock: the submission waits for it rather than check a
+-- profile that is about to change.
+select l from extensions.dblink('holder',
+  format('select pg_advisory_lock(hashtextextended(%L, 0))::text', 'organization_geographies:' || :'org_lock')) as t (l text);
+select is(split_part(pg_temp.submit(:'ow6', :'org_lock'), '|', 1), '55P03',
+  'a submission waits for a save of the geographies of the same partner');
+reset lock_timeout;
+select l from extensions.dblink('holder',
+  format('select pg_advisory_unlock(hashtextextended(%L, 0))::text', 'organization_geographies:' || :'org_lock')) as t (l text);
 select extensions.dblink_disconnect('holder');
 select is(pg_temp.submit(:'ow6', :'org_lock') || ',' || pg_temp.audits(:'org_lock'),
   'ok,' || :'ow6' || ':onboarding>pending_review',
