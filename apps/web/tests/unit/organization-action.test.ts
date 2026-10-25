@@ -194,13 +194,16 @@ describe("updateOrganizationProfile", () => {
   const refused = (message: string, details: string | null = null) => ({ data: null, error: { code: "P0001", message, details } });
 
   beforeEach(() => {
-    requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: { id: orgId, slug: "acme-bau", role: "admin" } });
+    requireOrgRoleMock.mockResolvedValue({
+      user: { id: "u" },
+      organization: { id: orgId, slug: "acme-bau", type: "employer", role: "admin" },
+    });
     rpcMock.mockResolvedValue({ data: { display_name: "Acme Bau AG", duplicate_legal_name: false }, error: null });
   });
 
   it("checks the owner or admin role at aal2, sends the normalised values, returns the stored display name and redraws the header", async () => {
     await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({ saved: true, displayName: "Acme Bau AG" });
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { hideFromOutsiders: true });
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { hideFromOutsiders: true, partner: "either" });
     expect(rpcMock).toHaveBeenCalledWith("update_organization_profile", {
       p_org: orgId,
       p_legal_name: "Acme Bau AG",
@@ -240,6 +243,18 @@ describe("updateOrganizationProfile", () => {
     rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "aal2_required"));
     await expect(updateOrganizationProfile("acme-bau", profile)).rejects.toThrow(
       `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/org/acme-bau/profile")}`,
+    );
+  });
+
+  it("FR-J1: lets a partner correct its details and sends it back to the company step of onboarding below aal2", async () => {
+    requireOrgRoleMock.mockResolvedValue({
+      user: { id: "u" },
+      organization: { id: orgId, slug: "manila-skills", type: "recruitment_company", role: "owner" },
+    });
+    await expect(updateOrganizationProfile("manila-skills", profile)).resolves.toEqual({ saved: true, displayName: "Acme Bau AG" });
+    rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "aal2_required"));
+    await expect(updateOrganizationProfile("manila-skills", profile)).rejects.toThrow(
+      `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/onboarding?step=company")}`,
     );
   });
 

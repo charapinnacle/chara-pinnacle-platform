@@ -26,6 +26,8 @@ type ProfileFormProps = {
   legalNameLocked: boolean;
   countries: ReferenceItem[];
   industries: ReferenceItem[];
+  // A recruitment or staffing company, whose details employers read on its profile rather than candidates on vacancies.
+  partner?: boolean;
 };
 
 const ids = {
@@ -40,7 +42,7 @@ const ids = {
 const FAILURE = "Could not save the company profile";
 
 // The labels are those of the registration form, so a company finds its details where it entered them.
-export function ProfileForm({ slug, defaults, legalNameLocked, countries, industries }: ProfileFormProps) {
+export function ProfileForm({ slug, defaults, legalNameLocked, countries, industries, partner = false }: ProfileFormProps) {
   const form = useForm<OrganizationProfileInput>({
     resolver: zodResolver(organizationProfileSchema),
     defaultValues: defaults,
@@ -87,7 +89,11 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
         name="displayName"
         id={ids.displayName}
         label="Display name (optional)"
-        description="The name candidates see on your vacancies. Defaults to the legal name."
+        description={
+          partner
+            ? "The name employers see on your profile. Defaults to the legal name."
+            : "The name candidates see on your vacancies. Defaults to the legal name."
+        }
       />
       <ComboboxField
         control={control}
@@ -111,7 +117,7 @@ export function ProfileForm({ slug, defaults, legalNameLocked, countries, indust
         name="description"
         id={ids.description}
         label="About your company (optional)"
-        description={`Plain text, shown to candidates on your vacancies. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
+        description={`Plain text, shown to ${partner ? "employers on your profile" : "candidates on your vacancies"}. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
       />
       {duplicateLegalName ? (
         <Notice tone="info" role="status">
