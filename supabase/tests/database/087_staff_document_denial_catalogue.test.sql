@@ -115,8 +115,8 @@ select is_empty(
 select is(
   (select array_agg(proname::text order by proname) from pg_proc
    where pronamespace = 'public'::regnamespace and prosrc ~ 'platform_staff' and prosrc ~* pg_temp.document_pattern()),
-  array['erase_user'],
-  'AC6: the only public function that reads the table of the roles and also documents is the erasure of an account'
+  array['erase_user', 'partner_document_access_grant'],
+  'AC6: the only public functions that read the table of the roles and also documents are the erasure of an account and the broker of partner licence evidence (FR-J2), which reads no candidate document'
 );
 select is_empty(
   $$select r.role_name from (values ('anon'), ('authenticated')) r (role_name)
