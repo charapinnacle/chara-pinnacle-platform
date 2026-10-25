@@ -106,27 +106,29 @@ function ChipsControl({
           {description}
         </p>
       ) : null}
-      <Combobox
-        id={id}
-        name={`${id}-search`}
-        label={label}
-        placeholder="Type a country"
-        value=""
-        options={toOptions(countries.filter(({ code }) => !value.includes(code)))}
-        emptyText="No matching country"
-        freeText={false}
-        noScriptSelect={false}
-        inputRef={inputRef}
-        onChange={add}
-        onBlur={onBlur}
-        aria-invalid={invalid}
-        aria-describedby={describedBy}
-      />
-      <p id={countId} aria-live="polite" className="-mt-0.5 text-small text-muted-foreground tabular-nums">
-        {countryCount(value.length, limit)}
-      </p>
-      <div role="status" className="empty:hidden">
-        {limitReached ? limitNotice : null}
+      {/* Enter with typed text that names no country must not send the form: only chosen countries are saved. */}
+      <div
+        onKeyDown={(event) => {
+          const typed = event.target instanceof HTMLInputElement && event.target.value !== "";
+          if (event.key === "Enter" && !event.defaultPrevented && typed) event.preventDefault();
+        }}
+      >
+        <Combobox
+          id={id}
+          name={`${id}-search`}
+          label={label}
+          placeholder="Type a country"
+          value=""
+          options={toOptions(countries.filter(({ code }) => !value.includes(code)))}
+          emptyText="No matching country"
+          freeText={false}
+          noScriptSelect={false}
+          inputRef={inputRef}
+          onChange={add}
+          onBlur={onBlur}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+        />
       </div>
       {value.length === 0 ? (
         <p className="text-small text-muted-foreground">No countries chosen yet.</p>
@@ -156,6 +158,12 @@ function ChipsControl({
           ))}
         </ul>
       )}
+      <p id={countId} aria-live="polite" className="-mt-0.5 text-small text-muted-foreground tabular-nums">
+        {countryCount(value.length, limit)}
+      </p>
+      <div role="status" className="empty:hidden">
+        {limitReached ? limitNotice : null}
+      </div>
       <FieldMessage id={errorId} error={error} className="-mt-0.5 flex items-start gap-1.5 text-small leading-snug" />
     </Field>
   );
