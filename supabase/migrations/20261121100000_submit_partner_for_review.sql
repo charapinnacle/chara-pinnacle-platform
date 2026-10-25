@@ -60,9 +60,9 @@ revoke all on function private.partner_profile_missing(uuid) from public, anon, 
 
 -- Submits the partner for review (FR-J1 AC10, FR-J4 AC7 resubmission). Owner or admin of an active partner at aal2; a
 -- member, any other user and the owner at aal1 get CHARA_FORBIDDEN (detail aal2_required for the last), anonymous has no
--- grant. An advisory lock serialises submissions of one organisation, so a double click audits once. A partner already in
--- the queue (pending_review, re_review) gets its state back with changed false and nothing is written; a listed or
--- declined partner has nothing to submit (CHARA_INVALID_TRANSITION). An incomplete profile raises
+-- grant. Advisory locks serialise submissions of one organisation with each other and with saves of its profile. A
+-- partner already in the queue (pending_review, re_review) gets its state back with changed false and nothing is
+-- written; a listed or declined partner has nothing to submit (CHARA_INVALID_TRANSITION). An incomplete profile raises
 -- CHARA_PROFILE_INCOMPLETE naming the first missing field. The submission clears info_step: the step staff reopened has
 -- been answered.
 create function public.submit_partner_for_review(p_org uuid) returns jsonb
@@ -88,18 +88,18 @@ begin
   if not private.is_org_member(p_org, 'admin') then
     raise exception 'CHARA_FORBIDDEN';
   end if;
-  if not private.is_aal2() then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
-  end if;
 
+  -- The submission lock makes a double click audit once; the locks of the geographies and the workforce offer keep a
+  -- save of the profile from changing it between the completeness check and the change of state.
   perform pg_advisory_xact_lock(hashtextextended('partner_review_submission:' || p_org::text, 0));
+  perform pg_advisory_xact_lock(hashtextextended('organization_geographies:' || p_org::text, 0));
+  perform pg_advisory_xact_lock(hashtextextended('organization_workforce_offer:' || p_org::text, 0));
+  -- Role, aal2 and an active organisation, checked again with the organisation row locked.
+  perform private.assert_org_manager(p_org, 'admin');
 
   select * into v_org from public.organizations o where o.id = p_org;
   if v_org.type not in ('recruitment_company', 'staffing_company') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'partner_only';
-  end if;
-  if v_org.status <> 'active' then
-    raise exception 'CHARA_FORBIDDEN' using detail = 'organization_suspended';
   end if;
   if v_org.review_status in ('pending_review', 're_review') then
     return jsonb_build_object('review_status', v_org.review_status, 'submitted_at', v_org.submitted_at, 'changed', false);
