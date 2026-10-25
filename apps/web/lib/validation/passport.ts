@@ -160,7 +160,7 @@ export function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function dateWithin(value: string, today: string, months: number): boolean {
+export function dateWithin(value: string, today: string, months: number): boolean {
   const date = parseDate(value);
   const first = parseDate(today);
   return date !== null && first !== null && date >= first && date <= addMonthsUtc(first, months);
