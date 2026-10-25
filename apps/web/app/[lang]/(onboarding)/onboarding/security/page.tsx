@@ -18,7 +18,7 @@ export default async function OnboardingSecurityPage({ params }: PageProps<"/[la
   const user = await requireUser(lang);
   if (user.accountKind !== "company") redirect(homePath(lang, user.accountKind));
   const [organization, twoStepDone] = await Promise.all([getMyOrganization(user.id), hasVerifiedTotpFactor(lang)]);
-  // A partner reaches Security after Where you serve and Commitments (FR-J1), which /onboarding leads to first.
+  // The Security step of a partner (FR-J1) is a step of /onboarding, after Where you serve and Commitments.
   if (!organization || organization.type !== "employer") redirect(onboardingPath(lang));
   if (organization.role !== "owner" || twoStepDone) redirect(homePath(lang, "company"));
 

@@ -29,6 +29,12 @@ export function whatYouOfferPath(lang: string): string {
   return `${onboardingPath(lang)}?step=what-you-offer`;
 }
 
+// A step of partner onboarding by its address (FR-J1): Ready, open once every earlier step is done, and the company
+// details and Commitments, reopened after they were done (staff may ask for more information about them, FR-J4).
+export function partnerStepPath(lang: string, step: "ready" | "company" | "commitments"): string {
+  return `${onboardingPath(lang)}?step=${step}`;
+}
+
 // A user whose account kind is not committed yet still has the onboarding step to finish.
 export function homePath(lang: string, accountKind: AccountKind | null): string {
   const segment = Object.entries(dashboardSegments).find(([, kind]) => kind === accountKind)?.[0];
