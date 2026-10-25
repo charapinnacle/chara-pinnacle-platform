@@ -3,13 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
-import { CountryChipsField } from "@/components/forms/country-chips-field";
+import { ChipsField } from "@/components/forms/chips-field";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveOrganizationGeographies } from "@/lib/actions/geographies";
 import type { ReferenceItem } from "@/lib/dal/reference";
+import { toOptions } from "@/lib/reference-options";
 import {
+  countryNoun,
   geographiesSchema,
   marketsLimitMessage,
   servedQuestion,
@@ -49,6 +51,13 @@ export function WhereYouServeForm({
   });
   const { control, formState, handleSubmit } = form;
   const { submit } = useServerFormSubmit(form, { failureTitle: FAILURE_TITLE });
+  const countryList = {
+    options: toOptions(countries),
+    placeholder: "Type a country",
+    emptyText: "No matching country",
+    noneChosen: "No countries chosen yet.",
+    noun: countryNoun,
+  };
 
   function onSubmit() {
     return submit(
@@ -70,16 +79,17 @@ export function WhereYouServeForm({
         <dd className="text-body">{basedIn}</dd>
         <dd className="text-small text-muted-foreground">From your company details.</dd>
       </dl>
-      <CountryChipsField
+      <ChipsField
+        {...countryList}
         control={control}
         name="sourcesFrom"
         id="geo-sources-from"
         label="Where do you source workers from?"
         description="The countries your workers come from."
-        countries={countries}
         limit={null}
       />
-      <CountryChipsField
+      <ChipsField
+        {...countryList}
         control={control}
         name="servesMarket"
         id="geo-serves-market"
@@ -89,7 +99,6 @@ export function WhereYouServeForm({
             ? "The countries where you supply workers to employers."
             : "The countries where you place workers with employers."
         }
-        countries={countries}
         limit={marketsLimit}
         limitNotice={
           marketsLimit === null ? null : (

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { countryCount, geographiesSchema, marketsLimitMessage, servedQuestion } from "@/lib/validation/geographies";
+import { chosenCount } from "@/lib/chips";
+import { countryNoun, geographiesSchema, marketsLimitMessage, servedQuestion } from "@/lib/validation/geographies";
 
 describe("Where you serve (FR-K1)", () => {
   it("upper-cases, trims and merges the codes of both lists", () => {
@@ -34,10 +35,10 @@ describe("Where you serve (FR-K1)", () => {
   });
 
   it("counts the chosen countries against the limit when there is one (AC2)", () => {
-    expect(countryCount(2, 3)).toBe("2 of 3 countries");
-    expect(countryCount(0, 1)).toBe("0 of 1 country");
-    expect(countryCount(1, null)).toBe("1 country");
-    expect(countryCount(4, null)).toBe("4 countries");
+    expect(chosenCount(2, 3, countryNoun)).toBe("2 of 3 countries");
+    expect(chosenCount(0, 1, countryNoun)).toBe("0 of 1 country");
+    expect(chosenCount(1, null, countryNoun)).toBe("1 country");
+    expect(chosenCount(4, null, countryNoun)).toBe("4 countries");
   });
 
   it("states the limit of the plan (AC5)", () => {
