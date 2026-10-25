@@ -28,7 +28,7 @@ import { documentBox, EMPLOYER_LABEL, newEmail, PASSWORD, summary, WORKER_LABEL 
 import { expect, test } from "./support/test";
 import { createTestUser, deleteTestUser } from "./support/test-user";
 
-const ACCOUNT_TYPE = "I want to register as";
+const ACCOUNT_TYPE = "Account type";
 
 function partnerProfile(userId: string) {
   return query<{ intended_organization_type: string | null; account_kind: string | null }>(
@@ -77,7 +77,7 @@ test.describe("partner registration (FR-J1)", () => {
     setPartnerRelease(false);
     try {
       await page.goto("/en/signup");
-      const group = page.getByRole("radiogroup", { name: ACCOUNT_TYPE });
+      const group = page.getByRole("radiogroup", { name: "I want to register as" });
       await expect(group.getByRole("radio")).toHaveCount(2);
       for (const label of Object.values(PARTNER_LABEL)) await expect(page.getByRole("radio", { name: label })).toHaveCount(0);
       await page.goto("/en/signup?kind=staffing_company");

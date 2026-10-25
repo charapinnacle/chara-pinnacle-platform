@@ -106,7 +106,7 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
           control={control}
           name="kind"
           id={ids.kind}
-          legend="I want to register as"
+          legend={partners ? "Account type" : "I want to register as"}
           description={KIND_IS_FINAL}
           options={choices}
           onValueChange={(value) => {
