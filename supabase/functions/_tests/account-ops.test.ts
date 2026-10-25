@@ -841,3 +841,40 @@ Deno.test("FR-F2: a suspension of an account that is gone records nothing", asyn
   await handleAccountOps(request(), { client, sharedSecret: SECRET });
   assert.equal(auditCalls(calls).length, 0);
 });
+
+const ORGANIZATION = "00000000-0000-0000-0000-00000000b001";
+const EVIDENCE = `${ORGANIZATION}/00000000-0000-0000-0000-00000000c001/00000000-0000-0000-0000-00000000f001`;
+const evidenceRemoval = (path: string, organizationId = ORGANIZATION) => ({
+  action: "delete_organization_object",
+  organization_id: organizationId,
+  bucket_id: "partner-documents",
+  path,
+});
+
+Deno.test("a delete_organization_object job removes licence evidence through the Storage API and is acknowledged", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({ msg_id: 90, message: evidenceRemoval(EVIDENCE) }),
+    "DELETE /storage/v1/object/partner-documents": reply(200, [{ name: EVIDENCE }]),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.method === "DELETE").map((c) => c.body), [{ prefixes: [EVIDENCE] }]);
+  assert.equal(calls.filter((c) => c.path.endsWith("end_sessions") || c.path.startsWith("/auth/")).length, 0);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 90, p_result: { objects_removed: 1 } }]);
+});
+
+Deno.test("a delete_organization_object job outside the folder of its organisation is never executed", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(
+      { msg_id: 91, message: evidenceRemoval(EVIDENCE, OTHER) },
+      { msg_id: 92, message: evidenceRemoval(`${ORGANIZATION}/../${OTHER}/x`) },
+      { msg_id: 93, message: evidenceRemoval(EVIDENCE, "not-a-uuid") },
+      { msg_id: 94, message: { ...evidenceRemoval(EVIDENCE), bucket_id: "Partner Documents" } },
+      { msg_id: 95, message: { ...evidenceRemoval(EVIDENCE), path: undefined } },
+    ),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 5 });
+  assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
+});
