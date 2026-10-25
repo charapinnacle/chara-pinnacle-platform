@@ -16,14 +16,15 @@ const RELEASE_OFF = "Registration for recruitment and staffing companies is not 
 const SUSPENDED = "This organization is suspended, so it cannot be submitted for review.";
 
 // The owner or an admin submits the partner for review from the Ready step (FR-J1 AC10). The organisation comes from the
-// slug, checked against the caller's membership and role; two-step verification is required, so a session at aal1 is
-// sent to enter its code and comes back to Ready. The database checks all of it again and names the first missing field
-// of an incomplete profile. Onboarding then shows the pending state.
+// slug, checked against the caller's membership and role. The database checks all of it again, two-step verification
+// included: a session at aal1 is sent to enter its code and comes back to Ready, which is open at aal1 (AC9). An
+// incomplete profile is answered with its first missing field. Onboarding then shows the pending state.
 export async function submitForReview(slug: string): Promise<SubmitForReviewResult | undefined> {
   const parsedSlug = slugSchema.safeParse(slug);
   if (!parsedSlug.success) return { message: GENERIC_FAILURE };
   if (!(await isReleased("release_partner_directories"))) return { message: RELEASE_OFF };
   const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", {
+    mfa: false,
     hideFromOutsiders: true,
     partner: true,
   });

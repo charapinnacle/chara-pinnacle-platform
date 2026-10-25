@@ -27,9 +27,13 @@ beforeEach(() => {
 });
 
 describe("submitForReview (FR-J1 AC10)", () => {
-  it("checks the owner or an admin of a partner at aal2, submits and shows the pending state", async () => {
+  it("checks the owner or an admin of a partner, submits and shows the pending state", async () => {
     await expect(submitForReview("manila-skills")).rejects.toThrow("REDIRECT:/en/onboarding");
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "manila-skills", "admin", { hideFromOutsiders: true, partner: true });
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "manila-skills", "admin", {
+      mfa: false,
+      hideFromOutsiders: true,
+      partner: true,
+    });
     expect(rpcMock).toHaveBeenCalledWith("submit_partner_for_review", { p_org: "org-1" });
   });
 
