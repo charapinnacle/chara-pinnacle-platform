@@ -117,7 +117,7 @@ Every Phase 2 functional requirement and its SOP (Notion database 3, P2-01 to P2
 |---|---|---|
 | FR-J1 | P2-01 | V05, V09 |
 | FR-J2 | P2-02 | V10, V44 |
-| FR-J3 | P2-03 | V08, V54, V73 |
+| FR-J3 | P2-03 | V08, V18, V26, V27, V52, V54, V73 |
 | FR-J4 | P2-04 | V11 |
 | FR-K1 | P2-05 | V06, V72 |
 | FR-K2 | P2-06 | V07 |

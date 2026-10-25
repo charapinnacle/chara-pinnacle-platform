@@ -33,7 +33,7 @@ The acceptance-criteria files were written group by group and disagree on some n
 | Profile views | `private.profile_view_events` + `private.org_analytics_daily` | `public.partner_profile_views` |
 | Report targets | `partner_profile`, `requirement`, `partner_response`, `candidate_submission`, `contact_request`, `message` | `conversation`, `submission` |
 | Reported message context | `admin_get_reported_message`, audit `message.context_opened` | `admin_get_message_context` |
-| Outdated commitment error | `CHARA_CONSENT_REQUIRED` detail `employer_pays_commitment` | `CHARA_FORBIDDEN reconsent_required` |
+| Outdated commitment error | `CHARA_CONSENT_REQUIRED` detail `employer-pays-commitment` | `CHARA_FORBIDDEN reconsent_required` |
 | Notification kinds | one catalogue `private.notification_kinds` (section 9); overlaps use `licence_expiring`, `listing_confirmation_due`, `moderation_decision`, `job_order_match`, `contact_request_decided` | `partner_licence_expiring`, `workforce_confirm_reminder`, `report_outcome`, `new_job_order` |
 | Email preferences | `notification_preferences.email_kinds jsonb` | separate boolean columns per kind |
 | Monthly limits | calendar month in UTC, `private.month_start()` | Europe/Berlin months |
@@ -52,7 +52,7 @@ Profiles and organisations
 - `public.organizations`: + `review_status partner_review_status null` (check: null exactly for employers), `submitted_at`, `listed_at`, `info_step` (company, where_you_serve, commitments), `recruitment_type recruitment_preference`, `founded_year smallint`, `workforce_size_band`, `workforce_profile_updated_at`, `public_page_enabled boolean not null default false` (employers only), `moderation_state` for partner profiles; partial index for listed partners. Select grants unchanged: public reads go through definer RPCs, so legal name, identifier and licences never leak.
 - `public.create_organization`: accepts the partner type equal to the profile's intended type (`organization_type_mismatch` otherwise); identifier required for partners; sets `review_status = 'onboarding'`; records identifier links without naming the other organisation.
 - Re-review trigger on `organizations` (legal name, identifier, identifier kind, type): listed → `re_review`.
-- Consents per organisation type: `private.required_consents(kind, org_type)` overload; `signup_documents(p_org_type)` (drop and recreate, web caller in the same PR), `accept_consents`, `set_account_kind`, `choose_account_kind`, `pending_reconsents`, `publish_legal_document` recipients.
+- Consents per organisation type: `private.required_consents(kind, org_type)` overload; `signup_documents(p_org_type)` (drop and recreate, web caller in the same PR), `accept_consents` (refuses the organisation-level documents `employer-pays-commitment` and `partner-dpa`, V08), `set_account_kind`, `choose_account_kind`, `pending_reconsents`, `publish_legal_document` recipients.
 - `public.get_public_job`: + company page link when the page is on (return type change: drop and recreate).
 
 Billing
@@ -181,7 +181,7 @@ Realtime: Broadcast on private channels only, `conversation:<id>` and `user:<id>
 
 Every RPC below is `security definer`, executable by `authenticated` only unless marked anon, and audited.
 
-- **Partner registration and review (2a):** `create_organization` (changed), `submit_partner_for_review`, `admin_list_partner_reviews`, `admin_get_partner_review`, `admin_decide_partner`, `admin_set_organization_type`, `accept_employer_pays_commitment`, helpers `private.partner_commitment_current`, `private.partner_has_current_licence`.
+- **Partner registration and review (2a):** `create_organization` (changed), `submit_partner_for_review`, `admin_list_partner_reviews`, `admin_get_partner_review`, `admin_decide_partner`, `admin_set_organization_type`, `accept_employer_pays_commitment`, `partner_commitment_status`, helpers `private.partner_commitment_current`, `private.partner_has_current_licence`.
 - **Licences (2a):** `add_/update_/delete_partner_licence`, `partner_document_access_grant` (upload by owner/admin at aal2; read by verification reviewer or trust and safety at aal2, logged), `partner_document_set_scan_status` (service role), `admin_list_partner_licences`; daily job `partner-licence-expiry`.
 - **Workforce profile (2a):** `set_organization_geographies`, `set_organization_workforce_offer`, `add_/update_/confirm_/delete_workforce_availability`; daily confirmation reminder job.
 - **Discovery (2a):** `get_partner_profile` (anon), `search_partners` (anon, rate-limited, never ordered by plan [d1.1]), `search_available_workforce`, `get_company_page` (anon), `set_company_page_visibility`, `record_profile_view`, `toggle_saved_partner`, `toggle_follow`, `follower_count`, `list_saved_partners`, `list_followed_companies`; hourly follower digest job.
