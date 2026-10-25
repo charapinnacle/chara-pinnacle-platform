@@ -25,6 +25,10 @@ vi.mock("@/lib/dal/organizations", () => ({
   getMyOrganization: async (id: string) => ((await organizationsMock(id)) as unknown[] | undefined)?.[0] ?? null,
 }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
+const reviewMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/dal/partner-review", () => ({ getPartnerReview: reviewMock, getReviewTargetDays: async () => 1 }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 const firstStepsMock = vi.hoisted(() => vi.fn());
 const passportMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/dal/documents", () => ({ getDocumentReminders: vi.fn(async () => []), hasUsableCv: vi.fn(async () => false) }));
@@ -73,7 +77,9 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
   });
 
-  it("FR-J1: sends a recruitment or staffing company without an organisation, or with its own, to its onboarding", async () => {
+  it("FR-J1: sends a recruitment or staffing company without an organisation, or still in onboarding, to its onboarding", async () => {
+    releasedMock.mockResolvedValue(true);
+    reviewMock.mockResolvedValue({ status: "onboarding", submittedAt: null, infoStep: null });
     for (const type of ["recruitment_company", "staffing_company"]) {
       requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: type });
       organizationsMock.mockResolvedValue([]);
@@ -81,7 +87,45 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
       organizationsMock.mockResolvedValue([{ id: "org-9", slug: "agency", displayName: "Agency", type, role: "owner", suspended: false }]);
       await expect(render("employer")).rejects.toThrow("REDIRECT:/en/onboarding");
     }
+    expect(reviewMock).toHaveBeenCalledWith("org-9");
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-J1 AC11: shows a submitted partner that it is waiting for review, never as approved or verified", async () => {
+    releasedMock.mockResolvedValue(true);
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "org-9", slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company", role: "member", suspended: false },
+    ]);
+    for (const status of ["pending_review", "re_review"]) {
+      reviewMock.mockResolvedValue({ status, submittedAt: "2026-11-21T10:00:00Z", infoStep: null });
+      const html = await render("employer");
+      expect(html).toContain(">Your company is waiting for review</h2>");
+      expect(html).toContain("A review usually takes one working day.");
+      expect(html).toContain("Your company name and registration number");
+      expect(html).toContain("The licences you declare");
+      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your workforce profile/);
+      expect(html).not.toMatch(/approved|verified/i);
+    }
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "where_you_serve" });
+    let html = await render("employer");
+    expect(html).toContain(">Our team asked for more information</h2>");
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding"[^>]*>Review and submit again/);
+    reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null });
+    html = await render("employer");
+    expect(html).toContain(">Your company is listed</h2>");
+    expect(html).not.toMatch(/approved|verified/i);
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-J1: sends a submitted partner to its onboarding while release 2a is off", async () => {
+    releasedMock.mockResolvedValue(false);
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: "staffing_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "org-9", slug: "agency", displayName: "Agency", type: "staffing_company", role: "owner", suspended: false },
+    ]);
+    await expect(render("employer")).rejects.toThrow("REDIRECT:/en/onboarding");
+    expect(reviewMock).not.toHaveBeenCalled();
   });
 
   it("FR-J1: keeps the employer dashboard for a partner account that belongs to an employer, so it never loops", async () => {
