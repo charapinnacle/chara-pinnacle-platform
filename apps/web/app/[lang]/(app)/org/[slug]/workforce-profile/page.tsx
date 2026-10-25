@@ -1,22 +1,50 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
+import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { getOccupationsLimit, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { billingPath } from "@/lib/routes";
+import { billingPath, onboardingPath } from "@/lib/routes";
+import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { partnerTypeSchema } from "@/lib/validation/sign-up";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 export const metadata: Metadata = { title: "Workforce profile", robots: { index: false } };
+
+// The employer-pays commitment of the partner is not accepted in its current version (FR-J3): a new version was published
+// or the ownership changed. The owner is led to the Commitments step; everyone else is told that only the owner can
+// accept, and what waits on it.
+function CommitmentNotice({ lang, owner, outdated }: { lang: string; owner: boolean; outdated: boolean }) {
+  return (
+    <Notice tone="warning" role="status">
+      {owner ? (
+        <p>
+          {outdated
+            ? "The employer-pays commitment has changed. Accept the updated version so that your company can keep responding to job orders and submitting candidates."
+            : "Accept the employer-pays commitment before your company can respond to job orders or submit candidates."}{" "}
+          <TextLink href={onboardingPath(lang)}>Review and accept the commitment</TextLink>
+        </p>
+      ) : (
+        <p>
+          {outdated
+            ? "Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates."
+            : "Your owner needs to accept the employer-pays commitment before you can respond to job orders or submit candidates."}
+        </p>
+      )}
+    </Notice>
+  );
+}
 
 // The workforce profile of a recruitment or staffing company: where it serves (FR-K1) and what it offers (FR-K2), changed
 // after onboarding by the owner or an admin (at aal2, as on every organisation page); a member reads it. Release 2a only.
@@ -26,7 +54,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true, partner: true });
   if (organization.suspended) return <SuspendedOrganization title="Workforce profile" subject="details" />;
   const partnerType = partnerTypeSchema.parse(organization.type);
-  const [geographies, marketsLimit, profile, countries, offer, occupationsLimit, occupations, industries, languages] =
+  const [geographies, marketsLimit, profile, countries, offer, occupationsLimit, occupations, industries, languages, commitment] =
     await Promise.all([
       getOrganizationGeographies(organization.id),
       getMarketsLimit(organization.id),
@@ -37,6 +65,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getOccupations(),
       getIndustries(),
       getLanguages(),
+      getCommitmentStatus(organization.id),
     ]);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
   const basedIn = profile ? nameOf(profile.country) : "";
@@ -65,6 +94,9 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         description="Employers and job orders reach you through the countries where you serve and what you offer. Once your company is listed, everyone can see them on your profile."
         breadcrumb={<Breadcrumbs items={[{ label: organization.displayName }, { label: "Workforce profile" }]} />}
       />
+      {commitment.accepted ? null : (
+        <CommitmentNotice lang={lang} owner={organization.role === "owner"} outdated={commitmentOutdated(commitment)} />
+      )}
       <section aria-labelledby="where-you-serve-heading" className="grid gap-6">
         <h2 id="where-you-serve-heading" className="text-h2">
           Where you serve
