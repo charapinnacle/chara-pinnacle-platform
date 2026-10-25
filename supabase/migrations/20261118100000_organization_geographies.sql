@@ -113,6 +113,10 @@ begin
     raise exception 'CHARA_FORBIDDEN' using detail = 'organization_suspended';
   end if;
 
+  -- No list can name more countries than the reference table has; a longer one is refused before it is scanned.
+  if coalesce(cardinality(p_sources_from), 0) > 250 or coalesce(cardinality(p_serves_market), 0) > 250 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'country_code';
+  end if;
   if exists (
     select 1 from unnest(coalesce(p_sources_from, '{}') || coalesce(p_serves_market, '{}')) c (code)
     where not exists (select 1 from public.countries r where r.code = upper(btrim(c.code)))

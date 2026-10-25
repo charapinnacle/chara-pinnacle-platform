@@ -1,5 +1,5 @@
 begin;
-select plan(58);
+select plan(59);
 
 \ir organizations_fixture.inc
 
@@ -159,6 +159,12 @@ select is(
   'AC3: an unknown country refuses the call with the detail country_code'
 );
 select is(pg_temp.geo(:'manila'), '|', 'AC3: the refused call wrote nothing');
+select is(
+  pg_temp.set_geo(:'ow', :'manila', array['PH'], array_fill('DE'::text, array[251]))
+    || ',' || pg_temp.set_geo(:'ow', :'manila', array_fill('PH'::text, array[251]), array['DE']),
+  'P0001|CHARA_INVALID_INPUT|country_code,P0001|CHARA_INVALID_INPUT|country_code',
+  'a list longer than the 250 reference countries is refused before any lookup, in either scope'
+);
 select is(
   pg_temp.set_geo(:'ow', :'manila', array['PH'], array['DE', null])
     || ',' || pg_temp.set_geo(:'ow', :'manila', array[''], array['DE']),
