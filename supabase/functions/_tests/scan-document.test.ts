@@ -263,3 +263,59 @@ Deno.test("a database failure is a generic 502 that leaks nothing, and is logged
   assert.ok(!text.includes("secret") && !text.includes(USER));
   assert.deepEqual(logged, [["scan-document failed", { status: undefined, code: "XX000" }]]);
 });
+
+// Licence evidence (FR-J2): {organization_id}/{licence_id}/{uuid} in partner-documents, recorded on the licence.
+const ORG = "00000000-0000-0000-0000-00000000b001";
+const LICENCE = "00000000-0000-0000-0000-00000000c001";
+const EVIDENCE = `${ORG}/${LICENCE}/00000000-0000-0000-0000-00000000f001`;
+const EVIDENCE_SIGN = "POST /storage/v1/object/sign/partner-documents/{id}/{id}/{id}";
+const EVIDENCE_READ = "GET /storage/v1/object/sign/partner-documents/{id}/{id}/{id}";
+const EVIDENCE_STATUS = "POST /rest/v1/rpc/partner_document_set_scan_status";
+const evidenceRecord = (name = EVIDENCE, mimetype = "application/pdf") => ({
+  id: "00000000-0000-0000-0000-00000000e002",
+  bucket_id: "partner-documents",
+  name,
+  metadata: { mimetype, size: SIZE },
+});
+
+Deno.test("licence evidence is read from its own bucket and its verdict recorded on the licence", async () => {
+  for (
+    const [bytes, mimetype, verdict] of [[PNG, "image/png", "skipped"], [TEXT, "application/pdf", "rejected"]] as const
+  ) {
+    const { calls, client, fetch } = harness({
+      [EVIDENCE_SIGN]: reply(200, { signedURL: `/object/sign/partner-documents/${EVIDENCE}?token=t` }),
+      [EVIDENCE_READ]: new Response(Uint8Array.from(bytes), { status: 206 }),
+      [EVIDENCE_STATUS]: reply(200, verdict),
+    });
+    const response = await handleScanDocument(request(webhook(evidenceRecord(EVIDENCE, mimetype))), {
+      client,
+      sharedSecret: SECRET,
+      fetch,
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: verdict });
+    assert.deepEqual(calls.filter((c) => c.method === "POST" && c.path.includes("/sign/")).map((c) => c.path), [
+      `/storage/v1/object/sign/partner-documents/${EVIDENCE}`,
+    ]);
+    assert.deepEqual(calls.filter((c) => c.path.endsWith("/rpc/partner_document_set_scan_status")).map((c) => c.body), [
+      { p_licence: LICENCE, p_path: EVIDENCE, p_status: verdict, p_mime: mimetype, p_size: SIZE },
+    ]);
+    assert.equal(
+      calls.filter((c) => c.path.endsWith("/rpc/document_set_scan_status")).length,
+      0,
+      "never the candidate RPC",
+    );
+  }
+});
+
+Deno.test("an evidence object whose name is not shaped {organization}/{licence}/{uuid} is ignored without any call", async () => {
+  for (
+    const name of [`${ORG}/${LICENCE}/licence.pdf`, `${ORG}/not-a-uuid/${LICENCE}`, `${ORG}/${LICENCE}/${LICENCE}/x`]
+  ) {
+    const { calls, run } = scan({}, webhook(evidenceRecord(name)));
+    const response = await run();
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ignored" });
+    assert.equal(calls.length, 0);
+  }
+});

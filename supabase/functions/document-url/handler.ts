@@ -13,11 +13,52 @@ interface DocumentUrlDeps {
 interface Grant {
   bucket_id: string;
   object_path: string;
-  file_name: string;
+  file_name: string | null;
 }
 
-function refusal(error: { code?: string; message?: string }): Response {
-  const { code = "", message = "" } = error;
+// Licence evidence (FR-J2): the owner or an admin uploads through a URL signed for the one object name the grant reserved
+// (an upload URL lives as long as Storage makes it; the database accepts the file only while the name is still reserved),
+// and staff open a scanned file through a 60-second download link.
+type Ask =
+  | { rpc: "document_access_grant"; args: { p_document_id: string; p_purpose: string }; upload: false }
+  | {
+    rpc: "partner_document_access_grant";
+    args: { p_licence: string; p_purpose: string; p_mime?: string; p_size?: number };
+    upload: boolean;
+  };
+
+const EVIDENCE_UPLOAD = "evidence_upload";
+
+function parseAsk(body: unknown): Ask | null {
+  const { documentId, licenceId, purpose, mime, size } =
+    (typeof body === "object" && body !== null ? body : {}) as Record<
+      string,
+      unknown
+    >;
+  if (typeof purpose !== "string") {
+    return null;
+  }
+  if (typeof documentId === "string" && UUID.test(documentId) && licenceId === undefined) {
+    return { rpc: "document_access_grant", args: { p_document_id: documentId, p_purpose: purpose }, upload: false };
+  }
+  if (typeof licenceId !== "string" || !UUID.test(licenceId) || documentId !== undefined) {
+    return null;
+  }
+  if (purpose !== EVIDENCE_UPLOAD) {
+    return { rpc: "partner_document_access_grant", args: { p_licence: licenceId, p_purpose: purpose }, upload: false };
+  }
+  if (typeof mime !== "string" || mime.length > 100 || typeof size !== "number" || !Number.isSafeInteger(size)) {
+    return null;
+  }
+  return {
+    rpc: "partner_document_access_grant",
+    args: { p_licence: licenceId, p_purpose: purpose, p_mime: mime, p_size: size },
+    upload: true,
+  };
+}
+
+function refusal(error: { code?: string; message?: string; details?: string | null }): Response {
+  const { code = "", message = "", details } = error;
   if (message === "CHARA_FORBIDDEN") {
     return json(403, { error: "forbidden" });
   }
@@ -26,6 +67,9 @@ function refusal(error: { code?: string; message?: string }): Response {
   }
   if (message === "CHARA_DOCUMENT_NOT_SCANNED") {
     return json(409, { error: "not_scanned" });
+  }
+  if (message === "CHARA_INVALID_INPUT") {
+    return json(400, { error: details === "file" ? "invalid_file" : "bad_request" });
   }
   if (message === "CHARA_RATE_LIMITED") {
     return json(429, { error: "rate_limited" });
@@ -57,15 +101,12 @@ export async function handleDocumentUrl(req: Request, deps: DocumentUrlDeps): Pr
   } catch {
     return json(400, { error: "bad_request" });
   }
-  const { documentId, purpose } = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
-  if (typeof documentId !== "string" || !UUID.test(documentId) || typeof purpose !== "string") {
+  const ask = parseAsk(body);
+  if (!ask) {
     return json(400, { error: "bad_request" });
   }
 
-  const { data, error } = await deps.userClient(authorization).rpc("document_access_grant", {
-    p_document_id: documentId,
-    p_purpose: purpose,
-  });
+  const { data, error } = await deps.userClient(authorization).rpc(ask.rpc, ask.args);
   if (error) {
     return refusal(error);
   }
@@ -74,9 +115,18 @@ export async function handleDocumentUrl(req: Request, deps: DocumentUrlDeps): Pr
     return json(502, { error: "unavailable" });
   }
 
-  const { data: signed, error: signError } = await deps.signer.storage
-    .from(grant.bucket_id)
-    .createSignedUrl(grant.object_path, LINK_SECONDS, { download: grant.file_name });
+  const bucket = deps.signer.storage.from(grant.bucket_id);
+  if (ask.upload) {
+    const { data: upload, error: uploadError } = await bucket.createSignedUploadUrl(grant.object_path);
+    if (uploadError) {
+      console.error("document-url signing failed");
+      return json(502, { error: "unavailable" });
+    }
+    return json(200, { path: upload.path, token: upload.token });
+  }
+  const { data: signed, error: signError } = await bucket.createSignedUrl(grant.object_path, LINK_SECONDS, {
+    download: grant.file_name ?? true,
+  });
   if (signError) {
     console.error("document-url signing failed");
     return json(502, { error: "unavailable" });

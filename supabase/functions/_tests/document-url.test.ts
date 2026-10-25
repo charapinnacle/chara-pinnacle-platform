@@ -152,3 +152,92 @@ Deno.test("a grant that returns no row, or a failure to sign, gives a 502 withou
     console.error = original;
   }
 });
+
+// Licence evidence (FR-J2): uploads by the owner or an admin, openings by staff, through partner_document_access_grant.
+const LICENCE = "00000000-0000-0000-0000-0000000c0001";
+const EVIDENCE = `00000000-0000-0000-0000-0000000b0001/${LICENCE}/00000000-0000-0000-0000-0000000f0001`;
+const EVIDENCE_GRANT = "POST /rest/v1/rpc/partner_document_access_grant";
+const EVIDENCE_SIGN = "POST /storage/v1/object/sign/partner-documents/{id}/{id}/{id}";
+const EVIDENCE_UPLOAD_SIGN = "POST /storage/v1/object/upload/sign/partner-documents/{id}/{id}/{id}";
+
+function runEvidence(req: Request, grant: Response) {
+  const user = harness({ [EVIDENCE_GRANT]: grant });
+  const signer = harness({
+    [EVIDENCE_SIGN]: reply(200, { signedURL: `/object/sign/partner-documents/${EVIDENCE}?token=r34d` }),
+    [EVIDENCE_UPLOAD_SIGN]: reply(200, { url: `/object/upload/sign/partner-documents/${EVIDENCE}?token=upl0ad` }),
+  });
+  return {
+    user,
+    signer,
+    response: handleDocumentUrl(req, { userClient: () => user.client, signer: signer.client }),
+  };
+}
+
+Deno.test("an evidence upload grant gives an upload URL for the reserved name only, never a download link", async () => {
+  const { user, signer, response } = runEvidence(
+    request({ licenceId: LICENCE, purpose: "evidence_upload", mime: "application/pdf", size: 15728640 }),
+    reply(200, [{ bucket_id: "partner-documents", object_path: EVIDENCE, file_name: null }]),
+  );
+  const result = await response;
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), { path: EVIDENCE, token: "upl0ad" });
+  assert.deepEqual(user.calls.map((c) => c.body), [
+    { p_licence: LICENCE, p_purpose: "evidence_upload", p_mime: "application/pdf", p_size: 15728640 },
+  ]);
+  assert.deepEqual(signer.calls.map((c) => [c.method, c.path]), [
+    ["POST", `/storage/v1/object/upload/sign/partner-documents/${EVIDENCE}`],
+  ]);
+});
+
+Deno.test("a staff opening of licence evidence gives a 60-second download link", async () => {
+  const { user, signer, response } = runEvidence(
+    request({ licenceId: LICENCE, purpose: "partner_review" }),
+    reply(200, [{ bucket_id: "partner-documents", object_path: EVIDENCE, file_name: "licence-ph.pdf" }]),
+  );
+  const result = await response;
+  assert.equal(result.status, 200);
+  const { url } = await result.json();
+  assert.ok(url.includes("token=r34d") && url.includes("download=licence-ph.pdf"), url);
+  assert.deepEqual(user.calls.map((c) => c.body), [{ p_licence: LICENCE, p_purpose: "partner_review" }]);
+  assert.deepEqual(signer.calls.map((c) => [c.path, c.body]), [
+    [`/storage/v1/object/sign/partner-documents/${EVIDENCE}`, { expiresIn: 60 }],
+  ]);
+});
+
+Deno.test("an evidence request that names both ids, or an upload without an integer size and a type, is refused first", async () => {
+  for (
+    const body of [
+      { documentId: DOCUMENT, licenceId: LICENCE, purpose: "partner_review" },
+      { licenceId: "not-a-uuid", purpose: "partner_review" },
+      { licenceId: LICENCE },
+      { licenceId: LICENCE, purpose: "evidence_upload", mime: "application/pdf" },
+      { licenceId: LICENCE, purpose: "evidence_upload", size: 10 },
+      { licenceId: LICENCE, purpose: "evidence_upload", mime: "application/pdf", size: 1.5 },
+      { licenceId: LICENCE, purpose: "evidence_upload", mime: "x".repeat(101), size: 10 },
+    ]
+  ) {
+    const { user, signer, response } = runEvidence(request(body), reply(200, []));
+    assert.equal((await response).status, 400, JSON.stringify(body));
+    assert.deepEqual([user.calls.length, signer.calls.length], [0, 0]);
+  }
+});
+
+Deno.test("evidence refusals: a refused file, an unscanned file, an outsider and a member are told apart without detail", async () => {
+  const cases: [Response, number, string][] = [
+    [reply(400, { code: "P0001", message: "CHARA_INVALID_INPUT", details: "file", hint: null }), 400, "invalid_file"],
+    [reply(400, { code: "P0001", message: "CHARA_INVALID_INPUT", details: "purpose", hint: null }), 400, "bad_request"],
+    [database("CHARA_DOCUMENT_NOT_SCANNED", "P0001"), 409, "not_scanned"],
+    [database("CHARA_NOT_FOUND", "P0002"), 404, "not_found"],
+    [database("CHARA_FORBIDDEN", "P0001"), 403, "forbidden"],
+  ];
+  for (const [grant, status, word] of cases) {
+    const { signer, response } = runEvidence(
+      request({ licenceId: LICENCE, purpose: "evidence_upload", mime: "image/svg+xml", size: 10 }),
+      grant,
+    );
+    const result = await response;
+    assert.equal(result.status, status);
+    assert.deepEqual(await result.json(), { error: word });
+    assert.equal(signer.calls.length, 0);
+  }
+});
