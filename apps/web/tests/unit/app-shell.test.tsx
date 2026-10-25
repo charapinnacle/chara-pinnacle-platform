@@ -180,8 +180,8 @@ describe("the layout of the signed-in area", () => {
   it("gives an employer the organisations with the label of their role and the employer dashboard as home", async () => {
     userMock.mockResolvedValue({ ...user, accountKind: "company" });
     organizationsMock.mockResolvedValue([
-      { id: "o1", slug: "acme", displayName: "Acme Bau", role: "owner", suspended: false },
-      { id: "o2", slug: "beta", displayName: "Beta GmbH", role: "admin", suspended: true },
+      { id: "o1", slug: "acme", displayName: "Acme Bau", type: "employer", role: "owner", suspended: false },
+      { id: "o2", slug: "beta", displayName: "Beta GmbH", type: "employer", role: "admin", suspended: true },
     ]);
     const props = await shell();
     expect(props.homeHref).toBe("/en/dashboard/employer");
@@ -190,6 +190,20 @@ describe("the layout of the signed-in area", () => {
       { slug: "beta", displayName: "Beta GmbH", role: "admin", roleLabel: "Administrator", suspended: true },
     ]);
     expect(organizationsMock).toHaveBeenCalledWith("u1");
+  });
+
+  it("FR-J1: gives a member of a recruitment or staffing company none of the employer organisation links", async () => {
+    userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "o3", slug: "manila", displayName: "Manila Skills", type: "recruitment_company", role: "owner", suspended: false },
+      { id: "o4", slug: "staff", displayName: "Staff Co", type: "staffing_company", role: "admin", suspended: false },
+    ]);
+    const props = await shell();
+    expect(props.headerActions?.props.organizations).toEqual([]);
+    navigation.pathname = "/en/org/manila";
+    const html = renderToStaticMarkup(props.headerActions);
+    expect(mainLabels(html)).toEqual([]);
+    expect(html).not.toContain("Manila Skills");
   });
 
   it("keeps the header with the account menu and Log out when the organisations cannot be read", async () => {

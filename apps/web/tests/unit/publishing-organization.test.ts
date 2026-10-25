@@ -5,11 +5,16 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
 
 const { publishingOrganization } = await import("@/lib/dal/organizations");
 
-const organization = (slug: string, role: "owner" | "admin" | "member", suspended = false) => ({
+const organization = (
+  slug: string,
+  role: "owner" | "admin" | "member",
+  suspended = false,
+  type: "employer" | "recruitment_company" | "staffing_company" = "employer",
+) => ({
   id: slug,
   slug,
   displayName: slug,
-  type: "employer" as const,
+  type,
   role,
   suspended,
 });
@@ -23,6 +28,18 @@ describe("publishingOrganization (FR-C1: who may publish a vacancy)", () => {
       organization("owner-of", "owner"),
     ]);
     expect(found?.slug).toBe("admin-of");
+  });
+
+  it("FR-J1: is never a partner organisation, which has no vacancies", () => {
+    expect(
+      publishingOrganization([
+        organization("agency", "owner", false, "recruitment_company"),
+        organization("staffing", "admin", false, "staffing_company"),
+      ]),
+    ).toBeUndefined();
+    expect(
+      publishingOrganization([organization("agency", "owner", false, "recruitment_company"), organization("employer", "admin")])?.slug,
+    ).toBe("employer");
   });
 
   it("is nothing for a member, for a suspended organization and for no organization", () => {

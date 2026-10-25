@@ -44,9 +44,10 @@ export const getMyOrganizations = cache(async (userId: string): Promise<Organiza
   );
 });
 
-// The organization in which the user may publish vacancies: an owner or an admin of one that is not suspended.
+// The organization in which the user may publish vacancies: an owner or an admin of an employer that is not suspended
+// (a partner organisation has no vacancies, FR-J1).
 export function publishingOrganization(organizations: Organization[]): Organization | undefined {
-  return organizations.find(({ role, suspended }) => role !== "member" && !suspended);
+  return organizations.find(({ type, role, suspended }) => type === "employer" && role !== "member" && !suspended);
 }
 
 // Where Post a job leads, for the header and the home page alike. Everyone goes through /post-job: a visitor is asked to
@@ -56,7 +57,7 @@ export function publishingOrganization(organizations: Organization[]): Organizat
 export const getPostJobHref = cache(async (lang: string): Promise<string | null> => {
   const user = await getCurrentUser();
   if (!user) return `/${lang}/post-job`;
-  if (user.suspended || user.accountKind !== "company") return null;
+  if (user.suspended || user.accountKind !== "company" || user.intendedOrganizationType) return null;
   try {
     const organizations = await getMyOrganizations(user.id);
     const mayPublish = organizations.length === 0 || publishingOrganization(organizations) !== undefined;

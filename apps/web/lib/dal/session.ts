@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
-import { homePath, mfaPath } from "@/lib/routes";
+import { homePath, mfaPath, onboardingPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 import type { PlatformRole } from "@/lib/validation/admin";
 import type { MemberRole } from "@/lib/validation/team";
@@ -143,7 +143,7 @@ export async function requireOrgRole(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_members")
-    .select("role, organizations!inner(id, slug, display_name, status)")
+    .select("role, organizations!inner(id, slug, display_name, type, status)")
     .eq("user_id", user.id)
     .eq("organizations.slug", slug)
     .not("accepted_at", "is", null)
@@ -151,6 +151,9 @@ export async function requireOrgRole(
   if (error) throw new Error("The organization role could not be loaded", { cause: error });
   if (!data && hideFromOutsiders) notFound();
   if (!data || roleRank[data.role] < roleRank[minRole]) redirect(`/${lang}/forbidden`);
+  // The organisation pages are the employer's; a partner organisation is sent to its onboarding until later units open
+  // pages of its own (FR-J1).
+  if (data.organizations.type !== "employer") redirect(onboardingPath(lang));
   if (mfa && data.role !== "member") await requireAal2(lang, user);
   const { id, display_name, status } = data.organizations;
   return { user, organization: { id, slug, displayName: display_name, role: data.role, suspended: status === "suspended" } };

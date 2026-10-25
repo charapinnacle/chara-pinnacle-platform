@@ -39,8 +39,12 @@ vi.mock("@/lib/supabase/server", () => ({
 
 const { requireOrgRole } = await import("@/lib/dal/session");
 
-function membership(role: "owner" | "admin" | "member", status: "active" | "suspended" = "active") {
-  return { data: { role, organizations: { id: "org-1", slug: "acme-bau", display_name: "Acme Bau", status } }, error: null };
+function membership(
+  role: "owner" | "admin" | "member",
+  status: "active" | "suspended" = "active",
+  type: "employer" | "recruitment_company" | "staffing_company" = "employer",
+) {
+  return { data: { role, organizations: { id: "org-1", slug: "acme-bau", display_name: "Acme Bau", type, status } }, error: null };
 }
 
 beforeEach(() => {
@@ -63,6 +67,14 @@ describe("requireOrgRole", () => {
     expect(eqCalls).toContainEqual(["organization_members.user_id", "user-1"]);
     expect(eqCalls).toContainEqual(["organization_members.organizations.slug", "acme-bau"]);
   });
+
+  it.each(["recruitment_company", "staffing_company"] as const)(
+    "FR-J1: sends a member of a %s to its onboarding instead of an employer page",
+    async (type) => {
+      membershipMock.mockResolvedValue(membership("owner", "active", type));
+      await expect(requireOrgRole("en", "acme-bau", "member")).rejects.toThrow("REDIRECT:/en/onboarding");
+    },
+  );
 
   it("tells a suspended organization from an active one", async () => {
     membershipMock.mockResolvedValue(membership("member", "suspended"));

@@ -48,7 +48,8 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
         lang,
         email: user.email,
         accountKind,
-        organizations: organizations.map(({ slug, displayName, role, suspended }) => ({
+        // A partner organisation gets none of the employer links (FR-J1); its own navigation comes with later units.
+        organizations: organizations.filter(({ type }) => type === "employer").map(({ slug, displayName, role, suspended }) => ({
           slug,
           displayName,
           role,
