@@ -111,10 +111,19 @@ export const organizationInputSchema = organizationFormSchema.transform((value) 
 
 export type OrganizationFormInput = z.input<typeof organizationFormSchema>;
 
+// Plain text keeps its tabs and line breaks; any other control character is refused.
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return (code < 32 && character !== "\t" && character !== "\n" && character !== "\r") || code === 127;
+  });
+}
+
 const descriptionField = z
   .string()
   .trim()
-  .max(DESCRIPTION_MAX_CHARS, { error: `The description can have at most ${DESCRIPTION_MAX_CHARS} characters.` });
+  .max(DESCRIPTION_MAX_CHARS, { error: `The description can have at most ${DESCRIPTION_MAX_CHARS} characters.` })
+  .refine((value) => !hasControlCharacter(value), { error: "Remove the control characters from the description." });
 
 // The Company step of a recruitment or staffing company (FR-J1): the identifier is required, because staff check it before
 // the partner is listed, and the description is asked at once. The type is not a field: it is the one chosen at sign-up.

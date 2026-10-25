@@ -196,6 +196,18 @@ describe("partner Company step schema (FR-J1 AC12)", () => {
     });
   });
 
+  it("refuses control characters in the description but keeps tabs and line breaks", () => {
+    expect(partnerOrganizationInputSchema.parse({ ...partner, description: "Nurses\tand carers.\r\nSince 2019." }).description).toBe(
+      "Nurses\tand carers.\r\nSince 2019.",
+    );
+    for (const control of ["\u0000", "\u0007", "\u001b", "\u007f"]) {
+      const result = partnerOrganizationInputSchema.safeParse({ ...partner, description: `Nurses${control}carers` });
+      expect(result.success ? {} : fieldErrors(result.error), JSON.stringify(control)).toEqual({
+        description: "Remove the control characters from the description.",
+      });
+    }
+  });
+
   it("lets the employer form leave the identifier empty, as in Phase 1", () => {
     expect(companyStepSchema(false).safeParse({ ...partner, identifier: "", identifierKind: "" }).success).toBe(true);
     expect(companyStepSchema(true).safeParse({ ...partner, identifier: "", identifierKind: "" }).success).toBe(false);
