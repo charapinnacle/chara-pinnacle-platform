@@ -1,45 +1,25 @@
-import type { Page } from "@playwright/test";
 import { callAs } from "./support/accounts";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, executeAsync, literal, query } from "./support/db";
 import { enrollTotp } from "./support/login";
 import { currentStep } from "./support/onboarding";
-import { organizationAudit, organizationRows, uniqueToken } from "./support/organizations";
-import { createCommittedPartner, openPartnerOnboarding, setPartnerRelease, type PartnerType } from "./support/partners";
+import { organizationAudit, organizationRows } from "./support/organizations";
+import {
+  chips,
+  lapseToFreePlan,
+  openPartnerOnboarding,
+  partnerWithCompany,
+  pickWithKeys,
+  setPartnerRelease,
+} from "./support/partners";
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
-import type { TestUser } from "./support/test-user";
 
 const SOURCES = "Where do you source workers from?";
 const RECRUITS_FOR = "Where do you recruit for?";
 const SUPPLIES_FOR = "Where do you supply workers for?";
 const LIMIT_MESSAGE = "Your plan includes 3 countries served. Upgrade to add more.";
 const SET_GEOGRAPHIES = "public.set_organization_geographies(uuid, text[], text[])";
-
-// A partner owner with a company based in the Philippines, and the slug and id of the company.
-async function partnerWithCompany(type: PartnerType): Promise<{ user: TestUser; id: string; slug: string }> {
-  const user = await createCommittedPartner(type);
-  const token = uniqueToken();
-  await callAs(user, "create_organization", {
-    p_type: type,
-    p_legal_name: `Manila Skills ${token} Inc.`,
-    p_display_name: `Manila Skills ${token}`,
-    p_based_in_country: "PH",
-    p_industry_code: "N",
-    p_identifier: `MS${token}`.slice(0, 32),
-    p_identifier_kind: "registration_number",
-  });
-  const [organization] = organizationRows(user.id);
-  return { user, id: organization.id, slug: organization.slug };
-}
-
-// The organisation lapsed to its free plan: the markets limit (3) applies to it whatever entitlements_enforced says.
-function lapse(organizationId: string): void {
-  execute(
-    `insert into billing.subscriptions (organization_id, plan_code, status, provider)
-     values (${literal(organizationId)}, 'recruitment_partner', 'canceled', 'null')`,
-  );
-}
 
 function geographies(organizationId: string): string {
   const [row] = query<{ text: string }>(
@@ -48,24 +28,6 @@ function geographies(organizationId: string): string {
      from public.organization_geographies where organization_id = ${literal(organizationId)}`,
   );
   return row.text;
-}
-
-function chips(page: Page, label: string) {
-  return page.getByRole("list", { name: `${label} chosen` }).getByRole("listitem");
-}
-
-// Types into the combobox and walks the list with the arrow keys to the option, then takes it with Enter.
-async function pickWithKeys(page: Page, label: string, typed: string, option: string): Promise<void> {
-  const box = page.getByRole("combobox", { name: label, exact: true });
-  await box.focus();
-  await page.keyboard.type(typed);
-  await expect(page.getByRole("option", { name: option, exact: true })).toBeVisible();
-  for (let step = 0; step < 20; step++) {
-    const active = await box.getAttribute("aria-activedescendant");
-    if (active && (await page.locator(`[id="${active}"]`).innerText()).trim() === option) break;
-    await page.keyboard.press("ArrowDown");
-  }
-  await page.keyboard.press("Enter");
 }
 
 // The release switch is set for the whole database while this file runs, so it is a project of its own that follows the
@@ -78,7 +40,7 @@ test.describe("Where you serve (FR-K1)", () => {
   test("AC1, AC2, AC5, AC10: the owner chooses the countries with the keyboard, meets the limit and continues", async ({ page }) => {
     test.setTimeout(120_000);
     const { user, id, slug } = await partnerWithCompany("recruitment_company");
-    lapse(id);
+    lapseToFreePlan(id);
     await openPartnerOnboarding(page, user);
 
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
@@ -159,8 +121,20 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, SOURCES)).toHaveText(["Philippines", "Nepal"]);
     expect(geographies(id)).toBe("|");
 
-    // AC1: the save stores the rows, audits them once and moves on to the next step.
+    // AC1: the save stores the rows, audits them once and moves on to What you offer, still on step 2 (FR-K2); once the
+    // offer is saved the partner waits on Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
+    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await callAs(user, "set_organization_workforce_offer", {
+      p_org: id,
+      p_occupations: ["7212"],
+      p_industries: [],
+      p_languages: [],
+      p_recruitment_type: "international",
+      p_service_types: [],
+    });
+    await page.goto("/en/onboarding");
     await expect(page.getByRole("heading", { name: "Next: Commitments", level: 1 })).toBeVisible();
     await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
     expect(geographies(id)).toBe("NP,PH|AE,DE,SA");

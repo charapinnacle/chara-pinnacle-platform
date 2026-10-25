@@ -4,6 +4,8 @@ import { env } from "@/lib/env";
 import { callAs } from "./accounts";
 import { execute, literal } from "./db";
 import { logIn } from "./login-page";
+import { organizationRows, uniqueToken } from "./organizations";
+import { expect } from "./test";
 import { adminRequest, type TestUser } from "./test-user";
 
 export type PartnerType = "recruitment_company" | "staffing_company";
@@ -64,4 +66,49 @@ export async function openPartnerOnboarding(page: Page, user: TestUser): Promise
   await logIn(page, user);
   await page.waitForURL((url) => !url.pathname.endsWith("/login"));
   await page.goto("/en/onboarding");
+}
+
+// A partner owner with a company based in the Philippines, and the slug and id of the company.
+export async function partnerWithCompany(type: PartnerType): Promise<{ user: TestUser; id: string; slug: string }> {
+  const user = await createCommittedPartner(type);
+  const token = uniqueToken();
+  await callAs(user, "create_organization", {
+    p_type: type,
+    p_legal_name: `Manila Skills ${token} Inc.`,
+    p_display_name: `Manila Skills ${token}`,
+    p_based_in_country: "PH",
+    p_industry_code: "N",
+    p_identifier: `MS${token}`.slice(0, 32),
+    p_identifier_kind: "registration_number",
+  });
+  const [organization] = organizationRows(user.id);
+  return { user, id: organization.id, slug: organization.slug };
+}
+
+// The organisation lapsed to its free plan: the plan limits of the Basic tier (3 markets, 10 occupations) apply to it
+// whatever entitlements_enforced says.
+export function lapseToFreePlan(organizationId: string): void {
+  execute(
+    `insert into billing.subscriptions (organization_id, plan_code, status, provider)
+     values (${literal(organizationId)}, 'recruitment_partner', 'canceled', 'null')`,
+  );
+}
+
+// The chips of a chips field.
+export function chips(page: Page, label: string) {
+  return page.getByRole("list", { name: `${label} chosen` }).getByRole("listitem");
+}
+
+// Types into the combobox and walks the list with the arrow keys to the option, then takes it with Enter.
+export async function pickWithKeys(page: Page, label: string, typed: string, option: string): Promise<void> {
+  const box = page.getByRole("combobox", { name: label, exact: true });
+  await box.focus();
+  await page.keyboard.type(typed);
+  await expect(page.getByRole("option", { name: option, exact: true })).toBeVisible();
+  for (let step = 0; step < 20; step++) {
+    const active = await box.getAttribute("aria-activedescendant");
+    if (active && (await page.locator(`[id="${active}"]`).innerText()).trim() === option) break;
+    await page.keyboard.press("ArrowDown");
+  }
+  await page.keyboard.press("Enter");
 }
