@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
+const licencesMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -54,6 +55,11 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
+vi.mock("@/lib/dal/licences", () => ({
+  getPartnerLicences: licencesMock,
+  getLicenceSettings: async () => ({ patterns: {}, maxYears: 20 }),
+}));
+vi.mock("@/lib/actions/licences", () => ({ saveLicence: vi.fn(), deleteLicence: vi.fn(), startEvidenceUpload: vi.fn() }));
 
 const { default: WorkforceProfilePage } = await import("@/app/[lang]/(app)/org/[slug]/workforce-profile/page");
 
@@ -75,6 +81,7 @@ beforeEach(() => {
   releasedMock.mockResolvedValue(true);
   requireOrgRoleMock.mockResolvedValue(organization("owner"));
   commitmentMock.mockResolvedValue({ version: 1, isDraft: false, accepted: true, acceptedVersion: 1 });
+  licencesMock.mockResolvedValue([]);
 });
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
@@ -165,5 +172,52 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     requireOrgRoleMock.mockResolvedValue(organization("member"));
     html = await render();
     expect(html).toContain("Your owner needs to accept the employer-pays commitment before you can respond to job orders");
+  });
+});
+
+const licence = (id: string, country: string, status: "current" | "expired", validUntil: string) => ({
+  id,
+  country,
+  issuingAuthority: "Department of Migrant Workers",
+  licenceNumber: `DMW-${id}`,
+  validUntil,
+  status,
+  evidence: id === "a" ? { mime: "application/pdf", sizeBytes: 2_097_152, status: "skipped" } : null,
+});
+
+describe("the licences of the workforce profile page (FR-J2)", () => {
+  it("AC11: shows the owner the empty state with the button that adds the first licence", async () => {
+    const html = await render();
+    expect(html).toContain(">Licences</h2>");
+    expect(html).toContain("No licences added yet");
+    expect(html).toMatch(/<button[^>]*>Add a licence<\/button>/);
+    expect(licencesMock).toHaveBeenCalledWith("org-1");
+  });
+
+  it("AC1, AC11: lists the entries as given, the expired one marked, each seen only by staff", async () => {
+    licencesMock.mockResolvedValue([
+      licence("b", "DE", "expired", "2026-10-01"),
+      licence("a", "PH", "current", "2028-03-15"),
+    ]);
+    const html = await render();
+    expect(html.indexOf(">Germany</h3>")).toBeLessThan(html.indexOf(">Philippines</h3>"));
+    expect(html).toMatch(/>Germany<\/h3><span[^>]*>Expired<\/span>/);
+    expect(html).toContain(">DMW-a</dd>");
+    expect(html).toContain(">15 March 2028</dd>");
+    expect(html).toContain(">2 MB - File received</dd>");
+    expect(html.match(/Seen only by Chara Pinnacle staff until verification is available<\/p>/g)).toHaveLength(2);
+    expect(html).toContain("Edit<span class=\"sr-only\"> the licence for Philippines</span>");
+    expect(html).toContain("Delete<span class=\"sr-only\"> the licence for Germany</span>");
+  });
+
+  it("AC4: shows a member the entries without any button that changes them", async () => {
+    requireOrgRoleMock.mockResolvedValue(organization("member", "recruitment_company"));
+    licencesMock.mockResolvedValue([licence("a", "PH", "current", "2028-03-15")]);
+    const html = await render();
+    expect(html).toContain(">DMW-a</dd>");
+    expect(html).not.toContain("Add a licence");
+    expect(html).not.toContain("Edit<span");
+    licencesMock.mockResolvedValue([]);
+    expect(await render()).toContain("Your owner or an administrator adds the licences of your company.");
   });
 });

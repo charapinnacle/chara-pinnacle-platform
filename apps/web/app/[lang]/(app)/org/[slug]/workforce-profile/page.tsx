@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { LicencesSection } from "@/components/organization/licences-section";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
+import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
-import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
+import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { getOccupationsLimit, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { billingPath, onboardingPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
+import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
 import { partnerTypeSchema } from "@/lib/validation/sign-up";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
@@ -46,8 +51,34 @@ function CommitmentNotice({ lang, owner, outdated }: { lang: string; owner: bool
   );
 }
 
+// The licences are read in their own boundary, so the rest of the page does not wait for them.
+async function Licences({
+  organizationId,
+  slug,
+  canManage,
+  countries,
+}: {
+  organizationId: string;
+  slug: string;
+  canManage: boolean;
+  countries: ReferenceItem[];
+}) {
+  const [licences, { patterns, maxYears }] = await Promise.all([getPartnerLicences(organizationId), getLicenceSettings()]);
+  return (
+    <LicencesSection
+      slug={slug}
+      canManage={canManage}
+      licences={licences}
+      countries={countries}
+      patterns={patterns}
+      maxYears={maxYears}
+    />
+  );
+}
+
 // The workforce profile of a recruitment or staffing company: where it serves (FR-K1) and what it offers (FR-K2), changed
-// after onboarding by the owner or an admin (at aal2, as on every organisation page); a member reads it. Release 2a only.
+// after onboarding by the owner or an admin (at aal2, as on every organisation page); a member reads it. The licences it
+// holds per country (FR-J2) are recorded here too, for staff only. Release 2a only.
 export default async function WorkforceProfilePage({ params }: PageProps<"/[lang]/org/[slug]/workforce-profile">) {
   const { lang, slug } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
@@ -153,6 +184,24 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             onboarding={false}
           />
         )}
+      </section>
+      <section aria-labelledby="licences-heading" className="grid gap-6">
+        <div className="grid gap-2">
+          <h2 id="licences-heading" className="text-h2">
+            Licences
+          </h2>
+          <p className="text-body text-muted-foreground">
+            The licence or registration you hold for each country where you recruit or supply workers. {LICENCE_STAFF_ONLY}.
+          </p>
+        </div>
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <Licences
+            organizationId={organization.id}
+            slug={slug}
+            canManage={organization.role !== "member"}
+            countries={countries}
+          />
+        </Suspense>
       </section>
     </div>
   );
