@@ -24,6 +24,11 @@ export function whereYouServePath(lang: string): string {
   return `${onboardingPath(lang)}?step=where-you-serve`;
 }
 
+// The What you offer part of the step Where you serve, reopened after it was done (FR-K2).
+export function whatYouOfferPath(lang: string): string {
+  return `${onboardingPath(lang)}?step=what-you-offer`;
+}
+
 // A user whose account kind is not committed yet still has the onboarding step to finish.
 export function homePath(lang: string, accountKind: AccountKind | null): string {
   const segment = Object.entries(dashboardSegments).find(([, kind]) => kind === accountKind)?.[0];
