@@ -76,7 +76,9 @@ function ChipsControl({
   errorId,
   error,
 }: ChipsControlProps) {
-  const [limitReached, setLimitReached] = useState(false);
+  // Each blocked add is counted, and the notice is keyed by the count: a screen reader announces the replaced content of
+  // the live region again on the second and later attempts, which an unchanged text would not trigger.
+  const [blockedAttempts, setBlockedAttempts] = useState(0);
   const descriptionId = `${id}-description`;
   const countId = `${id}-count`;
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
@@ -85,15 +87,15 @@ function ChipsControl({
   function add(code: string) {
     if (code === "" || value.includes(code)) return;
     if (limit !== null && value.length >= limit) {
-      setLimitReached(true);
+      setBlockedAttempts((attempts) => attempts + 1);
       return;
     }
-    setLimitReached(false);
+    setBlockedAttempts(0);
     onChange([...value, code]);
   }
 
   function remove(code: string) {
-    setLimitReached(false);
+    setBlockedAttempts(0);
     onChange(value.filter((chosen) => chosen !== code));
     document.getElementById(id)?.focus();
   }
@@ -162,7 +164,7 @@ function ChipsControl({
         {countryCount(value.length, limit)}
       </p>
       <div role="status" className="empty:hidden">
-        {limitReached ? limitNotice : null}
+        {blockedAttempts > 0 ? <div key={blockedAttempts}>{limitNotice}</div> : null}
       </div>
       <FieldMessage id={errorId} error={error} className="-mt-0.5 flex items-start gap-1.5 text-small leading-snug" />
     </Field>

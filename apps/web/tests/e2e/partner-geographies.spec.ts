@@ -120,6 +120,12 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(notice).toBeVisible();
     await expect(notice.getByRole("link", { name: "Upgrade to add more." })).toHaveAttribute("href", `/en/org/${slug}/billing`);
     await expect(page.getByText("3 of 3 countries")).toBeVisible();
+    // A second blocked add replaces the notice in the live region, so it is announced again.
+    await notice.locator(":scope > div").evaluate((element) => element.setAttribute("data-first", "true"));
+    await pickWithKeys(page, RECRUITS_FOR, "ital", "Italy");
+    await expect(chips(page, RECRUITS_FOR)).toHaveCount(3);
+    await expect(notice).toBeVisible();
+    await expect(notice.locator("[data-first]")).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
 
     // AC2: Tab reaches the first chip's button; Backspace removes Germany and the focus returns to the field.
