@@ -1,6 +1,6 @@
 # Phase 2 build order (provisional)
 
-Version 0.2, 22 October 2026. The order in which the Phase 2 requirements (FR-J1 to FR-T1) are built, one pull request per unit (80 units; V77 to V80 were added for the non-functional requirements and sit at the end of their release), after the Phase 1 units of `docs/phase-1/BUILD_ORDER.md`. Data model, names and gates: `DATA_MODEL.md`. **Provisional:** no unit starts until CHARA has answered the Phase 2 decisions; a unit whose decisions change is re-planned first. Progress is read from merged pull requests, whose titles end with the unit id, for example `feat(FR-J1): partner registration [V05]`.
+Version 0.2, 22 October 2026. The order in which the Phase 2 requirements (FR-J1 to FR-T1) are built, one pull request per unit (81 units; V77 to V80 were added for the non-functional requirements and sit at the end of their release, V81 for the partner team pages after V09), after the Phase 1 units of `docs/phase-1/BUILD_ORDER.md`. Data model, names and gates: `DATA_MODEL.md`. **Provisional:** no unit starts until CHARA has answered the Phase 2 decisions; a unit whose decisions change is re-planned first. Progress is read from merged pull requests, whose titles end with the unit id, for example `feat(FR-J1): partner registration [V05]`.
 
 ## Rules for every unit
 
@@ -49,6 +49,7 @@ Release 2a: partner accounts and discovery
 | V29 | `feat/data-export` | FR-S3: data export of Phase 1 data (closes a Phase 1 gap), `dsar-exports` bucket, `data_export_ready` | V02 |
 | V30 | `feat/partner-dashboards` | FR-R3, FR-R4 (2a parts): recruitment and staffing dashboards, routing by organisation type | V13, V20, V12 |
 | V31 | `feat/admin-network-statistics` | FR-S2: partner organisation metrics | V11 |
+| V81 | `feat/partner-team-pages` | FR-J1 AC9, AC11 team part: org/[slug]/members and team actions open to partner organisations (requireOrgRole partner "either"), owners/admins at aal1 sent to /mfa, invitations, role changes, removal and ownership transfer for partner types with the members limit of the partner plans (concurrency test), invitation sign-up carries the inviting organisation's type into intended_organization_type, "Invite your team" on Ready and the partner dashboard, partner navigation entry, cross-tenant pgTAP, Playwright with axe | V09 |
 | V77 | `feat/ranking-transparency-page` | NFR-C8: public page describing the main ranking parameters of Find Partners (extended for the job order board in V79 and Find Workers in V80); test that paid and unpaid organisations rank the same | V21 |
 | V78 | `chore/release-2a-readiness` | NFR-O4: end-to-end journey partner sign-up to approval to public profile in CI; NFR-P3: load test of Find Partners at 5,000 partner organisations with query plans; NFR-U3: manual accessibility audit checklist of the 2a pages; NFR-C7: review of the approval and moderation flows | V11, V21, V22, V27 |
 
@@ -115,7 +116,7 @@ Every Phase 2 functional requirement and its SOP (Notion database 3, P2-01 to P2
 
 | Requirement | SOP | Units |
 |---|---|---|
-| FR-J1 | P2-01 | V05, V09 |
+| FR-J1 | P2-01 | V05, V09, V81 |
 | FR-J2 | P2-02 | V10, V44 |
 | FR-J3 | P2-03 | V08, V18, V26, V27, V52, V54, V73 |
 | FR-J4 | P2-04 | V11 |
