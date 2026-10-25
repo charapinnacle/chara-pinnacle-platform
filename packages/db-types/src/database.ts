@@ -1442,6 +1442,9 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
+"submit_partner_for_review":
+{ Args: { "p_org": string }; Returns: Json
+                           },
 "submit_report":
 { Args: { "p_application"?: string,"p_category": Database["public"]['Enums']["report_category"],"p_details": string,"p_email"?: string,"p_good_faith": boolean,"p_job"?: string,"p_key": string,"p_path"?: string,"p_proof"?: string,"p_target_type": Database["public"]['Enums']["report_target_type"] }; Returns: {
               "is_duplicate": boolean,"reference": string
