@@ -313,8 +313,8 @@ $$;
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: every staff-gated function that is not read-only calls the audit function');
 select is(
   pg_temp.audited(),
-  array['admin_set_report_status', 'grant_platform_role', 'moderate_job', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
-  'AC8: the audited functions are the 10 that exist; the allowlist holds the read-only ones'
+  array['admin_set_organization_type', 'admin_set_report_status', 'grant_platform_role', 'moderate_job', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
+  'AC8: the audited functions are the 11 that exist; the allowlist holds the read-only ones'
 );
 create function public.unaudited_admin_function() returns void
 language plpgsql security definer set search_path = ''

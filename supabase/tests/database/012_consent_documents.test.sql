@@ -71,16 +71,16 @@ select pg_temp.new_user(
 select pg_temp.new_user(:'u', 'worker', '[]');
 
 -- signup_documents
-select is_definer('public', 'signup_documents', array['account_kind'], 'signup_documents is SECURITY DEFINER');
+select is_definer('public', 'signup_documents', array['account_kind', 'organization_type'], 'signup_documents is SECURITY DEFINER');
 select is(
-  (select proconfig from pg_proc where oid = 'public.signup_documents(public.account_kind)'::regprocedure),
+  (select proconfig from pg_proc where oid = 'public.signup_documents(public.account_kind, public.organization_type)'::regprocedure),
   array['search_path=""'],
   'signup_documents sets search_path to empty'
 );
 select ok(
-  has_function_privilege('anon', 'public.signup_documents(public.account_kind)', 'execute')
-  and has_function_privilege('authenticated', 'public.signup_documents(public.account_kind)', 'execute')
-  and not has_function_privilege('service_role', 'public.signup_documents(public.account_kind)', 'execute'),
+  has_function_privilege('anon', 'public.signup_documents(public.account_kind, public.organization_type)', 'execute')
+  and has_function_privilege('authenticated', 'public.signup_documents(public.account_kind, public.organization_type)', 'execute')
+  and not has_function_privilege('service_role', 'public.signup_documents(public.account_kind, public.organization_type)', 'execute'),
   'anon and authenticated may execute signup_documents, service_role may not'
 );
 select is(
