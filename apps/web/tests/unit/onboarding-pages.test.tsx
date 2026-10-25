@@ -146,6 +146,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(currentStep(html)).toBe("Where you serve");
     expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Next: Where you serve</h1>");
+    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 5: Where you serve<\/p>/);
     expect(html).toContain("Manila Staff is saved.");
     expect(html).toContain('role="status"');
     expect(html).toMatch(/<a[^>]*href="\/en"[^>]*>Go to the home page/);
