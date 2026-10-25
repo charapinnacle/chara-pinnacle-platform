@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(42);
 
 \ir organizations_fixture.inc
 
@@ -284,6 +284,10 @@ select is(
   'the former owner can no longer accept; the new owner does'
 );
 select is(private.partner_commitment_current(:'manila'), true, 'the new owner''s acceptance counts for the partner');
+update public.organization_members set role = 'admin' where organization_id = :'manila' and user_id = :'ad';
+update public.organization_members set role = 'owner' where organization_id = :'manila' and user_id = :'ow';
+select is(private.partner_commitment_current(:'manila'), true,
+  'transfer back to an owner who accepted the current version counts: their latest consent is a grant of it');
 
 -- accept_consents refuses the organisation-level documents -------------------------------------------------------------
 select is(
