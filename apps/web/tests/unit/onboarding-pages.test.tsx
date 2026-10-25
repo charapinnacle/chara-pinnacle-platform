@@ -67,6 +67,8 @@ vi.mock("@/lib/dal/legal", () => ({
   getLegalDocument: legalDocumentMock,
 }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
+const billingMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/dal/billing", () => ({ getBillingState: billingMock }));
 vi.mock("@/lib/dal/partner-review", () => ({ getPartnerReview: reviewMock, getReviewTargetDays: async () => 1 }));
 vi.mock("@/lib/actions/partner-review", () => ({ submitForReview: vi.fn() }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn() }));
@@ -499,6 +501,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
       `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/onboarding?step=company")}`,
     );
     requireUserMock.mockResolvedValue({ ...partner("recruitment_company"), aal: "aal2" });
+    billingMock.mockResolvedValue({ identifier: "CS201904512", identifier_kind: "registration_number", identifier_locked: false });
     const html = await render(OnboardingPage, { step: "company" });
     expect(currentStep(html)).toBe("Company");
     expect(html).toContain(">Your company details</h1>");
@@ -506,6 +509,13 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("The name employers see on your profile.");
     expect(html).not.toContain("candidates");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save profile<\/button>/);
+    expect(html).toContain(">Company identifier</h2>");
+    expect(html).toContain(": CS201904512. The owner corrects it on the billing page, or contact support.");
+    expect(html).not.toMatch(/readonly/i);
+    billingMock.mockResolvedValue({ identifier: "CS201904512", identifier_kind: "registration_number", identifier_locked: true });
+    const locked = await render(OnboardingPage, { step: "company" });
+    expect(locked).toMatch(/<input[^>]*id="org-legal-name"[^>]*readOnly|<input[^>]*readOnly[^>]*id="org-legal-name"/i);
+    expect(locked).toContain("It cannot be changed once a payment has been started for the company.");
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company", role: "member" });
     expect(await render(OnboardingPage, { step: "company" })).not.toContain("Your company details");
   });

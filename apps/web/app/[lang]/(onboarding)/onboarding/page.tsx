@@ -21,6 +21,7 @@ import { WorkforceOfferForm } from "@/components/organization/workforce-offer-fo
 import { CreatePassportForm } from "@/components/passport/create-passport-form";
 import { commitAccountKind } from "@/lib/actions/consents";
 import { geographiesComplete, getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
+import { getBillingState } from "@/lib/dal/billing";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getLegalDocument, getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
@@ -50,6 +51,7 @@ import {
 } from "@/lib/routes";
 import { BRAND_NAME } from "@/lib/brand";
 import { COMMITMENT_SLUG, commitmentOutdated, WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
+import { identifierKindLabels } from "@/lib/validation/organization";
 import { awaitingReview, infoStepIndex, submittable } from "@/lib/validation/partner-review";
 import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
 
@@ -246,15 +248,38 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   // The company details are edited with update_organization_profile, which needs aal2 like every change of them.
   if (!member && step === "company") {
     if (aal !== "aal2") redirect(mfaPath(lang, partnerStepPath(lang, "company")));
-    const profile = await getOrganizationProfile(organization.id);
+    const [profile, billing] = await Promise.all([getOrganizationProfile(organization.id), getBillingState(organization.id)]);
     if (!profile) throw new Error("The organisation has no profile");
+    // The identifier is shown only, as on the profile page of an employer: the owner records it on the billing page, which
+    // a partner gets with V15, so until then a correction goes through support.
+    const identifier = billing.identifier
+      ? `${identifierKindLabels[billing.identifier_kind ?? ""] ?? "Identifier"}: ${billing.identifier}.`
+      : "No company registration number or VAT number is recorded yet.";
     return (
       <OnboardingPanel
         steps={<OnboardingSteps kind="partner" current={0} />}
         title="Your company details"
-        description="Our team checks these details in the review. The legal name can be changed until a payment is started for the company."
+        description="Our team checks these details in the review."
       >
-        <ProfileForm slug={organization.slug} defaults={profile} legalNameLocked={false} countries={countries} industries={industries} partner />
+        <ProfileForm
+          slug={organization.slug}
+          defaults={profile}
+          legalNameLocked={billing.identifier_locked}
+          countries={countries}
+          industries={industries}
+          partner
+        />
+        <section aria-labelledby="identifier-heading" className="grid gap-2">
+          <h2 id="identifier-heading" className="text-h2">
+            Company identifier
+          </h2>
+          <p className="text-body text-muted-foreground">
+            {identifier}{" "}
+            {billing.identifier_locked
+              ? "It cannot be changed once a payment has been started for the company."
+              : "The owner corrects it on the billing page, or contact support."}
+          </p>
+        </section>
         <TextLink standalone href={partnerStepPath(lang, "ready")}>
           Back to Ready
         </TextLink>
