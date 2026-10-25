@@ -8,8 +8,9 @@ import { getDocumentReminders, hasUsableCv } from "@/lib/dal/documents";
 import { getPassport } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
 import { computeCompleteness } from "@/lib/passport/completeness";
-import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
+import { dashboardSegments, homePath, isDashboardSegment, onboardingPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
+import { partnerTypeSchema } from "@/lib/validation/sign-up";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -20,6 +21,8 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
   if (user.accountKind !== dashboardSegments[kind]) {
     redirect(homePath(lang, user.accountKind));
   }
+  // A recruitment or staffing company has no dashboard until its onboarding is done (FR-J1; the pending dashboard is V09).
+  if (partnerTypeSchema.safeParse(user.intendedOrganizationType).success) redirect(onboardingPath(lang));
   const outcomes = (
     <Suspense fallback={null}>
       <ReportOutcomes lang={lang} />

@@ -70,6 +70,14 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
   });
 
+  it("FR-J1: sends a recruitment or staffing company to its onboarding instead of the employer dashboard", async () => {
+    for (const type of ["recruitment_company", "staffing_company"]) {
+      requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: type });
+      await expect(render("employer")).rejects.toThrow("REDIRECT:/en/onboarding");
+    }
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
   it("checks the membership of the organization in the address and hides it from outsiders", async () => {
     await render("employer", { org: "beta-works" });
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "beta-works", "member", { mfa: false, hideFromOutsiders: true });
