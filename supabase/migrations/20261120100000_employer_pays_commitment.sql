@@ -8,8 +8,9 @@
 -- new owner must accept again. Everything here belongs to release 2a and is refused while release_partner_directories is
 -- false.
 
--- Whether the partner holds an acceptance of the current version of the commitment. The job order response and the
--- candidate submission RPCs (V44) refuse with CHARA_CONSENT_REQUIRED detail employer-pays-commitment while it is false.
+-- Whether the partner holds an acceptance of the current version of the commitment. The job order response (V44) and
+-- candidate submission (V48) RPCs refuse with CHARA_CONSENT_REQUIRED detail employer-pays-commitment while it is false
+-- (V52).
 create function private.partner_commitment_current(p_org uuid) returns boolean
 language sql
 stable
