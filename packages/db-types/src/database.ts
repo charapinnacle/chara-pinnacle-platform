@@ -1047,7 +1047,7 @@ isOneToOne: false
 { Args: { "p_job_id": string }; Returns: number
                            },
 "create_organization":
-{ Args: { "p_based_in_country": string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
+{ Args: { "p_based_in_country": string,"p_description"?: string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
                            },
 "create_worker_passport":
 { Args: { "p_current_country": string,"p_first_name": string,"p_last_name": string,"p_preferred_lang"?: string }; Returns: undefined
