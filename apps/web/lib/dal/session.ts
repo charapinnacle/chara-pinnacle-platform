@@ -11,6 +11,7 @@ import type { PlatformRole } from "@/lib/validation/admin";
 import type { MemberRole } from "@/lib/validation/team";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
+type OrganizationType = Database["public"]["Enums"]["organization_type"];
 
 export const roleRank = { member: 1, admin: 2, owner: 3 } as const satisfies Record<MemberRole, number>;
 
@@ -20,6 +21,7 @@ type CurrentUser = {
   aal: "aal1" | "aal2";
   accountKind: AccountKind | null;
   intendedAccountKind: AccountKind | null;
+  intendedOrganizationType: OrganizationType | null;
   suspended: boolean;
 };
 
@@ -30,7 +32,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const { sub } = data.claims;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("account_kind, intended_account_kind, status")
+    .select("account_kind, intended_account_kind, intended_organization_type, status")
     .eq("id", sub)
     .maybeSingle();
   if (!profile) return null;
@@ -40,6 +42,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     aal: data.claims.aal === "aal2" ? "aal2" : "aal1",
     accountKind: profile.account_kind,
     intendedAccountKind: profile.intended_account_kind,
+    intendedOrganizationType: profile.intended_organization_type,
     suspended: profile.status === "suspended",
   };
 });

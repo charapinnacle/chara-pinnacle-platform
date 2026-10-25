@@ -14,6 +14,7 @@ import {
   resendSchema,
   signUpFormSchema,
   signUpInputSchema,
+  splitAccountChoice,
 } from "@/lib/validation/sign-up";
 
 const valid = {
@@ -84,12 +85,32 @@ describe("sign-up schema (FR-A1)", () => {
     expect(messages({ ...valid, email: withLength(255) }).email).toBeDefined();
   });
 
-  it("requires the kind and accepts only worker and company", () => {
+  it("requires the kind and accepts worker, company and the two partner types (FR-J1)", () => {
     const withoutKind = { email: valid.email, password: valid.password };
-    expect(messages(withoutKind).kind).toBe("Choose worker or employer");
-    expect(messages({ ...valid, kind: "admin" }).kind).toBe("Choose worker or employer");
-    expect(messages({ ...valid, kind: "worker" })).toEqual({});
-    expect(messages({ ...valid, kind: "company" })).toEqual({});
+    expect(messages(withoutKind).kind).toBe("Choose your account type");
+    expect(messages({ ...valid, kind: "admin" }).kind).toBe("Choose your account type");
+    expect(messages({ ...valid, kind: "employer" }).kind).toBe("Choose your account type");
+    for (const kind of ["worker", "company", "recruitment_company", "staffing_company"]) {
+      expect(messages({ ...valid, kind }), kind).toEqual({});
+    }
+  });
+
+  it("FR-J1: the form keeps the Phase 1 wording without the partner choices and asks for an account type with them", () => {
+    const kindError = (partners: boolean) => {
+      const result = signUpFormSchema([], partners).safeParse({ email: valid.email, password: valid.password, accepted: {} });
+      return result.success ? undefined : fieldErrors(result.error).kind;
+    };
+    expect(kindError(false)).toBe("Choose worker or employer");
+    expect(kindError(true)).toBe("Choose your account type");
+    expect(signUpFormSchema([], false).safeParse({ ...valid, kind: "staffing_company", accepted: {} }).success).toBe(false);
+    expect(signUpFormSchema([], true).safeParse({ ...valid, kind: "staffing_company", accepted: {} }).success).toBe(true);
+  });
+
+  it("FR-J1: a partner choice is a company account of that type", () => {
+    expect(splitAccountChoice("worker")).toEqual({ kind: "worker" });
+    expect(splitAccountChoice("company")).toEqual({ kind: "company" });
+    expect(splitAccountChoice("recruitment_company")).toEqual({ kind: "company", organizationType: "recruitment_company" });
+    expect(splitAccountChoice("staffing_company")).toEqual({ kind: "company", organizationType: "staffing_company" });
   });
 
   it("allows at most 20 consent entries in the Server Action input", () => {

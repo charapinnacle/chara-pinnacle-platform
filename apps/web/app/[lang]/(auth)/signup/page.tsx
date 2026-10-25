@@ -7,14 +7,15 @@ import { getSignUpForm } from "@/lib/dal/legal";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { googleSignInEnabled } from "@/lib/env";
 import { prefilledEmail } from "@/lib/pending-email";
-import { accountKindSchema } from "@/lib/validation/sign-up";
+import { accountChoiceSchema } from "@/lib/validation/sign-up";
 import { invitationTokenSchema } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Create your account" };
 
 // A link to /signup?invitation=<token> comes from a team invitation: the address and the account type are fixed, and
 // Continue with Google is not offered, since its sign-up cannot carry the invitation. /signup?kind=worker or
-// /signup?kind=company only preselects the account type, which the person can still change.
+// /signup?kind=company only preselects the account type, which the person can still change; so does a partner type while
+// release 2a offers it.
 export default async function SignupPage({ params, searchParams }: PageProps<"/[lang]/signup">) {
   const [{ lang }, { documents, attestationWording }, { invitation: token, kind }, defaultEmail] = await Promise.all([
     params,
@@ -28,7 +29,8 @@ export default async function SignupPage({ params, searchParams }: PageProps<"/[
     parsed.success && preview
       ? { token: parsed.data, email: preview.email, organizationName: preview.organizationName }
       : undefined;
-  const preselected = accountKindSchema.safeParse(kind);
+  const preselected = accountChoiceSchema.safeParse(kind);
+  const partners = documents.recruitment_company !== undefined;
   return (
     <AuthCard
       title="Create your account"
@@ -42,13 +44,19 @@ export default async function SignupPage({ params, searchParams }: PageProps<"/[
       }
     >
       {googleSignInEnabled() && !invitation ? (
-        <GoogleSignIn note="You choose worker or employer and accept the legal documents in the next step." />
+        <GoogleSignIn
+          note={
+            partners
+              ? "You choose your account type and accept the legal documents in the next step."
+              : "You choose worker or employer and accept the legal documents in the next step."
+          }
+        />
       ) : null}
       <SignupForm
         documents={documents}
         attestationWording={attestationWording}
         invitation={invitation}
-        preselectedKind={preselected.success ? preselected.data : undefined}
+        preselectedKind={preselected.success && documents[preselected.data] ? preselected.data : undefined}
         defaultEmail={defaultEmail}
       />
     </AuthCard>

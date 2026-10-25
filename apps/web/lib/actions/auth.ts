@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth-errors";
 import { getSignupDocuments } from "@/lib/dal/legal";
 import { isThrottled, visitorProof } from "@/lib/dal/rate-limit";
+import { isReleased } from "@/lib/dal/release";
 import { logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { rememberInvitation } from "@/lib/invitation-cookie";
@@ -36,6 +37,7 @@ import {
   fieldErrors,
   resendSchema,
   signUpInputSchema,
+  splitAccountChoice,
   type FieldErrors,
   type SignUpInput,
 } from "@/lib/validation/sign-up";
@@ -51,9 +53,11 @@ export async function signUp(
 ): Promise<AuthActionResult | undefined> {
   const parsed = signUpInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const { kind, email, password, consents } = parsed.data;
+  const { email, password, consents } = parsed.data;
+  const { kind, organizationType } = splitAccountChoice(parsed.data.kind);
+  if (organizationType && !(await isReleased("release_partner_directories"))) return { message: GENERIC_FAILURE };
 
-  const documents = await getSignupDocuments(kind);
+  const documents = await getSignupDocuments(kind, organizationType);
   const missing = unacceptedDocuments(documents, consents);
   if (missing.length > 0) {
     return {
@@ -77,6 +81,7 @@ export async function signUp(
     options: {
       data: {
         intended_account_kind: kind,
+        ...(organizationType ? { intended_organization_type: organizationType } : {}),
         pending_consents: documents.map((document) => ({
           purpose: document.slug,
           version: document.version,
@@ -94,7 +99,7 @@ export async function signUp(
   }
   if (existing) await tellExistingAccount(email);
   const token = invitationTokenSchema.safeParse(invitation);
-  if (token.success && kind === "company") await rememberInvitation(token.data);
+  if (token.success && kind === "company" && !organizationType) await rememberInvitation(token.data);
   await rememberPendingEmail("signup", email);
   redirect(`/${defaultLocale}/verify-email`);
 }

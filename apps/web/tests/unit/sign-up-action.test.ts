@@ -19,11 +19,13 @@ const rememberEmailMock = vi.hoisted(() => vi.fn());
 const forgetEmailMock = vi.hoisted(() => vi.fn());
 const resendPendingMock = vi.hoisted(() => vi.fn());
 const offerEmailMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock, visitorProof: proofMock }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/invitation-cookie", () => ({ rememberInvitation: rememberMock }));
 vi.mock("@/lib/pending-email", () => ({
   rememberPendingEmail: rememberEmailMock,
@@ -64,6 +66,7 @@ beforeEach(() => {
   signUpMock.mockResolvedValue({ data: { user: { identities: [{ id: "i" }] }, session: null }, error: null });
   proofMock.mockResolvedValue({ key: "k".repeat(64), proof: "p".repeat(64) });
   rpcMock.mockResolvedValue({ data: null, error: null });
+  releasedMock.mockResolvedValue(true);
 });
 
 describe("signUp action with an invitation", () => {
@@ -83,6 +86,45 @@ describe("signUp action with an invitation", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(signUp(employer, token)).resolves.toMatchObject({ message: expect.any(String) });
     expect(rememberMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("signUp action for a recruitment or staffing company (FR-J1)", () => {
+  it.each(["recruitment_company", "staffing_company"] as const)(
+    "stores %s as the intended organisation type of a company account, with the documents of that type",
+    async (type) => {
+      await expect(signUp({ ...input, kind: type })).rejects.toThrow("REDIRECT:/en/verify-email");
+      expect(releasedMock).toHaveBeenCalledWith("release_partner_directories");
+      expect(documentsMock).toHaveBeenCalledWith("company", type);
+      expect(signUpMock).toHaveBeenCalledWith({
+        email: "ana@example.com",
+        password: input.password,
+        options: {
+          data: { intended_account_kind: "company", intended_organization_type: type, pending_consents: consents },
+        },
+      });
+    },
+  );
+
+  it("refuses a partner type while release 2a is off, before reading the documents or calling Auth", async () => {
+    releasedMock.mockResolvedValue(false);
+    await expect(signUp({ ...input, kind: "staffing_company" })).resolves.toEqual({
+      message: expect.any(String),
+    });
+    expect(documentsMock).not.toHaveBeenCalled();
+    expect(signUpMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps no invitation for a partner sign-up", async () => {
+    await expect(signUp({ ...input, kind: "recruitment_company" }, "A".repeat(43))).rejects.toThrow("REDIRECT");
+    expect(rememberMock).not.toHaveBeenCalled();
+  });
+
+  it("reads no release switch for a worker or an employer", async () => {
+    await expect(signUp(input)).rejects.toThrow("REDIRECT");
+    await expect(signUp({ ...input, kind: "company" })).rejects.toThrow("REDIRECT");
+    expect(releasedMock).not.toHaveBeenCalled();
+    expect(documentsMock).toHaveBeenCalledWith("worker", undefined);
   });
 });
 

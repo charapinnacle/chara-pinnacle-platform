@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { kindOptions, KIND_IS_FINAL, type Kind } from "@/components/forms/account-kind-options";
+import { accountChoiceOptions, KIND_IS_FINAL } from "@/components/forms/account-kind-options";
 import { ConsentCheckbox } from "@/components/forms/consent-checkbox";
 import { ConsentList } from "@/components/forms/consent-list";
 import { FormButton } from "@/components/forms/form-button";
@@ -11,19 +11,22 @@ import { InputField } from "@/components/forms/form-field";
 import { PasswordField } from "@/components/forms/password-field";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import { PartnerDraftNotice } from "@/components/consent/partner-draft-notice";
 import { signUp } from "@/lib/actions/auth";
 import type { LegalDocumentSummary } from "@/lib/validation/consents";
 import {
   signUpFormSchema,
+  type AccountChoice,
+  type SignUpDocuments,
   type SignUpFormInput,
   type SignUpFormOutput,
 } from "@/lib/validation/sign-up";
 
 type SignUpFormProps = {
-  documents: Record<Kind, LegalDocumentSummary[]>;
+  documents: SignUpDocuments;
   attestationWording: string | null;
   invitation?: { token: string; email: string; organizationName: string };
-  preselectedKind?: Kind;
+  preselectedKind?: AccountChoice;
   defaultEmail?: string;
 };
 
@@ -34,14 +37,16 @@ const ids = {
   accepted: (slug: string) => `signup-accepted-${slug}`,
 };
 
-function acceptedDefaults(documents: readonly LegalDocumentSummary[]) {
+function acceptedDefaults(documents: readonly LegalDocumentSummary[] = []) {
   return Object.fromEntries(documents.map((document) => [document.slug, false]));
 }
 
 export function SignupForm({ documents, attestationWording, invitation, preselectedKind, defaultEmail = "" }: SignUpFormProps) {
+  const choices = accountChoiceOptions(documents);
+  const partners = choices.length > 2;
   const form = useForm<SignUpFormInput, undefined, SignUpFormOutput>({
     resolver: (values, context, options) =>
-      zodResolver(signUpFormSchema(values.kind ? documents[values.kind] : []))(
+      zodResolver(signUpFormSchema((values.kind && documents[values.kind]) || [], partners))(
         values,
         context,
         options,
@@ -55,7 +60,7 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
   });
   const { control, formState, handleSubmit, setValue } = form;
   const kind = useWatch({ control, name: "kind" });
-  const shown = kind ? documents[kind] : [];
+  const shown = (kind && documents[kind]) || [];
   const { summaryRef, submit } = useServerFormSubmit(form, {
     failureTitle: "Could not create the account",
     clearOnFailure: "password",
@@ -103,9 +108,9 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
           id={ids.kind}
           legend="I want to register as"
           description={KIND_IS_FINAL}
-          options={kindOptions}
+          options={choices}
           onValueChange={(value) => {
-            setValue("accepted", acceptedDefaults(documents[value as Kind]));
+            setValue("accepted", acceptedDefaults(documents[value as AccountChoice]));
             form.clearErrors("accepted");
           }}
         />
@@ -127,6 +132,7 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
         autoComplete="new-password"
         checklist
       />
+      {kind ? <PartnerDraftNotice choice={kind} documents={shown} /> : null}
       {shown.length > 0 ? (
         <ConsentList>
           {shown.map((document) => (
