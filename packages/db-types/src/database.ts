@@ -295,13 +295,13 @@ isOneToOne: false
                   ]
                 },"moderation_actions": {
                   Row: {
-                    "action": string,"actor_id": string | null,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_type": string
+                    "action": string,"actor_id": string | null,"created_at": string,"id": number,"report_id": number | null,"statement_of_reasons": string,"target_id": string,"target_type": string
                   }
                   Insert: {
-                    "action": string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"statement_of_reasons": string,"target_id": string,"target_type": string
+                    "action": string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"report_id"?: number | null,"statement_of_reasons": string,"target_id": string,"target_type": string
                   }
                   Update: {
-                    "action"?: string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"statement_of_reasons"?: string,"target_id"?: string,"target_type"?: string
+                    "action"?: string,"actor_id"?: string | null,"created_at"?: string,"id"?: never,"report_id"?: number | null,"statement_of_reasons"?: string,"target_id"?: string,"target_type"?: string
                   }
                   Relationships: [
                     
@@ -769,13 +769,13 @@ isOneToOne: false
                   ]
                 },"reports": {
                   Row: {
-                    "application_id": string | null,"category": Database["public"]['Enums']["report_category"],"content_path": string | null,"created_at": string,"details": string,"due_at": string,"good_faith_confirmed": boolean,"handled_at": string | null,"handled_by": string | null,"id": number,"job_id": string | null,"organization_id": string | null,"priority": number,"reporter_email": string | null,"reporter_user_id": string | null,"resolution_note": string | null,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
+                    "application_id": string | null,"category": Database["public"]['Enums']["report_category"],"content_path": string | null,"created_at": string,"decision_due_at": string,"details": string,"due_at": string,"good_faith_confirmed": boolean,"handled_at": string | null,"handled_by": string | null,"id": number,"job_id": string | null,"organization_id": string | null,"priority": number,"reporter_email": string | null,"reporter_user_id": string | null,"resolution_note": string | null,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
                   }
                   Insert: {
-                    "application_id"?: string | null,"category": Database["public"]['Enums']["report_category"],"content_path"?: string | null,"created_at"?: string,"details": string,"due_at": string,"good_faith_confirmed": boolean,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: never,"job_id"?: string | null,"organization_id"?: string | null,"priority"?: never,"reporter_email"?: string | null,"reporter_user_id"?: string | null,"resolution_note"?: string | null,"status"?: Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
+                    "application_id"?: string | null,"category": Database["public"]['Enums']["report_category"],"content_path"?: string | null,"created_at"?: string,"decision_due_at": string,"details": string,"due_at": string,"good_faith_confirmed": boolean,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: never,"job_id"?: string | null,"organization_id"?: string | null,"priority"?: never,"reporter_email"?: string | null,"reporter_user_id"?: string | null,"resolution_note"?: string | null,"status"?: Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
                   }
                   Update: {
-                    "application_id"?: string | null,"category"?: Database["public"]['Enums']["report_category"],"content_path"?: string | null,"created_at"?: string,"details"?: string,"due_at"?: string,"good_faith_confirmed"?: boolean,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: never,"job_id"?: string | null,"organization_id"?: string | null,"priority"?: never,"reporter_email"?: string | null,"reporter_user_id"?: string | null,"resolution_note"?: string | null,"status"?: Database["public"]['Enums']["report_status"],"target_type"?: Database["public"]['Enums']["report_target_type"]
+                    "application_id"?: string | null,"category"?: Database["public"]['Enums']["report_category"],"content_path"?: string | null,"created_at"?: string,"decision_due_at"?: string,"details"?: string,"due_at"?: string,"good_faith_confirmed"?: boolean,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: never,"job_id"?: string | null,"organization_id"?: string | null,"priority"?: never,"reporter_email"?: string | null,"reporter_user_id"?: string | null,"resolution_note"?: string | null,"status"?: Database["public"]['Enums']["report_status"],"target_type"?: Database["public"]['Enums']["report_target_type"]
                   }
                   Relationships: [
                     {
@@ -1256,6 +1256,11 @@ isOneToOne: false
               "display_name": string,"id": string,"legal_name": string,"members": Json,"slug": string,"status": Database["public"]['Enums']["organization_status"],"vacancies": Json
             }[]
                            },
+"admin_get_partner_moderation":
+{ Args: { "p_org": string }; Returns: {
+              "history": Json,"listed": boolean,"listings": Json,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"status": Database["public"]['Enums']["organization_status"]
+            }[]
+                           },
 "admin_get_partner_review":
 { Args: { "p_org": string }; Returns: {
               "based_in_country": string,"commitment": Json,"created_at": string,"decisions": Json,"description": string,"display_name": string,"due_at": string,"founded_year": number,"geographies": Json,"id": string,"identifier_links": Json,"industries": Json,"industry_code": string,"info_step": string,"languages": Json,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"listed_at": string,"occupations": Json,"owner_email": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"review_status": Database["public"]['Enums']["partner_review_status"],"service_types": Json,"status": Database["public"]['Enums']["organization_status"],"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
@@ -1268,7 +1273,7 @@ isOneToOne: false
                            },
 "admin_get_report":
 { Args: { "p_id": number }; Returns: {
-              "category": Database["public"]['Enums']["report_category"],"content_path": string,"created_at": string,"details": string,"due_at": string,"handled_at": string,"id": number,"job_id": string,"job_moderation_state": Database["public"]['Enums']["job_moderation_state"],"job_status": Database["public"]['Enums']["job_status"],"job_title": string,"organization_id": string,"organization_name": string,"organization_slug": string,"organization_status": Database["public"]['Enums']["organization_status"],"overdue": boolean,"priority": number,"reference": string,"reporter_email": string,"reporter_kind": string,"resolution_note": string,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
+              "category": Database["public"]['Enums']["report_category"],"content_path": string,"created_at": string,"decision": string,"decision_due_at": string,"details": string,"due_at": string,"handled_at": string,"id": number,"job_id": string,"job_moderation_state": Database["public"]['Enums']["job_moderation_state"],"job_status": Database["public"]['Enums']["job_status"],"job_title": string,"organization_id": string,"organization_moderation_state": Database["public"]['Enums']["job_moderation_state"],"organization_name": string,"organization_slug": string,"organization_status": Database["public"]['Enums']["organization_status"],"organization_type": Database["public"]['Enums']["organization_type"],"overdue": boolean,"priority": number,"reference": string,"reporter_email": string,"reporter_kind": string,"resolution_note": string,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
             }[]
                            },
 "admin_get_user":
@@ -1668,6 +1673,11 @@ isOneToOne: false
 "moderate_job":
 { Args: { "p_action": string,"p_job": string,"p_reason": string }; Returns: undefined
                            },
+"moderation_decide":
+{ Args: { "p_decision": string,"p_reasons": string,"p_report"?: number,"p_target_id"?: string,"p_target_type"?: string }; Returns: {
+              "moderation_action_id": number,"report_status": Database["public"]['Enums']["report_status"]
+            }[]
+                           },
 "my_application_stage_counts":
 { Args: Record<PropertyKey, never>; Returns: {
               "status": Database["public"]['Enums']["application_status"],"total": number
@@ -1710,6 +1720,11 @@ isOneToOne: false
                            },
 "partner_document_set_scan_status":
 { Args: { "p_licence": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
+                           },
+"partner_profile_moderation":
+{ Args: { "p_org": string }; Returns: {
+              "decided_at": string,"moderation_action_id": number,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"reasons": string
+            }[]
                            },
 "partner_review_outcome":
 { Args: { "p_org": string }; Returns: {

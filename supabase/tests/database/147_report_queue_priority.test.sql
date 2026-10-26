@@ -115,7 +115,7 @@ select is(
   'decision 7.2: the targets are settings, one working day for fee demands and two for a first look'
 );
 select is(
-  (select string_agg(format('%s:%s:%s:%s', key, value_type, min, max), ',' order by key) from private.setting_rules where key like 'report\_%'),
+  (select string_agg(format('%s:%s:%s:%s', key, value_type, min, max), ',' order by key) from private.setting_rules where key like 'report\_%target_working_days'),
   'report_fee_demand_target_working_days:integer:1:20,report_first_look_target_working_days:integer:1:20',
   'NFR-O5: both are in the settings editor, 1 to 20 working days'
 );

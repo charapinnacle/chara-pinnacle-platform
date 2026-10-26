@@ -62,7 +62,8 @@ select enum_has_labels('public', 'report_category',
 select enum_has_labels('public', 'report_status', array['new', 'in_review', 'actioned', 'dismissed'], 'the four statuses');
 select columns_are('public', 'reports',
   array['id', 'target_type', 'job_id', 'organization_id', 'application_id', 'content_path', 'category', 'details', 'reporter_user_id',
-        'reporter_email', 'good_faith_confirmed', 'status', 'handled_by', 'handled_at', 'resolution_note', 'created_at', 'priority', 'due_at'],
+        'reporter_email', 'good_faith_confirmed', 'status', 'handled_by', 'handled_at', 'resolution_note', 'created_at', 'priority', 'due_at',
+        'decision_due_at'],
   'reports has the columns of the record and no name, no phone, no address of a reporter beyond the optional email');
 select ok(
   (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.reports'::regclass)
