@@ -180,7 +180,7 @@ select ok(
   'the staff read and the partner read are definer functions for signed-in callers only'
 );
 select ok(
-  not has_function_privilege('authenticated', 'private.set_partner_profile_moderation(uuid, boolean, text, bigint)', 'execute')
+  not has_function_privilege('authenticated', 'private.set_partner_profile_moderation(uuid, boolean, text, bigint, boolean)', 'execute')
   and not has_function_privilege('authenticated', 'private.suspend_organization_with(uuid, text, bigint)', 'execute')
   and not has_function_privilege('authenticated', 'private.reinstate_organization_with(uuid, text, bigint)', 'execute')
   and not has_function_privilege('authenticated', 'private.set_job_moderation(uuid, boolean, text, bigint)', 'execute')

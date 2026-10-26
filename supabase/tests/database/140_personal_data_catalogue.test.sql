@@ -19,6 +19,7 @@ create temp table catalogue (tbl text primary key, erasure text not null, retent
 insert into catalogue values
   ('audit.document_access_log', 'erase_user', 'policy:document_access_log'),
   ('audit.log', 'erase_user', 'policy:audit_log'),
+  ('public.appeals', 'cascade', 'policy:closed_appeals'),
   ('audit.partner_document_access_log',
    'accessed_by is a Verification Reviewer, a Trust & Safety Administrator or an owner or admin of the partner, never a candidate: erase_user erases candidate accounts only',
    'policy:partner_document_access_log'),

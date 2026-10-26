@@ -305,7 +305,8 @@ language sql as $$
       'admin_moderation_counts', 'admin_list_reports', 'admin_get_report', 'admin_legal_acceptance', 'admin_list_partner_licences',
       'admin_list_partner_reviews', 'admin_get_partner_review', 'admin_list_plans', 'admin_list_plan_history',
       'admin_list_limit_overrides', 'admin_list_enterprise_organizations', 'admin_list_settings', 'admin_get_plan_price',
-      'admin_list_retention_policies', 'admin_partner_search_stats', 'admin_get_partner_moderation')
+      'admin_list_retention_policies', 'admin_partner_search_stats', 'admin_get_partner_moderation', 'admin_list_appeals',
+      'admin_get_appeal', 'admin_appeal_stats')
     and p.prosrc !~ 'audit\.record|private\.audit_admin|private\.record_moderation|private\.(set_job_moderation|suspend_organization_with|reinstate_organization_with)\('
     and not (p.proname in ('grant_platform_role', 'revoke_platform_role') and p.prosrc ~ '(insert into|update) public\.platform_staff')
     and not (p.prosrc ~ 'private\.plan_editor_reason' and p.prosrc ~ '(insert into|update|delete from) billing\.(plans|plan_limits|plan_features|organization_limit_overrides)|private\.plan_editor_set_(plan|limit|feature)\(')
@@ -322,8 +323,8 @@ $$;
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: every staff-gated function that is not read-only calls the audit function');
 select is(
   pg_temp.audited(),
-  array['admin_decide_partner', 'admin_record_plan_price', 'admin_remove_limit_override', 'admin_set_limit_override', 'admin_set_organization_type', 'admin_set_plan_feature', 'admin_set_plan_limit', 'admin_set_report_status', 'admin_set_retention_policy', 'admin_set_setting', 'admin_update_plan', 'admin_update_plan_bundle', 'grant_platform_role', 'moderate_job', 'moderation_decide', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
-  'AC8: the audited functions are the 22 that exist; the allowlist holds the read-only ones'
+  array['admin_decide_partner', 'admin_record_plan_price', 'admin_remove_limit_override', 'admin_set_limit_override', 'admin_set_organization_type', 'admin_set_plan_feature', 'admin_set_plan_limit', 'admin_set_report_status', 'admin_set_retention_policy', 'admin_set_setting', 'admin_update_plan', 'admin_update_plan_bundle', 'decide_appeal', 'grant_platform_role', 'moderate_job', 'moderation_decide', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
+  'AC8: the audited functions are the 23 that exist; the allowlist holds the read-only ones'
 );
 create function public.unaudited_admin_function() returns void
 language plpgsql security definer set search_path = ''
