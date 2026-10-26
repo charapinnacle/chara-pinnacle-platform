@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(19);
 
 \ir status_fixture.inc
 
@@ -81,6 +81,19 @@ select is(pg_temp.settings_state(), :'before', 'the refused calls changed no set
 select is(
   pg_temp.admin($$select public.admin_set_setting('release_find_workers', 'true', 'Go live with release 2c now')$$),
   'P0001|CHARA_FORBIDDEN|release_legal_gaps', 'release 2c is refused on while a legal document of find_workers is not approved'
+);
+
+select is(
+  pg_temp.admin($$select public.admin_set_setting('release_job_orders', 'true', 'Go live with release 2b now')$$),
+  'P0001|CHARA_FORBIDDEN|release_legal_gaps', 'release_job_orders is refused on while a legal document of job_orders is not approved'
+);
+select is(
+  pg_temp.admin($$select public.admin_set_setting('release_candidate_submissions', 'true', 'Go live with release 2b now')$$),
+  'P0001|CHARA_FORBIDDEN|release_legal_gaps', 'release_candidate_submissions is refused on while a legal document of job_orders is not approved'
+);
+select is(
+  pg_temp.admin($$select public.admin_set_setting('release_messaging', 'true', 'Go live with release 2c now')$$),
+  'P0001|CHARA_FORBIDDEN|release_legal_gaps', 'release_messaging is refused on while a legal document of find_workers is not approved'
 );
 
 insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
