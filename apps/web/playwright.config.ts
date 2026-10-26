@@ -98,6 +98,7 @@ export default defineConfig({
         "**/partner-approval.spec.ts",
         "**/partner-availability.spec.ts",
         "**/partner-usage-limits.spec.ts",
+        "**/partner-review-emails.spec.ts",
       ],
     },
     {
@@ -343,13 +344,21 @@ export default defineConfig({
       testMatch: "**/partner-usage-limits.spec.ts",
       dependencies: ["partner-availability-release"],
     },
+    // The same release switch is set for the partner notifications (FR-T1), whose spec also runs notify and the daily
+    // licence and confirmation jobs over the whole database, so this spec follows the one above.
+    {
+      name: "partner-review-emails-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-review-emails.spec.ts",
+      dependencies: ["partner-usage-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-usage-release"],
+      dependencies: ["partner-review-emails-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
