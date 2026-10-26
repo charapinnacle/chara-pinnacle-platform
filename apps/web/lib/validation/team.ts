@@ -1,11 +1,9 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
-import { emailSchema } from "@/lib/validation/sign-up";
+import { emailSchema, type AccountChoice } from "@/lib/validation/sign-up";
 
 export const INVITATION_INVALID =
   "This invitation is not valid for your account. It may have expired, been replaced, or been sent to another email address.";
-export const WORKER_CANNOT_JOIN =
-  "This invitation can only be accepted by an employer account. Use a different email address.";
 // An account joins only an organisation of the type it registered as (FR-J1): a recruitment or staffing company account
 // no employer team, an employer account no partner team.
 export const COMPANY_TYPE_CANNOT_JOIN =
@@ -15,6 +13,22 @@ export const ALREADY_MEMBER = "This person is already a member of the team.";
 export const TEAM_FAILURE = "We could not complete this request. Try again.";
 
 export type MemberRole = Database["public"]["Enums"]["member_role"];
+export type OrganizationType = Database["public"]["Enums"]["organization_type"];
+
+// The account an invitation asks for: one of the type of the inviting organisation (FR-J1), which sign-up stores as the
+// account choice (an employer is a plain company account, a partner a company account of its type).
+export const invitationAccounts = {
+  employer: { choice: "company", label: "an employer account" },
+  recruitment_company: { choice: "recruitment_company", label: "a recruitment company account" },
+  staffing_company: { choice: "staffing_company", label: "a staffing company account" },
+} as const satisfies Record<OrganizationType, { choice: AccountChoice; label: string }>;
+
+export function workerCannotJoin(type: OrganizationType): string {
+  return `This invitation can only be accepted by ${invitationAccounts[type].label}. Use a different email address.`;
+}
+
+export const WORKER_CANNOT_JOIN = workerCannotJoin("employer");
+
 export type InvitableRole = Exclude<MemberRole, "owner">;
 
 export const roleSchema = z.enum(["owner", "admin", "member"] as const satisfies readonly MemberRole[]);

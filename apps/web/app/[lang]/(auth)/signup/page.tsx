@@ -12,7 +12,8 @@ import { invitationTokenSchema } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Create your account" };
 
-// A link to /signup?invitation=<token> comes from a team invitation: the address and the account type are fixed, and
+// A link to /signup?invitation=<token> comes from a team invitation: the address and the account type (that of the inviting
+// organisation, FR-J1) are fixed, and
 // Continue with Google is not offered, since its sign-up cannot carry the invitation. /signup?kind=worker or
 // /signup?kind=company only preselects the account type, which the person can still change; so does a partner type while
 // release 2a offers it.
@@ -27,7 +28,12 @@ export default async function SignupPage({ params, searchParams }: PageProps<"/[
   const preview = parsed.success ? await getInvitationPreview(parsed.data) : null;
   const invitation =
     parsed.success && preview
-      ? { token: parsed.data, email: preview.email, organizationName: preview.organizationName }
+      ? {
+          token: parsed.data,
+          email: preview.email,
+          organizationName: preview.organizationName,
+          organizationType: preview.organizationType,
+        }
       : undefined;
   const preselected = accountChoiceSchema.safeParse(kind);
   const partners = documents.recruitment_company !== undefined;

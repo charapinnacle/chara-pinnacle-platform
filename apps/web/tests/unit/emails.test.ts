@@ -376,6 +376,17 @@ describe("notification templates", () => {
     expect(admin.text).toContain("as an administrator.");
   });
 
+  it("member_invitation names the account of the inviting organisation's type, an employer account when none is given (FR-J1)", async () => {
+    const employer = await renderEmail("member_invitation", SAMPLES.member_invitation, SITE);
+    expect(employer.text).toMatch(/You need a Chara Pinnacle employer account with this email address/);
+    const recruitment = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, org_type: "recruitment_company" }, SITE);
+    expect(recruitment.text).toMatch(/You need a Chara Pinnacle recruitment company account with this email address/);
+    const staffing = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, org_type: "staffing_company" }, SITE);
+    expect(staffing.text).toMatch(/You need a Chara Pinnacle staffing company account with this email address/);
+    const unknown = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, org_type: "<b>x</b>" }, SITE);
+    expect(unknown.text).toMatch(/employer account with this email address/);
+  });
+
   it("member_invitation has no link when the token is missing or is not a token, and never shows the invitation id", async () => {
     for (const token of [undefined, "short", "SECRET-TOKEN", `${TOKEN}x`, "../../logout"]) {
       const email = await renderEmail("member_invitation", { ...SAMPLES.member_invitation, token }, SITE);

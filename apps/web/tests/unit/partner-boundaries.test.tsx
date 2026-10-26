@@ -35,12 +35,13 @@ beforeEach(() => {
     role: "member",
     email: "rita@example.test",
     expiresAt: "2026-11-01T00:00:00Z",
+    organizationType: "employer",
   });
 });
 
 describe("the boundaries of a recruitment or staffing company account (FR-J1)", () => {
   it.each(["recruitment_company", "staffing_company"])(
-    "the team invitation page refuses a %s account and offers no accept button",
+    "the invitation page of an employer refuses a %s account and offers no accept button",
     async (type) => {
       currentUserMock.mockResolvedValue({ ...company, intendedOrganizationType: type });
       const html = await invitationPage();
@@ -56,6 +57,42 @@ describe("the boundaries of a recruitment or staffing company account (FR-J1)", 
     const html = await invitationPage();
     expect(html).toContain("Join Acme Bau");
     expect(html).not.toContain("different type of company account");
+  });
+
+  it.each([
+    ["recruitment_company", "recruitment_company", true],
+    ["staffing_company", "staffing_company", true],
+    ["recruitment_company", "staffing_company", false],
+    ["staffing_company", "recruitment_company", false],
+    [null, "recruitment_company", false],
+  ] as const)("the invitation page of a partner: a %s account and a %s invitation, offered %s", async (account, invited, offered) => {
+    currentUserMock.mockResolvedValue({ ...company, intendedOrganizationType: account });
+    previewMock.mockResolvedValue({
+      organizationName: "Manila Skills",
+      role: "admin",
+      email: "rita@example.test",
+      expiresAt: "2026-11-01T00:00:00Z",
+      organizationType: invited,
+    });
+    const html = await invitationPage();
+    expect(html.includes("Join Manila Skills")).toBe(offered);
+    expect(html.includes("different type of company account")).toBe(!offered);
+  });
+
+  it("a visitor is offered the account of the inviting organisation's type, and a candidate is told which one", async () => {
+    previewMock.mockResolvedValue({
+      organizationName: "Manila Skills",
+      role: "member",
+      email: "rita@example.test",
+      expiresAt: "2026-11-01T00:00:00Z",
+      organizationType: "staffing_company",
+    });
+    currentUserMock.mockResolvedValue(null);
+    let html = await invitationPage();
+    expect(html).toMatch(new RegExp(`<a[^>]*href="/en/signup\\?invitation=${token}"[^>]*>Create a staffing company account</a>`));
+    currentUserMock.mockResolvedValue({ ...company, accountKind: "worker", intendedOrganizationType: null });
+    html = await invitationPage();
+    expect(html).toContain("This invitation can only be accepted by a staffing company account.");
   });
 
   it("Post a job is not offered to a partner account", async () => {

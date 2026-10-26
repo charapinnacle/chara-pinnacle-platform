@@ -14,6 +14,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { PartnerDraftNotice } from "@/components/consent/partner-draft-notice";
 import { signUp } from "@/lib/actions/auth";
 import type { LegalDocumentSummary } from "@/lib/validation/consents";
+import { invitationAccounts, type OrganizationType } from "@/lib/validation/team";
 import {
   signUpFormSchema,
   type AccountChoice,
@@ -25,7 +26,7 @@ import {
 type SignUpFormProps = {
   documents: SignUpDocuments;
   attestationWording: string | null;
-  invitation?: { token: string; email: string; organizationName: string };
+  invitation?: { token: string; email: string; organizationName: string; organizationType: OrganizationType };
   preselectedKind?: AccountChoice;
   defaultEmail?: string;
 };
@@ -52,7 +53,12 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
         options,
       ),
     defaultValues: invitation
-      ? { kind: "company", email: invitation.email, password: "", accepted: acceptedDefaults(documents.company) }
+      ? {
+          kind: invitationAccounts[invitation.organizationType].choice,
+          email: invitation.email,
+          password: "",
+          accepted: acceptedDefaults(documents[invitationAccounts[invitation.organizationType].choice]),
+        }
       : preselectedKind
         ? { kind: preselectedKind, email: defaultEmail, password: "", accepted: acceptedDefaults(documents[preselectedKind]) }
         : { email: defaultEmail, password: "", accepted: {} },
@@ -98,8 +104,8 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={summaryIds} />
       {invitation ? (
         <p className="text-body leading-relaxed">
-          You are creating an employer account to join {invitation.organizationName}. Use the address the invitation was
-          sent to.
+          You are creating {invitationAccounts[invitation.organizationType].label} to join {invitation.organizationName}. Use
+          the address the invitation was sent to.
         </p>
       ) : (
         <RadioGroupField

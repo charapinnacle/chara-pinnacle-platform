@@ -94,6 +94,18 @@ export default async function OnboardingPage({
       (await headers()).get("accept-language"),
       countries.map(({ code }) => code),
     );
+    // A person who registered from a team invitation joins that team instead of creating a company (FR-A5, and FR-J1 for
+    // the team of a recruitment or staffing company).
+    const invitation = await pendingInvitationToken();
+    const preview = invitation ? await getInvitationPreview(invitation) : null;
+    if (
+      invitation &&
+      preview &&
+      preview.email.toLowerCase() === user.email?.toLowerCase() &&
+      preview.organizationType === (user.intendedOrganizationType ?? "employer")
+    ) {
+      redirect(`/${lang}/invitations/${invitation}`);
+    }
     if (partnerType.success) {
       return (
         <OnboardingPanel
@@ -110,11 +122,6 @@ export default async function OnboardingPage({
           />
         </OnboardingPanel>
       );
-    }
-    const invitation = await pendingInvitationToken();
-    const preview = invitation ? await getInvitationPreview(invitation) : null;
-    if (invitation && preview?.email.toLowerCase() === user.email?.toLowerCase()) {
-      redirect(`/${lang}/invitations/${invitation}`);
     }
     return (
       <OnboardingPanel

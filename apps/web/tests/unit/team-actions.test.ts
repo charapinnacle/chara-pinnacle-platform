@@ -169,14 +169,20 @@ describe("acceptInvitation", () => {
   const typeMessage = "This invitation is for a different type of company account than yours. Use a different email address.";
 
   it.each(["recruitment_company", "staffing_company"])(
-    "FR-J1: refuses a %s account without calling the database and keeps the link",
+    "FR-J1: lets the database decide for a %s account, which joins a company of its own type",
     async (type) => {
       requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", intendedOrganizationType: type });
-      await expect(acceptInvitation(token)).resolves.toEqual({ message: typeMessage });
-      expect(rpcMock).not.toHaveBeenCalled();
-      expect(forgetMock).not.toHaveBeenCalled();
+      await expect(acceptInvitation(token)).rejects.toThrow("REDIRECT:/en/org/acme");
+      expect(rpcMock).toHaveBeenCalledWith("accept_invitation", { p_token: token });
+      expect(forgetMock).toHaveBeenCalled();
     },
   );
+
+  it("FR-J1: answers an invitation to a partner while release 2a is off as an invalid one and keeps the link", async () => {
+    rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "release_off"));
+    await expect(acceptInvitation(token)).resolves.toEqual({ message: expect.stringContaining("not valid for your account") });
+    expect(forgetMock).not.toHaveBeenCalled();
+  });
 
   it("FR-J1: names the type mismatch the database reports (an employer invited to a partner)", async () => {
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "organization_type_mismatch"));

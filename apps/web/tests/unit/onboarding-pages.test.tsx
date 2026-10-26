@@ -14,6 +14,8 @@ const offerMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const legalDocumentMock = vi.hoisted(() => vi.fn());
 const reviewMock = vi.hoisted(() => vi.fn());
+const pendingTokenMock = vi.hoisted(() => vi.fn<() => Promise<string | null>>(async () => null));
+const previewMock = vi.hoisted(() => vi.fn());
 const outcomeMock = vi.hoisted(() => vi.fn<() => Promise<ReviewOutcome | null>>(async () => null));
 const headerValues = vi.hoisted(() => ({ acceptLanguage: null as string | null }));
 const redirectMock = vi.hoisted(() =>
@@ -87,8 +89,8 @@ vi.mock("@/lib/dal/partner-review", () => ({
 }));
 vi.mock("@/lib/actions/partner-review", () => ({ submitForReview: vi.fn() }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn() }));
-vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: vi.fn() }));
-vi.mock("@/lib/invitation-cookie", () => ({ pendingInvitationToken: async () => null }));
+vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: previewMock }));
+vi.mock("@/lib/invitation-cookie", () => ({ pendingInvitationToken: pendingTokenMock }));
 vi.mock("@/lib/welcome-cookie", () => ({ welcomeIsDue: welcomeDueMock }));
 vi.mock("@/lib/actions/organizations", () => ({
   createOrganization: vi.fn(),
@@ -152,6 +154,7 @@ beforeEach(() => {
   commitmentMock.mockResolvedValue(openCommitment);
   legalDocumentMock.mockResolvedValue(commitmentDraft);
   reviewMock.mockResolvedValue({ status: "onboarding", submittedAt: null, infoStep: null });
+  pendingTokenMock.mockResolvedValue(null);
 });
 
 describe("the first step of onboarding (resume)", () => {
@@ -222,6 +225,24 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).not.toContain("optional until you start your trial");
     expect(html).toContain("About your company (optional)");
     expect(html).not.toMatch(/name="type"|organization_type/);
+  });
+
+  it("FR-J1: sends a partner who registered from an invitation of its type to that invitation, not to a company of its own", async () => {
+    const token = "T".repeat(43);
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    pendingTokenMock.mockResolvedValue(token);
+    previewMock.mockResolvedValue({ email: "Rita@Example.test", organizationType: "recruitment_company" });
+    await expect(render(OnboardingPage)).rejects.toThrow(`REDIRECT:/en/invitations/${token}`);
+    expect(previewMock).toHaveBeenCalledWith(token);
+    // An invitation of another type, or to another address, leaves the partner with its own Company step.
+    for (const preview of [
+      { email: "rita@example.test", organizationType: "staffing_company" },
+      { email: "rita@example.test", organizationType: "employer" },
+      { email: "other@example.test", organizationType: "recruitment_company" },
+    ]) {
+      previewMock.mockResolvedValue(preview);
+      expect(currentStep(await render(OnboardingPage))).toBe("Company");
+    }
   });
 
   it("names the staffing type for a staffing company", async () => {

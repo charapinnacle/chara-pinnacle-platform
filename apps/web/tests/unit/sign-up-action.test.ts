@@ -20,12 +20,14 @@ const forgetEmailMock = vi.hoisted(() => vi.fn());
 const resendPendingMock = vi.hoisted(() => vi.fn());
 const offerEmailMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
+const previewMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/legal", () => ({ getSignupDocuments: documentsMock }));
 vi.mock("@/lib/dal/rate-limit", () => ({ isThrottled: throttledMock, visitorProof: proofMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: previewMock }));
 vi.mock("@/lib/invitation-cookie", () => ({ rememberInvitation: rememberMock }));
 vi.mock("@/lib/pending-email", () => ({
   rememberPendingEmail: rememberEmailMock,
@@ -67,6 +69,7 @@ beforeEach(() => {
   proofMock.mockResolvedValue({ key: "k".repeat(64), proof: "p".repeat(64) });
   rpcMock.mockResolvedValue({ data: null, error: null });
   releasedMock.mockResolvedValue(true);
+  previewMock.mockResolvedValue(null);
 });
 
 describe("signUp action with an invitation", () => {
@@ -76,6 +79,30 @@ describe("signUp action with an invitation", () => {
   it("keeps the invitation link for onboarding when an employer registers from it", async () => {
     await expect(signUp(employer, token)).rejects.toThrow("REDIRECT:/en/verify-email");
     expect(rememberMock).toHaveBeenCalledWith(token);
+  });
+
+  it("FR-J1: carries the type of the inviting recruitment company into the intended organisation type", async () => {
+    previewMock.mockResolvedValue({ organizationType: "recruitment_company", email: "ana@example.com" });
+    await expect(signUp({ ...input, kind: "recruitment_company" }, token)).rejects.toThrow("REDIRECT:/en/verify-email");
+    expect(previewMock).toHaveBeenCalledWith(token);
+    expect(signUpMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: { data: expect.objectContaining({ intended_account_kind: "company", intended_organization_type: "recruitment_company" }) },
+      }),
+    );
+    expect(rememberMock).toHaveBeenCalledWith(token);
+  });
+
+  it.each([
+    ["staffing_company", "company"],
+    ["staffing_company", "recruitment_company"],
+    ["employer", "staffing_company"],
+    ["employer", "worker"],
+  ] as const)("FR-J1: refuses an account of another type than the inviting %s (%s) before calling Auth", async (type, kind) => {
+    previewMock.mockResolvedValue({ organizationType: type, email: "ana@example.com" });
+    await expect(signUp({ ...input, kind }, token)).resolves.toEqual({ message: expect.any(String) });
+    expect(signUpMock).not.toHaveBeenCalled();
+    expect(rememberMock).not.toHaveBeenCalled();
   });
 
   it("keeps nothing for a worker, for a token of the wrong shape or when Auth refuses", async () => {
@@ -115,7 +142,7 @@ describe("signUp action for a recruitment or staffing company (FR-J1)", () => {
     expect(signUpMock).not.toHaveBeenCalled();
   });
 
-  it("keeps no invitation for a partner sign-up", async () => {
+  it("keeps no invitation for a partner sign-up from a link that no longer shows an invitation", async () => {
     await expect(signUp({ ...input, kind: "recruitment_company" }, "A".repeat(43))).rejects.toThrow("REDIRECT");
     expect(rememberMock).not.toHaveBeenCalled();
   });

@@ -159,6 +159,8 @@ function invitationRefusal(error: PostgrestError): string {
     return "Confirm your email address first, then open the invitation link again.";
   }
   if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_type_mismatch") return COMPANY_TYPE_CANNOT_JOIN;
+  // An invitation to a recruitment or staffing company while release 2a is off is answered as the page shows it.
+  if (error.message === "CHARA_FORBIDDEN" && error.details === "release_off") return INVITATION_INVALID;
   if (error.message === "CHARA_CONFLICT") return "You are already a member of this team.";
   if (error.message === "CHARA_INVITATION_INVALID") return INVITATION_INVALID;
   console.error("Accept invitation failed", { code: error.code, message: error.message });
@@ -166,9 +168,7 @@ function invitationRefusal(error: PostgrestError): string {
 }
 
 export async function acceptInvitation(token: string): Promise<{ message: string } | undefined> {
-  const user = await requireUser(defaultLocale);
-  // The invitations of this page are an employer's (FR-A5); a recruitment or staffing company account joins none (FR-J1).
-  if (user.intendedOrganizationType) return { message: COMPANY_TYPE_CANNOT_JOIN };
+  await requireUser(defaultLocale);
   const parsed = invitationTokenSchema.safeParse(token);
   if (!parsed.success) return { message: INVITATION_INVALID };
 

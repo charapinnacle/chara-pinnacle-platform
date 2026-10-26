@@ -15,6 +15,7 @@ import {
 import { getSignupDocuments } from "@/lib/dal/legal";
 import { isThrottled, visitorProof } from "@/lib/dal/rate-limit";
 import { isReleased } from "@/lib/dal/release";
+import { getInvitationPreview } from "@/lib/dal/team";
 import { logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { rememberInvitation } from "@/lib/invitation-cookie";
@@ -26,7 +27,7 @@ import {
   type ResendAnswer,
 } from "@/lib/pending-email";
 import { createClient } from "@/lib/supabase/server";
-import { invitationTokenSchema } from "@/lib/validation/team";
+import { invitationAccounts, invitationTokenSchema } from "@/lib/validation/team";
 import {
   consentMessage,
   DOCUMENT_CHANGED,
@@ -46,7 +47,9 @@ type AuthActionResult = { errors?: FieldErrors; message?: string };
 type ResendResult = AuthActionResult & { sent?: true };
 
 // invitation is the token of the link the person came from: it is kept for onboarding, which then offers the
-// invitation instead of asking for a company of their own. Only an employer registration can use it.
+// invitation instead of asking for a company of their own. Only a company registration can use it, and while the
+// invitation is valid only one of the type of the inviting organisation, whose type the account then carries as its
+// intended organisation type (FR-J1); the type is read from the invitation here, not taken from the form.
 export async function signUp(
   input: SignUpInput,
   invitation?: string,
@@ -56,6 +59,9 @@ export async function signUp(
   const { email, password, consents } = parsed.data;
   const { kind, organizationType } = splitAccountChoice(parsed.data.kind);
   if (organizationType && !(await isReleased("release_partner_directories"))) return { message: GENERIC_FAILURE };
+  const token = invitationTokenSchema.safeParse(invitation);
+  const preview = token.success ? await getInvitationPreview(token.data) : null;
+  if (preview && parsed.data.kind !== invitationAccounts[preview.organizationType].choice) return { message: GENERIC_FAILURE };
 
   const documents = await getSignupDocuments(kind, organizationType);
   const missing = unacceptedDocuments(documents, consents);
@@ -98,8 +104,7 @@ export async function signUp(
     return refusal(error);
   }
   if (existing) await tellExistingAccount(email);
-  const token = invitationTokenSchema.safeParse(invitation);
-  if (token.success && kind === "company" && !organizationType) await rememberInvitation(token.data);
+  if (token.success && kind === "company" && (preview !== null || !organizationType)) await rememberInvitation(token.data);
   await rememberPendingEmail("signup", email);
   redirect(`/${defaultLocale}/verify-email`);
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { invitableRoleSchema, roleSchema } from "@/lib/validation/team";
+import { invitableRoleSchema, roleSchema, type OrganizationType } from "@/lib/validation/team";
 
 const MEMBERS_PAGE_SIZE = 50;
 const INVITATIONS_LIMIT = 50;
@@ -27,6 +27,7 @@ const previewSchema = z.object({
   role: roleSchema,
   email: z.string(),
   expires_at: z.string(),
+  organization_type: z.enum(["employer", "recruitment_company", "staffing_company"] as const satisfies readonly OrganizationType[]),
 });
 
 export type TeamMember = {
@@ -47,7 +48,13 @@ type PendingInvitation = {
   open: boolean;
 };
 type PendingTransfer = { fromUserId: string; toUserId: string; expiresAt: string };
-type InvitationPreview = { organizationName: string; role: z.infer<typeof roleSchema>; email: string; expiresAt: string };
+type InvitationPreview = {
+  organizationName: string;
+  role: z.infer<typeof roleSchema>;
+  email: string;
+  expiresAt: string;
+  organizationType: OrganizationType;
+};
 
 // Keyset page of the team in user id order, one row over the page size to know whether a next page exists.
 export async function getMembers(organizationId: string, after: string | null): Promise<MemberPage> {
@@ -116,12 +123,20 @@ export async function getPendingTransfer(organizationId: string): Promise<Pendin
   return data ? { fromUserId: data.from_user_id, toUserId: data.to_user_id, expiresAt: data.expires_at } : null;
 }
 
+// The type of the inviting organisation decides which account can accept (FR-J1); an invitation to a partner is not
+// returned while release 2a is off.
 export async function getInvitationPreview(token: string): Promise<InvitationPreview | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("invitation_preview", { p_token: token });
   if (error) throw new Error("The invitation could not be loaded", { cause: error });
   const [row] = z.array(previewSchema).parse(data);
   return row
-    ? { organizationName: row.organization_name, role: row.role, email: row.email, expiresAt: row.expires_at }
+    ? {
+        organizationName: row.organization_name,
+        role: row.role,
+        email: row.email,
+        expiresAt: row.expires_at,
+        organizationType: row.organization_type,
+      }
     : null;
 }
