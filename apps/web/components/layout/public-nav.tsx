@@ -148,7 +148,7 @@ export async function PublicNav({ lang }: { lang: string }) {
           </div>
           <ul aria-labelledby="menu-later" className="flex flex-wrap gap-2">
             {network.later.map((feature) => (
-              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small text-muted-foreground">
+              <li key={feature} className="rounded-lg bg-secondary px-3 py-1.5 text-small capitalize text-muted-foreground">
                 {feature}
               </li>
             ))}
