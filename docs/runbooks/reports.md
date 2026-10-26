@@ -9,6 +9,7 @@ FR-F4 (new requirement, proposed: OPEN_QUESTIONS.md D82, L10, L11, O12, P23), FR
 | Report job (Trust & Safety page, or Report this vacancy on a vacancy page) | anyone | the vacancy (it must be open, visible and not deleted) |
 | Report company (Trust & Safety page, or Report this company on a vacancy page) | anyone | the organisation, found through one of its public vacancies (a company has no public page of its own) |
 | Report content (Trust & Safety page) | anyone | the path of a page of the site, without query or fragment |
+| Report company and Report a fee demand (public partner profile, release 2a, V26) | anyone but a member of the partner | the organisation of the profile (target `partner_profile`); Report a fee demand chooses the category "The company asked me to pay a fee". A profile that is not public (not listed, declined, suspended, hidden, or release 2a off) gets the same "not public" answer as a slug that does not exist |
 | Report profile (Trust & Safety page) | nobody from outside: it explains that candidate profiles are private | no form |
 | Report this profile (applicant page) | a member of the organisation of the application, at aal2 where applicant data asks for it | the application id and nothing of the candidate; the form tells the member not to write the candidate's name, contact details or documents, but the text is free, so it is the one place where personal data can still reach staff (D82): do not copy it elsewhere |
 
@@ -18,7 +19,7 @@ The same reporter reporting the same target in the same category within 24 hours
 
 ## 2. Working the queue
 
-1. Open the queue. The default is the open reports (new and in review), oldest first, 25 to a page. Filter by status and by kind; the address holds the filter.
+1. Open the queue. The default is the open reports (new and in review), 25 to a page: reports of a fee demanded from a worker first (labelled Fee demand, `reports.priority` 1, NFR-C6), then the others, each group by its due time and then by number (FR-S1, V26). The Due column shows the due time and Overdue once it has passed. Filter by status and by kind; the address holds the filter and the cursor of the page (`<priority>_<due time>_<id>` for the open lists, the id for the closed ones, which stay newest first).
 2. Open one report. It shows the category, the text, the reporter (a signed-in account, or the visitor and their address when given) and the target in context: the vacancy with its status and visibility, the organisation with its status, the page, or for a candidate only the vacancy applied to and the organisation. The name of a candidate and the documents are never shown (FR-F3).
 3. Mark in review when you start, with a reason of 10 to 2000 characters (FR-F1: every administrative action has one). It records who and when, the reason goes into the audit row only (the reporter does not read it), and the report stays in the open queue.
 4. Decide. If the vacancy must be hidden, use Open the vacancy to hide or unhide it, which is the page of `vacancy-moderation.md` (statement of reasons, email to the employer, appeal route). If the organisation must be suspended, use Open the organisation (`admin-console.md`). The report does not repeat these controls and does not check that they were used.
@@ -28,9 +29,9 @@ Of two simultaneous moves one wins; the other is told that the report was moved 
 
 Every move is an audit row (`report.in_review`, `report.actioned`, `report.dismissed`, each with the reason and the request id; the reason KPI query of `audit-log.md` section 3 covers them), and every report is an audit row `report.submitted` (kind, category and target ids; no text, no address).
 
-## 3. Response times (to be set by CHARA, O12)
+## 3. Response times (decision 7.2, to be confirmed by CHARA, O12)
 
-The software sets none. Proposed: look at the queue every working day, a first look (in review) within 2 working days, a decision within 7 days. The queue is oldest first, so the first row is always the report that has waited longest. If the legal adviser confirms that Art. 16 of the Digital Services Act applies (L10), the confirmation of receipt and the notice of the decision to a reporter who gave an address are duties this release does not meet by email; the adviser says whether the reference on screen and the note under My reports are enough.
+Since V26 each report gets a due time when it is stored (`reports.due_at`): one working day for a fee demand (`report_fee_demand_target_working_days`), two working days for a first look at any other report (`report_first_look_target_working_days`), Monday to Friday in Europe/Berlin at the same local time, without a holiday calendar; a report made on a weekend counts from the Monday. Both targets are changed in the settings editor (Platform Administrator at aal2, with a reason, audited as `setting.changed`, 1 to 20 working days) and apply to the reports stored after the change. The targets are shown, not enforced: nothing happens to an overdue report but the label, and no one is notified. The seven-day target for a decision is not stored (the decision workflow is V27). Look at the queue every working day: the first row is the fee demand due first, or the report due first when there is none. If the legal adviser confirms that Art. 16 of the Digital Services Act applies (L10), the confirmation of receipt and the notice of the decision to a reporter who gave an address are duties this release does not meet by email; the adviser says whether the reference on screen and the note under My reports are enough.
 
 ## 4. Measured
 
@@ -46,10 +47,32 @@ where status in ('actioned', 'dismissed')
 group by 1 order by 1 desc;
 ```
 
+KPIs of FR-S1 (P2-41): median time to first look and to decision, in hours, per month of creation. The first look is the audit row `report.in_review` (the report keeps only the time of its last move); a report closed without review counts its closing as the first look:
+
+```sql
+select date_trunc('month', r.created_at) as month,
+       round((percentile_cont(0.5) within group (order by extract(epoch from coalesce(l.at, r.handled_at) - r.created_at)) / 3600)::numeric) as median_first_look_hours,
+       round((percentile_cont(0.5) within group (order by extract(epoch from r.handled_at - r.created_at)) filter (where r.status in ('actioned', 'dismissed')) / 3600)::numeric) as median_decision_hours,
+       count(*) filter (where coalesce(l.at, r.handled_at) <= r.due_at) as first_look_on_time,
+       count(*) as reports
+from public.reports r
+left join lateral (select min(a.created_at) as at from audit.log a where a.action = 'report.in_review' and a.entity_id = r.id::text) l on true
+where r.handled_at is not null
+group by 1 order by 1 desc;
+```
+
+Reports per 1,000 active organisations in the month (FR-S1 KPI; reports about an organisation, a company or a partner profile):
+
+```sql
+select round(1000.0 * count(*) / nullif((select count(*) from public.organizations where status = 'active'), 0), 1) as per_1000
+from public.reports where created_at >= date_trunc('month', now()) and organization_id is not null;
+```
+
 Open reports by age and the oldest one:
 
 ```sql
-select status, count(*), min(created_at) as oldest from public.reports where status in ('new', 'in_review') group by 1;
+select status, count(*), min(created_at) as oldest, count(*) filter (where due_at < now()) as overdue
+from public.reports where status in ('new', 'in_review') group by 1;
 ```
 
 Reports by kind and category in the month, and the share closed as actioned:
@@ -67,7 +90,7 @@ Closed reports are removed 365 days after the closing (`closed_reports` in `priv
 
 ## 6. Checks and measured
 
-- `npm run db:test` runs `105` to `109` of `supabase/tests/database`: the table has no grant and no policy, every refusal of `submit_report` (a vacancy that is not public, an applicant of another organisation, a candidate, a visitor, the good-faith statement, the length of the text, the path), the duplicate rule, the throttle and the proof, the queue and the three staff functions with their roles, the audit rows, the retention and the erasure.
+- `npm run db:test` runs `105` to `109` and `147` (V26: the target `partner_profile`, due times, the fee-demand-first order and its cursor) of `supabase/tests/database`: the table has no grant and no policy, every refusal of `submit_report` (a vacancy that is not public, an applicant of another organisation, a candidate, a visitor, the good-faith statement, the length of the text, the path), the duplicate rule, the throttle and the proof, the queue and the three staff functions with their roles, the audit rows, the retention and the erasure.
 - `npm run e2e -w @chara-pinnacle/web -- reports-visitor reports-queue reports-applicant company-description public-search-employer` runs the browser flows with axe at 1280 and 360 px; they write the screenshots of U65 to `docs/phase-1/client/evidence/U65/` (not committed).
-- Query plans (EXPLAIN ANALYZE in a rolled-back transaction with 200,000 reports, 6,020 of them open): the first page of the open queue reads `reports_open_idx` in 0.1 ms, a page of a closed status or of all reports walks the primary key backwards in 0.03 ms, filtering the open queue by kind reads the open reports only (4 ms for 6,000), and the daily removal reads `reports_closed_idx`.
+- Query plans (EXPLAIN ANALYZE in a rolled-back transaction with 200,000 reports, 6,020 of them open): the first page of the open queue reads `reports_queue_idx` (priority, due_at, id) in 0.07 ms and a later page from its cursor in 0.05 ms (V26, 6,060 open of 200,000), a page of a closed status or of all reports walks the primary key backwards in 0.03 ms, filtering the open queue by kind reads the open reports only (4 ms for 6,000), and the daily removal reads `reports_closed_idx`.
 - Employer filter: with 3,000 organisations and 180,000 open vacancies the planner takes the trigram index for a rare part of a name (0.4 ms) and walks the newest vacancies for a common one (1.3 ms); a search without the filter keeps its plan (0.1 ms).
