@@ -314,7 +314,8 @@ function DeleteLicence({ slug, licence, onClose, onDeleted }: DeleteLicenceProps
   return (
     <>
       <p className="text-body leading-relaxed">
-        The entry and its supporting document are removed. This cannot be undone.
+        The entry is removed now. Its supporting document is kept out of reach for the retention period of replaced evidence, then
+        deleted. This cannot be undone.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormButton type="button" variant="secondary" onClick={onClose}>
