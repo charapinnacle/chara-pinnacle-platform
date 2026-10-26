@@ -130,8 +130,8 @@ Columns are the essentials; check constraints follow the Phase 1 text rules (tri
 | `stats.partner_searches` | kind, filter_names, destination_country, result_count | none; no personal columns |
 | `billing.limit_keys`, `billing.feature_keys` | key, org_types, period, label | catalogue, everyone |
 | `private.setting_rules` | key, value_type, min, max, editable | none (settings editor) |
-| `private.profile_view_events` | (viewed_organization_id, viewer_organization_id, viewed_on) | none; retained 35 days |
-| `private.org_analytics_daily` | organization_id, day, metric, country_code, occupation_id, value | via `public.v_org_analytics` (members, suppressed below `stats_min_count`) |
+| `private.profile_view_events` | (viewed_organization_id, viewer_organization_id, viewed_on), one row per viewing company and UTC day, written by `record_profile_view` from `get_partner_profile` | none; retained 35 days (`profile_view_events`) |
+| `private.org_analytics_daily` | organization_id, day, metric (`public.analytics_metric`), country_code, occupation_id, value; built daily by `private.aggregate_org_analytics` | via `get_org_analytics` and `public.v_org_analytics` (members, at the plan's analytics level, suppressed below `stats_min_count` with complementary suppression); retained 730 days (`org_analytics`) |
 | `public.appeals` | moderation_action_id (unique), appellant_user_id, grounds, status, decided_by, reasons, lodged_at, due_at, decided_at | via RPCs |
 | `private.retired_licence_evidence` | licence_id, organization_id, storage_path, cause (replaced, removed), retired_at; no foreign keys | none (retention job `licence_evidence`) |
 | `public.data_export_requests` | user_id, status, requested_at, ready_at, expires_at, storage_path | own rows without the path |
