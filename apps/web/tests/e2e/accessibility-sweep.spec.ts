@@ -129,7 +129,8 @@ const accountStatePages = [
 // being prepared and ready, as a candidate and a company user (data-export.spec.ts), and the recruitment and staffing
 // segments of /[lang]/dashboard/[kind] with data, empty, failed and as a member (partner-dashboards.spec.ts). The team page
 // /[lang]/org/[slug]/members of a recruitment or staffing company, as its owner, an admin and a member, empty and with
-// members, and its invitation and sign-up pages, are checked in partner-team.spec.ts (the employer's are swept here).
+// members, and its invitation and sign-up pages, are checked in partner-team.spec.ts (the employer's are swept here). The
+// ranking page /[lang]/legal/ranking is checked in ranking-transparency.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -137,6 +138,7 @@ const releasedPages = [
   "/[lang]/admin/appeals/[id]",
   "/[lang]/companies/[slug]",
   "/[lang]/following",
+  "/[lang]/legal/ranking",
   "/[lang]/notifications",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",

@@ -113,6 +113,7 @@ export default defineConfig({
         "**/partner-dashboards.spec.ts",
         "**/admin-network-statistics.spec.ts",
         "**/partner-team.spec.ts",
+        "**/ranking-transparency.spec.ts",
       ],
     },
     {
@@ -464,13 +465,20 @@ export default defineConfig({
       testMatch: "**/partner-team.spec.ts",
       dependencies: ["admin-network-statistics-release"],
     },
+    // The ranking page (NFR-C8) sets release 2a for the whole database, so it follows the one above.
+    {
+      name: "ranking-transparency-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/ranking-transparency.spec.ts",
+      dependencies: ["partner-team-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-team-release"],
+      dependencies: ["ranking-transparency-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
