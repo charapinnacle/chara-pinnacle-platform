@@ -52,7 +52,11 @@ export async function searchAvailableWorkforce(input: AvailableWorkforceInput, c
   });
   if (error?.message === "CHARA_FEATURE_NOT_IN_PLAN") return { refused: "not_in_plan" };
   if (error?.message === "CHARA_RATE_LIMITED") return { refused: "rate_limited" };
-  if (error?.message === "CHARA_FORBIDDEN" || error?.code === "P0002") return { failure: UNAVAILABLE };
+  // A caller without an employer organisation, a visitor refused at the grant and the release switched off are
+  // refusals, not faults.
+  if (error?.message === "CHARA_FORBIDDEN" || error?.code === "42501" || error?.code === "P0002") {
+    return { failure: UNAVAILABLE };
+  }
   if (error) return { failure: faultMessage(logFault("Available workforce search", error)) };
   return {
     page: {
