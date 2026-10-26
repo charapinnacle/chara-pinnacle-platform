@@ -1,15 +1,16 @@
 import type { Page, Response } from "@playwright/test";
 import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { expectAccessibleAtBothWidths } from "./support/applications";
+import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
-import { createCommittedUser } from "./support/login";
+import { createCommittedUser, enrollTotp } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
 import { registerOrganization, uniqueName } from "./support/organizations";
 import { partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
 import { signInStaff } from "./support/admin";
 import { waitForHydration } from "./support/hydration";
 import { fillReport, GOOD_FAITH, openQueueAfter, sendReport } from "./support/reports";
-import { newVisitor } from "./support/team";
+import { newVisitor, signInAtAal1, signInAtAal2 } from "./support/team";
 import { readHead, robotsMeta, SITE } from "./support/seo";
 import { expect, test, visitorAddress } from "./support/test";
 import type { TestUser } from "./support/test-user";
@@ -454,5 +455,119 @@ test.describe("Public partner profile (FR-K4)", () => {
     } finally {
       setPartnerRelease(true);
     }
+  });
+  test("FR-S1 AC4, AC8, AC10, AC12, FR-J3 AC9: Trust & Safety hide a reported profile by keyboard, the partner reads the badge and the reasons, and staff show it again", async ({ page, browser }) => {
+    test.setTimeout(180_000);
+    const partner = await listedPartner();
+    const worker = await createCommittedUser("worker");
+    const id = Number(execute(
+      `insert into public.reports (target_type, organization_id, category, details, good_faith_confirmed, reporter_user_id)
+       values ('partner_profile', ${literal(partner.id)}, 'fee_demanded_from_worker', 'The recruiter asked me for 900 euros before the visa.', true,
+               ${literal(worker.id)}) returning id`,
+    ).trim().split("\n")[0]);
+    const reasons = "The company asked a worker to pay 900 euros before the visa, against its employer-pays commitment.";
+
+    const staff = await newVisitor(browser);
+    await signInStaff(staff.page, "trust_safety", `/en/admin/reports/${id}`);
+    await expect(staff.page.locator("#report")).toContainText("Decision due");
+    const target = staff.page.locator("#target");
+    await expect(target).toContainText("Visible");
+    const listings = target.getByRole("table", { name: "Availability listings, stale ones included" });
+    await expect(listings.getByRole("row")).toHaveCount(4);
+    await expect(listings.getByText("Stale", { exact: true })).toHaveCount(1);
+    await expectAccessibleAtBothWidths(staff.page);
+    await staff.page.setViewportSize({ width: 1280, height: 900 });
+
+    const hide = staff.page.getByRole("button", { name: "Hide", exact: true });
+    await waitForHydration(hide);
+    await hide.focus();
+    await staff.page.keyboard.press("Enter");
+    const dialog = staff.page.getByRole("dialog", { name: "Hide the partner profile" });
+    await expect(dialog).toContainText(`Partner profile:${partner.displayName}`);
+    await expect(dialog).toContainText(`Organisation:${partner.displayName}`);
+    await expect(dialog.getByLabel("Statement of reasons")).toBeFocused();
+    await staff.page.keyboard.type("Too short");
+    await expect(dialog).toContainText("9 of 2000 characters used");
+    await dialog.getByRole("button", { name: "Hide" }).focus();
+    await staff.page.keyboard.press("Enter");
+    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await dialog.getByLabel("Statement of reasons").fill(reasons);
+    await expectNoAxeViolations(staff.page);
+    await dialog.getByRole("button", { name: "Hide" }).focus();
+    await staff.page.keyboard.press("Enter");
+    await expect(staff.page.getByText("Hidden. The report is actioned", { exact: true })).toBeVisible();
+    const decision = staff.page.locator("#decision");
+    await expect(decision).toContainText("Actioned");
+    await expect(decision).toContainText("Partner profile hidden");
+    await expect(decision).toContainText(reasons);
+
+    expect(query<{ action: string; report_id: number }>(
+      `select action, report_id from public.moderation_actions where target_type = 'partner_profile' and target_id = ${literal(partner.id)}`,
+    )).toEqual([{ action: "content_hidden", report_id: id }]);
+    expect(query<{ decision: string; reasons: string; mandatory: boolean }>(
+      `select payload ->> 'decision' as decision, payload ->> 'reasons' as reasons, mandatory from public.notifications
+       where kind = 'moderation_decision' and user_id = ${literal(partner.user.id)}`,
+    )).toEqual([{ decision: "hide", reasons, mandatory: true }]);
+    expect(query<{ payload: Record<string, string> }>(
+      `select payload from public.notifications where kind = 'moderation_decision' and user_id = ${literal(worker.id)}`,
+    )).toEqual([{ payload: { reference: `R-${String(id).padStart(6, "0")}`, outcome: "actioned" } }]);
+    expect((await page.request.get(profileUrl(partner.slug))).status(), "hidden profile").toBe(404);
+
+    const secret = await enrollTotp(partner.user);
+    await signInAtAal2(page, partner.user, secret, `/en/org/${partner.slug}/workforce-profile`);
+    const notice = page.getByRole("status").filter({ hasText: "Hidden by moderation" });
+    await expect(notice).toContainText("Your partner profile is not shown to anyone");
+    await expect(notice).toContainText(reasons);
+    await expect(notice.getByRole("link", { name: "How to appeal" })).toHaveAttribute("href", "/en/legal/complaints-and-dispute-process");
+    await expectAccessibleAtBothWidths(page);
+    await page.context().clearCookies();
+
+    const member = await createCommittedUser("company");
+    execute(`insert into public.organization_members (organization_id, user_id, role, accepted_at) values (${literal(partner.id)}, ${literal(member.id)}, 'member', now())`);
+    await signInAtAal1(page, member, `/en/org/${partner.slug}/workforce-profile`);
+    await expect(page.getByRole("status").filter({ hasText: "Hidden by moderation" })).toContainText(reasons);
+
+    await staff.page.goto(`/en/admin/organizations/${partner.id}`);
+    const section = staff.page.locator("#partner-profile");
+    await expect(section).toContainText("Hidden");
+    await expect(section.getByRole("table", { name: "Decisions on this partner, newest first" })).toContainText(`R-${String(id).padStart(6, "0")}`);
+    await expectAccessibleAtBothWidths(staff.page);
+    await staff.page.setViewportSize({ width: 1280, height: 900 });
+    const show = section.getByRole("button", { name: "Show partner profile again" });
+    await waitForHydration(show);
+    await section.getByLabel("Statement of reasons").fill("The company refunded the worker and corrected its terms.");
+    await show.click();
+    await expect(staff.page.getByText("The partner profile is shown again", { exact: true })).toBeVisible();
+    await expect(section.getByRole("button", { name: "Hide partner profile" })).toBeVisible();
+    expect((await page.request.get(profileUrl(partner.slug))).status(), "shown again").toBe(200);
+    await staff.context.close();
+  });
+
+  test("FR-S1 AC7: a suspension takes the profile and its listings out of the directories, and the reinstatement brings them back", async ({ page }) => {
+    test.setTimeout(120_000);
+    const partner = await listedPartner();
+    await signInStaff(page, "trust_safety", `/en/admin/organizations/${partner.id}`);
+    const standing = page.locator("#standing");
+    const suspend = standing.getByRole("button", { name: "Suspend organisation" });
+    await waitForHydration(suspend);
+    await standing.getByLabel("Statement of reasons").fill("Fee demands from several workers were confirmed.");
+    await suspend.click();
+    await expect(page.getByText("The organisation is suspended", { exact: true })).toBeVisible();
+    await expect(page.locator("#partner-profile")).toContainText("Hidden with the suspension");
+    expect(query<{ moderation_state: string }>(`select moderation_state::text from public.organizations where id = ${literal(partner.id)}`)).toEqual([
+      { moderation_state: "org_suspended" },
+    ]);
+    expect((await page.request.get(profileUrl(partner.slug))).status(), "suspended profile").toBe(404);
+    const directory = await (await page.request.get("/en/partners/recruitment?destination=DE")).text();
+    expect(directory).not.toContain(partner.displayName);
+    expect(await (await page.request.get("/sitemap.xml")).text()).not.toContain(`/en/partners/${partner.slug}<`);
+
+    const reinstate = standing.getByRole("button", { name: "Reinstate organisation" });
+    await waitForHydration(reinstate);
+    await standing.getByLabel("Statement of reasons").fill("The company refunded the workers and was reviewed again.");
+    await reinstate.click();
+    await expect(page.getByText("The organisation is reinstated", { exact: true })).toBeVisible();
+    expect((await page.request.get(profileUrl(partner.slug))).status(), "reinstated profile").toBe(200);
+    expect(await (await page.request.get("/sitemap.xml")).text()).toContain(`/en/partners/${partner.slug}<`);
   });
 });

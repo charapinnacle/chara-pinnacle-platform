@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { signInStaff, uniqueTag } from "./support/admin";
 import { displayName, expectAccessibleAtBothWidths, newApplicant } from "./support/applications";
 import { execute, literal, query } from "./support/db";
+import { expectNoAxeViolations } from "./support/axe";
 import { evidence } from "./support/evidence";
 import { waitForHydration } from "./support/hydration";
 import { newCompany, seedJob } from "./support/jobs";
@@ -32,7 +33,7 @@ const table = (page: Page) => page.getByRole("table", { name: "Reports" });
 const reportRow = (page: Page, reference: string) => table(page).getByRole("row").filter({ hasText: reference });
 
 test.describe("working the reports queue", () => {
-  test("FR-F1, FR-F4: Trust & Safety put a report in review and close it with a note, and the signed-in reporter is told on the dashboard and in the list", async ({ page, browser }) => {
+  test("FR-F1, FR-F4, FR-S1 AC4, AC10: Trust & Safety put a report in review and hide the vacancy with a statement of reasons by keyboard, and the signed-in reporter is told on the dashboard and in the list", async ({ page, browser }) => {
     const company = await newCompany();
     const title = `Queue welder ${uniqueTag()}`;
     const job = seedJob(company, { title, status: "open" });
@@ -106,22 +107,27 @@ test.describe("working the reports queue", () => {
     await expect(staff.page.locator("#report").getByText("In review", { exact: true })).toBeVisible();
     await expect(review).toHaveCount(0);
 
-    const close = staff.page.getByRole("button", { name: "Mark actioned" });
+    await expect(staff.page.getByRole("button", { name: "Mark actioned" })).toHaveCount(0);
+    const close = staff.page.getByRole("button", { name: "Hide", exact: true });
     await close.focus();
     await staff.page.keyboard.press("Enter");
-    const dialog = staff.page.getByRole("dialog", { name: "Mark the report actioned" });
+    const dialog = staff.page.getByRole("dialog", { name: "Hide the vacancy" });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: "Mark actioned" }).click();
+    await expect(dialog).toContainText(`Vacancy:${title}`);
+    await expect(dialog).toContainText(`Organisation:${displayName(company.id)}`);
+    await dialog.getByRole("button", { name: "Hide" }).click();
     await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
-    await dialog.getByLabel("Note").fill(NOTE);
-    await dialog.getByRole("button", { name: "Mark actioned" }).click();
-    await expect(staff.page.getByText("The report is marked actioned", { exact: true })).toBeVisible();
+    await dialog.getByLabel("Statement of reasons").fill(NOTE);
+    await dialog.getByRole("button", { name: "Hide" }).click();
+    await expect(staff.page.getByText("Hidden. The report is actioned", { exact: true })).toBeVisible();
     const decision = staff.page.locator("#decision");
     await expect(decision).toContainText("Outcome");
     await expect(decision).toContainText("Actioned");
+    await expect(decision).toContainText("Vacancy hidden");
     await expect(decision).toContainText(NOTE);
     await expect(decision.getByRole("button")).toHaveCount(0);
     await evidence(staff.page, "report-closed");
+    expect(query<{ moderation_state: string }>(`select moderation_state::text from public.jobs where id = ${literal(job)}`)).toEqual([{ moderation_state: "hidden" }]);
 
     const [closed] = reportsOfUser(reporter.id);
     expect(closed).toMatchObject({ status: "actioned", resolution_note: NOTE });
@@ -130,7 +136,7 @@ test.describe("working the reports queue", () => {
     expect(audit[0].actor_id).toBe(reporter.id);
     expect(audit[1].metadata).toMatchObject({ from: "new", to: "in_review", reason: REVIEW_REASON });
     expect(audit[2].actor_id).toBe(trust.id);
-    expect(audit[2].metadata).toMatchObject({ from: "in_review", to: "actioned", reason: NOTE });
+    expect(audit[2].metadata).toMatchObject({ from: "in_review", to: "actioned", reason: NOTE, decision: "hide" });
     expect(audit[2].metadata.request_id).toMatch(/^[0-9a-f-]{36}$/);
 
     await staff.page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(mine.id)}`);
@@ -226,7 +232,7 @@ test.describe("working the reports queue", () => {
     await dismiss.click();
     const dialog = page.getByRole("dialog", { name: "Dismiss the report" });
     await expect(dialog).toContainText("The reporter is not an account");
-    await dialog.getByLabel("Note").fill(DISMISS_NOTE);
+    await dialog.getByLabel("Statement of reasons").fill(DISMISS_NOTE);
     await dialog.getByRole("button", { name: "Dismiss report" }).click();
     await expect(page.getByText("The report is dismissed", { exact: true })).toBeVisible();
     await expect(page.locator("#decision")).toContainText(DISMISS_NOTE);
@@ -250,7 +256,7 @@ test.describe("working the reports queue", () => {
     await expect(reportRow(admin.page, reference)).toBeVisible();
     await admin.page.goto(`/en/admin/reports/${id}`);
     await expect(admin.page.locator("#decision").getByRole("status")).toContainText("Read only");
-    await expect(admin.page.getByRole("button", { name: /Mark in review|Dismiss|Mark actioned/ })).toHaveCount(0);
+    await expect(admin.page.getByRole("button", { name: /Mark in review|Hide|Suspend organisation|Dismiss|Mark actioned/ })).toHaveCount(0);
     await expect(admin.page.getByRole("link", { name: "Open the vacancy to hide or unhide it" })).toHaveCount(0);
     await expect(admin.page.getByRole("link", { name: "Open the organisation to suspend or reinstate it" })).toBeVisible();
     await expectAccessibleAtBothWidths(admin.page);
@@ -270,5 +276,80 @@ test.describe("working the reports queue", () => {
 
     await page.goto(`/en/admin/reports/${id}`);
     await expect(page).toHaveURL(/\/en\/login/);
+  });
+  test("FR-S1 AC10, AC11: a report about a page is closed with a note; two staff deciding at once see one decision win and the other told the report changed", async ({ page, browser }) => {
+    const company = await newCompany();
+    const job = seedJob(company, { title: `Raced ${uniqueTag()}`, status: "open" });
+    const id = Number(execute(
+      `insert into public.reports (target_type, job_id, category, details, good_faith_confirmed)
+       values ('job', ${literal(job)}, 'misleading_or_fraud', 'Two staff members read this report at once.', true) returning id`,
+    ).trim().split("\n")[0]);
+
+    const first = await newVisitor(browser);
+    await signInStaff(first.page, "trust_safety", `/en/admin/reports/${id}`);
+    await signInStaff(page, "trust_safety", `/en/admin/reports/${id}`);
+    await expect(page.locator("#report")).toContainText("Decision due");
+    for (const staff of [first.page, page]) {
+      const dismiss = staff.getByRole("button", { name: "Dismiss", exact: true });
+      await waitForHydration(dismiss);
+      await dismiss.click();
+      await staff.getByRole("dialog", { name: "Dismiss the report" }).getByLabel("Statement of reasons").fill("Nothing in it breaks the platform rules.");
+    }
+    const counted = page.getByRole("dialog", { name: "Dismiss the report" });
+    await expect(counted).toContainText("40 of 2000 characters used");
+    await expectNoAxeViolations(page);
+    await first.page.getByRole("dialog", { name: "Dismiss the report" }).getByRole("button", { name: "Dismiss report" }).click();
+    await expect(first.page.getByText("The report is dismissed", { exact: true })).toBeVisible();
+    await counted.getByRole("button", { name: "Dismiss report" }).click();
+    await expect(counted.getByText("This report was changed by someone else, reload the page. It is now Dismissed.").first()).toBeVisible();
+    expect(query<{ n: number }>(`select count(*)::int as n from audit.log where action = 'report.dismissed' and entity_id = ${literal(String(id))}`)).toEqual([{ n: 1 }]);
+    expect(query<{ n: number }>(`select count(*)::int as n from public.moderation_actions where report_id = ${id}`)).toEqual([{ n: 0 }]);
+    await first.context.close();
+
+    const pageReport = Number(execute(
+      `insert into public.reports (target_type, content_path, category, details, good_faith_confirmed)
+       values ('content', ${literal(`/en/raced-${uniqueTag()}`)}, 'other', 'A page with wording that breaks the rules.', true) returning id`,
+    ).trim().split("\n")[0]);
+    await page.goto(`/en/admin/reports/${pageReport}`);
+    await expect(page.getByRole("button", { name: "Hide", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Suspend organisation" })).toHaveCount(0);
+    const actioned = page.getByRole("button", { name: "Mark actioned" });
+    await waitForHydration(actioned);
+    await actioned.click();
+    const note = page.getByRole("dialog", { name: "Mark the report actioned" });
+    await note.getByLabel("Note").fill("The wording was removed from the page.");
+    await note.getByRole("button", { name: "Mark actioned" }).click();
+    await expect(page.getByText("The report is marked actioned", { exact: true })).toBeVisible();
+  });
+
+  test("FR-S1 AC4, AC7: Trust & Safety suspend the organisation of a reported vacancy by keyboard, and its vacancies leave the public", async ({ page }) => {
+    const company = await newCompany();
+    const title = `Suspended ${uniqueTag()}`;
+    const job = seedJob(company, { title, status: "open" });
+    const id = Number(execute(
+      `insert into public.reports (target_type, job_id, organization_id, category, details, good_faith_confirmed)
+       values ('company', ${literal(job)}, ${literal(company.id)}, 'discrimination', 'Every vacancy of this company excludes women.', true) returning id`,
+    ).trim().split("\n")[0]);
+    await signInStaff(page, "trust_safety", `/en/admin/reports/${id}`);
+    await expect(page.getByRole("button", { name: "Hide", exact: true })).toHaveCount(0);
+    const suspend = page.getByRole("button", { name: "Suspend organisation" });
+    await waitForHydration(suspend);
+    await suspend.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Suspend the organisation" });
+    await expect(dialog).toContainText(`Organisation:${displayName(company.id)}`);
+    await page.keyboard.type("Discriminatory wording in every vacancy of the company.");
+    await expect(dialog.getByLabel("Statement of reasons")).toBeFocused();
+    await dialog.getByRole("button", { name: "Suspend organisation" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("The organisation is suspended. The report is actioned", { exact: true })).toBeVisible();
+    await expect(page.locator("#decision")).toContainText("Organisation suspended");
+    await expectAccessibleAtBothWidths(page);
+    expect(query<{ status: string; state: string }>(
+      `select o.status::text as status, j.moderation_state::text as state from public.organizations o join public.jobs j on j.organization_id = o.id where j.id = ${literal(job)}`,
+    )).toEqual([{ status: "suspended", state: "org_suspended" }]);
+    expect(query<{ report_id: number }>(`select report_id from public.moderation_actions where target_id = ${literal(company.id)} order by id desc limit 1`)).toEqual([{ report_id: id }]);
+    const response = await page.goto(publicUrl(job));
+    expect(response?.status()).toBe(404);
   });
 });

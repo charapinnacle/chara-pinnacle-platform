@@ -240,6 +240,49 @@ test.describe("in-app notifications (FR-T1)", () => {
     await expectAccessibleAtBothWidths(page);
   });
 
+  test("FR-S1 AC8: a moderation decision reaches the partner with its sentence and link, a reporter with the outcome, and its email is always sent", async ({
+    context,
+    page,
+    browser,
+  }) => {
+    const company = await newCompany();
+    execute(
+      `select pgmq.send('notifications', jsonb_build_object(
+         'kind', 'moderation_decision', 'user_id', ${literal(company.owner.id)}, 'mandatory', true, 'organization_id', ${literal(company.id)},
+         'target_type', 'partner_profile', 'target_id', ${literal(company.id)}, 'decision', 'hide',
+         'reasons', 'The profile claims placements that were never made.', 'moderation_action_id', 1))`,
+    );
+    await signInBrowser(context, company.owner);
+    await page.goto(LIST);
+    const item = page.getByRole("list", { name: "Notifications" }).getByRole("listitem").first();
+    await expect(item).toContainText("was hidden by moderation");
+    await expect(item).toContainText("Moderation");
+    await expect(item.getByRole("link")).toHaveAttribute("href", `/en/org/${company.slug}/workforce-profile#moderation-heading`);
+    await expect(item).not.toContainText("The profile claims placements");
+    await expectNoAxeViolations(page);
+    await page.goto(SETTINGS);
+    await expect(page.locator("#email-notifications").getByRole("listitem").filter({ hasText: "Moderation decisions" })).toContainText("Always sent");
+
+    const reporter = await createCommittedUser("worker");
+    const id = Number(execute(
+      `insert into public.reports (target_type, content_path, category, details, good_faith_confirmed, reporter_user_id, status, handled_by,
+         handled_at, resolution_note)
+       values ('content', '/en/jobs', 'other', 'A report closed for the notification test.', true, ${literal(reporter.id)}, 'dismissed',
+         ${literal(reporter.id)}, now(), 'Nothing breaks the rules here.') returning id`,
+    ).trim().split("\n")[0]);
+    execute(
+      `select pgmq.send('notifications', jsonb_build_object('kind', 'moderation_decision', 'user_id', ${literal(reporter.id)},
+         'mandatory', true, 'report_id', ${id}, 'outcome', 'dismissed'))`,
+    );
+    const other = await browser.newContext();
+    await signInBrowser(other, reporter);
+    const reporterPage = await other.newPage();
+    await reporterPage.goto(LIST);
+    const closed = reporterPage.getByRole("list", { name: "Notifications" }).getByRole("listitem").first();
+    await expect(closed.getByRole("link", { name: `Your report R-${String(id).padStart(6, "0")} was closed` })).toHaveAttribute("href", "/en/reports");
+    await other.close();
+  });
+
   test("NFR-S8: the list shows only the user's own notifications", async ({ context, page }) => {
     const [mine, other] = [await createCommittedUser("worker"), await createCommittedUser("worker")];
     seed(mine.id, "legal_version", 2);
