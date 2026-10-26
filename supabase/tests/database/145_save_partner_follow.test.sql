@@ -117,7 +117,7 @@ select policies_are('public', 'saved_items', array['saved_items_select_member'],
 select policies_are('public', 'follows', array['follows_select_own'], 'follows has the own-row read policy only');
 select is(
   (select string_agg(indexname, ',' order by indexname) from pg_indexes where schemaname = 'public' and tablename in ('saved_items', 'follows')),
-  'follows_list_idx,follows_organization_idx,follows_pkey,saved_items_list_idx,saved_items_pkey,saved_items_saved_by_idx,saved_items_target_idx',
+  'follows_created_at_idx,follows_list_idx,follows_organization_idx,follows_pkey,saved_items_created_at_idx,saved_items_list_idx,saved_items_pkey,saved_items_saved_by_idx,saved_items_target_idx',
   'every policy and foreign key column has an index'
 );
 select is(
