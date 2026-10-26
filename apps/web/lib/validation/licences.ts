@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { countryInSentence } from "@/lib/i18n/format";
 import { checkFile, acceptedExtensions } from "@/lib/validation/documents";
 import type { LicenceStatus } from "@/lib/validation/licence-status";
 import { dateWithin, parseDate, todayUtc } from "@/lib/validation/passport";
@@ -24,11 +25,6 @@ export type LicenceRules = {
   today?: string;
   savedValidUntil?: string;
 };
-
-// The countries whose English short name takes "the" in a sentence ("in the Philippines").
-const WITH_ARTICLE = new Set([
-  "AE", "BS", "CD", "CF", "CK", "DO", "FK", "FO", "GB", "GM", "KM", "KY", "MH", "MP", "NL", "PH", "SB", "TC", "US", "VA", "VG", "VI",
-]);
 
 // A format that is not a valid regular expression here is left to the database, which checks it with its own engine.
 function matchesFormat(pattern: string, value: string): boolean {
@@ -94,7 +90,7 @@ export function licenceFormSchema(rules: LicenceRules) {
           code: "custom",
           input: licenceNumber,
           path: ["licenceNumber"],
-          message: `This does not match the usual format of licence numbers in ${WITH_ARTICLE.has(country) ? "the " : ""}${name}`,
+          message: `This does not match the usual format of licence numbers in ${countryInSentence(country, name)}`,
         });
       }
     });

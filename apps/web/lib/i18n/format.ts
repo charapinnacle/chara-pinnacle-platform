@@ -5,6 +5,16 @@ export function formatCount(count: number): string {
   return countFormat.format(count);
 }
 
+// The countries whose English short name takes "the" in a sentence ("in the Philippines").
+const WITH_ARTICLE = new Set([
+  "AE", "BS", "CD", "CF", "CK", "DO", "FK", "FO", "GB", "GM", "KM", "KY", "MH", "MP", "NL", "PH", "SB", "TC", "US", "VA", "VG", "VI",
+]);
+
+// The name of a country as it reads after a preposition: "the Philippines", "Germany".
+export function countryInSentence(code: string, name: string): string {
+  return WITH_ARTICLE.has(code) ? `the ${name}` : name;
+}
+
 const dateFormat = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "long",
   timeZone: "UTC",
