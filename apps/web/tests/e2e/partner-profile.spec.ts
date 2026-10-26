@@ -4,7 +4,7 @@ import { execute, literal, query } from "./support/db";
 import { createCommittedUser } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
 import { registerOrganization, uniqueName } from "./support/organizations";
-import { partnerWithCompany, setPartnerRelease } from "./support/partners";
+import { partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
 import { fillReport, sendReport } from "./support/reports";
 import { readHead, robotsMeta, SITE } from "./support/seo";
 import { expect, test, visitorAddress } from "./support/test";
@@ -18,8 +18,10 @@ const FORBIDDEN_WORDS = /\b(verified|approved|licensed|rating|reviews?|ranking|b
 
 // A listed recruitment company with a complete profile: two fresh listings and one stale one, two languages, a founded
 // year, a description, a website, a current commitment, a licence and a review decision (FR-K4 AC1, AC3, AC5).
-async function listedPartner({ complete = true }: { complete?: boolean } = {}): Promise<Listed> {
-  const { user, id, slug } = await partnerWithCompany("recruitment_company");
+async function listedPartner(
+  { complete = true, type = "recruitment_company" }: { complete?: boolean; type?: PartnerType } = {},
+): Promise<Listed> {
+  const { user, id, slug } = await partnerWithCompany(type);
   const org = literal(id);
   execute(
     `insert into public.organization_geographies (organization_id, scope, country_code)
@@ -58,6 +60,9 @@ async function listedPartner({ complete = true }: { complete?: boolean } = {}): 
 }
 
 const profileUrl = (slug: string) => `/en/partners/${slug}`;
+
+// The date as the pages write it (lib/i18n/format.ts formatDate), in UTC.
+const longDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(date);
 
 // NFR-S8/S9-style privacy check: neither the HTML nor any response the browser received holds the partner's legal name,
 // identifier or licence, or a member's email.
@@ -112,7 +117,11 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(capacity).not.toContainText("99 available");
     await expect(page.getByRole("region", { name: "Languages" })).toContainText("English");
     await expect(page.getByRole("region", { name: "Commitment" })).toContainText("workers pay no recruitment fees");
-    await expect(page.getByRole("region", { name: "Where we serve" })).toContainText("Germany");
+    const where = page.getByRole("region", { name: "Where we serve" });
+    await expect(where.getByRole("term")).toHaveText(["Based in", "Sources workers from", "Recruits for"]);
+    await expect(where.getByRole("definition")).toHaveText(["Philippines", "Nepal, Philippines", "Germany"]);
+    await expect(where.getByText(`Last updated ${longDate(new Date())}`)).toBeVisible();
+    await expect(where.locator("time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
 
     const website = page.getByRole("link", { name: /\.example/ });
     await expect(website).toHaveAttribute("rel", "nofollow noopener noreferrer");
@@ -133,6 +142,15 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(robotsMeta(page)).toHaveCount(0);
 
     await expectAccessibleAtBothWidths(page);
+  });
+
+  test("FR-K1 AC9: a staffing company's profile says where it supplies workers", async ({ page }) => {
+    const partner = await listedPartner({ complete: false, type: "staffing_company" });
+    await page.goto(profileUrl(partner.slug));
+    const where = page.getByRole("region", { name: "Where we serve" });
+    await expect(where.getByRole("term")).toHaveText(["Based in", "Sources workers from", "Supplies workers for"]);
+    await expect(where.getByText(`Last updated ${longDate(new Date())}`)).toBeVisible();
+    await expect(page.getByText("Staffing company · Based in Philippines")).toBeVisible();
   });
 
   test("AC6: a signed-in employer's page holds no private data either", async ({ page }) => {

@@ -18,6 +18,12 @@ type PartnerProfileViewProps = {
   banner?: React.ReactNode;
 };
 
+// The served countries in the words of the partner's own form (FR-K1 AC9, lib/validation/geographies.ts servedQuestion).
+const servedLabels: Record<PartnerProfile["type"], string> = {
+  recruitment_company: "Recruits for",
+  staffing_company: "Supplies workers for",
+};
+
 const names = (items: readonly Named[]) => items.map((item) => item.name).join(", ");
 
 function ProfileSection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -92,10 +98,15 @@ export function PartnerProfileView({ lang, profile, actions, banner }: PartnerPr
             <DetailList
               items={[
                 { label: "Based in", value: profile.basedIn.name },
-                { label: "Markets served", value: <Countries items={profile.servedCountries} empty="None listed" /> },
-                { label: "Source countries", value: <Countries items={profile.sourceCountries} empty="None listed" /> },
+                { label: "Sources workers from", value: <Countries items={profile.sourceCountries} empty="None listed" /> },
+                { label: servedLabels[profile.type], value: <Countries items={profile.servedCountries} empty="None listed" /> },
               ]}
             />
+            {profile.updatedAt ? (
+              <p className="text-small text-muted-foreground">
+                Last updated <time dateTime={profile.updatedAt}>{formatDate(profile.updatedAt)}</time>
+              </p>
+            ) : null}
           </ProfileSection>
 
           <ProfileSection id="profile-offer" title="Industries and occupations">
