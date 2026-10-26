@@ -5,6 +5,7 @@ import { defaultLocale } from "@/lib/i18n/locale";
 // responses noindex; a test walks the route groups of the app so that a new private page cannot be left out.
 export const privateSegments = [
   "admin",
+  "appeals",
   "applications",
   "confirm-email",
   "consent",

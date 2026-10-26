@@ -1,12 +1,17 @@
+import { AppealState } from "@/components/appeals/appeal-state";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import type { AppealableDecision } from "@/lib/dal/appeals";
 import type { PartnerProfileModeration } from "@/lib/dal/partner-profile";
 import { formatDate } from "@/lib/i18n/format";
+import { appealsPath } from "@/lib/routes";
 
-// The partner sees that its profile was hidden by moderation and why (FR-S1 AC12, DSA Art. 17): every member reads the
-// badge and the statement of reasons. The appeal route is the Complaints and Dispute Process until the appeal form (V28).
-export function ModerationNotice({ lang, moderation }: { lang: string; moderation: PartnerProfileModeration }) {
+type ModerationNoticeProps = { lang: string; moderation: PartnerProfileModeration; appeal: AppealableDecision | null };
+
+// The partner sees that its profile was hidden by moderation and why (FR-S1 AC12, DSA Art. 17 and 20): every member reads
+// the badge, the statement of reasons and the state of an appeal; the owner and admins get the Appeal button.
+export function ModerationNotice({ lang, moderation, appeal }: ModerationNoticeProps) {
   if (moderation.state !== "hidden") return null;
   return (
     <Notice tone="warning" role="status" aria-labelledby="moderation-heading">
@@ -25,10 +30,13 @@ export function ModerationNotice({ lang, moderation }: { lang: string; moderatio
             <blockquote className="border-s-2 border-warning-border ps-3 whitespace-pre-line wrap-anywhere">{moderation.decision.reasons}</blockquote>
           </div>
         ) : null}
-        <p>
-          If you think this was a mistake, you can appeal.{" "}
-          <TextLink href={`/${lang}/legal/complaints-and-dispute-process`}>How to appeal</TextLink>
-        </p>
+        {appeal ? (
+          <AppealState decision={appeal} />
+        ) : (
+          <p>
+            <TextLink href={appealsPath(lang)}>See the moderation decisions and their appeals</TextLink>
+          </p>
+        )}
       </div>
     </Notice>
   );

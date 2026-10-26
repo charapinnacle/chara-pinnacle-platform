@@ -204,3 +204,12 @@ export function myReportsPath(lang: string, after?: { at: string; id: number }):
   if (!after) return `/${lang}/reports`;
   return `/${lang}/reports?${new URLSearchParams({ afterAt: after.at, afterId: String(after.id) }).toString()}`;
 }
+
+// The moderation decisions on the caller's organisations and their appeals (FR-S1), and one decision with its appeal.
+export function appealsPath(lang: string): string {
+  return `/${lang}/appeals`;
+}
+
+export function appealPath(lang: string, decision: number): string {
+  return `${appealsPath(lang)}/${decision}`;
+}

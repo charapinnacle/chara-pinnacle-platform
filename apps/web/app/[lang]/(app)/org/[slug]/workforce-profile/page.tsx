@@ -16,6 +16,7 @@ import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
+import { listMyAppeals } from "@/lib/dal/appeals";
 import { getPartnerProfileModeration } from "@/lib/dal/partner-profile";
 import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
@@ -161,6 +162,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getAvailabilityRules(),
       getPartnerProfileModeration(organization.id),
     ]);
+  const appeal = moderation.decision ? await listMyAppeals(moderation.decision.id) : null;
   const billingHref = billingPath(lang, slug);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
   // Not awaited: the profile forms show the warning about listings once the counts arrive.
@@ -195,7 +197,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
           Preview your public profile
         </TextLink>
       </PageHeader>
-      <ModerationNotice lang={lang} moderation={moderation} />
+      <ModerationNotice lang={lang} moderation={moderation} appeal={appeal} />
       {commitment.accepted ? null : (
         <CommitmentNotice lang={lang} owner={organization.role === "owner"} outdated={commitmentOutdated(commitment)} />
       )}

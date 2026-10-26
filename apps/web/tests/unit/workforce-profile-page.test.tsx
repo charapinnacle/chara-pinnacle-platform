@@ -9,6 +9,7 @@ const listingsMock = vi.hoisted(() => vi.fn());
 const promptsMock = vi.hoisted(() => vi.fn());
 const countsMock = vi.hoisted(() => vi.fn());
 const moderationMock = vi.hoisted(() => vi.fn());
+const appealMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -60,6 +61,8 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
 vi.mock("@/lib/dal/partner-profile", () => ({ getPartnerProfileModeration: moderationMock }));
+vi.mock("@/lib/dal/appeals", () => ({ listMyAppeals: appealMock }));
+vi.mock("@/lib/actions/appeals", () => ({ submitAppeal: vi.fn() }));
 vi.mock("@/lib/dal/licences", () => ({
   getPartnerLicences: licencesMock,
   getLicenceSettings: async () => ({ patterns: {}, maxYears: 20 }),
@@ -119,7 +122,29 @@ beforeEach(() => {
   promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: null }));
   countsMock.mockResolvedValue({ occupations: {}, countries: {} });
   moderationMock.mockResolvedValue({ state: "visible", decision: null });
+  appealMock.mockReset();
 });
+
+function decision(over: Record<string, unknown> = {}) {
+  return {
+    id: 4,
+    targetType: "partner_profile",
+    targetId: "org-1",
+    action: "content_hidden",
+    title: "Manila Skills",
+    organizationId: "org-1",
+    organizationName: "Manila Skills",
+    orgSlug: "manila-skills",
+    reasons: "Claims of placements never made.",
+    decidedAt: "2026-10-20T09:00:00+00:00",
+    appealUntil: "2099-04-20T09:00:00+00:00",
+    inEffect: true,
+    canAppeal: false,
+    targetDays: 7,
+    appeal: null,
+    ...over,
+  };
+}
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
   it("does not exist while release 2a is off", async () => {
@@ -186,10 +211,25 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     moderationMock.mockResolvedValue({ state: "hidden", decision: { id: 4, reasons: "Claims of placements never made.", decidedAt: "2026-10-20T09:00:00+00:00" } });
     for (const role of ["owner", "member"]) {
       requireOrgRoleMock.mockResolvedValue(organization(role));
+      appealMock.mockResolvedValue(decision({ canAppeal: role === "owner" }));
       const html = await render();
       expect(html).toContain("Hidden by moderation");
       expect(html).toContain("Claims of placements never made.");
+      expect(appealMock).toHaveBeenCalledWith(4);
+      expect(html.includes(">Appeal</button>")).toBe(role === "owner");
+      expect(html).not.toContain("complaints-and-dispute-process");
     }
+  });
+
+  it("FR-S1 AC12: shows every member that an appeal is under review, without the Appeal button", async () => {
+    moderationMock.mockResolvedValue({ state: "hidden", decision: { id: 4, reasons: "Claims of placements never made.", decidedAt: "2026-10-20T09:00:00+00:00" } });
+    appealMock.mockResolvedValue(
+      decision({ appeal: { id: 9, status: "open", grounds: "Our placements are documented.", lodgedAt: "2026-10-21T09:00:00+00:00", dueAt: "2026-10-28T09:00:00+00:00", reasons: null, decidedAt: null } }),
+    );
+    const html = await render();
+    expect(html).toContain("Appeal under review");
+    expect(html).toContain("28 October 2026");
+    expect(html).not.toContain(">Appeal</button>");
   });
 
   it("says nothing about the commitment while the current version is accepted", async () => {
