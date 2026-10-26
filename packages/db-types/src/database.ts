@@ -1460,6 +1460,11 @@ isOneToOne: false
               "applied_at": string,"cover_note": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"status": Database["public"]['Enums']["application_status"],"vacancy_is_open": boolean
             }[]
                            },
+"get_partner_profile":
+{ Args: { "p_key"?: string,"p_proof"?: string,"p_slug": string }; Returns: {
+              "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"viewer_is_member": boolean,"website": string,"workforce_profile_updated_at": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
+            }[]
+                           },
 "get_public_job":
 { Args: { "p_id": string }; Returns: {
               "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_country": string,"employer_description": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
@@ -1526,6 +1531,9 @@ isOneToOne: false
 "list_sitemap_jobs":
 { Args: { "p_after_created"?: string,"p_after_id"?: string,"p_limit"?: number }; Returns: Json
                            },
+"list_sitemap_partners":
+{ Args: { "p_after_slug"?: string,"p_limit"?: number }; Returns: Json
+                           },
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
                            },
@@ -1591,6 +1599,11 @@ isOneToOne: false
 "pending_reconsents":
 { Args: Record<PropertyKey, never>; Returns: {
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
+"preview_partner_profile":
+{ Args: { "p_org": string }; Returns: {
+              "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"is_public": boolean,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"website": string,"workforce_profile_updated_at": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
             }[]
                            },
 "publish_legal_document":
