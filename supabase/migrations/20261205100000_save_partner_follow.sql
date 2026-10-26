@@ -321,7 +321,8 @@ grant execute on function public.list_saved_partners(uuid, text, integer) to aut
 -- null toggles; true or false sets the state. Unfollowing works whatever the company's state now. Not audited: the audit
 -- log would keep a list of followers for six years, which the followed company and staff must not have (control "counts
 -- only").
---   CHARA_FORBIDDEN (42501: no session; detail release_off, account_kind_required, employer_follows_employer),
+--   CHARA_FORBIDDEN (42501: no session; detail release_off, account_suspended, account_kind_required,
+--   employer_follows_employer),
 --   CHARA_INVALID_INPUT (detail p_org, own_organization), CHARA_NOT_FOUND (a company that cannot be followed, to follow)
 create function public.toggle_follow(p_org uuid, p_following boolean default null)
 returns boolean
@@ -340,8 +341,10 @@ begin
   if not private.release_on('release_partner_directories') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'release_off';
   end if;
-  if private.account_kind() is null
-     or exists (select 1 from public.profiles p where p.id = v_uid and p.status = 'suspended') then
+  if exists (select 1 from public.profiles p where p.id = v_uid and p.status = 'suspended') then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'account_suspended';
+  end if;
+  if private.account_kind() is null then
     raise exception 'CHARA_FORBIDDEN' using detail = 'account_kind_required';
   end if;
   if p_org is null then
@@ -481,8 +484,9 @@ grant execute on function public.list_followed_companies(text, integer) to authe
 
 -- The follower digest ----------------------------------------------------------------------------------------------------
 
--- The first publication of a vacancy (draft to open: published_at newly set by private.jobs_guard_transition) of a
--- company with at least one follower goes to the outbox; reopening a paused or closed vacancy does not (FR-L4 AC6).
+-- The first publication of a visible, undeleted vacancy (draft to open: published_at newly set by
+-- private.jobs_guard_transition) of a company with at least one follower goes to the outbox; reopening a paused or closed
+-- vacancy does not (FR-L4 AC6).
 create function private.jobs_follow_activity() returns trigger
 language plpgsql
 security definer
@@ -490,6 +494,7 @@ set search_path = ''
 as $$
 begin
   if private.release_on('release_partner_directories')
+     and new.moderation_state = 'visible' and new.deleted_at is null
      and exists (select 1 from public.follows f where f.organization_id = new.organization_id) then
     insert into private.follow_activity_outbox (organization_id, entity_type, entity_id, title)
     values (new.organization_id, 'vacancy', new.id, new.title)
@@ -508,7 +513,9 @@ create trigger jobs_follow_activity
 
 alter table public.jobs enable always trigger jobs_follow_activity;
 
--- Runs hourly. Each follower of a company that can still be followed, who is active, no member of it and has had no
+-- Runs hourly. Only entries at least five minutes old are taken (the bound), so a publication whose transaction began
+-- before the run but committed after it is not passed over: the follow is stamped with the bound, not the run time, and
+-- the UTC day of the bound is the day of the cap and of the dedupe key. Each follower of a company that can still be followed, who is active, no member of it and has had no
 -- digest of it today (UTC), gets one followed_company_activity message listing the company's vacancies published since
 -- their last digest (or since they followed) that are still open and visible; the follow is stamped, and the dedupe key
 -- (company and day) drops a second message of the same day. The email follows the follower's choice for the kind, the
@@ -520,7 +527,8 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_day date := (p_now at time zone 'utc')::date;
+  v_bound timestamptz := p_now - interval '5 minutes';
+  v_day date := (v_bound at time zone 'utc')::date;
   v_digest record;
   v_count integer := 0;
 begin
@@ -535,7 +543,7 @@ begin
             from private.follow_activity_outbox x
             join public.jobs j on j.id = x.entity_id
             where x.organization_id = f.organization_id and x.entity_type = 'vacancy'
-              and x.created_at > coalesce(f.last_digest_at, f.created_at) and x.created_at <= p_now
+              and x.created_at > coalesce(f.last_digest_at, f.created_at) and x.created_at <= v_bound
               and j.status = 'open' and j.deleted_at is null and j.moderation_state = 'visible') as job_ids
     from public.follows f
     join public.profiles p on p.id = f.user_id
@@ -544,7 +552,7 @@ begin
       and exists (
         select 1 from private.follow_activity_outbox x
         where x.organization_id = f.organization_id and x.created_at > coalesce(f.last_digest_at, f.created_at)
-          and x.created_at <= p_now
+          and x.created_at <= v_bound
       )
       and private.is_followable(f.organization_id)
       and not exists (
@@ -557,7 +565,7 @@ begin
     if v_digest.job_ids is null then
       continue;
     end if;
-    update public.follows set last_digest_at = p_now where user_id = v_digest.user_id and organization_id = v_digest.organization_id;
+    update public.follows set last_digest_at = v_bound where user_id = v_digest.user_id and organization_id = v_digest.organization_id;
     perform pgmq.send('notifications', jsonb_build_object(
       'kind', 'followed_company_activity', 'user_id', v_digest.user_id, 'organization_id', v_digest.organization_id,
       'job_ids', v_digest.job_ids, 'mandatory', false,
@@ -576,7 +584,7 @@ select cron.schedule('follower-digest', '20 * * * *', 'select private.queue_foll
 -- The payload ------------------------------------------------------------------------------------------------------------
 
 -- The function of 20261126100000 with followed_company_activity added: the company's display name and slug and the ten
--- oldest of the vacancies of the digest by id and title, with how many there are (FR-L4 AC6: ids, titles and names only).
+-- oldest of the vacancies of the digest by id and current title, with how many there are (FR-L4 AC6: ids, titles and names only).
 create or replace function private.notification_payload(p_kind text, p_message jsonb) returns jsonb
 language plpgsql
 stable
@@ -692,11 +700,11 @@ begin
       'organization_id', p_message -> 'organization_id', 'org_name', v_org_name, 'org_slug', v_slug,
       'total', jsonb_array_length(coalesce(p_message -> 'job_ids', '[]'::jsonb)),
       'vacancies', coalesce((
-        select jsonb_agg(jsonb_build_object('job_id', x.entity_id, 'job_title', x.title) order by x.position)
+        select jsonb_agg(jsonb_build_object('job_id', x.id, 'job_title', x.title) order by x.position)
         from (
-          select o.entity_id, o.title, e.position
+          select j.id, j.title, e.position
           from jsonb_array_elements_text(coalesce(p_message -> 'job_ids', '[]'::jsonb)) with ordinality e(id, position)
-          join private.follow_activity_outbox o on o.entity_type = 'vacancy' and o.entity_id = e.id::uuid
+          join public.jobs j on j.id = e.id::uuid
           order by e.position
           limit 10
         ) x

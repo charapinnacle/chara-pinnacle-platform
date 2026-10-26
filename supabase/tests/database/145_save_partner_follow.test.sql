@@ -1,5 +1,5 @@
 begin;
-select plan(125);
+select plan(151);
 
 \ir status_fixture.inc
 
@@ -266,7 +266,8 @@ select matches(pg_temp.follow_as(null, :'gamma'), '^42501\|permission denied for
 select is(pg_temp.follow_as(:'gadm', :'gamma'), 'P0001|CHARA_INVALID_INPUT|own_organization', 'a member cannot follow its own company');
 select is(pg_temp.follow_as(:'adm', :'beta'), 'P0001|CHARA_FORBIDDEN|employer_follows_employer',
   'an employer member does not follow another employer');
-select is(pg_temp.follow_as(:'wsus', :'gamma'), 'P0001|CHARA_FORBIDDEN|account_kind_required', 'a suspended account cannot follow');
+select is(pg_temp.follow_as(:'wsus', :'gamma'), 'P0001|CHARA_FORBIDDEN|account_suspended', 'a suspended account cannot follow');
+select is(pg_temp.save_as(:'wsus', :'gamma'), 'P0001|CHARA_FORBIDDEN|', 'a suspended account cannot save');
 select is(pg_temp.follow_as(:'dadm', :'beta') || pg_temp.follow_as(:'dadm', :'beta', ', p_following => true'), 'okok',
   'FR-K5 AC7: the partner admin follows the company page, and following it again');
 select is((select count(*) from public.follows where user_id = :'dadm' and organization_id = :'beta'), 1::bigint, 'changes nothing');
@@ -374,6 +375,114 @@ select is(pg_temp.result(), jsonb_build_array(jsonb_build_object('slug', (select
 select is((select count(*) from public.follows where user_id = :'w1' and organization_id = :'beta'), 1::bigint, 'while the follows row is kept');
 select is(private.queue_follower_digests(:'base'::timestamptz + interval '5 days'), 0, 'entries older than two days have left the outbox');
 select is((select count(*) from private.follow_activity_outbox), 0::bigint, 'and the outbox is empty');
+
+
+-- The filters of the digest ------------------------------------------------------------------------------------------------
+-- Omega Works (employer, page on) with owner oown; followers fa (active candidate), fs (suspended), fd (deletion
+-- pending) and fj (a company user who joins Omega after following it). base2 lies ten days after base.
+\set omega '00000000-0000-0000-0000-0000000f2501'
+\set oown '00000000-0000-0000-0000-0000000f2511'
+\set fa '00000000-0000-0000-0000-0000000f2521'
+\set fs '00000000-0000-0000-0000-0000000f2522'
+\set fd '00000000-0000-0000-0000-0000000f2523'
+\set fj '00000000-0000-0000-0000-0000000f2524'
+select pg_temp.new_user(:'oown');
+select pg_temp.new_user(:'fj');
+update public.profiles set account_kind = intended_account_kind where id in (:'oown', :'fj');
+select pg_temp.worker(:'fa');
+select pg_temp.worker(:'fs');
+select pg_temp.worker(:'fd');
+insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country, public_page_enabled)
+values (:'omega', 'employer', 'omega-works', 'Omega Works GmbH', 'Omega Works', 'DE', true);
+insert into public.organization_members (organization_id, user_id, role, accepted_at) values (:'omega', :'oown', 'owner', now());
+select (:'base'::timestamptz + interval '10 days') as base2 \gset
+select is(pg_temp.follow_as(:'fa', :'omega') || pg_temp.follow_as(:'fj', :'omega'), 'okok', 'fa and fj follow Omega');
+insert into public.follows (user_id, organization_id) values (:'fs', :'omega'), (:'fd', :'omega');
+update public.profiles set status = 'suspended' where id = :'fs';
+update public.profiles set status = 'deletion_pending' where id = :'fd';
+update public.follows set created_at = :'base2'::timestamptz - interval '1 day' where organization_id = :'omega';
+
+update private.settings set value = 'false' where key = 'release_partner_directories';
+select pg_temp.seed_job('{"title": "Release off welder"}', :'omega') as vr \gset
+select is(pg_temp.set_status(:'oown', :'vr', 'open'), 'ok', 'Omega publishes while the release is off');
+update private.settings set value = 'true' where key = 'release_partner_directories';
+select is((select count(*) from private.follow_activity_outbox where entity_id = :'vr'), 0::bigint,
+  'a publication while the release is off leaves the outbox empty');
+select pg_temp.seed_job('{"title": "Hidden welder", "moderation_state": "hidden"}', :'omega') as vh \gset
+select is(pg_temp.set_status(:'oown', :'vh', 'open'), 'ok', 'Omega publishes a vacancy that moderation hid');
+select is((select count(*) from private.follow_activity_outbox where entity_id = :'vh'), 0::bigint,
+  'a hidden vacancy does not enter the outbox');
+
+select pg_temp.seed_job('{"title": "Paused later"}', :'omega') as vp1 \gset
+select pg_temp.seed_job('{"title": "Hidden later"}', :'omega') as vp2 \gset
+select pg_temp.seed_job('{"title": "Deleted later"}', :'omega') as vp3 \gset
+select is(pg_temp.set_status(:'oown', :'vp1', 'open') || pg_temp.set_status(:'oown', :'vp2', 'open') || pg_temp.set_status(:'oown', :'vp3', 'open'),
+  'okokok', 'Omega publishes three vacancies');
+select is(pg_temp.set_status(:'oown', :'vp1', 'paused'), 'ok', 'then pauses the first');
+update public.jobs set moderation_state = 'hidden' where id = :'vp2';
+update public.jobs set deleted_at = now() where id = :'vp3';
+update private.follow_activity_outbox set created_at = :'base2'::timestamptz + interval '1 hour' where organization_id = :'omega';
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '2 hours'), 0,
+  'a paused, a hidden and a deleted vacancy are not listed');
+select is((select count(*) from public.follows where organization_id = :'omega' and last_digest_at is not null), 0::bigint,
+  'and no follow is stamped');
+
+insert into public.organization_members (organization_id, user_id, role, accepted_at) values (:'omega', :'fj', 'member', now());
+select pg_temp.seed_job('{"title": "Original welder"}', :'omega') as vok \gset
+select is(pg_temp.set_status(:'oown', :'vok', 'open'), 'ok', 'Omega publishes a visible vacancy');
+update private.follow_activity_outbox set created_at = :'base2'::timestamptz + interval '1 hour' where entity_id = :'vok';
+update public.jobs set title = 'Renamed welder' where id = :'vok';
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '2 hours'), 1,
+  'only the active follower who is no member gets a digest');
+select is(
+  (select string_agg(user_id::text, ',') from public.notifications where kind = 'followed_company_activity' and payload ->> 'org_slug' = 'omega-works'),
+  :'fa', 'the suspended, the deletion-pending follower and the follower who joined Omega get nothing'
+);
+select is(
+  (select payload -> 'vacancies' from public.notifications where kind = 'followed_company_activity' and user_id = :'fa'),
+  jsonb_build_array(jsonb_build_object('job_id', :'vok', 'job_title', 'Renamed welder')),
+  'the digest names the vacancy by its current title, and not the withdrawn ones'
+);
+select is((select last_digest_at from public.follows where user_id = :'fa' and organization_id = :'omega'),
+  :'base2'::timestamptz + interval '2 hours' - interval '5 minutes', 'the follow is stamped with the five-minute bound');
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '2 hours'), 0,
+  'a second run in the same transaction queues nothing');
+
+select pg_temp.seed_job('{"title": "Late welder"}', :'omega') as vlate \gset
+select is(pg_temp.set_status(:'oown', :'vlate', 'open'), 'ok', 'Omega publishes a vacancy just before the next day''s run');
+update private.follow_activity_outbox set created_at = :'base2'::timestamptz + interval '1 day 2 hours' - interval '2 minutes'
+where entity_id = :'vlate';
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '1 day 2 hours'), 0,
+  'an entry younger than five minutes waits for a later run');
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '1 day 2 hours 10 minutes'), 1,
+  'and the next run lists it');
+select is(
+  (select jsonb_path_query_array(payload, '$.vacancies[*].job_title') from public.notifications
+   where kind = 'followed_company_activity' and user_id = :'fa'
+     and dedupe_key = format('followed_company_activity:%s:%s', :'omega', ((:'base2'::timestamptz + interval '1 day') at time zone 'utc')::date)),
+  '["Late welder"]'::jsonb, 'with nothing but the late vacancy'
+);
+
+select pg_temp.seed_job('{"title": "Before suspension"}', :'omega') as vs1 \gset
+select is(pg_temp.set_status(:'oown', :'vs1', 'open'), 'ok', 'Omega publishes before it is suspended');
+update private.follow_activity_outbox set created_at = :'base2'::timestamptz + interval '3 days 1 hour' where entity_id = :'vs1';
+update public.organizations set status = 'suspended' where id = :'omega';
+select pg_temp.seed_job('{"title": "During suspension"}', :'omega') as vs2 \gset
+select pg_temp.set_status(:'oown', :'vs2', 'open') as during \gset
+select is((select count(*) from private.follow_activity_outbox where entity_id = :'vs2'), 0::bigint,
+  'AC8: a vacancy cannot be published into the outbox while the company is suspended');
+select is(pg_temp.save_as(:'oown', :'gamma'), 'P0001|CHARA_FORBIDDEN|', 'a member of a suspended employer cannot save');
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '3 days 2 hours'), 0,
+  'AC8: nothing is delivered while the company is suspended');
+update public.organizations set status = 'active' where id = :'omega';
+select is(private.queue_follower_digests(:'base2'::timestamptz + interval '3 days 3 hours'), 1,
+  'AC8: after reinstatement the vacancy published before the suspension is delivered');
+select is(
+  (select payload -> 'vacancies' -> 0 ->> 'job_title' from public.notifications
+   where kind = 'followed_company_activity' and user_id = :'fa'
+     and dedupe_key = format('followed_company_activity:%s:%s', :'omega', ((:'base2'::timestamptz + interval '3 days 3 hours') at time zone 'utc')::date)),
+  'Before suspension', 'and only that one'
+);
 
 update public.profiles set deleted_at = now() - interval '31 days' where id = :'w1';
 select is(pg_temp.call_as(null, 'service_role', format('select public.erase_user(%L)', :'w1')), 'ok', 'W1 is erased');
