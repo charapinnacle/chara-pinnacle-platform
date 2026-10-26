@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { handleBillingPlanPrice } from "../billing-plan-price/handler.ts";
 import { type BillingProvider, BillingProviderError, type PriceInput } from "../_shared/billing/provider.ts";
+import { createClient } from "@supabase/supabase-js";
 import { harness, reply, type Route } from "./harness.ts";
 
 const READ = "POST /rest/v1/rpc/admin_get_plan_price";
@@ -56,19 +57,25 @@ function run(
 ) {
   const db = harness(routes);
   const seen: string[] = [];
+  const requestIds: (string | undefined)[] = [];
   const request = new Request("http://stack.test/functions/v1/billing-plan-price", {
     method,
     headers,
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
   const response = handleBillingPlanPrice(request, {
-    userClient: (authorization) => {
+    // As index.ts builds it: the request id travels as a header on every call of the caller's client.
+    userClient: (authorization, requestId) => {
       seen.push(authorization);
-      return db.client;
+      requestIds.push(requestId);
+      return createClient("http://stack.test", "anon-key", {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: db.fetch, headers: requestId ? { "x-request-id": requestId } : {} },
+      });
     },
     provider: spy.provider,
   });
-  return { db, spy, seen, response };
+  return { db, spy, seen, requestIds, response };
 }
 
 const paths = (calls: { path: string }[]) => calls.map((call) => call.path);
@@ -238,4 +245,30 @@ Deno.test("only POST is accepted", async () => {
   const { db, response } = run(body, { [READ]: read }, ADMIN, providerSpy(), "GET");
   assert.equal((await response).status, 405);
   assert.equal(db.calls.length, 0);
+});
+
+Deno.test("the web request's id reaches the read and the record of the price, so the audit row names the request", async () => {
+  const id = "0B9F4C1E-6A8D-4B7E-9C2F-1D3E5A7B9C0D";
+  const { db, requestIds, response } = run(body, { [READ]: read, [RECORD]: recorded }, {
+    ...ADMIN,
+    "x-request-id": id,
+  });
+  assert.equal((await response).status, 200);
+  assert.deepEqual(requestIds, [id.toLowerCase()]);
+  assert.deepEqual(db.calls.map((call) => [call.path, call.headers["x-request-id"]]), [
+    ["/rest/v1/rpc/admin_get_plan_price", id.toLowerCase()],
+    ["/rest/v1/rpc/admin_record_plan_price", id.toLowerCase()],
+  ]);
+});
+
+Deno.test("a request id that is not a UUID is not forwarded", async () => {
+  for (const id of ["not-a-uuid", "0b9f4c1e-6a8d-4b7e-9c2f-1d3e5a7b9c0d,0b9f4c1e-6a8d-4b7e-9c2f-1d3e5a7b9c0e", ""]) {
+    const { db, requestIds, response } = run(body, { [READ]: read, [RECORD]: recorded }, {
+      ...ADMIN,
+      "x-request-id": id,
+    });
+    assert.equal((await response).status, 200);
+    assert.deepEqual(requestIds, [undefined]);
+    assert.equal(db.calls.some((call) => "x-request-id" in call.headers), false);
+  }
 });

@@ -3,7 +3,8 @@ import { billingProviderFromEnv } from "../_shared/billing/env.ts";
 import { handleBillingPlanPrice } from "./handler.ts";
 
 const deps = {
-  userClient: (authorization: string) => userClient(Deno.env, authorization),
+  userClient: (authorization: string, requestId?: string) =>
+    userClient(Deno.env, authorization, requestId ? { "x-request-id": requestId } : {}),
   provider: billingProviderFromEnv(Deno.env),
 };
 

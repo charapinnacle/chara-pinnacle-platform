@@ -10,7 +10,12 @@ export function serviceClient(env: { get(name: string): string | undefined }): S
 }
 
 // A client that acts as the caller: the database sees their token, so every policy and every auth.uid() check applies.
-export function userClient(env: { get(name: string): string | undefined }, authorization: string): SupabaseClient {
+// extraHeaders reach the database as request.headers (x-request-id names the request in the audit rows).
+export function userClient(
+  env: { get(name: string): string | undefined },
+  authorization: string,
+  extraHeaders: Record<string, string> = {},
+): SupabaseClient {
   const url = env.get("SUPABASE_URL");
   const key = env.get("SUPABASE_ANON_KEY");
   if (!url || !key) {
@@ -18,6 +23,6 @@ export function userClient(env: { get(name: string): string | undefined }, autho
   }
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: authorization } },
+    global: { headers: { ...extraHeaders, Authorization: authorization } },
   });
 }

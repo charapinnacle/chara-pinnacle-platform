@@ -13,13 +13,15 @@ const MAX_PRICE = 10_000_000;
 const MIN_REASON = 10;
 const MAX_REASON = 500;
 const REASON_TRIM = /^[ \t\r\n]+|[ \t\r\n]+$/g;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // The refusals of the database that the console explains; anything else is "forbidden" or "bad request" without one.
 const REASONS = new Set(["aal2_required", "plan_not_synced"]);
 const FIELDS = new Set(["plan_code", "price_minor", "price_unchanged", "free_plan", "reason", "price_ref"]);
 
 interface BillingPlanPriceDeps {
-  userClient: (authorization: string) => SupabaseClient;
+  // requestId is the web request's x-request-id, forwarded to the database so the audit row names the request.
+  userClient: (authorization: string, requestId?: string) => SupabaseClient;
   provider: Pick<BillingProvider, "name" | "createPrice">;
 }
 
@@ -98,7 +100,8 @@ export async function handleBillingPlanPrice(req: Request, deps: BillingPlanPric
     return json(400, { error: "bad_request", field: request.field });
   }
 
-  const client = deps.userClient(authorization);
+  const requestId = req.headers.get("x-request-id") ?? "";
+  const client = deps.userClient(authorization, UUID.test(requestId) ? requestId.toLowerCase() : undefined);
   const { data, error } = await client.rpc("admin_get_plan_price", { p_code: request.planCode });
   if (error) {
     return refusal(error);

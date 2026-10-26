@@ -1,5 +1,6 @@
 import "server-only";
 import type { Json } from "@chara-pinnacle/db-types";
+import { headers } from "next/headers";
 import * as z from "zod";
 import { adminClient, failure } from "@/lib/dal/admin";
 import { callBillingFunction, type FunctionRefusal } from "@/lib/dal/billing";
@@ -142,9 +143,15 @@ export async function listEditableSettings(): Promise<SettingRule[]> {
 export type PriceChangeAnswer = { done: true } | { refusal: FunctionRefusal };
 
 // A price change (FR-R2 AC8) runs in the billing-plan-price function: it creates the new price at the provider and records
-// it, both with the administrator's own token.
+// it, both with the administrator's own token. The request id goes along so the audit row names the request.
 export async function requestPlanPrice(body: { plan_code: string; price_minor: number; reason: string }): Promise<PriceChangeAnswer> {
   const endpoint = serverEnv().BILLING_PLAN_PRICE_ENDPOINT ?? `${env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/billing-plan-price`;
-  const result = await callBillingFunction(endpoint, body, z.object({ price_minor: z.literal(body.price_minor) }));
+  const requestId = (await headers()).get("x-request-id");
+  const result = await callBillingFunction(
+    endpoint,
+    body,
+    z.object({ price_minor: z.literal(body.price_minor) }),
+    requestId ? { "x-request-id": requestId } : {},
+  );
   return "data" in result ? { done: true } : result;
 }
