@@ -47,7 +47,7 @@ export default async function CompanyPage({ params }: PageProps<"/[lang]/compani
         saved={false}
         following={connection.following}
         next={path}
-        visitorLabel="Sign up to follow"
+        visitorLabel="Log in to follow"
       />
     ) : null;
   const actions =

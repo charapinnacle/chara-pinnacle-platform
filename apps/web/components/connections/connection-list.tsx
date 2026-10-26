@@ -11,7 +11,6 @@ import { setFollowing, setSavedPartner } from "@/lib/actions/connections";
 import type { ConnectionItem } from "@/lib/connections/list";
 import { formatDate } from "@/lib/i18n/format";
 
-
 type Mode = { kind: "saved"; organizationId: string } | { kind: "following" };
 
 type ConnectionListProps = {
@@ -37,12 +36,12 @@ function ConnectionRow({ mode, item, headingId, onRemove }: { mode: Mode; item: 
     run(async () => {
       const result =
         mode.kind === "saved" ? await setSavedPartner(item.id, mode.organizationId, false) : await setFollowing(item.id, false);
-      if (!result.message) {
-        // The row about to leave would take the focus with it.
-        document.getElementById(headingId)?.focus();
-        onRemove(item);
-      }
-      return result;
+      if (result.message) return result;
+      // The row about to leave would take the focus with it.
+      document.getElementById(headingId)?.focus();
+      onRemove(item);
+      // The polite status of the list says it once; a toast would say it a second time.
+      return { silent: true };
     }, `${item.name} ${text.removed}`);
   }
 

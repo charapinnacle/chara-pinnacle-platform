@@ -136,7 +136,7 @@ test.describe("Save partner and follow company (FR-L4)", () => {
     test.setTimeout(150_000);
     const acme = await employerWithPage();
     await page.goto(companyUrl(acme.slug));
-    await expect(page.getByRole("link", { name: `Sign up to follow ${acme.displayName}` })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: `Log in to follow ${acme.displayName}` })).toHaveAttribute(
       "href",
       `/en/login?next=${encodeURIComponent(companyUrl(acme.slug))}`,
     );

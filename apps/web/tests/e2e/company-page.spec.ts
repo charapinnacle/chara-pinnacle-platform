@@ -212,7 +212,7 @@ test.describe("Public company page (FR-K5)", () => {
       `/en/report?type=content&path=${encodeURIComponent(companyUrl(company.slug))}`,
     );
     await expect(page.getByRole("link", { name: "Edit page" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: `Sign up to follow ${company.displayName}` }), "FR-L4 AC9").toHaveAttribute(
+    await expect(page.getByRole("link", { name: `Log in to follow ${company.displayName}` }), "FR-L4 AC9").toHaveAttribute(
       "href",
       `/en/login?next=${encodeURIComponent(companyUrl(company.slug))}`,
     );

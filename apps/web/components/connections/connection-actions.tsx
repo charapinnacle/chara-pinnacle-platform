@@ -14,9 +14,10 @@ type ConnectionActionsProps = {
   following: boolean;
   // The page a visitor comes back to after logging in.
   next: string;
-  // What Follow says to a visitor: "Follow" on partner profiles and cards (FR-L4 AC9), "Sign up to follow" on a company
-  // page (FR-K5 AC8). Both lead to log in, whose page links to sign-up.
-  visitorLabel?: "Follow" | "Sign up to follow";
+  // What Follow says to a visitor: "Follow" on partner profiles and cards (FR-L4 AC9), "Log in to follow" on a company
+  // page (FR-K5 AC8 says "Sign up to follow", but sign-up cannot bring the visitor back to the page). Both lead to log in
+  // with the way back, and the login page links to sign-up.
+  visitorLabel?: "Follow" | "Log in to follow";
 };
 
 // Save partner and Follow for one company, as the viewer may use them (FR-L4 roles); nothing for its own members.

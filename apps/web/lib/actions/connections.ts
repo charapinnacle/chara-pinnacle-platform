@@ -49,6 +49,8 @@ export async function setFollowing(organizationId: string, following: boolean): 
   if (error.message === "CHARA_NOT_FOUND") return { message: "This company can no longer be followed." };
   if (error.details === "own_organization") return { message: "You cannot follow your own company." };
   if (error.details === "employer_follows_employer") return { message: "Employers cannot follow other employers." };
+  if (error.details === "account_suspended") return { message: "Your account is suspended, so you cannot follow companies." };
+  if (error.details === "account_kind_required") return { message: "Finish setting up your account to follow companies." };
   if (error.message === "CHARA_FORBIDDEN" && error.details === "release_off") return { message: RELEASE_OFF };
   return { message: faultMessage(logFault("Follow change", error)) };
 }

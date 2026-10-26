@@ -20,7 +20,9 @@ export const metadata: Metadata = { title: "Saved partners", robots: { index: fa
 export default async function SavedPartnersPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/saved-partners">) {
   const [{ lang, slug }, { cursor: rawCursor }] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true });
+  // A partner organisation saves no partners: its members get the same answer as an outsider.
+  const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true, partner: "either" });
+  if (organization.type !== "employer") notFound();
   if (organization.suspended) return <SuspendedOrganization title="Saved partners" subject="saved partners" />;
 
   const cursor = parseListCursor(rawCursor);

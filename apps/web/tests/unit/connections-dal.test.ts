@@ -115,6 +115,11 @@ describe("setSavedPartner and setFollowing (FR-L4 AC1, AC4, AC9)", () => {
     await expect(setFollowing(PARTNER, true)).resolves.toEqual({ message: "This company can no longer be followed." });
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: "employer_follows_employer" } });
     await expect(setFollowing(PARTNER, true)).resolves.toEqual({ message: "Employers cannot follow other employers." });
+    rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: "account_suspended" } });
+    await expect(setFollowing(PARTNER, true)).resolves.toEqual({ message: "Your account is suspended, so you cannot follow companies." });
+    rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: "account_kind_required" } });
+    await expect(setFollowing(PARTNER, true)).resolves.toEqual({ message: "Finish setting up your account to follow companies." });
+    expect(logFaultMock).not.toHaveBeenCalled();
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: null } });
     await expect(setSavedPartner(PARTNER, ORG, true)).resolves.toEqual({ message: "Only members of an employer can save partners." });
     rpcMock.mockResolvedValue({ data: null, error: { code: "XX000", message: "boom" } });

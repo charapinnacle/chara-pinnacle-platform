@@ -54,14 +54,14 @@ describe("who may save and follow a company (FR-L4)", () => {
 describe("Save partner and Follow buttons (FR-L4 AC9; FR-K5 AC8)", () => {
   const base = { lang: "en", organizationId: "p-1", name: "Gamma Staffing", saved: false, following: false, next: "/en/partners/gamma" };
 
-  it("send a visitor to log in and back to the page, as Follow or Sign up to follow", () => {
+  it("send a visitor to log in and back to the page, as Follow or Log in to follow", () => {
     const html = renderToStaticMarkup(<ConnectionActions {...base} organizationId={null} access={{ kind: "visitor" }} />);
     expect(html).toContain('href="/en/login?next=%2Fen%2Fpartners%2Fgamma"');
     expect(html).toContain("Follow<span class=\"sr-only\"> Gamma Staffing</span>");
     const page = renderToStaticMarkup(
-      <ConnectionActions {...base} organizationId={null} access={{ kind: "visitor" }} visitorLabel="Sign up to follow" />,
+      <ConnectionActions {...base} organizationId={null} access={{ kind: "visitor" }} visitorLabel="Log in to follow" />,
     );
-    expect(page).toContain("Sign up to follow");
+    expect(page).toContain("Log in to follow");
   });
 
   it("are toggles with aria-pressed and the company's name, in their current state", () => {

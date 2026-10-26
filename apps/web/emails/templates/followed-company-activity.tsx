@@ -1,3 +1,4 @@
+import { Link } from "@react-email/components";
 import { Action, Layout, Paragraph } from "../layout.tsx";
 import { field, url, type Payload } from "../payload.ts";
 import type { Template } from "../template.ts";
@@ -41,7 +42,7 @@ export const followedCompanyActivity: Template = {
         {slug ? <Action href={url(siteUrl, `/companies/${slug}`)}>See the vacancies</Action> : null}
         <Paragraph>
           You get this email because you follow {org ?? "this company"}, at most once a day. You can unfollow the company on its
-          page or turn these emails off in your notification settings.
+          page or turn these emails off in your <Link href={url(siteUrl, "/settings/notifications")}>notification settings</Link>.
         </Paragraph>
       </Layout>
     );

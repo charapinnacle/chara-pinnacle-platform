@@ -18,10 +18,10 @@ function hrefs(html: string): string[] {
 }
 
 describe("followed_company_activity email", () => {
-  it("names the company and how many vacancies it published, with one link to its page", async () => {
+  it("names the company and how many vacancies it published, links to its page and to the notification settings", async () => {
     const email = await renderEmail("followed_company_activity", payload, SITE);
     expect(email.subject).toBe("Acme Bau published 12 new vacancies");
-    expect(hrefs(email.html)).toEqual([`${SITE}/en/companies/acme-bau`]);
+    expect(hrefs(email.html)).toEqual([`${SITE}/en/companies/acme-bau`, `${SITE}/en/settings/notifications`]);
     for (const title of titles.slice(0, 10)) expect(email.text).toContain(title);
     expect(email.text).not.toContain("Welder 11");
     expect(email.text).toContain("And 2 new vacancies more.");
