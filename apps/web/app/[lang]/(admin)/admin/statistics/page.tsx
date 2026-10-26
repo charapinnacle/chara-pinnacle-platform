@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { controlClassName } from "@/components/forms/control-class";
 import { PageHeader } from "@/components/layout/page-header";
+import { PartnerSearchCounts } from "@/components/admin/partner-search-counts";
 import { StageCounts } from "@/components/admin/stage-counts";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
 import { FormButton } from "@/components/forms/form-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isReleased } from "@/lib/dal/release";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { cn } from "@/lib/utils";
 import { lastThirtyDays, rangeSchema } from "@/lib/validation/admin";
@@ -25,11 +27,14 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
   const from = value(query.from, initial.from);
   const to = value(query.to, initial.to);
   const range = rangeSchema.safeParse({ from, to });
+  const partnerSearches = await isReleased("release_partner_directories");
 
   return (
     <div className="grid max-w-3xl gap-page">
       <PageHeader title="Statistics">
-        <p className="text-body text-muted-foreground">Applications by stage, counted only. The days are in UTC, both included, at most 366.</p>
+        <p className="text-body text-muted-foreground">
+          Applications by stage{partnerSearches ? " and partner searches" : ""}, counted only. The days are in UTC, both included, at most 366.
+        </p>
       </PageHeader>
       <form method="get" className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div className="grid gap-2">
@@ -53,6 +58,16 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
           {range.error.issues[0].message}
         </Notice>
       )}
+      {range.success && partnerSearches ? (
+        <section aria-labelledby="partner-searches-heading" className="grid gap-4">
+          <h2 id="partner-searches-heading" className="text-h2">
+            Partner searches
+          </h2>
+          <Suspense key={`partners/${from}/${to}`} fallback={<LoadingSkeleton rows={3} />}>
+            <PartnerSearchCounts from={range.data.from} to={range.data.to} />
+          </Suspense>
+        </section>
+      ) : null}
     </div>
   );
 }

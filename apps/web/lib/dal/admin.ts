@@ -263,6 +263,29 @@ export async function applicationCounts(from: string, to: string): Promise<Stage
   return data;
 }
 
+const zeroByDestinationSchema = z.array(z.object({ code: z.string(), name: z.string(), searches: z.number() }));
+
+export type PartnerSearchCounts = {
+  searches: number;
+  withResults: number;
+  zeroResults: number;
+  zeroByDestination: z.infer<typeof zeroByDestinationSchema>;
+};
+
+// The Find Recruitment Partners searches of the days (FR-L1 KPIs); answered only while release 2a is on.
+export async function partnerSearchCounts(from: string, to: string): Promise<PartnerSearchCounts> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: "recruitment", p_from: from, p_to: to });
+  if (error) throw failure("The partner search statistics", error);
+  const [row] = data;
+  return {
+    searches: row.searches,
+    withResults: row.with_results,
+    zeroResults: row.zero_results,
+    zeroByDestination: zeroByDestinationSchema.parse(row.zero_by_destination),
+  };
+}
+
 export async function listModerationActions(after: number | null): Promise<Page<ModerationRow, number>> {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_list_moderation_actions", {
