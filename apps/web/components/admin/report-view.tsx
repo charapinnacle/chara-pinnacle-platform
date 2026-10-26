@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
-import { ReportDecision } from "@/components/admin/report-decision";
+import { ReportPartnerDetails } from "@/components/admin/partner-moderation-details";
+import { ReportDecision, type DecisionTarget } from "@/components/admin/report-decision";
 import { AccountStatusBadge } from "@/components/admin/account-status-badge";
+import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
@@ -15,9 +18,12 @@ import { statusLabels } from "@/lib/jobs/presentation";
 import { adminPath, partnerProfilePath } from "@/lib/routes";
 import { isPrivatePath } from "@/lib/seo/private-routes";
 import {
+  closesWithNote,
   FEE_DEMAND_LABEL,
   isFeeDemand,
   reportCategoryLabels,
+  reportDecisionLabels,
+  reportDecisionsFor,
   reportStatusLabels,
   reportStatusTones,
   reportTargetLabels,
@@ -79,6 +85,9 @@ function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; 
                 { label: "Organisation status", value: <AccountStatusBadge status={organization.status} /> },
               ]
             : []),
+          ...(organization?.moderationState
+            ? [{ label: "Partner profile", value: <JobModerationBadge state={organization.moderationState} /> }]
+            : []),
         ]}
       />
       <div className="flex flex-wrap gap-x-6">
@@ -98,8 +107,22 @@ function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; 
           </TextLink>
         ) : null}
       </div>
+      {organization?.moderationState ? (
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <ReportPartnerDetails lang={lang} organizationId={organization.id} />
+        </Suspense>
+      ) : null}
     </div>
   );
+}
+
+// What the decision dialog names: the kind and title of the target and the organisation it belongs to.
+function decisionTarget(report: ReportDetail): DecisionTarget {
+  const kind = reportTargetLabels[report.targetType];
+  const organization = report.organization?.name ?? null;
+  if (report.targetType === "job") return { kind, title: report.job?.title ?? "Not available", organization };
+  if (report.targetType === "content") return { kind, title: report.contentPath ?? "Not available", organization: null };
+  return { kind, title: report.targetType === "profile" ? "The candidate is not shown to staff" : (organization ?? "Not available"), organization };
 }
 
 export async function ReportView({ lang, id, canAct }: { lang: string; id: number; canAct: boolean }) {
@@ -147,6 +170,7 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
                       </>
                     ),
                   },
+                  { label: "Decision due", value: <time dateTime={report.decisionDueAt}>{formatDateTime(report.decisionDueAt)}</time> },
                 ]
               : []),
             {
@@ -168,11 +192,23 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
       <Section
         id="decision"
         title="Decision"
-        description={report.resolutionNote ? undefined : "Hiding a vacancy and suspending an organisation are done with their own controls, linked above. Close the report afterwards."}
+        description={
+          report.resolutionNote
+            ? undefined
+            : "Hide the item, suspend its organisation or dismiss the report, with a statement of reasons. The report is closed with the decision."
+        }
       >
         {report.status === "new" || report.status === "in_review" ? (
           canAct ? (
-            <ReportDecision id={report.id} status={report.status} reference={report.reference} signedIn={report.reporterKind === "account"} />
+            <ReportDecision
+              id={report.id}
+              status={report.status}
+              reference={report.reference}
+              signedIn={report.reporterKind === "account"}
+              target={decisionTarget(report)}
+              decisions={reportDecisionsFor(report)}
+              closeWithNote={closesWithNote(report.targetType)}
+            />
           ) : (
             <Notice tone="info" role="status">
               Read only. Trust &amp; Safety decides on reports.
@@ -182,8 +218,9 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
           <DetailList
             items={[
               { label: "Outcome", value: reportStatusLabels[report.status] },
+              ...(report.decision ? [{ label: "Decision", value: reportDecisionLabels[report.decision] ?? report.decision }] : []),
               { label: "Closed", value: report.handledAt ? formatDateTime(report.handledAt) : "" },
-              { label: "Note to the reporter", value: <p className="whitespace-pre-line">{report.resolutionNote}</p> },
+              { label: "Statement of reasons", value: <p className="whitespace-pre-line">{report.resolutionNote}</p> },
             ]}
           />
         )}

@@ -55,6 +55,14 @@ describe("the report queue (FR-S1 AC3, AC10)", () => {
     expect(html).not.toContain("Overdue");
   });
 
+  it("FR-S1 AC11: says No open reports for an empty queue, and that nothing matches for an empty filtered list", async () => {
+    listMock.mockResolvedValue({ rows: [], next: null });
+    expect(renderToStaticMarkup(await ReportQueue({ lang: "en", filter: { status: "open" }, after: null }))).toContain("No open reports");
+    const filtered = renderToStaticMarkup(await ReportQueue({ lang: "en", filter: { status: "open", type: "job" }, after: null }));
+    expect(filtered).toContain("No reports here");
+    expect(filtered).not.toContain("No open reports");
+  });
+
   it("links the next page with the whole cursor of the last row", async () => {
     const html = await render({ priority: 2, dueAt: "2026-10-07T08:00:00+00:00", id: 3 });
     expect(html).toContain(`href="/en/admin/reports?status=open&amp;after=${encodeURIComponent("2_2026-10-07T08:00:00+00:00_3")}"`);

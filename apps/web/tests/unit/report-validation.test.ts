@@ -15,6 +15,10 @@ import {
   reportCategoryOptions,
   reportCategorySchema,
   isFeeDemand,
+  closesWithNote,
+  reportDecisionInputSchema,
+  reportDecisionsFor,
+  reportReference,
 } from "@/lib/validation/report";
 import { reportPath } from "@/lib/routes";
 
@@ -179,5 +183,37 @@ describe("the reference of a report", () => {
     expect(reportReferenceSchema.safeParse({ reference: "R-000042", is_duplicate: false }).success).toBe(true);
     expect(reportReferenceSchema.safeParse({ reference: "R-1234567", is_duplicate: true }).success).toBe(true);
     expect(reportReferenceSchema.safeParse({ reference: "R-42", is_duplicate: false }).success).toBe(false);
+  });
+});
+
+describe("the decisions on a report (FR-S1 AC4, AC10)", () => {
+  const org = (status: "active" | "suspended", moderationState: "visible" | "hidden" | "org_suspended" | null) => ({ status, moderationState });
+
+  it("offers a hide only for a visible vacancy or partner profile, a suspension only of an active organisation, and always a dismissal", () => {
+    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("active", "visible") })).toEqual(["hide", "suspend_organization", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("active", "hidden") })).toEqual(["suspend_organization", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("suspended", "org_suspended") })).toEqual(["dismiss"]);
+    expect(reportDecisionsFor({ targetType: "job", job: { moderationState: "visible" }, organization: org("active", null) })).toEqual(["hide", "suspend_organization", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "job", job: { moderationState: "hidden" }, organization: org("active", null) })).toEqual(["suspend_organization", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "company", job: { moderationState: "visible" }, organization: org("active", null) })).toEqual(["suspend_organization", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "profile", job: { moderationState: "visible" }, organization: org("active", null) })).toEqual(["dismiss"]);
+    expect(reportDecisionsFor({ targetType: "content", job: null, organization: null })).toEqual(["dismiss"]);
+  });
+
+  it("closes only reports about a candidate or a page with a note", () => {
+    expect(["job", "company", "profile", "content", "partner_profile"].filter((type) => closesWithNote(type as "job"))).toEqual(["profile", "content"]);
+  });
+
+  it("takes a statement of reasons of 10 to 2,000 characters after trimming", () => {
+    expect(reportDecisionInputSchema.safeParse({ id: 1, decision: "hide", reason: `  ${"x".repeat(10)}  ` }).success).toBe(true);
+    expect(reportDecisionInputSchema.safeParse({ id: 1, decision: "hide", reason: "x".repeat(2000) }).success).toBe(true);
+    expect(fieldErrors(reportDecisionInputSchema.safeParse({ id: 1, decision: "hide", reason: " ".repeat(12) }).error!)).toHaveProperty("reason");
+    expect(reportDecisionInputSchema.safeParse({ id: 1, decision: "hide", reason: "x".repeat(2001) }).success).toBe(false);
+    expect(reportDecisionInputSchema.safeParse({ id: 1, decision: "unhide", reason: "x".repeat(20) }).success).toBe(false);
+  });
+
+  it("writes the reference as the database does", () => {
+    expect(reportReference(123)).toBe("R-000123");
+    expect(reportReference(1234567)).toBe("R-1234567");
   });
 });

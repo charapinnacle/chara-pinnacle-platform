@@ -185,3 +185,53 @@ export function reportQueueCursorParam(cursor: ReportQueueCursor): string {
 export function isFeeDemand(category: string): boolean {
   return category === FEE_DEMAND;
 }
+
+// The decisions of FR-S1 on an open report (moderation_decide): hide the item, suspend its organisation, or dismiss. The
+// reasons are the statement of reasons sent to the affected party and the note a signed-in reporter reads.
+export const reportDecisionValues = ["hide", "suspend_organization", "dismiss"] as const;
+
+export type ReportDecisionValue = (typeof reportDecisionValues)[number];
+
+export const reportDecisionInputSchema = moderationFormSchema.extend({ id: reportIdSchema, decision: z.enum(reportDecisionValues) });
+
+export type ReportDecisionInput = z.input<typeof reportDecisionInputSchema>;
+
+type DecisionTarget = {
+  targetType: Enums["report_target_type"];
+  job: { moderationState: Enums["job_moderation_state"] } | null;
+  organization: { status: Enums["organization_status"]; moderationState: Enums["job_moderation_state"] | null } | null;
+};
+
+// What the console offers for the target of a report, as the database allows it: a visible vacancy or partner profile can
+// be hidden, the active organisation of a vacancy, a company or a partner can be suspended, and every report can be
+// dismissed. A report about a candidate or a page has nothing on the platform to act on; it is closed with a note instead.
+export function reportDecisionsFor({ targetType, job, organization }: DecisionTarget): ReportDecisionValue[] {
+  const decisions: ReportDecisionValue[] = [];
+  if (
+    (targetType === "job" && job?.moderationState === "visible") ||
+    (targetType === "partner_profile" && organization?.moderationState === "visible")
+  ) {
+    decisions.push("hide");
+  }
+  if ((targetType === "job" || targetType === "company" || targetType === "partner_profile") && organization?.status === "active") {
+    decisions.push("suspend_organization");
+  }
+  decisions.push("dismiss");
+  return decisions;
+}
+
+export function closesWithNote(targetType: Enums["report_target_type"]): boolean {
+  return targetType === "profile" || targetType === "content";
+}
+
+// The decision recorded on a closed report, by its moderation action.
+export const reportDecisionLabels: Record<string, string> = {
+  job_hidden: "Vacancy hidden",
+  content_hidden: "Partner profile hidden",
+  organization_suspended: "Organisation suspended",
+};
+
+// The reference of a report as the database writes it (private.report_reference): R- and the id, six digits at least.
+export function reportReference(id: number): string {
+  return `R-${String(id).padStart(6, "0")}`;
+}

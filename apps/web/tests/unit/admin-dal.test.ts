@@ -446,7 +446,8 @@ describe("the reports of Trust & Safety", () => {
           reporter_kind: "visitor", reporter_email: "v@example.test", content_path: null, job_id: ID, job_title: "Welder", job_status: "open",
           job_moderation_state: "visible", organization_id: OTHER, organization_name: "Acme Bau", organization_status: "active",
           organization_slug: "acme-bau", resolution_note: null, handled_at: "2026-10-02T10:00:00+00:00", created_at: "2026-10-01T10:00:00+00:00",
-          priority: 2, due_at: "2026-10-05T10:00:00+00:00", overdue: false,
+          priority: 2, due_at: "2026-10-05T10:00:00+00:00", overdue: false, organization_type: "employer",
+          organization_moderation_state: null, decision_due_at: "2026-10-08T10:00:00+00:00", decision: null,
         },
       ],
       error: null,
@@ -462,14 +463,46 @@ describe("the reports of Trust & Safety", () => {
       reporterEmail: "v@example.test",
       contentPath: null,
       job: { id: ID, title: "Welder", status: "open", moderationState: "visible" },
-      organization: { id: OTHER, name: "Acme Bau", slug: "acme-bau", status: "active" },
+      organization: { id: OTHER, name: "Acme Bau", slug: "acme-bau", status: "active", type: "employer", moderationState: null },
       resolutionNote: null,
       handledAt: "2026-10-02T10:00:00+00:00",
       createdAt: "2026-10-01T10:00:00+00:00",
       dueAt: "2026-10-05T10:00:00+00:00",
       overdue: false,
+      decisionDueAt: "2026-10-08T10:00:00+00:00",
+      decision: null,
     });
     expect(rpcMock).toHaveBeenCalledWith("admin_get_report", { p_id: 7 });
+  });
+
+  it("reads every listing of a partner for staff, stale ones flagged, and the decisions with their report (DATA_MODEL 11.13)", async () => {
+    const { getPartnerModeration } = await reports();
+    rpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          organization_id: OTHER, organization_type: "staffing_company", status: "suspended", moderation_state: "org_suspended", listed: true,
+          listings: [
+            { id: ID, occupation: "Welders", source_country: "Philippines", available: 120, monthly_capacity: 40, available_from: "2026-11-01", confirmed_at: "2026-05-01T10:00:00+00:00", stale: true },
+          ],
+          history: [{ id: 3, action: "organization_suspended", reasons: "Fee demanded from workers.", at: "2026-10-02T10:00:00+00:00", report_id: 7 }],
+        },
+      ],
+      error: null,
+    });
+    expect(await getPartnerModeration(OTHER)).toEqual({
+      status: "suspended",
+      moderationState: "org_suspended",
+      listed: true,
+      listings: [
+        { id: ID, occupation: "Welders", sourceCountry: "Philippines", available: 120, monthlyCapacity: 40, availableFrom: "2026-11-01", confirmedAt: "2026-05-01T10:00:00+00:00", stale: true },
+      ],
+      history: [{ id: 3, action: "organization_suspended", reasons: "Fee demanded from workers.", at: "2026-10-02T10:00:00+00:00", reportId: 7 }],
+    });
+    expect(rpcMock).toHaveBeenCalledWith("admin_get_partner_moderation", { p_org: OTHER });
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "CHARA_NOT_FOUND" } });
+    expect(await getPartnerModeration(OTHER)).toBeNull();
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    await expect(getPartnerModeration(OTHER)).rejects.toThrow("The partner could not be loaded");
   });
 
   it("gives null for a report that does not exist and throws for any other failure", async () => {

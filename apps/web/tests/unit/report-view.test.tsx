@@ -5,7 +5,8 @@ import type { ReportDetail } from "@/lib/dal/admin-reports";
 const getMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/dal/admin-reports", () => ({ getReport: getMock }));
+vi.mock("@/lib/dal/admin-reports", () => ({ getReport: getMock, getPartnerModeration: vi.fn(async () => null) }));
+vi.mock("next/navigation", () => ({ notFound: vi.fn(), useRouter: () => ({ refresh: vi.fn() }) }));
 
 const { ReportView } = await import("@/components/admin/report-view");
 
@@ -26,6 +27,8 @@ const content = (contentPath: string): ReportDetail => ({
   createdAt: "2026-10-01T10:00:00+00:00",
   dueAt: "2026-10-05T10:00:00+00:00",
   overdue: false,
+  decisionDueAt: "2026-10-08T10:00:00+00:00",
+  decision: null,
 });
 
 async function render(contentPath: string) {
@@ -57,7 +60,7 @@ describe("the page of a partner profile report (FR-S1)", () => {
     category: "fee_demanded_from_worker",
     status: "new",
     contentPath: null,
-    organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "active" },
+    organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "active", type: "recruitment_company", moderationState: "visible" },
     resolutionNote: null,
     handledAt: null,
     overdue: true,
@@ -76,7 +79,7 @@ describe("the page of a partner profile report (FR-S1)", () => {
   });
 
   it("links no public profile while the organisation is suspended, which has none", async () => {
-    getMock.mockResolvedValue(partnerReport({ organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "suspended" } }));
+    getMock.mockResolvedValue(partnerReport({ organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "suspended", type: "recruitment_company", moderationState: "org_suspended" } }));
     const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));
     expect(html).not.toContain('href="/en/partners/manila-skills"');
     expect(html).toContain(`href="/en/admin/organizations/${ORG}"`);
@@ -88,5 +91,62 @@ describe("the page of a partner profile report (FR-S1)", () => {
     expect(html).not.toContain("Overdue");
     expect(html).not.toContain(">Due<");
     expect(html).not.toContain("Fee demand");
+  });
+});
+
+describe("the decision on a report (FR-S1 AC10)", () => {
+  const ORG = "0b9c7a2e-3d4f-4e5a-8b6c-7d8e9f0a1b2c";
+  const open = (overrides: Partial<ReportDetail>): ReportDetail => ({
+    ...content("/en/jobs"),
+    targetType: "partner_profile",
+    status: "in_review",
+    contentPath: null,
+    organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "active", type: "recruitment_company", moderationState: "visible" },
+    resolutionNote: null,
+    handledAt: null,
+    ...overrides,
+  });
+
+  it("offers Trust & Safety Hide, Suspend organisation and Dismiss on a partner profile, with the decision target", async () => {
+    getMock.mockResolvedValue(open({}));
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    for (const label of [">Hide<", ">Suspend organisation<", ">Dismiss<"]) expect(html).toContain(label);
+    expect(html).not.toContain(">Mark actioned<");
+    expect(html).not.toContain(">Mark in review<");
+    expect(html).toContain("Decision due");
+    expect(html).toContain('dateTime="2026-10-08T10:00:00+00:00"');
+  });
+
+  it("offers no Hide for a profile already hidden and no suspension of a suspended partner", async () => {
+    getMock.mockResolvedValue(
+      open({ organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "suspended", type: "recruitment_company", moderationState: "org_suspended" } }),
+    );
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(html).not.toContain(">Hide<");
+    expect(html).not.toContain(">Suspend organisation<");
+    expect(html).toContain(">Dismiss<");
+  });
+
+  it("closes a report about a page with a note, and shows a Platform Administrator no decision at all", async () => {
+    getMock.mockResolvedValue({ ...content("/en/pricing"), status: "new", resolutionNote: null, handledAt: null });
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(html).toContain(">Mark in review<");
+    expect(html).toContain(">Mark actioned<");
+    expect(html).toContain(">Dismiss<");
+    expect(html).not.toContain(">Hide<");
+
+    getMock.mockResolvedValue(open({}));
+    const readOnly = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));
+    expect(readOnly).toContain("Read only");
+    expect(readOnly).not.toMatch(/>(Hide|Suspend organisation|Dismiss)</);
+  });
+
+  it("shows the decision and the statement of reasons of a closed report", async () => {
+    getMock.mockResolvedValue(open({ status: "actioned", decision: "content_hidden", resolutionNote: "Claims of placements never made.", handledAt: "2026-10-06T10:00:00+00:00" }));
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(html).toContain("Partner profile hidden");
+    expect(html).toContain("Statement of reasons");
+    expect(html).toContain("Claims of placements never made.");
+    expect(html).not.toContain("Decision due");
   });
 });

@@ -67,7 +67,11 @@ export async function ReportQueue({ lang, filter, after }: { lang: string; filte
     <div className="grid gap-4">
       <Filters lang={lang} filter={filter} />
       {page.rows.length === 0 ? (
-        <EmptyState icon={Flag} title="No reports here" description="Nothing matches these filters." />
+        <EmptyState
+          icon={Flag}
+          title={filter.status === "open" && !filter.type && !after ? "No open reports" : "No reports here"}
+          description={filter.status === "open" && !filter.type && !after ? "Every report has been decided." : "Nothing matches these filters."}
+        />
       ) : (
         <ResultsTable caption="Reports" columns={["Reference", "About", "Category", "Status", "Reported", "Due"]}>
           {page.rows.map((row) => (

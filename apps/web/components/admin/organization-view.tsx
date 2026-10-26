@@ -3,11 +3,14 @@ import { AccountStatusBadge } from "@/components/admin/account-status-badge";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { DetailList } from "@/components/layout/detail-list";
 import { ModerationForm } from "@/components/admin/moderation-form";
+import { PartnerModerationDetails } from "@/components/admin/partner-moderation-details";
+import { PartnerProfileModerationForm } from "@/components/admin/partner-profile-moderation-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { TextLink } from "@/components/forms/text-link";
 import { Section } from "@/components/layout/section";
 import { getOrganization } from "@/lib/dal/admin";
+import { getPartnerModeration } from "@/lib/dal/admin-reports";
 import { formatShortDate } from "@/lib/i18n/format";
 import { isJobStatus, statusLabels } from "@/lib/jobs/presentation";
 import { adminPath } from "@/lib/routes";
@@ -15,8 +18,9 @@ import type { PlatformRole } from "@/lib/validation/admin";
 import { roleLabels } from "@/lib/validation/team";
 
 export async function OrganizationView({ lang, id, roles }: { lang: string; id: string; roles: readonly PlatformRole[] }) {
-  const organization = await getOrganization(id);
+  const [organization, partner] = await Promise.all([getOrganization(id), getPartnerModeration(id)]);
   if (!organization) notFound();
+  const canDecide = roles.includes("trust_safety");
 
   return (
     <div className="grid gap-page">
@@ -71,14 +75,27 @@ export async function OrganizationView({ lang, id, roles }: { lang: string; id: 
           </ResultsTable>
         )}
       </Section>
-      {roles.includes("trust_safety") ? (
+      {partner ? (
+        <Section
+          id="partner-profile"
+          title="Partner profile"
+          description="Hiding the profile takes it, its listings and its directory entries out of the public. The owner and administrators are emailed the reasons."
+        >
+          <DetailList items={[{ label: "Visibility", value: <JobModerationBadge state={partner.moderationState} /> }]} />
+          {canDecide && (partner.moderationState === "visible" || partner.moderationState === "hidden") ? (
+            <PartnerProfileModerationForm id={organization.id} action={partner.moderationState === "visible" ? "hide" : "unhide"} />
+          ) : null}
+          <PartnerModerationDetails lang={lang} partner={partner} headingLevel={3} />
+        </Section>
+      ) : null}
+      {canDecide ? (
         <Section
           id="standing"
           title={organization.status === "suspended" ? "Reinstate this organisation" : "Suspend this organisation"}
           description={
             organization.status === "suspended"
-              ? "Its vacancies come back, except any that were hidden on their own. The owner and administrators are emailed."
-              : "Its visible vacancies leave the public, its members are signed out and its owner and administrators are emailed the reasons. The subscription is left as it is."
+              ? "Its vacancies and partner profile come back, except any that were hidden on their own. The owner and administrators are emailed."
+              : "Its visible vacancies and partner profile leave the public, its members are signed out and its owner and administrators are emailed the reasons. The subscription is left as it is."
           }
         >
           <ModerationForm target="organization" id={organization.id} standing={organization.status} />
