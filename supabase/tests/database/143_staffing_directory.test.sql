@@ -1,5 +1,5 @@
 begin;
-select plan(100);
+select plan(102);
 
 \ir organizations_fixture.inc
 
@@ -230,6 +230,18 @@ select is(pg_temp.slugs() || '|' || pg_temp.matched('l2a3-s1'), 'l2a3-s1,l2a3-s2
 select is(pg_temp.search(null, '''staffing'', p_workforce_size => ''huge''') || '/' || pg_temp.result()::text,
   'P0001|CHARA_INVALID_INPUT|p_workforce_size/[]', 'FR-L2 AC3: an unknown band fails, naming the workforce size');
 select pg_temp.hide('l2a3');
+
+-- Advanced filters of the staffing directory follow advanced_partner_search, as in FR-L1 ---------------------------------------
+update private.settings set value = 'true' where key = 'entitlements_enforced';
+select is(
+  concat_ws(',', pg_temp.search(null, '''staffing'', p_capacity => 100'), pg_temp.search(:'wrk', '''staffing'', p_within_days => 60'),
+    pg_temp.search(:'acm', '''staffing'', p_capacity => 100, p_within_days => 60')),
+  'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search,P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search,'
+  'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search',
+  'FR-L2 step Filter: capacity and timeframe are refused to a visitor, a candidate and a Starter employer'
+);
+select is(pg_temp.search(:'bet', '''staffing'', p_capacity => 100, p_within_days => 60'), 'ok', 'FR-L2 step Filter: Professional may');
+update private.settings set value = 'false' where key = 'entitlements_enforced';
 
 -- FR-L2 AC5: the order of FR-L1, never the plan ----------------------------------------------------------------------------------
 select pg_temp.partner(:'own', 'staffing_company', 'l2a5-four', '{DE}', '{temporary}', '2026-08-01 08:00+00') as four \gset
