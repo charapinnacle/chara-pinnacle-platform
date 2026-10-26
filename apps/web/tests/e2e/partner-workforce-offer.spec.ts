@@ -22,7 +22,8 @@ const INDUSTRIES = "Which industries do you serve? (optional)";
 const LANGUAGES = "Which languages do your candidates speak? (optional)";
 const STAFFING_SERVICE = "We also supply staff (staffing)";
 const STAFFING_TYPES = "Staffing types (choose at least one)";
-const LIMIT_MESSAGE = "Your plan includes 10 occupations. Upgrade to add more.";
+const LIMIT_MESSAGE = "10 of 10 occupations listed on your Free plan.";
+const COMPARISON = "Professional includes 30 occupations listed; Enterprise has no limit.";
 const SET_OFFER =
   "public.set_organization_workforce_offer(uuid, text[], text[], text[], public.recruitment_preference, public.partner_service_type[], public.workforce_size_band, smallint)";
 
@@ -225,7 +226,9 @@ test.describe("What you offer (FR-K2)", () => {
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
-    await expect(notice.getByRole("link", { name: "Upgrade to add more." })).toHaveAttribute("href", `/en/org/${slug}/billing`);
+    // The billing page does not sell partner plans yet (V15): the prompt compares them instead of linking there.
+    await expect(notice).toContainText(COMPARISON);
+    await expect(notice.getByRole("link")).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
 
     // AC4: the database refuses an eleventh occupation as well and keeps the previous set.
