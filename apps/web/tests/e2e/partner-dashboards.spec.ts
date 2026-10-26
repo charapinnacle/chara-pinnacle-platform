@@ -123,8 +123,8 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     const rows = page.getByRole("list", { name: "Available workforce listings" }).getByRole("listitem");
     await expect(rows).toHaveCount(3);
     await expect(rows.nth(0)).toContainText("Confirmed 61 days ago, on");
-    await expect(rows.filter({ hasText: "Not confirmed for more than 60 days" })).toHaveCount(1);
-    await expect(rows.nth(0)).toContainText("Not confirmed for more than 60 days");
+    await expect(rows.filter({ hasText: "Not confirmed for 60 days or more" })).toHaveCount(1);
+    await expect(rows.nth(0)).toContainText("Not confirmed for 60 days or more");
     await expect(rows.nth(2)).toContainText("Confirmed 2 days ago, on");
     await expect(rows.getByRole("button", { name: /^Confirm/ })).toHaveCount(2);
 
@@ -142,7 +142,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     const reader = await signedIn(browser, member);
     await reader.page.goto(dashboardUrl("recruitment", r.slug));
     await expect(reader.page.getByRole("heading", { level: 1 })).toHaveText(RECRUITMENT_QUESTION);
-    await expect(listingRow(reader.page, "Not confirmed for more than 60 days")).toHaveCount(1);
+    await expect(listingRow(reader.page, "Not confirmed for 60 days or more")).toHaveCount(1);
     await expect(reader.page.getByRole("button", { name: /^Confirm/ })).toHaveCount(0);
     await expect(reader.page.getByRole("link", { name: "Update workforce capacity" })).toHaveCount(0);
     const readerPlan = reader.page.getByRole("region", { name: "Plan and usage" });
@@ -169,12 +169,17 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await expect(one.page).toHaveURL(dashboardUrl("recruitment", r.slug));
     await one.page.goto(dashboardUrl("staffing", s.slug));
     await expect(one.page).toHaveURL(dashboardUrl("recruitment", r.slug));
-    const bodies: string[] = [];
-    one.page.on("response", async (response) => bodies.push(await response.text().catch(() => "")));
+    const bodies: Promise<string>[] = [];
+    one.page.on("response", (response) => bodies.push(response.text().catch(() => "")));
     await one.page.goto(dashboardUrl("staffing", s.slug));
-    const [other] = query<{ display_name: string }>(`select display_name from public.organizations where id = ${literal(s.id)}`);
-    const seen = bodies.join("\n");
-    expect(seen.includes(s.id) || seen.includes(other.display_name), "no other organisation's figures or name").toBe(false);
+    await one.page.waitForLoadState("networkidle");
+    const names = query<{ id: string; display_name: string }>(
+      `select id, display_name from public.organizations where id in (${literal(r.id)}, ${literal(s.id)})`,
+    );
+    const nameOf = (id: string) => names.find((row) => row.id === id)?.display_name ?? id;
+    const seen = (await Promise.all(bodies)).join("\n");
+    expect(seen, "the responses were read: R's own dashboard is in them").toContain(nameOf(r.id));
+    expect(seen.includes(s.id) || seen.includes(nameOf(s.id)), "no other organisation's figures or name").toBe(false);
     await one.close();
 
     const both = await signedIn(browser, employer.owner);
@@ -213,7 +218,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     const reader = await signedIn(browser, member);
     await reader.page.goto(dashboardUrl("staffing", s.slug));
     const readerRow = listingRow(reader.page, "Welders and flame cutters, Philippines");
-    await expect(readerRow).toContainText("Not confirmed for more than 60 days");
+    await expect(readerRow).toContainText("Not confirmed for 60 days or more");
     await expect(readerRow.getByRole("button")).toHaveCount(0);
 
     const secret = await enrollTotp(admin);
@@ -230,7 +235,7 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByText("Listing confirmed: Welders and flame cutters from Philippines", { exact: true })).toBeVisible();
     await expect(row).toContainText("Confirmed today.");
-    await expect(row).not.toContainText("Not confirmed for more than");
+    await expect(row).not.toContainText("Not confirmed for");
     const [listing] = query<{ fresh: boolean; available: number; id: string }>(
       `select id, confirmed_at > now() - interval '5 minutes' as fresh, available from public.workforce_availability
        where organization_id = ${literal(s.id)}`,
@@ -343,15 +348,20 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
   test("the partner dashboards are closed while release 2a is off", async ({ browser }) => {
     const r = await listedPartner("recruitment_company");
     const owner = await signedIn(browser, r.user);
+    const member = await signedIn(browser, await joinPartner(r, "member", await createCommittedPartner("recruitment_company")));
     setPartnerRelease(false);
     try {
       await owner.page.goto(dashboardUrl("recruitment", r.slug));
       await expect(owner.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
       await owner.page.goto("/en/dashboard/employer");
       await expect(owner.page).toHaveURL("/en/onboarding");
+      // The address of the organisation leads through the employer dashboard, so it ends on onboarding too.
+      await member.page.goto(`/en/org/${r.slug}`);
+      await expect(member.page).toHaveURL("/en/onboarding");
     } finally {
       setPartnerRelease(true);
     }
     await owner.close();
+    await member.close();
   });
 });

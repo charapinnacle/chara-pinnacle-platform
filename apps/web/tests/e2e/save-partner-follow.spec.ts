@@ -1,4 +1,4 @@
-import type { Browser, Page, Response } from "@playwright/test";
+import type { Browser, Page } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal, query } from "./support/db";
 import { addCompanyUser, newCompany, seedJob, type Company } from "./support/jobs";
@@ -248,21 +248,23 @@ test.describe("Save partner and follow company (FR-L4)", () => {
     );
 
     const owner = await signedIn(browser, gamma.user);
-    const responses: Response[] = [];
-    owner.page.on("response", (response) => responses.push(response));
+    // Only the responses whose body was received: the partner dashboard links many pages, and a prefetch the browser
+    // cancels never finishes, so its body would never arrive.
+    const bodies: Promise<string>[] = [];
+    owner.page.on("requestfinished", (request) => {
+      bodies.push(request.response().then((response) => response?.text() ?? "").catch(() => ""));
+    });
     await owner.page.goto("/en/dashboard/employer");
     await expect(owner.page.getByText("Followers: fewer than 5")).toBeVisible();
     await expectAccessibleAtBothWidths(owner.page);
     await owner.page.goto(profileUrl(gamma.slug));
     await expect(owner.page.getByRole("button", { name: /^Follow/ }), "no Follow of its own company").toHaveCount(0);
-    // The partner dashboard links many pages, and the body of a prefetch the browser cancelled never arrives: each body
-    // is read for a few seconds at most.
-    const bodyOf = (response: Response) =>
-      Promise.race([response.text().catch(() => ""), new Promise<string>((resolve) => setTimeout(() => resolve(""), 5_000))]);
-    const bodies = (await Promise.all(responses.map(bodyOf))).join("\n");
+    await owner.page.waitForLoadState("networkidle");
+    const seen = (await Promise.all(bodies)).join("\n");
+    expect(seen, "the responses were read: the company's own name is in them").toContain(gamma.displayName);
     for (const follower of followers) {
-      expect(bodies.includes(follower.id), "a follower id leaked").toBe(false);
-      expect(bodies.includes(follower.email), "a follower email leaked").toBe(false);
+      expect(seen.includes(follower.id), "a follower id leaked").toBe(false);
+      expect(seen.includes(follower.email), "a follower email leaked").toBe(false);
     }
 
     execute(
