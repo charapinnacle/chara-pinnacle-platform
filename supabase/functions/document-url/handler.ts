@@ -4,6 +4,8 @@ import { json } from "../_shared/http.ts";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BEARER = /^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const LINK_SECONDS = 60;
+// A copy of the user's own data (FR-S3 AC8) is a larger file: its link lives 10 minutes.
+const EXPORT_LINK_SECONDS = 600;
 
 interface DocumentUrlDeps {
   userClient: (authorization: string) => SupabaseClient;
@@ -21,6 +23,7 @@ interface Grant {
 // and staff open a scanned file through a 60-second download link.
 type Ask =
   | { rpc: "document_access_grant"; args: { p_document_id: string; p_purpose: string }; upload: false }
+  | { rpc: "data_export_access_grant"; args: { p_export: string }; upload: false }
   | {
     rpc: "partner_document_access_grant";
     args: { p_licence: string; p_purpose: string; p_mime?: string; p_size?: number };
@@ -28,15 +31,22 @@ type Ask =
   };
 
 const EVIDENCE_UPLOAD = "evidence_upload";
+const DATA_EXPORT = "data_export";
 
 function parseAsk(body: unknown): Ask | null {
-  const { documentId, licenceId, purpose, mime, size } =
+  const { documentId, licenceId, exportId, purpose, mime, size } =
     (typeof body === "object" && body !== null ? body : {}) as Record<
       string,
       unknown
     >;
   if (typeof purpose !== "string") {
     return null;
+  }
+  if (exportId !== undefined) {
+    return typeof exportId === "string" && UUID.test(exportId) && purpose === DATA_EXPORT && documentId === undefined &&
+        licenceId === undefined
+      ? { rpc: "data_export_access_grant", args: { p_export: exportId }, upload: false }
+      : null;
   }
   if (typeof documentId === "string" && UUID.test(documentId) && licenceId === undefined) {
     return { rpc: "document_access_grant", args: { p_document_id: documentId, p_purpose: purpose }, upload: false };
@@ -124,7 +134,8 @@ export async function handleDocumentUrl(req: Request, deps: DocumentUrlDeps): Pr
     }
     return json(200, { path: upload.path, token: upload.token });
   }
-  const { data: signed, error: signError } = await bucket.createSignedUrl(grant.object_path, LINK_SECONDS, {
+  const seconds = ask.rpc === "data_export_access_grant" ? EXPORT_LINK_SECONDS : LINK_SECONDS;
+  const { data: signed, error: signError } = await bucket.createSignedUrl(grant.object_path, seconds, {
     download: grant.file_name ?? true,
   });
   if (signError) {

@@ -253,3 +253,71 @@ Deno.test("the owner or an admin opening the own licence evidence gets a 60-seco
   assert.deepEqual(user.calls.map((c) => c.body), [{ p_licence: LICENCE, p_purpose: "evidence_owner" }]);
   assert.deepEqual(signer.calls.map((c) => c.body), [{ expiresIn: 60 }]);
 });
+
+// FR-S3 AC8 (V29): the owner's copy of their data, through data_export_access_grant.
+const EXPORT = "00000000-0000-0000-0000-00000000e001";
+const EXPORT_PATH = `00000000-0000-0000-0000-00000000a101/${EXPORT}.zip`;
+const EXPORT_GRANT = "POST /rest/v1/rpc/data_export_access_grant";
+const EXPORT_SIGN = "POST /storage/v1/object/sign/dsar-exports/{id}/{id}.zip";
+
+function runExport(req: Request, grant: Route | Response) {
+  const user = harness({ [EXPORT_GRANT]: grant });
+  const signer = harness({
+    [EXPORT_SIGN]: reply(200, { signedURL: `/object/sign/dsar-exports/${EXPORT_PATH}?token=t0k3n` }),
+  });
+  return {
+    user,
+    signer,
+    response: handleDocumentUrl(req, { userClient: () => user.client, signer: signer.client }),
+  };
+}
+
+Deno.test("AC8: a ready export of the caller gets a 10-minute download link to its zip", async () => {
+  const { user, signer, response } = runExport(
+    request({ exportId: EXPORT, purpose: "data_export" }),
+    reply(200, [{
+      bucket_id: "dsar-exports",
+      object_path: EXPORT_PATH,
+      file_name: "chara-pinnacle-data-2026-12-10.zip",
+    }]),
+  );
+  const result = await response;
+  assert.equal(result.status, 200);
+  const body = await result.json();
+  assert.ok(
+    body.url.includes("token=t0k3n") && body.url.includes("download=chara-pinnacle-data-2026-12-10.zip"),
+    body.url,
+  );
+  assert.deepEqual(user.calls.map((c) => c.body), [{ p_export: EXPORT }]);
+  assert.deepEqual(signer.calls.map((c) => [c.path, c.body]), [[
+    `/storage/v1/object/sign/dsar-exports/${EXPORT_PATH}`,
+    { expiresIn: 600 },
+  ]]);
+});
+
+Deno.test("AC8: an export of somebody else, one still being prepared or an expired one is a 404 without a link", async () => {
+  const { signer, response } = runExport(
+    request({ exportId: EXPORT, purpose: "data_export" }),
+    database("CHARA_NOT_FOUND", "P0002"),
+  );
+  const result = await response;
+  assert.equal(result.status, 404);
+  assert.deepEqual(await result.json(), { error: "not_found" });
+  assert.equal(signer.calls.length, 0);
+});
+
+Deno.test("an export request with another purpose, a bad id or a second id is refused before the database is asked", async () => {
+  const bodies = [
+    { exportId: EXPORT, purpose: "application_review" },
+    { exportId: "../x", purpose: "data_export" },
+    { exportId: EXPORT, documentId: DOCUMENT, purpose: "data_export" },
+    { exportId: EXPORT, licenceId: DOCUMENT, purpose: "data_export" },
+    { exportId: 7, purpose: "data_export" },
+  ];
+  for (const body of bodies) {
+    const { user, signer, response } = runExport(request(body), reply(200, []));
+    const result = await response;
+    assert.equal(result.status, 400, JSON.stringify(body));
+    assert.deepEqual([user.calls.length, signer.calls.length], [0, 0], JSON.stringify(body));
+  }
+});
