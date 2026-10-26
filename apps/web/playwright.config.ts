@@ -428,8 +428,9 @@ export default defineConfig({
       testMatch: "**/partner-network-pages.spec.ts",
       dependencies: ["save-partner-follow-release"],
     },
-    // The same release switch is set for the data export (FR-S3), whose spec also runs account-ops, notify and the
-    // retention job over the whole database and withdraws the export functions for a moment, so it follows the one above.
+    // The switch of the data export (FR-S3) is set for the whole database, release 2a for a moment, and the spec runs
+    // account-ops, notify and the retention job over the whole database and withdraws the export functions for a moment,
+    // so it follows the one above.
     {
       name: "data-export-release",
       use: { ...devices["Desktop Chrome"] },

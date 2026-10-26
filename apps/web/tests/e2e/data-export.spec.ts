@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { inflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { runAccountOps } from "./support/account-ops";
+import { signInStaff } from "./support/admin";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, executeAsync, literal, query } from "./support/db";
 import { seedDocument } from "./support/documents";
@@ -18,6 +19,11 @@ const PAGE = "/en/settings/data-export";
 const REQUEST_FN = "public.request_data_export()";
 const LIST_FN = "public.list_my_data_exports()";
 const SUBJECT = "Your Chara Pinnacle data is ready to download";
+
+// The switch of the data export (FR-S3), for the whole database: it goes live on its own, before or with release 2a.
+function setExportRelease(on: boolean): void {
+  execute(`update private.settings set value = '${on}' where key = 'release_data_export'`);
+}
 
 type ExportRow = { id: string; status: string; storage_path: string | null };
 
@@ -69,20 +75,22 @@ async function prepare(page: Page): Promise<void> {
   await page.keyboard.press("Enter");
 }
 
-// The release switch is set for the whole database, account-ops and notify run over the whole queue and the retention
-// job over the whole database, so this file is a project of its own (playwright.config.ts) and its tests run in order.
+// The export switch is set for the whole database (release 2a stays off: the export goes live on its own), account-ops
+// and notify run over the whole queue and the retention job over the whole database, so this file is a project of its
+// own (playwright.config.ts) and its tests run in order.
 test.describe("Download my data (FR-S3 AC7, AC8)", () => {
   test.describe.configure({ mode: "serial" });
-  test.beforeAll(() => setPartnerRelease(true));
+  test.beforeAll(() => setExportRelease(true));
   test.afterAll(() => {
     execute(`grant execute on function ${REQUEST_FN} to authenticated; grant execute on function ${LIST_FN} to authenticated`);
-    setPartnerRelease(false);
+    setExportRelease(false);
   });
 
   test("AC8: a candidate asks by keyboard, is told when one is being prepared, gets the email and downloads the zip", async ({ page }) => {
     test.setTimeout(120_000);
     const candidate = await createCommittedUser("worker");
     const cv = await seedDocument(candidate.id, { title: "Welding CV", fileName: "welding-cv.pdf", sizeBytes: 2048 });
+    await seedDocument(candidate.id, { title: "New certificate", type: "certificate", fileName: "cert.pdf", scanStatus: "pending" });
 
     await signIn(page, candidate);
     await page.goto("/en/settings");
@@ -111,6 +119,8 @@ test.describe("Download my data (FR-S3 AC7, AC8)", () => {
     // account-ops builds the zip; the page, which reads the state again while one is being prepared, shows it ready.
     expect((await runAccountOps()).failed).toBe(0);
     await expect(page.getByText("Ready to download", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("status").filter({ hasText: "Your data is ready to download." })).toHaveCount(1);
+    await expect(page.getByText(/1 document was not included \(see README\.txt\)/)).toBeVisible();
     const [ready] = exportsOf(candidate.id);
     expect(ready).toEqual({ id: request.id, status: "ready", storage_path: `${candidate.id}/${request.id}.zip` });
     expect(objectExists(`${candidate.id}/${request.id}.zip`)).toBe(true);
@@ -145,12 +155,21 @@ test.describe("Download my data (FR-S3 AC7, AC8)", () => {
     const passport = JSON.parse(entries.get("passport.json")?.toString("utf8") ?? "null") as { first_name: string };
     expect(passport.first_name).toBe("Test");
     const documents = JSON.parse(entries.get("documents.json")?.toString("utf8") ?? "[]") as { title: string; file: string }[];
-    expect(documents).toEqual([expect.objectContaining({ title: "Welding CV", file: `documents/${cv.id}/welding-cv.pdf` })]);
+    expect(documents).toEqual(expect.arrayContaining([
+      expect.objectContaining({ title: "Welding CV", file: `documents/${cv.id}/welding-cv.pdf` }),
+      expect.objectContaining({ title: "New certificate", file: null, note: "Not included because the file has not passed its check." }),
+    ]));
+    expect(entries.get("README.txt")?.toString("utf8")).toContain("1 document was not included; documents.json says why.");
 
-    // The in-app notice leads to the same page.
-    await page.goto("/en/notifications");
-    await page.getByRole("link", { name: /^Your data is ready to download until / }).click();
-    await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
+    // The in-app notice leads to the same page (the notification list itself belongs to release 2a).
+    setPartnerRelease(true);
+    try {
+      await page.goto("/en/notifications");
+      await page.getByRole("link", { name: /^Your data is ready to download until / }).click();
+      await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
+    } finally {
+      setPartnerRelease(false);
+    }
 
     // Once expired, the link is refused; the retention job then deletes the request and account-ops the file.
     execute(`update public.data_export_requests set expires_at = now() - interval '1 second' where id = ${literal(request.id)}`);
@@ -182,7 +201,7 @@ test.describe("Download my data (FR-S3 AC7, AC8)", () => {
     expect(auditCount("data_export.downloaded", request.id)).toBe(0);
   });
 
-  test("a company user reaches the page from the notification settings; without release 2a the page and link are gone", async ({ page }) => {
+  test("a company user reaches the page from the notification settings; without the export switch the page and link are gone", async ({ page }) => {
     const member = await createCommittedUser("company");
     await logIn(page, member);
     await page.waitForURL((url) => !url.pathname.endsWith("/login"));
@@ -192,15 +211,23 @@ test.describe("Download my data (FR-S3 AC7, AC8)", () => {
     await expect(page.getByRole("link", { name: "Notification settings" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
-    setPartnerRelease(false);
+    setExportRelease(false);
     try {
       await page.goto(PAGE);
       await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
       await page.goto("/en/settings/notifications");
       await expect(page.getByRole("link", { name: "Download my data" })).toHaveCount(0);
     } finally {
-      setPartnerRelease(true);
+      setExportRelease(true);
     }
+  });
+
+  test("the console lists the export switch among the releases, needing no legal document", async ({ page }) => {
+    await signInStaff(page, "admin", "/en/admin/settings");
+    const row = page.getByRole("region", { name: "Release switches" }).getByRole("row").filter({ hasText: "release_data_export" });
+    await expect(row).toContainText("Data export: Download my data");
+    await expect(row).toContainText("Live");
+    await expect(row).toContainText("None needed");
   });
 
   test("a skeleton shows while the exports load; a failed load offers Try again; a failed request is a toast", async ({ page }) => {
