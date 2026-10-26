@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from "react";
 import { FormButton } from "@/components/forms/form-button";
+import { TextLink } from "@/components/forms/text-link";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { toast, toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { setCompanyPageVisibility } from "@/lib/actions/company-page";
@@ -11,12 +12,13 @@ import { cn } from "@/lib/utils";
 
 const FAILED = "The company page was not changed";
 
-type CompanyPageSwitchProps = { slug: string; enabled: boolean };
+// pageHref: the address of the public page, linked next to the switch while it is on; left out on the page itself.
+type CompanyPageSwitchProps = { slug: string; enabled: boolean; pageHref?: string };
 
 // The visibility switch of the public company page (FR-K5 AC9). Turning it on asks first, because the page is then public;
 // turning it off takes effect at once. The switch shows the new state while the call runs and returns to the previous
 // one when it fails.
-export function CompanyPageSwitch({ slug, enabled: initial }: CompanyPageSwitchProps) {
+export function CompanyPageSwitch({ slug, enabled: initial, pageHref }: CompanyPageSwitchProps) {
   const [enabled, setEnabled] = useState(initial);
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -57,6 +59,11 @@ export function CompanyPageSwitch({ slug, enabled: initial }: CompanyPageSwitchP
         <p id={descriptionId} className="text-small text-muted-foreground">
           {COMPANY_PAGE_DESCRIPTION}
         </p>
+        {enabled && pageHref ? (
+          <TextLink standalone href={pageHref}>
+            View your company page
+          </TextLink>
+        ) : null}
       </div>
       <button
         type="button"

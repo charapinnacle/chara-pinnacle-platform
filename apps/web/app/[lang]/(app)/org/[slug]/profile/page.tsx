@@ -13,7 +13,7 @@ import { getOrganizationProfile } from "@/lib/dal/organizations";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { billingPath } from "@/lib/routes";
+import { billingPath, companyPagePath } from "@/lib/routes";
 import { identifierKindLabels } from "@/lib/validation/organization";
 
 export const metadata: Metadata = { title: "Company profile", robots: { index: false } };
@@ -58,7 +58,7 @@ export default async function OrganizationProfilePage({ params }: PageProps<"/[l
           <h2 id="company-page-heading" className="text-h2">
             Company page
           </h2>
-          <CompanyPageSwitch slug={slug} enabled={companyPageEnabled} />
+          <CompanyPageSwitch slug={slug} enabled={companyPageEnabled} pageHref={companyPagePath(lang, slug)} />
         </section>
       ) : null}
       <section aria-labelledby="identifier-heading" className="grid gap-2">

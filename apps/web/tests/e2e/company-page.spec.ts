@@ -63,6 +63,9 @@ test.describe("Public company page (FR-K5)", () => {
     const toggle = page.getByRole("switch", { name: "Public company page" });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(toggle).toHaveAccessibleDescription(COMPANY_PAGE_DESCRIPTION);
+    const section = page.getByRole("region", { name: "Company page" });
+    const pageLink = section.getByRole("link", { name: "View your company page" });
+    await expect(pageLink).toHaveCount(0);
 
     await toggle.focus();
     await page.keyboard.press("Space");
@@ -73,8 +76,13 @@ test.describe("Public company page (FR-K5)", () => {
     await dialog.getByRole("button", { name: "Turn on" }).focus();
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
-    await expect(page.getByText(LIVE, { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "View your company page" })).toHaveAttribute("href", companyUrl(company.slug));
+    const toast = page.getByRole("listitem").filter({ hasText: LIVE });
+    await expect(toast).toBeVisible();
+    await expect(toast.getByRole("link", { name: "View your company page" })).toHaveAttribute("href", companyUrl(company.slug));
+    await expect(pageLink, "the link stays next to the switch, not only in the toast").toHaveAttribute("href", companyUrl(company.slug));
+    await toast.getByRole("button", { name: "Dismiss notification" }).click();
+    await expect(toast).toBeHidden();
+    await expect(pageLink).toBeVisible();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
     expect(pageEnabled(company)).toBe(true);
     const audit = query<{ metadata: { from: boolean; to: boolean } }>(
@@ -89,11 +97,21 @@ test.describe("Public company page (FR-K5)", () => {
       await page.keyboard.press("Space");
       await expect(page.getByText("The company page was not changed", { exact: true })).toBeVisible();
       await expect(toggle).toHaveAttribute("aria-checked", "true");
+      await expect(pageLink).toBeVisible();
       expect(pageEnabled(company)).toBe(true);
     } finally {
       execute("grant execute on function public.set_company_page_visibility(uuid, boolean) to authenticated");
     }
     await expectAccessibleAtBothWidths(page);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await toggle.focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByText("Your company page is off", { exact: true })).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await expect(pageLink).toHaveCount(0);
+    expect(pageEnabled(company)).toBe(false);
+    expect((await page.request.get(companyUrl(company.slug))).status(), "off again").toBe(404);
   });
 
   test("AC3, AC10: a visitor reads the details and the open vacancies only, and nothing private reaches the browser", async ({ page }) => {
@@ -224,6 +242,7 @@ test.describe("Public company page (FR-K5)", () => {
     await expect(adminPage.getByRole("link", { name: "Edit page" })).toHaveAttribute("href", profileUrl(company.slug));
     await expect(adminPage.getByRole("switch", { name: "Public company page" })).toHaveAttribute("aria-checked", "true");
     await expect(adminPage.getByRole("link", { name: "Report company" })).toHaveCount(0);
+    await expect(adminPage.getByRole("link", { name: "View your company page" }), "no link to the page it is on").toHaveCount(0);
     await expectAccessibleAtBothWidths(adminPage);
     await context.close();
   });
