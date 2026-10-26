@@ -50,9 +50,14 @@ begin
     return;
   end if;
 
-  insert into private.profile_view_events (viewed_organization_id, viewer_organization_id)
-  select p_org, v from private.active_org_ids() v
-  on conflict do nothing;
+  -- A view that cannot be recorded is lost rather than failing the profile read (AC1).
+  begin
+    insert into private.profile_view_events (viewed_organization_id, viewer_organization_id)
+    select p_org, v from private.active_org_ids() v
+    on conflict do nothing;
+  exception when others then
+    null;
+  end;
 end;
 $$;
 
