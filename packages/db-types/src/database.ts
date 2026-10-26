@@ -1711,7 +1711,7 @@ isOneToOne: false
                            },
 "invitation_preview":
 { Args: { "p_token": string }; Returns: {
-              "email": string,"expires_at": string,"organization_name": string,"role": Database["public"]['Enums']["member_role"]
+              "email": string,"expires_at": string,"organization_name": string,"organization_type": Database["public"]['Enums']["organization_type"],"role": Database["public"]['Enums']["member_role"]
             }[]
                            },
 "invite_member":

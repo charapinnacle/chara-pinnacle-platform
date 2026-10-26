@@ -119,8 +119,8 @@ select is(
 );
 select is(
   (select array(select jsonb_object_keys(payload) order by 1) from public.notifications where kind = 'member_invitation'),
-  array['expires_at', 'invitation_id', 'org_name', 'role', 'token'],
-  'AC6: the payload holds the organization name, the role, the expiry and the link token while queued'
+  array['expires_at', 'invitation_id', 'org_name', 'org_type', 'role', 'token'],
+  'AC6: the payload holds the organization name and type (V81), the role, the expiry and the link token while queued'
 );
 select is(
   (select payload ->> 'org_name' || '|' || (payload ->> 'role') || '|' || (payload ->> 'token' = current_setting('t.tok'))
