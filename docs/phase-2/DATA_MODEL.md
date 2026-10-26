@@ -60,8 +60,8 @@ Billing
 - `billing.organization_limit_overrides`: + `expires_at`; **risky**: `private.org_limit` ignores expired rows and is read by every limit check.
 - `private.billing_plan_audit`: reads `chara.audit_reason`; honours `chara.billing_audit_suppress` so a price change writes one audit row. **Risky**: shared by five billing tables; pgTAP 085 exception list updated.
 - `public.billing_checkout_start`: `plan_not_for_org_type` before `plan_not_sold`.
-- `public.billing_usage`: partner and Phase 2 employer keys; new member-level `public.org_usage(p_org)` (counts and limits, no aal2) instead of loosening the billing gate.
-- `public.record_job_limit_prompt` generalised to `public.record_limit_prompt(p_org, p_limit_key)` (old function kept as a wrapper).
+- `public.billing_usage`: partner and Phase 2 employer keys; new member-level `public.org_usage(p_org, p_keys default null)` (used, limit, `applies`, `period_resets_at`, plan name; no aal2; release 2a) instead of loosening the billing gate. Both read `private.limit_usage(org, key)` over `private.org_usage_keys(org)` (the type's keys without `partner_invitations_per_requirement`, and without `active_jobs` for partners); monthly keys go to `private.monthly_usage(org, key)`, which counts 0 until V44 (`partner_responses`), V48 (`candidate_submissions`) and V66 (`messages`) replace it, and `active_requirements` counts 0 until V32 (V13).
+- `public.record_job_limit_prompt` generalised to `public.record_limit_prompt(p_org, p_limit_key)` (old function kept as a wrapper, a no-op for partner organisations); metadata `limit_key`, `plan_code`, `limit`, `used`; ceilings per user (`limit_prompt_per_hour_max`) and per organisation and key (`limit_prompt_per_org_key_hour_max`, 10) and hour (V13).
 - `private.pause_jobs_on_lapse`: also pauses requirements over the limit (the billing-owned `billing_apply_event` stays untouched).
 - Free partner plans: job order details need a paid plan regardless of `entitlements_enforced` [d3.6] (`private.org_plan_code(org) not like 'free\_%'` in the job order RPCs).
 
