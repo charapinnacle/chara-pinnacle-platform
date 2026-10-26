@@ -1460,6 +1460,11 @@ isOneToOne: false
               "status": Database["public"]['Enums']["application_status"],"total": number
             }[]
                            },
+"get_company_page":
+{ Args: { "p_slug": string }; Returns: {
+              "based_in_country": string,"based_in_country_name": string,"description": string,"display_name": string,"industry_code": string,"industry_name": string,"open_vacancy_count": number,"slug": string,"vacancies": Json,"viewer_role": Database["public"]['Enums']["member_role"],"website": string
+            }[]
+                           },
 "get_dashboard_applications":
 { Args: { "p_organization_id": string }; Returns: {
               "recent": number,"status": Database["public"]['Enums']["application_status"],"total": number
@@ -1492,7 +1497,7 @@ isOneToOne: false
                            },
 "get_public_job":
 { Args: { "p_id": string }; Returns: {
-              "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_country": string,"employer_description": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
+              "accommodation": boolean,"city": string,"country": string,"country_code": string,"created_at": string,"description": string,"employer_company_slug": string,"employer_country": string,"employer_description": string,"employer_display_name": string,"employer_industry": string,"employer_website": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry": string,"occupation": string,"published_at": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
             }[]
                            },
 "get_public_settings":
@@ -1552,6 +1557,9 @@ isOneToOne: false
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
             }[]
+                           },
+"list_sitemap_companies":
+{ Args: { "p_after_slug"?: string,"p_limit"?: number }; Returns: Json
                            },
 "list_sitemap_jobs":
 { Args: { "p_after_created"?: string,"p_after_id"?: string,"p_limit"?: number }; Returns: Json
@@ -1692,6 +1700,9 @@ isOneToOne: false
                            },
 "set_application_status":
 { Args: { "p_application_id": string,"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: undefined
+                           },
+"set_company_page_visibility":
+{ Args: { "p_enabled": boolean,"p_org": string }; Returns: Json
                            },
 "set_legal_entity_identifier":
 { Args: { "p_identifier": string,"p_kind": string,"p_org": string }; Returns: undefined
