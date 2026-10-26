@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Runs one Edge Function (account-ops, scan-document, document-url, notify, billing-checkout or billing-webhook) against the local stack for the browser tests: the
+# Runs one Edge Function (account-ops, scan-document, document-url, notify, billing-checkout, billing-webhook or
+# billing-plan-price) against the local stack for the browser tests: the
 # stack started by `npm run db:start` has no Edge runtime, and a test plays the scheduler, the storage webhook or the
 # Server Action by calling this process.
 # Usage: serve-local.sh <function> <port>. The ports, EDGE_SHARED_SECRET and RESEND_WEBHOOK_SECRET come from
 # apps/web/playwright.config.ts, the one place that defines them. notify sends to the mail catcher (the null provider);
-# billing-checkout and billing-webhook use the null billing provider; BILLING_WEBHOOK_SECRET signs its deliveries.
+# billing-checkout, billing-webhook and billing-plan-price use the null billing provider; BILLING_WEBHOOK_SECRET signs its deliveries.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 eval "$(npx supabase status -o env)"

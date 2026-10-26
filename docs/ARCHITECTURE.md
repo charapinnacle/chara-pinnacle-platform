@@ -154,7 +154,7 @@ chara-pinnacle-platform/
                                     billing/provider.ts, billing/providers/{null,stripe}.ts,
                                     database.types.ts (generated: public + billing + audit)
     functions/_tests/               [now] Deno tests (a directory named tests/ would deploy as a function)
-    functions/document-url · billing-checkout · billing-webhook · billing-reconcile · notify · account-ops · scan-document · audit-export
+    functions/document-url · billing-checkout · billing-plan-price · billing-webhook · billing-reconcile · notify · account-ops · scan-document · audit-export
                                     [now] account-ops (handler.ts is the testable part, index.ts only serves it); audit-export (U42: handler.ts, archive.ts)
     functions/serve-local.sh        [now] runs account-ops on the port of `ACCOUNT_OPS_PORT` (`playwright.config.ts`) against the local stack for the browser tests
     functions/.env.example          [now] committed, names only; local values go in functions/.env (gitignored)
@@ -594,7 +594,7 @@ grant execute on function public.document_access_grant(uuid, text) to authentica
 |---|---|---|
 | Must be true regardless of caller (ownership, visibility, limits, status transitions, append-only, k-anonymity, workers never pay) | Postgres: constraints, RLS, triggers, security_invoker views | `audit.log` immutability trigger; owner-count constraint; `jobs_enforce_limits` trigger; application transition guard; `guard_verification_transition` (later phase) |
 | Touches several tables or needs a privileged read | SECURITY DEFINER RPC in `public` (owned by postgres, `set search_path = ''`, re-checks uid/role/aal, writes audit) | `create_organization`, `apply_to_job`, `set_application_status`, `document_access_grant`; later phase: `verification_decide`, `chara_match` |
-| Needs a secret, outbound network or long runtime | Edge Function (one capability each); database access only through RPCs | `billing-checkout`, `billing-webhook`, `billing-reconcile`, `document-url`, `notify`, `account-ops`, `scan-document` |
+| Needs a secret, outbound network or long runtime | Edge Function (one capability each); database access only through RPCs | `billing-checkout`, `billing-plan-price`, `billing-webhook`, `billing-reconcile`, `document-url`, `notify`, `account-ops`, `scan-document` |
 | Scheduled | pg_cron → SQL function; pg_net to an Edge Function when the outside world is needed; pgmq for retries | MV refresh, expiries, retention, billing retry, notification fan-out |
 | Rendering, forms, navigation, i18n | Next.js Server Components and thin Server Actions (zod → DAL → RPC/table via the user's session) | — |
 
@@ -1097,6 +1097,8 @@ verify_jwt = true              # the scheduler sends the project's anon key; the
 verify_jwt = false
 [functions.billing-reconcile]
 verify_jwt = true              # scheduler shared-secret header, as account-ops
+[functions.billing-plan-price]
+verify_jwt = true              # an administrator's token; admin at aal2 is checked by the database
 [functions.scan-document]
 verify_jwt = false
 [functions.notify]

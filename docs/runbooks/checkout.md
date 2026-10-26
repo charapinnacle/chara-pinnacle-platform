@@ -96,7 +96,7 @@ group by 1 order by 1 desc;
 
 - `billing.checkout_started` (entity: the organisation; metadata: plan code, trial days, whether the legal entity had used its trial) and `billing.portal_opened` are written by the two RPCs, with the person as actor; neither holds a VAT ID, a registration number or card data. The tax data is in `billing.customers`, which no API role can read.
 - The acceptance of the Subscription and Billing Terms is a `granted` row in `public.consents` (purpose `subscription-and-billing-terms`, the version shown). A new version of the terms is published as a legal document; the page and the check use the current version at once.
-- Changing the trial length or a price is a reviewed migration of `billing.plans` (FR-G1); run the mirror afterwards for a price.
+- The trial length is changed in the plan editor (FR-R2, V16) and a price with "Change price" (section 8); a price changed by a migration needs the mirror afterwards.
 
 ## 7. Workers never pay (FR-G6)
 
@@ -122,3 +122,19 @@ group by 1 order by 1 desc;
 Hosted check after each deploy of `billing-checkout`: post a checkout with the token of a candidate, expect `403` with `{"error":"forbidden","reason":null}` and one new `billing.worker_checkout_refused` row for that person. No row means the function's service-role key or the RPC is missing on the project.
 
 Policy text (AC8): migration `20261104110000_platform_rules_worker_statement.sql` publishes a DRAFT version 1 of `platform-rules` that states that a worker never pays and tells users to report a fee request to the Trust & Safety Administrator; pgTAP `089_workers_never_pay` fails if the current version loses either statement. Launch gate (not a build check): legal counsel approves the text, which is published as the next version through the administration console. The contact address for such reports belongs to the legal-entity settings of the public pages (FR-H1), not to this requirement.
+
+## 8. Price changes (FR-R2, V17)
+
+A Platform Administrator at aal2 changes a paid plan's price in the console (Plans and limits, "Change price"): amount in euros (1.00 to 100,000.00, exclusive of VAT) and a reason of 10 to 500 characters. The Server Action posts `{plan_code, price_minor, reason}` with the administrator's token to the Edge Function `billing-plan-price` (`verify_jwt = true`; address `BILLING_PLAN_PRICE_ENDPOINT` or the project's functions address). The function:
+
+1. checks the body (the same bounds as the database, so a refusal never follows a created price);
+2. calls `admin_get_plan_price` with the caller's token: anyone but an active admin at aal2 gets `403` (`aal2_required` for aal1), and nothing else is called;
+3. refuses the current amount, a free plan, and with Stripe a plan without a product (`409 plan_not_synced`: run the mirror first);
+4. creates a new monthly price on the plan's product (`POST /v1/prices`, exclusive of VAT, `metadata[plan_code]`, idempotency key of its parameters and the current five minutes); a provider failure is `502 unavailable` and nothing is recorded;
+5. calls `admin_record_plan_price` with the caller's token: `plans.price_minor` and `plan_provider_refs.provider_price_ref` change together and one `billing.plan_changed` row holds the old and new amount, both price references and the reason (the row triggers are silenced for these two writes only).
+
+No subscription is read or written. New checkouts use the new price at once; existing subscriptions keep their price until they are moved in the Stripe dashboard, and the move arrives through the webhook. The old price stays active at Stripe until the next mirror run archives it, which does not change the subscriptions on it.
+
+With the null provider (local stack and CI) no price exists anywhere: the amount alone is recorded, and a plan that already has a Stripe price refuses a change without one (`price_ref`). Live price creation needs CHARA's Stripe account (decision 7.3) and `BILLING_PROVIDER=stripe` with `STRIPE_SECRET_KEY` on `billing-plan-price`.
+
+When the record fails after the provider created the price (a lapsed second factor, a concurrent change), the function logs `billing-plan-price price not recorded` with the plan code and the price reference: archive that price in the Stripe dashboard (or run the mirror, which archives every live price of the plan that is not the stored one) and repeat the change. Hosted check after a deploy: post a change with an organisation owner's token and expect `403` with no new price in Stripe.

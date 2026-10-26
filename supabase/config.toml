@@ -439,6 +439,10 @@ verify_jwt = true
 [functions.billing-checkout]
 verify_jwt = true
 
+# A Platform Administrator's price change: the database checks the caller's token for admin at aal2.
+[functions.billing-plan-price]
+verify_jwt = true
+
 # The provider cannot send a JWT; the signature of the delivery is the authentication.
 [functions.billing-webhook]
 verify_jwt = false
