@@ -1,5 +1,5 @@
 begin;
-select plan(79);
+select plan(82);
 
 \ir organizations_fixture.inc
 
@@ -197,15 +197,15 @@ select is(
   pg_temp.call_as(:'rev', 'authenticated', format($q$select set_config('t.result', (select concat_ws('|', legal_name,
     display_name, type, based_in_country, legal_entity_identifier, legal_entity_identifier_kind, website, review_status,
     submitted_at = date_trunc('day', now()) - interval '15 hours',
-    due_at, same_identifier, owner_email)
+    due_at, same_identifier)
     from public.admin_list_partner_reviews(100) where id = %L), true)$q$, :'a9')),
   'ok', 'AC1: a Verification Reviewer at aal2 reads the queue'
 );
 select is(current_setting('t.result'),
   (select concat_ws('|', legal_name, display_name, 'recruitment_company', 'PH', 'CS201904512', 'registration_number', website,
-    'pending_review', 't', private.add_working_days(submitted_at, 1), 't', :'ow' || '@partner.test')
+    'pending_review', 't', private.add_working_days(submitted_at, 1), 't')
    from public.organizations where id = :'a9'),
-  'AC1: legal name, type, country, identifier, website, waiting since, due time, the same-identifier flag and the owner email only'
+  'AC1: legal name, type, country, identifier, website, waiting since, due time and the same-identifier flag; no personal data'
 );
 select is(
   pg_temp.val_as(:'padm', 'aal2',
@@ -297,6 +297,30 @@ select is(
 );
 select is(pg_temp.state(:'a9') || ',' || pg_temp.decisions(:'a9') || ',' || pg_temp.audits(:'a9'),
   'pending_review|-|false,0,0', 'AC4: the refused calls changed nothing and wrote nothing');
+
+-- AC4: a reviewer invited to the partner, or a member of an organisation with the same identifier, is refused too.
+\set ts3 '00000000-0000-0000-0000-0000000f2012'
+\set ts4 '00000000-0000-0000-0000-0000000f2013'
+select pg_temp.new_user(:'ts3', 'company', 'Invited.Reviewer@Example.TEST');
+select pg_temp.new_user(:'ts4');
+update public.profiles set account_kind = 'company' where id in (:'ts3', :'ts4');
+insert into public.platform_staff (user_id, role) values (:'ts3', 'trust_safety'), (:'ts4', 'trust_safety');
+insert into public.organization_invitations (organization_id, email, role, token_hash)
+values (:'inf', 'invited.reviewer@example.test', 'member', repeat('a', 64));
+select pg_temp.add_member(:'emp1', :'ts4', 'member');
+select is(
+  pg_temp.decide(:'ts3', :'inf', 'approve', 'Registry entry and website match') || ','
+    || pg_temp.decide(:'ts4', :'a9', 'approve', 'Registry entry and website match'),
+  'P0001|CHARA_FORBIDDEN|own_organization,P0001|CHARA_FORBIDDEN|own_organization',
+  'AC4: a reviewer with a pending invitation to the partner (address in another case) and a member of the employer with the same identifier get own_organization'
+);
+update public.organization_invitations set expires_at = now() - interval '1 second', created_at = now() - interval '8 days'
+where organization_id = :'inf';
+select is(
+  pg_temp.decide(:'ts3', :'inf', 'approve', 'Registry entry and website match'),
+  'P0001|CHARA_INVALID_TRANSITION|info_requested', 'an expired invitation no longer counts: the call reaches the state check'
+);
+select is(pg_temp.state(:'a9') || ',' || pg_temp.decisions(:'a9'), 'pending_review|-|false,0', 'and nothing was decided');
 
 -- AC3: approve, request information, decline ---------------------------------------------------------------------------
 select is(pg_temp.decide(:'ts', :'a9', 'approve', '  Registry entry and website match  '), 'ok',

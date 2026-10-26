@@ -102,9 +102,8 @@ revoke all on function private.partner_review_target_days() from public, anon, a
 -- Queue -----------------------------------------------------------------------------------------------------------------
 
 -- The partners waiting for a decision (pending_review and re_review), oldest submission first, a page after the cursor
--- (submitted_at, id) of the last row shown. Trust & Safety, Verification Reviewer or Platform Administrator at aal2. The
--- only personal data is the owner's email; same_identifier says that another organisation names the same identifier,
--- without naming it.
+-- (submitted_at, id) of the last row shown. Trust & Safety, Verification Reviewer or Platform Administrator at aal2. No
+-- personal data; same_identifier says that another organisation names the same identifier, without naming it.
 create function public.admin_list_partner_reviews(
   p_limit integer default 25, p_after_at timestamptz default null, p_after_id uuid default null
 ) returns table (
@@ -119,8 +118,7 @@ create function public.admin_list_partner_reviews(
   review_status public.partner_review_status,
   submitted_at timestamptz,
   due_at timestamptz,
-  same_identifier boolean,
-  owner_email text
+  same_identifier boolean
 )
 language plpgsql
 stable
@@ -147,9 +145,7 @@ begin
     private.add_working_days(o.submitted_at, v_days),
     exists (
       select 1 from private.organization_identifier_links l where l.organization_id = o.id or l.other_organization_id = o.id
-    ),
-    (select u.email::text from public.organization_members m join auth.users u on u.id = m.user_id
-     where m.organization_id = o.id and m.role = 'owner')
+    )
   from public.organizations o
   where o.review_status in ('pending_review', 're_review')
     and (p_after_at is null or (o.submitted_at, o.id) > (p_after_at, p_after_id))
@@ -300,7 +296,9 @@ grant execute on function public.admin_get_partner_review(uuid) to authenticated
 -- A Trust & Safety Administrator at aal2 decides on a partner in the queue (AC3 to AC5): approve (to listed, listed_at set
 -- at the first approval), request_info with the step to reopen (to info_requested) or decline (to declined, final), with a
 -- statement of reasons of 10 to 2,000 characters. Every other role gets CHARA_FORBIDDEN, a session at aal1 detail
--- aal2_required, a reviewer who belongs to the organisation detail own_organization. Only pending_review and re_review are
+-- aal2_required, and detail own_organization a reviewer who belongs to the organisation, holds a pending unexpired
+-- invitation to it (by the address of the account, ignoring case) or belongs to an organisation that names the same
+-- identifier (private.organization_identifier_links, either side). Only pending_review and re_review are
 -- open (CHARA_INVALID_TRANSITION otherwise, with the state as detail). The submission lock of the organisation serialises
 -- a decision with another decision and with a resubmission, so of two simultaneous decisions the second finds the new
 -- state. One decision row and one audit row partner.review_decided (decision, from, to, info_step, reason). The email to
@@ -336,7 +334,18 @@ begin
   if not found or v_org.type not in ('recruitment_company', 'staffing_company') then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
-  if exists (select 1 from public.organization_members m where m.organization_id = p_org and m.user_id = v_uid) then
+  if exists (select 1 from public.organization_members m where m.organization_id = p_org and m.user_id = v_uid)
+     or exists (
+       select 1 from public.organization_invitations i join auth.users u on u.id = v_uid
+       where i.organization_id = p_org and i.accepted_at is null and i.expires_at > now()
+         and lower(i.email::text) = lower(u.email::text)
+     )
+     or exists (
+       select 1 from private.organization_identifier_links l
+       join public.organization_members m
+         on m.organization_id = case when l.organization_id = p_org then l.other_organization_id else l.organization_id end
+       where (l.organization_id = p_org or l.other_organization_id = p_org) and m.user_id = v_uid
+     ) then
     raise exception 'CHARA_FORBIDDEN' using detail = 'own_organization';
   end if;
   if v_org.review_status not in ('pending_review', 're_review') then
