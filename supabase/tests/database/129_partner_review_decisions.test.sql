@@ -1,5 +1,5 @@
 begin;
-select plan(77);
+select plan(79);
 
 \ir organizations_fixture.inc
 
@@ -208,9 +208,25 @@ select is(current_setting('t.result'),
   'AC1: legal name, type, country, identifier, website, waiting since, due time, the same-identifier flag and the owner email only'
 );
 select is(
-  (select string_agg(same_identifier::text, ',') from (select pg_temp.val_as(:'padm', 'aal2',
-    format('select same_identifier::text from public.admin_list_partner_reviews(100) where id = %L', :'a10')) same_identifier) x),
+  pg_temp.val_as(:'padm', 'aal2',
+    format('select same_identifier::text from public.admin_list_partner_reviews(100) where id = %L', :'a11')),
   'false', 'AC1: a Platform Administrator at aal2 reads it too; a partner whose identifier nobody else names has no flag'
+);
+-- A link is stored from the organisation that named the identifier last: an employer created after a10 with its
+-- identifier is read from a10's side too.
+select pg_temp.new_org(:'own2', 'employer') as emp2 \gset
+update public.organizations set legal_entity_identifier = (select legal_entity_identifier from public.organizations where id = :'a10'),
+  legal_entity_identifier_kind = 'registration_number' where id = :'emp2';
+select is(
+  pg_temp.val_as(:'ts', 'aal2',
+    format('select same_identifier::text from public.admin_list_partner_reviews(100) where id = %L', :'a10'))
+  || ',' || (select count(*)::text from private.organization_identifier_links where organization_id = :'emp2' and other_organization_id = :'a10'),
+  'true,1', 'the flag reads a link stored from the other organisation'
+);
+select pg_temp.review(:'ts', :'a10') as ignored \gset
+select is(
+  (select string_agg((l ->> 'id') || ':' || (l ->> 'same_type'), ',') from jsonb_array_elements(current_setting('t.result')::jsonb -> 'identifier_links') l),
+  :'emp2' || ':false', 'AC2: and the review page names that organisation once'
 );
 select is(
   pg_temp.queue(:'ts', array[:'a9']::uuid[], 'aal1') || ',' || pg_temp.queue(:'ow', array[:'a9']::uuid[]) || ','

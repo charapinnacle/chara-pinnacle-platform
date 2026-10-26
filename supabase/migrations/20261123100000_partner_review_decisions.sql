@@ -145,7 +145,9 @@ begin
   select o.id, o.legal_name, o.display_name, o.type, o.based_in_country, o.legal_entity_identifier,
     o.legal_entity_identifier_kind, o.website, o.review_status, o.submitted_at,
     private.add_working_days(o.submitted_at, v_days),
-    exists (select 1 from private.organization_identifier_links l where l.organization_id = o.id),
+    exists (
+      select 1 from private.organization_identifier_links l where l.organization_id = o.id or l.other_organization_id = o.id
+    ),
     (select u.email::text from public.organization_members m join auth.users u on u.id = m.user_id
      where m.organization_id = o.id and m.role = 'owner')
   from public.organizations o
@@ -162,7 +164,8 @@ grant execute on function public.admin_list_partner_reviews(integer, timestamptz
 -- Review page -----------------------------------------------------------------------------------------------------------
 
 -- What staff check about one partner, in any review state (AC2): the company details and identifier, the organisations
--- that name the same identifier (staff only, with the same-type flag), where it serves, what it offers, whether its owner
+-- that name the same identifier (staff only, with the same-type flag; a link is stored once, from the organisation that
+-- named the identifier last, so both directions are read), where it serves, what it offers, whether its owner
 -- holds the current employer-pays commitment and the decisions so far with their reasons. The licences come from
 -- admin_list_partner_licences. No worker data and no member contact details other than the owner's email; the staff
 -- member of a decision is named by email for traceability, to staff only. CHARA_NOT_FOUND for an unknown organisation or
@@ -229,9 +232,15 @@ begin
     coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', x.id, 'legal_name', x.legal_name, 'display_name', x.display_name, 'type', x.type, 'status', x.status,
-        'review_status', x.review_status, 'same_type', l.same_type) order by l.same_type desc, x.legal_name, x.id)
-      from private.organization_identifier_links l join public.organizations x on x.id = l.other_organization_id
-      where l.organization_id = o.id
+        'review_status', x.review_status, 'same_type', x.same_type) order by x.same_type desc, x.legal_name, x.id)
+      from (
+        select distinct on (y.id) y.id, y.legal_name, y.display_name, y.type, y.status, y.review_status, l.same_type
+        from private.organization_identifier_links l
+        join public.organizations y
+          on y.id = case when l.organization_id = o.id then l.other_organization_id else l.organization_id end
+        where l.organization_id = o.id or l.other_organization_id = o.id
+        order by y.id
+      ) x
     ), '[]'),
     coalesce((
       select jsonb_agg(jsonb_build_object('scope', g.scope, 'country_code', g.country_code, 'name', c.name)
