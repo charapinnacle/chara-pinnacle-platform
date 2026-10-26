@@ -127,7 +127,7 @@ Columns are the essentials; check constraints follow the Phase 1 text rules (tri
 | `public.saved_items` | (organization_id, target_organization_id), kind, saved_by | members of the saving organisation |
 | `public.follows` | (user_id, organization_id) | own rows |
 | `private.follow_activity_outbox` | organization_id, entity_type, entity_id, title | none (digest job) |
-| `stats.partner_searches` | kind, filter_names, destination_country, result_count | none; no personal columns |
+| `stats.partner_searches` | kind, filter_names, destination_country (known countries only), result_count (results on the first page), created_at; one row per first page, written by `search_partners` | none; no personal columns; staff through `admin_partner_search_stats`; retained 730 days (`partner_searches`) |
 | `billing.limit_keys`, `billing.feature_keys` | key, org_types, period, label | catalogue, everyone |
 | `private.setting_rules` | key, value_type, min, max, editable | none (settings editor) |
 | `private.profile_view_events` | (viewed_organization_id, viewer_organization_id, viewed_on), one row per viewing company and UTC day, written by `record_profile_view` from `get_partner_profile` | none; retained 35 days (`profile_view_events`) |
@@ -221,7 +221,7 @@ One catalogue (`private.notification_kinds`), one email template per kind in `ap
 - Find Workers shows a pseudonymous card; a name is revealed to one organisation only when the worker accepts a contact request; documents still need an application or submission share [d4.2, d4.4].
 - Direct-hiring rules use the worker's current country, never nationality; the partner channel is always open [d4.5].
 - Workers never pay [d2.7]: notices on worker pages and a prioritised fee-demand report category.
-- Retention (only the 24-month message period is agreed [d5.4]; the rest are proposals, editable): conversations 730 days after the last message, responses, submissions and closed requirements 730, contact requests 365 (declines 90), licence evidence 30 after replacement, profile view events 35, analytics 730, data exports 7, closed appeals 365.
+- Retention (only the 24-month message period is agreed [d5.4]; the rest are proposals, editable): conversations 730 days after the last message, responses, submissions and closed requirements 730, contact requests 365 (declines 90), licence evidence 30 after replacement, profile view events 35, analytics 730, partner search log 730, data exports 7, closed appeals 365.
 - Erasure of a worker deletes submissions and their shares, contact requests and sent messages, and pseudonymises participant rows and appeals. A company member's messages stay as organisation records labelled "Former member".
 - Data export: `request_data_export` (one per 24 hours) builds a zip of Phase 1 and Phase 2 data with a 10-minute link, kept 7 days. Phase 1 has no export today, so it is built in 2a.
 - A catalogue test fails when a table with a user id is not covered by erasure, retention or export.
