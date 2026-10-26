@@ -98,6 +98,16 @@ export function workforceProfilePath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/workforce-profile`;
 }
 
+// How the members of a partner see their public profile, also before it is public (FR-K4 AC2).
+export function workforceProfilePreviewPath(lang: string, slug: string): string {
+  return `${workforceProfilePath(lang, slug)}/preview`;
+}
+
+// The public profile of a listed recruitment or staffing company (FR-K4).
+export function partnerProfilePath(lang: string, slug: string): string {
+  return `/${lang}/partners/${slug}`;
+}
+
 export function membersPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/members`;
 }

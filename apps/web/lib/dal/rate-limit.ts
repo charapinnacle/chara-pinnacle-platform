@@ -11,7 +11,8 @@ type ThrottledAction =
   | "forgot_password"
   | "reset_password"
   | "mfa_code"
-  | "report";
+  | "report"
+  | "partner_profile";
 
 // The keyed hash of this visitor's address and the proof of this minute that the database asks for with it; the address
 // itself never leaves the web tier. account_exists is no throttled action: it proves that the web tier asks

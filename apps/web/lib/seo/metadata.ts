@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { BRAND_NAME } from "@/lib/brand";
 import type { PublicJob } from "@/lib/dal/hiring";
 import { env } from "@/lib/env";
-import { formatDate } from "@/lib/i18n/format";
+import { countryInSentence, formatDate } from "@/lib/i18n/format";
+import type { PartnerProfile } from "@/lib/partners/profile";
+import { partnerProfilePath } from "@/lib/routes";
 import { staticPages, type StaticPageKey } from "./pages";
 
 const TITLE_MAX = 60;
@@ -71,4 +74,27 @@ export function legalPageMetadata(
 export function vacancyMetadata(lang: string, job: Pick<PublicJob, "id" | "title" | "description" | "employer">): Metadata {
   const description = cut(job.description.replace(/\s+/g, " ").trim(), VACANCY_DESCRIPTION_LENGTH).trimEnd();
   return pageMetadata(withBrand(`${job.title} - ${job.employer.displayName}`, " | "), description, `/${lang}/jobs/${job.id}`);
+}
+
+const countries = (items: readonly { code: string; name: string }[]) =>
+  items.map((item) => countryInSentence(item.code, item.name)).join(", ");
+
+// The title names the company, its type and its country, then the product (FR-K4 AC7 gives it whole, so the product name
+// is kept even past the 60 characters of the other titles; the part before it is cut at 60). The description is the beginning of the partner's
+// own text, or, without one, a sentence made of its own fields; no figure of the platform and no word of verification.
+export function partnerProfileMetadata(
+  lang: string,
+  profile: Pick<PartnerProfile, "slug" | "displayName" | "type" | "basedIn" | "description" | "sourceCountries" | "servedCountries">,
+): Metadata {
+  const kind = partnerTypeLabels[profile.type];
+  const title = `${fit(`${profile.displayName} - ${kind} in ${countryInSentence(profile.basedIn.code, profile.basedIn.name)}`, TITLE_MAX)} | ${BRAND_NAME}`;
+  const own = profile.description?.replace(/\s+/g, " ").trim();
+  const summary = [
+    `${profile.displayName}, ${kind.toLowerCase()} based in ${countryInSentence(profile.basedIn.code, profile.basedIn.name)}`,
+    profile.sourceCountries.length > 0 ? `, sources workers from ${countries(profile.sourceCountries)}` : "",
+    profile.servedCountries.length > 0 ? ` for employers in ${countries(profile.servedCountries)}` : "",
+    ".",
+  ].join("");
+  const description = own ? cut(own, VACANCY_DESCRIPTION_LENGTH).trimEnd() : fit(summary, DESCRIPTION_MAX);
+  return pageMetadata(title, description, partnerProfilePath(lang, profile.slug));
 }
