@@ -341,7 +341,9 @@ grant execute on function public.admin_set_setting(text, text, text) to authenti
 
 -- Reads --------------------------------------------------------------------------------------------------------------
 
--- Every plan, sold or not, with its limits and features: the console lists the plans that public.v_plans hides.
+-- Every plan, sold or not, with every limit and feature key of its organisation type (the catalogue labels, the value or
+-- whether it is on): the console lists the plans that public.v_plans hides. A limit key without a row reads as
+-- unlimited (defined false), as private.org_limit reads it.
 create function public.admin_list_plans()
 returns table (
   code text, org_type public.organization_type, name text, price_minor integer, currency text, trial_days integer,
@@ -356,8 +358,20 @@ begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   return query
   select p.code, p.org_type, p.name, p.price_minor, p.currency, p.trial_days, p.is_public, p.contact_sales, p.sort,
-    coalesce((select jsonb_object_agg(l.limit_key, l.limit_value) from billing.plan_limits l where l.plan_code = p.code), '{}'),
-    coalesce((select jsonb_agg(f.feature_key order by f.feature_key) from billing.plan_features f where f.plan_code = p.code), '[]')
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'key', k.key, 'label', k.label, 'period', k.period, 'value', l.limit_value, 'defined', l.plan_code is not null
+      ) order by k.label)
+      from billing.limit_keys k
+      left join billing.plan_limits l on l.plan_code = p.code and l.limit_key = k.key
+      where p.org_type = any (k.org_types)
+    ), '[]'),
+    coalesce((
+      select jsonb_agg(jsonb_build_object('key', k.key, 'label', k.label, 'enabled', f.plan_code is not null) order by k.label)
+      from billing.feature_keys k
+      left join billing.plan_features f on f.plan_code = p.code and f.feature_key = k.key
+      where p.org_type = any (k.org_types)
+    ), '[]')
   from billing.plans p
   order by p.sort, p.code;
 end;

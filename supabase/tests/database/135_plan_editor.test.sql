@@ -1,5 +1,5 @@
 begin;
-select plan(56);
+select plan(57);
 
 \ir status_fixture.inc
 
@@ -372,10 +372,21 @@ select is(
   'AC11: the history holds no customer, subscription or card data'
 );
 select is(
-  (select format('%s|%s|%s', count(*), count(*) filter (where not (x ->> 'is_public')::boolean), max(x -> 'limits' ->> 'markets') filter (where x ->> 'code' = 'recruitment_professional'))
-   from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_plans()$$, 'aal2')) x),
+  (select format('%s|%s|%s', count(*), count(*) filter (where not (x ->> 'is_public')::boolean), max(l ->> 'value') filter (where x ->> 'code' = 'recruitment_professional' and l ->> 'key' = 'markets'))
+   from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_plans()$$, 'aal2')) x
+   left join lateral jsonb_array_elements(x -> 'limits') l on l ->> 'key' = 'markets'),
   (select format('%s|%s|12', count(*), count(*) filter (where not is_public)) from billing.plans),
   'AC1 data: the administrator reads every plan, the ones that are not public included, with its limits'
+);
+
+select is(
+  (select format('%s|%s', (select string_agg(l ->> 'key', ',' order by l ->> 'key') from jsonb_array_elements(x -> 'limits') l),
+     (select string_agg(f ->> 'key', ',' order by f ->> 'key') from jsonb_array_elements(x -> 'features') f where (f ->> 'enabled')::boolean))
+   from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_plans()$$, 'aal2')) x
+   where x ->> 'code' = 'staffing_partner'),
+  (select format('%s|%s', (select string_agg(key, ',' order by key) from billing.limit_keys where 'staffing_company' = any (org_types)),
+     (select string_agg(feature_key, ',' order by feature_key) from billing.plan_features where plan_code = 'staffing_partner'))),
+  'AC1 data: a plan lists every limit key of its organisation type and the features it has switched on'
 );
 
 -- NFR-A4: two administrators changing the same plan are serialised by the row lock ------------------------------------
