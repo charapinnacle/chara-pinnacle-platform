@@ -62,6 +62,18 @@ describe("in-app notification items (FR-T1)", () => {
     expect(presented.kindLabel.length).toBeGreaterThan(0);
   });
 
+  it("offers a reporter whose report was dismissed the Complaints and Dispute Process, and only then", () => {
+    const dismissed = presentNotification({ kind: "moderation_decision", payload: { reference: "R-000124", outcome: "dismissed" } }, worker);
+    expect(dismissed.href).toBe(myReportsPath("en"));
+    expect(dismissed.secondary).toEqual({
+      lead: "If you disagree with this outcome, see the",
+      label: "Complaints and Dispute Process",
+      href: "/en/legal/complaints-and-dispute-process",
+    });
+    const actioned = presentNotification({ kind: "moderation_decision", payload: { reference: "R-000123", outcome: "actioned" } }, worker);
+    expect(actioned.secondary).toBeUndefined();
+  });
+
   it("falls back to a neutral sentence without a link when the ids are missing", () => {
     expect(presentNotification({ kind: "application_received", payload: {} }, company)).toEqual({
       title: "New application for your vacancy",

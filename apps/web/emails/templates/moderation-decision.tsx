@@ -37,6 +37,12 @@ export const moderationDecision: Template = {
             {actioned ? "They took action on what you reported." : "They decided that no action was needed."}
           </Paragraph>
           <Action href={url(siteUrl, "/reports")}>See your reports</Action>
+          {actioned ? null : (
+            <Paragraph>
+              If you disagree with this outcome, see the{" "}
+              <a href={url(siteUrl, "/legal/complaints-and-dispute-process")}>Complaints and Dispute Process</a>.
+            </Paragraph>
+          )}
         </Layout>
       );
     }

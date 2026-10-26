@@ -280,6 +280,9 @@ test.describe("in-app notifications (FR-T1)", () => {
     await reporterPage.goto(LIST);
     const closed = reporterPage.getByRole("list", { name: "Notifications" }).getByRole("listitem").first();
     await expect(closed.getByRole("link", { name: `Your report R-${String(id).padStart(6, "0")} was closed` })).toHaveAttribute("href", "/en/reports");
+    await expect(closed.getByRole("link", { name: "Complaints and Dispute Process" })).toHaveAttribute("href", "/en/legal/complaints-and-dispute-process");
+    await expect(closed).toContainText("If you disagree with this outcome, see the Complaints and Dispute Process.");
+    await expectNoAxeViolations(reporterPage);
     await other.close();
   });
 

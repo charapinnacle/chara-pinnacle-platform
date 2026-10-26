@@ -33,7 +33,13 @@ export type NotificationItem = {
 };
 
 // What a list item shows: one sentence, a short name of the kind and the page of its context (null when there is none).
-export type PresentedNotification = { title: string; kindLabel: string; href: string | null };
+export type PresentedNotification = {
+  title: string;
+  kindLabel: string;
+  href: string | null;
+  // A second page the item offers after its title, such as the complaint route of a dismissed report.
+  secondary?: { lead: string; label: string; href: string };
+};
 
 type Context = { lang: string; accountKind: AccountKind | null };
 
@@ -257,7 +263,17 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
     label: "Moderation",
     present: (payload, { lang }) => {
       const reference = text(payload, "reference");
-      if (reference) return { title: `Your report ${reference} was closed`, href: myReportsPath(lang) };
+      if (reference) {
+        return {
+          title: `Your report ${reference} was closed`,
+          href: myReportsPath(lang),
+          // A reporter may contest a decision not to act (DSA Art. 20); until it is decided how, the route is the
+          // Complaints and Dispute Process (OPEN_QUESTIONS.md L12).
+          ...(text(payload, "outcome") === "dismissed"
+            ? { secondary: { lead: "If you disagree with this outcome, see the", label: "Complaints and Dispute Process", href: `/${lang}/legal/complaints-and-dispute-process` } }
+            : {}),
+        };
+      }
       const outcome = text(payload, "appeal_outcome");
       if (outcome) {
         const decision = decisionId(payload);

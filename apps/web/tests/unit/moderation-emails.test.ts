@@ -50,8 +50,12 @@ describe("moderation_decision email", () => {
     expect(`${actioned.html}${actioned.text}`).not.toContain("Manila Recruit");
     expect(hrefs(actioned.html)).toEqual([`${SITE}/en/reports`]);
 
+    expect(actioned.text).not.toContain("Complaints and Dispute Process");
+
     const dismissed = await renderEmail("moderation_decision", { reference: "R-000124", outcome: "dismissed" }, SITE);
     expect(dismissed.text).toContain("no action was needed");
+    expect(dismissed.text).toContain("If you disagree with this outcome, see the Complaints and Dispute Process");
+    expect(hrefs(dismissed.html)).toEqual([`${SITE}/en/reports`, `${SITE}/en/legal/complaints-and-dispute-process`]);
   });
 
   it("the appellant reads that the decision was reversed, with the reasons and the decision page", async () => {
