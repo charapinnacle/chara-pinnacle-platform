@@ -111,6 +111,7 @@ export default defineConfig({
         "**/partner-network-pages.spec.ts",
         "**/data-export.spec.ts",
         "**/partner-dashboards.spec.ts",
+        "**/admin-network-statistics.spec.ts",
       ],
     },
     {
@@ -446,13 +447,21 @@ export default defineConfig({
       testMatch: "**/partner-dashboards.spec.ts",
       dependencies: ["data-export-release"],
     },
+    // The network statistics (FR-S2) set release 2a for the whole database and withdraw their count function for a
+    // moment, so they follow the one above.
+    {
+      name: "admin-network-statistics-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/admin-network-statistics.spec.ts",
+      dependencies: ["partner-dashboards-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-dashboards-release"],
+      dependencies: ["admin-network-statistics-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
