@@ -91,7 +91,7 @@ test.describe("the administration console: who gets in and what each role sees",
     await expect(page.getByRole("heading", { name: "Audit log", level: 1 })).toBeVisible();
   });
 
-  test("FR-F1 AC1, FR-R2 AC1: the Platform Administrator has ten entries, the reports, the plans and the settings among them, and no page of the Trust & Safety role", async ({
+  test("FR-F1 AC1, FR-R2 AC1, FR-S3 AC10: the Platform Administrator has eleven entries, the reports, the plans, the settings and the retention periods among them, and no page of the Trust & Safety role", async ({
     page,
   }) => {
     await signInStaff(page, "admin");
