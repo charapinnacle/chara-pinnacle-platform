@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(15);
 
 -- The personal-data catalogue (V19; FR-S3 AC9; SOP P2-43 step Check and control "tests for every new table";
 -- DATA_MODEL.md section 10). Every table that holds a user id or an email address is listed below with how account
@@ -7,58 +7,81 @@ select plan(12);
 -- that the list does not name fails the first test, so a later unit that adds one has to decide both. A table is found
 -- when a column refers to auth.users, public.profiles or public.worker_profiles, when a uuid column is named like a user
 -- (user_id, *_user_id, *_by, actor_id, author_id, sender_id, recipient_id, owner_id, member_id, worker_id, candidate_id), when a text column is named email or *_email, or when a column holds an address
--- (inet). The export column of AC9 is added by V29, which builds the export.
+-- (inet).
 --   erasure:   erase_user  the table is named in public.erase_user, which deletes or pseudonymises its rows
 --              cascade     every user column refers to a user table with on delete cascade or set null, so the
 --                          deletion of the profile by erase_user removes or clears it
 --              any other   the reason why erasure leaves the table alone
 --   retention: policy:<e>  a row <e> of private.retention_policies, applied by a private function that names the table
 --              any other   the reason why the table has no period
+--   export:    export:<s>  the table is read by public.account_ops_export_data into the section <s> of the user's copy
+--                          (FR-S3 AC7, V29), which becomes <s>.json in the zip
+--              any other   the reason why the user's copy leaves the table out
 
-create temp table catalogue (tbl text primary key, erasure text not null, retention text not null);
+create temp table catalogue (tbl text primary key, erasure text not null, retention text not null, export text not null);
 insert into catalogue values
-  ('audit.document_access_log', 'erase_user', 'policy:document_access_log'),
-  ('audit.log', 'erase_user', 'policy:audit_log'),
-  ('public.appeals', 'cascade', 'policy:closed_appeals'),
+  ('audit.document_access_log', 'erase_user', 'policy:document_access_log', 'export:document_access'),
+  ('audit.log', 'erase_user', 'policy:audit_log', 'export:activity'),
+  ('public.appeals', 'cascade', 'policy:closed_appeals', 'export:appeals'),
   ('audit.partner_document_access_log',
    'accessed_by is a Verification Reviewer, a Trust & Safety Administrator or an owner or admin of the partner, never a candidate: erase_user erases candidate accounts only',
-   'policy:partner_document_access_log'),
-  ('private.login_failures', 'cascade', 'policy:login_failures'),
-  ('public.application_notes', 'erase_user', 'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)'),
+   'policy:partner_document_access_log',
+   'the access record of an organisation''s licence evidence: a security record about the organisation''s file'),
+  ('private.login_failures', 'cascade', 'policy:login_failures',
+   'a counter of failed sign-ins per time window, kept 30 days, with no content of its own'),
+  ('public.application_notes', 'erase_user', 'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)',
+   'the internal notes of an employer about an application, written by another person; left out like staff notes'),
   ('public.application_events', 'erase_user',
-   'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)'),
-  ('public.consents', 'erase_user', 'consent evidence is kept for the life of the account (GDPR Art. 7(1)) and pseudonymised at erasure'),
+   'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)', 'export:applications'),
+  ('public.consents', 'erase_user', 'consent evidence is kept for the life of the account (GDPR Art. 7(1)) and pseudonymised at erasure',
+   'export:consents'),
+  ('public.data_export_requests', 'cascade', 'policy:data_exports', 'export:data_exports'),
   ('public.follows', 'cascade',
-   'a follow lasts until the user removes it or the account ends (FR-L4); the followed company reads a count only'),
-  ('public.job_applications', 'erase_user', 'applications have no period yet (OPEN_QUESTIONS.md L6); pseudonymised at erasure'),
-  ('public.jobs', 'cascade', 'organisation data: a vacancy follows its organisation; the creator link is cleared at erasure'),
+   'a follow lasts until the user removes it or the account ends (FR-L4); the followed company reads a count only',
+   'export:followed_companies'),
+  ('public.job_applications', 'erase_user', 'applications have no period yet (OPEN_QUESTIONS.md L6); pseudonymised at erasure',
+   'export:applications'),
+  ('public.jobs', 'cascade', 'organisation data: a vacancy follows its organisation; the creator link is cleared at erasure',
+   'organisation data: the vacancies of an employer; created_by only names the member who wrote one'),
   ('public.moderation_actions', 'actor_id is a platform staff member, and erase_user refuses staff accounts',
-   'the statement of reasons of a moderation decision has no period yet (OPEN_QUESTIONS.md L6)'),
-  ('public.notification_preferences', 'erase_user', 'one row per account, deleted with the account'),
-  ('public.notifications', 'erase_user', 'policy:notifications'),
+   'the statement of reasons of a moderation decision has no period yet (OPEN_QUESTIONS.md L6)',
+   'the staff record of decisions on organisations and vacancies; members read them through list_my_appeals'),
+  ('public.notification_preferences', 'erase_user', 'one row per account, deleted with the account', 'export:notification_preferences'),
+  ('public.notifications', 'erase_user', 'policy:notifications', 'export:notifications'),
   ('public.organization_invitations',
    'email is the invited address of a company invitation, never a candidate account; invited_by is cleared with the profile',
-   'policy:organization_invitations'),
-  ('public.organization_members', 'cascade', 'a membership lasts as long as the account and ends with it'),
-  ('public.organization_ownership_transfers', 'cascade', 'a transfer lives with the memberships of both accounts and is deleted with either'),
+   'policy:organization_invitations', 'export:organization_invitations'),
+  ('public.organization_members', 'cascade', 'a membership lasts as long as the account and ends with it', 'export:organization_memberships'),
+  ('public.organization_ownership_transfers', 'cascade', 'a transfer lives with the memberships of both accounts and is deleted with either',
+   'export:ownership_transfers'),
   ('public.partner_licences', 'cascade',
-   'organisation data kept until the partner removes the entry (Phase 3 badge history); replaced and removed files follow licence_evidence'),
+   'organisation data kept until the partner removes the entry (Phase 3 badge history); replaced and removed files follow licence_evidence',
+   'organisation data: the licences of a partner company, not the personal data of a member'),
   ('public.partner_review_decisions', 'decided_by is a platform staff member, and erase_user refuses staff accounts',
-   'the append-only review record of an organisation is kept with the organisation'),
-  ('public.passport_shares', 'erase_user', 'kept with the application it was given for; revoked and pseudonymised at erasure'),
-  ('public.platform_staff', 'cascade', 'a staff role lasts as long as the account'),
-  ('public.profiles', 'erase_user', 'the account itself; inactive candidate accounts are put up for deletion after inactive_worker_data'),
-  ('public.reports', 'erase_user', 'policy:closed_reports'),
+   'the append-only review record of an organisation is kept with the organisation',
+   'the staff review record of an organisation; it names a staff member, whom the export never names'),
+  ('public.passport_shares', 'erase_user', 'kept with the application it was given for; revoked and pseudonymised at erasure',
+   'export:passport_shares'),
+  ('public.platform_staff', 'cascade', 'a staff role lasts as long as the account', 'export:platform_roles'),
+  ('public.profiles', 'erase_user', 'the account itself; inactive candidate accounts are put up for deletion after inactive_worker_data',
+   'export:account'),
+  ('public.reports', 'erase_user', 'policy:closed_reports', 'export:reports'),
   ('public.saved_items', 'cascade',
-   'organisation data kept until a member removes the partner (FR-L4); saved_by is cleared with the account'),
-  ('public.saved_jobs', 'cascade', 'policy:saved_jobs'),
-  ('public.worker_documents', 'erase_user', 'policy:deleted_worker_documents'),
-  ('public.worker_languages', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
-  ('public.worker_preferred_countries', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
-  ('public.worker_profiles', 'erase_user', 'the passport; inactive accounts are put up for deletion after inactive_worker_data'),
-  ('public.worker_skills', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
-  ('public.worker_work_authorizations', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
-  ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)');
+   'organisation data kept until a member removes the partner (FR-L4); saved_by is cleared with the account',
+   'organisation data: the partners an employer saved; saved_by only names the member who saved one'),
+  ('public.saved_jobs', 'cascade', 'policy:saved_jobs', 'export:saved_vacancies'),
+  ('public.worker_documents', 'erase_user', 'policy:deleted_worker_documents', 'export:documents'),
+  ('public.worker_languages', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data',
+   'export:passport'),
+  ('public.worker_preferred_countries', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data',
+   'export:passport'),
+  ('public.worker_profiles', 'erase_user', 'the passport; inactive accounts are put up for deletion after inactive_worker_data', 'export:passport'),
+  ('public.worker_skills', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data',
+   'export:passport'),
+  ('public.worker_work_authorizations', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data',
+   'export:passport'),
+  ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
+   'organisation data: the availability listings of a partner company');
 
 -- The user columns of every table of the five application schemas, extension tables left out.
 create function pg_temp.user_columns() returns table (tbl text, col text, refers_on_delete "char")
@@ -117,8 +140,30 @@ select is(
 select is(
   (select coalesce(string_agg(tbl, ',' order by tbl), '') from catalogue
    where (erasure not in ('erase_user', 'cascade') and char_length(erasure) < 30)
-      or (retention not like 'policy:%' and char_length(retention) < 30)),
-  '', 'AC9: every table left alone by erasure or retention states its reason'
+      or (retention not like 'policy:%' and char_length(retention) < 30)
+      or (export not like 'export:%' and char_length(export) < 30)),
+  '', 'AC9: every table left alone by erasure, retention or the export states its reason'
+);
+
+-- The export: every table said to be exported is read by the export function, into a section the function returns.
+select is(
+  (select coalesce(string_agg(tbl, ',' order by tbl), '') from catalogue
+   where export like 'export:%' and position(tbl in pg_get_functiondef('public.account_ops_export_data(uuid)'::regprocedure)) = 0),
+  '', 'AC9: every table said to be in the export is read by account_ops_export_data'
+);
+insert into auth.users (id, email, raw_user_meta_data)
+values ('00000000-0000-0000-0000-0000000c1401', 'catalogue@example.test', '{"intended_account_kind": "worker"}');
+insert into public.data_export_requests (id, user_id) values ('00000000-0000-0000-0000-0000000c1402', '00000000-0000-0000-0000-0000000c1401');
+select is(
+  (select coalesce(string_agg(tbl, ',' order by tbl), '') from catalogue
+   where export like 'export:%'
+     and not (public.account_ops_export_data('00000000-0000-0000-0000-0000000c1402') -> 'sections') ? substr(export, 8)),
+  '', 'AC9: every section named is one the export writes'
+);
+select is(
+  (select count(*)::integer from jsonb_object_keys(public.account_ops_export_data('00000000-0000-0000-0000-0000000c1402') -> 'sections') k
+   where k not in (select substr(export, 8) from catalogue where export like 'export:%')),
+  0, 'and the export writes no section the catalogue does not name'
 );
 
 -- The notes of an employer about a candidate go with the candidate: erase_user deletes the notes of the candidate's
