@@ -38,7 +38,8 @@ function StaffMessage({ outcome, label }: { outcome: ReviewOutcome; label: strin
 
 // The dashboard of a recruitment or staffing company once it has been submitted for review (FR-J1 AC11, FR-J4): the state
 // of the review, the message of our team after a decision and what to do next. The recruitment and staffing dashboards
-// replace it (V30); the emails about the decisions come with V14. Never "approved" or "verified" (decision 2.6).
+// replace it (V30); each decision is also emailed (partner_approved, partner_info_requested, partner_declined). Never
+// "approved" or "verified" (decision 2.6).
 export function PartnerReviewDashboard({ lang, organization, status, wasListed, outcome, targetDays }: PartnerReviewDashboardProps) {
   const profileLink = (
     <TextLink standalone href={workforceProfilePath(lang, organization.slug)}>
