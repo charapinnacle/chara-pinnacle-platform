@@ -99,7 +99,7 @@ function calendarDaysBetween(confirmedAt: string, now: Date): number {
   return Math.max(0, day(now.getTime()) - day(Date.parse(confirmedAt)));
 }
 
-function confirmedAgo(confirmedAt: string, now: Date): string {
+export function confirmedAgo(confirmedAt: string, now: Date): string {
   const daysAgo = calendarDaysBetween(confirmedAt, now);
   if (daysAgo === 0) return "Confirmed today.";
   return `Confirmed ${daysAgo === 1 ? "yesterday" : `${days(daysAgo)} ago`}, on ${formatDate(confirmedAt)}.`;
