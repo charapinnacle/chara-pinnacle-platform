@@ -30,6 +30,7 @@ export const adminEntries = [
     roles: ["trust_safety", "verification_reviewer", "admin"],
     release: "release_partner_directories",
   },
+  { label: "Appeals", segment: "appeals", roles: both, release: "release_partner_directories" },
 ] as const satisfies readonly Entry[];
 
 export function entriesFor(roles: readonly PlatformRole[], released: readonly ReleaseSwitch[] = []) {
