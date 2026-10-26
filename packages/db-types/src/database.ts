@@ -1672,14 +1672,19 @@ isOneToOne: false
 "revoke_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
+"search_available_workforce":
+{ Args: { "p_cursor"?: string,"p_destination": string,"p_limit"?: number,"p_occupation": string,"p_within_days": number,"p_workers_needed": number }; Returns: {
+              "available_now": number,"confirmed_at": string,"display_name": string,"id": string,"listings": Json,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"supply": number
+            }[]
+                           },
 "search_jobs":
 { Args: { "p_accommodation"?: boolean,"p_city"?: string,"p_country"?: string,"p_cursor"?: string,"p_employer"?: string,"p_employment_type"?: Database["public"]['Enums']["employment_type"],"p_industry"?: string,"p_limit"?: number,"p_occupation"?: string,"p_q"?: string,"p_recruitment"?: Database["public"]['Enums']["recruitment_preference"],"p_salary_currency"?: string,"p_salary_min"?: number,"p_salary_period"?: Database["public"]['Enums']["salary_period"],"p_visa_support"?: boolean }; Returns: {
               "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"employer_display_name": string,"employer_slug": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"next_cursor": string,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"title": string,"visa_support": boolean
             }[]
                            },
 "search_partners":
-{ Args: { "p_based_in"?: string,"p_capacity"?: number,"p_cursor"?: string,"p_destination"?: string,"p_industry"?: string,"p_key"?: string,"p_kind": string,"p_language"?: string,"p_limit"?: number,"p_occupation"?: string,"p_proof"?: string,"p_recruitment_type"?: Database["public"]['Enums']["recruitment_preference"],"p_sources_from"?: (string)[],"p_within_days"?: number }; Returns: {
-              "based_in_country": string,"capacity_confirmed_at": string,"display_name": string,"id": string,"main_occupations": Json,"matched_filters": (string)[],"next_cursor": string,"profile_updated_at": string,"served_countries": Json,"slug": string
+{ Args: { "p_based_in"?: string,"p_capacity"?: number,"p_cursor"?: string,"p_destination"?: string,"p_industry"?: string,"p_key"?: string,"p_kind": string,"p_language"?: string,"p_limit"?: number,"p_occupation"?: string,"p_proof"?: string,"p_recruitment_type"?: Database["public"]['Enums']["recruitment_preference"],"p_sources_from"?: (string)[],"p_staffing_types"?: (string)[],"p_within_days"?: number,"p_workforce_size"?: string }; Returns: {
+              "also_offers_staffing": boolean,"available_workforce": Json,"based_in_country": string,"capacity_confirmed_at": string,"display_name": string,"id": string,"main_occupations": Json,"matched_filters": (string)[],"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"served_countries": Json,"slug": string,"staffing_types": (Database["public"]['Enums']["partner_service_type"])[]
             }[]
                            },
 "set_account_kind":
