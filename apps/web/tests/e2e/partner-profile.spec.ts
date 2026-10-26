@@ -268,6 +268,46 @@ test.describe("Public partner profile (FR-K4)", () => {
     }
   });
 
+  test("FR-R6 AC1: a company that reads the profile is counted once a day; the partner, its preview and visitors are not", async ({ page, browser }) => {
+    test.setTimeout(120_000);
+    const partner = await listedPartner({ complete: false });
+    const viewsOf = () =>
+      query<{ viewer: string; days_ago: number }>(
+        `select viewer_organization_id as viewer, current_date - viewed_on as days_ago from private.profile_view_events
+         where viewed_organization_id = ${literal(partner.id)} order by viewer_organization_id`,
+      );
+
+    await page.goto(profileUrl(partner.slug));
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(partner.displayName);
+
+    const employer = await createCommittedUser("company");
+    await registerOrganization(employer, `${uniqueName("Counted Viewer")} GmbH`);
+    const [{ id: employerOrg }] = query<{ id: string }>(
+      `select organization_id as id from public.organization_members where user_id = ${literal(employer.id)}`,
+    );
+    const viewers: [TestUser, number][] = [[employer, 2], [partner.user, 1], [await createCommittedUser("worker"), 1]];
+    for (const [user, reads] of viewers) {
+      const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": visitorAddress() } });
+      const viewerPage = await context.newPage();
+      await logIn(viewerPage, user);
+      await viewerPage.waitForURL((url) => !url.pathname.endsWith("/login"));
+      for (let read = 0; read < reads; read++) {
+        await viewerPage.goto(profileUrl(partner.slug));
+        await expect(viewerPage.getByRole("heading", { level: 1 })).toHaveText(partner.displayName);
+      }
+      if (user === partner.user) {
+        await viewerPage.goto(`/en/org/${partner.slug}/workforce-profile/preview`);
+        await expect(viewerPage.getByRole("heading", { level: 1 })).toHaveText(partner.displayName);
+      }
+      await context.close();
+    }
+
+    expect(viewsOf()).toEqual([{ viewer: employerOrg, days_ago: 0 }]);
+    const notFound = await page.goto(profileUrl(`${partner.slug}-gone`));
+    expect(notFound?.status()).toBe(404);
+    expect(viewsOf()).toHaveLength(1);
+  });
+
   test("AC10: a visitor reports the company from its profile", async ({ page }) => {
     const partner = await listedPartner({ complete: false });
     await page.goto(profileUrl(partner.slug));
