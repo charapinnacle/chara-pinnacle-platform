@@ -61,8 +61,10 @@ select is(
   (select array_agg(key order by key) from (
     select key from t_public_keys union all select 'release_partner_directories' union all select 'partner_review_target_working_days'
     union all select 'licence_number_patterns' union all select 'licence_valid_until_max_years'
+    union all select 'workforce_listing_stale_days' union all select 'workforce_confirm_reminder_days'
+    union all select 'workforce_available_from_max_days'
   ) k),
-  'an anonymous visitor gets exactly the seven public keys, the release switch (FR-T1), the partner review target (FR-J1) and the licence form rules (FR-J2)'
+  'an anonymous visitor gets exactly the seven public keys, the release switch (FR-T1), the partner review target (FR-J1), the licence form rules (FR-J2) and the availability periods (FR-K3)'
 );
 select is(
   (select count(*) from public.get_public_settings() where key in ('entitlements_enforced', 'share_expiry_days_after_final')),
@@ -80,6 +82,8 @@ select is(
   (select array_agg(key order by key) from (
     select key from t_public_keys union all select 'release_partner_directories' union all select 'partner_review_target_working_days'
     union all select 'licence_number_patterns' union all select 'licence_valid_until_max_years'
+    union all select 'workforce_listing_stale_days' union all select 'workforce_confirm_reminder_days'
+    union all select 'workforce_available_from_max_days'
   ) k),
   'a signed-in user gets the same keys'
 );
