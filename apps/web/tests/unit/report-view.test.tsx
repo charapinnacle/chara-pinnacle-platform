@@ -24,6 +24,8 @@ const content = (contentPath: string): ReportDetail => ({
   resolutionNote: "Nothing in it breaks the rules.",
   handledAt: "2026-10-05T10:00:00+00:00",
   createdAt: "2026-10-01T10:00:00+00:00",
+  dueAt: "2026-10-05T10:00:00+00:00",
+  overdue: false,
 });
 
 async function render(contentPath: string) {
@@ -44,5 +46,40 @@ describe("the page of a content report", () => {
       expect(html).toContain(path);
       expect(html).not.toContain(`href="${path}"`);
     }
+  });
+});
+
+describe("the page of a partner profile report (FR-S1)", () => {
+  const ORG = "0b9c7a2e-3d4f-4e5a-8b6c-7d8e9f0a1b2c";
+  const partnerReport = (overrides: Partial<ReportDetail>): ReportDetail => ({
+    ...content("/en/jobs"),
+    targetType: "partner_profile",
+    category: "fee_demanded_from_worker",
+    status: "new",
+    contentPath: null,
+    organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "active" },
+    resolutionNote: null,
+    handledAt: null,
+    overdue: true,
+    ...overrides,
+  });
+
+  it("labels a fee demand, shows the due time flagged overdue and links the public profile and the organisation", async () => {
+    getMock.mockResolvedValue(partnerReport({}));
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));
+    expect(html).toContain("Fee demand");
+    expect(html).toContain("Overdue");
+    expect(html).toContain('dateTime="2026-10-05T10:00:00+00:00"');
+    expect(html).toContain('href="/en/partners/manila-skills"');
+    expect(html).toContain(`href="/en/admin/organizations/${ORG}"`);
+    expect(html).toContain("Partner profile");
+  });
+
+  it("shows no due time once the report is closed, and no fee label for another category", async () => {
+    getMock.mockResolvedValue(partnerReport({ status: "dismissed", category: "other", resolutionNote: "Nothing in it breaks the rules.", handledAt: "2026-10-06T10:00:00+00:00" }));
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));
+    expect(html).not.toContain("Overdue");
+    expect(html).not.toContain(">Due<");
+    expect(html).not.toContain("Fee demand");
   });
 });

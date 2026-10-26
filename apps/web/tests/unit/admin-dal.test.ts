@@ -380,18 +380,29 @@ describe("the reports of Trust & Safety", () => {
     target_label: n % 2 ? `Welder ${n}` : "Candidate profile",
     category: "harassment",
     status: "new",
+    priority: 2,
+    due_at: "2026-10-05T10:00:00+00:00",
+    overdue: true,
     created_at: "2026-10-01T10:00:00+00:00",
     handled_at: null,
   });
+  const CURSOR = { priority: 1, dueAt: "2026-10-02T10:00:00+00:00", id: 40 };
 
-  it("lists a status and a kind in pages of 25, with the id of the last row shown as the cursor", async () => {
+  it("FR-S1 AC3: lists the open queue in pages of 25, continuing after the cursor (priority, due time, id) of the last row", async () => {
     const { listReports } = await reports();
     rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
-    const page = await listReports({ status: "open", type: "job" }, 40);
+    const page = await listReports({ status: "open", type: "job" }, CURSOR);
 
-    expect(rpcMock).toHaveBeenCalledWith("admin_list_reports", { p_status: "open", p_type: "job", p_limit: 26, p_after_id: 40 });
+    expect(rpcMock).toHaveBeenCalledWith("admin_list_reports", {
+      p_status: "open",
+      p_type: "job",
+      p_limit: 26,
+      p_after_id: 40,
+      p_after_priority: 1,
+      p_after_due_at: "2026-10-02T10:00:00+00:00",
+    });
     expect(page.rows).toHaveLength(25);
-    expect(page.next).toBe(25);
+    expect(page.next).toEqual({ priority: 2, dueAt: "2026-10-05T10:00:00+00:00", id: 25 });
     expect(page.rows[1]).toEqual({
       id: 2,
       reference: "R-000002",
@@ -399,9 +410,25 @@ describe("the reports of Trust & Safety", () => {
       targetLabel: "Candidate profile",
       category: "harassment",
       status: "new",
+      priority: 2,
+      dueAt: "2026-10-05T10:00:00+00:00",
+      overdue: true,
       createdAt: "2026-10-01T10:00:00+00:00",
       handledAt: null,
     });
+  });
+
+  it("pages a closed list on the id alone, and starts from the top for a cursor of the other shape", async () => {
+    const { listReports } = await reports();
+    rpcMock.mockResolvedValue({ data: Array.from({ length: 26 }, (_, n) => row(n + 1)), error: null });
+    const closed = await listReports({ status: "actioned" }, { id: 40 });
+    expect(rpcMock).toHaveBeenLastCalledWith("admin_list_reports", expect.objectContaining({ p_after_id: 40, p_after_priority: undefined, p_after_due_at: undefined }));
+    expect(closed.next).toEqual({ id: 25 });
+
+    await listReports({ status: "actioned" }, CURSOR);
+    expect(rpcMock).toHaveBeenLastCalledWith("admin_list_reports", expect.objectContaining({ p_after_id: undefined, p_after_priority: undefined }));
+    await listReports({ status: "new" }, { id: 40 });
+    expect(rpcMock).toHaveBeenLastCalledWith("admin_list_reports", expect.objectContaining({ p_status: "new", p_after_id: undefined, p_after_due_at: undefined }));
   });
 
   it("fails loudly when the queue cannot be read", async () => {
@@ -418,7 +445,8 @@ describe("the reports of Trust & Safety", () => {
           id: 7, reference: "R-000007", target_type: "company", category: "illegal_content", details: "Text of the report.", status: "in_review",
           reporter_kind: "visitor", reporter_email: "v@example.test", content_path: null, job_id: ID, job_title: "Welder", job_status: "open",
           job_moderation_state: "visible", organization_id: OTHER, organization_name: "Acme Bau", organization_status: "active",
-          resolution_note: null, handled_at: "2026-10-02T10:00:00+00:00", created_at: "2026-10-01T10:00:00+00:00",
+          organization_slug: "acme-bau", resolution_note: null, handled_at: "2026-10-02T10:00:00+00:00", created_at: "2026-10-01T10:00:00+00:00",
+          priority: 2, due_at: "2026-10-05T10:00:00+00:00", overdue: false,
         },
       ],
       error: null,
@@ -434,10 +462,12 @@ describe("the reports of Trust & Safety", () => {
       reporterEmail: "v@example.test",
       contentPath: null,
       job: { id: ID, title: "Welder", status: "open", moderationState: "visible" },
-      organization: { id: OTHER, name: "Acme Bau", status: "active" },
+      organization: { id: OTHER, name: "Acme Bau", slug: "acme-bau", status: "active" },
       resolutionNote: null,
       handledAt: "2026-10-02T10:00:00+00:00",
       createdAt: "2026-10-01T10:00:00+00:00",
+      dueAt: "2026-10-05T10:00:00+00:00",
+      overdue: false,
     });
     expect(rpcMock).toHaveBeenCalledWith("admin_get_report", { p_id: 7 });
   });

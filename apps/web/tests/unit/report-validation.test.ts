@@ -9,7 +9,14 @@ import {
   reportFormSchemaFor,
   reportInputSchema,
   reportListFilterSchema,
+  reportQueueCursorSchema,
+  reportQueueCursorParam,
+  reportCategoryOptionsFor,
+  reportCategoryOptions,
+  reportCategorySchema,
+  isFeeDemand,
 } from "@/lib/validation/report";
+import { reportPath } from "@/lib/routes";
 
 const ID = "6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
 const valid = {
@@ -119,6 +126,51 @@ describe("the filters and the cursor of the lists", () => {
     expect(reportCursorSchema.safeParse({ at: "yesterday", id: "42" }).success).toBe(false);
     expect(reportCursorSchema.safeParse({ at: "2026-10-11T10:00:00+00:00", id: "-1" }).success).toBe(false);
     expect(reportCursorSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("the cursor of the open queue (FR-S1 AC3)", () => {
+  it("round-trips the priority, due time and id of the last row through one query value", () => {
+    const cursor = { priority: 1, dueAt: "2026-10-12T08:00:00.123456+00:00", id: 42 };
+    expect(reportQueueCursorParam(cursor)).toBe("1_2026-10-12T08:00:00.123456+00:00_42");
+    expect(reportQueueCursorSchema.parse(reportQueueCursorParam(cursor))).toEqual(cursor);
+    expect(reportQueueCursorSchema.parse(reportQueueCursorParam({ id: 7 }))).toEqual({ id: 7 });
+  });
+
+  it("refuses a made-up cursor", () => {
+    for (const value of ["", "abc", "1_2026-10-12T08:00:00Z", "0_2026-10-12T08:00:00Z_4", "1_yesterday_4", "1_2026-10-12T08:00:00Z_-4", "1_2026-10-12T08:00:00Z_4_5", "-3"]) {
+      expect(reportQueueCursorSchema.safeParse(value).success, value).toBe(false);
+    }
+  });
+});
+
+describe("fee demands (FR-J3 AC8, FR-S1 AC10)", () => {
+  it("names the fee category as a worker experienced it on a partner profile, and keeps the Phase 1 label elsewhere", () => {
+    const label = (type: Parameters<typeof reportCategoryOptionsFor>[0]) =>
+      reportCategoryOptionsFor(type).find((option) => option.value === "fee_demanded_from_worker")?.label;
+    expect(label("partner_profile")).toBe("The company asked me to pay a fee");
+    expect(label("job")).toBe("A fee is demanded from the worker");
+    expect(reportCategoryOptionsFor("partner_profile").map((option) => option.value)).toEqual(reportCategoryOptions.map((option) => option.value));
+  });
+
+  it("tells a fee demand from the other categories", () => {
+    expect(isFeeDemand("fee_demanded_from_worker")).toBe(true);
+    expect(isFeeDemand("misleading_or_fraud")).toBe(false);
+    expect(isFeeDemand("")).toBe(false);
+  });
+
+  it("links the report of a partner profile with the slug and, for a fee demand, the category chosen", () => {
+    expect(reportPath("en", "partner_profile", "manila-skills")).toBe("/en/report?type=partner_profile&partner=manila-skills");
+    expect(reportPath("en", "partner_profile", "manila-skills", "fee_demanded_from_worker")).toBe(
+      "/en/report?type=partner_profile&partner=manila-skills&category=fee_demanded_from_worker",
+    );
+    expect(reportPath("en", "content", "/en/pricing")).toBe("/en/report?type=content&path=%2Fen%2Fpricing");
+    expect(reportPath("en", "company", ID)).toBe(`/en/report?type=company&job=${ID}`);
+  });
+
+  it("preselects only a category of the list", () => {
+    expect(reportCategorySchema.safeParse("fee_demanded_from_worker").success).toBe(true);
+    expect(reportCategorySchema.safeParse("pay_me").success).toBe(false);
   });
 });
 
