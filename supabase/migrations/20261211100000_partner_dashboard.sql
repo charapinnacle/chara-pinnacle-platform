@@ -19,10 +19,11 @@
 -- Listings follow the periods of the settings workforce_confirm_reminder_days (due) and workforce_listing_stale_days
 -- (stale, the cut-off of private.workforce_fresh_since that hides a listing outside the company); licences are expiring
 -- from licence_expiry_reminder_days before their valid-until date, as the reminder job counts. Profile views are the
--- 30-day total of private.org_analytics_figures (the 30 UTC days ending yesterday), null with profile_views_suppressed
--- and profile_views_fewer_than (the threshold, as follower_count says it) from 1 to below stats_min_count, 0 without any
--- view, and null with profile_views_in_plan false when the plan has no
--- analytics level (FR-R6 AC6).
+-- 30-day total of private.org_analytics_figures (the 30 UTC days ending yesterday), suppressed as get_org_analytics
+-- suppresses it (null with profile_views_suppressed and profile_views_fewer_than, the threshold as follower_count says
+-- it, below stats_min_count) with one exception: no view at all is 0, not suppressed, so the dashboard can say what
+-- brings views (FR-R3 AC7). get_org_analytics, and so the analytics page of V60, shows the same 30 days as hidden. A
+-- plan without an analytics level gets null with profile_views_in_plan false (FR-R6 AC6).
 create function public.get_partner_dashboard(p_org uuid)
 returns table (
   organization_type public.organization_type,
