@@ -12,6 +12,7 @@ const DOCUMENT_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const BUCKET_ID = /^[a-z0-9-]{1,63}$/;
 const OBJECT_PATH = /^[A-Za-z0-9._/-]{1,300}$/;
 const PASSPORT_BUCKET = "passport-documents";
+const PARTNER_BUCKET = "partner-documents";
 const LIST_PAGE = 100;
 // Objects sit at {user}/{document}/{file}; the walk goes a level deeper than that and no further.
 const MAX_DEPTH = 3;
@@ -76,11 +77,11 @@ function parseJob(row: unknown): Job | null {
       ? { msgId, audit, action, organizationId }
       : null;
   }
-  // An organisation's file (licence evidence, FR-J2) is only ever removed from the folder of the organisation the job
-  // names.
+  // An organisation's file (licence evidence, FR-J2) is only ever removed from the evidence bucket, in the folder of the
+  // organisation the job names.
   if (action === "delete_organization_object") {
-    return typeof organizationId === "string" && UUID.test(organizationId) && typeof bucketId === "string" &&
-        BUCKET_ID.test(bucketId) && typeof path === "string" && OBJECT_PATH.test(path) &&
+    return typeof organizationId === "string" && UUID.test(organizationId) && bucketId === PARTNER_BUCKET &&
+        typeof path === "string" && OBJECT_PATH.test(path) &&
         path.startsWith(`${organizationId}/`) && !path.includes("..")
       ? { msgId, audit, action, organizationId, bucketId, path }
       : null;

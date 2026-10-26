@@ -864,7 +864,7 @@ Deno.test("a delete_organization_object job removes licence evidence through the
   assert.deepEqual(acks(calls), [{ p_msg_id: 90, p_result: { objects_removed: 1 } }]);
 });
 
-Deno.test("a delete_organization_object job outside the folder of its organisation is never executed", async () => {
+Deno.test("a delete_organization_object job outside the evidence bucket or the folder of its organisation is never executed", async () => {
   const { calls, client } = harness({
     "POST /rest/v1/rpc/account_ops_dequeue": jobs(
       { msg_id: 91, message: evidenceRemoval(EVIDENCE, OTHER) },
@@ -872,9 +872,10 @@ Deno.test("a delete_organization_object job outside the folder of its organisati
       { msg_id: 93, message: evidenceRemoval(EVIDENCE, "not-a-uuid") },
       { msg_id: 94, message: { ...evidenceRemoval(EVIDENCE), bucket_id: "Partner Documents" } },
       { msg_id: 95, message: { ...evidenceRemoval(EVIDENCE), path: undefined } },
+      { msg_id: 96, message: { ...evidenceRemoval(EVIDENCE), bucket_id: "passport-documents" } },
     ),
   });
   const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
-  assert.deepEqual(await response.json(), { processed: 0, failed: 5 });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 6 });
   assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
 });
