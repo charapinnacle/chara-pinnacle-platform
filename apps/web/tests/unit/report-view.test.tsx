@@ -75,6 +75,13 @@ describe("the page of a partner profile report (FR-S1)", () => {
     expect(html).toContain("Partner profile");
   });
 
+  it("links no public profile while the organisation is suspended, which has none", async () => {
+    getMock.mockResolvedValue(partnerReport({ organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "suspended" } }));
+    const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));
+    expect(html).not.toContain('href="/en/partners/manila-skills"');
+    expect(html).toContain(`href="/en/admin/organizations/${ORG}"`);
+  });
+
   it("shows no due time once the report is closed, and no fee label for another category", async () => {
     getMock.mockResolvedValue(partnerReport({ status: "dismissed", category: "other", resolutionNote: "Nothing in it breaks the rules.", handledAt: "2026-10-06T10:00:00+00:00" }));
     const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));

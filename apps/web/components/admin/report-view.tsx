@@ -82,7 +82,7 @@ function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; 
         ]}
       />
       <div className="flex flex-wrap gap-x-6">
-        {organization && report.targetType === "partner_profile" ? (
+        {organization?.status === "active" && report.targetType === "partner_profile" ? (
           <TextLink standalone href={partnerProfilePath(lang, organization.slug)}>
             Open the public profile
           </TextLink>

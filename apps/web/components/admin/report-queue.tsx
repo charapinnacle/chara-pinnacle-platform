@@ -98,10 +98,14 @@ export async function ReportQueue({ lang, filter, after }: { lang: string; filte
                 <time dateTime={row.createdAt}>{formatDate(row.createdAt)}</time>
               </td>
               <td className={cell}>
-                {row.overdue ? <StatusBadge status="danger">Overdue</StatusBadge> : null}
-                <time dateTime={row.dueAt} className="block text-small text-muted-foreground">
-                  {formatDateTime(row.dueAt)}
-                </time>
+                {row.status === "new" || row.status === "in_review" ? (
+                  <>
+                    {row.overdue ? <StatusBadge status="danger">Overdue</StatusBadge> : null}
+                    <time dateTime={row.dueAt} className="block text-small text-muted-foreground">
+                      {formatDateTime(row.dueAt)}
+                    </time>
+                  </>
+                ) : null}
               </td>
             </tr>
           ))}

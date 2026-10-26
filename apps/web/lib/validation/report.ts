@@ -69,11 +69,11 @@ export const reportTargetTypes = [
 ] as const satisfies readonly Enums["report_target_type"][];
 
 // The category a report link may preselect (?category=), for example "Report a fee demand"; anything else selects none.
-export const reportCategorySchema = z.enum(Object.keys(reportCategoryLabels) as [Enums["report_category"], ...Enums["report_category"][]]);
+export const reportCategorySchema = z.enum(Object.keys(reportCategoryLabels) as [Enums["report_category"], ...Enums["report_category"][]], {
+  error: "Choose a category.",
+});
 
-const categorySchema = z.string({ error: "Choose a category." }).pipe(
-  z.enum(Object.keys(reportCategoryLabels) as [Enums["report_category"], ...Enums["report_category"][]], { error: "Choose a category." }),
-);
+const categorySchema = z.string({ error: "Choose a category." }).pipe(reportCategorySchema);
 
 const detailsSchema = z
   .string({ error: "Describe what you are reporting." })

@@ -44,6 +44,17 @@ describe("the report queue (FR-S1 AC3, AC10)", () => {
     expect(html.indexOf("R-000007")).toBeLessThan(html.indexOf("R-000003"));
   });
 
+  it("shows no due time and no overdue flag for a closed report", async () => {
+    listMock.mockResolvedValue({
+      rows: [row(9, { status: "dismissed", overdue: false, dueAt: "2026-10-01T08:00:00+00:00" })],
+      next: null,
+    });
+    const html = renderToStaticMarkup(await ReportQueue({ lang: "en", filter: { status: "dismissed" }, after: null }));
+    expect(html).toContain("R-000009");
+    expect(html).not.toContain('dateTime="2026-10-01T08:00:00+00:00"');
+    expect(html).not.toContain("Overdue");
+  });
+
   it("links the next page with the whole cursor of the last row", async () => {
     const html = await render({ priority: 2, dueAt: "2026-10-07T08:00:00+00:00", id: 3 });
     expect(html).toContain(`href="/en/admin/reports?status=open&amp;after=${encodeURIComponent("2_2026-10-07T08:00:00+00:00_3")}"`);
