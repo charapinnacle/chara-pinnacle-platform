@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(30);
 
 \ir status_fixture.inc
 
@@ -37,8 +37,8 @@ select is(
   'every period, Phase 1 and Phase 2, has a label and a description for the editor'
 );
 select is(
-  (select string_agg(entity, ',' order by entity) from private.retention_policies where not editable), 'audit_log',
-  'only the audit log period is kept out of the editor'
+  (select string_agg(entity, ',' order by entity) from private.retention_policies where not editable), 'audit_log,inactive_worker_data',
+  'the audit log and the inactive candidate accounts periods are kept out of the editor'
 );
 select throws_ok(
   $$update private.retention_policies set days = 3651 where entity = 'conversations'$$, '23514', null,
@@ -122,9 +122,11 @@ select is(pg_temp.admin(format($$select public.admin_set_retention_policy('conve
   'P0001|CHARA_INVALID_INPUT|reason', 'a reason over 500 characters is refused');
 select is(pg_temp.admin(format($$select public.admin_set_retention_policy('audit_log', 400, %L)$$, :'reason')),
   'P0001|CHARA_FORBIDDEN|retention_not_editable', 'the audit log period cannot be changed in the editor');
+select is(pg_temp.admin(format($$select public.admin_set_retention_policy('inactive_worker_data', 1, %L)$$, :'reason')),
+  'P0001|CHARA_FORBIDDEN|retention_not_editable', 'the inactive candidate period cannot be changed there either, so one day never erases every candidate');
 select is(pg_temp.admin(format($$select public.admin_set_retention_policy('no_such_entity', 400, %L)$$, :'reason')),
   'P0001|CHARA_FORBIDDEN|retention_not_editable', 'an unknown entity gets the same answer');
-select is(pg_temp.days('conversations') || ':' || pg_temp.days('audit_log') || ':' || pg_temp.updates('conversations'), '365:2191:1',
+select is(pg_temp.days('conversations') || ':' || pg_temp.days('audit_log') || ':' || pg_temp.days('inactive_worker_data') || ':' || pg_temp.updates('conversations'), '365:2191:730:1',
   'no refused change wrote anything');
 select is(
   pg_temp.val_as(:'st_admin', 'aal2', format($$select public.admin_set_retention_policy('conversations', 3650, %L)::text
@@ -141,8 +143,8 @@ select is(
   pg_temp.val_as(:'st_admin', 'aal2', $$select (select count(*) from public.admin_list_retention_policies())::text
     || ':' || (select label from public.admin_list_retention_policies() where entity = 'licence_evidence')
     || ':' || (select (array_agg(entity))[count(*)] from public.admin_list_retention_policies())$$),
-  (select count(*) from private.retention_policies)::text || ':Replaced licence evidence:audit_log',
-  'every period is listed with its label, the migration-only one last'
+  (select count(*) from private.retention_policies)::text || ':Replaced licence evidence:inactive_worker_data',
+  'every period is listed with its label, the migration-only ones last'
 );
 
 -- NFR-S8: the periods are read only through the editor --------------------------------------------------------------

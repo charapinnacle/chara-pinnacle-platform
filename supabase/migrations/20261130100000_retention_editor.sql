@@ -2,8 +2,9 @@
 -- and 10; decision 5.4; NFR-O5; OPEN_QUESTIONS.md L6). The periods stay rows of private.retention_policies read by the
 -- daily private.apply_retention; a Platform Administrator at aal2 now changes them in the console with a statement of
 -- reasons (admin_set_retention_policy, audited as retention_policy.updated with the value before and after), within 1 to
--- 3,650 days. The audit log keeps its six years: its period is legal record keeping and is changed by a reviewed
--- migration only (editable false). Like the plan and settings editor, the retention editor is not behind a release
+-- 3,650 days. Two periods are changed by a reviewed migration only (editable false): the audit log, whose six years are
+-- legal record keeping, and inactive candidate accounts, where a short period would put every candidate account up for
+-- deletion at the next run. Like the plan and settings editor, the retention editor is not behind a release
 -- switch: it governs Phase 1 data as much as Phase 2 data.
 --
 -- The Phase 2 periods are seeded now, as proposed in DATA_MODEL.md section 10 (only the message period is agreed, the
@@ -33,7 +34,7 @@ from (values
   ('cron_job_run_details', 'Scheduler history', 'Days the history of the scheduled jobs is kept.', true),
   ('account_ops_archive', 'Failed account jobs', 'Days a failed account job is kept for review.', true),
   ('closed_reports', 'Closed reports', 'Days a report is kept after it was actioned or dismissed.', true),
-  ('inactive_worker_data', 'Inactive candidate accounts', 'Days without activity after which a candidate account is put up for deletion.', true),
+  ('inactive_worker_data', 'Inactive candidate accounts', 'Days without activity after which a candidate account is put up for deletion: changed by a reviewed migration only.', false),
   ('saved_jobs', 'Saved vacancies', 'Days a saved vacancy is kept after the vacancy was closed, filled or deleted.', true)
 ) as v (entity, label, description, editable)
 where p.entity = v.entity;
@@ -64,7 +65,7 @@ alter table private.retention_policies
   );
 
 comment on table private.retention_policies is
-  'Retention periods in days, one row per entity, read by private.apply_retention (and the saved vacancies cleanup). Changed by a Platform Administrator through admin_set_retention_policy within 1 to 3,650 days; a row with editable false only by a reviewed migration.';
+  'Retention periods in days, one row per entity, read by private.apply_retention (and the saved vacancies cleanup). Changed by a Platform Administrator through admin_set_retention_policy within 1 to 3,650 days; a row with editable false (audit_log, inactive_worker_data) only by a reviewed migration.';
 
 -- The editor ------------------------------------------------------------------------------------------------------------
 

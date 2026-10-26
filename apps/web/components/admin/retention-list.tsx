@@ -5,8 +5,8 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { listRetentionPolicies } from "@/lib/dal/retention";
 import { monthsText } from "@/lib/validation/retention";
 
-// The retention periods (FR-S3 AC10, NFR-O5): each with its period in days and months. The audit log period is shown
-// but changed by a reviewed migration only.
+// The retention periods (FR-S3 AC10, NFR-O5): each with its period in days and months. The audit log and inactive
+// candidate account periods are shown but changed by a reviewed migration only.
 export async function RetentionList() {
   const policies = await listRetentionPolicies();
   if (policies.length === 0) return <EmptyState icon={Archive} title="No retention periods are set" />;

@@ -67,6 +67,10 @@ test.describe("the retention periods of the console (FR-S3)", () => {
     await expect(audit.getByRole("cell").nth(1)).toHaveText("2,191");
     await expect(audit).toContainText("Changed by migration only");
     await expect(audit.getByRole("button")).toHaveCount(0);
+    const inactive = row(page, "Inactive candidate accounts");
+    await expect(inactive.getByRole("cell").nth(1)).toHaveText("730");
+    await expect(inactive).toContainText("Changed by migration only");
+    await expect(inactive.getByRole("button")).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
   });
 
