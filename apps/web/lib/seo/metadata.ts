@@ -77,12 +77,20 @@ export function vacancyMetadata(lang: string, job: Pick<PublicJob, "id" | "title
   return pageMetadata(withBrand(`${job.title} - ${job.employer.displayName}`, " | "), description, `/${lang}/jobs/${job.id}`);
 }
 
-// The directory has one canonical address: its filtered and paged addresses are the same page to a crawler.
+// A directory has one canonical address: its filtered and paged addresses are the same page to a crawler.
 export function partnerDirectoryMetadata(lang: string): Metadata {
   return pageMetadata(
     withBrand("Find recruitment partners", " — "),
     `Search recruitment companies on ${BRAND_NAME} by destination, occupation, source country, industry, language and recruitment type.`,
     `/${lang}/partners/recruitment`,
+  );
+}
+
+export function staffingDirectoryMetadata(lang: string): Metadata {
+  return pageMetadata(
+    withBrand("Find staffing partners", " — "),
+    `Search staffing companies on ${BRAND_NAME} by market served, occupation, operating country, industry, staffing type and workforce size.`,
+    `/${lang}/partners/staffing`,
   );
 }
 

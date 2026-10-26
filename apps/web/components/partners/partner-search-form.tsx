@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
 import { ChipsField } from "@/components/forms/chips-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
@@ -16,14 +17,16 @@ import {
   partnerDirectoryPath,
   partnerFormDefaults,
   partnerSearchFormSchema,
+  type PartnerDirectoryKind,
   type PartnerSearchFormInput,
 } from "@/lib/partners/search-params";
 import { toOptions } from "@/lib/reference-options";
 import { countryNoun } from "@/lib/validation/geographies";
-import { recruitmentTypeLabels } from "@/lib/validation/workforce-offer";
+import { recruitmentTypeLabels, sizeBandLabels, sizeBands, staffingTypeLabels, staffingTypes } from "@/lib/validation/workforce-offer";
 
 type PartnerSearchFormProps = {
   lang: string;
+  kind: PartnerDirectoryKind;
   query: string;
   occupations: OccupationItem[];
   industries: ReferenceItem[];
@@ -36,16 +39,20 @@ const recruitmentOptions = [
   { value: "local", label: recruitmentTypeLabels.local },
   { value: "international", label: recruitmentTypeLabels.international },
 ];
+const staffingTypeOptions = staffingTypes.map((value) => ({ value, label: staffingTypeLabels[value] }));
+const sizeBandOptions = sizeBands.map((value) => ({ value, label: sizeBandLabels[value] }));
 
 // The address is the state of the search (FR-L1 AC8): submitting writes the filters to it and shows the first page; going
-// back to an earlier address puts its filters back into the form. Every filter keeps a visible label (AC10).
-export function PartnerSearchForm({ lang, query, occupations, industries, countries, languages, advancedOpen }: PartnerSearchFormProps) {
+// back to an earlier address puts its filters back into the form. Every filter keeps a visible label (AC10). The staffing
+// directory (FR-L2) offers staffing types and the workforce size in place of language, recruitment type and source
+// countries.
+export function PartnerSearchForm({ lang, kind, query, occupations, industries, countries, languages, advancedOpen }: PartnerSearchFormProps) {
   const router = useRouter();
   const [searching, startSearch] = useTransition();
   const [moreOpen, setMoreOpen] = useState(advancedOpen);
   const form = useForm<PartnerSearchFormInput>({
     resolver: zodResolver(partnerSearchFormSchema),
-    defaultValues: partnerFormDefaults(query),
+    defaultValues: partnerFormDefaults(query, kind),
   });
   const { control, handleSubmit, reset } = form;
   const countryOptions = toOptions(countries);
@@ -57,18 +64,18 @@ export function PartnerSearchForm({ lang, query, occupations, industries, countr
   }
 
   useEffect(() => {
-    reset(partnerFormDefaults(query));
-  }, [query, reset]);
+    reset(partnerFormDefaults(query, kind));
+  }, [query, kind, reset]);
 
   function search(values: PartnerSearchFormInput) {
-    startSearch(() => router.push(partnerDirectoryPath(lang, formFilters(partnerSearchFormSchema.parse(values)))));
+    startSearch(() => router.push(partnerDirectoryPath(lang, kind, formFilters(partnerSearchFormSchema.parse(values)))));
   }
 
   return (
     <form
       noValidate
       role="search"
-      aria-label="Search recruitment partners"
+      aria-label={kind === "staffing" ? "Search staffing partners" : "Search recruitment partners"}
       className="grid gap-5"
       onSubmit={handleSubmit(search, () => setMoreOpen(true))}
     >
@@ -118,24 +125,40 @@ export function PartnerSearchForm({ lang, query, occupations, industries, countr
           placeholder="Any industry"
           options={toOptions(industries)}
         />
-        <ComboboxField
-          control={control}
-          name="language"
-          id="partner-language"
-          label="Language"
-          placeholder="Any language"
-          emptyText="No matching language"
-          options={toOptions(languages)}
-        />
-        <SelectField
-          control={control}
-          name="recruitment"
-          id="partner-recruitment"
-          label="Recruitment type"
-          placeholder="Local and international"
-          options={recruitmentOptions}
-        />
+        {kind === "staffing" ? (
+          <SelectField
+            control={control}
+            name="workforce_size"
+            id="partner-workforce-size"
+            label="Workforce size"
+            placeholder="Any size"
+            options={sizeBandOptions}
+          />
+        ) : (
+          <>
+            <ComboboxField
+              control={control}
+              name="language"
+              id="partner-language"
+              label="Language"
+              placeholder="Any language"
+              emptyText="No matching language"
+              options={toOptions(languages)}
+            />
+            <SelectField
+              control={control}
+              name="recruitment"
+              id="partner-recruitment"
+              label="Recruitment type"
+              placeholder="Local and international"
+              options={recruitmentOptions}
+            />
+          </>
+        )}
       </div>
+      {kind === "staffing" ? (
+        <CheckboxGroupField control={control} name="staffing_type" id="partner-staffing-type" legend="Staffing type" options={staffingTypeOptions} />
+      ) : null}
 
       <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group">
         <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 text-body font-medium">
@@ -143,21 +166,23 @@ export function PartnerSearchForm({ lang, query, occupations, industries, countr
           <ChevronDown aria-hidden className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
         </summary>
         <div className="grid gap-5 pt-3">
-          <div className="lg:max-w-2xl">
-            <ChipsField
-              control={control}
-              name="sources_from"
-              id="partner-sources-from"
-              label="Sources workers from"
-              description="Several countries at once need a plan with advanced partner search."
-              options={countryOptions}
-              placeholder="Type a country"
-              emptyText="No matching country"
-              noneChosen="Any country."
-              noun={countryNoun}
-              limit={null}
-            />
-          </div>
+          {kind === "recruitment" ? (
+            <div className="lg:max-w-2xl">
+              <ChipsField
+                control={control}
+                name="sources_from"
+                id="partner-sources-from"
+                label="Sources workers from"
+                description="Several countries at once need a plan with advanced partner search."
+                options={countryOptions}
+                placeholder="Type a country"
+                emptyText="No matching country"
+                noneChosen="Any country."
+                noun={countryNoun}
+                limit={null}
+              />
+            </div>
+          ) : null}
           <fieldset className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
             <legend className="mb-1 text-h3">Workforce capacity</legend>
             <p className="text-small text-muted-foreground sm:col-span-2">

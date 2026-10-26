@@ -28,7 +28,7 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
     getCountries(),
     getLanguages(),
   ]);
-  const { filters, errors } = parsePartnerSearchParams(rawParams);
+  const { filters, errors } = parsePartnerSearchParams(rawParams, "recruitment");
   const ignored = Object.values(errors);
 
   return (
@@ -53,6 +53,7 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
 
       <PartnerSearchForm
         lang={lang}
+        kind="recruitment"
         query={partnerSearchQuery({ ...filters, cursor: undefined })}
         occupations={occupations}
         industries={industries}
@@ -61,7 +62,7 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
         advancedOpen={usesAdvancedFilters(filters)}
       />
       <Suspense key={partnerSearchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>
-        <PartnerResults lang={lang} filters={filters} />
+        <PartnerResults lang={lang} kind="recruitment" filters={filters} />
       </Suspense>
     </PageContainer>
   );

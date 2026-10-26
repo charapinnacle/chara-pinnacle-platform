@@ -92,8 +92,8 @@ describe("parsePartnerSearchParams", () => {
     const { filters, errors } = parse(Object.fromEntries(new URLSearchParams(query)));
     expect(errors).toEqual({});
     expect(partnerSearchQuery(filters)).toBe(query);
-    expect(partnerDirectoryPath("en", filters)).toBe(`/en/partners/recruitment?${query}`);
-    expect(partnerDirectoryPath("en", { limit: 20 })).toBe("/en/partners/recruitment");
+    expect(partnerDirectoryPath("en", "recruitment", filters)).toBe(`/en/partners/recruitment?${query}`);
+    expect(partnerDirectoryPath("en", "recruitment", { limit: 20 })).toBe("/en/partners/recruitment");
     expect(partnerSearchQuery({ limit: 30 })).toBe("limit=30");
   });
 });
@@ -108,6 +108,8 @@ describe("the partner search form", () => {
       industry: "",
       language: "",
       recruitment: "",
+      staffing_type: [],
+      workforce_size: "",
       capacity: "",
       within_days: " 30 ",
     });
@@ -115,7 +117,7 @@ describe("the partner search form", () => {
   });
 
   it("shows the filters of an address, without its cursor", () => {
-    expect(partnerFormDefaults(`destination=DE&sources_from=PH,IN&cursor=${encodeURIComponent(CURSOR)}`)).toEqual({
+    expect(partnerFormDefaults(`destination=DE&sources_from=PH,IN&cursor=${encodeURIComponent(CURSOR)}`, "recruitment")).toEqual({
       destination: "DE",
       occupation: "",
       based_in: "",
@@ -123,6 +125,8 @@ describe("the partner search form", () => {
       industry: "",
       language: "",
       recruitment: "",
+      staffing_type: [],
+      workforce_size: "",
       capacity: "",
       within_days: "",
     });
@@ -133,5 +137,56 @@ describe("the partner search form", () => {
     expect(usesAdvancedFilters({ limit: 20, sources_from: ["PH", "IN"] })).toBe(true);
     expect(usesAdvancedFilters({ limit: 20, capacity: 100 })).toBe(true);
     expect(usesAdvancedFilters({ limit: 20, within_days: 60 })).toBe(true);
+  });
+});
+
+const parseStaffing = (params: Record<string, string>) => parsePartnerSearchParams(params, "staffing");
+
+// FR-L2 AC9: the staffing filters of the same parser.
+describe("the staffing directory parameters", () => {
+  it("reads staffing_type as a list of staffing types in any case, and rejects an unknown one", () => {
+    expect(parseStaffing({ staffing_type: "temporary,project" }).filters.staffing_type).toEqual(["temporary", "project"]);
+    expect(parseStaffing({ staffing_type: "Temporary" }).filters.staffing_type).toEqual(["temporary"]);
+    expect(parseStaffing({ staffing_type: "temporary, temporary" }).filters.staffing_type).toEqual(["temporary"]);
+    const gig = parseStaffing({ staffing_type: "gig" });
+    expect(gig.filters.staffing_type).toBeUndefined();
+    expect(Object.keys(gig.errors)).toEqual(["staffing_type"]);
+    expect(Object.keys(parseStaffing({ staffing_type: "staffing" }).errors)).toEqual(["staffing_type"]);
+  });
+
+  it("accepts the four workforce size bands and rejects another", () => {
+    expect(parseStaffing({ workforce_size: "50_249" }).filters.workforce_size).toBe("50_249");
+    expect(parseStaffing({ workforce_size: "250_999" }).filters.workforce_size).toBe("250_999");
+    const huge = parseStaffing({ workforce_size: "huge" });
+    expect(huge.filters.workforce_size).toBeUndefined();
+    expect(Object.keys(huge.errors)).toEqual(["workforce_size"]);
+  });
+
+  it("applies the FR-L1 rules to the shared filters unchanged", () => {
+    const result = parseStaffing({ destination: "de", occupation: "721", based_in: "pl", industry: "C", capacity: "0", within_days: "60" });
+    expect(result.filters).toEqual({ destination: "DE", based_in: "PL", industry: "C", within_days: 60, limit: 20 });
+    expect(Object.keys(result.errors).sort()).toEqual(["capacity", "occupation"]);
+  });
+
+  it("ignores the filters of the other directory", () => {
+    expect(parseStaffing({ language: "tl", recruitment: "local", sources_from: "PH" })).toEqual({ filters: { limit: 20 }, errors: {} });
+    expect(parse({ staffing_type: "temporary", workforce_size: "1_49" })).toEqual({ filters: { limit: 20 }, errors: {} });
+  });
+
+  it("serialises a valid staffing filter set to the same query string", () => {
+    const query = `destination=DE&occupation=7212&based_in=PL&industry=C&staffing_type=temporary%2Cproject&workforce_size=250_999&capacity=100&within_days=60&cursor=${encodeURIComponent(CURSOR)}`;
+    const { filters, errors } = parseStaffing(Object.fromEntries(new URLSearchParams(query)));
+    expect(errors).toEqual({});
+    expect(partnerSearchQuery(filters)).toBe(query);
+    expect(partnerDirectoryPath("en", "staffing", filters)).toBe(`/en/partners/staffing?${query}`);
+    expect(partnerDirectoryPath("en", "staffing")).toBe("/en/partners/staffing");
+  });
+
+  it("shows the staffing filters of an address in the form", () => {
+    expect(partnerFormDefaults("staffing_type=permanent&workforce_size=1_49&language=tl", "staffing")).toMatchObject({
+      staffing_type: ["permanent"],
+      workforce_size: "1_49",
+      language: "",
+    });
   });
 });
