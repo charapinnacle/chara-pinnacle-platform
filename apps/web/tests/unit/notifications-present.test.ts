@@ -6,6 +6,7 @@ import {
   applicantPath,
   applicationPath,
   billingPath,
+  companyPagePath,
   employerDashboardPath,
   homePath,
   jobPath,
@@ -57,6 +58,9 @@ describe("in-app notification items (FR-T1)", () => {
     ["listing_confirmation_due", { total: 3, org_slug: "manila" }, company, "3 availability listings need confirming", `${workforceProfilePath("en", "manila")}#availability-heading`],
     ["listing_confirmation_due", { total: 1, org_slug: "manila" }, company, "1 availability listing needs confirming", `${workforceProfilePath("en", "manila")}#availability-heading`],
     ["listing_confirmation_due", {}, company, "Some availability listings need confirming", null],
+    ["followed_company_activity", { org_name: "Acme Bau", org_slug: "acme", total: 1, vacancies: [{ job_id: JOB, job_title: "Welder" }] }, worker, "Acme Bau published a new vacancy: Welder", companyPagePath("en", "acme")],
+    ["followed_company_activity", { org_name: "Acme Bau", org_slug: "acme", total: 3, vacancies: [{ job_id: JOB, job_title: "Welder" }] }, company, "Acme Bau published 3 new vacancies", companyPagePath("en", "acme")],
+    ["followed_company_activity", {}, worker, "A company you follow published new vacancies", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);

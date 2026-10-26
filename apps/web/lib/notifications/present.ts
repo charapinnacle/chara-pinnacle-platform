@@ -5,6 +5,7 @@ import {
   applicantPath,
   applicationPath,
   billingPath,
+  companyPagePath,
   employerDashboardPath,
   homePath,
   jobPath,
@@ -213,6 +214,25 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
               ? `${total} availability listings need confirming`
               : "Some availability listings need confirming",
         href: slug ? `${workforceProfilePath(lang, slug)}#availability-heading` : null,
+      };
+    },
+  },
+  followed_company_activity: {
+    label: "Followed companies",
+    present: (payload, { lang }) => {
+      const org = text(payload, "org_name") ?? "A company you follow";
+      const total = Number(text(payload, "total"));
+      const vacancies = Array.isArray(payload.vacancies) ? (payload.vacancies as Record<string, unknown>[]) : [];
+      const first = vacancies[0] ? text(vacancies[0], "job_title") : undefined;
+      const slug = text(payload, "org_slug");
+      return {
+        title:
+          total === 1 && first
+            ? `${org} published a new vacancy: ${first}`
+            : total > 1
+              ? `${org} published ${total} new vacancies`
+              : `${org} published new vacancies`,
+        href: slug ? companyPagePath(lang, slug) : null,
       };
     },
   },

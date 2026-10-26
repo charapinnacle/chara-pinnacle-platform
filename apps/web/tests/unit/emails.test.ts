@@ -67,6 +67,16 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
       { listing_id: JOB, occupation: "Sheet-metal workers", country_name: "Nepal", confirmed_at: "2026-10-27T08:00:00+00:00" },
     ],
   },
+  followed_company_activity: {
+    organization_id: ACCOUNT,
+    org_name: "Acme Bau",
+    org_slug: "acme-bau",
+    total: 2,
+    vacancies: [
+      { job_id: JOB, job_title: "Welder MIG/MAG" },
+      { job_id: APP, job_title: "Crane operator" },
+    ],
+  },
 };
 
 const LEAKS = {
@@ -166,6 +176,7 @@ describe("notification templates", () => {
       licence_expiring: "/en/org/manila-recruit/workforce-profile#licences-heading",
       partner_licence_expired: "/en/org/manila-recruit/workforce-profile#licences-heading",
       listing_confirmation_due: "/en/org/manila-recruit/workforce-profile#availability-heading",
+      followed_company_activity: "/en/companies/acme-bau",
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);

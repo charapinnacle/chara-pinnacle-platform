@@ -8,6 +8,7 @@ import { applicationReceived } from "./templates/application-received.tsx";
 import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
 import { erasurePaused } from "./templates/erasure-paused.tsx";
+import { followedCompanyActivity } from "./templates/followed-company-activity.tsx";
 import { legalVersion } from "./templates/legal-version.tsx";
 import { licenceExpiring } from "./templates/licence-expiring.tsx";
 import { listingConfirmationDue } from "./templates/listing-confirmation-due.tsx";
@@ -43,6 +44,7 @@ const TEMPLATES = {
   licence_expiring: licenceExpiring,
   partner_licence_expired: partnerLicenceExpired,
   listing_confirmation_due: listingConfirmationDue,
+  followed_company_activity: followedCompanyActivity,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;
