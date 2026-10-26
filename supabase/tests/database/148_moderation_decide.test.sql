@@ -1,5 +1,5 @@
 begin;
-select plan(159);
+select plan(163);
 
 \ir status_fixture.inc
 
@@ -371,6 +371,37 @@ select is(pg_temp.writes(), :'before_race', 'AC11: the refused decision wrote no
 select is((select count(*) from public.moderation_actions where report_id = :rep_alpha), 1::bigint, 'AC11: one moderation_actions row for the report');
 select is(pg_temp.decide(:'trust_b', 'hide', 'Hide it once more.', null, 'partner_profile', :'alpha'), 'P0001|CHARA_INVALID_STATE|hidden',
   'a hidden profile is not hidden twice');
+
+-- AC11: two decisions at the same moment, from two sessions. The other session commits a report, holds its row as a
+-- decision in progress would, and then closes it; the decision of this session waits for the lock and then finds the
+-- report closed. The report is removed again at the end, as it was committed outside this transaction.
+create extension if not exists dblink schema extensions;
+select extensions.dblink_connect('other',
+  format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
+select id as raced from extensions.dblink('other',
+  $$insert into public.reports (target_type, content_path, category, details, good_faith_confirmed)
+    values ('content', '/en/v27-raced', 'other', 'Two staff members decide on this report at once.', true) returning id$$) as t (id bigint) \gset
+select extensions.dblink_exec('other', 'begin');
+select is(
+  (select l from extensions.dblink('other', format('select status::text from public.reports where id = %s for no key update', :raced)) as t (l text)),
+  'new', 'AC11: the other session holds the report while it decides'
+);
+set local lock_timeout = '300ms';
+select is(split_part(pg_temp.decide(:'trust_b', 'dismiss', 'Nothing to act on in this page.', :raced), '|', 1), '55P03',
+  'AC11: the second decision waits for the first');
+reset lock_timeout;
+select extensions.dblink_exec('other', format(
+  $$update public.reports set status = 'dismissed', handled_by = %L, handled_at = now(), resolution_note = 'Closed by the first decider.' where id = %s$$,
+  :'st_trust', :raced));
+select extensions.dblink_exec('other', 'commit');
+select is(pg_temp.decide(:'trust_b', 'dismiss', 'Nothing to act on in this page.', :raced), 'P0001|CHARA_INVALID_STATE|dismissed',
+  'AC11: once the first is committed, the second is refused with the status the report now has');
+select is(
+  (select count(*) from audit.log where action like 'report.%' and entity_id = :raced::text), 0::bigint,
+  'AC11: the refused decision wrote no audit row'
+);
+select extensions.dblink_exec('other', format('delete from public.reports where id = %s', :raced));
+select extensions.dblink_disconnect('other');
 
 -- AC12 (data): the partner reads the decision ---------------------------------------------------------------------------------
 
