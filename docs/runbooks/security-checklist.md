@@ -23,6 +23,8 @@ Change a quota or a period with a ticketed `update private.settings ...` or `upd
 
 Export the three files from production as the database owner and run the gate; it exits non-zero and names every failure: entitlements off, a sold plan not mirrored at Stripe, an empty legal-entity detail, no active platform administrator, no published legal document, a current legal document that is still a draft, or no Vault secret `rate_limit_proof_key` (item 10). `--allow-draft-legal` lets draft texts pass (and still prints them) for a launch that counsel has not cleared; it changes nothing else. Delete the files afterwards.
 
+The Phase 2 gate (FR-S4 AC9) runs in the same call and reports on its own lines (`Phase 2 go-live check failed: ...`): a release feature (`partner_accounts`, `job_orders`, `find_workers`) whose release switch is on in `settings.json` (`release_partner_directories`; `release_job_orders` or `release_candidate_submissions`; `release_find_workers` or `release_messaging`) fails while `private.legal_release_gaps` names one of its documents as missing or as a draft. Any such row is a stop; `--allow-draft-legal` does not apply. The partner documents are not part of the Phase 1 draft rule, so while every switch is off they never fail the gate and are only listed as not yet approved. Which documents each feature needs is the setting `legal_release_documents`; `partner_dpa_required` (false until counsel decides, decision 6.3) adds `partner-dpa` to `job_orders` and `find_workers`.
+
 ```sh
 psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_object_agg(key, value) from private.settings" > settings.json
 DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs --export > plans.json
@@ -31,7 +33,10 @@ psql "$PRODUCTION_DATABASE_URL" -Atc "select jsonb_build_object(
                             where s.role = 'admin' and s.revoked_at is null and p.status = 'active'),
   'rate_limit_proof_key_set', exists (select 1 from vault.secrets where name = 'rate_limit_proof_key'),
   'current_legal_documents', (select coalesce(jsonb_agg(jsonb_build_object('slug', c.slug, 'version', c.version, 'is_draft', c.is_draft) order by c.slug), '[]')
-                              from public.v_legal_current c))" > release.json
+                              from public.v_legal_current c),
+  'legal_release_gaps', (select jsonb_object_agg(f, (select coalesce(jsonb_agg(jsonb_build_object('slug', g.slug, 'state', g.state)), '[]')
+                                                     from private.legal_release_gaps(f) g))
+                         from jsonb_object_keys((select value from private.settings where key = 'legal_release_documents')) f))" > release.json
 npm run go-live:check -- settings.json plans.json release.json
 ```
 

@@ -12,12 +12,33 @@
 // t, yes, y, on or 1 in any case. A legal-entity value is empty when it is missing, null or only white space.
 // --allow-draft-legal lets draft legal texts pass, for a launch that counsel has not cleared yet; the gate still names
 // them. The Auth settings that no export can show are checked by hand (security-checklist.md section 3).
+//
+// The Phase 2 gate (FR-S4 AC9) is separate: a release feature whose release switch is on in settings.json goes live only
+// while private.legal_release_gaps returns no row for it (release.json key legal_release_gaps, one list per feature).
+// --allow-draft-legal does not apply to it, and the Phase 2 documents are not part of the Phase 1 draft rule, so their
+// drafts never stop Phase 1 while every release switch is off; the gate then only names them.
 import { readFileSync } from "node:fs";
 import { isSold } from "./sync-stripe-plans.mjs";
 
 const LIMIT_KEYS = ["active_jobs", "members"];
 const LEGAL_ENTITY_KEYS = ["legal_entity_name", "legal_entity_address", "privacy_contact", "data_protection_contact"];
 const ALLOW_DRAFT_LEGAL = "--allow-draft-legal";
+const PHASE_2_LEGAL_SLUGS = new Set([
+  "partner-terms",
+  "recruitment-company-terms",
+  "staffing-company-terms",
+  "employer-pays-commitment",
+  "partner-dpa",
+  "worker-visibility-consent",
+  "immigration-disclaimer",
+]);
+// The release features of private.legal_release_gaps and the release switches that put each of them live (DATA_MODEL.md
+// section 1): 2a partner accounts, 2b job orders with candidate submissions, 2c Find Workers with messaging.
+const RELEASE_FEATURES = {
+  partner_accounts: ["release_partner_directories"],
+  job_orders: ["release_job_orders", "release_candidate_submissions"],
+  find_workers: ["release_find_workers", "release_messaging"],
+};
 const USAGE = `Usage: node scripts/check-go-live.mjs [${ALLOW_DRAFT_LEGAL}] <settings.json> <plans.json> <release.json>\n`;
 
 function unreadable(file) {
@@ -31,6 +52,29 @@ function readJson(file) {
   } catch {
     unreadable(file);
   }
+}
+
+function isTrue(value) {
+  return typeof value === "boolean" ? value : /^(t(r(ue?)?)?|y(es?)?|on|1)$/i.test(String(value).trim());
+}
+
+const describeGaps = (gaps) => gaps.map(({ slug, state }) => `${slug} (${state})`).join(", ");
+
+function phase2Results(settings, gaps) {
+  const failures = [];
+  const pending = [];
+  for (const [feature, switches] of Object.entries(RELEASE_FEATURES)) {
+    const on = switches.filter((key) => isTrue(settings?.[key]));
+    const featureGaps = gaps?.[feature];
+    if (on.length === 0) {
+      if (Array.isArray(featureGaps) && featureGaps.length > 0) pending.push(`${feature}: ${describeGaps(featureGaps)}`);
+    } else if (!Array.isArray(featureGaps)) {
+      failures.push(`${feature} is switched on (${on.join(", ")}) but release.json has no legal_release_gaps for it`);
+    } else if (featureGaps.length > 0) {
+      failures.push(`${feature} is switched on (${on.join(", ")}) but its legal documents are not approved: ${describeGaps(featureGaps)}`);
+    }
+  }
+  return { failures, pending };
 }
 
 function planFailures(plan) {
@@ -68,8 +112,7 @@ if (!Array.isArray(legalDocuments)) unreadable(releaseFile);
 
 const failures = [];
 const enforced = settings?.entitlements_enforced;
-const isOn = typeof enforced === "boolean" ? enforced : /^(t(r(ue?)?)?|y(es?)?|on|1)$/i.test(String(enforced).trim());
-if (!isOn) {
+if (!isTrue(enforced)) {
   failures.push(
     `entitlements_enforced must be true (found: ${enforced === undefined ? "missing" : JSON.stringify(enforced)})`,
   );
@@ -93,15 +136,22 @@ if (release.rate_limit_proof_key_set !== true) {
 if (legalDocuments.length === 0) {
   failures.push("no legal document is published");
 }
-const drafts = legalDocuments.filter((document) => document.is_draft !== false).map(({ slug, version }) => `${slug} v${version}`);
+const drafts = legalDocuments
+  .filter((document) => document.is_draft !== false && !PHASE_2_LEGAL_SLUGS.has(document.slug))
+  .map(({ slug, version }) => `${slug} v${version}`);
 if (drafts.length > 0 && !allowDraftLegal) {
   failures.push(`legal documents are drafts: ${drafts.join(", ")} (publish the approved texts, or pass ${ALLOW_DRAFT_LEGAL})`);
 }
 
+const phase2 = phase2Results(settings, release.legal_release_gaps);
+process.stderr.write(phase2.failures.map((failure) => `Phase 2 go-live check failed: ${failure}\n`).join(""));
+if (phase2.pending.length > 0) {
+  process.stdout.write(`Phase 2 legal documents not yet approved (release switch off): ${phase2.pending.join("; ")}\n`);
+}
 if (failures.length > 0) {
   process.stderr.write(failures.map((failure) => `Go-live check failed: ${failure}\n`).join(""));
-  process.exit(1);
 }
+if (failures.length > 0 || phase2.failures.length > 0) process.exit(1);
 process.stdout.write(
   "Go-live check passed: entitlements_enforced is on, every sold plan is mirrored at Stripe, the legal-entity details are set, an administrator is active and the throttle proof key is set\n",
 );

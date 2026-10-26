@@ -39,3 +39,35 @@ values (
   true
 )
 on conflict (slug, version) do nothing;
+
+-- The partner legal documents of Phase 2 (FR-S4): version 0 is a DRAFT placeholder that says only what the document will
+-- cover, until counsel's approved text is published as the next version. The same rows are inserted by the migration
+-- 20261116100000_partner_legal_documents.sql for the hosted project; keep both lists equal.
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
+select
+  d.slug,
+  0,
+  'DRAFT: ' || d.title,
+  E'DRAFT placeholder for review by legal counsel. This text has not been approved and must not be relied on.\n\n'
+    || E'## What this document will cover\n\n' || d.scope || E'\n\n'
+    || E'## Status\n\nLegal counsel prepares and approves the text. Until then this page shows this placeholder only.',
+  'Draft placeholder pending approval by legal counsel.',
+  now(),
+  true
+from (values
+  ('partner-terms', 'Partner Terms',
+    'The terms for recruitment companies and staffing companies that use the partner network.'),
+  ('recruitment-company-terms', 'Recruitment Company Terms',
+    'The additional terms for recruitment companies.'),
+  ('staffing-company-terms', 'Staffing Company Terms',
+    'The additional terms for staffing companies.'),
+  ('employer-pays-commitment', 'Employer-pays commitment',
+    'The commitment that a partner company gives about recruitment fees and related costs for workers.'),
+  ('partner-dpa', 'Data Processing Agreement for partners',
+    'The data processing agreement with partner companies, where legal counsel decides that one is required.'),
+  ('worker-visibility-consent', 'Worker visibility consent',
+    'The consent of a worker to be shown in the worker search, and how to withdraw it.'),
+  ('immigration-disclaimer', 'Immigration, visa and legal advice disclaimer',
+    'The disclaimer on immigration, visa and legal advice.')
+) as d (slug, title, scope)
+on conflict (slug, version) do nothing;
