@@ -4,10 +4,14 @@ import type { ApplicantListParams } from "@/lib/validation/applicant-list";
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
-export const dashboardSegments = { worker: "worker", employer: "company" } as const satisfies Record<
-  string,
-  AccountKind
->;
+// Recruitment and staffing companies are company accounts too: their dashboards follow the type of the organisation
+// (FR-R3, FR-R4), and the first segment of an account kind is its home.
+export const dashboardSegments = {
+  worker: "worker",
+  employer: "company",
+  recruitment: "company",
+  staffing: "company",
+} as const satisfies Record<string, AccountKind>;
 
 export type DashboardSegment = keyof typeof dashboardSegments;
 
@@ -43,7 +47,13 @@ export function homePath(lang: string, accountKind: AccountKind | null): string 
 
 // The dashboard of an employer; without a slug it is the one of the first organization of the user.
 export function employerDashboardPath(lang: string, slug?: string): string {
-  return slug ? `/${lang}/dashboard/employer?org=${encodeURIComponent(slug)}` : `/${lang}/dashboard/employer`;
+  return companyDashboardPath(lang, "employer", slug);
+}
+
+// The dashboard of a company for its segment (employer, recruitment or staffing), optionally of one organisation.
+export function companyDashboardPath(lang: string, segment: "employer" | "recruitment" | "staffing", slug?: string): string {
+  const path = `/${lang}/dashboard/${segment}`;
+  return slug ? `${path}?org=${encodeURIComponent(slug)}` : path;
 }
 
 // The sign-up page, optionally with the account type preselected (the person can still change it).

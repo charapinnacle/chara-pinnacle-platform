@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthCard } from "@/components/layout/auth-card";
+import { segmentOf } from "@/lib/dashboard/partner-dashboard";
 import { requireOrgRole } from "@/lib/dal/session";
-import { employerDashboardPath } from "@/lib/routes";
+import { companyDashboardPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Organization", robots: { index: false } };
 
 // The pages of an organisation are in the header, so this address only leads to the dashboard of the organisation (where
-// an accepted invitation lands), or says that the organisation is suspended.
+// an accepted invitation lands), the one of its type (FR-R3 AC2, FR-R4 AC2), or says that the organisation is suspended.
 export default async function OrganizationPage({ params }: PageProps<"/[lang]/org/[slug]">) {
   const { lang, slug } = await params;
-  const { organization } = await requireOrgRole(lang, slug, "member");
-  if (!organization.suspended) redirect(employerDashboardPath(lang, slug));
+  const { organization } = await requireOrgRole(lang, slug, "member", { partner: "either" });
+  if (!organization.suspended) redirect(companyDashboardPath(lang, segmentOf(organization.type), slug));
   return (
     <AuthCard
       title="This organisation is suspended"

@@ -72,7 +72,7 @@ async function getVacancySummary(organizationId: string): Promise<VacancySummary
   return { open: open.count, any: any.data.length > 0 };
 }
 
-async function getDashboardPlan(organizationId: string): Promise<DashboardPlan> {
+export async function getDashboardPlan(organizationId: string): Promise<DashboardPlan> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_dashboard_plan", { p_organization_id: organizationId });
   if (error) throw readFailed("plan", "The plan could not be loaded", error);

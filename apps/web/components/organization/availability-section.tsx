@@ -305,7 +305,7 @@ function ListingForm({ slug, listing, occupations, countries, maxDays, name, onC
 
 type ConfirmListingProps = { slug: string; listing: WorkforceListing; name: string; onConfirmed: () => void };
 
-function ConfirmListing({ slug, listing, name, onConfirmed }: ConfirmListingProps) {
+export function ConfirmListing({ slug, listing, name, onConfirmed }: ConfirmListingProps) {
   const confirm = useActionCall("Could not confirm the listing");
   return (
     <FormButton

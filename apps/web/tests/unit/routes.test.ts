@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applicationsPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, onboardingPath, signUpPath } from "@/lib/routes";
+import { applicationsPath, companyDashboardPath, dashboardSegments, homePath, isDashboardSegment, jobsPath, mfaPath, onboardingPath, signUpPath } from "@/lib/routes";
 
 describe("homePath", () => {
   it("sends each account kind to its own dashboard", () => {
@@ -30,12 +30,24 @@ describe("signUpPath", () => {
 
 describe("dashboard segments", () => {
   it("maps each URL segment to its account kind", () => {
-    expect(dashboardSegments).toEqual({ worker: "worker", employer: "company" });
+    expect(dashboardSegments).toEqual({ worker: "worker", employer: "company", recruitment: "company", staffing: "company" });
+  });
+
+  it("keeps the employer dashboard as the home of a company account (FR-R3 AC2: partners are routed from there)", () => {
+    expect(homePath("en", "company")).toBe("/en/dashboard/employer");
+    expect(homePath("en", "worker")).toBe("/en/dashboard/worker");
+  });
+
+  it("builds the dashboard of a company segment with its organisation", () => {
+    expect(companyDashboardPath("en", "recruitment", "r&d co")).toBe("/en/dashboard/recruitment?org=r%26d%20co");
+    expect(companyDashboardPath("en", "staffing")).toBe("/en/dashboard/staffing");
   });
 
   it("accepts only its own segments", () => {
     expect(isDashboardSegment("worker")).toBe(true);
     expect(isDashboardSegment("employer")).toBe(true);
+    expect(isDashboardSegment("recruitment")).toBe(true);
+    expect(isDashboardSegment("staffing")).toBe(true);
     expect(isDashboardSegment("company")).toBe(false);
     expect(isDashboardSegment("constructor")).toBe(false);
   });
