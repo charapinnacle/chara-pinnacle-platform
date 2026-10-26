@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(54);
 
 \ir organizations_fixture.inc
 
@@ -120,6 +120,37 @@ select is(
   'ok', 'AC4: an optional licence kind can be turned off by a company user'
 );
 update public.notification_preferences set email_kinds = '{"licence_expiring": true}' where user_id = :'owb';
+
+-- The kinds are offered to partner users only (organization_types): not to an employer's users.
+\set emp '00000000-0000-0000-0000-0000000f3030'
+select pg_temp.new_user(:'emp');
+update public.profiles set account_kind = 'company' where id = :'emp';
+insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country)
+values ('00000000-0000-0000-0000-0000000f3031', 'employer', 'emp-f3031', 'Emp F3031 GmbH', 'Emp F3031', 'DE');
+insert into public.organization_members (organization_id, user_id, role, accepted_at)
+values ('00000000-0000-0000-0000-0000000f3031', :'emp', 'owner', now());
+create function pg_temp.partner_kinds_of(p_user uuid) returns text
+language sql as $$
+  select pg_temp.val_as(p_user, 'aal1', $q$select coalesce(string_agg(kind, ',' order by kind), '') from public.notification_kind_catalogue()
+    where kind in ('partner_approved', 'partner_info_requested', 'partner_declined', 'licence_expiring', 'partner_licence_expired',
+      'listing_confirmation_due')$q$)
+$$;
+select is(
+  pg_temp.partner_kinds_of(:'owb') || ';' || pg_temp.partner_kinds_of(:'inv') || ';' || pg_temp.partner_kinds_of(:'emp'),
+  'licence_expiring,listing_confirmation_due,partner_approved,partner_declined,partner_info_requested,partner_licence_expired;'
+  || 'licence_expiring,listing_confirmation_due,partner_approved,partner_declined,partner_info_requested,partner_licence_expired;',
+  'the preferences list the partner kinds to a partner owner and to a partner user without an organisation yet, not to an employer'
+);
+select is(
+  pg_temp.call_as(:'emp', 'authenticated', $$select public.set_notification_preferences('{"licence_expiring": false}'::jsonb)$$)
+    || ',' || pg_temp.call_as(:'emp', 'authenticated', $$select public.set_notification_preferences('{"application_received": false}'::jsonb)$$),
+  'P0001|CHARA_INVALID_INPUT|p_kinds,ok', 'an employer cannot choose a partner kind, and still chooses its own'
+);
+select is(
+  (select prosecdef::text || array_to_string(proconfig, ',') from pg_proc where oid = 'private.user_organization_types(uuid)'::regprocedure)
+    || ',' || has_function_privilege('authenticated', 'private.user_organization_types(uuid)', 'execute')::text,
+  'truesearch_path="",false', 'user_organization_types is security definer with an empty search_path and not callable by the API roles'
+);
 
 -- FR-J4 AC6: the decisions --------------------------------------------------------------------------------------------
 select is(pg_temp.decide(:'ts', :'alpha', 'approve', 'Registry entry and website match'), 'ok', 'staff approve Alpha');

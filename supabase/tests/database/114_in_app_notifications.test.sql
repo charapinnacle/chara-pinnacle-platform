@@ -237,8 +237,8 @@ select is((select digest from public.notification_preferences where user_id = :'
 -- notification_kind_catalogue(): the kinds of the caller's audience, with the email state.
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'adm', 'select * from public.notification_kind_catalogue()')) c),
-  (select jsonb_agg(kind order by kind) from private.notification_kinds where audience in ('company', 'all')),
-  'catalogue: a company user sees the company kinds and those of all users'
+  (select jsonb_agg(kind order by kind) from private.notification_kinds where audience in ('company', 'all') and organization_types is null),
+  'catalogue: a company user of an employer sees the company kinds and those of all users, not those of partners only'
 );
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'wkr', 'select * from public.notification_kind_catalogue()')) c),

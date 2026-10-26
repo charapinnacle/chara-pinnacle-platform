@@ -8,16 +8,31 @@
 -- to the accepted owners and admins of an active organisation only. The payloads hold ids, display names, dates and, for a
 -- request for information or a decline, the staff reason written for the partner; never the staff member.
 --
+-- The kinds concern partners only: the catalogue gains organization_types, and the preferences page and RPC of a user who
+-- neither belongs to nor signed up for a recruitment or staffing company do not offer them.
+--
 -- The producers queue only while release_partner_directories is on: admin_decide_partner refuses to run otherwise, the
 -- confirmation job does nothing, and the licence job still marks entries expired but queues and stamps nothing.
 
-insert into private.notification_kinds (kind, mandatory, default_email, audience, label) values
-  ('partner_approved', true, true, 'company', 'Company listed after review'),
-  ('partner_info_requested', true, true, 'company', 'More information requested for the review'),
-  ('partner_declined', true, true, 'company', 'Company not listed after review'),
-  ('licence_expiring', false, true, 'company', 'Licence expiry reminders'),
-  ('partner_licence_expired', false, true, 'company', 'Expired licences'),
-  ('listing_confirmation_due', false, true, 'company', 'Availability confirmation reminders');
+-- organization_types: the organisation types a company user must belong to (or have signed up for) to be offered the
+-- kind; null for every type.
+alter table private.notification_kinds
+  add column organization_types public.organization_type[]
+    check (organization_types is null or (audience = 'company' and cardinality(organization_types) > 0));
+
+insert into private.notification_kinds (kind, mandatory, default_email, audience, label, organization_types) values
+  ('partner_approved', true, true, 'company', 'Company listed after review',
+    array['recruitment_company', 'staffing_company']::public.organization_type[]),
+  ('partner_info_requested', true, true, 'company', 'More information requested for the review',
+    array['recruitment_company', 'staffing_company']::public.organization_type[]),
+  ('partner_declined', true, true, 'company', 'Company not listed after review',
+    array['recruitment_company', 'staffing_company']::public.organization_type[]),
+  ('licence_expiring', false, true, 'company', 'Licence expiry reminders',
+    array['recruitment_company', 'staffing_company']::public.organization_type[]),
+  ('partner_licence_expired', false, true, 'company', 'Expired licences',
+    array['recruitment_company', 'staffing_company']::public.organization_type[]),
+  ('listing_confirmation_due', false, true, 'company', 'Availability confirmation reminders',
+    array['recruitment_company', 'staffing_company']::public.organization_type[]);
 
 alter table public.notifications drop constraint notifications_kind_check;
 alter table public.notifications add constraint notifications_kind_check check (kind in (
@@ -348,3 +363,117 @@ comment on column public.partner_licences.expiry_notified_on is
   'The day the last expiry notice (licence_expiring or partner_licence_expired) was queued, so each is queued once; cleared when valid_until changes.';
 comment on column public.workforce_availability.reminded_at is
   'When the daily job workforce-availability-confirm last found the listing due for confirmation (workforce_confirm_reminder_days) and queued listing_confirmation_due for its organisation.';
+
+-- The organisation types of the user: those of the organisations they are an accepted member of, and the one they signed
+-- up for while they have no organisation yet.
+create function private.user_organization_types(p_user uuid) returns public.organization_type[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(array_agg(distinct t.type), '{}')
+  from (
+    select o.type from public.organization_members m join public.organizations o on o.id = m.organization_id
+    where m.user_id = p_user and m.accepted_at is not null
+    union all
+    select p.intended_organization_type from public.profiles p where p.id = p_user and p.intended_organization_type is not null
+  ) t
+$$;
+
+revoke all on function private.user_organization_types(uuid) from public, anon, authenticated, service_role;
+
+-- The function of 20261114100000 with one change: a kind limited to some organisation types is listed only for a user of
+-- one of them.
+create or replace function public.notification_kind_catalogue() returns table (
+  kind text,
+  mandatory boolean,
+  default_email boolean,
+  audience text,
+  label text,
+  email_enabled boolean
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := private.require_notifications_release();
+  v_kind text := private.account_kind()::text;
+  v_types public.organization_type[] := private.user_organization_types(v_uid);
+  v_choices jsonb := coalesce((select p.email_kinds from public.notification_preferences p where p.user_id = v_uid), '{}');
+begin
+  return query
+  select k.kind, k.mandatory, k.default_email, k.audience, k.label,
+         k.mandatory or coalesce(case when jsonb_typeof(v_choices -> k.kind) = 'boolean' then (v_choices ->> k.kind)::boolean end, k.default_email)
+  from private.notification_kinds k
+  where (k.audience = 'all' or k.audience = v_kind) and (k.organization_types is null or k.organization_types && v_types)
+  order by k.mandatory, k.label;
+end;
+$$;
+
+revoke all on function public.notification_kind_catalogue() from public, anon, authenticated, service_role;
+grant execute on function public.notification_kind_catalogue() to authenticated;
+
+-- The function of 20261114100000 with one change: a kind limited to organisation types the caller has none of is refused
+-- like a kind of another audience.
+create or replace function public.set_notification_preferences(p_kinds jsonb) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := private.require_notifications_release();
+  v_account text := private.account_kind()::text;
+  v_types public.organization_type[] := private.user_organization_types(v_uid);
+  v_old jsonb;
+  v_new jsonb;
+  v_changes jsonb;
+begin
+  if v_account is null then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'account_kind_required';
+  end if;
+  if p_kinds is null or jsonb_typeof(p_kinds) <> 'object' or p_kinds = '{}'::jsonb then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_kinds';
+  end if;
+  if exists (
+    select 1 from jsonb_each(p_kinds) e join private.notification_kinds k on k.kind = e.key where k.mandatory
+  ) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'mandatory_kind';
+  end if;
+  if exists (
+    select 1 from jsonb_each(p_kinds) e
+    left join private.notification_kinds k on k.kind = e.key and k.audience in ('all', v_account)
+      and (k.organization_types is null or k.organization_types && v_types)
+    where k.kind is null or jsonb_typeof(e.value) <> 'boolean'
+  ) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_kinds';
+  end if;
+
+  -- The row exists before it is locked, so two first saves at once queue on the lock instead of one failing.
+  insert into public.notification_preferences (user_id) values (v_uid) on conflict (user_id) do nothing;
+  select p.email_kinds into v_old from public.notification_preferences p where p.user_id = v_uid for update;
+  select jsonb_object_agg(e.key, jsonb_build_object(
+           'from', coalesce(case when jsonb_typeof(v_old -> e.key) = 'boolean' then v_old -> e.key end, to_jsonb(k.default_email)),
+           'to', e.value))
+  into v_changes
+  from jsonb_each(p_kinds) e
+  join private.notification_kinds k on k.kind = e.key
+  where coalesce(case when jsonb_typeof(v_old -> e.key) = 'boolean' then v_old -> e.key end, to_jsonb(k.default_email)) <> e.value;
+
+  v_new := v_old || p_kinds;
+  if v_new = v_old then
+    return;
+  end if;
+  update public.notification_preferences set email_kinds = v_new where user_id = v_uid;
+  if v_changes is not null then
+    perform audit.record(
+      'notification_preferences.changed', 'notification_preferences', v_uid::text, jsonb_build_object('kinds', v_changes)
+    );
+  end if;
+end;
+$$;
+
+revoke all on function public.set_notification_preferences(jsonb) from public, anon, authenticated, service_role;
+grant execute on function public.set_notification_preferences(jsonb) to authenticated;
