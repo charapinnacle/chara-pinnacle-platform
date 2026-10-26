@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { checkFile, acceptedExtensions } from "@/lib/validation/documents";
+import type { LicenceStatus } from "@/lib/validation/licence-status";
 import { dateWithin, parseDate, todayUtc } from "@/lib/validation/passport";
 
 // The same bounds as the partner_licences constraints and check_licence_input; the database stays the authority.
@@ -123,15 +124,7 @@ export function parseLicencePatterns(value: string | undefined): Record<string, 
   return parsed.success ? parsed.data : {};
 }
 
-export type LicenceStatus = "current" | "expired";
-export type EvidenceStatus = "pending" | "skipped" | "clean" | "rejected";
-
-export const evidenceStatusLabels: Record<EvidenceStatus, string> = {
-  pending: "Checking the file",
-  skipped: "File received",
-  clean: "File received",
-  rejected: "The file was refused. Upload it again.",
-};
+export { evidenceStatusLabels, type EvidenceStatus, type LicenceStatus } from "@/lib/validation/licence-status";
 
 // Expired entries first (they need the partner's attention), then by valid-until date and country.
 export function sortLicences<T extends { status: LicenceStatus; validUntil: string; country: string }>(items: T[]): T[] {
