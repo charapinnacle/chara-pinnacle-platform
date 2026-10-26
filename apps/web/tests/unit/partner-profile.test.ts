@@ -26,7 +26,7 @@ const row = {
   description: "We recruit skilled welders\n\nand electricians from the Philippines.",
   website: "https://manila-skills.example",
   commitment_current: true,
-  workforce_profile_updated_at: "2026-10-20T08:00:00+00:00",
+  profile_updated_at: "2026-10-20T08:00:00+00:00",
   listings: [
     {
       occupation_code: "7212",

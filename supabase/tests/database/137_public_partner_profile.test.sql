@@ -157,16 +157,15 @@ select is(jsonb_array_length(pg_temp.result()), 1, 'one row');
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(pg_temp.result() -> 0) k),
   array['based_in_country', 'based_in_country_name', 'commitment_current', 'description', 'display_name', 'founded_year',
-    'industries', 'languages', 'listings', 'occupations', 'organization_type', 'recruitment_type', 'served_countries',
-    'service_types', 'slug', 'source_countries', 'viewer_is_member', 'website', 'workforce_profile_updated_at',
-    'workforce_size_band'],
+    'industries', 'languages', 'listings', 'occupations', 'organization_type', 'profile_updated_at', 'recruitment_type',
+    'served_countries', 'service_types', 'slug', 'source_countries', 'viewer_is_member', 'website', 'workforce_size_band'],
   'AC3: exactly the public fields of DATA_MODEL.md section 10, and the viewer flag'
 );
 select is(
   (select jsonb_build_object('n', r ->> 'display_name', 's', r ->> 'slug', 't', r ->> 'organization_type',
      'b', r ->> 'based_in_country', 'bn', r ->> 'based_in_country_name', 'rt', r ->> 'recruitment_type',
      'fy', r -> 'founded_year', 'sb', r ->> 'workforce_size_band', 'w', r ->> 'website', 'c', r -> 'commitment_current',
-     'm', r -> 'viewer_is_member', 'u', (r ->> 'workforce_profile_updated_at')::timestamptz = '2026-10-20 08:00+00')
+     'm', r -> 'viewer_is_member', 'u', (r ->> 'profile_updated_at')::timestamptz = '2026-10-20 08:00+00')
    from jsonb_array_elements(pg_temp.result()) r),
   jsonb_build_object('n', 'Manila Skills', 's', 'manila-skills', 't', 'recruitment_company', 'b', 'PH', 'bn', 'Philippines',
     'rt', 'international', 'fy', 2012, 'sb', '50_249', 'w', 'https://manila-skills.example', 'c', true, 'm', false, 'u', true),

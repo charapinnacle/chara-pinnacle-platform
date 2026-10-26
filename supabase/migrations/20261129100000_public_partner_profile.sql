@@ -4,7 +4,7 @@
 -- returns the fields of section 10 that may be public (display name, slug, type, based-in country, served and source
 -- countries, industries, occupations, languages, the fresh availability listings with their confirmation time,
 -- recruitment type, service types, size band, founded year, description, website, whether the employer-pays commitment
--- is current, and the time the profile last changed), never the legal name, the identifier, identifier links, licences,
+-- is current, and the time the profile last changed as profile_updated_at), never the legal name, the identifier, identifier links, licences,
 -- the review state or decisions, the plan, member data, view counts, followers or stale listings. A partner that is not
 -- listed (private.is_listed_partner), whose profile is hidden by moderation, an employer and an unknown slug all raise
 -- the same CHARA_NOT_FOUND, and so does every slug while release_partner_directories is false. Nothing is ranked here.
@@ -167,7 +167,7 @@ create function private.partner_profile(p_org uuid) returns table (
   description text,
   website text,
   commitment_current boolean,
-  workforce_profile_updated_at timestamptz,
+  profile_updated_at timestamptz,
   listings jsonb
 )
 language sql
@@ -249,7 +249,7 @@ returns table (
   description text,
   website text,
   commitment_current boolean,
-  workforce_profile_updated_at timestamptz,
+  profile_updated_at timestamptz,
   listings jsonb,
   viewer_is_member boolean
 )
@@ -313,7 +313,7 @@ returns table (
   description text,
   website text,
   commitment_current boolean,
-  workforce_profile_updated_at timestamptz,
+  profile_updated_at timestamptz,
   listings jsonb,
   is_public boolean
 )

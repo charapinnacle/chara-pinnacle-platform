@@ -72,7 +72,7 @@ export function partnerProfileFrom(row: SharedRow): PartnerProfile {
     description: row.description ?? null,
     website: row.website ?? null,
     commitmentCurrent: row.commitment_current,
-    updatedAt: row.workforce_profile_updated_at ?? null,
+    updatedAt: row.profile_updated_at ?? null,
     listings: z
       .array(listingSchema)
       .parse(row.listings)

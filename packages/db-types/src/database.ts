@@ -1462,7 +1462,7 @@ isOneToOne: false
                            },
 "get_partner_profile":
 { Args: { "p_key"?: string,"p_proof"?: string,"p_slug": string }; Returns: {
-              "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"viewer_is_member": boolean,"website": string,"workforce_profile_updated_at": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
+              "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"viewer_is_member": boolean,"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
             }[]
                            },
 "get_public_job":
@@ -1603,7 +1603,7 @@ isOneToOne: false
                            },
 "preview_partner_profile":
 { Args: { "p_org": string }; Returns: {
-              "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"is_public": boolean,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"website": string,"workforce_profile_updated_at": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
+              "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"is_public": boolean,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
             }[]
                            },
 "publish_legal_document":

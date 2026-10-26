@@ -30,7 +30,7 @@ const row = {
   description: null,
   website: null,
   commitment_current: false,
-  workforce_profile_updated_at: null,
+  profile_updated_at: null,
   listings: [],
 };
 
