@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stripeApi, syncPlans } from "../../../../scripts/sync-stripe-plans.mjs";
+import { productName, skippedPlans, stripeApi, syncPlans } from "../../../../scripts/sync-stripe-plans.mjs";
 
 const PLANS = [
   { code: "free_employer", org_type: "employer", name: "Free", price_minor: 0, currency: "EUR", interval: "month", is_public: false, contact_sales: false, sort: 0 },
@@ -34,9 +34,9 @@ function stubStripe(failOn?: { call: "createProduct" | "createPrice"; plan: stri
     listProducts: async () => products.map((product) => ({ ...product })),
     listPrices: async () => prices.filter((price) => price.active).map((price) => ({ ...price })),
     createProduct: async (plan: object) => {
-      const { code, name } = plan as Plan;
+      const { code } = plan as Plan;
       if (failOn?.call === "createProduct" && failOn.plan === code) throw new Error("Stripe answered 500 to POST /products");
-      const product = { id: `prod_${products.length + 1}`, name, metadata: { plan_code: code } };
+      const product = { id: `prod_${products.length + 1}`, name: productName(plan), metadata: { plan_code: code } };
       products.push(product);
       calls.push(`createProduct ${code}`);
       return product;
@@ -93,10 +93,10 @@ function stubStore() {
 }
 
 describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
-  it("creates one product and one monthly EUR price per sold plan of every organisation type (FR-R1), and stores their identifiers", async () => {
+  it("creates one product and one monthly EUR price per sold plan of every organisation type once release 2a is on (FR-R1), and stores their identifiers", async () => {
     const stripe = stubStripe();
     const database = stubStore();
-    const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
+    const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store, partnersReleased: true });
 
     expect(changes).toEqual([
       "created the product of employer_starter",
@@ -111,8 +111,8 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
     expect(stripe.products.map((product) => [product.name, product.metadata.plan_code])).toEqual([
       ["Basic", "employer_starter"],
       ["Professional", "employer_professional"],
-      ["Basic", "recruitment_partner"],
-      ["Basic", "staffing_partner"],
+      ["Basic (recruitment companies)", "recruitment_partner"],
+      ["Basic (staffing companies)", "staffing_partner"],
     ]);
     expect(stripe.prices.map((price) => [price.metadata.plan_code, price.unit_amount, price.currency, price.recurring.interval, price.tax_behavior])).toEqual([
       ["employer_starter", 3900, "eur", "month", "exclusive"],
@@ -126,6 +126,28 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
       recruitment_partner: { product: "prod_3", price: "price_3" },
       staffing_partner: { product: "prod_4", price: "price_4" },
     });
+  });
+
+  it("mirrors no partner plan while release 2a is off, and names the plans it skipped", async () => {
+    const stripe = stubStripe();
+    const database = stubStore();
+    const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
+    expect(changes.join(" ")).not.toMatch(/recruitment|staffing/);
+    expect(stripe.products.map((product) => product.metadata.plan_code)).toEqual(["employer_starter", "employer_professional"]);
+    expect(skippedPlans(PLANS, false)).toEqual(["recruitment_partner", "staffing_partner"]);
+    expect(skippedPlans(PLANS, true)).toEqual([]);
+  });
+
+  it("renames a partner product that lacks the company type", async () => {
+    const stripe = stubStripe();
+    const database = stubStore();
+    await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store, partnersReleased: true });
+    const staffing = stripe.products.find((product) => product.metadata.plan_code === "staffing_partner");
+    if (!staffing) throw new Error("no staffing product");
+    staffing.name = "Basic";
+    const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store, partnersReleased: true });
+    expect(changes).toEqual(["renamed the product of staffing_partner"]);
+    expect(staffing.name).toBe("Basic (staffing companies)");
   });
 
   it("makes no change on a second run", async () => {
@@ -255,6 +277,16 @@ describe("the Stripe client of the script", () => {
       "https://api.stripe.com/v1/products?active=true&limit=100&starting_after=prod_2",
     ]);
     expect((seen[0].init.headers as Record<string, string>).authorization).toBe("Bearer sk_test_key");
+  });
+
+  it("names a partner product with its company type and an employer product with the plan name alone", async () => {
+    const { seen, fetchFn } = recording([{ id: "prod_1" }, { id: "prod_2" }]);
+    await stripeApi("sk_test_key", fetchFn).createProduct(PLANS[4]);
+    await stripeApi("sk_test_key", fetchFn).createProduct(PLANS[1]);
+    expect(seen.map((call) => new URLSearchParams(call.init.body as string).get("name"))).toEqual([
+      "Basic (recruitment companies)",
+      "Basic",
+    ]);
   });
 
   it("creates a price exclusive of VAT with the plan code and a stable idempotency key", async () => {
