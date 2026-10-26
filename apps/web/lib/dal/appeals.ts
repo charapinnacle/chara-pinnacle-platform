@@ -36,10 +36,15 @@ export type AppealableDecision = {
 export async function listMyAppeals(): Promise<AppealableDecision[]>;
 export async function listMyAppeals(decision: number): Promise<AppealableDecision | null>;
 export async function listMyAppeals(decision?: number): Promise<AppealableDecision[] | AppealableDecision | null> {
+  const rows = await readAppeals(decision === undefined ? {} : { p_action: decision });
+  return decision === undefined ? rows : (rows[0] ?? null);
+}
+
+async function readAppeals(args: { p_action?: number; p_job?: string }): Promise<AppealableDecision[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_my_appeals", decision === undefined ? {} : { p_action: decision });
+  const { data, error } = await supabase.rpc("list_my_appeals", args);
   if (error) throw new Error("The appeals could not be loaded", { cause: error });
-  const rows = data.map(
+  return data.map(
     (row): AppealableDecision => ({
       id: row.moderation_action_id,
       targetType: row.target_type,
@@ -69,13 +74,12 @@ export async function listMyAppeals(decision?: number): Promise<AppealableDecisi
             },
     }),
   );
-  return decision === undefined ? rows : (rows[0] ?? null);
 }
 
 // The page of the latest decision that hid a vacancy, while release 2a is on; null before it (the Phase 1 route of the
 // Complaints and Dispute Process stays) or when the decision is outside the appeal window.
 export async function vacancyDecisionId(jobId: string): Promise<number | null> {
   if (!(await isReleased("release_partner_directories"))) return null;
-  const decision = (await listMyAppeals()).find((item) => item.action === "job_hidden" && item.targetId === jobId);
+  const decision = (await readAppeals({ p_job: jobId })).find((item) => item.action === "job_hidden");
   return decision?.id ?? null;
 }

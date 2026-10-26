@@ -11,12 +11,20 @@ import { formatDateTime } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 import { appealableDecisionLabels, appealStatusLabels, appealStatusTones, appealTargetLabels } from "@/lib/validation/appeal";
 
-// What a reversal undoes, as the dialog says it.
+// What a reversal undoes, as the dialog says it; a decision no longer in effect has nothing left to undo.
 const undoText: Record<string, string> = {
   content_hidden: "The partner profile is shown again, unless the partner is suspended.",
   job_hidden: "The vacancy is shown again, unless its organisation is suspended.",
   organization_suspended: "The organisation is reinstated: its vacancies and partner profile come back and its team can act again.",
 };
+
+const NOTHING_TO_UNDO =
+  "The decision is no longer in effect (a later decision changed it, or the vacancy was deleted), so nothing is undone; the outcome is recorded and sent.";
+
+export function undoOf(appeal: AppealDetail): string {
+  if (!appeal.inEffect) return NOTHING_TO_UNDO;
+  return undoText[appeal.action] ?? "What the decision took away is restored.";
+}
 
 function targetLink(lang: string, appeal: AppealDetail) {
   if (appeal.targetType === "job") return <TextLink href={adminPath(lang, `moderation/${appeal.targetId}`)}>Open the vacancy</TextLink>;
@@ -48,7 +56,7 @@ export async function AppealView({ lang, id, canAct }: { lang: string; id: numbe
             ...(appeal.decisionReportId
               ? [{ label: "Report", value: <TextLink href={adminPath(lang, `reports/${appeal.decisionReportId}`)}>Open the report</TextLink> }]
               : []),
-            { label: "In effect", value: appeal.inEffect ? "Yes" : "No, a later decision changed it" },
+            { label: "In effect", value: appeal.inEffect ? "Yes" : "No: a later decision changed it, or the vacancy was deleted" },
           ]}
         />
         <div>{targetLink(lang, appeal)}</div>
@@ -101,7 +109,7 @@ export async function AppealView({ lang, id, canAct }: { lang: string; id: numbe
             You took this decision, so another Trust &amp; Safety administrator decides the appeal.
           </Notice>
         ) : (
-          <AppealDecision id={appeal.id} subject={subject} undo={appeal.inEffect ? (undoText[appeal.action] ?? "") : "A later decision already changed it; nothing more is undone."} />
+          <AppealDecision id={appeal.id} subject={subject} undo={undoOf(appeal)} />
         )}
       </Section>
     </div>

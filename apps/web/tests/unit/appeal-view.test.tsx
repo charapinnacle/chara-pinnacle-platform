@@ -11,7 +11,7 @@ vi.mock("@/lib/dal/admin-appeals", () => ({ getAppeal: getMock, listAppeals: lis
 vi.mock("@/lib/actions/admin-appeals", () => ({ decideAppeal: vi.fn() }));
 vi.mock("next/navigation", () => ({ notFound: vi.fn(), useRouter: () => ({ refresh: vi.fn() }) }));
 
-const { AppealView } = await import("@/components/admin/appeal-view");
+const { AppealView, undoOf } = await import("@/components/admin/appeal-view");
 const { AppealQueue } = await import("@/components/admin/appeal-queue");
 
 const appeal = (over: Partial<AppealDetail> = {}): AppealDetail => ({
@@ -107,5 +107,17 @@ describe("the appeals queue of the console", () => {
     expect(html).toContain("No appeal decided yet");
     expect(html).toContain("after=2026-10-27T09%3A00%3A00%2B00%3A00_7");
     expect(listMock).toHaveBeenCalledWith("open", null);
+  });
+});
+
+// What the reverse dialog says a reversal does.
+describe("the reversal statement of an appeal", () => {
+  it("names what each decision gets back, and that nothing is undone once the decision is no longer in effect", () => {
+    expect(undoOf(appeal())).toBe("The partner profile is shown again, unless the partner is suspended.");
+    expect(undoOf(appeal({ action: "job_hidden", targetType: "job" }))).toBe("The vacancy is shown again, unless its organisation is suspended.");
+    const gone = undoOf(appeal({ action: "job_hidden", targetType: "job", inEffect: false }));
+    expect(gone).toContain("or the vacancy was deleted");
+    expect(gone).toContain("nothing is undone");
+    expect(undoOf(appeal({ action: "something_else" }))).toBe("What the decision took away is restored.");
   });
 });
