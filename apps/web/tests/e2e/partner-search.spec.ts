@@ -164,7 +164,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
 
   test("AC5: advanced filters outside the plan say so and offer the search without them", async ({ page }) => {
     await page.goto(`${DIRECTORY}?destination=DE&capacity=100&within_days=60`);
-    await expect(page.getByText("These filters need an employer plan with advanced partner search")).toBeVisible();
+    await expect(page.getByText("These filters need a plan with advanced partner search.")).toBeVisible();
     await expect(page.getByRole("group", { name: "Workforce capacity" })).toBeVisible();
     await page.getByRole("link", { name: "Search without them" }).click();
     await expect(page).toHaveURL(`${DIRECTORY}?destination=DE`);
@@ -251,24 +251,28 @@ test.describe("Find recruitment partners (FR-L1)", () => {
   });
 
   test("KPIs: a Platform Administrator reads the partner searches on the statistics page", async ({ page }) => {
-    execute(
+    const ids = execute(
       `insert into stats.partner_searches (kind, filter_names, destination_country, result_count)
-       values ('recruitment', '{destination}', 'IS', 0), ('recruitment', '{destination}', 'IS', 0)`,
-    );
-    await signInStaff(page, "admin", "/en/admin/statistics");
-    const section = page.getByRole("region", { name: "Partner searches" });
-    await expect(section.getByRole("heading", { name: "Partner searches" })).toBeVisible();
-    await expect(section.getByRole("region", { name: /^Recruitment partner searches from/ })).toContainText("Without results");
-    const destinations = section.getByRole("region", { name: /^Searches without results by destination/ });
-    await expect(destinations.getByRole("row", { name: /Iceland/ })).toBeVisible();
-    await expectAccessibleAtBothWidths(page);
-    setPartnerRelease(false);
+       values ('recruitment', '{destination}', 'IS', 0), ('recruitment', '{destination}', 'IS', 0) returning id`,
+    )
+      .trim()
+      .split("\n");
+    expect(ids).toHaveLength(2);
     try {
+      await signInStaff(page, "admin", "/en/admin/statistics");
+      const section = page.getByRole("region", { name: "Partner searches" });
+      await expect(section.getByRole("heading", { name: "Partner searches" })).toBeVisible();
+      await expect(section.getByRole("region", { name: /^Recruitment partner searches from/ })).toContainText("Without results");
+      const destinations = section.getByRole("region", { name: /^Searches without results by destination/ });
+      await expect(destinations.getByRole("row", { name: /Iceland/ })).toBeVisible();
+      await expectAccessibleAtBothWidths(page);
+      setPartnerRelease(false);
       await page.reload();
       await expect(page.getByRole("heading", { name: "Partner searches" })).toHaveCount(0);
       expect((await page.request.get(DIRECTORY)).status()).toBe(404);
     } finally {
       setPartnerRelease(true);
+      execute(`delete from stats.partner_searches where id in (${ids.join(", ")})`);
     }
   });
 });
