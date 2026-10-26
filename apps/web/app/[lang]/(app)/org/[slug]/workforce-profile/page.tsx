@@ -22,7 +22,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { billingPath, onboardingPath } from "@/lib/routes";
+import { billingPath, onboardingPath, workforceProfilePreviewPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
@@ -186,7 +186,11 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         title="Workforce profile"
         description="Employers and job orders reach you through the countries where you serve and what you offer. Once your company is listed, everyone can see them on your profile."
         breadcrumb={<Breadcrumbs items={[{ label: organization.displayName }, { label: "Workforce profile" }]} />}
-      />
+      >
+        <TextLink standalone href={workforceProfilePreviewPath(lang, slug)}>
+          Preview your public profile
+        </TextLink>
+      </PageHeader>
       {commitment.accepted ? null : (
         <CommitmentNotice lang={lang} owner={organization.role === "owner"} outdated={commitmentOutdated(commitment)} />
       )}
