@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { signedInUser } from "../_shared/auth.ts";
 import { json } from "../_shared/http.ts";
 import { type BillingProvider, BillingProviderError } from "../_shared/billing/provider.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BEARER = /^Bearer ([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.[A-Za-z0-9_-]+$/;
 const MAX_FIELD = 64;
 const MAX_TERMS_VERSION = 1_000_000;
 const MAX_TRIAL_DAYS = 365;
@@ -56,25 +56,6 @@ interface Checkout {
 interface Portal {
   action: "portal";
   orgId: string;
-}
-
-// The platform has verified the signature (verify_jwt); this only turns away, before any call, a token that cannot be
-// a signed-in person's: the publishable key, an anonymous token, an expired one, and returns who the person is. What
-// the person may do is the database's to say.
-function signedInUser(authorization: string): string | null {
-  const payload = BEARER.exec(authorization)?.[2];
-  if (!payload) {
-    return null;
-  }
-  try {
-    const claims: unknown = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
-    return isObject(claims) && claims.role === "authenticated" && typeof claims.sub === "string" &&
-        typeof claims.exp === "number" && claims.exp * 1000 > Date.now()
-      ? claims.sub
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
