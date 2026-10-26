@@ -128,8 +128,8 @@ values (:'listed', '7212', 'PH', 40, 15, current_date + 14, now() - interval '3 
 
 -- Grants and release switch ----------------------------------------------------------------------------------------------
 select ok(
-  has_function_privilege('anon', 'public.search_partners(text, text, text, text, text[], text, text, public.recruitment_preference, integer, integer, text, integer, text, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.search_partners(text, text, text, text, text[], text, text, public.recruitment_preference, integer, integer, text, integer, text, text)', 'execute'),
+  has_function_privilege('anon', 'public.search_partners(text, text, text, text, text[], text, text, public.recruitment_preference, text[], text, integer, integer, text, integer, text, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.search_partners(text, text, text, text, text[], text, text, public.recruitment_preference, text[], text, integer, integer, text, integer, text, text)', 'execute'),
   'AC1: search_partners is executable by anon and authenticated'
 );
 select ok(
@@ -167,7 +167,7 @@ select is(pg_temp.search(null, '''recruitment'', p_occupation => ''pending-co'''
 select is(pg_temp.search(null, '''recruitment'', p_destination => ''DE'', p_occupation => ''7212'''), 'ok', 'the result is read');
 select is(
   (select string_agg(k, ',' order by k) from jsonb_object_keys(pg_temp.result() -> 0) k),
-  'based_in_country,capacity_confirmed_at,display_name,id,main_occupations,matched_filters,next_cursor,profile_updated_at,served_countries,slug',
+  'also_offers_staffing,available_workforce,based_in_country,capacity_confirmed_at,display_name,id,main_occupations,matched_filters,next_cursor,organization_type,profile_updated_at,served_countries,slug,staffing_types',
   'AC4: the columns are exactly the public ones'
 );
 select ok(
@@ -307,7 +307,7 @@ select is((select e ->> 'capacity_confirmed_at' from jsonb_array_elements(pg_tem
 -- Validation -----------------------------------------------------------------------------------------------------------------------
 select is(
   concat_ws(',',
-    pg_temp.search(null, '''staffing'''), pg_temp.search(null, 'null'), pg_temp.search(null, '''recruitment'', p_destination => ''deu'''),
+    pg_temp.search(null, '''agency'''), pg_temp.search(null, 'null'), pg_temp.search(null, '''recruitment'', p_destination => ''deu'''),
     pg_temp.search(null, '''recruitment'', p_occupation => ''721'''), pg_temp.search(null, '''recruitment'', p_industry => ''CC'''),
     pg_temp.search(null, '''recruitment'', p_language => ''tgl'''), pg_temp.search(null, '''recruitment'', p_recruitment_type => ''both'''),
     pg_temp.search(:'bet', '''recruitment'', p_capacity => 0'), pg_temp.search(:'bet', '''recruitment'', p_capacity => 100001'),
@@ -318,7 +318,7 @@ select is(
   'P0001|CHARA_INVALID_INPUT|p_recruitment_type,P0001|CHARA_INVALID_INPUT|p_capacity,P0001|CHARA_INVALID_INPUT|p_capacity,'
   'P0001|CHARA_INVALID_INPUT|p_within_days,P0001|CHARA_INVALID_INPUT|p_within_days,P0001|CHARA_INVALID_INPUT|p_sources_from,'
   'P0001|CHARA_INVALID_INPUT|p_cursor',
-  'every parameter is checked and named (staffing arrives with V22)'
+  'every parameter is checked and named'
 );
 select is(pg_temp.search(:'bet', '''recruitment'', p_capacity => 100000, p_within_days => 365') || pg_temp.search(:'bet', '''recruitment'', p_capacity => 1, p_within_days => 1'),
   'okok', 'the bounds 1 and 100,000 workers, 1 and 365 days are accepted');
