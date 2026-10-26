@@ -61,6 +61,40 @@ async function staffingBatch(): Promise<Batch> {
   return { owner: user, token, staffing: `Staff Supplier ${token}`, recruitment: `Staff Recruiter ${token}` };
 }
 
+// Listed staffing companies serving Luxembourg, each with 150 welders available now; the first is confirmed most
+// recently, so the available workforce search returns them in the order of their number.
+async function luxembourgSuppliers(count: number): Promise<string[]> {
+  const { user } = await partnerWithCompany("staffing_company");
+  const token = uniqueToken();
+  execute(
+    `with created as (
+       insert into public.organizations (type, slug, legal_name, display_name, based_in_country)
+       select 'staffing_company', 'lux-' || ${literal(token)} || '-' || n, 'Lux Legal ' || ${literal(token)} || ' ' || n,
+         'Lux Supplier ' || ${literal(token)} || ' ' || lpad(n::text, 2, '0'), 'PH'
+       from generate_series(1, ${count}) n
+       returning id, slug
+     ), members as (
+       insert into public.organization_members (organization_id, user_id, role, accepted_at)
+       select id, ${literal(user.id)}, 'owner', now() from created
+     ), geographies as (
+       insert into public.organization_geographies (organization_id, scope, country_code)
+       select id, s.scope::public.geography_scope, s.code from created
+       cross join (values ('serves_market', 'LU'), ('sources_from', 'PH')) s (scope, code)
+     ), services as (
+       insert into public.organization_service_types (organization_id, service) select id, 'temporary' from created
+     )
+     insert into public.organization_occupations (organization_id, occupation_id) select id, '7212' from created;
+     update public.organizations set review_status = 'listed', listed_at = now() - interval '2 days',
+       submitted_at = now() - interval '3 days'
+     where slug like ${literal(`lux-${token}-%`)};
+     insert into public.workforce_availability (organization_id, occupation_id, source_country, available, monthly_capacity,
+       available_from, confirmed_at)
+     select id, '7212', 'PH', 150, 10, current_date, now() - make_interval(mins => split_part(slug, '-', 3)::integer)
+     from public.organizations where slug like ${literal(`lux-${token}-%`)}`,
+  );
+  return Array.from({ length: count }, (_, index) => `Lux Supplier ${token} ${String(index + 1).padStart(2, "0")}`);
+}
+
 // The date as the pages write it (lib/i18n/format.ts formatDate), in UTC.
 const longDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(date);
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -311,6 +345,52 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     await section.getByRole("textbox", { name: "Workers needed" }).fill("0");
     await section.getByRole("button", { name: "Search available workforce" }).click();
     await expect(section.getByText("Enter a number of workers from 1 to 100,000.").first()).toBeVisible();
+    await context.close();
+  });
+
+  test("FR-K3: Show more partners keeps the list and moves the focus to the first new partner", async ({ browser }) => {
+    test.setTimeout(120_000);
+    const names = await luxembourgSuppliers(21);
+    const { context, page } = await signedIn(browser, await newEmployer());
+    await page.goto(DIRECTORY);
+    const section = page.getByRole("region", { name: "Available workforce" });
+    await waitForHydration(section.getByRole("combobox", { name: "Occupation" }));
+    await choose(page, section.getByRole("combobox", { name: "Occupation" }), "welders", /^7212 · Welders and flame cutters$/);
+    await choose(page, section.getByRole("combobox", { name: "Destination" }), "Luxembourg", /^Luxembourg$/);
+    await section.getByRole("textbox", { name: "Workers needed" }).fill("100");
+    await section.getByRole("textbox", { name: "Within (days)" }).fill("60");
+    await section.getByRole("button", { name: "Search available workforce" }).click();
+    const results = section.getByRole("list", { name: "Partners with available workforce" });
+    const headings = results.getByRole("heading", { level: 3 });
+    await expect(headings).toHaveCount(20);
+    await expect(headings.first()).toHaveText(names[0]);
+
+    // The next page waits on a lock for a moment: the list stays while a small skeleton shows below it.
+    const held = executeAsync("begin; lock table public.workforce_availability in access exclusive mode; select pg_sleep(1.5); commit;");
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await section.getByRole("button", { name: "Show more partners" }).click();
+    await expect(section.getByRole("status", { name: "Loading" })).toBeVisible();
+    await expect(headings).toHaveCount(20);
+    await held;
+    await expect(headings).toHaveCount(21);
+    await expect(headings.nth(20)).toHaveText(names[20]);
+    await expect(headings.nth(20).getByRole("link")).toBeFocused();
+    await expect(section.getByRole("button", { name: "Show more partners" })).toHaveCount(0);
+    await context.close();
+  });
+
+  test("FR-K3: an employer finds the available workforce search on the recruitment directory too", async ({ page, browser }) => {
+    await page.goto("/en/partners/recruitment");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find Recruitment Partners");
+    await expect(page.getByRole("region", { name: "Available workforce" })).toHaveCount(0);
+
+    const { context, page: employerPage } = await signedIn(browser, await newEmployer());
+    await employerPage.goto("/en/partners/recruitment");
+    const section = employerPage.getByRole("region", { name: "Available workforce" });
+    await expect(section).toBeVisible();
+    await waitForHydration(section.getByRole("combobox", { name: "Occupation" }));
+    await expect(employerPage.getByRole("search", { name: "Search recruitment partners" })).toBeVisible();
+    await expectAccessibleAtBothWidths(employerPage);
     await context.close();
   });
 
