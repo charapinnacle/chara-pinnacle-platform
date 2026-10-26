@@ -222,12 +222,12 @@ describe("available workforce (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
     listingsMock.mockResolvedValue([listing("l61", 61), listing("l59", 59), listing("l2", 2)]);
     let html = await render();
     expect(html.match(/<li class="grid gap-2 rounded-xl/g)).toHaveLength(3);
-    expect(html.match(/Not confirmed for more than 60 days/g)).toHaveLength(1);
+    expect(html.match(/Not confirmed for 60 days or more/g)).toHaveLength(1);
     expect(html).toContain("Confirmed 61 days ago, on");
     expect(html).toContain("Confirmed 2 days ago, on");
     expect(html.match(/>Confirm<span class="sr-only"> the listing for Welders and flame cutters from Philippines/g)).toHaveLength(2);
     html = await render({ role: "member" });
-    expect(html).toContain("Not confirmed for more than 60 days");
+    expect(html).toContain("Not confirmed for 60 days or more");
     expect(html).not.toContain(">Confirm<span");
   });
 
@@ -281,5 +281,12 @@ describe("loading and partial failure (FR-R3 AC11, FR-R4 AC10)", () => {
     html = await render();
     expect(html).toContain("The available workforce could not be loaded");
     expect(html).toContain("Next actions");
+    listingsMock.mockResolvedValue([listing("l1", 2)]);
+    reviewMock.mockRejectedValue(new Error("down"));
+    followersMock.mockClear();
+    html = await render();
+    expect(html.match(/could not be loaded/g), "a failed review read is reported once").toHaveLength(1);
+    expect(html).toContain("The review state could not be loaded");
+    expect(followersMock).not.toHaveBeenCalled();
   });
 });

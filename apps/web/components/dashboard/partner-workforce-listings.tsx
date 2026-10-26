@@ -53,7 +53,7 @@ export function PartnerWorkforceListings({ slug, canManage, listings, names, rul
                 {occupation}, {country}
               </h3>
               {freshness.state === "hidden" ? (
-                <StatusBadge status="warning">Not confirmed for more than {formatCount(rules.staleDays)} days</StatusBadge>
+                <StatusBadge status="warning">Not confirmed for {formatCount(rules.staleDays)} days or more</StatusBadge>
               ) : null}
             </div>
             <p className="text-body">

@@ -284,8 +284,10 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
   const figures = getPartnerFigures(id);
   const review = Promise.all([getPartnerReview(id), getReviewOutcome(id), getReviewTargetDays()]);
   // The follower count of a listed company (FR-L4 AC11), never who follows; nothing while it is not listed.
-  const followers = review.then(([state]) =>
-    state && state.listedAt !== null && state.status !== "declined" ? getFollowerCount(id) : null,
+  // A failed review read is reported once, by the review card; the followers then show nothing.
+  const followers = review.then(
+    ([state]) => (state && state.listedAt !== null && state.status !== "declined" ? getFollowerCount(id) : null),
+    () => null,
   );
   const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules(), getOccupations(), getCountries()]);
   const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, planUsageKeys)]);

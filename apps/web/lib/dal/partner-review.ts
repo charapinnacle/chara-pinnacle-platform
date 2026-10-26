@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -26,7 +27,8 @@ export type ReviewOutcome = { decision: PartnerDecision; reason: string | null; 
 
 // The review state of a partner as its members read it (organizations is readable by members only); null for an
 // employer.
-export async function getPartnerReview(organizationId: string): Promise<PartnerReview | null> {
+// Cached per request: the dashboard page reads it to route and its review card again.
+export const getPartnerReview = cache(async (organizationId: string): Promise<PartnerReview | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
@@ -42,7 +44,7 @@ export async function getPartnerReview(organizationId: string): Promise<PartnerR
     infoStep: infoStep.success ? infoStep.data : null,
     listedAt: data.listed_at,
   };
-}
+});
 
 export async function getReviewOutcome(organizationId: string): Promise<ReviewOutcome | null> {
   const supabase = await createClient();
