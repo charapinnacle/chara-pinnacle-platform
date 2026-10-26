@@ -1195,9 +1195,19 @@ isOneToOne: false
               "accepted": number,"audience": string,"slug": string,"total": number
             }[]
                            },
+"admin_list_enterprise_organizations":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "display_name": string,"id": string,"org_type": Database["public"]['Enums']["organization_type"],"plan_code": string
+            }[]
+                           },
 "admin_list_legal_documents":
 { Args: Record<PropertyKey, never>; Returns: {
               "is_draft": boolean,"published_at": string,"slug": string,"title": string,"version": number
+            }[]
+                           },
+"admin_list_limit_overrides":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "changed_at": string,"expired": boolean,"expires_at": string,"limit_key": string,"limit_label": string,"limit_value": number,"organization_id": string,"organization_name": string,"plan_code": string,"plan_limit": number,"reason": string
             }[]
                            },
 "admin_list_moderation_actions":
@@ -1215,15 +1225,33 @@ isOneToOne: false
               "based_in_country": string,"display_name": string,"due_at": string,"id": string,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"review_status": Database["public"]['Enums']["partner_review_status"],"same_identifier": boolean,"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string
             }[]
                            },
+"admin_list_plan_history":
+{ Args: { "p_before_id"?: number,"p_code": string,"p_limit"?: number }; Returns: {
+              "actor_id": string,"actor_name": string,"after": Json,"before": Json,"created_at": string,"feature_key": string,"id": number,"limit_key": string,"operation": string,"reason": string,"table_name": string
+            }[]
+                           },
+"admin_list_plans":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "code": string,"contact_sales": boolean,"currency": string,"features": Json,"is_public": boolean,"limits": Json,"name": string,"org_type": Database["public"]['Enums']["organization_type"],"price_minor": number,"sort": number,"trial_days": number
+            }[]
+                           },
 "admin_list_reports":
 { Args: { "p_after_id"?: number,"p_limit"?: number,"p_status"?: string,"p_type"?: Database["public"]['Enums']["report_target_type"] }; Returns: {
               "category": Database["public"]['Enums']["report_category"],"created_at": string,"handled_at": string,"id": number,"reference": string,"status": Database["public"]['Enums']["report_status"],"target_label": string,"target_type": Database["public"]['Enums']["report_target_type"]
+            }[]
+                           },
+"admin_list_settings":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "key": string,"label": string,"max": number,"min": number,"release_feature": string,"release_gaps": (string)[],"value": string,"value_type": string
             }[]
                            },
 "admin_moderation_counts":
 { Args: Record<PropertyKey, never>; Returns: {
               "hidden_vacancies": number,"suspended_organizations": number,"suspended_users": number
             }[]
+                           },
+"admin_remove_limit_override":
+{ Args: { "p_limit_key": string,"p_org": string,"p_reason": string }; Returns: undefined
                            },
 "admin_search_audit":
 { Args: { "p_action"?: string,"p_actor"?: string,"p_after_at"?: string,"p_after_id"?: number,"p_entity_id"?: string,"p_entity_type"?: string,"p_from"?: string,"p_limit"?: number,"p_to"?: string }; Returns: {
@@ -1245,14 +1273,29 @@ isOneToOne: false
               "account_kind": Database["public"]['Enums']["account_kind"],"created_at": string,"display_name": string,"email": string,"id": string,"status": Database["public"]['Enums']["profile_status"]
             }[]
                            },
+"admin_set_limit_override":
+{ Args: { "p_expires_at": string,"p_limit_key": string,"p_org": string,"p_reason": string,"p_value": number }; Returns: boolean
+                           },
 "admin_set_organization_type":
 { Args: { "p_org": string,"p_reason": string,"p_type": Database["public"]['Enums']["organization_type"] }; Returns: undefined
+                           },
+"admin_set_plan_feature":
+{ Args: { "p_code": string,"p_enabled": boolean,"p_feature_key": string,"p_reason": string }; Returns: boolean
+                           },
+"admin_set_plan_limit":
+{ Args: { "p_code": string,"p_limit_key": string,"p_reason": string,"p_value": number }; Returns: boolean
                            },
 "admin_set_report_status":
 { Args: { "p_id": number,"p_note"?: string,"p_status": Database["public"]['Enums']["report_status"] }; Returns: undefined
                            },
+"admin_set_setting":
+{ Args: { "p_key": string,"p_reason": string,"p_value": string }; Returns: boolean
+                           },
 "admin_staff_count":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"admin_update_plan":
+{ Args: { "p_code": string,"p_is_public": boolean,"p_name": string,"p_reason": string,"p_trial_days": number }; Returns: boolean
                            },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
