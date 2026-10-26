@@ -1,5 +1,5 @@
 begin;
-select plan(81);
+select plan(82);
 
 \ir organizations_fixture.inc
 
@@ -368,6 +368,8 @@ select pg_temp.run(:'adm', $$select * from public.admin_network_kpis('2026-03-01
 select is(pg_temp.k('stale_listings') || ' ' || pg_temp.k('stale_listings_share'), '5/5 83.3/6',
   'FR-K3 KPI: five of six listings of listed partners are stale');
 select is(pg_temp.k('licences_expiring'), '5/5', 'FR-J2: five licences expire within the reminder period');
+select is(pg_temp.k('occupations_median') || ' ' || pg_temp.k('served_countries_median') || ' ' || pg_temp.k('source_and_served_share'),
+  '0/21 0/21 0.0/21', 'FR-K2 and FR-K1 KPIs: medians and shares over the 21 listed partners (six with one occupation)');
 select ok(not exists (
     select 1 from jsonb_array_elements(pg_temp.result()) e where (e ->> 'base')::integer < 5 or (e ->> 'value' is not null and e ->> 'base' is null)),
   'no figure has a base below 5, and no value is shown without its base');
