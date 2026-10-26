@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasSharedSecret } from "../_shared/auth.ts";
 import { json } from "../_shared/http.ts";
 import { type Audit, parseAudit, record, UUID } from "./audit.ts";
+import { buildExport, EXPORT_BUCKET } from "./export.ts";
 
 const BATCH_SIZE = 100;
 const CONCURRENCY = 5;
@@ -30,6 +31,7 @@ export type Job =
       & (
         | { action: "sign_out" | "reset_mfa" | "erase_user" | "suspend_user" | "reinstate_user" }
         | { action: "delete_object"; bucketId: string; path: string }
+        | { action: "build_data_export"; exportId: string }
       )
     )
   );
@@ -57,6 +59,7 @@ function parseJob(row: unknown): Job | null {
     path,
     actor_id: actorId,
     request_id: requestId,
+    export_id: exportId,
   } = message as {
     action?: unknown;
     user_id?: unknown;
@@ -67,6 +70,7 @@ function parseJob(row: unknown): Job | null {
     path?: unknown;
     actor_id?: unknown;
     request_id?: unknown;
+    export_id?: unknown;
   };
   const audit = parseAudit(actorId, requestId);
   if (audit === undefined) {
@@ -100,6 +104,9 @@ function parseJob(row: unknown): Job | null {
     action === "reinstate_user"
   ) {
     return { msgId, audit, action, userId };
+  }
+  if (action === "build_data_export") {
+    return typeof exportId === "string" && UUID.test(exportId) ? { msgId, audit, action, userId, exportId } : null;
   }
   // An object is only ever removed from the folder of the user the job names.
   if (
@@ -236,7 +243,8 @@ async function purgePrefix(client: SupabaseClient, bucketId: string, userId: str
 }
 
 // The database part first (it refuses before the cooling-off period has passed or under a legal hold, and a retry after
-// it finished returns false), then the files, then the auth user. Each step is safe to repeat, so a crash in between is
+// it finished returns false; the requests for a copy of the data go with the profile), then the files (the documents
+// and any copy of the data), then the auth user. Each step is safe to repeat, so a crash in between is
 // finished by the next read of the job. A user that is already gone (404) is a success.
 async function eraseUser(client: SupabaseClient, userId: string): Promise<Record<string, number>> {
   const { data, error } = await client.rpc("erase_user", { p_user_id: userId });
@@ -244,6 +252,7 @@ async function eraseUser(client: SupabaseClient, userId: string): Promise<Record
     throw error;
   }
   const objectsRemoved = await purgePrefix(client, PASSPORT_BUCKET, userId);
+  const exportsRemoved = await purgePrefix(client, EXPORT_BUCKET, userId);
   const result = await client.auth.admin.deleteUser(userId);
   if (result.error && result.error.status !== 404) {
     throw result.error;
@@ -251,6 +260,7 @@ async function eraseUser(client: SupabaseClient, userId: string): Promise<Record
   return {
     profile_erased: data === true ? 1 : 0,
     objects_removed: objectsRemoved,
+    exports_removed: exportsRemoved,
     auth_user_deleted: result.error ? 0 : 1,
   };
 }
@@ -270,6 +280,9 @@ async function run(client: SupabaseClient, job: Job): Promise<Record<string, num
   }
   if (job.action === "erase_user") {
     return await eraseUser(client, job.userId);
+  }
+  if (job.action === "build_data_export") {
+    return await buildExport(client, job.userId, job.exportId);
   }
   const sessionsEnded = await endSessions(client, job.userId);
   if (job.action === "reset_mfa") {

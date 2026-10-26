@@ -352,6 +352,7 @@ Deno.test("a delete_object job outside the folder of its user, or with a bad buc
 
 const FOLDER_A = "00000000-0000-0000-0000-00000000d001";
 const FOLDER_B = "00000000-0000-0000-0000-00000000d002";
+const EXPORT = "00000000-0000-0000-0000-00000000e001";
 const erasure = (msgId: number) => ({ msg_id: msgId, message: { action: "erase_user", user_id: USER } });
 const folder = (name: string) => ({ name, id: null });
 const file = (name: string) => ({ name, id: "00000000-0000-0000-0000-0000000000f1" });
@@ -361,7 +362,7 @@ function tree(entries: Record<string, { name: string; id: string | null }[]>): R
   return (call) => reply(200, entries[(call.body as { prefix: string }).prefix] ?? []);
 }
 
-Deno.test("an erase_user job erases the database rows, purges the nested storage prefix, deletes the auth user and acknowledges", async () => {
+Deno.test("an erase_user job erases the database rows, purges the nested storage prefix and the copies of the data, deletes the auth user and acknowledges", async () => {
   const { calls, client } = harness({
     "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(90)),
     "POST /rest/v1/rpc/erase_user": reply(200, true),
@@ -372,6 +373,9 @@ Deno.test("an erase_user job erases the database rows, purges the nested storage
     }),
     "DELETE /storage/v1/object/passport-documents": (call) =>
       reply(200, (call.body as { prefixes: string[] }).prefixes.map((name) => ({ name }))),
+    "POST /storage/v1/object/list/dsar-exports": tree({ [USER]: [file(`${EXPORT}.zip`)] }),
+    "DELETE /storage/v1/object/dsar-exports": (call) =>
+      reply(200, (call.body as { prefixes: string[] }).prefixes.map((name) => ({ name }))),
     "DELETE /auth/v1/admin/users/{id}": reply(200, {}),
     "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
   });
@@ -380,9 +384,15 @@ Deno.test("an erase_user job erases the database rows, purges the nested storage
   assert.deepEqual(calls.filter((c) => c.path.startsWith("/rest/v1/rpc/erase_user")).map((c) => c.body), [{
     p_user_id: USER,
   }]);
-  assert.deepEqual(calls.filter((c) => c.method === "DELETE" && c.path.startsWith("/storage/")).map((c) => c.body), [
-    { prefixes: [`${USER}/${FOLDER_A}/cv.pdf`, `${USER}/${FOLDER_A}/cert.pdf`, `${USER}/${FOLDER_B}/other.png`] },
-  ]);
+  assert.deepEqual(
+    calls.filter((c) => c.method === "DELETE" && c.path.startsWith("/storage/")).map((c) => [c.path, c.body]),
+    [
+      ["/storage/v1/object/passport-documents", {
+        prefixes: [`${USER}/${FOLDER_A}/cv.pdf`, `${USER}/${FOLDER_A}/cert.pdf`, `${USER}/${FOLDER_B}/other.png`],
+      }],
+      ["/storage/v1/object/dsar-exports", { prefixes: [`${USER}/${EXPORT}.zip`] }],
+    ],
+  );
   assert.deepEqual(calls.filter((c) => c.path === `/auth/v1/admin/users/${USER}`).map((c) => c.method), ["DELETE"]);
   const order = calls.map((c) => c.path.split("/").slice(3, 5).join("/"));
   assert.ok(order.indexOf("rpc/erase_user") < order.indexOf("object/list"), "the database part comes first");
@@ -393,7 +403,7 @@ Deno.test("an erase_user job erases the database rows, purges the nested storage
   );
   assert.deepEqual(acks(calls), [{
     p_msg_id: 90,
-    p_result: { profile_erased: 1, objects_removed: 3, auth_user_deleted: 1 },
+    p_result: { profile_erased: 1, objects_removed: 3, exports_removed: 1, auth_user_deleted: 1 },
   }]);
 });
 
@@ -402,6 +412,7 @@ Deno.test("a repeated erase_user job finishes the files and the auth user and re
     "POST /rest/v1/rpc/account_ops_dequeue": jobs(erasure(91)),
     "POST /rest/v1/rpc/erase_user": reply(200, false),
     "POST /storage/v1/object/list/passport-documents": tree({}),
+    "POST /storage/v1/object/list/dsar-exports": tree({}),
     "DELETE /auth/v1/admin/users/{id}": reply(404, { code: 404, error_code: "user_not_found", msg: "gone" }),
     "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
   });
@@ -410,7 +421,7 @@ Deno.test("a repeated erase_user job finishes the files and the auth user and re
   assert.equal(calls.filter((c) => c.method === "DELETE" && c.path.startsWith("/storage/")).length, 0);
   assert.deepEqual(acks(calls), [{
     p_msg_id: 91,
-    p_result: { profile_erased: 0, objects_removed: 0, auth_user_deleted: 0 },
+    p_result: { profile_erased: 0, objects_removed: 0, exports_removed: 0, auth_user_deleted: 0 },
   }]);
 });
 
@@ -429,6 +440,7 @@ Deno.test("a folder with more than one page of files is listed page by page", as
     },
     "DELETE /storage/v1/object/passport-documents": (call) =>
       reply(200, (call.body as { prefixes: string[] }).prefixes.map((name) => ({ name }))),
+    "POST /storage/v1/object/list/dsar-exports": tree({}),
     "DELETE /auth/v1/admin/users/{id}": reply(200, {}),
     "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
   });
@@ -464,6 +476,7 @@ Deno.test("a failing purge or user deletion leaves the job queued, with the data
       "POST /storage/v1/object/list/passport-documents": failing === "storage"
         ? reply(500, { statusCode: "500", error: "Internal", message: "boom" })
         : tree({}),
+      "POST /storage/v1/object/list/dsar-exports": tree({}),
       "DELETE /auth/v1/admin/users/{id}": reply(500, { code: 500, error_code: "unexpected_failure", msg: "boom" }),
     });
     const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });

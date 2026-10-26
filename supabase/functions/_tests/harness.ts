@@ -4,6 +4,8 @@ export interface Call {
   method: string;
   path: string;
   body: unknown;
+  // The bytes of a body that is not JSON (an upload to Storage).
+  raw: Uint8Array | null;
   headers: Record<string, string>;
 }
 
@@ -24,6 +26,7 @@ export function harness(routes: Record<string, Route | Response>) {
       method,
       path: url.pathname,
       body: text ? JSON.parse(text) : null,
+      raw: init?.body instanceof Uint8Array ? init.body : null,
       headers: Object.fromEntries(new Headers(init?.headers)),
     };
     calls.push(call);
