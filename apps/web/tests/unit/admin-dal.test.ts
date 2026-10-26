@@ -513,3 +513,41 @@ describe("the reports of Trust & Safety", () => {
     await expect(getReport(7)).rejects.toThrow("The report could not be loaded");
   });
 });
+
+// FR-S2: the partner network counts and key figures.
+describe("the partner network statistics", () => {
+  it("read the counts and the figures of the range, keep hidden values null and take the threshold from the first figure", async () => {
+    rpcMock.mockImplementation(async (name: string) =>
+      name === "admin_network_counts"
+        ? { data: [{ metric: "partner_saves", period_start: "2026-03-01", count: 9 }, { metric: "partner_saves", period_start: "2026-04-01", count: null }], error: null }
+        : {
+            data: [
+              { metric: "stats_min_count", label: null, unit: "count", range_figure: false, value: 8, base: 8 },
+              { metric: "approval_share", label: null, unit: "percent", range_figure: true, value: null, base: null },
+            ],
+            error: null,
+          },
+    );
+    const statistics = await dal.networkStatistics({ from: "2026-03-01", to: "2026-04-30", period: "week" });
+
+    expect(rpcMock).toHaveBeenCalledWith("admin_network_counts", { p_from: "2026-03-01", p_to: "2026-04-30", p_period: "week" });
+    expect(rpcMock).toHaveBeenCalledWith("admin_network_kpis", { p_from: "2026-03-01", p_to: "2026-04-30" });
+    expect(statistics).toEqual({
+      counts: [
+        { metric: "partner_saves", periodStart: "2026-03-01", count: 9 },
+        { metric: "partner_saves", periodStart: "2026-04-01", count: null },
+      ],
+      figures: [{ metric: "approval_share", label: null, unit: "percent", rangeFigure: true, value: null, base: null }],
+      minCount: 8,
+    });
+  });
+
+  it("throw a failure that keeps the database error as its cause", async () => {
+    const error = { code: "42501", message: "CHARA_FORBIDDEN" };
+    rpcMock.mockImplementation(async (name: string) => (name === "admin_network_counts" ? { data: null, error } : { data: [], error: null }));
+    await expect(dal.networkStatistics({ from: "2026-03-01", to: "2026-04-30", period: "month" })).rejects.toMatchObject({
+      message: "The partner network counts could not be loaded",
+      cause: error,
+    });
+  });
+});
