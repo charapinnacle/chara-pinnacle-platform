@@ -1,5 +1,5 @@
 begin;
-select plan(139);
+select plan(142);
 
 \ir organizations_fixture.inc
 
@@ -46,6 +46,17 @@ create function pg_temp.add(
 language sql as $$
   select pg_temp.run(p_user, format('public.add_partner_licence(%L, %L, %L, %L, %L, %L)',
     p_org, p_country, p_authority, p_number, p_valid, p_confirmed), p_aal)
+$$;
+
+-- The object an opening grant points to, or the refusal.
+create function pg_temp.opened_path(p_user uuid, p_licence uuid, p_purpose text) returns text
+language plpgsql as $$
+declare
+  v_outcome text := pg_temp.run(p_user, format(
+    '(select object_path from public.partner_document_access_grant(%L, %L))', p_licence, p_purpose));
+begin
+  return case when v_outcome = 'ok' then current_setting('t.result') else v_outcome end;
+end;
 $$;
 
 create function pg_temp.today() returns date
@@ -455,6 +466,14 @@ select is(
   pg_temp.removals(:'path_png') || ':' || (select cause from private.retired_licence_evidence where storage_path = :'path_png'), '0:replaced',
   'the superseded file is retired for the licence_evidence period instead of being removed at once (FR-S3)'
 );
+select count(*) as log_before from audit.partner_document_access_log where licence_id = :'lic' \gset
+select is(
+  (pg_temp.opened_path(:'ow', :'lic', 'evidence_owner') = :'path_s') || ':' || (pg_temp.opened_path(:'rev', :'lic', 'partner_review') = :'path_s'),
+  'true:true', 'FR-S3: the owner and a reviewer at aal2 open the new file, never the retired one'
+);
+select is((select count(*)::integer from audit.partner_document_access_log where licence_id = :'lic'), :'log_before'::integer + 2,
+  'and both openings are logged'
+);
 
 select is(pg_temp.grant_upload(:'ow', :'lic', 'image/png', 5000), 'ok', 'a third replacement is reserved and never uploaded');
 select current_setting('t.result') as path_f \gset
@@ -496,7 +515,11 @@ select is(
     || (select cause from private.retired_licence_evidence where storage_path = :'path_s'), '1:0:removed',
   'the pending file is queued for removal through account-ops; the scanned previous one is retired for its period (FR-S3)'
 );
-select is((select count(*)::integer from audit.partner_document_access_log where licence_id = :'lic'), 4,
+select is(
+  pg_temp.opened_path(:'ow', :'lic', 'evidence_owner') || ',' || pg_temp.opened_path(:'rev', :'lic', 'partner_review'),
+  'P0002|CHARA_NOT_FOUND|,P0002|CHARA_NOT_FOUND|', 'FR-S3: a retired file of a deleted entry cannot be opened by the owner or a reviewer'
+);
+select is((select count(*)::integer from audit.partner_document_access_log where licence_id = :'lic'), 6,
   'the access log outlives the entry');
 
 -- AC8: expiry ----------------------------------------------------------------------------------------------------------
