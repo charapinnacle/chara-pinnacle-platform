@@ -83,6 +83,11 @@ describe("the plans of the pricing page (FR-H2 AC1, AC5)", () => {
     expect(calls).toContainEqual(["limit", 20]);
   });
 
+  it("reads the plans of a partner type when one is named (FR-R1)", async () => {
+    await listPublicPlans("staffing_company");
+    expect(calls).toContainEqual(["eq", "org_type", "staffing_company"]);
+  });
+
   it("returns an empty list when no plan is public", async () => {
     expect(await listPublicPlans()).toEqual([]);
   });

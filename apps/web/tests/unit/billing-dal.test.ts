@@ -71,11 +71,13 @@ describe("requestHostedSession", () => {
 });
 
 describe("getUsage (FR-G5 AC7)", () => {
-  it("asks for the usage of the organisation and returns the used count and the limit of each key", async () => {
+  it("asks for the usage of the organisation and returns the used count and the limit of each key the page shows", async () => {
     rpcMock.mockResolvedValue({
       data: [
         { limit_key: "active_jobs", used: 7, limit_value: 15 },
+        { limit_key: "active_requirements", used: 0, limit_value: 15 },
         { limit_key: "members", used: 3, limit_value: null },
+        { limit_key: "messages_per_month", used: 0, limit_value: 500 },
       ],
       error: null,
     });
@@ -92,7 +94,7 @@ describe("getUsage (FR-G5 AC7)", () => {
   });
 
   it("refuses an answer of another shape instead of showing a wrong figure", async () => {
-    rpcMock.mockResolvedValue({ data: [{ limit_key: "messages", used: 1, limit_value: 2 }], error: null });
+    rpcMock.mockResolvedValue({ data: [{ limit_key: "members", used: "1", limit_value: 2 }], error: null });
     await expect(getUsage("org-1")).rejects.toThrow();
   });
 });

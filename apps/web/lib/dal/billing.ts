@@ -31,8 +31,10 @@ const subscriptionSchema = z.object({
   past_due_since: z.string().nullable(),
 });
 
+const shownKeys = ["active_jobs", "members"] as const;
+
 const usageSchema = z.array(
-  z.object({ limit_key: z.enum(["active_jobs", "members"]), used: z.number(), limit_value: z.number().nullable() }),
+  z.object({ limit_key: z.string(), used: z.number(), limit_value: z.number().nullable() }),
 );
 
 export type BillingState = z.infer<typeof stateSchema>;
@@ -47,7 +49,7 @@ export type Subscription = {
   pastDueSince: string | null;
 };
 
-export type Usage = { key: "active_jobs" | "members"; used: number; limit: number | null };
+export type Usage = { key: (typeof shownKeys)[number]; used: number; limit: number | null };
 
 // The plans a company can buy online: public, priced and not for contact.
 export async function listSoldPlans(): Promise<SoldPlan[]> {
@@ -83,12 +85,19 @@ export async function getSubscription(organizationId: string): Promise<Subscript
   };
 }
 
-// The open vacancies and the team members against the limits of the plan (null is unlimited).
+function isShownKey(key: string): key is Usage["key"] {
+  return (shownKeys as readonly string[]).includes(key);
+}
+
+// The open vacancies and the team members against the limits of the plan (null is unlimited). billing_usage also returns
+// the keys of later releases, which the page shows once their features are released.
 export async function getUsage(organizationId: string): Promise<Usage[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("billing_usage", { p_org: organizationId });
   if (error) throw new Error("The usage could not be loaded", { cause: error });
-  return usageSchema.parse(data).map((row) => ({ key: row.limit_key, used: row.used, limit: row.limit_value }));
+  return usageSchema
+    .parse(data)
+    .flatMap((row) => (isShownKey(row.limit_key) ? [{ key: row.limit_key, used: row.used, limit: row.limit_value }] : []));
 }
 
 const answerSchema = z.object({
