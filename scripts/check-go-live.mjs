@@ -20,7 +20,25 @@
 import { readFileSync } from "node:fs";
 import { isSold } from "./sync-stripe-plans.mjs";
 
-const LIMIT_KEYS = ["active_jobs", "members"];
+// The limit rows every sold plan needs, by organisation type: a missing row would mean unlimited (FR-C6, FR-R1 AC2).
+const PARTNER_LIMIT_KEYS = [
+  "markets",
+  "listed_occupations",
+  "workforce_listings",
+  "members",
+  "job_order_responses_per_month",
+  "candidate_submissions_per_month",
+  "messages_per_month",
+];
+const LIMIT_KEYS = {
+  employer: ["active_jobs", "members"],
+  recruitment_company: PARTNER_LIMIT_KEYS,
+  staffing_company: PARTNER_LIMIT_KEYS,
+};
+// The release switch that opens the checkout of each partner type (20261127100000_partner_checkout.sql). While it is off
+// no partner plan can be bought, so its missing Stripe price is named but does not stop the launch; once it is on, the
+// partner plans are held to the same rule as the employer plans.
+const PARTNER_CHECKOUT_SWITCH = "release_partner_directories";
 const LEGAL_ENTITY_KEYS = ["legal_entity_name", "legal_entity_address", "privacy_contact", "data_protection_contact"];
 const ALLOW_DRAFT_LEGAL = "--allow-draft-legal";
 const PHASE_2_LEGAL_SLUGS = new Set([
@@ -79,7 +97,7 @@ function phase2Results(settings, gaps) {
 
 function planFailures(plan) {
   const failures = [];
-  for (const key of LIMIT_KEYS) {
+  for (const key of LIMIT_KEYS[plan.org_type] ?? LIMIT_KEYS.employer) {
     if (!Object.hasOwn(plan.limits ?? {}, key)) {
       failures.push(`plan ${plan.code} has no limit row for ${key}`);
     }
@@ -123,8 +141,14 @@ for (const key of LEGAL_ENTITY_KEYS) {
     failures.push(`${key} must not be empty: the Imprint, Contact and Privacy Policy pages show it`);
   }
 }
+const partnerCheckoutOn = isTrue(settings?.[PARTNER_CHECKOUT_SWITCH]);
+const partnerPending = [];
 for (const plan of plans.filter(isSold)) {
-  failures.push(...planFailures(plan));
+  if (plan.org_type === "employer" || partnerCheckoutOn) {
+    failures.push(...planFailures(plan));
+  } else {
+    partnerPending.push(...planFailures(plan));
+  }
 }
 const administrators = release.active_administrators;
 if (!Number.isInteger(administrators) || administrators < 1) {
@@ -147,6 +171,9 @@ const phase2 = phase2Results(settings, release.legal_release_gaps);
 process.stderr.write(phase2.failures.map((failure) => `Phase 2 go-live check failed: ${failure}\n`).join(""));
 if (phase2.pending.length > 0) {
   process.stdout.write(`Phase 2 legal documents not yet approved (release switch off): ${phase2.pending.join("; ")}\n`);
+}
+if (partnerPending.length > 0) {
+  process.stdout.write(`Partner plans not yet ready to sell (${PARTNER_CHECKOUT_SWITCH} off): ${partnerPending.join("; ")}\n`);
 }
 if (failures.length > 0) {
   process.stderr.write(failures.map((failure) => `Go-live check failed: ${failure}\n`).join(""));

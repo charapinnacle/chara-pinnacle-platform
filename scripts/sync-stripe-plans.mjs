@@ -13,9 +13,9 @@ import { pathToFileURL } from "node:url";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
-// Partner plans (FR-R1) are seeded before partner checkout exists, so only employer plans are sold for now.
+// The plans checkout sells, of every organisation type (FR-G1, FR-R1): public, priced and not for contact.
 export function isSold(plan) {
-  return plan.org_type === "employer" && plan.is_public && !plan.contact_sales && plan.price_minor > 0;
+  return plan.is_public && !plan.contact_sales && plan.price_minor > 0;
 }
 
 function priceMatches(price, plan) {

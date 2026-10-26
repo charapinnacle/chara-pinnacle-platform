@@ -22,6 +22,8 @@ type Price = {
   active: boolean;
 };
 type Plan = (typeof PLANS)[number];
+// The tests of a failure or a change follow the employer plans alone, so that their lists stay short.
+const EMPLOYER_PLANS = PLANS.filter((plan) => plan.org_type === "employer");
 
 // A Stripe account as a snapshot that the script reads and changes. failOn names the call that fails, counted from 1.
 function stubStripe(failOn?: { call: "createProduct" | "createPrice"; plan: string }) {
@@ -91,7 +93,7 @@ function stubStore() {
 }
 
 describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
-  it("creates one product and one monthly EUR price per sold employer plan, never for a partner plan (FR-R1), and stores their identifiers", async () => {
+  it("creates one product and one monthly EUR price per sold plan of every organisation type (FR-R1), and stores their identifiers", async () => {
     const stripe = stubStripe();
     const database = stubStore();
     const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
@@ -101,18 +103,28 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
       "created a price of employer_starter at 3900",
       "created the product of employer_professional",
       "created a price of employer_professional at 7900",
+      "created the product of recruitment_partner",
+      "created a price of recruitment_partner at 4900",
+      "created the product of staffing_partner",
+      "created a price of staffing_partner at 5900",
     ]);
     expect(stripe.products.map((product) => [product.name, product.metadata.plan_code])).toEqual([
       ["Basic", "employer_starter"],
       ["Professional", "employer_professional"],
+      ["Basic", "recruitment_partner"],
+      ["Basic", "staffing_partner"],
     ]);
     expect(stripe.prices.map((price) => [price.metadata.plan_code, price.unit_amount, price.currency, price.recurring.interval, price.tax_behavior])).toEqual([
       ["employer_starter", 3900, "eur", "month", "exclusive"],
       ["employer_professional", 7900, "eur", "month", "exclusive"],
+      ["recruitment_partner", 4900, "eur", "month", "exclusive"],
+      ["staffing_partner", 5900, "eur", "month", "exclusive"],
     ]);
     expect(database.refs).toEqual({
       employer_starter: { product: "prod_1", price: "price_1" },
       employer_professional: { product: "prod_2", price: "price_2" },
+      recruitment_partner: { product: "prod_3", price: "price_3" },
+      staffing_partner: { product: "prod_4", price: "price_4" },
     });
   });
 
@@ -132,8 +144,8 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
   it("creates one new price when the amount changes, archives the old one and stores the new identifier", async () => {
     const stripe = stubStripe();
     const database = stubStore();
-    await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
-    const raised = PLANS.map((plan) => (plan.code === "employer_starter" ? { ...plan, price_minor: 4200 } : plan));
+    await syncPlans({ plans: EMPLOYER_PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
+    const raised = EMPLOYER_PLANS.map((plan) => (plan.code === "employer_starter" ? { ...plan, price_minor: 4200 } : plan));
     stripe.calls.length = 0;
     database.writes.length = 0;
 
@@ -151,7 +163,7 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
   it("keeps the identifier of the plan it created when a later call fails, and the next run adds only what is missing", async () => {
     const stripe = stubStripe({ call: "createProduct", plan: "employer_professional" });
     const database = stubStore();
-    await expect(syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store })).rejects.toThrow(
+    await expect(syncPlans({ plans: EMPLOYER_PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store })).rejects.toThrow(
       "Stripe answered 500",
     );
     expect(database.refs).toEqual({ employer_starter: { product: "prod_1", price: "price_1" } });
@@ -159,7 +171,7 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
     const healthy = stubStripe();
     healthy.products.push(...stripe.products);
     healthy.prices.push(...stripe.prices);
-    const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: healthy.stripe, store: database.store });
+    const changes = await syncPlans({ plans: EMPLOYER_PLANS, refs: database.refs, stripe: healthy.stripe, store: database.store });
     expect(changes).toEqual(["created the product of employer_professional", "created a price of employer_professional at 7900"]);
     expect(database.refs.employer_professional).toEqual({ product: "prod_2", price: "price_2" });
   });
@@ -167,12 +179,12 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
   it("keeps the product when only the price fails, and creates just the price next time", async () => {
     const stripe = stubStripe({ call: "createPrice", plan: "employer_starter" });
     const database = stubStore();
-    await expect(syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store })).rejects.toThrow();
+    await expect(syncPlans({ plans: EMPLOYER_PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store })).rejects.toThrow();
     expect(database.refs).toEqual({ employer_starter: { product: "prod_1", price: null } });
 
     const healthy = stubStripe();
     healthy.products.push(...stripe.products);
-    const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: healthy.stripe, store: database.store });
+    const changes = await syncPlans({ plans: EMPLOYER_PLANS, refs: database.refs, stripe: healthy.stripe, store: database.store });
     expect(changes).toEqual([
       "created a price of employer_starter at 3900",
       "created the product of employer_professional",
@@ -183,11 +195,11 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
   it("adopts what Stripe already holds when the identifiers were never stored, without creating anything", async () => {
     const stripe = stubStripe();
     const first = stubStore();
-    await syncPlans({ plans: PLANS, refs: first.refs, stripe: stripe.stripe, store: first.store });
+    await syncPlans({ plans: EMPLOYER_PLANS, refs: first.refs, stripe: stripe.stripe, store: first.store });
     const lost = stubStore();
     stripe.calls.length = 0;
 
-    const changes = await syncPlans({ plans: PLANS, refs: lost.refs, stripe: stripe.stripe, store: lost.store });
+    const changes = await syncPlans({ plans: EMPLOYER_PLANS, refs: lost.refs, stripe: stripe.stripe, store: lost.store });
     expect(changes).toEqual([]);
     expect(stripe.calls).toEqual([]);
     expect(lost.refs).toEqual(first.refs);
@@ -196,9 +208,9 @@ describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
   it("renames the product when the plan is renamed, and replaces a price that was archived by hand", async () => {
     const stripe = stubStripe();
     const database = stubStore();
-    await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
+    await syncPlans({ plans: EMPLOYER_PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });
     stripe.prices[0].active = false;
-    const renamed = PLANS.map((plan) => (plan.code === "employer_starter" ? { ...plan, name: "Standard" } : plan));
+    const renamed = EMPLOYER_PLANS.map((plan) => (plan.code === "employer_starter" ? { ...plan, name: "Standard" } : plan));
 
     const changes = await syncPlans({ plans: renamed, refs: database.refs, stripe: stripe.stripe, store: database.store });
     expect(changes).toEqual(["renamed the product of employer_starter", "created a price of employer_starter at 3900"]);

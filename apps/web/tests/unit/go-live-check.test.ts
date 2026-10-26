@@ -133,9 +133,51 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("does not require a Stripe price for a partner plan, which is not sold yet (FR-R1)", () => {
-    const partner = sold("recruitment_partner", 4900, { org_type: "recruitment_company", limits: {}, price_ref: null, stripe_amount: null });
-    const result = run(ENFORCED, [...MIRRORED, partner]);
+  const PARTNER_LIMITS = {
+    markets: 3,
+    listed_occupations: 10,
+    workforce_listings: 10,
+    members: 1,
+    job_order_responses_per_month: 10,
+    candidate_submissions_per_month: 25,
+    messages_per_month: 100,
+  };
+  const partner = (overrides: Plan = {}) =>
+    sold("staffing_partner", 5900, { org_type: "staffing_company", limits: PARTNER_LIMITS, ...overrides });
+  const PARTNER_CHECKOUT_ON = JSON.stringify({ entitlements_enforced: true, ...ENTITY, release_partner_directories: true });
+  const NO_GAPS = { ...PUBLISHED, legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] } };
+
+  it("names a partner plan without a Stripe price but passes while the partner checkout is off (FR-R1, decision 7.3)", () => {
+    const result = run(ENFORCED, [...MIRRORED, partner({ price_ref: null, stripe_amount: null })]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain(
+      "Partner plans not yet ready to sell (release_partner_directories off): plan staffing_partner has no stored price reference",
+    );
+  });
+
+  it("holds a partner plan to the employer rule once the partner checkout is on (FR-R1 AC2, AC4)", () => {
+    const unmirrored = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner({ price_ref: null, stripe_amount: null })], NO_GAPS);
+    expect(unmirrored.status).toBe(1);
+    expect(unmirrored.stderr).toContain("Go-live check failed: plan staffing_partner has no stored price reference");
+
+    const { markets: _markets, ...withoutMarkets } = PARTNER_LIMITS;
+    const missingRow = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner({ limits: withoutMarkets, stripe_amount: 5800 })], NO_GAPS);
+    expect(missingRow.status).toBe(1);
+    expect(missingRow.stderr).toContain("plan staffing_partner has no limit row for markets");
+    expect(missingRow.stderr).toContain("plan staffing_partner: Stripe holds 5800 but price_minor is 5900");
+    expect(missingRow.stderr).not.toContain("active_jobs");
+
+    const mirrored = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner()], NO_GAPS);
+    expect(mirrored.status).toBe(0);
+    expect(mirrored.stderr).toBe("");
+    expect(mirrored.stdout).not.toContain("not yet ready to sell");
+  });
+
+  it("never asks a contact-sales or free partner plan for a Stripe price", () => {
+    const enterprise = partner({ code: "staffing_enterprise", price_minor: 24900, contact_sales: true, price_ref: null, stripe_amount: null });
+    const free = partner({ code: "free_staffing_company", price_minor: 0, is_public: false, price_ref: null, stripe_amount: null });
+    const result = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner(), enterprise, free], NO_GAPS);
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
   });

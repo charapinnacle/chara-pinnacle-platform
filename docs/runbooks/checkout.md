@@ -27,7 +27,7 @@ No Stripe account existed when this was built. The adapter was tested with respo
 
 ## 3. Mirroring the plans and the go-live check
 
-Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (an employer plan that is public, priced and not contact-sales; the partner plans of FR-R1 are seeded but not mirrored until partner checkout exists) and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
+Plans are rows of `billing.plans` (FR-G1). The script creates the Stripe product and the monthly price of every sold plan (a plan of any organisation type that is public, priced and not contact-sales: the employer plans and, since V15, the Basic and Professional partner plans of FR-R1) and stores the identifiers in `billing.plan_provider_refs`. It reads Stripe first, so it never creates an object twice, and a price is replaced (new price, old one archived) when `price_minor` changes. It needs `psql` and the direct connection of an operator who is a member of `billing_owner`.
 
 ```sh
 DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-stripe-plans.mjs
@@ -41,11 +41,11 @@ DATABASE_URL="$PRODUCTION_DATABASE_URL" STRIPE_SECRET_KEY=... node scripts/sync-
 npm run go-live:check -- settings.json plans.json release.json
 ```
 
-`release.json` is the export of the release facts in `docs/runbooks/security-checklist.md` section 2. It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true (and for the failures of that section). Delete the three files afterwards.
+`release.json` is the export of the release facts in `docs/runbooks/security-checklist.md` section 2. It exits non-zero and names the plan or the setting when a sold plan lacks a limit row, a stored price or a Stripe amount equal to `price_minor`, or when `entitlements_enforced` is not true (and for the failures of that section). The limit rows required are `active_jobs` and `members` for an employer plan and every partner limit key for a partner plan. A partner plan counts only while `release_partner_directories` is on, since the checkout refuses partner plans otherwise; with the switch off its gaps are printed as "not yet ready to sell" and do not fail the gate. Partner payments stay blocked until CHARA's live Stripe account exists and the partner prices are mirrored (decision 7.3). Delete the three files afterwards.
 
 ## 4. The free-trial rule
 
-One free trial per legal entity. At checkout the trial is refused (the plan starts without a trial and the first payment is due at once) when:
+One free trial per legal entity, whatever the organisation type (an employer, a recruitment or a staffing company; decision 2.3). At checkout the trial is refused (the plan starts without a trial and the first payment is due at once) when:
 
 - a `billing.trial_grants` row names the organisation, or one of the identifiers submitted (`vat:<VAT ID>`, `reg:<country>:<registration number>`, upper case, without spaces, dots, hyphens and slashes); the webhook writes that row when the first trialing subscription is applied;
 - a subscription of the organisation ever had a trial;
