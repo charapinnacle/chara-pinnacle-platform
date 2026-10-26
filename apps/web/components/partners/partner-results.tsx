@@ -47,7 +47,6 @@ function PartnerCard({ lang, partner, basedIn, viewer }: { lang: string; partner
           </p>
         ) : null}
       </div>
-      {/* Save partner, Follow, Send inquiry and Invite to a requirement come with V24, V71 and V41. */}
       {viewer === "visitor" ? (
         <LinkButton href={signUpPath(lang, "company")} variant="secondary">
           Sign up to contact<span className="sr-only"> {partner.displayName}</span>
@@ -83,8 +82,8 @@ export async function PartnerResults({ lang, filters }: { lang: string; filters:
     };
     return (
       <Notice tone="warning" role="alert">
-        <p className="font-semibold">These filters need an employer plan with advanced partner search</p>
-        <p>Workforce capacity, availability and several source countries at once are part of the Professional and Enterprise employer plans.</p>
+        <p className="font-semibold">These filters need a plan with advanced partner search.</p>
+        <p>Capacity, availability and several source countries at once are not in your plan.</p>
         <p className="mt-2">
           <TextLink standalone href={partnerDirectoryPath(lang, basic)}>
             Search without them

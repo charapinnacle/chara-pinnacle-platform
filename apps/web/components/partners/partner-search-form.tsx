@@ -50,6 +50,12 @@ export function PartnerSearchForm({ lang, query, occupations, industries, countr
   const { control, handleSubmit, reset } = form;
   const countryOptions = toOptions(countries);
 
+  const [openFor, setOpenFor] = useState(query);
+  if (openFor !== query) {
+    setOpenFor(query);
+    setMoreOpen(advancedOpen);
+  }
+
   useEffect(() => {
     reset(partnerFormDefaults(query));
   }, [query, reset]);
@@ -143,7 +149,7 @@ export function PartnerSearchForm({ lang, query, occupations, industries, countr
               name="sources_from"
               id="partner-sources-from"
               label="Sources workers from"
-              description="Several countries at once need an employer plan with advanced partner search."
+              description="Several countries at once need a plan with advanced partner search."
               options={countryOptions}
               placeholder="Type a country"
               emptyText="No matching country"
@@ -155,7 +161,7 @@ export function PartnerSearchForm({ lang, query, occupations, industries, countr
           <fieldset className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
             <legend className="mb-1 text-h3">Workforce capacity</legend>
             <p className="text-small text-muted-foreground sm:col-span-2">
-              Needs an employer plan with advanced partner search. Only listings confirmed recently count.
+              Needs a plan with advanced partner search. Only listings confirmed recently count.
             </p>
             <InputField control={control} name="capacity" id="partner-capacity" label="Workers available, at least" inputMode="numeric" />
             <InputField control={control} name="within_days" id="partner-within-days" label="Available within (days)" inputMode="numeric" />
