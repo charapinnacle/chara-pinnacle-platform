@@ -359,6 +359,10 @@ describe("getEmployer", () => {
       website: "https://acme.example",
       description: "We build halls.",
     });
+    expect(calls).toContainEqual([
+      "organizations.select",
+      "display_name, website, description, countries!organizations_based_in_country_fkey(name), industries!organizations_industry_code_fkey(name)",
+    ]);
   });
 });
 
