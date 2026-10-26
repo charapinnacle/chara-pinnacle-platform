@@ -1,5 +1,5 @@
 begin;
-select plan(77);
+select plan(78);
 
 \ir organizations_fixture.inc
 
@@ -98,9 +98,90 @@ $$;
 \set qown '00000000-0000-0000-0000-0000000f0009'
 \set fown '00000000-0000-0000-0000-0000000f000a'
 \set lown '00000000-0000-0000-0000-0000000f000b'
-\set cown '00000000-0000-0000-0000-0000000f000c'
 \set wkr2 '00000000-0000-0000-0000-0000000f000d'
 \set eown3 '00000000-0000-0000-0000-0000000f000e'
+
+-- Concurrency at the boundary (NFR-A4) ------------------------------------------------------------------------------
+-- Two sessions invite to one partner at its limit: a second session runs invite_member in a transaction it keeps open,
+-- and this one waits for it, then counts its invitation once it is committed. Both sessions must see the partner, so it
+-- is committed by a third session and removed again at the end of the block; only the audit row of the committed
+-- invitation stays, since audit.log is append-only. This runs before this transaction changes a setting, so no session
+-- waits for a row this one holds.
+-- New ids on every run, so the audit rows left by earlier runs never count against this partner's hourly invitations.
+select gen_random_uuid() as cown, gen_random_uuid() as org_c \gset
+create extension if not exists dblink schema extensions;
+select extensions.dblink_connect('setup',
+  format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
+select extensions.dblink_connect('holder',
+  format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
+select extensions.dblink_exec('setup', format($$
+  begin;
+  update private.settings set value = 'true' where key = 'release_partner_directories';
+  insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data)
+  values (%1$L, %1$L || '@partner.test', now(),
+    '{"intended_account_kind": "company", "intended_organization_type": "recruitment_company"}');
+  update public.profiles set account_kind = intended_account_kind where id = %1$L;
+  insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country, review_status)
+  values (%2$L, 'recruitment_company', 'org-' || left(%2$L, 8), 'Org Lock C', 'Org Lock C', 'PH', 'onboarding');
+  insert into public.organization_members (organization_id, user_id, role, accepted_at) values (%2$L, %1$L, 'owner', now());
+  insert into billing.subscriptions (organization_id, plan_code, status, provider)
+  values (%2$L, 'recruitment_professional', 'active', 'null');
+  insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by)
+  select %2$L, format('c%%s@example.test', n), 'member', encode(sha256(convert_to('c-token-' || n, 'UTF8')), 'hex'), %1$L
+  from generate_series(1, 3) n;
+  commit;
+$$, :'cown', :'org_c'));
+update private.settings set value = 'true' where key = 'entitlements_enforced';
+select pg_temp.new_org(:'own1', 'employer') as org_free \gset
+select pg_temp.subscribe(:'org_free', 'employer_enterprise');
+select is(private.team_size(:'org_c'), 4, 'the partner holds 4 of its 5 team places');
+select is(
+  (select t from extensions.dblink('holder', format($$
+    begin;
+    select set_config('request.jwt.claims', json_build_object('sub', %L, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+    set local role authenticated;
+    select length(token)::text from public.invite_member(%L, 'c-holder@example.test', 'member');
+  $$, :'cown', :'org_c')) as r (t text)),
+  '43',
+  'a second session invites the fifth team member and keeps its transaction open'
+);
+set local lock_timeout = '300ms';
+select is(
+  split_part(pg_temp.invite(:'cown', :'org_c', 'c-wait@example.test'), '|', 1),
+  '55P03',
+  'NFR-A4: an invitation at the same time waits for the one in progress'
+);
+select is(pg_temp.invite(:'own1', :'org_free', 'free@example.test'), 'ok', 'NFR-A4: an invitation of another organisation does not wait');
+select extensions.dblink_exec('holder', 'commit');
+reset lock_timeout;
+select is(
+  pg_temp.invite(:'cown', :'org_c', 'c-sixth@example.test'),
+  'P0001|CHARA_LIMIT_REACHED|members',
+  'NFR-A4: once the other invitation is committed, this one counts it and is refused at the limit'
+);
+select is(private.team_size(:'org_c'), 5, 'NFR-A4: the partner ends at its limit of 5, never above');
+update private.settings set value = 'false' where key = 'entitlements_enforced';
+select extensions.dblink_disconnect('holder');
+select extensions.dblink_exec('setup', format($$
+  begin;
+  delete from pgmq.q_notifications where message ->> 'invitation_id' in
+    (select id::text from public.organization_invitations where organization_id = %2$L);
+  delete from public.notifications where payload ->> 'invitation_id' in
+    (select id::text from public.organization_invitations where organization_id = %2$L);
+  delete from billing.subscriptions where organization_id = %2$L;
+  delete from public.organizations where id = %2$L;
+  delete from auth.users where id = %1$L;
+  update private.settings set value = 'false' where key = 'release_partner_directories';
+  commit;
+$$, :'cown', :'org_c'));
+select extensions.dblink_disconnect('setup');
+select is(
+  (select count(*)::integer from public.organizations where id = :'org_c')
+    + (select count(*)::integer from auth.users where id = :'cown')
+    + (select count(*)::integer from public.organization_invitations where organization_id = :'org_c'),
+  0,
+  'the committed partner of the concurrency test is removed again'
+);
 
 update private.settings set value = 'true' where key = 'release_partner_directories';
 update private.settings set value = 'false' where key = 'entitlements_enforced';
@@ -115,7 +196,6 @@ select pg_temp.new_partner(:'pown', 'recruitment_company');
 select pg_temp.new_partner(:'qown', 'staffing_company');
 select pg_temp.new_partner(:'fown', 'staffing_company');
 select pg_temp.new_partner(:'lown', 'recruitment_company');
-select pg_temp.new_partner(:'cown', 'recruitment_company');
 select pg_temp.new_user(:'wkr2', 'worker');
 select pg_temp.new_user(:'eown3');
 update public.profiles set account_kind = intended_account_kind where id in (:'own1', :'own2', :'wkr', :'wkr2', :'eown3');
@@ -374,46 +454,6 @@ select is(
   'a partner lapsed to its free plan is held to it while limits are not enforced'
 );
 select is(pg_temp.invite(:'qown', :'org_q', 'q-free@example.test'), 'ok', 'without enforcement a paying partner is not limited');
-
--- Concurrency at the boundary (NFR-A4) ------------------------------------------------------------------------------
-update private.settings set value = 'true' where key = 'entitlements_enforced';
-select pg_temp.new_org(:'cown', 'recruitment_company') as org_c \gset
-select pg_temp.subscribe(:'org_c', 'recruitment_professional');
-select pg_temp.subscribe(:'org_s', 'staffing_enterprise');
--- Open invitations written directly, as invite_member leaves them: an invitation sent through it would hold the members
--- lock of the organisation until the end of this test's transaction.
-insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by)
-select :'org_c', format('c%s@example.test', n), 'member', encode(sha256(convert_to('c-token-' || n, 'UTF8')), 'hex'), :'cown'
-from generate_series(1, 3) n;
-select is(private.team_size(:'org_c'), 4, 'the partner holds 4 of its 5 team places');
-create extension if not exists dblink schema extensions;
-select extensions.dblink_connect('holder',
-  format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
-select is(
-  (select l from extensions.dblink('holder',
-    format('select pg_advisory_lock(hashtextextended(%L, 0))::text', 'organization_members:' || :'org_c'))
-    as t (l text)),
-  '',
-  'a second session holds the members lock of the partner'
-);
-set local lock_timeout = '300ms';
-select is(
-  split_part(pg_temp.invite(:'cown', :'org_c', 'c-wait@example.test'), '|', 1),
-  '55P03',
-  'NFR-A4: the fifth team member waits for the invitation in progress'
-);
-select is(pg_temp.invite(:'sown', :'org_s', 's-free@example.test'), 'ok', 'NFR-A4: an invitation of another organisation does not wait');
-select l from extensions.dblink('holder',
-  format('select pg_advisory_unlock(hashtextextended(%L, 0))::text', 'organization_members:' || :'org_c')) as t (l text);
-select extensions.dblink_disconnect('holder');
-reset lock_timeout;
-select is(
-  pg_temp.invite(:'cown', :'org_c', 'c-fifth@example.test') || ',' || pg_temp.invite(:'cown', :'org_c', 'c-sixth@example.test'),
-  'ok,P0001|CHARA_LIMIT_REACHED|members',
-  'NFR-A4: once the other invitation is over the fifth goes through and the sixth is refused'
-);
-select is(private.team_size(:'org_c'), 5, 'NFR-A4: the partner ends at its limit of 5, never above');
-update private.settings set value = 'false' where key = 'entitlements_enforced';
 
 -- Reads across organisations (NFR-S8): two employers, two partners, two candidates and anonymous -------------------
 select is(pg_temp.seen(:'radm', 'organization_members', :'org_r'), '3', 'the owner of the partner reads its members');

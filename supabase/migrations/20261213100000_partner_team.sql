@@ -1,16 +1,18 @@
 -- The team of a recruitment or staffing company (V81, FR-J1 AC9 and AC11; FR-A5; docs/phase-2/DATA_MODEL.md sections 2,
 -- 4 and 8, release 2a). Partner organisations use the members, invitations and ownership transfer of Phase 1: the same
 -- tables and the same functions, with the members limit of the partner plans (limit key members: Basic 1,
--- Professional 5, Enterprise 15, the free plans 0, counted by private.team_size as for employers). This migration adds
--- what a partner needs on top: invitations to a partner open only while release 2a is on, the members limit is
--- serialised per organisation by an advisory lock, and the invitation says which type of account joins it.
+-- Professional 5, Enterprise 15, the free plans 0, counted by private.team_size as for employers: the owner counts, so a
+-- Basic partner cannot invite anyone, OPEN_QUESTIONS.md C12). This migration adds what a partner needs on top:
+-- invitations to a partner open only while release 2a is on, an advisory lock on the members limit besides the
+-- organisation row lock, and the invitation says which type of account joins it.
 
 -- invite_member of 20261101100000 with two additions. An invitation to a recruitment or staffing company is refused while
 -- release 2a is off (CHARA_FORBIDDEN detail release_off), after the caller was checked, so an outsider learns nothing.
--- The advisory lock organization_members:<org> is taken before the earlier invitation of the address is removed and the
--- team counted, so two invitations of one organisation at the boundary of the members limit cannot both pass (NFR-A4),
--- whatever other lock the caller holds; invitations of other organisations do not wait. Employers keep every check of
--- before in the same order.
+-- The row lock that private.assert_org_manager takes on the organisation already serialises the invitations of one
+-- organisation until commit, so two at the boundary of the members limit cannot both pass (NFR-A4). The advisory lock
+-- organization_members:<org> is taken as well, before the earlier invitation of the address is removed and the team
+-- counted, so the limit stays serialised if that row lock ever changes; invitations of other organisations do not wait.
+-- Employers keep every check of before in the same order.
 create or replace function public.invite_member(p_org uuid, p_email text, p_role text)
 returns table (token text, expires_at timestamptz)
 language plpgsql
