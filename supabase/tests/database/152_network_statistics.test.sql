@@ -1,5 +1,5 @@
 begin;
-select plan(82);
+select plan(96);
 
 \ir organizations_fixture.inc
 
@@ -155,11 +155,12 @@ insert into sc
 select pg_temp.new_org(:'prt', 'staffing_company', 'stats-sc-' || g, '2026-03-03 10:00+00'::timestamptz + make_interval(days => g), 'listed'), g
 from generate_series(1, 7) g;
 
--- 17 approvals on Tuesday 10 March, 1 to 15 hours after the submission and two after 30 and 40 hours (late for the
--- target of one working day).
+-- 17 approvals on Tuesday 10 March, 1 to 12 hours after the submission and five after 30 hours (late for the target of
+-- one working day); five declines on Wednesday 11 March, 2 hours after the submission.
 select pg_temp.decide(x.id, 'approve', '2026-03-10 08:00+00'::timestamptz + make_interval(hours => x.i::integer),
-  case when x.i = 16 then 30 when x.i = 17 then 40 else x.i end)
+  case when x.i > 12 then 30 else x.i end)
 from (select id, row_number() over (order by n) as i from (select id, n from rc where n <= 10 union all select id, 10 + n from sc) a) x;
+select pg_temp.decide(id, 'decline', '2026-03-11 10:00+00') from (select id from rc where n > 10 union all select id from sc where n <= 3) d;
 
 -- The suspended company was suspended on 20 March; five employers too, which no partner metric counts.
 insert into public.moderation_actions (target_type, target_id, action, statement_of_reasons, actor_id, created_at)
@@ -288,10 +289,34 @@ select is((select string_agg(distinct e ->> 'period_start', ',' order by e ->> '
 select is(pg_temp.counts('2026-02-15', '2026-05-01', 'quarter'), 'ok', 'AC5: quarter is accepted');
 select is((select string_agg(distinct e ->> 'period_start', ',' order by e ->> 'period_start') from jsonb_array_elements(pg_temp.result()) e),
   '2026-01-01,2026-04-01', 'AC5: quarters follow the calendar');
-select is(pg_temp.n('recruitment_company.new', '2026-01-01'), '12', 'AC5: the first quarter is cut to the range and holds March');
+select is(pg_temp.n('recruitment_company.new', '2026-01-01'), '12', 'F2: the first quarter is widened to the whole quarter and holds March');
 select is(pg_temp.counts('2025-12-01', '2026-03-31', 'year'), 'ok', 'AC5: year is accepted');
 select is((select string_agg(distinct e ->> 'period_start', ',' order by e ->> 'period_start') from jsonb_array_elements(pg_temp.result()) e),
   '2025-01-01,2026-01-01', 'AC5: years follow the calendar');
+
+-- F2: a range is widened to whole periods, so no edge of a range cuts a period ----------------------------------------------
+select is(pg_temp.counts('2026-03-15', '2026-03-15'), 'ok', 'F2: one day');
+select is(jsonb_array_length(pg_temp.result()) || ' ' || pg_temp.n('recruitment_company.new', '2026-03-01'), (select count(*)::text from private.network_count_metrics()) || ' 12',
+  'F2: one day by month counts the whole of March (12 new, created 3 to 14 March)');
+select is(pg_temp.counts('2026-03-31', '2026-04-01', 'week'), 'ok', 'F2: two days by week');
+select is((select string_agg(distinct e ->> 'period_start', ',') from jsonb_array_elements(pg_temp.result()) e) || ' '
+  || pg_temp.n('searches.recruitment', '2026-03-30'), '2026-03-30 12',
+  'F2: the two days are the week of 30 March, whole (12 searches from 1 to 5 April, none in the two days alone counted apart)');
+select is(pg_temp.counts('2026-03-31', '2026-04-01', 'month'), 'ok', 'F2: the same two days by month');
+select is(pg_temp.n('searches.recruitment', '2026-03-01') || ',' || pg_temp.n('searches.recruitment', '2026-04-01'), '240,60',
+  'F2: by month they are March and April, both whole');
+
+-- F5: no future period; F6: states before the first snapshot are unknown ----------------------------------------------------
+select is(pg_temp.counts(((now() at time zone 'utc')::date - 1)::text, ((now() at time zone 'utc')::date + 1)::text),
+  'P0001|CHARA_INVALID_INPUT|future', 'F5: an end after today is refused');
+select is(pg_temp.run(:'adm', format('select * from public.admin_network_kpis(%L, %L)', (now() at time zone 'utc')::date,
+  (now() at time zone 'utc')::date + 1)), 'P0001|CHARA_INVALID_INPUT|future', 'F5: also for the key figures');
+select is(pg_temp.counts('2026-02-01', '2026-03-31'), 'ok', 'F6: February and March');
+select is(pg_temp.n('recruitment_company.listed', '2026-02-01') || ',' || pg_temp.n('recruitment_company.listed', '2026-03-01'), 'null,9',
+  'F6: February ends before the first snapshot (31 March), so its states are null');
+select pg_temp.run(:'adm', $$select * from public.admin_network_kpis('2026-03-01', '2026-03-31')$$) = 'ok' as ran;
+select is((select e ->> 'label' from jsonb_array_elements(pg_temp.result()) e where e ->> 'metric' = 'states_recorded_from'), '2026-03-31',
+  'F6: the key figures name the first snapshot day');
 
 -- AC6: states at the end of each period (May 2026; 4 May is a Monday) -------------------------------------------------------
 create temp table ac6 (id uuid, n integer);
@@ -341,22 +366,40 @@ select ok(exists (select 1 from cron.job where jobname = 'snapshot-partner-statu
 select is(pg_temp.run(:'adm', $$select * from public.admin_network_kpis('2026-03-01', '2026-03-31')$$), 'ok',
   'a Platform Administrator reads the key figures');
 select is(pg_temp.k('stats_min_count'), '5/5', 'the first row is the threshold the values are hidden below');
-select is(pg_temp.k('review_median_hours') || ' ' || pg_temp.k('review_on_target_share'), '9.0/17 88.2/17',
-  'FR-J4 KPIs: median time to decision 9 hours, 15 of 17 within the target of one working day');
-select is(pg_temp.k('approval_share'), '100.0/17', 'FR-J4 KPI: approval rate');
-select is(pg_temp.k('approved_suspended_90d_share'), '5.9/17', 'FR-J4 KPI: approved partners suspended within 90 days (1 of 17)');
-select is(pg_temp.k('appeal_reversal_share'), '40.0/5', 'FR-S1 KPI: decisions reversed on appeal (2 of 5)');
+select is(pg_temp.k('review_median_hours') || ' ' || pg_temp.k('review_on_target_share'), '6.5/22 77.3/22',
+  'FR-J4 KPIs: median time to decision 6.5 hours, 17 of 22 within the target of one working day');
+select is(pg_temp.k('approval_share'), '77.3/22', 'FR-J4 KPI: approval rate (17 of 22)');
 select is(pg_temp.k('contacts_per_100_searches'), '6.3/240', 'FR-L1 KPI: saves and follows per 100 searches (15 per 240)');
-select is(pg_temp.k('listed.recruitment_company') || ' ' || pg_temp.k('listed.staffing_company'), '14/14 7/7', 'listed partners now');
+select is(pg_temp.k('listed.recruitment_company') || ' ' || pg_temp.k('listed.staffing_company'), '14/14 7/7',
+  'F7: listed partners now, by the rule of the state counts (review state listed, organisation active)');
 select is(pg_temp.k('plan.recruitment_company.free_recruitment_company') || ' ' || pg_temp.k('plan.recruitment_company.recruitment_professional'),
   '24/24 null/null', 'FR-R1: active recruitment companies by plan; an empty plan is suppressed');
-select is(pg_temp.k('employers_with_saved_partner_share') || ' ' || pg_temp.k('follows_per_company_page'), '12.5/8 null/null',
-  'FR-L4 KPIs: one of eight active employers saved a partner; one company page is below the threshold');
-select is(pg_temp.k('profile_complete_share') || ' ' || pg_temp.k('occupation_and_industry_share'), '0.0/21 0.0/21',
-  'FR-K4 and FR-K2 KPIs over the 21 listed partners');
 
-insert into public.organization_occupations (organization_id, occupation_id) select id, '7212' from rc where n <= 6;
-insert into public.organization_geographies (organization_id, scope, country_code) select id, 'sources_from', 'PH' from rc where n <= 6;
+-- F1: a share is shown only when its part and the rest are both at least the threshold, and hides its base otherwise.
+select is(pg_temp.k('appeal_reversal_share'), 'null/null',
+  'F1: 2 restored of 5 decided appeals: the share and its base are hidden (40 % of 5 would give the hidden 2)');
+select is(pg_temp.k('approved_suspended_90d_share'), 'null/null',
+  'F1: 1 of 17 approved partners suspended: hidden (5.9 % of 17 would give the hidden 1)');
+select is(pg_temp.k('employers_with_saved_partner_share') || ' ' || pg_temp.k('follows_per_company_page'), 'null/null null/null',
+  'F1: one of eight employers saved a partner and one company page: both hidden');
+
+-- F4: profiles of 16 of the 21 listed partners: an occupation, an industry, a source and a served country (the 7 staffing
+-- companies two occupations and two served countries), five recruitment companies complete.
+insert into public.organization_occupations (organization_id, occupation_id)
+select id, '7212' from rc where n <= 9 union all select id, '7212' from sc union all select id, '7126' from sc;
+insert into public.organization_industries (organization_id, industry_code) select id, 'C' from rc where n <= 9 union all select id, 'C' from sc;
+insert into public.organization_geographies (organization_id, scope, country_code)
+select id, 'sources_from'::public.geography_scope, 'PH' from (select id from rc where n <= 9 union all select id from sc) a
+union all select id, 'serves_market', 'DE' from (select id from rc where n <= 9 union all select id from sc) a
+union all select id, 'serves_market', 'NL' from sc;
+update public.organizations set legal_entity_identifier = 'REG' || lpad(slug_n::text, 5, '0'), legal_entity_identifier_kind = 'registration_number',
+  recruitment_type = 'international'
+from (select id as rid, n as slug_n from rc where n <= 5) r where id = r.rid;
+-- A new identifier sends a listed partner to re-review (V03 trigger); these stay listed for the test.
+update public.organizations set review_status = 'listed' where id in (select id from rc where n <= 5);
+insert into public.consents (user_id, purpose, version, action)
+values (:'prt', 'employer-pays-commitment', private.current_legal_version('employer-pays-commitment'), 'granted');
+
 insert into public.workforce_availability (organization_id, occupation_id, source_country, available, monthly_capacity, available_from)
 select id, '7212', 'PH', 10, 2, current_date from rc where n <= 6;
 update public.workforce_availability set confirmed_at = now() - interval '61 days'
@@ -365,14 +408,33 @@ insert into public.partner_licences (organization_id, country_code, issuing_auth
   partner_terms_version, status)
 select id, 'PH', 'Department of Migrant Workers', 'LIC-' || n, current_date + 10, now(), 1, 'current' from rc where n <= 5;
 select pg_temp.run(:'adm', $$select * from public.admin_network_kpis('2026-03-01', '2026-03-31')$$) = 'ok' as ran;
-select is(pg_temp.k('stale_listings') || ' ' || pg_temp.k('stale_listings_share'), '5/5 83.3/6',
-  'FR-K3 KPI: five of six listings of listed partners are stale');
+select is(pg_temp.k('profile_complete_share') || ' ' || pg_temp.k('occupation_and_industry_share') || ' ' || pg_temp.k('source_and_served_share'),
+  '23.8/21 76.2/21 76.2/21', 'FR-K4, FR-K2, FR-K1 KPIs: 5, 16 and 16 of the 21 listed partners');
+select is(pg_temp.k('occupations_median') || ' ' || pg_temp.k('served_countries_median'), '1/21 1/21',
+  'FR-K2 and FR-K1 KPIs: medians over the 21 listed partners (5 with none, 9 with one, 7 with two)');
+select is(pg_temp.k('stale_listings') || ' ' || pg_temp.k('stale_listings_share'), '5/5 null/null',
+  'FR-K3 KPI and F1: five stale listings are shown, the share of five of six is hidden with its base (6 - 5 would give the hidden 1)');
 select is(pg_temp.k('licences_expiring'), '5/5', 'FR-J2: five licences expire within the reminder period');
-select is(pg_temp.k('occupations_median') || ' ' || pg_temp.k('served_countries_median') || ' ' || pg_temp.k('source_and_served_share'),
-  '0/21 0/21 0.0/21', 'FR-K2 and FR-K1 KPIs: medians and shares over the 21 listed partners (six with one occupation)');
 select ok(not exists (
     select 1 from jsonb_array_elements(pg_temp.result()) e where (e ->> 'base')::integer < 5 or (e ->> 'value' is not null and e ->> 'base' is null)),
   'no figure has a base below 5, and no value is shown without its base');
+select ok(not exists (
+    select 1 from jsonb_array_elements(pg_temp.result()) e
+    where e ->> 'unit' = 'percent' and e ->> 'value' is not null
+      and (round((e ->> 'value')::numeric * (e ->> 'base')::numeric / 100) < 5
+        or (e ->> 'base')::numeric - round((e ->> 'value')::numeric * (e ->> 'base')::numeric / 100) < 5)),
+  'F1: no shown share gives back a part or a rest below 5');
+
+-- F1: with the threshold at 8 the 7 listed staffing companies are hidden, so every figure over all listed partners is
+-- hidden too (its base, 21, minus the 14 listed recruitment companies would give 7).
+update private.settings set value = '8' where key = 'stats_min_count';
+select pg_temp.run(:'adm', $$select * from public.admin_network_kpis('2026-03-01', '2026-03-31')$$) = 'ok' as ran;
+select is(pg_temp.k('listed.staffing_company') || ' ' || pg_temp.k('listed.recruitment_company'), 'null/null 14/14',
+  'F1: at 8 the listed staffing companies are hidden');
+select is(pg_temp.k('profile_complete_share') || ' ' || pg_temp.k('occupation_and_industry_share') || ' ' || pg_temp.k('occupations_median')
+  || ' ' || pg_temp.k('served_countries_median') || ' ' || pg_temp.k('source_and_served_share'),
+  'null/null null/null null/null null/null null/null', 'F1: and so are the figures over all listed partners');
+update private.settings set value = '5' where key = 'stats_min_count';
 
 -- AC10: the reads use indexes and stay fast at volume ----------------------------------------------------------------------
 insert into stats.partner_searches (kind, filter_names, destination_country, result_count, created_at)

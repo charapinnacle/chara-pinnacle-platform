@@ -185,11 +185,13 @@ $$;
 
 revoke all on function private.network_count_metrics() from public, anon, authenticated, service_role;
 
--- One row per metric and period (UTC calendar periods; weeks start on Monday) over p_from to p_to, both days included, at
--- most 366 days; the first and last periods are cut to the range. Events count in the period they happened in; states
--- are those at the end of the period (the range's last day for the last period). A count below stats_min_count is null.
+-- One row per metric and period (UTC calendar periods; weeks start on Monday) for p_from to p_to, both days included, at
+-- most 366 days and not after today. The range is widened to whole periods (the period of p_from to the end of the
+-- period of p_to): a period cut at a range edge would let two calls differ by a few days and expose a hidden count.
+-- Events count in the period they happened in; states are those at the end of the period (the live state for a period
+-- that ends today or later). A count below stats_min_count is null, and a state before the first snapshot is null too.
 -- Refusals: CHARA_FORBIDDEN (detail aal2_required at aal1) for anyone but a Platform Administrator, CHARA_FORBIDDEN
--- detail release_off while release_partner_directories is false, CHARA_INVALID_INPUT detail range or p_period.
+-- detail release_off while release_partner_directories is false, CHARA_INVALID_INPUT detail range, future or p_period.
 create function public.admin_network_counts(p_from date, p_to date, p_period text default 'month')
 returns table (metric text, period_start date, count integer)
 language plpgsql
@@ -202,6 +204,8 @@ declare
   v_min integer;
   v_today date := (now() at time zone 'utc')::date;
   v_step interval;
+  v_from date;
+  v_to date;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   if not private.release_on('release_partner_directories') then
@@ -210,22 +214,28 @@ begin
   if p_from is null or p_to is null or p_from > p_to or p_to - p_from > 365 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'range';
   end if;
+  if p_to > v_today then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'future';
+  end if;
   if p_period is null or p_period not in ('week', 'month', 'quarter', 'year') then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_period';
   end if;
   v_min := private.stats_min_count();
   v_step := case p_period when 'quarter' then interval '3 months' else ('1 ' || p_period)::interval end;
+  v_from := date_trunc(p_period, p_from::timestamp)::date;
+  v_to := (date_trunc(p_period, p_to::timestamp) + v_step)::date - 1;
 
   return query
   with periods as (
-    select s::date as period_start, least((s + v_step)::date - 1, p_to) as last_day
-    from generate_series(date_trunc(p_period, p_from::timestamp), date_trunc(p_period, p_to::timestamp), v_step) s
+    select s::date as period_start, (s + v_step)::date - 1 as last_day
+    from generate_series(v_from::timestamp, v_to::timestamp, v_step) s
+    where s <= v_to::timestamp
   ),
   -- One pass over the range: bounds that are parameters, not join columns, reach the index of every branch of the view.
   events as (
     select date_trunc(p_period, e.occurred_at at time zone 'UTC')::date as period_start, e.metric, count(*) as n
     from stats.network_events e
-    where e.occurred_at >= p_from::timestamp at time zone 'UTC' and e.occurred_at < (p_to + 1)::timestamp at time zone 'UTC'
+    where e.occurred_at >= v_from::timestamp at time zone 'UTC' and e.occurred_at < (v_to + 1)::timestamp at time zone 'UTC'
     group by 1, 2
   ),
   live as (
@@ -264,10 +274,21 @@ grant execute on function public.admin_network_counts(date, date, text) to authe
 
 -- The key figures of the partner network, the KPIs that earlier units left to this page (FR-J4, FR-K1, FR-K2, FR-K4,
 -- FR-L1, FR-L4, FR-S1 and FR-R1): value with the number of items it is computed from (base). Range figures cover p_from
--- to p_to (UTC days, at most 366); figures without range_figure are the state now. A value whose base is below
--- stats_min_count is null with its base, so no row exposes a small count. Units: count, percent, hours, ratio.
--- label is the plan name for the plan rows and null otherwise. The first row, stats_min_count, is the threshold itself, so
--- the console can say what a hidden value is fewer than. Refusals as admin_network_counts.
+-- to p_to (UTC days, at most 366, not after today); figures without range_figure are the state now. Units: count,
+-- percent, hours, ratio, date.
+--
+-- Suppression, so that no figure gives back a count below stats_min_count (k):
+--   count, hours and median rows are shown when the base is at least k;
+--   a share (percent) is shown only when its part and the rest (base minus part) are both at least k: otherwise
+--   share times base, or base minus a shown count, would give the hidden part (complementary suppression);
+--   a ratio is shown when its numerator and its base are both at least k;
+--   the rows over all listed partners (profile shares and medians) are shown only when the listed count of each type is
+--   at least k, since their base minus the listed count of one type would give the other;
+--   a hidden row hides its base too.
+-- Listed means review_status listed and the organisation active, the rule of the state counts of admin_network_counts.
+-- The first row, stats_min_count, is the threshold; the second, states_recorded_from, carries in label the first day of
+-- stats.partner_status_daily (states of periods that end before it are unknown). label is the plan name for the plan
+-- rows. Refusals as admin_network_counts.
 create function public.admin_network_kpis(p_from date, p_to date)
 returns table (metric text, label text, unit text, range_figure boolean, value numeric, base integer)
 language plpgsql
@@ -285,6 +306,7 @@ declare
   v_target integer := private.partner_review_target_days();
   v_licence_days integer := coalesce(
     (select (s.value #>> '{}')::integer from private.settings s where s.key = 'licence_expiry_reminder_days'), 30);
+  v_listed_types_shown boolean;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   if not private.release_on('release_partner_directories') then
@@ -293,9 +315,19 @@ begin
   if p_from is null or p_to is null or p_from > p_to or p_to - p_from > 365 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'range';
   end if;
+  if p_to > v_today then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'future';
+  end if;
   v_min := private.stats_min_count();
   v_lo := p_from::timestamp at time zone 'UTC';
   v_hi := (p_to + 1)::timestamp at time zone 'UTC';
+  select coalesce(bool_and(t.n >= v_min), false) into v_listed_types_shown
+  from (
+    select count(o.id) as n
+    from (values ('recruitment_company'::public.organization_type), ('staffing_company'::public.organization_type)) t (type)
+    left join public.organizations o on o.type = t.type and o.review_status = 'listed' and o.status = 'active'
+    group by t.type
+  ) t;
 
   return query
   with decisions as (
@@ -306,8 +338,7 @@ begin
   listed as (
     select o.id, o.type
     from public.organizations o
-    where o.type in ('recruitment_company', 'staffing_company')
-      and o.listed_at is not null and o.review_status <> 'declined' and o.status = 'active'
+    where o.type in ('recruitment_company', 'staffing_company') and o.review_status = 'listed' and o.status = 'active'
   ),
   profile as (
     select
@@ -346,130 +377,153 @@ begin
     from public.organizations o
     where o.type = 'employer' and o.status = 'active'
   ),
-  figures (metric, label, unit, range_figure, value, base, pos) as (
-    select 'stats_min_count', null::text, 'count', false, v_min::numeric, v_min::bigint, 0
-    union all
-    select 'review_median_hours', null, 'hours', true,
+  -- kind: plain (base only), share (part and rest), ratio (numerator and base), listed_set (rows over all listed
+  -- partners: the per-type rule on top of plain or share).
+  figures (metric, label, unit, range_figure, value, base, part, kind, pos) as (
+    select 'review_median_hours', null::text, 'hours', true,
       round((percentile_cont(0.5) within group (order by extract(epoch from d.decided_at - d.submitted_at)) / 3600)::numeric, 1),
-      count(*), 1
+      count(*), null::bigint, 'plain', 1
     from decisions d
     union all
     select 'review_on_target_share', null, 'percent', true,
       round(100.0 * count(*) filter (where d.decided_at <= private.add_working_days(d.submitted_at, v_target)) / nullif(count(*), 0), 1),
-      count(*), 2
+      count(*), count(*) filter (where d.decided_at <= private.add_working_days(d.submitted_at, v_target)), 'share', 2
     from decisions d
     union all
     select 'approval_share', null, 'percent', true,
-      round(100.0 * count(*) filter (where d.decision = 'approve') / nullif(count(*), 0), 1), count(*), 3
+      round(100.0 * count(*) filter (where d.decision = 'approve') / nullif(count(*), 0), 1), count(*),
+      count(*) filter (where d.decision = 'approve'), 'share', 3
     from decisions d
     union all
     select 'approved_suspended_90d_share', null, 'percent', true,
-      round(100.0 * count(*) filter (where exists (
+      round(100.0 * count(*) filter (where s.suspended) / nullif(count(*), 0), 1), count(*), count(*) filter (where s.suspended), 'share', 4
+    from decisions d
+    cross join lateral (
+      select exists (
         select 1 from public.moderation_actions m
         where m.target_type = 'organization' and m.target_id = d.organization_id and m.action = 'organization_suspended'
           and m.created_at >= d.decided_at and m.created_at < d.decided_at + interval '90 days'
-      )) / nullif(count(*), 0), 1),
-      count(*), 4
-    from decisions d
+      ) as suspended
+    ) s
     where d.decision = 'approve'
     union all
     select 'appeal_reversal_share', null, 'percent', true,
-      round(100.0 * count(*) filter (where a.reversal_action_id is not null) / nullif(count(*), 0), 1), count(*), 5
+      round(100.0 * count(*) filter (where a.reversal_action_id is not null) / nullif(count(*), 0), 1), count(*),
+      count(*) filter (where a.reversal_action_id is not null), 'share', 5
     from appeals a
     union all
     select 'contacts_per_100_searches', null, 'ratio', true,
       round(100.0 * coalesce(sum(e.n) filter (where e.metric in ('partner_saves', 'partner_follows')), 0)
         / nullif(coalesce(sum(e.n) filter (where e.metric like 'searches.%'), 0), 0), 1),
-      coalesce(sum(e.n) filter (where e.metric like 'searches.%'), 0), 6
+      coalesce(sum(e.n) filter (where e.metric like 'searches.%'), 0),
+      coalesce(sum(e.n) filter (where e.metric in ('partner_saves', 'partner_follows')), 0)::bigint, 'ratio', 6
     from range_events e
     union all
-    select 'listed.' || t.type, null, 'count', false, count(l.id), count(l.id),
+    select 'listed.' || t.type, null, 'count', false, count(l.id), count(l.id), null, 'plain',
       case t.type when 'recruitment_company' then 10 else 11 end
     from (values ('recruitment_company'::public.organization_type), ('staffing_company'::public.organization_type)) t (type)
     left join listed l on l.type = t.type
     group by t.type
     union all
     select 'profile_complete_share', null, 'percent', false,
-      round(100.0 * count(*) filter (where p.complete) / nullif(count(*), 0), 1), count(*), 12
+      round(100.0 * count(*) filter (where p.complete) / nullif(count(*), 0), 1), count(*), count(*) filter (where p.complete),
+      'listed_share', 12
     from profile p
     union all
     select 'occupation_and_industry_share', null, 'percent', false,
-      round(100.0 * count(*) filter (where p.occupations > 0 and p.has_industry) / nullif(count(*), 0), 1), count(*), 13
+      round(100.0 * count(*) filter (where p.occupations > 0 and p.has_industry) / nullif(count(*), 0), 1), count(*),
+      count(*) filter (where p.occupations > 0 and p.has_industry), 'listed_share', 13
     from profile p
     union all
     select 'occupations_median', null, 'ratio', false,
-      percentile_cont(0.5) within group (order by p.occupations)::numeric, count(*), 14
+      percentile_cont(0.5) within group (order by p.occupations)::numeric, count(*), null, 'listed_set', 14
     from profile p
     union all
     select 'source_and_served_share', null, 'percent', false,
-      round(100.0 * count(*) filter (where p.has_source and p.served > 0) / nullif(count(*), 0), 1), count(*), 15
+      round(100.0 * count(*) filter (where p.has_source and p.served > 0) / nullif(count(*), 0), 1), count(*),
+      count(*) filter (where p.has_source and p.served > 0), 'listed_share', 15
     from profile p
     union all
     select 'served_countries_median', null, 'ratio', false,
-      percentile_cont(0.5) within group (order by p.served)::numeric, count(*), 16
+      percentile_cont(0.5) within group (order by p.served)::numeric, count(*), null, 'listed_set', 16
     from profile p
     union all
     select 'stale_listings', null, 'count', false,
-      count(*) filter (where s.confirmed_at <= v_fresh_since), count(*) filter (where s.confirmed_at <= v_fresh_since), 17
+      count(*) filter (where s.confirmed_at <= v_fresh_since), count(*) filter (where s.confirmed_at <= v_fresh_since), null, 'plain', 17
     from listings s
     union all
     select 'stale_listings_share', null, 'percent', false,
-      round(100.0 * count(*) filter (where s.confirmed_at <= v_fresh_since) / nullif(count(*), 0), 1), count(*), 18
+      round(100.0 * count(*) filter (where s.confirmed_at <= v_fresh_since) / nullif(count(*), 0), 1), count(*),
+      count(*) filter (where s.confirmed_at <= v_fresh_since), 'share', 18
     from listings s
     union all
-    select 'licences_expiring', null, 'count', false, count(*), count(*), 19
+    select 'licences_expiring', null, 'count', false, count(*), count(*), null, 'plain', 19
     from public.partner_licences x
     where x.status = 'current' and x.valid_until between v_today and v_today + v_licence_days
     union all
-    select 'licences_expired', null, 'count', false, count(*), count(*), 20
+    select 'licences_expired', null, 'count', false, count(*), count(*), null, 'plain', 20
     from public.partner_licences x
     where x.status = 'expired'
     union all
-    select 'partner_profiles_hidden_now', null, 'count', false, count(*), count(*), 21
+    select 'partner_profiles_hidden_now', null, 'count', false, count(*), count(*), null, 'plain', 21
     from public.organizations o
     where o.type in ('recruitment_company', 'staffing_company') and o.moderation_state = 'hidden'
     union all
-    select 'partner_profile_reports_open', null, 'count', false, count(*), count(*), 22
+    select 'partner_profile_reports_open', null, 'count', false, count(*), count(*), null, 'plain', 22
     from public.reports r
     where r.target_type = 'partner_profile' and r.status in ('new', 'in_review')
     union all
-    select 'appeals_open', null, 'count', false, count(*), count(*), 23
+    select 'appeals_open', null, 'count', false, count(*), count(*), null, 'plain', 23
     from public.appeals a
     where a.status = 'open'
     union all
-    select 'appeals_overdue', null, 'count', false, count(*), count(*), 24
+    select 'appeals_overdue', null, 'count', false, count(*), count(*), null, 'plain', 24
     from public.appeals a
     where a.status = 'open' and a.due_at < now()
     union all
     select 'employers_with_saved_partner_share', null, 'percent', false,
       round(100.0 * count(*) filter (where exists (select 1 from public.saved_items i where i.organization_id = e.id))
         / nullif(count(*), 0), 1),
-      count(*), 25
+      count(*), count(*) filter (where exists (select 1 from public.saved_items i where i.organization_id = e.id)), 'share', 25
     from employers e
     union all
     select 'follows_per_company_page', null, 'ratio', false,
-      round((select count(*) from public.follows f join employers e on e.id = f.organization_id and e.public_page_enabled)::numeric
-        / nullif(count(*), 0), 2),
-      count(*), 26
+      round(f.n::numeric / nullif(count(*), 0), 2), count(*), max(f.n), 'ratio', 26
     from employers e
+    cross join (select count(*) as n from public.follows f join employers x on x.id = f.organization_id and x.public_page_enabled) f
     where e.public_page_enabled
+    group by f.n
     union all
-    select 'plan.' || p.org_type || '.' || p.code, p.name, 'count', false, count(o.code), count(o.code), 100 + p.sort
+    select 'plan.' || p.org_type || '.' || p.code, p.name, 'count', false, count(o.code), count(o.code), null, 'plain', 100 + p.sort
     from billing.plans p
     left join partner_plans o on o.type = p.org_type and o.code = p.code
     where p.org_type in ('recruitment_company', 'staffing_company')
     group by p.org_type, p.code, p.name, p.sort
+  ),
+  judged as (
+    select f.*,
+      f.base >= v_min
+      and (f.kind not in ('share', 'listed_share') or (f.part >= v_min and f.base - f.part >= v_min))
+      and (f.kind <> 'ratio' or f.part >= v_min)
+      and (f.kind not in ('listed_share', 'listed_set') or v_listed_types_shown) as shown
+    from figures f
   )
-  select f.metric, f.label, f.unit, f.range_figure,
-    case when f.base >= v_min then f.value end,
-    case when f.base >= v_min then f.base::integer end
-  from figures f
-  order by f.pos;
+  select r.metric, r.label, r.unit, r.range_figure, r.value, r.base
+  from (
+    select 'stats_min_count' as metric, null::text as label, 'count' as unit, false as range_figure, v_min::numeric as value,
+      v_min as base, -2 as pos
+    union all
+    select 'states_recorded_from', (select min(d.day)::text from stats.partner_status_daily d), 'date', false, null, null, -1
+    union all
+    select j.metric, j.label, j.unit, j.range_figure, case when j.shown then j.value end, case when j.shown then j.base::integer end, j.pos
+    from judged j
+  ) r
+  order by r.pos;
 end;
 $$;
 
 comment on function public.admin_network_kpis(date, date) is
-  'Key figures of the partner network for Platform Administrators (FR-S2 with the KPIs of FR-J4, FR-K1, FR-K2, FR-K4, FR-L1, FR-L4, FR-S1, FR-R1): metric, label, unit, range_figure, value, base; null below stats_min_count. Aggregates only.';
+  'Key figures of the partner network for Platform Administrators (FR-S2 with the KPIs of FR-J4, FR-K1, FR-K2, FR-K4, FR-L1, FR-L4, FR-S1, FR-R1): metric, label, unit, range_figure, value, base; complementary suppression below stats_min_count. Aggregates only.';
 
 revoke all on function public.admin_network_kpis(date, date) from public, anon, authenticated, service_role;
 grant execute on function public.admin_network_kpis(date, date) to authenticated;
