@@ -1508,6 +1508,11 @@ isOneToOne: false
 "notify_existing_account":
 { Args: { "p_email": string,"p_key": string,"p_proof"?: string }; Returns: undefined
                            },
+"org_usage":
+{ Args: { "p_keys"?: (string)[],"p_org": string }; Returns: {
+              "applies": boolean,"limit_key": string,"limit_value": number,"period_resets_at": string,"plan_name": string,"used": number
+            }[]
+                           },
 "organization_markets_limit":
 { Args: { "p_org": string }; Returns: number
                            },
@@ -1553,6 +1558,9 @@ isOneToOne: false
                            },
 "record_job_limit_prompt":
 { Args: { "p_org": string }; Returns: undefined
+                           },
+"record_limit_prompt":
+{ Args: { "p_limit_key": string,"p_org": string }; Returns: undefined
                            },
 "recovery_link_is_fresh":
 { Args: { "p_token_hash": string }; Returns: boolean
