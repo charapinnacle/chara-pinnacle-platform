@@ -168,6 +168,7 @@ Deno.test("AC7, AC8: a build_data_export job writes one zip of JSON files and th
   assert.ok(upload.raw);
   const entries = await unzip(upload.raw);
   assert.deepEqual(entries.map((e) => e.name), [
+    "README.txt",
     "account.json",
     "passport.json",
     "documents.json",
@@ -190,10 +191,13 @@ Deno.test("AC7, AC8: a build_data_export job writes one zip of JSON files and th
       note: "Not included in this copy because of its size. Download it from your passport.",
     },
   ]);
-  assert.deepEqual(entries[4].data, PDF);
+  assert.deepEqual(entries[5].data, PDF);
+  const readme = new TextDecoder().decode(entries[0].data);
+  assert.ok(readme.includes("account.json, passport.json, documents.json, applications.json"), readme);
+  assert.ok(readme.includes("1 document was not included; documents.json says why."), readme);
   assert.ok(!new TextDecoder().decode(upload.raw).includes("passport-documents"), "no storage path is written");
 
-  assert.deepEqual(calls[4].body, { p_export: EXPORT, p_size: upload.raw.length });
+  assert.deepEqual(calls[4].body, { p_export: EXPORT, p_size: upload.raw.length, p_files_left_out: 1 });
   assert.deepEqual(acks(calls), [{
     p_msg_id: 40,
     p_result: { export_built: 1, files_included: 1, files_left_out: 1, size_bytes: upload.raw.length },
@@ -245,11 +249,60 @@ Deno.test("a document deleted meanwhile is listed without its file", async () =>
   assert.ok(upload?.raw);
   const entries = await unzip(upload.raw);
   assert.equal(entries.filter((e) => e.name.startsWith("documents/")).length, 0);
-  assert.equal((readJson(entries, "documents.json") as { file: unknown }[])[0].file, null);
+  assert.deepEqual(readJson(entries, "documents.json"), [{
+    ...document(DOC_A, "cv.pdf"),
+    file: null,
+    note: "Not included because the file was deleted while the copy was prepared.",
+  }]);
   assert.deepEqual(acks(calls), [{
     p_msg_id: 43,
     p_result: { export_built: 1, files_included: 0, files_left_out: 1, size_bytes: upload.raw.length },
   }]);
+});
+
+Deno.test("a document the database lists without a file (not checked yet) is counted as not included", async () => {
+  const data = {
+    ...exportData([]),
+    sections: {
+      ...exportData([]).sections,
+      documents: [{
+        ...document(DOC_A, "cv.pdf"),
+        file: null,
+        note: "Not included because the file has not passed its check.",
+      }],
+    },
+  };
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(build(46)),
+    "POST /rest/v1/rpc/account_ops_export_data": reply(200, data),
+    "POST /storage/v1/object/dsar-exports/{id}/{id}.zip": reply(200, { Key: `dsar-exports/${ZIP_PATH}` }),
+    "POST /rest/v1/rpc/account_ops_export_ready": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.equal(calls.filter((c) => c.path.startsWith("/storage/v1/object/passport-documents")).length, 0);
+  const ready = calls.find((c) => c.path.endsWith("account_ops_export_ready"));
+  assert.equal((ready?.body as { p_files_left_out: number }).p_files_left_out, 1);
+});
+
+Deno.test("a file name with two dots inside it is exported", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(build(47)),
+    "POST /rest/v1/rpc/account_ops_export_data": reply(
+      200,
+      exportData([{ id: DOC_A, file: "cv..final.pdf", size: PDF.length }]),
+    ),
+    "GET /storage/v1/object/passport-documents/{id}/{id}/cv..final.pdf": () => new Response(PDF, { status: 200 }),
+    "POST /storage/v1/object/dsar-exports/{id}/{id}.zip": reply(200, { Key: `dsar-exports/${ZIP_PATH}` }),
+    "POST /rest/v1/rpc/account_ops_export_ready": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  const upload = calls.find((c) => c.path.startsWith("/storage/v1/object/dsar-exports"));
+  assert.ok(upload?.raw);
+  const entries = await unzip(upload.raw);
+  assert.deepEqual(entries.find((e) => e.name === `documents/${DOC_A}/cv..final.pdf`)?.data, PDF);
 });
 
 Deno.test("data of another user, a file outside the user's folder or bucket, and a malformed job are never written", async () => {
@@ -261,6 +314,42 @@ Deno.test("data of another user, a file outside the user's folder or bucket, and
         bucket_id: "passport-documents",
         path: `${OTHER}/${DOC_A}/cv.pdf`,
         name: "documents/x",
+        size_bytes: 1,
+      }],
+    }, {}],
+    ["a path whose last segment is ..", {
+      ...exportData([]),
+      files: [{
+        bucket_id: "passport-documents",
+        path: `${USER}/${DOC_A}/..`,
+        name: `documents/${DOC_A}/cv.pdf`,
+        size_bytes: 1,
+      }],
+    }, {}],
+    ["a name whose last segment is ..", {
+      ...exportData([]),
+      files: [{
+        bucket_id: "passport-documents",
+        path: `${USER}/${DOC_A}/cv.pdf`,
+        name: `documents/${DOC_A}/..`,
+        size_bytes: 1,
+      }],
+    }, {}],
+    ["a path one folder too deep", {
+      ...exportData([]),
+      files: [{
+        bucket_id: "passport-documents",
+        path: `${USER}/${DOC_A}/x/cv.pdf`,
+        name: `documents/${DOC_A}/cv.pdf`,
+        size_bytes: 1,
+      }],
+    }, {}],
+    ["a name outside the documents folder", {
+      ...exportData([]),
+      files: [{
+        bucket_id: "passport-documents",
+        path: `${USER}/${DOC_A}/cv.pdf`,
+        name: "account.json",
         size_bytes: 1,
       }],
     }, {}],
