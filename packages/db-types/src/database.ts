@@ -125,6 +125,37 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"follows": {
+                  Row: {
+                    "created_at": string,"last_digest_at": string | null,"organization_id": string,"user_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"last_digest_at"?: string | null,"organization_id": string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"last_digest_at"?: string | null,"organization_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "follows_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "follows_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "follows_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"industries": {
                   Row: {
                     "code": string,"name": string
@@ -774,6 +805,49 @@ isOneToOne: false
     },{
       foreignKeyName: "reports_organization_id_fkey"
       columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
+                },"saved_items": {
+                  Row: {
+                    "created_at": string,"kind": string,"organization_id": string,"saved_by": string | null,"target_organization_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"kind"?: string,"organization_id": string,"saved_by"?: string | null,"target_organization_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"kind"?: string,"organization_id"?: string,"saved_by"?: string | null,"target_organization_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "saved_items_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_items_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "saved_items_saved_by_fkey"
+      columns: ["saved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_items_target_organization_id_fkey"
+      columns: ["target_organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_items_target_organization_id_fkey"
+      columns: ["target_organization_id"]
 isOneToOne: false
       referencedRelation: "v_org_limits"
       referencedColumns: ["organization_id"]
@@ -1445,6 +1519,9 @@ isOneToOne: false
 "export_applicants":
 { Args: { "p_job_id": string,"p_stage"?: Database["public"]['Enums']["application_status"] }; Returns: Json
                            },
+"follower_count":
+{ Args: { "p_org": string }; Returns: Json
+                           },
 "get_applicant":
 { Args: { "p_application_id": string }; Returns: {
               "applicant_name": string,"applied_at": string,"id": string,"job_id": string,"job_title": string,"note_max_chars": number,"organization_id": string,"shortlisting_available": boolean,"stage_change_blocked": string,"status": Database["public"]['Enums']["application_status"]
@@ -1528,6 +1605,11 @@ isOneToOne: false
               "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
             }[]
                            },
+"list_followed_companies":
+{ Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
+              "based_in_country": string,"based_in_country_name": string,"display_name": string,"followed_at": string,"next_cursor": string,"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"total": number
+            }[]
+                           },
 "list_my_notifications":
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "created_at": string,"id": string,"kind": string,"next_cursor": string,"payload": Json,"read_at": string
@@ -1556,6 +1638,11 @@ isOneToOne: false
 "list_saved_jobs":
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
+            }[]
+                           },
+"list_saved_partners":
+{ Args: { "p_cursor"?: string,"p_limit"?: number,"p_org": string }; Returns: {
+              "based_in_country": string,"based_in_country_name": string,"display_name": string,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"partner_id": string,"saved_at": string,"served_countries": Json,"slug": string,"total": number
             }[]
                            },
 "list_sitemap_companies":
@@ -1744,6 +1831,12 @@ isOneToOne: false
 { Args: { "p_org": string }; Returns: {
               "member_limit": number,"used": number
             }[]
+                           },
+"toggle_follow":
+{ Args: { "p_following"?: boolean,"p_org": string }; Returns: boolean
+                           },
+"toggle_saved_partner":
+{ Args: { "p_org"?: string,"p_partner": string,"p_saved"?: boolean }; Returns: boolean
                            },
 "transfer_ownership":
 { Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
