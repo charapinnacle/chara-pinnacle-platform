@@ -12,7 +12,10 @@ import { daysText, oneTrialRule, trialConversion } from "@/lib/billing/presentat
 import { planCard, type PublicPlan } from "@/lib/billing/pricing";
 import { getPostJobHref } from "@/lib/dal/organizations";
 import { listPublicPlans } from "@/lib/dal/pricing";
+import { releasedSwitches } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
+import { RECRUITMENT_DIRECTORY_PATH, STAFFING_DIRECTORY_PATH } from "@/lib/public/navigation";
+import { partnerNetworkCopy as copy } from "@/lib/public/partner-network";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/employers">): Promise<Metadata> {
@@ -96,13 +99,36 @@ function PricingTeaser({ lang, plan }: { lang: string; plan: PublicPlan | null }
   );
 }
 
+// Finding partners, while release 2a is on (FR-L5): a link to each directory.
+function PartnersSection({ lang }: { lang: string }) {
+  return (
+    <Band aria-labelledby="employers-partners-heading" className="grid gap-8 lg:grid-cols-12 lg:gap-8">
+      <div className="lg:col-span-5">
+        <SectionHeading id="employers-partners-heading" eyebrow={copy.employersEyebrow} title={copy.employersHeading} />
+      </div>
+      <div className="grid content-start justify-items-start gap-6 lg:col-span-6 lg:col-start-7">
+        <p className="max-w-[60ch] text-body text-pretty text-muted-foreground">{copy.employersText}</p>
+        <div className="flex flex-wrap gap-3">
+          <LinkButton href={`/${lang}/${RECRUITMENT_DIRECTORY_PATH}`} prefetch={false}>
+            {copy.recruitmentDirectory}
+          </LinkButton>
+          <LinkButton href={`/${lang}/${STAFFING_DIRECTORY_PATH}`} prefetch={false} variant="secondary">
+            {copy.staffingDirectory}
+          </LinkButton>
+        </div>
+      </div>
+    </Band>
+  );
+}
+
 // The employer's own page, as Indeed's is (OPEN_QUESTIONS.md D90): one promise and Post a Job, the three steps, what the
-// product enforces, the starting price from the plan records, and a last call. Post a Job leads where the header's does.
+// product enforces, the partner directories while release 2a is on, the starting price from the plan records, and a last
+// call. Post a Job leads where the header's does.
 export default async function EmployersPage({ params }: PageProps<"/[lang]/employers">) {
   const { lang } = await params;
   // A worker's account cannot hire, so the employer's page is not theirs (the header offers it only to the others).
   if ((await getCurrentUser())?.accountKind === "worker") redirect(`/${lang}`);
-  const [postJobHref, plan] = await Promise.all([getPostJobHref(lang), startingPlan()]);
+  const [postJobHref, plan, released] = await Promise.all([getPostJobHref(lang), startingPlan(), releasedSwitches()]);
   return (
     <>
       <section aria-labelledby="employers-heading">
@@ -138,6 +164,7 @@ export default async function EmployersPage({ params }: PageProps<"/[lang]/emplo
           <FactList label="What your organisation gets" facts={facts} />
         </div>
       </Band>
+      {released.includes("release_partner_directories") ? <PartnersSection lang={lang} /> : null}
       <PricingTeaser lang={lang} plan={plan} />
       <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: "Post a job" } : null} />
     </>

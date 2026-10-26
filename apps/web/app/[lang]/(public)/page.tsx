@@ -3,11 +3,13 @@ import { ClosingCall } from "@/components/public/closing-call";
 import { EmployerBand } from "@/components/home/employer-band";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
+import { PartnerBand } from "@/components/home/partner-band";
 import { PassportSection } from "@/components/home/passport-section";
 import { StatisticsBlock } from "@/components/home/statistics-block";
 import { BRAND_NAME } from "@/lib/brand";
 import { getSearchSuggestions } from "@/lib/dal/hiring";
 import { getPostJobHref } from "@/lib/dal/organizations";
+import { releasedSwitches } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { getPlatformStatistics } from "@/lib/dal/statistics";
@@ -21,16 +23,18 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
 // One audience and one job, as Indeed's and Glassdoor's home pages have (OPEN_QUESTIONS.md D90): the search for the person
 // looking for work, how it works, the passport, one line for employers, the live figures when they are credible, and the
 // closing call. The employer's story is the For employers page. Signed in, each side sees only its own: a worker no
-// employer line or band, a company none of the job seeker's steps, passport or call to join.
+// employer line or band, a company none of the job seeker's steps, passport or call to join. While release 2a is on the
+// partner audience follows the employer band, for everyone but a worker (FR-L5).
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
-  const [user, tiles, postJobHref, suggestions, countries, occupations] = await Promise.all([
+  const [user, tiles, postJobHref, suggestions, countries, occupations, released] = await Promise.all([
     getCurrentUser(),
     getPlatformStatistics(),
     getPostJobHref(lang),
     getSearchSuggestions(),
     getCountries(),
     getOccupations(),
+    releasedSwitches(),
   ]);
   // Vacancy titles come before the occupations, and an occupation is offered by its name without the ISCO code.
   const what = [
@@ -53,6 +57,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         </>
       )}
       {kind === "worker" ? null : <EmployerBand lang={lang} postJobHref={postJobHref} />}
+      {kind !== "worker" && released.includes("release_partner_directories") ? <PartnerBand lang={lang} visitor={!user} /> : null}
       {tiles.length > 0 ? <StatisticsBlock tiles={tiles} /> : null}
       {user ? null : (
         <ClosingCall

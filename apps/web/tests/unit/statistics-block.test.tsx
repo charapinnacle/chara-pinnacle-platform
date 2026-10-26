@@ -6,11 +6,13 @@ import { StatisticsBlock } from "@/components/home/statistics-block";
 const getPlatformStatistics = vi.hoisted(() => vi.fn());
 const getPostJobHref = vi.hoisted(() => vi.fn());
 const getCurrentUser = vi.hoisted(() => vi.fn());
+const releasedSwitches = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/statistics", () => ({ getPlatformStatistics }));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
+vi.mock("@/lib/dal/release", () => ({ releasedSwitches }));
 vi.mock("@/lib/dal/hiring", () => ({ getSearchSuggestions: async () => ({ titles: ["Plumber"] }) }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [{ code: "DE", name: "Germany" }],
@@ -30,6 +32,7 @@ beforeEach(() => {
   getPlatformStatistics.mockResolvedValue([]);
   getPostJobHref.mockResolvedValue("/en/signup?kind=company");
   getCurrentUser.mockResolvedValue(null);
+  releasedSwitches.mockResolvedValue([]);
 });
 
 describe("the statistics block (FR-H4 AC1, AC3, AC4)", () => {
@@ -124,5 +127,43 @@ describe("the home page (U73)", () => {
     expect(html).not.toContain("home-passport-heading");
     expect(html).not.toContain("home-start-heading");
     expect(html).not.toContain("Hiring? Post a job");
+  });
+});
+
+describe("the partner audience of the home page (FR-L5 AC9)", () => {
+  it("is not on the page while release 2a is off", async () => {
+    const html = await renderHome();
+    expect(html).not.toContain("home-partners-heading");
+    expect(textOf(html).toLowerCase()).not.toMatch(/recruitment|staffing/);
+  });
+
+  it("follows the employer band while release 2a is on, headed for recruitment and staffing companies, with the sign-up as either and both directories", async () => {
+    releasedSwitches.mockResolvedValue(["release_partner_directories"]);
+    const html = await renderHome();
+    expect(html).toMatch(/<h2 id="home-partners-heading"[^>]*>For recruitment and staffing companies<\/h2>/);
+    expect(html.indexOf('aria-label="For employers"')).toBeLessThan(html.indexOf("home-partners-heading"));
+    expect(html.indexOf("home-partners-heading")).toBeLessThan(html.indexOf("home-start-heading"));
+    for (const [href, label] of [
+      ["/en/signup?kind=recruitment_company", "Sign up as a recruitment company"],
+      ["/en/signup?kind=staffing_company", "Sign up as a staffing company"],
+      ["/en/partners/recruitment", "Recruitment partners"],
+      ["/en/partners/staffing", "Staffing partners"],
+    ]) {
+      expect(html).toMatch(new RegExp(`<a [^>]*href="${href.replace(/[?]/g, "\\?")}"[^>]*>${label}</a>`));
+    }
+    expect(html.match(/<h1/g)).toHaveLength(1);
+  });
+
+  it("offers a signed-in company the directories without a sign-up, and shows a worker nothing of it", async () => {
+    releasedSwitches.mockResolvedValue(["release_partner_directories"]);
+    getCurrentUser.mockResolvedValue({ accountKind: "company" });
+    const company = await renderHome();
+    expect(company).toContain("home-partners-heading");
+    expect(company).toContain('href="/en/partners/recruitment"');
+    expect(company).not.toContain("kind=recruitment_company");
+    getCurrentUser.mockResolvedValue({ accountKind: "worker" });
+    const worker = await renderHome();
+    expect(worker).not.toContain("home-partners-heading");
+    expect(worker).not.toContain("/en/partners/");
   });
 });
