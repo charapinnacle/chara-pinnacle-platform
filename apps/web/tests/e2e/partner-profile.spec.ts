@@ -5,7 +5,7 @@ import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { createCommittedUser, enrollTotp } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
-import { newCompany, seedJob } from "./support/jobs";
+import { addCompanyUser, newCompany, seedJob } from "./support/jobs";
 import { registerOrganization, uniqueName } from "./support/organizations";
 import { partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
 import { signInStaff } from "./support/admin";
@@ -538,7 +538,9 @@ test.describe("Public partner profile (FR-K4)", () => {
     const notice = page.getByRole("status").filter({ hasText: "Hidden by moderation" });
     await expect(notice).toContainText("Your partner profile is not shown to anyone");
     await expect(notice).toContainText(reasons);
-    await expect(notice.getByRole("link", { name: "How to appeal" })).toHaveAttribute("href", "/en/legal/complaints-and-dispute-process");
+    await expect(notice).toContainText("you can appeal until");
+    await expect(notice.getByRole("button", { name: "Appeal" })).toBeVisible();
+    await expect(notice.getByRole("link", { name: "How to appeal" })).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
     await page.context().clearCookies();
 
@@ -617,5 +619,209 @@ test.describe("Public partner profile (FR-K4)", () => {
     )).toEqual([{ status: "suspended", state: "org_suspended" }]);
     expect(query<{ report_id: number }>(`select report_id from public.moderation_actions where target_id = ${literal(company.id)} order by id desc limit 1`)).toEqual([{ report_id: id }]);
     expect((await page.request.get(`/en/jobs/${job}`)).status()).toBe(404);
+  });
+
+  test("FR-S1 AC9, AC11, AC12: the owner appeals the hidden profile from the badge, the decider cannot decide it, a second reviewer reverses it", async ({ page, browser }) => {
+    test.setTimeout(240_000);
+    const partner = await listedPartner();
+    const reasons = "The profile claims placements in Germany that the company never made.";
+    const grounds = "Every placement on our profile is documented with signed contracts we can send.";
+    const outcome = "The contracts confirm the placements, so the profile meets the rules.";
+
+    const decider = await newVisitor(browser);
+    await signInStaff(decider.page, "trust_safety", `/en/admin/organizations/${partner.id}`);
+    const section = decider.page.locator("#partner-profile");
+    const hide = section.getByRole("button", { name: "Hide partner profile" });
+    await waitForHydration(hide);
+    await section.getByLabel("Statement of reasons").fill(reasons);
+    await hide.click();
+    await expect(decider.page.getByText("The partner profile is hidden", { exact: true })).toBeVisible();
+    const [{ id: decision }] = query<{ id: number }>(
+      `select id from public.moderation_actions where target_type = 'partner_profile' and target_id = ${literal(partner.id)} and action = 'content_hidden'`,
+    );
+
+    // A member reads the badge and the reasons, and who can appeal, without the button.
+    const member = await createCommittedUser("company");
+    execute(`insert into public.organization_members (organization_id, user_id, role, accepted_at) values (${literal(partner.id)}, ${literal(member.id)}, 'member', now())`);
+    const memberContext = await newVisitor(browser);
+    await signInAtAal1(memberContext.page, member, `/en/org/${partner.slug}/workforce-profile`);
+    const memberNotice = memberContext.page.getByRole("status").filter({ hasText: "Hidden by moderation" });
+    await expect(memberNotice).toContainText(reasons);
+    await expect(memberNotice).toContainText(`The owner or an admin of ${partner.displayName} can appeal this decision until`);
+    await expect(memberNotice.getByRole("button", { name: "Appeal" })).toHaveCount(0);
+
+    // The owner appeals from the badge by keyboard.
+    const secret = await enrollTotp(partner.user);
+    await signInAtAal2(page, partner.user, secret, `/en/org/${partner.slug}/workforce-profile`);
+    const notice = page.getByRole("status").filter({ hasText: "Hidden by moderation" });
+    const appeal = notice.getByRole("button", { name: "Appeal" });
+    await waitForHydration(appeal);
+    await appeal.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Appeal the decision" });
+    await expect(dialog).toContainText(`Partner profile hidden: ${partner.displayName}`);
+    await expect(dialog).toContainText("We aim to decide within 7 days");
+    await expect(dialog.getByLabel("Grounds")).toBeFocused();
+    await page.keyboard.type("Nineteen characters");
+    await expect(dialog).toContainText("19 of 2000 characters used");
+    await dialog.getByRole("button", { name: "Send appeal" }).click();
+    await expect(dialog.getByText("Give grounds of at least 20 characters").first()).toBeVisible();
+    await dialog.getByLabel("Grounds").fill(grounds);
+    await expectNoAxeViolations(page);
+    await dialog.getByRole("button", { name: "Send appeal" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Your appeal was sent. It is under review.", { exact: true })).toBeVisible();
+    await expect(notice).toContainText("Appeal under review");
+    await expect(notice.getByRole("button", { name: "Appeal" })).toHaveCount(0);
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const [{ id: appealId, status, due }] = query<{ id: number; status: string; due: boolean }>(
+      `select id, status::text, due_at = lodged_at + interval '7 days' as due from public.appeals where moderation_action_id = ${decision}`,
+    );
+    expect({ status, due }).toEqual({ status: "open", due: true });
+    await memberContext.page.reload();
+    await expect(memberContext.page.getByRole("status").filter({ hasText: "Hidden by moderation" })).toContainText("Appeal under review");
+    await memberContext.context.close();
+
+    // The decision page lists it for the organisation.
+    await page.goto("/en/appeals");
+    await expect(page.getByRole("link", { name: `Partner profile hidden: ${partner.displayName}` })).toHaveAttribute("href", `/en/appeals/${decision}`);
+    await expect(page.getByRole("listitem").filter({ hasText: partner.displayName })).toContainText("Appeal under review");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    // The decider reads the appeal but cannot decide it; the Platform Administrator reads it only.
+    await decider.page.goto("/en/admin/appeals");
+    const row = decider.page.getByRole("row").filter({ hasText: partner.displayName });
+    await expect(row).toContainText("Appeal under review");
+    await expectAccessibleAtBothWidths(decider.page);
+    await decider.page.setViewportSize({ width: 1280, height: 900 });
+    await row.getByRole("link").click();
+    await expect(decider.page).toHaveURL(`/en/admin/appeals/${appealId}`);
+    await expect(decider.page.locator("#appeal")).toContainText(grounds);
+    await expect(decider.page.locator("#decision")).toContainText(reasons);
+    await expect(decider.page.locator("#outcome")).toContainText("You took this decision, so another Trust & Safety administrator decides the appeal.");
+    await expect(decider.page.getByRole("button", { name: "Reverse the decision" })).toHaveCount(0);
+    await expectAccessibleAtBothWidths(decider.page);
+    await decider.context.close();
+
+    const admin = await newVisitor(browser);
+    await signInStaff(admin.page, "admin", `/en/admin/appeals/${appealId}`);
+    await expect(admin.page.locator("#outcome")).toContainText("Read only. Trust & Safety decide on appeals.");
+    await admin.context.close();
+
+    // Two second reviewers open it; one reverses by keyboard, the other is told it was decided.
+    const late = await newVisitor(browser);
+    await signInStaff(late.page, "trust_safety", `/en/admin/appeals/${appealId}`);
+    const reviewer = await newVisitor(browser);
+    await signInStaff(reviewer.page, "trust_safety", `/en/admin/appeals/${appealId}`);
+    const reverse = reviewer.page.getByRole("button", { name: "Reverse the decision" });
+    await waitForHydration(reverse);
+    await reverse.focus();
+    await reviewer.page.keyboard.press("Enter");
+    const decide = reviewer.page.getByRole("dialog", { name: "Reverse the decision" });
+    await expect(decide).toContainText("The partner profile is shown again");
+    await expect(decide.getByLabel("Statement of reasons")).toBeFocused();
+    await reviewer.page.keyboard.type(outcome);
+    await expectNoAxeViolations(reviewer.page);
+    await decide.getByRole("button", { name: "Reverse decision" }).focus();
+    await reviewer.page.keyboard.press("Enter");
+    await expect(reviewer.page.getByText("The decision is reversed", { exact: true })).toBeVisible();
+    await expect(reviewer.page.locator("#outcome")).toContainText("Decision reversed");
+    await expect(reviewer.page.locator("#outcome")).toContainText(outcome);
+
+    const uphold = late.page.getByRole("button", { name: "Uphold the decision" });
+    await waitForHydration(uphold);
+    await uphold.click();
+    const lateDialog = late.page.getByRole("dialog", { name: "Uphold the decision" });
+    await lateDialog.getByLabel("Statement of reasons").fill("The claims were not backed by any document.");
+    await lateDialog.getByRole("button", { name: "Uphold decision" }).click();
+    await expect(lateDialog).toContainText("This appeal was decided by someone else, reload the page. It is now: Decision reversed.");
+    await late.context.close();
+    await reviewer.context.close();
+
+    expect(query<{ status: string; state: string; actions: string; audits: number }>(
+      `select a.status::text as status, o.moderation_state::text as state,
+         (select string_agg(m.action, ',' order by m.id) from public.moderation_actions m where m.target_id = o.id) as actions,
+         (select count(*)::int from audit.log l where l.action like 'appeal.%' and l.entity_id = a.id::text) as audits
+       from public.appeals a join public.organizations o on o.id = a.organization_id where a.id = ${appealId}`,
+    )).toEqual([{ status: "restored", state: "visible", actions: "content_hidden,content_unhidden", audits: 2 }]);
+    expect(query<{ outcome: string; reasons: string; mandatory: boolean }>(
+      `select payload ->> 'appeal_outcome' as outcome, payload ->> 'reasons' as reasons, mandatory from public.notifications
+       where kind = 'moderation_decision' and user_id = ${literal(partner.user.id)} and payload ? 'appeal_id'`,
+    )).toEqual([{ outcome: "restored", reasons: outcome, mandatory: true }]);
+    expect((await page.request.get(profileUrl(partner.slug))).status(), "restored on appeal").toBe(200);
+
+    await page.goto(`/en/appeals/${decision}`);
+    await expect(page.locator("#appeal")).toContainText("Decision reversed");
+    await expect(page.locator("#appeal")).toContainText(outcome);
+    await expectAccessibleAtBothWidths(page);
+  });
+
+  test("FR-S1 AC12: a hidden vacancy and a suspended organisation are appealed from the decision page their notices link to", async ({ page, browser }) => {
+    test.setTimeout(180_000);
+    const company = await newCompany();
+    const job = seedJob(company, { title: `Appealed ${uniqueName("Welder")}`, status: "open" });
+    const staff = await newVisitor(browser);
+    await signInStaff(staff.page, "trust_safety", `/en/admin/moderation/${job}`);
+    const open = staff.page.getByRole("button", { name: "Hide this vacancy" });
+    await waitForHydration(open);
+    await open.click();
+    const hideDialog = staff.page.getByRole("dialog", { name: "Hide a vacancy" });
+    await hideDialog.getByLabel("Statement of reasons").fill("The vacancy asks candidates for a placement fee.");
+    await hideDialog.getByRole("button", { name: "Hide vacancy" }).click();
+    await expect(staff.page.getByText("The vacancy is hidden", { exact: true })).toBeVisible();
+    const [{ id: hidden }] = query<{ id: number }>(`select id from public.moderation_actions where target_id = ${literal(job)} and action = 'job_hidden'`);
+    expect(query<{ decision: number }>(
+      `select (payload ->> 'moderation_action_id')::int as decision from public.notifications where kind = 'vacancy_hidden' and user_id = ${literal(company.owner.id)}`,
+    )).toEqual([{ decision: hidden }]);
+
+    const member = await addCompanyUser(company, "member");
+    const memberContext = await newVisitor(browser);
+    await signInAtAal1(memberContext.page, member, `/en/org/${company.slug}/jobs/${job}`);
+    await expect(memberContext.page.getByRole("link", { name: "See the decision and appeal" })).toHaveAttribute("href", `/en/appeals/${hidden}`);
+    await memberContext.page.getByRole("link", { name: "See the decision and appeal" }).click();
+    await expect(memberContext.page.locator("#appeal")).toContainText(`The owner or an admin of ${displayName(company.id)} can appeal this decision until`);
+    await expect(memberContext.page.getByRole("button", { name: "Appeal" })).toHaveCount(0);
+    await memberContext.context.close();
+
+    const secret = await enrollTotp(company.owner);
+    await signInAtAal2(page, company.owner, secret, `/en/appeals/${hidden}`);
+    await expect(page.locator("#decision")).toContainText("The vacancy asks candidates for a placement fee.");
+    const appeal = page.getByRole("button", { name: "Appeal" });
+    await waitForHydration(appeal);
+    await appeal.click();
+    const dialog = page.getByRole("dialog", { name: "Appeal the decision" });
+    await dialog.getByLabel("Grounds").fill("The vacancy charges no fee; the text was misread.");
+    await dialog.getByRole("button", { name: "Send appeal" }).click();
+    await expect(page.getByText("Your appeal was sent. It is under review.", { exact: true })).toBeVisible();
+    await expect(page.locator("#appeal")).toContainText("Appeal under review");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    // The suspension of the organisation: its notice names the decision, and the owner of the suspended organisation appeals.
+    await staff.page.goto(`/en/admin/organizations/${company.id}`);
+    const standing = staff.page.locator("#standing");
+    const suspend = standing.getByRole("button", { name: "Suspend organisation" });
+    await waitForHydration(suspend);
+    await standing.getByLabel("Statement of reasons").fill("Fee demands from several candidates were confirmed.");
+    await suspend.click();
+    await expect(staff.page.getByText("The organisation is suspended", { exact: true })).toBeVisible();
+    await staff.context.close();
+    const [{ id: suspended }] = query<{ id: number }>(
+      `select id from public.moderation_actions where target_id = ${literal(company.id)} and action = 'organization_suspended'`,
+    );
+    expect(query<{ decision: number }>(
+      `select (payload ->> 'moderation_action_id')::int as decision from public.notifications where kind = 'account_suspended' and user_id = ${literal(company.owner.id)}`,
+    )).toEqual([{ decision: suspended }]);
+    await page.goto(`/en/appeals/${suspended}`);
+    await expect(page.locator("#decision")).toContainText("Fee demands from several candidates were confirmed.");
+    const suspendedAppeal = page.getByRole("button", { name: "Appeal" });
+    await waitForHydration(suspendedAppeal);
+    await suspendedAppeal.click();
+    await page.getByRole("dialog", { name: "Appeal the decision" }).getByLabel("Grounds").fill("We never asked a candidate for any fee.");
+    await page.getByRole("dialog", { name: "Appeal the decision" }).getByRole("button", { name: "Send appeal" }).click();
+    await expect(page.locator("#appeal")).toContainText("Appeal under review");
+    expect(query<{ n: number }>(`select count(*)::int as n from public.appeals where organization_id = ${literal(company.id)} and status = 'open'`)).toEqual([{ n: 2 }]);
   });
 });

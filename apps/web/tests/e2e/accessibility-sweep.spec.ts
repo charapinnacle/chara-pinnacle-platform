@@ -123,9 +123,14 @@ const accountStatePages = [
 // public partner profile with a complete listed partner and its members' preview of an unlisted one (partner-profile.spec.ts),
 // the recruitment directory with results and empty (partner-search.spec.ts), the staffing directory with results, empty,
 // over the search limit and with the available workforce results of an employer (staffing-directory.spec.ts), the
-// public company page with vacancies, empty and as its administrator (company-page.spec.ts), and the saved partners of an
-// employer and the followed companies, with rows and empty (save-partner-follow.spec.ts).
+// public company page with vacancies, empty and as its administrator (company-page.spec.ts), the saved partners of an
+// employer and the followed companies, with rows and empty (save-partner-follow.spec.ts), and the moderation decisions
+// and appeals of an organisation and of the console (partner-profile.spec.ts).
 const releasedPages = [
+  "/[lang]/appeals",
+  "/[lang]/appeals/[id]",
+  "/[lang]/admin/appeals",
+  "/[lang]/admin/appeals/[id]",
   "/[lang]/companies/[slug]",
   "/[lang]/following",
   "/[lang]/notifications",

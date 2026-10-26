@@ -283,6 +283,32 @@ test.describe("in-app notifications (FR-T1)", () => {
     await other.close();
   });
 
+  test("FR-S1 AC9, AC12: the outcome of an appeal and a suspension that can be appealed open the decision page", async ({ context, page }) => {
+    const company = await newCompany();
+    execute(
+      `select pgmq.send('notifications', jsonb_build_object(
+         'kind', 'moderation_decision', 'user_id', ${literal(company.owner.id)}, 'mandatory', true, 'organization_id', ${literal(company.id)},
+         'appeal_id', 7, 'appeal_outcome', 'restored', 'target_type', 'organization', 'target_id', ${literal(company.id)},
+         'reasons', 'The suspension was based on a mistaken report.', 'moderation_action_id', 41));
+       select pgmq.send('notifications', jsonb_build_object(
+         'kind', 'account_suspended', 'user_id', ${literal(company.owner.id)}, 'mandatory', true, 'organization_id', ${literal(company.id)},
+         'reasons', 'Fee demands from several workers were confirmed.', 'moderation_action_id', 40))`,
+    );
+    await signInBrowser(context, company.owner);
+    await page.goto(LIST);
+    const items = page.getByRole("list", { name: "Notifications" }).getByRole("listitem");
+    const suspension = items.filter({ hasText: "was suspended" });
+    await expect(suspension.getByRole("link")).toHaveAttribute("href", "/en/appeals/40");
+    const outcome = items.filter({ hasText: "Your appeal about" });
+    await expect(outcome.getByRole("link")).toHaveAttribute("href", "/en/appeals/41");
+    await expect(outcome).toContainText("the decision was reversed");
+    await expect(outcome).not.toContainText("mistaken report");
+    await expectNoAxeViolations(page);
+    expect(query<{ mandatory: boolean }>(
+      `select mandatory from public.notifications where user_id = ${literal(company.owner.id)} and kind = 'moderation_decision'`,
+    )).toEqual([{ mandatory: true }]);
+  });
+
   test("NFR-S8: the list shows only the user's own notifications", async ({ context, page }) => {
     const [mine, other] = [await createCommittedUser("worker"), await createCommittedUser("worker")];
     seed(mine.id, "legal_version", 2);
