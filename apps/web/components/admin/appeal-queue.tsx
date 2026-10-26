@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/feedback/status-badge";
 import { FormButton } from "@/components/forms/form-button";
 import { NativeSelect } from "@/components/forms/native-select";
 import { TextLink } from "@/components/forms/text-link";
-import { getAppealStats, listAppeals } from "@/lib/dal/admin-appeals";
+import { getAppealStats, listAppeals, type AppealStats } from "@/lib/dal/admin-appeals";
 import { formatCount, formatDate, formatDateTime } from "@/lib/i18n/format";
 import { adminPath } from "@/lib/routes";
 import {
@@ -20,8 +20,7 @@ import {
 } from "@/lib/validation/appeal";
 
 // The KPI "Decisions reversed on appeal" (FR-S1) over the appeals decided in the last year, with the open ones.
-async function AppealFigures() {
-  const stats = await getAppealStats();
+function AppealFigures({ stats }: { stats: AppealStats }) {
   const share = reversedShare(stats.decided, stats.restored);
   return (
     <dl className="grid gap-3 sm:grid-cols-3">
@@ -67,10 +66,10 @@ function Filters({ lang, status }: { lang: string; status: AppealListStatus }) {
 // The appeals in the order the database gives (FR-S1 AC11): open ones by the time they are due, so that none waits behind
 // newer ones, decided ones newest first.
 export async function AppealQueue({ lang, status, after }: { lang: string; status: AppealListStatus; after: AppealCursor | null }) {
-  const page = await listAppeals(status, after);
+  const [page, stats] = await Promise.all([listAppeals(status, after), getAppealStats()]);
   return (
     <div className="grid gap-4">
-      <AppealFigures />
+      <AppealFigures stats={stats} />
       <Filters lang={lang} status={status} />
       {page.rows.length === 0 ? (
         <EmptyState

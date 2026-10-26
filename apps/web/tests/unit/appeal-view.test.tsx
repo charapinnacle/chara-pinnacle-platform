@@ -3,13 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppealDetail } from "@/lib/dal/admin-appeals";
 
 const getMock = vi.hoisted(() => vi.fn());
+const listMock = vi.hoisted(() => vi.fn());
+const statsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/dal/admin-appeals", () => ({ getAppeal: getMock }));
+vi.mock("@/lib/dal/admin-appeals", () => ({ getAppeal: getMock, listAppeals: listMock, getAppealStats: statsMock }));
 vi.mock("@/lib/actions/admin-appeals", () => ({ decideAppeal: vi.fn() }));
 vi.mock("next/navigation", () => ({ notFound: vi.fn(), useRouter: () => ({ refresh: vi.fn() }) }));
 
 const { AppealView } = await import("@/components/admin/appeal-view");
+const { AppealQueue } = await import("@/components/admin/appeal-queue");
 
 const appeal = (over: Partial<AppealDetail> = {}): AppealDetail => ({
   id: 7,
@@ -74,5 +77,35 @@ describe("the appeal page of the console", () => {
     expect(decided).toContain("The documents match the claims.");
     expect(decided).not.toContain(">Reverse the decision</button>");
     expect(await render(appeal({ overdue: true }))).toContain("Overdue");
+  });
+});
+
+// FR-S1 AC11 and the KPI: the appeals page of the console.
+describe("the appeals queue of the console", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("says when no appeal is open and shows the reversal rate", async () => {
+    listMock.mockResolvedValue({ rows: [], next: null });
+    statsMock.mockResolvedValue({ decided: 4, restored: 3, open: 0, overdue: 0 });
+    const html = renderToStaticMarkup(await AppealQueue({ lang: "en", status: "open", after: null }));
+    expect(html).toContain("No open appeals");
+    expect(html).toContain("75% (3 of 4)");
+  });
+
+  it("lists open appeals with their due time and overdue flag, and continues after the last row", async () => {
+    listMock.mockResolvedValue({
+      rows: [
+        { id: 7, decisionId: 42, targetType: "job", title: "Welder", organizationName: "Acme Bau", status: "open", lodgedAt: "2026-10-20T09:00:00+00:00", dueAt: "2026-10-27T09:00:00+00:00", overdue: true, decidedAt: null },
+      ],
+      next: { dueAt: "2026-10-27T09:00:00+00:00", id: 7 },
+    });
+    statsMock.mockResolvedValue({ decided: 0, restored: 0, open: 1, overdue: 1 });
+    const html = renderToStaticMarkup(await AppealQueue({ lang: "en", status: "open", after: null }));
+    expect(html).toContain('href="/en/admin/appeals/7"');
+    expect(html).toContain("Vacancy: </span>Welder");
+    expect(html).toContain("Overdue");
+    expect(html).toContain("No appeal decided yet");
+    expect(html).toContain("after=2026-10-27T09%3A00%3A00%2B00%3A00_7");
+    expect(listMock).toHaveBeenCalledWith("open", null);
   });
 });
