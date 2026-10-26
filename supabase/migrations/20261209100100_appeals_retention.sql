@@ -1,6 +1,7 @@
 -- The retention of decided appeals (FR-S1, FR-S3, SOP P2-43 step Apply; DATA_MODEL.md section 10: closed appeals 365
 -- days, a proposal editable in the retention editor). An open appeal is never deleted; a decided one is deleted that many
--- days after its decision. The moderation decision it was about stays in public.moderation_actions.
+-- days after its decision, and only once the appealed decision is outside the longest appeal window (24 months). The
+-- moderation decision it was about stays in public.moderation_actions.
 
 insert into private.retention_policies (entity, days, label, description) values
   ('closed_appeals', 365, 'Decided appeals',
@@ -146,7 +147,12 @@ begin
 
   select p.days into v_days from private.retention_policies p where p.entity = 'closed_appeals';
   if found then
-    delete from public.appeals a where a.status <> 'open' and a.decided_at < now() - make_interval(days => v_days);
+    -- The decision must also be older than the longest appeal window the settings editor allows (24 months), so that a
+    -- shortened period never deletes an appeal whose decision could be appealed again once its row is gone.
+    delete from public.appeals a
+    where a.status <> 'open' and a.decided_at < now() - make_interval(days => v_days)
+      and exists (select 1 from public.moderation_actions m
+                  where m.id = a.moderation_action_id and m.created_at < now() - make_interval(months => 24));
     get diagnostics v_removed = row_count;
     perform private.record_retention('closed_appeals', v_days, v_removed);
   end if;

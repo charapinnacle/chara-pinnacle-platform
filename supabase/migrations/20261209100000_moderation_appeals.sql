@@ -56,12 +56,16 @@ create table public.appeals (
   lodged_at timestamptz not null default now(),
   due_at timestamptz not null,
   decided_at timestamptz,
+  reversal_action_id bigint references public.moderation_actions (id),
   check ((status = 'open') = (decided_at is null)),
+  check (reversal_action_id is null or status = 'restored'),
   check ((status = 'open') = (reasons is null))
 );
 
 comment on table public.appeals is
   'Appeals against moderation decisions (FR-S1, DSA Art. 20): one per decision, lodged by an owner or admin of the affected organisation, decided by a second Trust & Safety Administrator. Read and written through RPCs only.';
+comment on column public.appeals.reversal_action_id is
+  'The decision that undid the appealed one on restore (content_unhidden, job_unhidden, organization_reinstated); null when upheld, or restored when nothing was left to undo. The KPI counts reversals by it.';
 comment on column public.appeals.organization_id is
   'The organisation the decision affected: the hidden partner profile, the owner of the hidden vacancy, or the suspended organisation.';
 
@@ -422,13 +426,14 @@ $$;
 -- The affected organisation ------------------------------------------------------------------------------------------------
 
 -- The decisions on the caller's organisations that can be appealed and their appeals, newest first: every decision of the
--- appeal window and every decision with an appeal (p_action: that decision only). Every accepted member reads them
+-- appeal window and every decision with an appeal (p_action: that decision only; p_job: the decisions on that vacancy only,
+-- so a vacancy page finds its decision however many others there are). Every accepted member reads them
 -- (FR-S1 AC12: the state and the reasons for everyone); can_appeal is true for an owner or admin while the window is open,
 -- the decision is in effect and no appeal was lodged; target_days is the decision target an appeal lodged now gets (the
 -- appeal form states it). Never who decided. A suspended organisation reads its own. Release
 -- 2a only.
 --   CHARA_FORBIDDEN (detail release_off)
-create function public.list_my_appeals(p_action bigint default null) returns table (
+create function public.list_my_appeals(p_action bigint default null, p_job uuid default null) returns table (
   moderation_action_id bigint,
   target_type text,
   target_id uuid,
@@ -480,10 +485,11 @@ begin
   cross join lateral (
     select a.id from public.moderation_actions a
     where a.action in ('content_hidden', 'organization_suspended') and a.target_id = m.organization_id
-      and (p_action is null or a.id = p_action)
+      and (p_action is null or a.id = p_action) and p_job is null
     union all
     select a.id from public.moderation_actions a join public.jobs j on j.id = a.target_id
     where a.action = 'job_hidden' and j.organization_id = m.organization_id and (p_action is null or a.id = p_action)
+      and (p_job is null or j.id = p_job)
   ) c
   cross join lateral private.appealable_decision(c.id) d
   left join public.appeals ap on ap.moderation_action_id = d.moderation_action_id
@@ -494,8 +500,8 @@ begin
 end;
 $$;
 
-revoke all on function public.list_my_appeals(bigint) from public, anon, authenticated, service_role;
-grant execute on function public.list_my_appeals(bigint) to authenticated;
+revoke all on function public.list_my_appeals(bigint, uuid) from public, anon, authenticated, service_role;
+grant execute on function public.list_my_appeals(bigint, uuid) to authenticated;
 
 -- An owner or admin of the affected organisation (accepted, at aal2, account not suspended) appeals a decision with
 -- grounds of 20 to 2,000 characters after trimming: one appeal per decision, within appeal_window_months of it and while
@@ -585,8 +591,9 @@ grant execute on function public.submit_appeal(bigint, text) to authenticated;
 -- (same_reviewer) or about their own organisation (own_organization). A restore of a decision that is no longer in effect
 -- records the outcome without acting again. The appeal row is locked, so of two decisions the second finds it decided.
 -- Audited as appeal.upheld or appeal.restored (with the decision and the reversal); the appellant gets one mandatory
--- moderation_decision notice with the outcome and the reasons. Answers the outcome and the id of the reversal (null when
--- nothing was undone).
+-- moderation_decision notice with the outcome and the reasons (or, when they are no longer an accepted member, the current
+-- owners and admins). The reversal is kept in appeals.reversal_action_id. Answers the outcome and the id of the reversal
+-- (null when nothing was undone).
 --   CHARA_FORBIDDEN (not Trust & Safety; detail aal2_required, release_off, same_reviewer, own_organization),
 --   CHARA_INVALID_INPUT (detail reason, outcome), CHARA_NOT_FOUND, CHARA_INVALID_STATE (detail the status of a decided
 --   appeal)
@@ -604,6 +611,8 @@ declare
   v_decision record;
   v_status public.appeal_status;
   v_reversal bigint;
+  v_deleted boolean;
+  v_recipients uuid[];
 begin
   if not private.release_on('release_partner_directories') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'release_off';
@@ -637,24 +646,37 @@ begin
     end;
   end if;
 
+  -- Why a restore undid nothing: the vacancy was deleted, or a later decision had already replaced the appealed one.
+  v_deleted := v_decision.target_type = 'job'
+    and exists (select 1 from public.jobs j where j.id = v_decision.target_id and j.deleted_at is not null);
+
   update public.appeals
-  set status = v_status, decided_by = v_uid, reasons = v_reasons, decided_at = now()
+  set status = v_status, decided_by = v_uid, reasons = v_reasons, decided_at = now(), reversal_action_id = v_reversal
   where id = p_appeal;
   perform private.audit_admin('appeal.' || v_status::text, 'appeal', p_appeal::text, v_reasons, jsonb_strip_nulls(jsonb_build_object(
     'moderation_action_id', v_appeal.moderation_action_id, 'organization_id', v_appeal.organization_id,
     'target_type', v_decision.target_type, 'reversal_action_id', v_reversal,
-    'already_reversed', case when p_outcome = 'restore' and not v_decision.in_effect then true end
+    'target_deleted', case when p_outcome = 'restore' and not v_decision.in_effect and v_deleted then true end,
+    'already_reversed', case when p_outcome = 'restore' and not v_decision.in_effect and not v_deleted then true end
   )));
 
-  if v_appeal.appellant_user_id is not null then
-    perform pgmq.send('notifications', jsonb_strip_nulls(jsonb_build_object(
-      'kind', 'moderation_decision', 'user_id', v_appeal.appellant_user_id, 'mandatory', true,
-      'organization_id', v_appeal.organization_id, 'appeal_id', p_appeal, 'appeal_outcome', v_status,
-      'target_type', v_decision.target_type, 'target_id', v_decision.target_id,
-      'job_id', case when v_decision.target_type = 'job' then v_decision.target_id end,
-      'reasons', v_reasons, 'moderation_action_id', v_appeal.moderation_action_id
-    )));
-  end if;
+  -- The outcome goes to the appellant while they are still an accepted member of the organisation; one who left (or whose
+  -- account is gone) is replaced by the current owners and admins, so the organisation always learns the outcome.
+  select case
+    when exists (select 1 from public.organization_members m
+                 where m.organization_id = v_appeal.organization_id and m.user_id = v_appeal.appellant_user_id
+                   and m.accepted_at is not null) then array[v_appeal.appellant_user_id]
+    else (select array_agg(m.user_id order by m.user_id) from public.organization_members m
+          where m.organization_id = v_appeal.organization_id and m.role in ('owner', 'admin') and m.accepted_at is not null)
+  end into v_recipients;
+  perform pgmq.send('notifications', jsonb_strip_nulls(jsonb_build_object(
+    'kind', 'moderation_decision', 'user_id', r.user_id, 'mandatory', true,
+    'organization_id', v_appeal.organization_id, 'appeal_id', p_appeal, 'appeal_outcome', v_status,
+    'target_type', v_decision.target_type, 'target_id', v_decision.target_id,
+    'job_id', case when v_decision.target_type = 'job' then v_decision.target_id end,
+    'reasons', v_reasons, 'moderation_action_id', v_appeal.moderation_action_id
+  )))
+  from unnest(coalesce(v_recipients, '{}'::uuid[])) as r (user_id);
 
   status := v_status;
   reversal_action_id := v_reversal;
@@ -782,7 +804,8 @@ revoke all on function public.admin_get_appeal(bigint) from public, anon, authen
 grant execute on function public.admin_get_appeal(bigint) to authenticated;
 
 -- The KPI "Decisions reversed on appeal" (FR-S1): of the appeals decided within the last p_days (closed appeals are kept
--- closed_appeals days), how many restored; with the open ones and how many of those are overdue.
+-- closed_appeals days), how many were reversed (a reversal_action_id: a restore that found nothing left to undo is not a
+-- reversal); with the open ones and how many of those are overdue.
 create function public.admin_appeal_stats(p_days integer default 365) returns table (
   decided bigint, restored bigint, open bigint, overdue bigint
 )
@@ -804,7 +827,7 @@ begin
   return query
   select
     count(*) filter (where a.status <> 'open' and a.decided_at >= now() - make_interval(days => p_days)),
-    count(*) filter (where a.status = 'restored' and a.decided_at >= now() - make_interval(days => p_days)),
+    count(*) filter (where a.reversal_action_id is not null and a.decided_at >= now() - make_interval(days => p_days)),
     count(*) filter (where a.status = 'open'),
     count(*) filter (where a.status = 'open' and a.due_at < now())
   from public.appeals a;

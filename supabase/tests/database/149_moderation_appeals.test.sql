@@ -1,5 +1,5 @@
 begin;
-select plan(141);
+select plan(156);
 
 \ir status_fixture.inc
 
@@ -173,14 +173,14 @@ select is(
 select ok(
   (select bool_and(prosecdef and proconfig = array['search_path=""']) from pg_proc
    where oid in ('public.submit_appeal(bigint, text)'::regprocedure, 'public.decide_appeal(bigint, text, text)'::regprocedure,
-                 'public.list_my_appeals(bigint)'::regprocedure, 'public.admin_list_appeals(text, integer, bigint, timestamptz)'::regprocedure,
+                 'public.list_my_appeals(bigint, uuid)'::regprocedure, 'public.admin_list_appeals(text, integer, bigint, timestamptz)'::regprocedure,
                  'public.admin_get_appeal(bigint)'::regprocedure, 'public.admin_appeal_stats(integer)'::regprocedure)),
   'the appeal RPCs are definer functions with an empty search_path'
 );
 select ok(
   (select bool_and(has_function_privilege('authenticated', f, 'execute') and not has_function_privilege('anon', f, 'execute')
                    and not has_function_privilege('service_role', f, 'execute'))
-   from unnest(array['public.submit_appeal(bigint, text)', 'public.decide_appeal(bigint, text, text)', 'public.list_my_appeals(bigint)',
+   from unnest(array['public.submit_appeal(bigint, text)', 'public.decide_appeal(bigint, text, text)', 'public.list_my_appeals(bigint, uuid)',
      'public.admin_list_appeals(text, integer, bigint, timestamptz)', 'public.admin_get_appeal(bigint)',
      'public.admin_appeal_stats(integer)']) f),
   'the appeal RPCs are for signed-in callers only'
@@ -567,12 +567,17 @@ select is(
   (select metadata -> 'already_reversed' from audit.log where action = 'appeal.restored' and entity_id = :ap_job3::text),
   'true'::jsonb, 'the audit row says it was already reversed'
 );
+select is(
+  (select string_agg(id || ':' || coalesce(reversal_action_id::text, '-'), ',' order by id) from public.appeals where status <> 'open'),
+  concat_ws(',', :ap_hide || ':' || :rev_hide, :ap_job || ':-', :ap_job3 || ':-', :ap_susp || ':' || :rev_susp),
+  'appeals.reversal_action_id holds the reversal of each restore that undid something, and nothing otherwise'
+);
 
 -- KPI and states --------------------------------------------------------------------------------------------------------------
 
 select is(pg_temp.run(:'st_admin', 'select * from public.admin_appeal_stats()'), 'ok', 'the Platform Administrator reads the appeal KPI');
-select is(pg_temp.rows() -> 0, '{"decided": 4, "restored": 3, "open": 0, "overdue": 0}'::jsonb,
-  'KPI decisions reversed on appeal: 3 of 4 decided appeals restored');
+select is(pg_temp.rows() -> 0, '{"decided": 4, "restored": 2, "open": 0, "overdue": 0}'::jsonb,
+  'KPI decisions reversed on appeal: 2 of 4 decided appeals reversed; the restore that found nothing to undo is not counted');
 select is(pg_temp.run(:'st_trust', 'select * from public.admin_appeal_stats(0)'), 'P0001|CHARA_INVALID_INPUT|days', 'a period of 0 days is refused');
 select is(pg_temp.run(:'pow', 'select * from public.admin_appeal_stats()'), 'P0001|CHARA_FORBIDDEN|', 'a partner reads no KPI');
 select is(pg_temp.run(:'st_trust', $$select id from public.admin_list_appeals('decided')$$), 'ok', 'decided appeals are listed');
@@ -586,20 +591,92 @@ where id = :ap_job;
 select is(pg_temp.run(:'st_trust', 'select overdue from public.admin_list_appeals()'), 'ok', 'an appeal past its due time');
 select is(pg_temp.rows() -> 0 -> 'overdue', 'true'::jsonb, 'is flagged overdue');
 
+-- A restore of a deleted vacancy, after the appellant left the organisation ----------------------------------------------
+
+select pg_temp.open_job('Acme deleted vacancy') as job_del \gset
+select pg_temp.decision('hide', 'job', :'job_del') as act_del \gset
+select is(pg_temp.appeal(:'adm', :act_del, 'The vacancy was lawful before we removed it.'), 'ok', 'an admin of Acme appeals a hidden vacancy');
+select (pg_temp.rows() -> 0 ->> 'appeal_id')::bigint as ap_del \gset
+update public.jobs set deleted_at = now() where id = :'job_del';
+delete from public.organization_members where organization_id = current_setting('t.a')::uuid and user_id = :'adm';
+select count(*) as actions_before_del from public.moderation_actions \gset
+select is(pg_temp.decide(:'trust_b', :ap_del, 'restore', 'The vacancy was lawful, but it no longer exists.'), 'ok',
+  'an appeal of a vacancy deleted since is restored');
+select is((select count(*) from public.moderation_actions), :actions_before_del::bigint, 'nothing is undone: no moderation action');
+select is((select reversal_action_id from public.appeals where id = :ap_del), null, 'and no reversal is recorded');
+select is(
+  (select metadata - 'request_id' - 'reason' - 'organization_id' - 'moderation_action_id' from audit.log
+   where action = 'appeal.restored' and entity_id = :ap_del::text),
+  '{"target_type": "job", "target_deleted": true}'::jsonb,
+  'the audit row says the vacancy was deleted, not that a later decision reversed it'
+);
+select is(
+  (select count(*) from pgmq.q_notifications q where q.message ->> 'appeal_id' = :ap_del::text and q.message ->> 'user_id' = :'adm'),
+  0::bigint, 'the appellant who left the organisation is not sent the outcome'
+);
+select is(
+  (select string_agg(q.message ->> 'user_id', ',') from pgmq.q_notifications q where q.message ->> 'appeal_id' = :ap_del::text),
+  :'own1', 'the current owners and admins of the organisation are sent it instead (members are not)'
+);
+
+-- list_my_appeals by vacancy -------------------------------------------------------------------------------------------------
+
+savepoint many_decisions;
+insert into public.moderation_actions (target_type, target_id, action, statement_of_reasons, actor_id)
+select 'job', :'job2', 'job_hidden', 'Repeated decision number ' || n || ' on one vacancy.', :'st_trust' from generate_series(1, 101) n;
+select ok(
+  not exists (select 1 from jsonb_array_elements(pg_temp.mine(:'own1')) e where (e ->> 'moderation_action_id')::bigint = :act_job),
+  'the list of an organisation with more than 100 decisions stops at the newest 100'
+);
+select is(pg_temp.run(:'own1', format('select moderation_action_id from public.list_my_appeals(null, %L)', :'job1'), 'aal1'), 'ok',
+  'a vacancy page asks for the decisions on its vacancy');
+select is(pg_temp.rows(), jsonb_build_array(jsonb_build_object('moderation_action_id', :act_job)),
+  'and finds its decision whatever the number of others');
+select is(pg_temp.run(:'own2', format('select moderation_action_id from public.list_my_appeals(null, %L)', :'job1'), 'aal1'), 'ok',
+  'another employer asks for the same vacancy');
+select is(pg_temp.rows(), '[]'::jsonb, 'NFR-S8: and reads nothing');
+rollback to savepoint many_decisions;
+
 -- Retention -----------------------------------------------------------------------------------------------------------------
 
 select is((select days from private.retention_policies where entity = 'closed_appeals'), 365, 'closed appeals are kept 365 days');
+insert into public.moderation_actions (target_type, target_id, action, statement_of_reasons, actor_id, created_at)
+values ('job', :'job_beta', 'job_hidden', 'Hidden more than two years ago.', :'st_trust', now() - interval '25 months')
+returning id as act_ancient \gset
+insert into public.appeals (moderation_action_id, organization_id, grounds, status, reasons, lodged_at, due_at, decided_at)
+values (:act_ancient, current_setting('t.b')::uuid, 'Grounds lodged more than two years ago.', 'upheld', 'Upheld long ago.',
+        now() - interval '25 months', now() - interval '25 months' + interval '7 days', now() - interval '366 days')
+returning id as ap_ancient \gset
 update public.appeals set decided_at = now() - interval '366 days', lodged_at = now() - interval '380 days' where id = :ap_hide;
 update public.appeals set lodged_at = now() - interval '400 days', due_at = now() - interval '393 days' where id = :ap_job;
 select private.apply_retention();
 select is(
   (select string_agg(id::text, ',' order by id) from public.appeals),
-  concat_ws(',', :ap_job, :ap_job3, :ap_susp),
-  'apply_retention deletes a decided appeal older than 365 days and keeps open and recent ones'
+  concat_ws(',', :ap_hide, :ap_job, :ap_job3, :ap_susp, :ap_del),
+  'apply_retention deletes a decided appeal older than 365 days whose decision is outside the longest window; it keeps open ones, recent ones and one whose decision is recent'
 );
-select is((select count(*) from public.moderation_actions where id = :act_hide), 1::bigint, 'the decision it was about is kept');
+select is((select count(*) from public.moderation_actions where id = :act_ancient), 1::bigint, 'the decision it was about is kept');
 select is((select metadata ->> 'removed' from audit.log where action = 'retention.run' and entity_id = 'closed_appeals' order by id desc limit 1), '1',
   'the run is recorded');
+
+-- A short retention period never reopens a decision to a second appeal.
+update private.retention_policies set days = 30 where entity = 'closed_appeals';
+select pg_temp.open_job('Acme vacancy decided 60 days ago') as job_60 \gset
+insert into public.moderation_actions (target_type, target_id, action, statement_of_reasons, actor_id, created_at)
+values ('job', :'job_60', 'job_hidden', 'Hidden sixty days ago for a fee demand.', :'st_trust', now() - interval '60 days')
+returning id as act_60 \gset
+update public.jobs set moderation_state = 'hidden' where id = :'job_60';
+insert into public.appeals (moderation_action_id, organization_id, grounds, status, reasons, lodged_at, due_at, decided_at)
+values (:act_60, current_setting('t.a')::uuid, 'The vacancy asks for no fee at all.', 'upheld', 'The fee demand is documented.',
+        now() - interval '50 days', now() - interval '43 days', now() - interval '40 days')
+returning id as ap_60 \gset
+select private.apply_retention();
+select is((select count(*) from public.appeals where id = :ap_60), 1::bigint,
+  'with a 30-day period, an appeal decided 40 days ago on a decision of 60 days ago is kept');
+select is(
+  (select jsonb_build_object('can', e -> 'can_appeal', 'status', e ->> 'appeal_status') from jsonb_array_elements(pg_temp.mine(:'own1', :act_60)) e),
+  jsonb_build_object('can', false, 'status', 'upheld'), 'and the decision cannot be appealed a second time'
+);
 
 select * from finish();
 rollback;

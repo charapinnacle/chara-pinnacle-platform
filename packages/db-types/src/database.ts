@@ -7,13 +7,13 @@ export type Database = {
           Tables: {
             "appeals": {
                   Row: {
-                    "appellant_user_id": string | null,"decided_at": string | null,"decided_by": string | null,"due_at": string,"grounds": string,"id": number,"lodged_at": string,"moderation_action_id": number,"organization_id": string,"reasons": string | null,"status": Database["public"]['Enums']["appeal_status"]
+                    "appellant_user_id": string | null,"decided_at": string | null,"decided_by": string | null,"due_at": string,"grounds": string,"id": number,"lodged_at": string,"moderation_action_id": number,"organization_id": string,"reasons": string | null,"reversal_action_id": number | null,"status": Database["public"]['Enums']["appeal_status"]
                   }
                   Insert: {
-                    "appellant_user_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"due_at": string,"grounds": string,"id"?: never,"lodged_at"?: string,"moderation_action_id": number,"organization_id": string,"reasons"?: string | null,"status"?: Database["public"]['Enums']["appeal_status"]
+                    "appellant_user_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"due_at": string,"grounds": string,"id"?: never,"lodged_at"?: string,"moderation_action_id": number,"organization_id": string,"reasons"?: string | null,"reversal_action_id"?: number | null,"status"?: Database["public"]['Enums']["appeal_status"]
                   }
                   Update: {
-                    "appellant_user_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"due_at"?: string,"grounds"?: string,"id"?: never,"lodged_at"?: string,"moderation_action_id"?: number,"organization_id"?: string,"reasons"?: string | null,"status"?: Database["public"]['Enums']["appeal_status"]
+                    "appellant_user_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"due_at"?: string,"grounds"?: string,"id"?: never,"lodged_at"?: string,"moderation_action_id"?: number,"organization_id"?: string,"reasons"?: string | null,"reversal_action_id"?: number | null,"status"?: Database["public"]['Enums']["appeal_status"]
                   }
                   Relationships: [
                     {
@@ -46,6 +46,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_org_limits"
       referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "appeals_reversal_action_id_fkey"
+      columns: ["reversal_action_id"]
+isOneToOne: false
+      referencedRelation: "moderation_actions"
+      referencedColumns: ["id"]
     }
                   ]
                 },"application_events": {
@@ -1684,7 +1690,7 @@ isOneToOne: false
             }[]
                            },
 "list_my_appeals":
-{ Args: { "p_action"?: number }; Returns: {
+{ Args: { "p_action"?: number,"p_job"?: string }; Returns: {
               "action": string,"appeal_decided_at": string,"appeal_id": number,"appeal_reasons": string,"appeal_status": Database["public"]['Enums']["appeal_status"],"appeal_until": string,"can_appeal": boolean,"decided_at": string,"due_at": string,"grounds": string,"in_effect": boolean,"lodged_at": string,"moderation_action_id": number,"org_slug": string,"organization_id": string,"organization_name": string,"reasons": string,"target_days": number,"target_id": string,"target_type": string,"title": string
             }[]
                            },
