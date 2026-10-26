@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Plans and limits", robots: { index: 
 
 // The plan editor (FR-R2 AC1, AC10): a Platform Administrator at aal2 changes names, visibility, trial length, limits and
 // features with a reason. The pages are rendered per request, so pricing and billing pages show a change at the next
-// request (AC12). Prices are changed at the payment provider (V17).
+// request (AC12). A price change creates a new price at the payment provider for new subscriptions (AC8, AC9).
 export default async function PlansPage({ params }: PageProps<"/[lang]/admin/plans">) {
   const { lang } = await params;
   await requirePlatformRole(lang, ["admin"]);
@@ -20,7 +20,7 @@ export default async function PlansPage({ params }: PageProps<"/[lang]/admin/pla
       <PageHeader title="Plans and limits">
         <p className="text-body text-muted-foreground">
           Changes apply at once to every organisation on the plan and are recorded with the old and new values and your reason.
-          Prices are not changed here.
+          A new price applies to new subscriptions; existing subscribers keep their price until they are moved at the payment provider.
         </p>
       </PageHeader>
       <PlanEditorTabs lang={lang} />

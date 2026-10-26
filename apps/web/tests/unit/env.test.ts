@@ -72,6 +72,12 @@ describe("parseServerEnv", () => {
     expect(() => parseServerEnv({ ...server, BILLING_CHECKOUT_ENDPOINT: "ftp://example.com/" })).toThrowError("BILLING_CHECKOUT_ENDPOINT");
   });
 
+  it("reads the address of the billing-plan-price function when one is given, and only a web address", () => {
+    expect(parseServerEnv({ ...server, BILLING_PLAN_PRICE_ENDPOINT: "http://127.0.0.1:54436/" }).BILLING_PLAN_PRICE_ENDPOINT).toBe("http://127.0.0.1:54436/");
+    expect(parseServerEnv(server).BILLING_PLAN_PRICE_ENDPOINT).toBeUndefined();
+    expect(() => parseServerEnv({ ...server, BILLING_PLAN_PRICE_ENDPOINT: "ftp://example.com/" })).toThrowError("BILLING_PLAN_PRICE_ENDPOINT");
+  });
+
   it("names a missing secret and a missing hop count", () => {
     expect(() => parseServerEnv({})).toThrowError(
       "Invalid environment variables: VISITOR_HASH_SECRET, TRUSTED_PROXY_HOPS",

@@ -1,19 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { adminRefusal, type AdminResult } from "@/lib/actions/admin-errors";
 import { adminClient } from "@/lib/dal/admin";
+import { requestPlanPrice } from "@/lib/dal/plan-editor";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { adminPath } from "@/lib/routes";
+import { adminPath, mfaPath } from "@/lib/routes";
 import {
   expiryInstant,
   gapLines,
   overrideInputSchema,
+  priceChangeInputSchema,
   removeOverrideInputSchema,
   savePlanInputSchema,
   settingInputSchema,
   type OverrideInput,
+  type PriceChangeInput,
   type SavePlanInput,
   type SettingInput,
 } from "@/lib/validation/plan-editor";
@@ -58,6 +62,36 @@ export async function savePlan(input: SavePlanInput): Promise<AdminResult> {
   }
   revalidatePath(path);
   return { done: true };
+}
+
+const PRICE_FAILURE = "The payment provider could not create the new price. Nothing was changed. Try again later.";
+
+const PRICE_REFUSALS: Record<string, AdminResult> = {
+  reason: REASON["CHARA_INVALID_INPUT:reason"],
+  price_minor: { errors: { amount: "Enter an amount from 1.00 to 100,000.00, for example 54.00" } },
+  price_unchanged: { errors: { amount: "Enter a price other than the current one" } },
+  free_plan: { message: "A free plan stays free. Nothing was changed." },
+  plan_code: { message: "This plan no longer exists." },
+  plan_not_synced: { message: "This plan is not set up at the payment provider yet. Nothing was changed." },
+  price_ref: { message: "This plan's price is held at the payment provider, which did not create a new price. Nothing was changed." },
+};
+
+// A new price of a paid plan (FR-R2 AC8, AC9): billing-plan-price creates it at the payment provider and records it. It
+// applies to new subscriptions; existing subscribers keep their price until the provider moves them.
+export async function changePlanPrice(input: PriceChangeInput): Promise<AdminResult> {
+  const parsed = priceChangeInputSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  await requirePlatformRole(defaultLocale, ["admin"]);
+  const path = adminPath(defaultLocale, "plans");
+  const answer = await requestPlanPrice({ plan_code: parsed.data.code, price_minor: parsed.data.priceMinor, reason: parsed.data.reason });
+  if ("done" in answer) {
+    revalidatePath(path);
+    return { done: true };
+  }
+  const { status, reason, field } = answer.refusal;
+  if (status === 401 || reason === "aal2_required") redirect(mfaPath(defaultLocale, path));
+  if (status === 403) return { message: "You are not allowed to do this." };
+  return PRICE_REFUSALS[reason ?? field ?? ""] ?? { message: PRICE_FAILURE };
 }
 
 // An individual limit for an organisation on an Enterprise plan until the start of the chosen day (FR-R2 AC5).

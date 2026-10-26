@@ -2,6 +2,9 @@ import "server-only";
 import type { Json } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { adminClient, failure } from "@/lib/dal/admin";
+import { env } from "@/lib/env";
+import { serverEnv } from "@/lib/env.server";
+import { createClient } from "@/lib/supabase/server";
 import {
   editorFeatureSchema,
   editorLimitSchema,
@@ -134,4 +137,45 @@ export async function listEditableSettings(): Promise<SettingRule[]> {
     releaseFeature: row.release_feature ?? null,
     releaseGaps: row.release_gaps ?? null,
   }));
+}
+
+const TIMEOUT_MS = 20_000;
+
+const priceAnswerSchema = z.object({
+  price_minor: z.number().int().optional(),
+  reason: z.string().nullish(),
+  field: z.string().nullish(),
+});
+
+export type PriceChangeAnswer = { done: true } | { refusal: { status: number; reason: string | null; field: string | null } };
+
+// A price change (FR-R2 AC8) runs in the billing-plan-price function, which holds the provider's keys: it creates the new
+// price at the provider and records it, both with the administrator's own token. Status 0 is a network failure or a
+// timeout.
+export async function requestPlanPrice(body: { plan_code: string; price_minor: number; reason: string }): Promise<PriceChangeAnswer> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) return { refusal: { status: 401, reason: null, field: null } };
+  const endpoint = serverEnv().BILLING_PLAN_PRICE_ENDPOINT ?? `${env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/billing-plan-price`;
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    return { refusal: { status: 0, reason: null, field: null } };
+  }
+  const answer = priceAnswerSchema.safeParse(await response.json().catch(() => null));
+  if (response.ok && answer.success && answer.data.price_minor === body.price_minor) return { done: true };
+  return {
+    refusal: {
+      status: response.ok ? 502 : response.status,
+      reason: (answer.success && answer.data.reason) || null,
+      field: (answer.success && answer.data.field) || null,
+    },
+  };
 }

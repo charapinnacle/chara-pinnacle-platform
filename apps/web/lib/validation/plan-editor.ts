@@ -154,6 +154,43 @@ export const savePlanInputSchema = z
 
 export type SavePlanInput = z.input<typeof savePlanInputSchema>;
 
+// A price change (FR-R2 AC8): the new monthly amount of a paid plan, typed in euros with at most two decimals, from 1.00 to
+// 100,000.00 (100 to 10,000,000 minor units, as billing-plan-price and admin_record_plan_price check it).
+export const PRICE_MIN_MINOR = 100;
+export const PRICE_MAX_MINOR = 10_000_000;
+const amountPattern = /^\d{1,6}(\.\d{1,2})?$/;
+const AMOUNT_RANGE = "Enter an amount from 1.00 to 100,000.00, for example 54.00";
+
+// The amount typed in the form in minor units, or null when it is not an amount in range.
+export function amountMinor(value: string): number | null {
+  const amount = value.trim();
+  if (!amountPattern.test(amount)) return null;
+  const [whole, fraction = ""] = amount.split(".");
+  const minor = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  return minor >= PRICE_MIN_MINOR && minor <= PRICE_MAX_MINOR ? minor : null;
+}
+
+export function priceFormSchema(currentMinor: number) {
+  return z.object({
+    amount: z.string().superRefine((value, ctx) => {
+      const minor = amountMinor(value);
+      if (minor === null) ctx.addIssue({ code: "custom", message: AMOUNT_RANGE });
+      else if (minor === currentMinor) ctx.addIssue({ code: "custom", message: "Enter a price other than the current one" });
+    }),
+    reason: staffReasonSchema,
+  });
+}
+
+export type PriceForm = z.input<ReturnType<typeof priceFormSchema>>;
+
+export const priceChangeInputSchema = z.object({
+  code: planCodeSchema,
+  priceMinor: z.number().int().min(PRICE_MIN_MINOR).max(PRICE_MAX_MINOR),
+  reason: staffReasonSchema,
+});
+
+export type PriceChangeInput = z.input<typeof priceChangeInputSchema>;
+
 // The expiry of an override is a calendar day after today (UTC); it applies until the start of that day.
 const dayPattern = /^\d{4}-\d{2}-\d{2}$/;
 

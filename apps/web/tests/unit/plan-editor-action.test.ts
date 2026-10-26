@@ -8,14 +8,16 @@ const redirectMock = vi.hoisted(() =>
   }),
 );
 const rpcMock = vi.fn();
+const priceMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/session", () => ({ requirePlatformRole: requireRoleMock }));
 vi.mock("@/lib/dal/admin", () => ({ adminClient: async () => ({ rpc: rpcMock }) }));
+vi.mock("@/lib/dal/plan-editor", () => ({ requestPlanPrice: priceMock }));
 
-const { removeLimitOverride, savePlan, saveSetting, setLimitOverride } = await import("@/lib/actions/plan-editor");
+const { changePlanPrice, removeLimitOverride, savePlan, saveSetting, setLimitOverride } = await import("@/lib/actions/plan-editor");
 
 const ORG = "6f1c1c2e-8a3b-4c55-9b1e-2d3f4a5b6c7d";
 const reason = "Raise after first month of usage review";
@@ -151,5 +153,52 @@ describe("saveSetting (FR-R2 AC7)", () => {
   ])("maps the refusal %j", async (refusal, expected) => {
     rpcMock.mockResolvedValue(refusal);
     expect(await saveSetting({ key: "entitlements_enforced", value: "false", reason })).toEqual(expected);
+  });
+});
+
+describe("changePlanPrice (FR-R2 AC8)", () => {
+  const refused = (status: number, reason: string | null = null, field: string | null = null) => ({ refusal: { status, reason, field } });
+
+  it("asks for the administrator, sends the plan, the amount in minor units and the trimmed reason to the function", async () => {
+    priceMock.mockResolvedValue({ done: true });
+    expect(await changePlanPrice({ code: "recruitment_partner", priceMinor: 5400, reason: `  ${reason}  ` })).toEqual({ done: true });
+    expect(requireRoleMock).toHaveBeenCalledWith("en", ["admin"]);
+    expect(priceMock).toHaveBeenCalledWith({ plan_code: "recruitment_partner", price_minor: 5400, reason });
+    expect(revalidateMock).toHaveBeenCalledWith("/en/admin/plans");
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an amount outside 100 to 10,000,000 minor units or a short reason before calling the function", async () => {
+    for (const input of [
+      { code: "recruitment_partner", priceMinor: 99, reason },
+      { code: "recruitment_partner", priceMinor: 10_000_001, reason },
+      { code: "recruitment_partner", priceMinor: 54.5, reason },
+      { code: "recruitment_partner", priceMinor: 5400, reason: "too short" },
+      { code: "Recruitment Partner", priceMinor: 5400, reason },
+    ]) {
+      expect((await changePlanPrice(input)).errors).toBeDefined();
+    }
+    expect(priceMock).not.toHaveBeenCalled();
+  });
+
+  it("sends an administrator whose second factor lapsed to confirm it again", async () => {
+    priceMock.mockResolvedValue(refused(403, "aal2_required"));
+    await expect(changePlanPrice({ code: "recruitment_partner", priceMinor: 5400, reason })).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Fadmin%2Fplans");
+  });
+
+  it("explains the refusals and says nothing was changed when the provider fails", async () => {
+    const cases: [ReturnType<typeof refused>, object][] = [
+      [refused(403), { message: "You are not allowed to do this." }],
+      [refused(400, null, "reason"), { errors: { reason: "Give a reason of 10 to 500 characters" } }],
+      [refused(400, null, "price_unchanged"), { errors: { amount: "Enter a price other than the current one" } }],
+      [refused(409, "plan_not_synced"), { message: "This plan is not set up at the payment provider yet. Nothing was changed." }],
+      [refused(502), { message: "The payment provider could not create the new price. Nothing was changed. Try again later." }],
+      [refused(0), { message: "The payment provider could not create the new price. Nothing was changed. Try again later." }],
+    ];
+    for (const [answer, expected] of cases) {
+      priceMock.mockResolvedValueOnce(answer);
+      expect(await changePlanPrice({ code: "recruitment_partner", priceMinor: 5400, reason })).toEqual(expected);
+    }
+    expect(revalidateMock).not.toHaveBeenCalled();
   });
 });

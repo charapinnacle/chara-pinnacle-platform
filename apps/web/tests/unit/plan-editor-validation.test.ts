@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { historyValues } from "@/lib/admin/plan-history";
 import {
+  amountMinor,
   changeLine,
   expiryInstant,
   gapLines,
@@ -9,6 +10,8 @@ import {
   planChanges,
   planFormSchema,
   planFormValues,
+  priceChangeInputSchema,
+  priceFormSchema,
   releaseWarning,
   ruleText,
   savePlanInputSchema,
@@ -218,5 +221,33 @@ describe("the plan history values (FR-R2 AC11)", () => {
       to: "is_public: Not public, trial_days: 14",
     });
     expect(historyValues({ table: "plans", operation: "insert", before: null, after: { code: "x" } })).toEqual({ from: "None", to: "Created" });
+  });
+});
+
+describe("the price change form (FR-R2 AC8)", () => {
+  it("reads an amount in euros with at most two decimals as minor units from 1.00 to 100,000.00", () => {
+    expect(amountMinor("54")).toBe(5400);
+    expect(amountMinor(" 54.5 ")).toBe(5450);
+    expect(amountMinor("54.05")).toBe(5405);
+    expect(amountMinor("1.00")).toBe(100);
+    expect(amountMinor("100000")).toBe(10_000_000);
+    for (const value of ["0.99", "100000.01", "54.001", "54,00", "-54", "", "1e3", "EUR 54"]) {
+      expect(amountMinor(value), value).toBeNull();
+    }
+  });
+
+  it("refuses the current price, an amount out of range and a short reason", () => {
+    const schema = priceFormSchema(4900);
+    expect(schema.safeParse({ amount: "54.00", reason: "Price review after the first quarter" }).success).toBe(true);
+    const errors = (amount: string, reasonText: string) =>
+      schema.safeParse({ amount, reason: reasonText }).error?.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
+    expect(errors("49", "Price review after the first quarter")).toEqual(["amount: Enter a price other than the current one"]);
+    expect(errors("0.50", "Price review")).toEqual(["amount: Enter an amount from 1.00 to 100,000.00, for example 54.00"]);
+    expect(errors("54", "too short")).toEqual(["reason: Give a reason of at least 10 characters"]);
+  });
+
+  it("is checked again by the action input", () => {
+    expect(priceChangeInputSchema.safeParse({ code: "recruitment_partner", priceMinor: 5400, reason: "Price review 2026" }).success).toBe(true);
+    expect(priceChangeInputSchema.safeParse({ code: "recruitment_partner", priceMinor: 99, reason: "Price review 2026" }).success).toBe(false);
   });
 });
