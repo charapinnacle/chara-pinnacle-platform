@@ -173,6 +173,14 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
     expect(staffing).toMatch(/<a [^>]*href="\/en\/org\/manila\/billing"[^>]*>Choose Basic<\/a>/);
   });
 
+  it("tells a worker that the plans are for companies", async () => {
+    released = true;
+    viewer = { kind: "worker" };
+    const html = renderToStaticMarkup(await PricingPage(props));
+    expect(html).toContain("Plans are for companies. Workers never pay.");
+    expect(html).not.toContain("Plans are for employers");
+  });
+
   it("shows the unavailable notice in a partner tab without public plans", async () => {
     released = true;
     partnerPlans = { recruitment_company: [], staffing_company: [] };

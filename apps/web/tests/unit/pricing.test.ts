@@ -91,6 +91,7 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
     expect(viewerNote({ kind: "visitor" }, "en")).toBeNull();
     expect(viewerNote({ kind: "manager", slug: "x", type: "employer" }, "en")).toBeNull();
     expect(viewerNote({ kind: "worker" }, "en")?.text).toBe("Plans are for employers. Workers never pay.");
+    expect(viewerNote({ kind: "worker" }, "en", true)?.text).toBe("Plans are for companies. Workers never pay.");
     expect(viewerNote({ kind: "member" }, "en")?.text).toBe("The owner or an admin of your organisation manages its plan.");
     expect(viewerNote({ kind: "setup" }, "en")?.link?.href).toBe("/en/onboarding");
     expect(viewerNote({ kind: "unknown" }, "en")).toBeNull();

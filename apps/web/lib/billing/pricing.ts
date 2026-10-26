@@ -122,10 +122,11 @@ export function planLink(viewer: PricingViewer, card: PlanCard, lang: string, ty
   return null;
 }
 
-export function viewerNote(viewer: PricingViewer, lang: string): { text: string; link?: Link } | null {
+// partners says that the plans of the partner types are shown too (release 2a), so the plans are for companies.
+export function viewerNote(viewer: PricingViewer, lang: string, partners = false): { text: string; link?: Link } | null {
   switch (viewer.kind) {
     case "worker":
-      return { text: "Plans are for employers. Workers never pay." };
+      return { text: `Plans are for ${partners ? "companies" : "employers"}. Workers never pay.` };
     case "member":
       return { text: "The owner or an admin of your organisation manages its plan." };
     case "setup":

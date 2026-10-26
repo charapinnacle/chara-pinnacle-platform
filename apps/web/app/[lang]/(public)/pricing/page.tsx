@@ -86,7 +86,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
   const [recruitmentPlans, staffingPlans] = partners
     ? await Promise.all([listPublicPlans("recruitment_company"), listPublicPlans("staffing_company")])
     : [[], []];
-  const note = viewerNote(viewer, lang);
+  const note = viewerNote(viewer, lang, partners);
   const employerPlans = <PlanList type="employer" plans={plans} viewer={viewer} lang={lang} />;
 
   return (

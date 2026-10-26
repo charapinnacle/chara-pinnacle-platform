@@ -33,7 +33,6 @@ const subscriptionSchema = z.object({
   past_due_since: z.string().nullable(),
 });
 
-
 const usageSchema = z.array(
   z.object({ limit_key: z.string(), used: z.number(), limit_value: z.number().nullable() }),
 );
