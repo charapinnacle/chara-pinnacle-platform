@@ -11,7 +11,7 @@ FR-B6, design point D46 (OPEN_QUESTIONS.md). Queries are run by CHARA staff as t
    - without a hold it queues one `erase_user` job in the pgmq queue `account_ops` (none while one waits);
    - with `profiles.legal_hold` it writes the audit row `account.erasure_paused` and queues the notification `erasure_paused` to the privacy contact, once per request; held accounts are selected apart, so they never take the places of the accounts that are due;
    - for an auth user that has no profile any more (an erasure that stopped after the database step) it queues the job again; `erase_user` then returns false and `account-ops` only purges the files and deletes the user.
-4. `account-ops` (every minute while a job is visible) calls `erase_user`, which deletes the profile, documents and passport rows, replaces the user id by one random pseudonym in the audit log, consent ledger, document access log and shares, writes `account.erased` and queues the notification `deletion_completed`; it then removes the files under `passport-documents/{user_id}/` and the auth user. Every step is safe to repeat.
+4. `account-ops` (every minute while a job is visible) calls `erase_user`, which deletes the profile, documents and passport rows, replaces the user id by one random pseudonym in the audit log, consent ledger, document access log and shares, writes `account.erased` and queues the notification `deletion_completed`; it then removes the files under `passport-documents/{user_id}/` and any copy of the user's data under `dsar-exports/{user_id}/`, and the auth user. Every step is safe to repeat. The user's requests for a copy of their data (`public.data_export_requests`) go with the profile, and a build job still queued for them then builds nothing.
 
 ## 2. Settings
 
@@ -116,10 +116,18 @@ Each query should return 0 rows:
 ```sql
 -- files of an account that no longer exists
 select o.name from storage.objects o
-where o.bucket_id = 'passport-documents' and not exists (select 1 from public.profiles p where p.id::text = split_part(o.name, '/', 1));
+where o.bucket_id in ('passport-documents', 'dsar-exports') and not exists (select 1 from public.profiles p where p.id::text = split_part(o.name, '/', 1));
 
 -- auth users without a profile (an erasure that stopped after the database step; the daily job queues them again, so a row that stays for more than a day needs a look at Auth)
 select u.id from auth.users u where not exists (select 1 from public.profiles p where p.id = u.id);
 ```
 
 Then read the list of paused accounts with the privacy contact (`on_hold` of section 4, with `account.legal_hold_set` rows for the reasons) and decide which holds can be cleared, and check that `privacy_contact_email` is set.
+
+## 8. Copies of a user's data (FR-S3, GDPR Art. 15 and 20)
+
+Release 2a (`release_partner_directories`). A signed-in user asks on `/en/settings/data-export` (`request_data_export`, audit row `data_export.requested`), at most once per `data_export_interval_hours` (24, settings editor). `account-ops` builds the zip in `dsar-exports/{user_id}/{request_id}.zip` (audit rows `data_export.ready` and `account_ops_done` with `export_built`, `files_included`, `files_left_out`, `size_bytes`) and the mandatory email `data_export_ready` leads to the page, where each download is audited as `data_export.downloaded`. The file is kept for the `data_exports` period (7 days, retention editor), then deleted by the retention job (`retention.run` row `data_exports`) through a `delete_object` job.
+
+- Requests that did not finish (state "Could not be prepared" on the page; the job was abandoned and is a dead letter in `pgmq.a_account_ops`): `select id, user_id, requested_at from public.data_export_requests where status = 'queued' and requested_at < now() - interval '1 day';` The user can ask again at once; to retry the same request, queue the archived message again (`docs/runbooks/platform-staff.md` section 3, dead letters).
+- Time to answer an access request (GDPR: one month): `select percentile_disc(0.95) within group (order by ready_at - requested_at) from public.data_export_requests where status = 'ready';`
+- The export holds Phase 1 data and the Phase 2 tables built so far; submissions join with V58 and messages and contact requests with V74.

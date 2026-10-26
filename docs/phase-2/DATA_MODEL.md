@@ -134,7 +134,7 @@ Columns are the essentials; check constraints follow the Phase 1 text rules (tri
 | `private.org_analytics_daily` | organization_id, day, metric (`public.analytics_metric`), country_code, occupation_id, value; built daily by `private.aggregate_org_analytics` | via `get_org_analytics` and `public.v_org_analytics` (members, at the plan's analytics level, suppressed below `stats_min_count` with complementary suppression); retained 730 days (`org_analytics`) |
 | `public.appeals` | moderation_action_id (unique), appellant_user_id, grounds, status, decided_by, reasons, lodged_at, due_at, decided_at | via RPCs |
 | `private.retired_licence_evidence` | licence_id, organization_id, storage_path, cause (replaced, removed), retired_at; no foreign keys | none (retention job `licence_evidence`) |
-| `public.data_export_requests` | user_id, status, requested_at, ready_at, expires_at, storage_path | own rows without the path |
+| `public.data_export_requests` | user_id, status (queued, ready), requested_at, ready_at, expires_at, storage_path, size_bytes | own rows without the path, through `list_my_data_exports` |
 | `private.notification_kinds` | kind, mandatory, default_email, audience, label | via `notification_kind_catalogue()` |
 
 Storage: private buckets `partner-documents` (licence evidence, PDF/JPEG/PNG, 15 MB, through `document-url` and `scan-document`) and `dsar-exports` (signed link by `account-ops`).
