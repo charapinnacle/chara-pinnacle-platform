@@ -451,7 +451,10 @@ select is(
    from public.partner_licences where id = :'lic'),
   't|skipped|t', 'it becomes the evidence and the previous columns are cleared'
 );
-select is(pg_temp.removals(:'path_png'), 1, 'the superseded file is queued for removal only now');
+select is(
+  pg_temp.removals(:'path_png') || ':' || (select cause from private.retired_licence_evidence where storage_path = :'path_png'), '0:replaced',
+  'the superseded file is retired for the licence_evidence period instead of being removed at once (FR-S3)'
+);
 
 select is(pg_temp.grant_upload(:'ow', :'lic', 'image/png', 5000), 'ok', 'a third replacement is reserved and never uploaded');
 select current_setting('t.result') as path_f \gset
@@ -488,8 +491,11 @@ update private.settings set value = '30' where key = 'rate_limit_document_access
 select is(pg_temp.grant_upload(:'ow', :'lic', 'application/pdf', 6000), 'ok', 'a replacement is pending when the entry is deleted');
 select current_setting('t.result') as path_d \gset
 select is(pg_temp.run(:'ow', format('public.delete_partner_licence(%L)', :'lic')), 'ok', 'the owner deletes the entry with its file');
-select is(pg_temp.removals(:'path_d') || ':' || pg_temp.removals(:'path_s'), '1:1',
-  'the pending and the previous file are both queued for removal through account-ops');
+select is(
+  pg_temp.removals(:'path_d') || ':' || pg_temp.removals(:'path_s') || ':'
+    || (select cause from private.retired_licence_evidence where storage_path = :'path_s'), '1:0:removed',
+  'the pending file is queued for removal through account-ops; the scanned previous one is retired for its period (FR-S3)'
+);
 select is((select count(*)::integer from audit.partner_document_access_log where licence_id = :'lic'), 4,
   'the access log outlives the entry');
 
