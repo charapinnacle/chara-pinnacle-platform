@@ -630,6 +630,31 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"partner_review_decisions": {
+                  Row: {
+                    "decided_at": string,"decided_by": string,"decision": string,"from_status": Database["public"]['Enums']["partner_review_status"],"id": number,"info_step": string | null,"organization_id": string,"reason": string,"submitted_at": string,"to_status": Database["public"]['Enums']["partner_review_status"]
+                  }
+                  Insert: {
+                    "decided_at"?: string,"decided_by": string,"decision": string,"from_status": Database["public"]['Enums']["partner_review_status"],"id"?: never,"info_step"?: string | null,"organization_id": string,"reason": string,"submitted_at": string,"to_status": Database["public"]['Enums']["partner_review_status"]
+                  }
+                  Update: {
+                    "decided_at"?: string,"decided_by"?: string,"decision"?: string,"from_status"?: Database["public"]['Enums']["partner_review_status"],"id"?: never,"info_step"?: string | null,"organization_id"?: string,"reason"?: string,"submitted_at"?: string,"to_status"?: Database["public"]['Enums']["partner_review_status"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "partner_review_decisions_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_review_decisions_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"passport_shares": {
                   Row: {
                     "application_id": string,"consent_id": number,"created_at": string,"expires_at": string | null,"id": string,"organization_id": string,"revoked_at": string | null,"scope": NonNullable<Json>,"worker_user_id": string
@@ -1074,6 +1099,9 @@ isOneToOne: false
               "count": number,"status": Database["public"]['Enums']["application_status"]
             }[]
                            },
+"admin_decide_partner":
+{ Args: { "p_decision": string,"p_info_step"?: string,"p_org": string,"p_reason": string }; Returns: Json
+                           },
 "admin_export_legal_documents":
 { Args: { "p_after_slug"?: string,"p_after_version"?: number,"p_limit"?: number }; Returns: {
               "body": string,"change_summary": string,"is_draft": boolean,"published_at": string,"slug": string,"title": string,"version": number
@@ -1087,6 +1115,11 @@ isOneToOne: false
 "admin_get_organization":
 { Args: { "p_org": string }; Returns: {
               "display_name": string,"id": string,"legal_name": string,"members": Json,"slug": string,"status": Database["public"]['Enums']["organization_status"],"vacancies": Json
+            }[]
+                           },
+"admin_get_partner_review":
+{ Args: { "p_org": string }; Returns: {
+              "based_in_country": string,"commitment": Json,"created_at": string,"decisions": Json,"description": string,"display_name": string,"due_at": string,"founded_year": number,"geographies": Json,"id": string,"identifier_links": Json,"industries": Json,"industry_code": string,"info_step": string,"languages": Json,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"listed_at": string,"occupations": Json,"owner_email": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"review_status": Database["public"]['Enums']["partner_review_status"],"service_types": Json,"status": Database["public"]['Enums']["organization_status"],"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
             }[]
                            },
 "admin_get_report":
@@ -1117,6 +1150,11 @@ isOneToOne: false
 "admin_list_partner_licences":
 { Args: { "p_org": string }; Returns: {
               "confirmed_at": string,"country_code": string,"created_at": string,"evidence_mime": string,"evidence_scan_status": string,"evidence_size_bytes": number,"id": string,"issuing_authority": string,"licence_number": string,"partner_terms_version": number,"status": string,"updated_at": string,"valid_until": string
+            }[]
+                           },
+"admin_list_partner_reviews":
+{ Args: { "p_after_at"?: string,"p_after_id"?: string,"p_limit"?: number }; Returns: {
+              "based_in_country": string,"display_name": string,"due_at": string,"id": string,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"owner_email": string,"review_status": Database["public"]['Enums']["partner_review_status"],"same_identifier": boolean,"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string
             }[]
                            },
 "admin_list_reports":
@@ -1422,6 +1460,11 @@ isOneToOne: false
                            },
 "partner_document_set_scan_status":
 { Args: { "p_licence": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
+                           },
+"partner_review_outcome":
+{ Args: { "p_org": string }; Returns: {
+              "decided_at": string,"decision": string,"info_step": string,"reason": string
+            }[]
                            },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {
