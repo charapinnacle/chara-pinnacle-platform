@@ -161,7 +161,7 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
     expect(unmirrored.status).toBe(1);
     expect(unmirrored.stderr).toContain("Go-live check failed: plan staffing_partner has no stored price reference");
 
-    const { markets: _markets, ...withoutMarkets } = PARTNER_LIMITS;
+    const withoutMarkets = Object.fromEntries(Object.entries(PARTNER_LIMITS).filter(([key]) => key !== "markets"));
     const missingRow = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner({ limits: withoutMarkets, stripe_amount: 5800 })], NO_GAPS);
     expect(missingRow.status).toBe(1);
     expect(missingRow.stderr).toContain("plan staffing_partner has no limit row for markets");
