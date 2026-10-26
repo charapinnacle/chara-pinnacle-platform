@@ -31,7 +31,7 @@ describe("prices", () => {
 });
 
 describe("the disclosures before the redirect (FR-G2 AC2)", () => {
-  it("states the five things for an organisation that is eligible for a trial", () => {
+  it("states the six things for an organisation that is eligible for a trial (FR-G2 AC2, FR-R1 AC6)", () => {
     expect(checkoutDisclosures(BASIC, false)).toEqual([
       { title: "Trial period", text: "30 days free, starting when you confirm your payment details." },
       { title: "Price after the trial", text: "EUR 39.00 per month, excluding VAT." },
@@ -41,6 +41,10 @@ describe("the disclosures before the redirect (FR-G2 AC2)", () => {
         text: "When the trial ends, your subscription converts to the paid Basic plan and your payment method is charged automatically.",
       },
       { title: "How to cancel", text: "Open Manage billing on the billing page and cancel before the trial ends, and you are not charged." },
+      {
+        title: "Commitment",
+        text: "A card is needed to start. There is no long-term commitment: the subscription runs from month to month until you cancel.",
+      },
     ]);
   });
 
@@ -50,7 +54,7 @@ describe("the disclosures before the redirect (FR-G2 AC2)", () => {
 
   it("shows no trial period, and says the first payment is due at once, for a company that had its trial", () => {
     const items = checkoutDisclosures(BASIC, true);
-    expect(items.map((item) => item.title)).toEqual(["Trial period", "Price", "Billing frequency", "Automatic conversion", "How to cancel"]);
+    expect(items.map((item) => item.title)).toEqual(["Trial period", "Price", "Billing frequency", "Automatic conversion", "How to cancel", "Commitment"]);
     expect(items[0].text).toBe(
       "There is no free trial: a free trial has already been used for this company, so the first payment is due at once.",
     );

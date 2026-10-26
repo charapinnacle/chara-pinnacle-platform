@@ -44,7 +44,7 @@ beforeEach(() => {
 describe("startCheckout", () => {
   it("checks the role in the database, sends the shown terms and trial to the function and goes to the hosted page", async () => {
     await expect(startCheckout(input)).rejects.toThrow("REDIRECT:https://checkout.stripe.com/c/pay/cs_1");
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin", { partner: "either" });
     expect(requestMock).toHaveBeenCalledWith({
       action: "checkout",
       orgId: ORG,
@@ -69,6 +69,7 @@ describe("startCheckout", () => {
     [refusal(409, "trial_changed"), "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue."],
     [refusal(403, "already_subscribed"), "Your organization already has a subscription. Use Manage billing to change it."],
     [refusal(403, "plan_not_sold"), "This plan cannot be bought online."],
+    [refusal(403, "plan_not_for_org_type"), "This plan is for another type of company. Choose one of the plans on your billing page."],
     [refusal(403, "organization_suspended"), "This organization is suspended, so it cannot start a subscription."],
     [refusal(502), "We could not start the checkout. Nothing was charged. Try again."],
     [refusal(0), "We could not start the checkout. Nothing was charged. Try again."],
@@ -118,6 +119,7 @@ describe("openPortal", () => {
   it("opens the portal of the organization the role was checked for", async () => {
     requestMock.mockResolvedValue({ url: "https://billing.stripe.com/p/session/s_1" });
     await expect(openPortal("acme")).rejects.toThrow("REDIRECT:https://billing.stripe.com/p/session/s_1");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "admin", { partner: "either" });
     expect(requestMock).toHaveBeenCalledWith({ action: "portal", orgId: ORG });
   });
 

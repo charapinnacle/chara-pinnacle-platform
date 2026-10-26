@@ -82,6 +82,12 @@ describe("the plan summary (FR-G5 AC1, AC4, AC5, AC9)", () => {
     expect(text(html)).not.toContain("Basic");
   });
 
+  it("tells a lapsed partner that its profile and everything it entered stay (FR-R1)", () => {
+    const html = text(renderToStaticMarkup(<PlanSummary subscription={subscription({ status: "canceled" })} plan={undefined} partner />));
+    expect(html).toContain("Free plan. Your company profile stays as it is and nothing you entered is deleted.");
+    expect(html).not.toContain("applicants");
+  });
+
   it("shows the free plan and No subscription for an organisation that never subscribed", () => {
     const html = text(renderToStaticMarkup(<PlanSummary subscription={null} plan={undefined} />));
     expect(html).toContain("Plan Free plan Status No subscription");

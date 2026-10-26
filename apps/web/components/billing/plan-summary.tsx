@@ -5,11 +5,12 @@ import { DetailList } from "@/components/layout/detail-list";
 import { planFacts, subscriptionStatusLabels, subscriptionStatusTones, type SoldPlan } from "@/lib/billing/presentation";
 import type { Subscription } from "@/lib/dal/billing";
 
-type PlanSummaryProps = { subscription: Subscription | null; plan: SoldPlan | undefined };
+type PlanSummaryProps = { subscription: Subscription | null; plan: SoldPlan | undefined; partner?: boolean };
 
 // The plan, its state and the dates that go with it. No subscription row means the free plan of the organisation; only
-// canceled rows mean a lapsed plan, which keeps read access to past applicants (FR-G4).
-export function PlanSummary({ subscription, plan }: PlanSummaryProps) {
+// canceled rows mean a lapsed plan, which keeps read access to past applicants (FR-G4); a lapsed partner keeps its
+// listed profile and everything it entered (FR-R1 lapse).
+export function PlanSummary({ subscription, plan, partner = false }: PlanSummaryProps) {
   const live = subscription !== null && subscription.status !== "canceled";
   const items = live
     ? [
@@ -42,7 +43,11 @@ export function PlanSummary({ subscription, plan }: PlanSummaryProps) {
         </ul>
       ) : subscription ? (
         <>
-          <p className="text-body">Free plan with read-only access to past applicants.</p>
+          <p className="text-body">
+            {partner
+              ? "Free plan. Your company profile stays as it is and nothing you entered is deleted."
+              : "Free plan with read-only access to past applicants."}
+          </p>
           <TextLink standalone href="#plans">
             Choose a plan
           </TextLink>

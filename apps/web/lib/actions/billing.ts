@@ -18,6 +18,7 @@ const REASONS: Record<string, string> = {
   organization_suspended: "This organization is suspended, so it cannot start a subscription.",
   unknown_plan: "This plan cannot be bought online.",
   plan_not_sold: "This plan cannot be bought online.",
+  plan_not_for_org_type: "This plan is for another type of company. Choose one of the plans on your billing page.",
   terms_not_published: "The Subscription and Billing Terms are not available yet. Try again later.",
   terms_version_mismatch: "The Subscription and Billing Terms changed. Reload this page to read the current version.",
   trial_changed: "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue.",
@@ -50,7 +51,7 @@ export async function startCheckout(input: CheckoutInput): Promise<BillingResult
   const parsed = checkoutInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { slug, ...fields } = parsed.data;
-  const { organization } = await requireOrgRole(defaultLocale, slug, "admin");
+  const { organization } = await requireOrgRole(defaultLocale, slug, "admin", { partner: "either" });
 
   const session = await requestHostedSession({
     action: "checkout",
@@ -71,7 +72,7 @@ export async function startCheckout(input: CheckoutInput): Promise<BillingResult
 export async function openPortal(slug: string): Promise<BillingResult | undefined> {
   const parsed = slugSchema.safeParse(slug);
   if (!parsed.success) return { message: BILLING_FAILURE };
-  const { organization } = await requireOrgRole(defaultLocale, parsed.data, "admin");
+  const { organization } = await requireOrgRole(defaultLocale, parsed.data, "admin", { partner: "either" });
 
   const session = await requestHostedSession({ action: "portal", orgId: organization.id });
   if ("url" in session) redirect(session.url);

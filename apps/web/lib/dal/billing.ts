@@ -1,6 +1,8 @@
 import "server-only";
 import * as z from "zod";
+import type { OrganizationType } from "@/lib/billing/limits";
 import type { SoldPlan, SubscriptionStatus } from "@/lib/billing/presentation";
+import { PLAN_LIMIT_KEYS, type PlanLimitKey } from "@/lib/billing/pricing";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { env } from "@/lib/env";
 import { serverEnv } from "@/lib/env.server";
@@ -31,7 +33,6 @@ const subscriptionSchema = z.object({
   past_due_since: z.string().nullable(),
 });
 
-const shownKeys = ["active_jobs", "members"] as const;
 
 const usageSchema = z.array(
   z.object({ limit_key: z.string(), used: z.number(), limit_value: z.number().nullable() }),
@@ -49,11 +50,11 @@ export type Subscription = {
   pastDueSince: string | null;
 };
 
-export type Usage = { key: (typeof shownKeys)[number]; used: number; limit: number | null };
+export type Usage = { key: PlanLimitKey; used: number; limit: number | null };
 
-// The plans a company can buy online: public, priced and not for contact.
-export async function listSoldPlans(): Promise<SoldPlan[]> {
-  return (await listPublicPlans()).filter((plan) => !plan.contactSales && plan.priceMinor > 0);
+// The plans a company of the given type can buy online: public, priced and not for contact.
+export async function listSoldPlans(orgType: OrganizationType = "employer"): Promise<SoldPlan[]> {
+  return (await listPublicPlans(orgType)).filter((plan) => !plan.contactSales && plan.priceMinor > 0);
 }
 
 export async function getBillingState(organizationId: string): Promise<BillingState> {
@@ -85,19 +86,19 @@ export async function getSubscription(organizationId: string): Promise<Subscript
   };
 }
 
-function isShownKey(key: string): key is Usage["key"] {
-  return (shownKeys as readonly string[]).includes(key);
-}
-
-// The open vacancies and the team members against the limits of the plan (null is unlimited). billing_usage also returns
-// the keys of later releases, which the page shows once their features are released.
-export async function getUsage(organizationId: string): Promise<Usage[]> {
+// The usage against the limits of the plan (null is unlimited) for the keys the plans of the organisation's type list:
+// open vacancies and team members for an employer, the workforce profile and the team for a partner. billing_usage also
+// returns the keys of later releases, which the page shows once their features are released.
+export async function getUsage(organizationId: string, orgType: OrganizationType = "employer"): Promise<Usage[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("billing_usage", { p_org: organizationId });
   if (error) throw new Error("The usage could not be loaded", { cause: error });
-  return usageSchema
-    .parse(data)
-    .flatMap((row) => (isShownKey(row.limit_key) ? [{ key: row.limit_key, used: row.used, limit: row.limit_value }] : []));
+  const keys: readonly PlanLimitKey[] = PLAN_LIMIT_KEYS[orgType];
+  const rows = usageSchema.parse(data);
+  return keys.flatMap((key) => {
+    const row = rows.find((candidate) => candidate.limit_key === key);
+    return row ? [{ key, used: row.used, limit: row.limit_value }] : [];
+  });
 }
 
 const answerSchema = z.object({
