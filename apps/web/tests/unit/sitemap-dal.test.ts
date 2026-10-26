@@ -26,7 +26,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { listPublishedLegalSlugs, listSitemapVacancies } = await import("@/lib/dal/sitemap");
+const { listPublishedLegalSlugs, listSitemapPartners, listSitemapVacancies } = await import("@/lib/dal/sitemap");
 
 const entry = (n: number) => ({
   id: `0a1b2c3d-0000-4000-8000-${String(n).padStart(12, "0")}`,
@@ -102,5 +102,40 @@ describe("listPublishedLegalSlugs", () => {
   it("throws when the read fails", async () => {
     results = [{ data: null, error: { code: "42501", message: "permission denied" } }];
     await expect(listPublishedLegalSlugs(["privacy-policy"])).rejects.toThrow("The legal pages of the sitemap could not be loaded");
+  });
+});
+
+describe("listSitemapPartners (FR-K4 AC7)", () => {
+  const partner = (n: number) => ({ slug: `partner-${String(n).padStart(5, "0")}`, updated_at: `2026-10-${String((n % 28) + 1).padStart(2, "0")}T08:00:00+00:00` });
+  const partners = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => partner(from + index));
+
+  it("reads page after page after the slug of the last entry until an empty page", async () => {
+    results = [
+      { data: partners(1, 5000), error: null },
+      { data: partners(5001, 5002), error: null },
+      { data: [], error: null },
+    ];
+    const listed = await listSitemapPartners(49_000);
+    expect(listed).toHaveLength(5002);
+    expect(listed[0]).toEqual({ slug: "partner-00001", updatedAt: partner(1).updated_at });
+    expect(calls.map((call) => call.args)).toEqual([
+      { p_after_slug: undefined, p_limit: 49_000 },
+      { p_after_slug: "partner-05000", p_limit: 44_000 },
+      { p_after_slug: "partner-05002", p_limit: 43_998 },
+    ]);
+    expect(calls.every((call) => call.name === "list_sitemap_partners")).toBe(true);
+  });
+
+  it("returns an empty list when the function gives none (release off) and asks once", async () => {
+    results = [{ data: [], error: null }];
+    expect(await listSitemapPartners(100)).toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("throws when the read fails or the answer has another shape", async () => {
+    results = [{ data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } }];
+    await expect(listSitemapPartners(100)).rejects.toThrow("The partner profiles of the sitemap could not be loaded");
+    results = [{ data: [{ slug: 5 }], error: null }];
+    await expect(listSitemapPartners(100)).rejects.toThrow();
   });
 });
