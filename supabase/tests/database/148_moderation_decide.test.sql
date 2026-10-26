@@ -1,5 +1,5 @@
 begin;
-select plan(163);
+select plan(183);
 
 \ir status_fixture.inc
 
@@ -293,38 +293,71 @@ select is(pg_temp.decide(:'st_trust', 'hide', 'An employer has no profile.', nul
 update private.settings set value = 'false' where key = 'release_partner_directories';
 select is(pg_temp.decide(:'st_trust', 'hide', 'Hidden for misleading claims.', :rep_alpha), 'P0001|CHARA_FORBIDDEN|release_off',
   'a partner profile is not decided on while release 2a is off');
+select is(pg_temp.decide(:'st_trust', 'dismiss', 'Nothing breaks the rules here.', :target_a), 'P0001|CHARA_FORBIDDEN|release_off',
+  'no report is decided with moderation_decide while release 2a is off (the console keeps the Phase 1 moves)');
+select is(pg_temp.run(:'st_admin', format('select * from public.admin_get_partner_moderation(%L)', :'alpha'), 'aal2'), 'P0002|CHARA_NOT_FOUND|',
+  'the staff read of a partner is not found while release 2a is off');
 update private.settings set value = 'true' where key = 'release_partner_directories';
 select is(pg_temp.writes(), :'before_roles', 'the refused choices wrote nothing');
+
+-- Nobody decides on their own organisation ----------------------------------------------------------------------------------
+
+\set tsm '00000000-0000-0000-0000-0000000f2710'
+\set tsi '00000000-0000-0000-0000-0000000f2711'
+select pg_temp.new_user(:'tsm');
+select pg_temp.new_user(:'tsi', 'company', 'Invited.Moderator@Example.TEST');
+update public.profiles set account_kind = 'company' where id in (:'tsm', :'tsi');
+insert into public.platform_staff (user_id, role) values (:'tsm', 'trust_safety'), (:'tsi', 'trust_safety');
+insert into public.organization_members (organization_id, user_id, role, accepted_at) values (:'alpha', :'tsm', 'member', now());
+insert into public.organization_invitations (organization_id, email, role, token_hash)
+values (:'gamma', 'invited.moderator@example.test', 'member', repeat('b', 64));
+select pg_temp.writes() as before_own \gset
+select is(pg_temp.decide(:'tsm', 'unhide', 'Unhide my own company.', null, 'partner_profile', :'alpha'), 'P0001|CHARA_FORBIDDEN|own_organization',
+  'a Trust & Safety member of Alpha cannot unhide its profile');
+select is(pg_temp.decide(:'tsm', 'dismiss', 'Nothing wrong with my company.', :rep_alpha), 'P0001|CHARA_FORBIDDEN|own_organization',
+  'nor dismiss a report about it');
+select is(pg_temp.decide(:'tsm', 'reinstate_organization', 'Reinstate my own company.', null, 'organization', :'alpha'), 'P0001|CHARA_FORBIDDEN|own_organization',
+  'nor reinstate it');
+select is(pg_temp.decide(:'tsi', 'suspend_organization', 'Suspend the company that invited me.', null, 'organization', :'gamma'), 'P0001|CHARA_FORBIDDEN|own_organization',
+  'a Trust & Safety user with an open invitation to Gamma (address in another case) cannot decide on it');
+select is(pg_temp.writes(), :'before_own', 'the refused own-organisation decisions wrote nothing');
+select is(
+  (select count(*) from pg_proc where proname = 'admin_decide_partner' and prosrc ~ 'private\.is_own_organization\(v_uid, p_org\)'
+     and prosrc !~ 'organization_identifier_links'),
+  1::bigint, 'admin_decide_partner reads the same own-organisation condition'
+);
+delete from public.organization_invitations where organization_id = :'gamma';
 
 -- AC4, AC8: a hide with ten characters ---------------------------------------------------------------------------------------
 
 update public.notification_preferences set email_kinds = '{"moderation_decision": false}' where user_id = :'padm';
 insert into public.notification_preferences (user_id, email_kinds) values (:'padm', '{"moderation_decision": false}') on conflict (user_id) do nothing;
 select coalesce(max(id), 0) as audit_base from audit.log \gset
-select is(pg_temp.decide(:'st_trust', 'hide', 'Misleading.', :rep_alpha), 'ok', 'AC4: ten characters are accepted');
+select is(char_length('Misleading'), 10, 'the boundary statement has exactly ten characters');
+select is(pg_temp.decide(:'st_trust', 'hide', 'Misleading', :rep_alpha), 'ok', 'AC4: ten characters are accepted');
 select is(current_setting('t.status'), 'actioned', 'the answer says the report is actioned');
 select is(
   (select format('%s|%s|%s|%s|%s|%s', target_type, target_id, action, statement_of_reasons, actor_id, report_id)
    from public.moderation_actions where id = current_setting('t.action')::bigint),
-  format('partner_profile|%s|content_hidden|Misleading.|%s|%s', :'alpha', :'st_trust', :rep_alpha),
+  format('partner_profile|%s|content_hidden|Misleading|%s|%s', :'alpha', :'st_trust', :rep_alpha),
   'AC4: one moderation_actions row (partner_profile, content_hidden) with the reasons, the actor and the report'
 );
 select is((select moderation_state::text from public.organizations where id = :'alpha'), 'hidden', 'the partner profile is hidden');
 select is(
   (select string_agg(format('%s|%s|%s|%s', action, entity_type, metadata ->> 'reason', metadata ->> 'report_id'), ';' order by id)
    from audit.log where id > :audit_base and action = 'partner_profile.hide'),
-  format('partner_profile.hide|partner_profile|Misleading.|%s', :rep_alpha),
+  format('partner_profile.hide|partner_profile|Misleading|%s', :rep_alpha),
   'AC4: the decision is audited with the reasons and the report id in the metadata'
 );
 select is(
   (select format('%s|%s|%s|%s|%s', metadata ->> 'from', metadata ->> 'to', metadata ->> 'decision', metadata ->> 'reason',
                  metadata ->> 'moderation_action_id' = current_setting('t.action'))
    from audit.log where id > :audit_base and action = 'report.actioned' and entity_id = :rep_alpha::text),
-  'new|actioned|hide|Misleading.|t', 'the closing of the report is audited with the decision'
+  'new|actioned|hide|Misleading|t', 'the closing of the report is audited with the decision'
 );
 select is(
   (select format('%s|%s|%s|%s', status, handled_by, handled_at is not null, resolution_note) from public.reports where id = :rep_alpha),
-  format('actioned|%s|t|Misleading.', :'st_trust'), 'AC4, FR-J3 AC9: the report is actioned with the reasons as its note'
+  format('actioned|%s|t|Misleading', :'st_trust'), 'AC4, FR-J3 AC9: the report is actioned with the reasons as its note'
 );
 select is(
   pg_temp.call_as(null, 'anon', $$select * from public.get_partner_profile('alpha-recruit', p_key => repeat('b', 64))$$, 'aal1'),
@@ -346,7 +379,7 @@ select is(
 select is(
   (select n.payload from public.notifications n where n.kind = 'moderation_decision' and n.user_id = :'pow'),
   jsonb_build_object('target_type', 'partner_profile', 'target_id', :'alpha', 'title', 'Alpha Recruit', 'org_slug', 'alpha-recruit',
-    'decision', 'hide', 'reasons', 'Misleading.', 'moderation_action_id', current_setting('t.action')::bigint),
+    'decision', 'hide', 'reasons', 'Misleading', 'moderation_action_id', current_setting('t.action')::bigint),
   'AC8: the payload holds the target, its title, the decision, the reasons and the decision id only'
 );
 select is(
@@ -359,7 +392,7 @@ select is(
 );
 select is(
   (select e ->> 'status' || '|' || (e ->> 'resolution_note') from jsonb_array_elements(pg_temp.result()) e limit 1),
-  'actioned|Misleading.', 'AC8: the signed-in reporter sees the outcome and the note in list_my_reports'
+  'actioned|Misleading', 'AC8: the signed-in reporter sees the outcome and the note in list_my_reports'
 );
 
 -- AC11: the second decision on the same report ------------------------------------------------------------------------------
@@ -378,6 +411,8 @@ select is(pg_temp.decide(:'trust_b', 'hide', 'Hide it once more.', null, 'partne
 create extension if not exists dblink schema extensions;
 select extensions.dblink_connect('other',
   format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
+-- A run that stopped midway leaves its committed reports behind; they go first.
+select extensions.dblink_exec('other', $$delete from public.reports where content_path like '/en/v27-raced%'$$);
 select id as raced from extensions.dblink('other',
   $$insert into public.reports (target_type, content_path, category, details, good_faith_confirmed)
     values ('content', '/en/v27-raced', 'other', 'Two staff members decide on this report at once.', true) returning id$$) as t (id bigint) \gset
@@ -400,8 +435,47 @@ select is(
   (select count(*) from audit.log where action like 'report.%' and entity_id = :raced::text), 0::bigint,
   'AC11: the refused decision wrote no audit row'
 );
-select extensions.dblink_exec('other', format('delete from public.reports where id = %s', :raced));
+-- The other way round: this session dismisses while the other session's decision (an action) is in progress.
+select id as raced2 from extensions.dblink('other',
+  $$insert into public.reports (target_type, content_path, category, details, good_faith_confirmed)
+    values ('content', '/en/v27-raced-2', 'other', 'One staff member acts while another dismisses.', true) returning id$$) as t (id bigint) \gset
+select extensions.dblink_exec('other', 'begin');
+select x from extensions.dblink('other', format('select 1 from public.reports where id = %s for no key update', :raced2)) as t (x integer);
+set local lock_timeout = '300ms';
+select is(split_part(pg_temp.decide(:'trust_b', 'dismiss', 'Nothing to act on in this page.', :raced2), '|', 1), '55P03',
+  'AC11: a dismissal waits for an action in progress');
+reset lock_timeout;
+select extensions.dblink_exec('other', format(
+  $$update public.reports set status = 'actioned', handled_by = %L, handled_at = now(), resolution_note = 'Acted on by the first decider.' where id = %s$$,
+  :'st_trust', :raced2));
+select extensions.dblink_exec('other', 'commit');
+select is(pg_temp.decide(:'trust_b', 'dismiss', 'Nothing to act on in this page.', :raced2), 'P0001|CHARA_INVALID_STATE|actioned',
+  'AC11: and is refused once the action is committed');
+-- Clean-up of everything the other session committed, whatever happened above.
+select extensions.dblink_exec('other', 'rollback');
+select extensions.dblink_exec('other', $$delete from public.reports where content_path like '/en/v27-raced%'$$);
 select extensions.dblink_disconnect('other');
+
+-- A second report about what is already in effect -----------------------------------------------------------------------------
+
+select current_setting('t.action') as alpha_hide \gset
+select pg_temp.seed_report('partner_profile', 'misleading_or_fraud', :'alpha', p_reporter => :'fan') as rep_alpha2 \gset
+select count(*) as alpha_notices from pgmq.q_notifications q where q.message ->> 'organization_id' = :'alpha' \gset
+select is(pg_temp.decide(:'st_trust', 'hide', 'Same claims, already hidden.', :rep_alpha2), 'ok',
+  'a second report asking to hide the hidden profile is closed');
+select is(format('%s|%s', current_setting('t.status'), current_setting('t.action')), format('actioned|%s', :alpha_hide),
+  'it is actioned and the answer names the decision in effect');
+select is((select count(*) from public.moderation_actions where target_id = :'alpha'), 1::bigint, 'nothing is hidden twice: no second moderation action');
+select is((select count(*) from pgmq.q_notifications q where q.message ->> 'organization_id' = :'alpha'), :alpha_notices::bigint,
+  'the partner is not told again');
+select is(
+  (select format('%s|%s|%s', metadata ->> 'moderation_action_id', metadata ->> 'already_in_effect', metadata ->> 'decision')
+   from audit.log where action = 'report.actioned' and entity_id = :rep_alpha2::text),
+  format('%s|true|hide', :alpha_hide), 'the closing is audited with the decision in effect'
+);
+select is(
+  (select payload ->> 'outcome' from pg_temp.notice('moderation_decision', :'fan')), 'actioned', 'the second reporter is told action was taken'
+);
 
 -- AC12 (data): the partner reads the decision ---------------------------------------------------------------------------------
 
@@ -409,7 +483,7 @@ select is(pg_temp.run(:'pmem', format('select * from public.partner_profile_mode
 select is(
   (select format('%s|%s|%s', e ->> 'moderation_state', e ->> 'reasons', (e ->> 'moderation_action_id') = current_setting('t.action'))
    from jsonb_array_elements(pg_temp.result()) e),
-  'hidden|Misleading.|t', 'AC12: the member sees the hidden state, the reasons and the decision an appeal names'
+  'hidden|Misleading|t', 'AC12: the member sees the hidden state, the reasons and the decision an appeal names'
 );
 select is(pg_temp.run(:'gow', format('select * from public.partner_profile_moderation(%L)', :'alpha')), '42501|CHARA_FORBIDDEN|',
   'a competing partner does not read it');
@@ -569,6 +643,16 @@ select is(
 );
 select is((select count(*) from public.workforce_availability where organization_id = :'gamma'), :gamma_rows::bigint,
   'AC7: no row of Gamma is deleted');
+select pg_temp.seed_report('partner_profile', 'fee_demanded_from_worker', :'gamma') as rep_gamma2 \gset
+select count(*) as ops_before from pgmq.q_account_ops \gset
+select is(pg_temp.decide(:'trust_b', 'suspend_organization', 'Another fee demand by the same company.', :rep_gamma2), 'ok',
+  'a second report asking to suspend the suspended partner is closed');
+select is(
+  (select format('%s|%s', r.status, (select count(*) from public.moderation_actions a where a.target_id = :'gamma' and a.action = 'organization_suspended'))
+   from public.reports r where r.id = :rep_gamma2),
+  'actioned|1', 'it is actioned without a second suspension'
+);
+select is((select count(*) from pgmq.q_account_ops), :ops_before::bigint, 'the members are not signed out again');
 
 -- Staff read of every listing (DATA_MODEL 11.13) -----------------------------------------------------------------------------------
 

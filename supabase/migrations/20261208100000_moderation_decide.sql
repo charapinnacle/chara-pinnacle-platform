@@ -6,7 +6,10 @@
 --   (private.statement_of_reasons). With a report, the target is the report's and the report is closed in the same
 --   transaction (actioned or dismissed, the reasons as its resolution note); without one, it is a decision on staff's own
 --   finding. The report row is locked first, so of two decisions on one report the second finds it closed and is refused
---   with CHARA_INVALID_STATE and the status it now has.
+--   with CHARA_INVALID_STATE and the status it now has. Nobody decides on their own organisation
+--   (private.is_own_organization, shared with admin_decide_partner). A second report about an item already hidden or an
+--   organisation already suspended is closed actioned without acting again. Release 2a only: before it the console keeps
+--   the Phase 1 moves of admin_set_report_status.
 -- - The bodies of moderate_job, suspend_organization and reinstate_organization move to private functions that take the
 --   report, so the console and moderation_decide run the same code; the public functions keep their checks and results.
 -- - Partner profiles are hidden and unhidden on organizations.moderation_state (target partner_profile, actions
@@ -23,7 +26,7 @@
 --   when the report is stored, like due_at.
 -- - Staff read every availability listing of a partner, stale ones and those of a suspended or hidden partner included,
 --   through admin_get_partner_moderation (DATA_MODEL 11.13).
--- The partner parts answer only while release_partner_directories is on.
+-- moderation_decide, the staff read and the partner read answer only while release_partner_directories is on.
 
 -- Decision target ---------------------------------------------------------------------------------------------------------
 
@@ -569,7 +572,107 @@ $$;
 
 -- The decision -----------------------------------------------------------------------------------------------------------
 
--- One moderation decision of a Trust & Safety Administrator at aal2.
+-- Whether the organisation is the staff member's own: they belong to it, hold an open invitation to it (by the address of
+-- their account, in any case), or belong to an organisation that names the same legal-entity identifier. The condition of
+-- admin_decide_partner of 20261126100000, moved here so that partner reviews and moderation decisions share it: nobody
+-- decides on their own company.
+create function private.is_own_organization(p_uid uuid, p_org uuid) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (select 1 from public.organization_members m where m.organization_id = p_org and m.user_id = p_uid)
+    or exists (
+      select 1 from public.organization_invitations i join auth.users u on u.id = p_uid
+      where i.organization_id = p_org and i.accepted_at is null and i.expires_at > now()
+        and lower(i.email::text) = lower(u.email::text)
+    )
+    or exists (
+      select 1 from private.organization_identifier_links l
+      join public.organization_members m
+        on m.organization_id = case when l.organization_id = p_org then l.other_organization_id else l.organization_id end
+      where (l.organization_id = p_org or l.other_organization_id = p_org) and m.user_id = p_uid
+    )
+$$;
+
+revoke all on function private.is_own_organization(uuid, uuid) from public, anon, authenticated, service_role;
+
+-- admin_decide_partner of 20261126100000 with the own-organisation condition read from private.is_own_organization;
+-- everything else is unchanged.
+create or replace function public.admin_decide_partner(
+  p_org uuid, p_decision text, p_reason text, p_info_step text default null
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid;
+  v_reason text;
+  v_org public.organizations;
+  v_to public.partner_review_status;
+  v_decision_id bigint;
+begin
+  v_uid := private.assert_staff(array['trust_safety']::public.platform_role[]);
+  if not private.release_on('release_partner_directories') then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'release_off';
+  end if;
+  if p_decision is null or p_decision not in ('approve', 'request_info', 'decline') then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'decision';
+  end if;
+  v_reason := private.statement_of_reasons(p_reason);
+  if (p_decision = 'request_info') <> (p_info_step is not null)
+     or (p_info_step is not null and p_info_step not in ('company', 'where_you_serve', 'commitments')) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'info_step';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('partner_review_submission:' || p_org::text, 0));
+  select * into v_org from public.organizations o where o.id = p_org for update;
+  if not found or v_org.type not in ('recruitment_company', 'staffing_company') then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if private.is_own_organization(v_uid, p_org) then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'own_organization';
+  end if;
+  if v_org.review_status not in ('pending_review', 're_review') then
+    raise exception 'CHARA_INVALID_TRANSITION' using detail = v_org.review_status::text;
+  end if;
+
+  v_to := case p_decision when 'approve' then 'listed' when 'request_info' then 'info_requested' else 'declined'
+    end::public.partner_review_status;
+  update public.organizations
+  set review_status = v_to,
+      listed_at = case when p_decision = 'approve' then coalesce(listed_at, now()) else listed_at end,
+      info_step = p_info_step
+  where id = p_org;
+
+  insert into public.partner_review_decisions (
+    organization_id, decision, reason, info_step, from_status, to_status, submitted_at, decided_by
+  )
+  values (p_org, p_decision, v_reason, p_info_step, v_org.review_status, v_to, v_org.submitted_at, v_uid)
+  returning id into v_decision_id;
+
+  perform private.audit_admin('partner.review_decided', 'organization', p_org::text, v_reason,
+    jsonb_build_object('decision', p_decision, 'from', v_org.review_status, 'to', v_to, 'info_step', p_info_step));
+
+  perform private.queue_org_event(
+    p_org,
+    case p_decision when 'approve' then 'partner_approved' when 'request_info' then 'partner_info_requested'
+      else 'partner_declined' end,
+    jsonb_build_object('decision_id', v_decision_id),
+    'partner_review_decision:' || v_decision_id
+  );
+
+  return jsonb_build_object(
+    'review_status', v_to,
+    'listed_at', case when p_decision = 'approve' then coalesce(v_org.listed_at, now()) else v_org.listed_at end
+  );
+end;
+$$;
+
+-- One moderation decision of a Trust & Safety Administrator at aal2, while release 2a is on (before it, the console keeps
+-- the Phase 1 moves of admin_set_report_status).
 --   p_decision       hide, unhide, suspend_organization, reinstate_organization or dismiss
 --   p_reasons        the statement of reasons, 10 to 2,000 characters after trimming; sent to the affected party, and the
 --                    resolution note a signed-in reporter reads when a report is closed
@@ -578,14 +681,19 @@ $$;
 --                    and a report about a candidate or a page only that
 --   p_target_type,   without a report, the target of staff's own finding: job or partner_profile (hide, unhide) or
 --   p_target_id      organization (suspend_organization, reinstate_organization)
+-- Nobody decides on their own organisation (private.is_own_organization): the organisation of the report, of the vacancy
+-- or the target itself, for a dismissal too.
 -- The report is closed actioned (dismissed for dismiss) in the same transaction, with handled_by, handled_at and the
 -- reasons, and audited as report.actioned or report.dismissed; the target action writes its own moderation_actions and
--- audit rows, both naming the report. A signed-in reporter gets the moderation_decision notice with the outcome while
--- release 2a is on. A dismissal changes and notifies nothing of the reported party.
--- Answers the decision id (null for a dismissal) and the status the report now has (null without a report).
---   CHARA_FORBIDDEN (not Trust & Safety; detail aal2_required, release_off), CHARA_INVALID_INPUT (detail reason, decision,
---   target), CHARA_NOT_FOUND, CHARA_INVALID_STATE (detail the report status when the report is already closed, or the
---   state of the target: hidden, visible, org_suspended, active, suspended)
+-- audit rows, both naming the report. When a report asks for what an earlier decision already did (the item is hidden,
+-- the organisation suspended), it is closed actioned without acting again: the audit row names the decision in effect
+-- (moderation_action_id, already_in_effect) and nobody but the reporter is told. A signed-in reporter gets the
+-- moderation_decision notice with the outcome. A dismissal changes and notifies nothing of the reported party.
+-- Answers the decision id (the one in effect when nothing was done; null for a dismissal) and the status the report now
+-- has (null without a report).
+--   CHARA_FORBIDDEN (not Trust & Safety; detail aal2_required, release_off, own_organization), CHARA_INVALID_INPUT (detail
+--   reason, decision, target), CHARA_NOT_FOUND, CHARA_INVALID_STATE (detail the report status when the report is already
+--   closed, or the state of the target: hidden, visible, org_suspended, active, suspended)
 create function public.moderation_decide(
   p_decision text,
   p_reasons text,
@@ -600,14 +708,19 @@ as $$
 #variable_conflict use_column
 declare
   v_uid uuid := private.assert_staff(array['trust_safety']::public.platform_role[]);
-  v_reasons text := private.statement_of_reasons(p_reasons);
+  v_reasons text;
   v_report public.reports;
   v_type text := p_target_type;
   v_target uuid := p_target_id;
   v_org uuid;
   v_action bigint;
+  v_in_effect boolean := false;
   v_status public.report_status;
 begin
+  if not private.release_on('release_partner_directories') then
+    raise exception 'CHARA_FORBIDDEN' using detail = 'release_off';
+  end if;
+  v_reasons := private.statement_of_reasons(p_reasons);
   if p_decision is null or p_decision not in ('hide', 'unhide', 'suspend_organization', 'reinstate_organization', 'dismiss') then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'decision';
   end if;
@@ -620,10 +733,17 @@ begin
     if not found then
       raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
     end if;
+    v_org := coalesce(
+      v_report.organization_id,
+      (select j.organization_id from public.jobs j where j.id = v_report.job_id),
+      (select a.organization_id from public.job_applications a where a.id = v_report.application_id)
+    );
+    if v_org is not null and private.is_own_organization(v_uid, v_org) then
+      raise exception 'CHARA_FORBIDDEN' using detail = 'own_organization';
+    end if;
     if v_report.status not in ('new', 'in_review') then
       raise exception 'CHARA_INVALID_STATE' using detail = v_report.status::text;
     end if;
-    v_org := coalesce(v_report.organization_id, (select j.organization_id from public.jobs j where j.id = v_report.job_id));
     if p_decision = 'hide' and v_report.target_type in ('job', 'partner_profile') then
       v_type := v_report.target_type::text;
       v_target := case when v_report.target_type = 'job' then v_report.job_id else v_report.organization_id end;
@@ -641,9 +761,33 @@ begin
        or (p_target_type = 'organization' and p_decision in ('suspend_organization', 'reinstate_organization'))
      ) then
     raise exception 'CHARA_INVALID_INPUT' using detail = case when p_decision = 'dismiss' then 'decision' else 'target' end;
+  else
+    v_org := case when p_target_type = 'job' then (select j.organization_id from public.jobs j where j.id = p_target_id) else p_target_id end;
+    if v_org is not null and private.is_own_organization(v_uid, v_org) then
+      raise exception 'CHARA_FORBIDDEN' using detail = 'own_organization';
+    end if;
   end if;
 
-  if p_decision <> 'dismiss' then
+  -- A report that asks for what is already in effect. The rows are locked in the order of the actions (the organisation,
+  -- then the vacancy), so the state read here holds until the report is closed.
+  if p_report is not null and p_decision in ('hide', 'suspend_organization') then
+    perform 1 from public.organizations o where o.id = v_org for no key update;
+    v_in_effect := case
+      when p_decision = 'suspend_organization' then (select o.status = 'suspended' from public.organizations o where o.id = v_org)
+      when v_type = 'job' then (select j.moderation_state = 'hidden' from public.jobs j where j.id = v_target for no key update)
+      else (select o.moderation_state = 'hidden' from public.organizations o where o.id = v_target)
+    end;
+    if v_in_effect then
+      select a.id into v_action
+      from public.moderation_actions a
+      where a.target_type = v_type and a.target_id = v_target
+        and a.action = case v_type when 'job' then 'job_hidden' when 'partner_profile' then 'content_hidden' else 'organization_suspended' end
+      order by a.id desc
+      limit 1;
+    end if;
+  end if;
+
+  if p_decision <> 'dismiss' and not v_in_effect then
     v_action := case
       when v_type = 'job' then private.set_job_moderation(v_target, p_decision = 'hide', v_reasons, p_report)
       when v_type = 'partner_profile' then private.set_partner_profile_moderation(v_target, p_decision = 'hide', v_reasons, p_report)
@@ -661,10 +805,10 @@ begin
       'report.' || v_status::text, 'report', p_report::text, v_reasons,
       jsonb_strip_nulls(jsonb_build_object(
         'from', v_report.status, 'to', v_status, 'target_type', v_report.target_type, 'decision', p_decision,
-        'moderation_action_id', v_action
+        'moderation_action_id', v_action, 'already_in_effect', case when v_in_effect then true end
       ))
     );
-    if v_report.reporter_user_id is not null and private.release_on('release_partner_directories')
+    if v_report.reporter_user_id is not null
        and exists (select 1 from public.profiles p where p.id = v_report.reporter_user_id) then
       perform pgmq.send('notifications', jsonb_build_object(
         'kind', 'moderation_decision', 'user_id', v_report.reporter_user_id, 'mandatory', true, 'report_id', p_report,
@@ -757,7 +901,7 @@ grant execute on function public.admin_get_report(bigint) to authenticated;
 -- What staff need to decide on a partner: its state, every availability listing (stale ones and those of a suspended or
 -- hidden partner included, each flagged stale when it is older than workforce_listing_stale_days) and the latest 20
 -- decisions on its profile and on the organisation, each with the report it closed. Trust & Safety and, to read, the
--- Platform Administrator, at aal2. An employer or an unknown id is not found.
+-- Platform Administrator, at aal2. An employer, an unknown id and every partner while release 2a is off are not found.
 create function public.admin_get_partner_moderation(p_org uuid) returns table (
   organization_id uuid,
   organization_type public.organization_type,
@@ -777,6 +921,9 @@ begin
   perform private.assert_staff(array['trust_safety', 'admin']::public.platform_role[]);
   if p_org is null then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'organization';
+  end if;
+  if not private.release_on('release_partner_directories') then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
 
   return query
