@@ -162,7 +162,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
     await expect(rows.nth(1).getByRole("cell").nth(3)).toHaveText("30");
     await expect(rows.nth(1).getByRole("cell").nth(4)).toHaveText("21");
     await expect(rows.nth(2)).toContainText("Second Administrator");
-    await expect(rows.nth(2)).toContainText("members");
+    await expect(rows.nth(2).getByRole("cell").nth(2)).toHaveText("Team members");
     await expect(rows.nth(2).getByRole("cell").nth(3)).toHaveText("6");
     await expect(rows.nth(2).getByRole("cell").nth(4)).toHaveText("7");
     await expect(rows.nth(3)).toContainText("First change of the members");
@@ -207,7 +207,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
     expect(query<{ v: number }>(`select private.org_limit(${literal(team.id)}, 'members') as v`)[0].v).toBe(15);
   });
 
-  test("AC7: settings are changed within their rules after a confirmation; a release switch warns about its legal documents", async ({ page }) => {
+  test("AC7: settings are changed within their rules after a confirmation; a release switch is refused while its legal documents are drafts", async ({ page }) => {
     test.setTimeout(120_000);
     await signInStaff(page, "admin", "/en/admin/settings");
     await expect(page.getByRole("heading", { name: "Platform settings", level: 1 })).toBeVisible();
@@ -221,9 +221,9 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
     await releaseDialog.getByLabel("Value", { exact: true }).selectOption("true");
     await releaseDialog.getByRole("textbox", { name: "Reason for the change" }).fill("Go live with release 2a now");
     await releaseDialog.getByRole("button", { name: "Review change" }).click();
-    await expect(releaseDialog.getByText("Switching this on puts the release live for every visitor and user at once.")).toBeVisible();
-    await expect(releaseDialog.getByText("These legal documents are not approved yet")).toBeVisible();
-    await expect(releaseDialog.getByRole("button", { name: "Switch the release on" })).toBeVisible();
+    await expect(releaseDialog.getByText("The release cannot go live until these legal documents are approved:")).toBeVisible();
+    await expect(releaseDialog.getByText("privacy-policy: still a draft")).toBeVisible();
+    await expect(releaseDialog.getByRole("button", { name: "Switch the release on" })).toHaveCount(0);
     await expectNoAxeViolations(page);
     await releaseDialog.getByRole("button", { name: "Back" }).click();
     await releaseDialog.getByRole("button", { name: "Cancel" }).click();

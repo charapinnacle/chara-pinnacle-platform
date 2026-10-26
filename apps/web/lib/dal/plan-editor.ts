@@ -55,10 +55,10 @@ const fieldNames: Record<string, string> = {
   provider_product_ref: "Provider product",
 };
 
-// The field a history row names: the limit or feature key, else the plan columns that changed.
-function historyField(table: string | null, limitKey: string | null, featureKey: string | null, after: Json, before: Json): string {
-  if (limitKey) return limitKey;
-  if (featureKey) return featureKey;
+// The field a history row names: the catalogue label of the limit or feature (its key when the key left the catalogue),
+// else the plan columns that changed.
+function historyField(table: string | null, key: string | null, label: string | null, after: Json, before: Json): string {
+  if (key) return label ?? key;
   const changed = after && typeof after === "object" && !Array.isArray(after) ? after : before;
   const columns = changed && typeof changed === "object" && !Array.isArray(changed) ? Object.keys(changed) : [];
   if (table === "plans" && columns.length > 0 && columns.length <= 3) return columns.map((column) => fieldNames[column] ?? column).join(", ");
@@ -74,7 +74,7 @@ export async function listPlanHistory(code: string): Promise<PlanHistoryRow[]> {
     actorName: row.actor_name ?? null,
     table: row.table_name ?? "",
     operation: row.operation ?? "",
-    field: historyField(row.table_name ?? null, row.limit_key ?? null, row.feature_key ?? null, row.after, row.before),
+    field: historyField(row.table_name ?? null, row.limit_key ?? row.feature_key ?? null, row.label ?? null, row.after, row.before),
     before: row.before,
     after: row.after,
     reason: row.reason ?? null,

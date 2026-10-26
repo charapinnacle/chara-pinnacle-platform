@@ -3,6 +3,7 @@ import { historyValues } from "@/lib/admin/plan-history";
 import {
   changeLine,
   expiryInstant,
+  gapLines,
   isFutureDay,
   overrideFormSchema,
   planChanges,
@@ -96,7 +97,7 @@ describe("the changes a plan edit makes (FR-R2 AC10)", () => {
     const values = parse({ limits: { ...planFormValues(plan).limits, job_order_responses_per_month: { unlimited: false, value: "12" } } });
     const changes = planChanges(plan, values);
     expect(changes.lines.map(changeLine)).toEqual(["Job order responses per month: 10 -> 12"]);
-    expect(changes).toMatchObject({ plan: null, limits: [{ key: "job_order_responses_per_month", value: 12 }], features: [] });
+    expect(changes).toMatchObject({ plan: null, limits: [{ key: "job_order_responses_per_month", value: 12, expected: 10 }], features: [] });
   });
 
   it("sends the plan row when the name, the visibility or the trial changes, with every line in dialog order", () => {
@@ -108,7 +109,7 @@ describe("the changes a plan edit makes (FR-R2 AC10)", () => {
       features: { analytics_advanced: true, job_order_access: false },
     });
     const changes = planChanges(plan, values);
-    expect(changes.plan).toEqual({ name: "Basic Plus", isPublic: false, trialDays: 14 });
+    expect(changes.plan).toEqual({ name: "Basic Plus", isPublic: false, trialDays: 14, expected: { name: "Basic", isPublic: true, trialDays: 30 } });
     expect(changes.lines.map(changeLine)).toEqual([
       "Name: Basic -> Basic Plus",
       "Visibility: Public -> Not public",
@@ -119,12 +120,12 @@ describe("the changes a plan edit makes (FR-R2 AC10)", () => {
       "Job order access: On -> Off",
     ]);
     expect(changes.limits).toEqual([
-      { key: "markets", value: null },
-      { key: "workforce_listings", value: 25 },
+      { key: "markets", value: null, expected: 3 },
+      { key: "workforce_listings", value: 25, expected: null },
     ]);
     expect(changes.features).toEqual([
-      { key: "analytics_advanced", enabled: true },
-      { key: "job_order_access", enabled: false },
+      { key: "analytics_advanced", enabled: true, expected: false },
+      { key: "job_order_access", enabled: false, expected: true },
     ]);
   });
 
@@ -138,10 +139,10 @@ describe("the changes a plan edit makes (FR-R2 AC10)", () => {
     expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [], features: [], reason }).error?.issues[0]?.message).toBe(
       "Change at least one value",
     );
-    expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 1_000_001 }], features: [], reason }).success).toBe(
+    expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 1_000_001, expected: 3 }], features: [], reason }).success).toBe(
       false,
     );
-    expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: null }], features: [], reason }).success).toBe(true);
+    expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: null, expected: 3 }], features: [], reason }).success).toBe(true);
   });
 });
 
@@ -183,6 +184,10 @@ describe("settings (FR-R2 AC7)", () => {
     expect(settingValueText({ valueType: "text" }, "")).toBe("Not set");
     expect(ruleText(stats)).toBe("A whole number from 5 to 100.");
     expect(ruleText({ valueType: "email", min: null, max: null })).toBe("An email address.");
+  });
+
+  it("name the documents that stop a release going live, and only when it is switched on", () => {
+    expect(gapLines(["partner-terms:draft", "partner-dpa:missing"])).toEqual(["partner-terms: still a draft", "partner-dpa: not published"]);
   });
 
   it("warn before a release goes live while its legal documents are not approved, and only then", () => {

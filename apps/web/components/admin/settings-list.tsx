@@ -51,7 +51,7 @@ export async function SettingsList() {
         <Section
           id="releases"
           title="Releases"
-          description="Switching a release on puts its pages live for everyone at once. The go-live check stays the authority: it fails while a legal document of the release is not approved."
+          description="Switching a release on puts its pages live for everyone at once. It can be switched on only once every legal document of the release is approved; switching it off is always possible."
         >
           <SettingsTable caption="Release switches" rules={releases} release />
         </Section>

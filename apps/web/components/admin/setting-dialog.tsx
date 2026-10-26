@@ -23,7 +23,8 @@ const booleanOptions = [
 ];
 
 // Changes one allow-listed setting with a reason (FR-R2 AC7). The new value is confirmed before it is saved; turning a
-// release switch on says that the release goes live for everyone and names the legal documents that still stop it.
+// release switch on says that the release goes live for everyone, and is not offered while a legal document of the
+// release is not approved (the database refuses it then too).
 export function SettingDialog({ rule }: { rule: SettingRule }) {
   const [open, setOpen] = useState(false);
   return (
@@ -85,35 +86,35 @@ function SettingForm({ rule, onClose }: { rule: SettingRule; onClose: () => void
         <p id={confirmId} tabIndex={-1} className="text-body font-medium focus:outline-none">
           {rule.label}: {settingValueText(rule, rule.value)} -&gt; {settingValueText(rule, confirming)}
         </p>
-        {goesLive ? (
+        {goesLive && gaps.length > 0 ? (
+          <Notice tone="error" role="alert">
+            The release cannot go live until these legal documents are approved:
+            <ul className="mt-2 list-disc ps-5">
+              {gaps.map((gap) => (
+                <li key={gap}>{gap}</li>
+              ))}
+            </ul>
+          </Notice>
+        ) : goesLive ? (
           <Notice tone="warning" role="status">
-            Switching this on puts the release live for every visitor and user at once.
-            {gaps.length > 0 ? (
-              <>
-                {" "}These legal documents are not approved yet, so the go-live check fails until they are:
-                <ul className="mt-2 list-disc ps-5">
-                  {gaps.map((gap) => (
-                    <li key={gap}>{gap}</li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              " Run the go-live check before you switch it on."
-            )}
+            Switching this on puts the release live for every visitor and user at once. Run the go-live check before you switch it
+            on.
           </Notice>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <FormButton type="button" variant="secondary" onClick={() => setConfirming(null)}>
             Back
           </FormButton>
-          <FormButton
-            type="button"
-            variant={goesLive ? "destructive" : "primary"}
-            busy={formState.isSubmitting}
-            onClick={() => void handleSubmit(() => onConfirm(confirming))()}
-          >
-            {goesLive ? "Switch the release on" : "Save setting"}
-          </FormButton>
+          {goesLive && gaps.length > 0 ? null : (
+            <FormButton
+              type="button"
+              variant={goesLive ? "destructive" : "primary"}
+              busy={formState.isSubmitting}
+              onClick={() => void handleSubmit(() => onConfirm(confirming))()}
+            >
+              {goesLive ? "Switch the release on" : "Save setting"}
+            </FormButton>
+          )}
         </div>
       </div>
     );

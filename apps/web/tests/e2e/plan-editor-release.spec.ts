@@ -6,10 +6,10 @@ import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { newVisitor, signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
-// Release 2a is switched on through the settings editor, which is how a release goes live (DATA_MODEL.md section 1), and
-// the partner pricing and billing pages then follow a plan change at the next request (FR-R2 AC7, AC12). The switch and
+// The settings editor refuses release 2a while its legal texts are drafts (the go-live gate), and with the release on the
+// partner pricing and billing pages follow a plan change at the next request (FR-R2 AC7, AC12). The switch and
 // the plan rows are changed for the whole database, so this file is a project of its own after the other partner specs.
-test.describe("going live through the settings editor and the public pages after a plan change (FR-R2)", () => {
+test.describe("the go-live gate of the settings editor and the public pages after a plan change (FR-R2)", () => {
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(() => {
@@ -20,7 +20,7 @@ test.describe("going live through the settings editor and the public pages after
     setPartnerRelease(false);
   });
 
-  test("AC7: the release switch is turned on after its warning, and AC12: pricing and billing pages show the renamed plan and its new limit", async ({
+  test("AC7: the release switch is refused while its legal texts are drafts, and AC12: pricing and billing pages show the renamed plan and its new limit", async ({
     page,
     browser,
   }) => {
@@ -28,16 +28,25 @@ test.describe("going live through the settings editor and the public pages after
     setPartnerRelease(false);
     await signInStaff(page, "admin", "/en/admin/settings");
     const release = page.getByRole("region", { name: "Release switches" }).getByRole("row").filter({ hasText: "release_partner_directories" });
+    await expect(release).toContainText("not approved");
     await release.getByRole("button", { name: /^Change/ }).click();
     const dialog = page.getByRole("dialog", { name: /Release 2a/ });
     await dialog.getByLabel("Value", { exact: true }).selectOption("true");
     await dialog.getByRole("textbox", { name: "Reason for the change" }).fill("Release 2a accepted by the client");
     await dialog.getByRole("button", { name: "Review change" }).click();
-    await expect(dialog.getByText("Switching this on puts the release live for every visitor and user at once.")).toBeVisible();
-    await dialog.getByRole("button", { name: "Switch the release on" }).click();
-    await expect(page.getByText("Release 2a: partner accounts and directories is saved", { exact: true })).toBeVisible();
+    // The seeded legal texts of release 2a are drafts (privacy-policy among them, which every account has accepted, so a
+    // spec cannot publish approved versions without asking everyone to accept them again): the gate refuses the switch,
+    // and 135_plan_editor.test.sql proves it goes on once the texts are approved.
+    await expect(dialog.getByText("The release cannot go live until these legal documents are approved:")).toBeVisible();
+    await expect(dialog.getByText("partner-terms: still a draft")).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Switch the release on" })).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Back" }).click();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    expect(query<{ v: string }>(`select value #>> '{}' as v from private.settings where key = 'release_partner_directories'`)[0].v).toBe("false");
+
+    setPartnerRelease(true);
+    await page.reload();
     await expect(release).toContainText("Live");
-    expect(query<{ v: string }>(`select value #>> '{}' as v from private.settings where key = 'release_partner_directories'`)[0].v).toBe("true");
     await expect(page.getByRole("navigation", { name: "Administration" }).first().getByRole("link", { name: "Partner reviews" })).toBeVisible();
 
     const { user, id, slug } = await partnerWithCompany("recruitment_company");

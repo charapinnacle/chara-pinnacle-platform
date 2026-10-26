@@ -83,10 +83,13 @@ export function limitText(value: number | null): string {
 
 export type PlanChange = { label: string; from: string; to: string };
 
+type PlanFields = { name: string; isPublic: boolean; trialDays: number };
+
+// Each change carries the value the dialog showed, so a save from a stale page is refused instead of overwriting.
 export type PlanChanges = {
-  plan: { name: string; isPublic: boolean; trialDays: number } | null;
-  limits: { key: string; value: number | null }[];
-  features: { key: string; enabled: boolean }[];
+  plan: (PlanFields & { expected: PlanFields }) | null;
+  limits: { key: string; value: number | null; expected: number | null }[];
+  features: { key: string; enabled: boolean; expected: boolean }[];
   lines: PlanChange[];
 };
 
@@ -108,16 +111,17 @@ export function planChanges(plan: EditorPlan, values: PlanFormOutput): PlanChang
     const value = entry.unlimited ? null : Number(entry.value.trim());
     if (value === limit.value) return [];
     lines.push({ label: limit.label, from: limitText(limit.value), to: limitText(value) });
-    return [{ key: limit.key, value }];
+    return [{ key: limit.key, value, expected: limit.value }];
   });
   const features = plan.features.flatMap((feature) => {
     const enabled = values.features[feature.key] ?? feature.enabled;
     if (enabled === feature.enabled) return [];
     lines.push({ label: feature.label, from: feature.enabled ? "On" : "Off", to: enabled ? "On" : "Off" });
-    return [{ key: feature.key, enabled }];
+    return [{ key: feature.key, enabled, expected: feature.enabled }];
   });
 
-  return { plan: planChanged ? { name: values.name, isPublic: values.isPublic, trialDays } : null, limits, features, lines };
+  const expected = { name: plan.name, isPublic: plan.isPublic, trialDays: plan.trialDays };
+  return { plan: planChanged ? { name: values.name, isPublic: values.isPublic, trialDays, expected } : null, limits, features, lines };
 }
 
 export function changeLine(change: PlanChange): string {
@@ -127,18 +131,20 @@ export function changeLine(change: PlanChange): string {
 const planCodeSchema = z.string().regex(/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/).max(64);
 const keySchema = z.string().regex(/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/).max(64);
 
+const planFieldsSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name of 1 to 60 characters").max(60, "Enter a name of 1 to 60 characters"),
+  isPublic: z.boolean(),
+  trialDays: z.number().int().min(0).max(365),
+});
+
+const limitValueSchema = z.number().int().min(0).max(LIMIT_MAX).nullable();
+
 export const savePlanInputSchema = z
   .object({
     code: planCodeSchema,
-    plan: z
-      .object({
-        name: z.string().trim().min(1, "Enter a name of 1 to 60 characters").max(60, "Enter a name of 1 to 60 characters"),
-        isPublic: z.boolean(),
-        trialDays: z.number().int().min(0).max(365),
-      })
-      .nullable(),
-    limits: z.array(z.object({ key: keySchema, value: z.number().int().min(0).max(LIMIT_MAX).nullable() })).max(50),
-    features: z.array(z.object({ key: keySchema, enabled: z.boolean() })).max(50),
+    plan: planFieldsSchema.extend({ expected: planFieldsSchema }).nullable(),
+    limits: z.array(z.object({ key: keySchema, value: limitValueSchema, expected: limitValueSchema })).max(50),
+    features: z.array(z.object({ key: keySchema, enabled: z.boolean(), expected: z.boolean() })).max(50),
     reason: staffReasonSchema,
   })
   .refine((input) => input.plan !== null || input.limits.length > 0 || input.features.length > 0, {
@@ -240,10 +246,15 @@ export function settingValueText(rule: Pick<SettingRule, "valueType">, value: st
 }
 
 // A release switch is how a release goes live (DATA_MODEL.md section 1); the legal documents that still stop it are named
-// before the switch is turned on. The go-live check stays the authority.
+// before the switch is turned on, and the database refuses the switch while there is one.
 export function releaseWarning(rule: Pick<SettingRule, "releaseFeature" | "releaseGaps">, nextValue: string): string[] {
   if (!rule.releaseFeature || nextValue !== "true") return [];
-  return (rule.releaseGaps ?? []).map((gap) => {
+  return gapLines(rule.releaseGaps ?? []);
+}
+
+// The documents of the go-live gate, from "slug:state" items (the settings list, or the hint of a refusal).
+export function gapLines(gaps: readonly string[]): string[] {
+  return gaps.map((gap) => {
     const [slug, state] = gap.split(":");
     return `${slug}: ${state === "draft" ? "still a draft" : "not published"}`;
   });

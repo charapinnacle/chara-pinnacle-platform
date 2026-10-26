@@ -30,31 +30,44 @@ beforeEach(() => {
 });
 
 describe("savePlan (FR-R2 AC2, AC10)", () => {
-  it("asks for the administrator and saves the plan row, then each limit and feature, with the trimmed reason", async () => {
+  const plan = { name: "Basic Plus", isPublic: true, trialDays: 14, expected: { name: "Basic", isPublic: true, trialDays: 30 } };
+
+  it("asks for the administrator and saves the whole edit in one call with the shown values and the trimmed reason", async () => {
     expect(
       await savePlan({
         code: "recruitment_partner",
-        plan: { name: "Basic Plus", isPublic: true, trialDays: 14 },
+        plan,
         limits: [
-          { key: "job_order_responses_per_month", value: 12 },
-          { key: "markets", value: null },
+          { key: "job_order_responses_per_month", value: 12, expected: 10 },
+          { key: "markets", value: null, expected: 3 },
         ],
-        features: [{ key: "analytics_advanced", enabled: true }],
+        features: [{ key: "analytics_advanced", enabled: true, expected: false }],
         reason: `  ${reason}  `,
       }),
     ).toEqual({ done: true });
     expect(requireRoleMock).toHaveBeenCalledWith("en", ["admin"]);
     expect(rpcMock.mock.calls).toEqual([
-      ["admin_update_plan", { p_code: "recruitment_partner", p_name: "Basic Plus", p_is_public: true, p_trial_days: 14, p_reason: reason }],
-      ["admin_set_plan_limit", { p_code: "recruitment_partner", p_limit_key: "job_order_responses_per_month", p_value: 12, p_reason: reason }],
-      ["admin_set_plan_limit", { p_code: "recruitment_partner", p_limit_key: "markets", p_value: undefined, p_reason: reason }],
-      ["admin_set_plan_feature", { p_code: "recruitment_partner", p_feature_key: "analytics_advanced", p_enabled: true, p_reason: reason }],
+      [
+        "admin_update_plan_bundle",
+        {
+          p_code: "recruitment_partner",
+          p_changes: {
+            plan: { name: "Basic Plus", is_public: true, trial_days: 14, expected: { name: "Basic", is_public: true, trial_days: 30 } },
+            limits: [
+              { key: "job_order_responses_per_month", value: 12, expected: 10 },
+              { key: "markets", value: null, expected: 3 },
+            ],
+            features: [{ key: "analytics_advanced", enabled: true, expected: false }],
+          },
+          p_reason: reason,
+        },
+      ],
     ]);
     expect(revalidateMock).toHaveBeenCalledWith("/en/admin/plans");
   });
 
   it("refuses a short reason or an edit without changes before calling anything", async () => {
-    expect((await savePlan({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 4 }], features: [], reason: "short" })).errors).toEqual({
+    expect((await savePlan({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 4, expected: 3 }], features: [], reason: "short" })).errors).toEqual({
       reason: "Give a reason of at least 10 characters",
     });
     expect((await savePlan({ code: "recruitment_partner", plan: null, limits: [], features: [], reason })).errors).toEqual({
@@ -64,38 +77,21 @@ describe("savePlan (FR-R2 AC2, AC10)", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("stops at the first refusal and reports it on its field", async () => {
-    rpcMock.mockResolvedValueOnce(ok).mockResolvedValueOnce(failure("CHARA_INVALID_INPUT", "limit_value"));
-    expect(
-      await savePlan({
-        code: "recruitment_partner",
-        plan: null,
-        limits: [
-          { key: "markets", value: 5 },
-          { key: "members", value: 6 },
-          { key: "workforce_listings", value: 7 },
-        ],
-        features: [],
-        reason,
-      }),
-    ).toEqual({ errors: { "limits.members.value": "Enter a whole number from 0 to 1,000,000" } });
-    expect(rpcMock).toHaveBeenCalledTimes(2);
-    expect(revalidateMock).not.toHaveBeenCalled();
-  });
-
   it.each([
     [failure("CHARA_INVALID_INPUT", "is_public"), { errors: { isPublic: "Only a paid plan can be public" } }],
     [failure("CHARA_INVALID_INPUT", "reason"), { errors: { reason: "Give a reason of 10 to 500 characters" } }],
     [failure("CHARA_INVALID_INPUT", "plan_code"), { message: "This plan no longer exists." }],
+    [failure("CHARA_CONFLICT", "limit:markets"), { message: "Someone changed this plan after the page was loaded. Nothing was saved. Reload the page and try again." }],
     [failure("CHARA_FORBIDDEN"), { message: "You are not allowed to do this." }],
   ])("maps the refusal %j", async (refusal, expected) => {
     rpcMock.mockResolvedValue(refusal);
-    expect(await savePlan({ code: "free_staffing_company", plan: { name: "Free", isPublic: true, trialDays: 0 }, limits: [], features: [], reason })).toEqual(expected);
+    expect(await savePlan({ code: "free_staffing_company", plan: { ...plan, name: "Free" }, limits: [], features: [], reason })).toEqual(expected);
+    expect(revalidateMock).not.toHaveBeenCalled();
   });
 
   it("sends the administrator to confirm two-step verification when it lapsed", async () => {
     rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN", "aal2_required"));
-    await expect(savePlan({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 4 }], features: [], reason })).rejects.toThrow(
+    await expect(savePlan({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 4, expected: 3 }], features: [], reason })).rejects.toThrow(
       `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/admin/plans")}`,
     );
   });
@@ -140,6 +136,13 @@ describe("saveSetting (FR-R2 AC7)", () => {
     expect(await saveSetting({ key: "stats_min_count", value: "20", reason })).toEqual({ done: true });
     expect(rpcMock).toHaveBeenCalledWith("admin_set_setting", { p_key: "stats_min_count", p_value: "20", p_reason: reason });
     expect(revalidateMock).toHaveBeenCalledWith("/en/admin/settings");
+  });
+
+  it("names the legal documents when the go-live gate refuses a release switch", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: "release_legal_gaps", hint: "partner-terms:draft,partner-dpa:missing", code: "P0001" } });
+    expect(await saveSetting({ key: "release_partner_directories", value: "true", reason })).toEqual({
+      message: "The release cannot go live until these legal documents are approved: partner-terms: still a draft; partner-dpa: not published.",
+    });
   });
 
   it.each([
