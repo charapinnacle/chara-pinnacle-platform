@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { AvailableWorkforceSearch } from "@/components/partners/available-workforce-search";
@@ -12,6 +13,7 @@ import { isEmployerMember } from "@/lib/dal/organizations";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { parsePartnerSearchParams, partnerSearchQuery, usesAdvancedFilters } from "@/lib/partners/search-params";
+import { RANKING_PATH } from "@/lib/public/navigation";
 import { partnerDirectoryMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/partners/recruitment">): Promise<Metadata> {
@@ -40,7 +42,8 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
       <PageHeader title="Find Recruitment Partners" className="animate-rise">
         <p className="text-body text-muted-foreground">
           Recruitment companies that recruit for your country and occupations. Results are ordered by the filters they match
-          and by how recently they updated their profile; no company pays to rank higher.
+          and by how recently they updated their profile; no company pays to rank higher.{" "}
+          <TextLink href={`/${lang}/${RANKING_PATH}`}>How results are ranked</TextLink>
         </p>
       </PageHeader>
 

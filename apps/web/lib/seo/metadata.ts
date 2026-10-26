@@ -6,6 +6,7 @@ import type { CompanyPage } from "@/lib/companies/page";
 import { env } from "@/lib/env";
 import { countryInSentence, formatDate } from "@/lib/i18n/format";
 import type { PartnerProfile } from "@/lib/partners/profile";
+import { RANKING_PATH } from "@/lib/public/navigation";
 import { companyPagePath, partnerProfilePath } from "@/lib/routes";
 import { staticPages, type StaticPageKey } from "./pages";
 
@@ -92,6 +93,14 @@ export function staffingDirectoryMetadata(lang: string): Metadata {
     withBrand("Find staffing partners", " — "),
     `Search staffing companies on ${BRAND_NAME} by market served, occupation, operating country, industry, staffing type and workforce size.`,
     `/${lang}/partners/staffing`,
+  );
+}
+
+export function rankingPageMetadata(lang: string): Metadata {
+  return pageMetadata(
+    withBrand("How search results are ranked", " — "),
+    `The parameters that decide the order of the recruitment and staffing partners in the searches of ${BRAND_NAME}, and what never does.`,
+    `/${lang}/${RANKING_PATH}`,
   );
 }
 

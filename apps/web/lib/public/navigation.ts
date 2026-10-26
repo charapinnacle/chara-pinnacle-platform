@@ -185,3 +185,18 @@ export const partnerLegalGroups: typeof legalGroups = [
 ];
 
 export const partnerLegalSlugs = slugsOf(partnerLegalGroups);
+
+// How Find Partners orders its results (NFR-C8, V77): a page of the code, not a legal document, so it has no version. It
+// exists, and the index of legal documents and the sitemap name it, only while release 2a is on.
+export const RANKING_PATH = "legal/ranking";
+
+export const rankingGroup = {
+  title: "Search and ranking",
+  links: [{ path: RANKING_PATH, label: "How search results are ranked" }],
+} as const;
+
+// The pages of the releases that are on, for the sitemap: the network pages of the menu and the ranking page.
+export function releasedPagePaths(released: readonly ReleaseSwitch[]): string[] {
+  const network = networkMenu(released).links.map(({ path }) => path);
+  return released.includes("release_partner_directories") ? [...network, RANKING_PATH] : network;
+}

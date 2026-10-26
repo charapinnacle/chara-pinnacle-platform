@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { AvailableWorkforceSearch } from "@/components/partners/available-workforce-search";
@@ -12,6 +13,7 @@ import { isEmployerMember } from "@/lib/dal/organizations";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { parsePartnerSearchParams, partnerSearchQuery, usesAdvancedFilters } from "@/lib/partners/search-params";
+import { RANKING_PATH } from "@/lib/public/navigation";
 import { staffingDirectoryMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/partners/staffing">): Promise<Metadata> {
@@ -41,7 +43,8 @@ export default async function StaffingPartnersPage({ params, searchParams }: Pag
         <p className="text-body text-muted-foreground">
           Staffing companies, and recruitment companies that also supply staff, for your markets, occupations and staffing
           types. Results are ordered by the filters they match and by how recently they updated their profile; no company
-          pays to rank higher. Only availability confirmed in the last weeks is shown.
+          pays to rank higher. Only availability confirmed in the last weeks is shown.{" "}
+          <TextLink href={`/${lang}/${RANKING_PATH}`}>How results are ranked</TextLink>
         </p>
       </PageHeader>
 
