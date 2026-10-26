@@ -1,7 +1,10 @@
 import { BRAND_NAME } from "@/lib/brand";
 import type { Database } from "@chara-pinnacle/db-types";
+import type { ReleaseSwitch } from "@/lib/release";
 
 export const EMPLOYERS_PATH = "employers";
+export const RECRUITMENT_DIRECTORY_PATH = "partners/recruitment";
+export const STAFFING_DIRECTORY_PATH = "partners/staffing";
 
 // The header shows a few links (OPEN_QUESTIONS.md D90, which replaces the header lists of P18 and P22): Find Jobs and For
 // employers on every public page, For job seekers instead of both on the For employers page, How it works, then Post a Job
@@ -14,12 +17,44 @@ export const headerLinks = [
 
 export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
 
-// A signed-in worker is not offered the employer's side of the site, and a signed-in company not the job seeker's.
+// The navigation of the client's structure (section 2) that Phase 1 does not have, in its order, with the release that
+// makes each item a page and its address then (FR-L5). Until its release is on an item is named in the menu as plain text,
+// never a link, so the client sees where it will go; Workforce Corridors belongs to no release of Phase 2.
+type NetworkFeature = { label: string } & ({ path: string; release: ReleaseSwitch } | { path: null; release: null });
+
+export const networkFeatures: readonly NetworkFeature[] = [
+  { label: "Find workers", path: "find-workers", release: "release_find_workers" },
+  { label: "Request workers", path: "request-workers", release: "release_find_workers" },
+  { label: "Find companies", path: "companies", release: "release_job_orders" },
+  { label: "Recruitment partners", path: RECRUITMENT_DIRECTORY_PATH, release: "release_partner_directories" },
+  { label: "Staffing partners", path: STAFFING_DIRECTORY_PATH, release: "release_partner_directories" },
+  { label: "Workforce corridors", path: null, release: null },
+  { label: "Job orders", path: "job-orders", release: "release_job_orders" },
+];
+
+export const laterPhaseFeatures = networkFeatures.map(({ label }) => label);
+
+// The items of the network for the release switches that are on: a released item is a link, the others stay labels.
+export function networkMenu(released: readonly ReleaseSwitch[]): { links: { path: string; label: string }[]; later: string[] } {
+  const links: { path: string; label: string }[] = [];
+  const later: string[] = [];
+  for (const { label, path, release } of networkFeatures) {
+    if (path !== null && released.includes(release)) links.push({ path, label });
+    else later.push(label);
+  }
+  return { links, later };
+}
+
+// Every page of the network serves companies (employers and partners), none a person looking for work.
+const companyPaths = new Set<string>([EMPLOYERS_PATH, ...networkFeatures.flatMap(({ path }) => (path === null ? [] : [path]))]);
+
+// A signed-in worker is not offered the employer's or a partner's side of the site, and a signed-in company not the job
+// seeker's.
 export function forAccountKind<T extends { path: string }>(
   links: readonly T[],
   accountKind: Database["public"]["Enums"]["account_kind"] | null | undefined,
 ): T[] {
-  if (accountKind === "worker") return links.filter(({ path }) => path !== EMPLOYERS_PATH);
+  if (accountKind === "worker") return links.filter(({ path }) => !companyPaths.has(path));
   if (accountKind === "company") return links.filter(({ path }) => path !== "jobs" && path !== jobSeekersLink.path);
   return [...links];
 }
@@ -36,18 +71,6 @@ export const menuLinks = [
   { path: EMPLOYERS_PATH, label: "For employers" },
   jobSeekersLink,
   { path: "how-it-works", label: `How ${BRAND_NAME} works` },
-] as const;
-
-// The navigation of the client's structure (section 2) that Phase 1 does not have: named in the menu so the client sees
-// where they will go, never a link.
-export const laterPhaseFeatures = [
-  "Find workers",
-  "Request workers",
-  "Find companies",
-  "Recruitment partners",
-  "Staffing partners",
-  "Workforce corridors",
-  "Job orders",
 ] as const;
 
 export const LEGAL_INDEX_PATH = "legal";
