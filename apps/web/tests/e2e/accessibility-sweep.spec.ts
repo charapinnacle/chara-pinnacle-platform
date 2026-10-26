@@ -121,9 +121,11 @@ const accountStatePages = [
 // both widths: notifications (in-app-notifications.spec.ts), the partner reviews of the console (partner-approval.spec.ts),
 // the workforce profile (partner-geographies.spec.ts, partner-workforce-offer.spec.ts, partner-availability.spec.ts), the
 // public partner profile with a complete listed partner and its members' preview of an unlisted one (partner-profile.spec.ts),
-// the recruitment directory with results and empty (partner-search.spec.ts) and the staffing directory with results, empty,
-// over the search limit and with the available workforce results of an employer (staffing-directory.spec.ts).
+// the recruitment directory with results and empty (partner-search.spec.ts), the staffing directory with results, empty,
+// over the search limit and with the available workforce results of an employer (staffing-directory.spec.ts) and the
+// public company page with vacancies, empty and as its administrator (company-page.spec.ts).
 const releasedPages = [
+  "/[lang]/companies/[slug]",
   "/[lang]/notifications",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",

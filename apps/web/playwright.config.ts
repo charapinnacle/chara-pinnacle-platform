@@ -106,6 +106,7 @@ export default defineConfig({
         "**/partner-profile.spec.ts",
         "**/partner-search.spec.ts",
         "**/staffing-directory.spec.ts",
+        "**/company-page.spec.ts",
       ],
     },
     {
@@ -400,13 +401,21 @@ export default defineConfig({
       testMatch: "**/staffing-directory.spec.ts",
       dependencies: ["partner-search-release"],
     },
+    // The same release switch is set for the company pages (FR-K5) and the switch function is withdrawn for a moment, so
+    // this spec follows the one above.
+    {
+      name: "company-page-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/company-page.spec.ts",
+      dependencies: ["staffing-directory-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["staffing-directory-release"],
+      dependencies: ["company-page-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
