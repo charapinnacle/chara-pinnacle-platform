@@ -15,3 +15,13 @@ export function humanize(code: string): string {
   const text = code.replace(/[-_]+/g, " ").trim();
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+
+const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" });
+
+// The UTC date of an ISO date or timestamp, as 10 November 2026; undefined when the value is missing or not a date.
+export function longDate(value: string | undefined): string | undefined {
+  if (!value || !/^\d{4}-\d{2}-\d{2}/.test(value) || Number.isNaN(Date.parse(value))) {
+    return undefined;
+  }
+  return dateFormat.format(new Date(value));
+}

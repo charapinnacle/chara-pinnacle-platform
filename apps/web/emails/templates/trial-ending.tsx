@@ -1,17 +1,7 @@
 import { Action, Layout, Paragraph } from "../layout.tsx";
-import { field, humanize, url } from "../payload.ts";
+import { field, humanize, longDate, url } from "../payload.ts";
 import type { Template } from "../template.ts";
 import { BRAND_NAME } from "../../lib/brand.ts";
-
-const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" });
-
-// The UTC date of an ISO timestamp, as 10 November 2026; undefined when the value is missing or not a date.
-function longDate(value: string | undefined): string | undefined {
-  if (!value || !/^\d{4}-\d{2}-\d{2}/.test(value) || Number.isNaN(Date.parse(value))) {
-    return undefined;
-  }
-  return dateFormat.format(new Date(value));
-}
 
 // Amounts are stored in the minor unit of the currency (ISO 4217).
 function price(amountMinor: string | undefined, currency: string | undefined): string | undefined {
