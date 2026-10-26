@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
@@ -36,7 +36,14 @@ const ids = {
 } as const;
 
 type Outcome =
-  | { state: "found"; suppliers: WorkforceSupplier[]; nextCursor: string | null; values: AvailableWorkforceInput }
+  // focusFrom is the first card of a page added by Show more partners, which takes the focus once it is shown.
+  | {
+      state: "found";
+      suppliers: WorkforceSupplier[];
+      nextCursor: string | null;
+      values: AvailableWorkforceInput;
+      focusFrom: number | null;
+    }
   | { state: "not_in_plan" }
   | { state: "rate_limited" };
 
@@ -81,8 +88,8 @@ function SupplierCard({ lang, supplier, now }: { lang: string; supplier: Workfor
 }
 
 // The Available workforce search of an employer (FR-K3 step Search, AC9): every field keeps a visible label, a skeleton
-// shows while searching, a failure toasts and keeps the inputs. The partners that cover the number with workers available
-// now come first, then the most recently confirmed; no partner pays to rank higher.
+// shows while searching, a failure toasts and keeps the inputs. The partners that cover the number with workers
+// available now come first, then the most recently confirmed; no partner pays to rank higher.
 export function AvailableWorkforceSearch({
   lang,
   occupations,
@@ -101,8 +108,17 @@ export function AvailableWorkforceSearch({
   const [searching, startSearch] = useTransition();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [loadingMore, setLoadingMore] = useState(false);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    if (outcome?.state !== "found" || outcome.focusFrom === null) return;
+    listRef.current?.querySelectorAll<HTMLAnchorElement>(":scope > li > h3 a")[outcome.focusFrom]?.focus();
+  }, [outcome]);
 
   function run(values: AvailableWorkforceInput, cursor: string | null) {
+    const shown = outcome?.state === "found" ? outcome.suppliers.length : 0;
+    setLoadingMore(cursor !== null);
     startSearch(() =>
       submit(
         () => searchAvailableWorkforce(values, cursor),
@@ -116,6 +132,7 @@ export function AvailableWorkforceSearch({
             suppliers: [...(cursor && previous?.state === "found" ? previous.suppliers : []), ...page.suppliers],
             nextCursor: page.nextCursor,
             values,
+            focusFrom: cursor ? shown : null,
           }));
         },
       ),
@@ -166,7 +183,7 @@ export function AvailableWorkforceSearch({
         </FormButton>
       </form>
 
-      {searching ? (
+      {searching && !loadingMore ? (
         <LoadingSkeleton rows={3} />
       ) : outcome?.state === "not_in_plan" ? (
         <Notice tone="warning" role="alert">
@@ -189,12 +206,14 @@ export function AvailableWorkforceSearch({
             {outcome.suppliers.length} {outcome.suppliers.length === 1 ? "partner can" : "partners can"} supply this
             {outcome.nextCursor ? ", more on request" : ""}
           </p>
-          <ul aria-label="Partners with available workforce" className="divide-y border-y">
+          <ul ref={listRef} aria-label="Partners with available workforce" className="divide-y border-y">
             {outcome.suppliers.map((supplier) => (
               <SupplierCard key={supplier.id} lang={lang} supplier={supplier} now={now} />
             ))}
           </ul>
-          {outcome.nextCursor ? (
+          {searching ? (
+            <LoadingSkeleton rows={1} />
+          ) : outcome.nextCursor ? (
             <FormButton
               type="button"
               variant="secondary"
