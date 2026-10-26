@@ -1,5 +1,5 @@
 begin;
-select plan(86);
+select plan(95);
 
 \ir organizations_fixture.inc
 
@@ -131,7 +131,7 @@ select ok(
 );
 select is(
   (select string_agg(f, ',' order by f) from unnest(array['private.aggregate_org_analytics(date)', 'private.org_analytics_figures(uuid,text,text)',
-     'private.analytics_level(uuid)']) f
+     'private.analytics_level(uuid)', 'private.aggregate_recent_org_analytics()']) f
    where has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute')
       or has_function_privilege('service_role', f, 'execute')),
   null, 'the job, the inner figures and the level are not executable by any API role'
@@ -264,10 +264,30 @@ select throws_ok($$select private.aggregate_org_analytics((now() at time zone 'u
   'today is not aggregated before it ends');
 select throws_ok($$select private.aggregate_org_analytics((now() at time zone 'utc')::date - 36)$$, 'CHARA_INVALID_INPUT',
   'a day whose events are past the retention period is refused, so its counts are not wiped');
+select pg_temp.daily(:'r', 3, 'DE', 7);
+select throws_ok($$select private.aggregate_org_analytics((now() at time zone 'utc')::date - 3)$$, 'CHARA_INVALID_INPUT',
+  'a day that has counts but no events (the period was raised after its events were removed) is refused');
+select is((select value from private.org_analytics_daily where organization_id = :'r' and day = (now() at time zone 'utc')::date - 3),
+  7, 'and its counts are kept');
+delete from private.org_analytics_daily where day = (now() at time zone 'utc')::date - 3;
+
+-- The scheduled run counts yesterday and again the day before.
+insert into private.profile_view_events (viewed_organization_id, viewer_organization_id, viewed_on)
+values (:'r', :'b', (now() at time zone 'utc')::date - 2), (:'r', :'c', (now() at time zone 'utc')::date - 2);
+select is(private.aggregate_recent_org_analytics(), 8, 'the scheduled run writes the 6 rows of yesterday and the 2 of the day before');
+insert into private.profile_view_events (viewed_organization_id, viewer_organization_id, viewed_on)
+values (:'r', :'d', (now() at time zone 'utc')::date - 2);
+select is(private.aggregate_recent_org_analytics(), 9, 'run again after a late view, it rebuilds both days');
+select is(
+  (select string_agg(format('%s:%s=%s', current_date - d.day, d.country_code, d.value), ',' order by d.day desc, d.country_code)
+   from private.org_analytics_daily d where d.organization_id = :'r'),
+  '1:AT=1,1:DE=2,1:NL=1,1:NP=1,1:PL=1,2:DE=1,2:NL=1,2:PL=1',
+  'both days hold their counts once, the late view included'
+);
 select is(
   (select schedule || ' ' || command from cron.job where jobname = 'aggregate-org-analytics'),
-  '5 0 * * * select private.aggregate_org_analytics()',
-  'AC3: a pg_cron job runs the aggregation daily for the previous UTC day, before apply-retention'
+  '5 0 * * * select private.aggregate_recent_org_analytics()',
+  'AC3: a pg_cron job runs the aggregation daily for the previous UTC day (and the day before it), before apply-retention'
 );
 select ok(
   (select schedule from cron.job where jobname = 'apply-retention') = '17 3 * * *',
@@ -335,9 +355,25 @@ delete from private.org_analytics_daily where country_code = 'AT';
 select is(pg_temp.figures(:'pow', :'r', '30d', 'country'), 'profile_views:DE:=18,profile_views:PL:=8',
   'AC5: a breakdown where no cell is below 5 suppresses nothing');
 select pg_temp.daily(:'r', 5, 'AT', 2), pg_temp.daily(:'r', 5, 'NL', 1);
-select is(pg_temp.figures(:'pow', :'r', '30d', 'country'), 'profile_views:AT:=x,profile_views:DE:=18,profile_views:NL:=x,profile_views:PL:=8',
-  'with two suppressed cells nothing else is hidden: their sum is not one cell');
+select is(pg_temp.figures(:'pow', :'r', '30d', 'country'), 'profile_views:AT:=x,profile_views:DE:=18,profile_views:NL:=x,profile_views:PL:=x',
+  'AC5: two suppressed cells adding up to less than 5 also hide the smallest shown cell (PL)');
 select is(pg_temp.figures(:'pow', :'r', '30d', 'occupation'), '', 'profile views have no occupation, so that breakdown is empty');
+
+select pg_temp.daily(:'c', 1, 'DE', 18), pg_temp.daily(:'c', 1, 'AT', 1), pg_temp.daily(:'c', 1, 'NL', 1);
+select is(pg_temp.figures(:'two', :'c', '30d', 'country') || ' ' || pg_temp.figures(:'two', :'c', '30d', 'total'),
+  'profile_views:AT:=x,profile_views:DE:=x,profile_views:NL:=x profile_views::=20',
+  'AC5: DE 18, AT 1, NL 1: the total 20 minus DE would give AT and NL, so DE is hidden too');
+delete from private.org_analytics_daily where organization_id = :'c';
+
+-- A cell hidden in a shorter period stays hidden in the longer ones, so comparing them reveals nothing.
+select pg_temp.daily(:'c', 1, 'DE', 18), pg_temp.daily(:'c', 2, 'PL', 8), pg_temp.daily(:'c', 3, 'AT', 4), pg_temp.daily(:'c', 20, 'FR', 6);
+select is(pg_temp.figures(:'two', :'c', '7d', 'country'), 'profile_views:AT:=x,profile_views:DE:=18,profile_views:PL:=x',
+  '7 days: AT (4) and PL (8, complementary) are hidden');
+select is(pg_temp.figures(:'two', :'c', '30d', 'country'), 'profile_views:AT:=x,profile_views:DE:=18,profile_views:FR:=6,profile_views:PL:=x',
+  '30 days: PL stays hidden, else 30-day PL with the 7-day total would give AT');
+select is(pg_temp.figures(:'two', :'c', '12m', 'country'), 'profile_views:AT:=x,profile_views:DE:=18,profile_views:FR:=6,profile_views:PL:=x',
+  'the rule carries through 90 days to 12 months');
+delete from private.org_analytics_daily where organization_id = :'c';
 
 -- AC6: the plan sets the level --------------------------------------------------------------------------------------------------
 insert into billing.subscriptions (organization_id, plan_code, status, provider)
