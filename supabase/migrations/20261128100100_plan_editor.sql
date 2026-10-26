@@ -133,8 +133,11 @@ revoke all on function public.admin_update_plan(text, text, boolean, integer, te
 grant execute on function public.admin_update_plan(text, text, boolean, integer, text) to authenticated;
 
 -- One limit of a plan: an integer 0 to 1,000,000, or null for unlimited. The key must apply to the plan's organisation
--- type. The change is read by the next limit check; nothing is redefined.
-create function public.admin_set_plan_limit(p_code text, p_limit_key text, p_value integer, p_reason text) returns boolean
+-- type. The change is read by the next limit check; nothing is redefined. The defaults let a client leave p_value out
+-- for unlimited; a missing reason is refused like any other.
+create function public.admin_set_plan_limit(
+  p_code text, p_limit_key text, p_value integer default null, p_reason text default null
+) returns boolean
 language plpgsql
 security definer
 set search_path = ''

@@ -1283,7 +1283,7 @@ isOneToOne: false
 { Args: { "p_code": string,"p_enabled": boolean,"p_feature_key": string,"p_reason": string }; Returns: boolean
                            },
 "admin_set_plan_limit":
-{ Args: { "p_code": string,"p_limit_key": string,"p_reason": string,"p_value": number }; Returns: boolean
+{ Args: { "p_code": string,"p_limit_key": string,"p_reason"?: string,"p_value"?: number }; Returns: boolean
                            },
 "admin_set_report_status":
 { Args: { "p_id": number,"p_note"?: string,"p_status": Database["public"]['Enums']["report_status"] }; Returns: undefined
