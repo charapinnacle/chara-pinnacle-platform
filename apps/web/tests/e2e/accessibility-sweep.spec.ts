@@ -127,7 +127,9 @@ const accountStatePages = [
 // employer and the followed companies, with rows and empty (save-partner-follow.spec.ts), the moderation decisions
 // and appeals of an organisation and of the console (partner-profile.spec.ts), the export of a user's own data, empty,
 // being prepared and ready, as a candidate and a company user (data-export.spec.ts), and the recruitment and staffing
-// segments of /[lang]/dashboard/[kind] with data, empty, failed and as a member (partner-dashboards.spec.ts).
+// segments of /[lang]/dashboard/[kind] with data, empty, failed and as a member (partner-dashboards.spec.ts). The team page
+// /[lang]/org/[slug]/members of a recruitment or staffing company, as its owner, an admin and a member, empty and with
+// members, and its invitation and sign-up pages, are checked in partner-team.spec.ts (the employer's are swept here).
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
