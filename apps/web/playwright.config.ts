@@ -110,6 +110,7 @@ export default defineConfig({
         "**/save-partner-follow.spec.ts",
         "**/partner-network-pages.spec.ts",
         "**/data-export.spec.ts",
+        "**/partner-dashboards.spec.ts",
       ],
     },
     {
@@ -437,13 +438,21 @@ export default defineConfig({
       testMatch: "**/data-export.spec.ts",
       dependencies: ["partner-network-release"],
     },
+    // The partner dashboards (FR-R3, FR-R4) set release 2a for the whole database, lock a table and withdraw their
+    // function for a moment, so they follow the one above.
+    {
+      name: "partner-dashboards-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-dashboards.spec.ts",
+      dependencies: ["data-export-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["data-export-release"],
+      dependencies: ["partner-dashboards-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

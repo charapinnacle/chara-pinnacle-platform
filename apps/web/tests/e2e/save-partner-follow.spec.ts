@@ -255,7 +255,11 @@ test.describe("Save partner and follow company (FR-L4)", () => {
     await expectAccessibleAtBothWidths(owner.page);
     await owner.page.goto(profileUrl(gamma.slug));
     await expect(owner.page.getByRole("button", { name: /^Follow/ }), "no Follow of its own company").toHaveCount(0);
-    const bodies = (await Promise.all(responses.map((response) => response.text().catch(() => "")))).join("\n");
+    // The partner dashboard links many pages, and the body of a prefetch the browser cancelled never arrives: each body
+    // is read for a few seconds at most.
+    const bodyOf = (response: Response) =>
+      Promise.race([response.text().catch(() => ""), new Promise<string>((resolve) => setTimeout(() => resolve(""), 5_000))]);
+    const bodies = (await Promise.all(responses.map(bodyOf))).join("\n");
     for (const follower of followers) {
       expect(bodies.includes(follower.id), "a follower id leaked").toBe(false);
       expect(bodies.includes(follower.email), "a follower email leaked").toBe(false);

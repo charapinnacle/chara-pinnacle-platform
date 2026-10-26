@@ -125,8 +125,9 @@ const accountStatePages = [
 // over the search limit and with the available workforce results of an employer (staffing-directory.spec.ts), the
 // public company page with vacancies, empty and as its administrator (company-page.spec.ts), the saved partners of an
 // employer and the followed companies, with rows and empty (save-partner-follow.spec.ts), the moderation decisions
-// and appeals of an organisation and of the console (partner-profile.spec.ts), and the export of a user's own data, empty,
-// being prepared and ready, as a candidate and a company user (data-export.spec.ts).
+// and appeals of an organisation and of the console (partner-profile.spec.ts), the export of a user's own data, empty,
+// being prepared and ready, as a candidate and a company user (data-export.spec.ts), and the recruitment and staffing
+// segments of /[lang]/dashboard/[kind] with data, empty, failed and as a member (partner-dashboards.spec.ts).
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",

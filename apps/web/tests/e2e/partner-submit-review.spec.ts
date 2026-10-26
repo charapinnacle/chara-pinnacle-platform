@@ -155,9 +155,9 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // The dashboard shows the pending state instead of sending the partner back to onboarding.
+    // The dashboard of the company's type shows the pending state instead of sending the partner back to onboarding.
     await page.getByRole("link", { name: /^Go to your dashboard/ }).click();
-    await expect(page).toHaveURL(/\/en\/dashboard\/employer$/);
+    await expect(page).toHaveURL(new RegExp(`/en/dashboard/(recruitment|staffing)\\?org=${slug}$`));
     await expect(page.getByRole("heading", { name: WAITING, level: 2 })).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText(/approved|verified/i);
     await expectAccessibleAtBothWidths(page);

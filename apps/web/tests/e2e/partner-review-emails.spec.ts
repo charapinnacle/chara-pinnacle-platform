@@ -115,7 +115,8 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
     await waitForHydration(item);
     await item.focus();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL("/en/dashboard/employer");
+    // The link of the notification leads to the dashboard, which shows the one of the company's type (FR-R3 AC2).
+    await expect(page).toHaveURL(`/en/dashboard/recruitment?org=${listed.slug}`);
     await expect(page.getByRole("heading", { name: "Your company is listed", level: 2 })).toBeVisible();
     await expect(bell(page)).toHaveAccessibleName("Notifications");
 
