@@ -266,7 +266,8 @@ grant execute on function public.admin_network_counts(date, date, text) to authe
 -- FR-L1, FR-L4, FR-S1 and FR-R1): value with the number of items it is computed from (base). Range figures cover p_from
 -- to p_to (UTC days, at most 366); figures without range_figure are the state now. A value whose base is below
 -- stats_min_count is null with its base, so no row exposes a small count. Units: count, percent, hours, ratio.
--- label is the plan name for the plan rows and null otherwise. Refusals as admin_network_counts.
+-- label is the plan name for the plan rows and null otherwise. The first row, stats_min_count, is the threshold itself, so
+-- the console can say what a hidden value is fewer than. Refusals as admin_network_counts.
 create function public.admin_network_kpis(p_from date, p_to date)
 returns table (metric text, label text, unit text, range_figure boolean, value numeric, base integer)
 language plpgsql
@@ -346,7 +347,9 @@ begin
     where o.type = 'employer' and o.status = 'active'
   ),
   figures (metric, label, unit, range_figure, value, base, pos) as (
-    select 'review_median_hours', null::text, 'hours', true,
+    select 'stats_min_count', null::text, 'count', false, v_min::numeric, v_min::bigint, 0
+    union all
+    select 'review_median_hours', null, 'hours', true,
       round((percentile_cont(0.5) within group (order by extract(epoch from d.decided_at - d.submitted_at)) / 3600)::numeric, 1),
       count(*), 1
     from decisions d

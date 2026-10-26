@@ -1,5 +1,5 @@
 begin;
-select plan(80);
+select plan(81);
 
 \ir organizations_fixture.inc
 
@@ -340,6 +340,7 @@ select ok(exists (select 1 from cron.job where jobname = 'snapshot-partner-statu
 -- Key figures (the KPIs left to V31) -------------------------------------------------------------------------------------
 select is(pg_temp.run(:'adm', $$select * from public.admin_network_kpis('2026-03-01', '2026-03-31')$$), 'ok',
   'a Platform Administrator reads the key figures');
+select is(pg_temp.k('stats_min_count'), '5/5', 'the first row is the threshold the values are hidden below');
 select is(pg_temp.k('review_median_hours') || ' ' || pg_temp.k('review_on_target_share'), '9.0/17 88.2/17',
   'FR-J4 KPIs: median time to decision 9 hours, 15 of 17 within the target of one working day');
 select is(pg_temp.k('approval_share'), '100.0/17', 'FR-J4 KPI: approval rate');
