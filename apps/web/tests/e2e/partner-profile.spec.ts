@@ -1,10 +1,11 @@
 import type { Page, Response } from "@playwright/test";
 import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
-import { expectAccessibleAtBothWidths } from "./support/applications";
+import { displayName, expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { createCommittedUser, enrollTotp } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
+import { newCompany, seedJob } from "./support/jobs";
 import { registerOrganization, uniqueName } from "./support/organizations";
 import { partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
 import { signInStaff } from "./support/admin";
@@ -513,6 +514,25 @@ test.describe("Public partner profile (FR-K4)", () => {
     )).toEqual([{ payload: { reference: `R-${String(id).padStart(6, "0")}`, outcome: "actioned" } }]);
     expect((await page.request.get(profileUrl(partner.slug))).status(), "hidden profile").toBe(404);
 
+    // A second report on the same partner asks for what is already in effect: it is closed actioned without a second hide.
+    const second = Number(execute(
+      `insert into public.reports (target_type, organization_id, category, details, good_faith_confirmed)
+       values ('partner_profile', ${literal(partner.id)}, 'misleading_or_fraud', 'The same profile claims placements it never made.', true) returning id`,
+    ).trim().split("\n")[0]);
+    await staff.page.goto(`/en/admin/reports/${second}`);
+    await expect(staff.page.getByRole("button", { name: "Hide", exact: true })).toHaveCount(0);
+    const inEffect = staff.page.getByRole("button", { name: "Hide (already hidden)" });
+    await waitForHydration(inEffect);
+    await inEffect.click();
+    const closeDialog = staff.page.getByRole("dialog", { name: "Close the report: already hidden" });
+    await closeDialog.getByLabel("Statement of reasons").fill("The profile was already hidden for the same claims.");
+    await closeDialog.getByRole("button", { name: "Close as actioned" }).click();
+    await expect(staff.page.getByText("The report is actioned. The item was already hidden", { exact: true })).toBeVisible();
+    expect(query<{ n: number }>(`select count(*)::int as n from public.moderation_actions where target_id = ${literal(partner.id)}`)).toEqual([{ n: 1 }]);
+    expect(query<{ in_effect: string }>(
+      `select metadata ->> 'already_in_effect' as in_effect from audit.log where action = 'report.actioned' and entity_id = ${literal(String(second))}`,
+    )).toEqual([{ in_effect: "true" }]);
+
     const secret = await enrollTotp(partner.user);
     await signInAtAal2(page, partner.user, secret, `/en/org/${partner.slug}/workforce-profile`);
     const notice = page.getByRole("status").filter({ hasText: "Hidden by moderation" });
@@ -569,5 +589,33 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(page.getByText("The organisation is reinstated", { exact: true })).toBeVisible();
     expect((await page.request.get(profileUrl(partner.slug))).status(), "reinstated profile").toBe(200);
     expect(await (await page.request.get("/sitemap.xml")).text()).toContain(`/en/partners/${partner.slug}<`);
+  });
+  test("FR-S1 AC4, AC7: Trust & Safety suspend the organisation of a reported vacancy by keyboard, and its vacancies leave the public", async ({ page }) => {
+    const company = await newCompany();
+    const job = seedJob(company, { title: `Suspended ${uniqueName("Welder")}`, status: "open" });
+    const id = Number(execute(
+      `insert into public.reports (target_type, job_id, organization_id, category, details, good_faith_confirmed)
+       values ('company', ${literal(job)}, ${literal(company.id)}, 'discrimination', 'Every vacancy of this company excludes women.', true) returning id`,
+    ).trim().split("\n")[0]);
+    await signInStaff(page, "trust_safety", `/en/admin/reports/${id}`);
+    await expect(page.getByRole("button", { name: "Hide", exact: true })).toHaveCount(0);
+    const suspend = page.getByRole("button", { name: "Suspend organisation" });
+    await waitForHydration(suspend);
+    await suspend.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Suspend the organisation" });
+    await expect(dialog).toContainText(`Organisation:${displayName(company.id)}`);
+    await page.keyboard.type("Discriminatory wording in every vacancy of the company.");
+    await expect(dialog.getByLabel("Statement of reasons")).toBeFocused();
+    await dialog.getByRole("button", { name: "Suspend organisation" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("The organisation is suspended. The report is actioned", { exact: true })).toBeVisible();
+    await expect(page.locator("#decision")).toContainText("Organisation suspended");
+    await expectAccessibleAtBothWidths(page);
+    expect(query<{ status: string; state: string }>(
+      `select o.status::text as status, j.moderation_state::text as state from public.organizations o join public.jobs j on j.organization_id = o.id where j.id = ${literal(job)}`,
+    )).toEqual([{ status: "suspended", state: "org_suspended" }]);
+    expect(query<{ report_id: number }>(`select report_id from public.moderation_actions where target_id = ${literal(company.id)} order by id desc limit 1`)).toEqual([{ report_id: id }]);
+    expect((await page.request.get(`/en/jobs/${job}`)).status()).toBe(404);
   });
 });
