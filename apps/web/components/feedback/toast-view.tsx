@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Toast } from "radix-ui";
 import { cva } from "class-variance-authority";
 import type { ToastItem } from "@/components/feedback/toast-store";
+import { TextLink } from "@/components/forms/text-link";
 import { cardVariants } from "@/components/layout/card";
 import { cn } from "@/lib/utils";
 
@@ -31,11 +32,11 @@ export default function ToastView({
 }) {
   return (
     <Toast.Provider label="Notification" swipeDirection="down">
-      {items.map(({ id, title, description, variant }) => (
+      {items.map(({ id, title, description, link, variant }) => (
         <Toast.Root
           key={id}
           type={variant === "error" ? "foreground" : "background"}
-          duration={variant === "error" ? Infinity : undefined}
+          duration={variant === "error" || link ? Infinity : undefined}
           onOpenChange={(open) => {
             if (!open) onDismiss(id);
           }}
@@ -47,6 +48,11 @@ export default function ToastView({
               <Toast.Description className="text-small text-muted-foreground">
                 {description}
               </Toast.Description>
+            ) : null}
+            {link ? (
+              <TextLink href={link.href} className="text-small">
+                {link.label}
+              </TextLink>
             ) : null}
           </div>
           <Toast.Close

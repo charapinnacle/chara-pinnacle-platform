@@ -4,11 +4,14 @@ import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { CompanyPageSwitch } from "@/components/organization/company-page-switch";
 import { ProfileForm } from "@/components/organization/profile-form";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getBillingState } from "@/lib/dal/billing";
+import { getCompanyPageEnabled } from "@/lib/dal/company-page";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
+import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { billingPath } from "@/lib/routes";
 import { identifierKindLabels } from "@/lib/validation/organization";
@@ -22,12 +25,15 @@ export default async function OrganizationProfilePage({ params }: PageProps<"/[l
   const { lang, slug } = await params;
   const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true });
   if (organization.suspended) return <SuspendedOrganization title="Company profile" subject="details" />;
-  const [profile, billing, countries, industries] = await Promise.all([
+  const [profile, billing, countries, industries, companyPageReleased] = await Promise.all([
     getOrganizationProfile(organization.id),
     getBillingState(organization.id),
     getCountries(),
     getIndustries(),
+    isReleased("release_partner_directories"),
   ]);
+  // The switch of the public company page (FR-K5) belongs to release 2a and stays hidden until it is on.
+  const companyPageEnabled = companyPageReleased ? await getCompanyPageEnabled(organization.id) : null;
   if (!profile) notFound();
   const identifier = billing.identifier
     ? `${identifierKindLabels[billing.identifier_kind ?? ""] ?? "Identifier"}: ${billing.identifier}.`
@@ -47,6 +53,14 @@ export default async function OrganizationProfilePage({ params }: PageProps<"/[l
         countries={countries}
         industries={industries}
       />
+      {companyPageEnabled !== null ? (
+        <section aria-labelledby="company-page-heading" className="grid gap-3">
+          <h2 id="company-page-heading" className="text-h2">
+            Company page
+          </h2>
+          <CompanyPageSwitch slug={slug} enabled={companyPageEnabled} />
+        </section>
+      ) : null}
       <section aria-labelledby="identifier-heading" className="grid gap-2">
         <h2 id="identifier-heading" className="text-h2">
           Company identifier
