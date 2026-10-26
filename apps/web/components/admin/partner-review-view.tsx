@@ -33,7 +33,9 @@ const serviceLabels: Record<PartnerReviewDetail["serviceTypes"][number], string>
 
 const listed = (items: readonly string[]) => (items.length > 0 ? items.join(", ") : "None chosen");
 
-function Licences({ review, canOpen }: { review: PartnerReviewDetail; canOpen: boolean }) {
+type LicencesProps = { review: PartnerReviewDetail; canOpen: boolean; countryName: ReadonlyMap<string, string> };
+
+function Licences({ review, canOpen, countryName }: LicencesProps) {
   if (review.licences.length === 0) {
     return <p className="text-body">The company has declared no licences.</p>;
   }
@@ -41,7 +43,7 @@ function Licences({ review, canOpen }: { review: PartnerReviewDetail; canOpen: b
     <ResultsTable caption="Licences" columns={["Country", "Authority and number", "Valid until", "Evidence"]}>
       {review.licences.map((licence) => (
         <tr key={licence.id}>
-          <td className={cell}>{licence.country}</td>
+          <td className={cell}>{countryName.get(licence.country) ?? licence.country}</td>
           <td className={`${cell} break-words`}>
             {licence.issuingAuthority}
             <span className="block font-mono text-small">{licence.licenceNumber}</span>
@@ -59,7 +61,7 @@ function Licences({ review, canOpen }: { review: PartnerReviewDetail; canOpen: b
               "No file"
             ) : licence.evidence.status === "clean" || licence.evidence.status === "skipped" ? (
               canOpen ? (
-                <PartnerEvidenceButton licenceId={licence.id} country={licence.country} />
+                <PartnerEvidenceButton licenceId={licence.id} country={countryName.get(licence.country) ?? licence.country} />
               ) : (
                 "File received. Reviewers open it."
               )
@@ -197,7 +199,7 @@ export async function PartnerReviewView({ lang, id, roles }: PartnerReviewViewPr
         title="Licences"
         description="As the company declared them. Opening a file is logged with your name and role."
       >
-        <Licences review={review} canOpen={canOpenEvidence} />
+        <Licences review={review} canOpen={canOpenEvidence} countryName={countryName} />
       </Section>
 
       <Section id="commitment" title="Employer-pays commitment">
