@@ -1,17 +1,25 @@
 import { cell, ResultsTable } from "@/components/admin/results-table";
-import { partnerSearchCounts } from "@/lib/dal/admin";
+import { partnerSearchCounts, type PartnerSearchKind } from "@/lib/dal/admin";
 
 function share(part: number, whole: number): string {
   return whole === 0 ? "-" : `${Math.round((part / whole) * 100)} %`;
 }
 
-// The Find Recruitment Partners KPIs (FR-L1): searches with at least one result and zero-result searches by destination,
-// from the search log, which holds nothing personal.
-export async function PartnerSearchCounts({ from, to }: { from: string; to: string }) {
-  const counts = await partnerSearchCounts(from, to);
+const searchLabels: Record<PartnerSearchKind, string> = {
+  recruitment: "Recruitment partner searches",
+  staffing: "Staffing partner searches",
+  available_workforce: "Available workforce searches",
+};
+
+// The KPIs of Find Recruitment Partners (FR-L1), Find Staffing Partners (FR-L2) and the available workforce search
+// (FR-K3): searches with at least one result and zero-result searches by destination, from the search log, which holds
+// nothing personal.
+export async function PartnerSearchCounts({ kind, from, to }: { kind: PartnerSearchKind; from: string; to: string }) {
+  const counts = await partnerSearchCounts(kind, from, to);
+  const label = searchLabels[kind];
   return (
     <div className="grid gap-4">
-      <ResultsTable caption={`Recruitment partner searches from ${from} to ${to}`} columns={["Searches", "Count", "Share"]}>
+      <ResultsTable caption={`${label} from ${from} to ${to}`} columns={["Searches", "Count", "Share"]}>
         <tr>
           <td className={cell}>With at least one result</td>
           <td className={cell}>{counts.withResults}</td>
@@ -28,7 +36,7 @@ export async function PartnerSearchCounts({ from, to }: { from: string; to: stri
           <td className={cell}>{counts.searches === 0 ? "-" : "100 %"}</td>
         </tr>
       </ResultsTable>
-      <ResultsTable caption={`Searches without results by destination from ${from} to ${to}`} columns={["Destination", "Searches without results"]}>
+      <ResultsTable caption={`${label} without results by destination from ${from} to ${to}`} columns={["Destination", "Searches without results"]}>
         {counts.zeroByDestination.length === 0 ? (
           <tr>
             <td className={cell} colSpan={2}>

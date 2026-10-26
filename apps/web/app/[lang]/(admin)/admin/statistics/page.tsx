@@ -63,9 +63,11 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
           <h2 id="partner-searches-heading" className="text-h2">
             Partner searches
           </h2>
-          <Suspense key={`partners/${from}/${to}`} fallback={<LoadingSkeleton rows={3} />}>
-            <PartnerSearchCounts from={range.data.from} to={range.data.to} />
-          </Suspense>
+          {(["recruitment", "staffing", "available_workforce"] as const).map((kind) => (
+            <Suspense key={`${kind}/${from}/${to}`} fallback={<LoadingSkeleton rows={3} />}>
+              <PartnerSearchCounts kind={kind} from={range.data.from} to={range.data.to} />
+            </Suspense>
+          ))}
         </section>
       ) : null}
     </div>

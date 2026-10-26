@@ -272,10 +272,13 @@ export type PartnerSearchCounts = {
   zeroByDestination: z.infer<typeof zeroByDestinationSchema>;
 };
 
-// The Find Recruitment Partners searches of the days (FR-L1 KPIs); answered only while release 2a is on.
-export async function partnerSearchCounts(from: string, to: string): Promise<PartnerSearchCounts> {
+export type PartnerSearchKind = "recruitment" | "staffing" | "available_workforce";
+
+// The searches of one directory, or of the available workforce, of the days (FR-L1, FR-L2, FR-K3 KPIs); answered only
+// while release 2a is on.
+export async function partnerSearchCounts(kind: PartnerSearchKind, from: string, to: string): Promise<PartnerSearchCounts> {
   const supabase = await adminClient();
-  const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: "recruitment", p_from: from, p_to: to });
+  const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: kind, p_from: from, p_to: to });
   if (error) throw failure("The partner search statistics", error);
   const [row] = data;
   return {
