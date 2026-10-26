@@ -1299,7 +1299,7 @@ isOneToOne: false
                            },
 "billing_portal_start":
 { Args: { "p_org": string }; Returns: {
-              "customer_ref": string,"slug": string
+              "customer_ref": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string
             }[]
                            },
 "billing_reconcile_records":

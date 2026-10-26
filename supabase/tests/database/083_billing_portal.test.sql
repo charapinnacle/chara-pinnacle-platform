@@ -50,8 +50,8 @@ select set_config('t.opened', pg_temp.opened()::text, true) as base \gset
 select is(pg_temp.portal(:'own1', :'o'), 'ok', 'AC10: the owner at aal2 opens the portal');
 select is(
   current_setting('t.result')::jsonb,
-  jsonb_build_object('customer_ref', 'cus_o', 'slug', (select slug from public.organizations where id = :'o')),
-  'AC10: and receives the customer reference of the organisation and the slug for the return address'
+  jsonb_build_object('customer_ref', 'cus_o', 'slug', (select slug from public.organizations where id = :'o'), 'organization_type', 'employer'),
+  'AC10: and receives the customer reference of the organisation, the slug for the return address and its type (the portal configuration, V15)'
 );
 select is(pg_temp.portal(:'adm', :'o'), 'ok', 'AC10: the admin at aal2 opens the portal');
 select is(pg_temp.portal(:'own1', :'q'), 'ok', 'AC10: the owner of a lapsed organisation opens the portal');
