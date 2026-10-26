@@ -25,6 +25,48 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   account_reinstated: { reasons: "Identity confirmed after the complaint." },
   member_invitation: { org_name: "Acme Bau", role: "member", expires_at: "2026-10-15T09:30:00+00:00", token: TOKEN, invitation_id: ACCOUNT },
   account_exists: {},
+  partner_approved: { decision_id: 41, org_name: "Manila Recruit", org_slug: "manila-recruit", decided_at: "2026-11-26T09:00:00+00:00" },
+  partner_info_requested: {
+    decision_id: 42,
+    org_name: "Manila Recruit",
+    org_slug: "manila-recruit",
+    decided_at: "2026-11-26T09:00:00+00:00",
+    info_step: "where_you_serve",
+    reason: "Please add the countries you recruit for.",
+  },
+  partner_declined: {
+    decision_id: 43,
+    org_name: "Manila Recruit",
+    org_slug: "manila-recruit",
+    decided_at: "2026-11-26T09:00:00+00:00",
+    reason: "The website does not belong to the company named.",
+  },
+  licence_expiring: {
+    licence_id: ACCOUNT,
+    country_code: "PH",
+    country_name: "Philippines",
+    valid_until: "2026-12-26",
+    org_name: "Manila Recruit",
+    org_slug: "manila-recruit",
+  },
+  partner_licence_expired: {
+    licence_id: ACCOUNT,
+    country_code: "PH",
+    country_name: "Philippines",
+    valid_until: "2026-11-25",
+    org_name: "Manila Recruit",
+    org_slug: "manila-recruit",
+  },
+  listing_confirmation_due: {
+    org_name: "Manila Recruit",
+    org_slug: "manila-recruit",
+    total: 2,
+    stale_days: 60,
+    listings: [
+      { listing_id: APP, occupation: "Welders and flame cutters", country_name: "Philippines", confirmed_at: "2026-10-12T08:00:00+00:00" },
+      { listing_id: JOB, occupation: "Sheet-metal workers", country_name: "Nepal", confirmed_at: "2026-10-27T08:00:00+00:00" },
+    ],
+  },
 };
 
 const LEAKS = {
@@ -118,6 +160,12 @@ describe("notification templates", () => {
       deletion_requested: settingsPath("en"),
       member_invitation: `/en/invitations/${TOKEN}`,
       account_exists: "/en/login",
+      partner_approved: "/en/dashboard/employer",
+      partner_info_requested: "/en/onboarding?step=where-you-serve",
+      partner_declined: "/en/dashboard/employer",
+      licence_expiring: "/en/org/manila-recruit/workforce-profile#licences-heading",
+      partner_licence_expired: "/en/org/manila-recruit/workforce-profile#licences-heading",
+      listing_confirmation_due: "/en/org/manila-recruit/workforce-profile#availability-heading",
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
