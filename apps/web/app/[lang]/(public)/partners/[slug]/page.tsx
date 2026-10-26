@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ConnectionActions } from "@/components/connections/connection-actions";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { PartnerProfileView } from "@/components/partners/partner-profile-view";
+import { hasConnectionActions } from "@/lib/connections/access";
+import { getProfileConnection } from "@/lib/dal/connections";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
@@ -43,19 +46,37 @@ export default async function PartnerProfilePage({ params }: PageProps<"/[lang]/
     );
   }
   const { profile, viewerIsMember } = result;
+  const path = partnerProfilePath(lang, profile.slug);
   const report = (
-    <TextLink standalone rel="nofollow" href={reportPath(lang, "content", partnerProfilePath(lang, profile.slug))}>
+    <TextLink standalone rel="nofollow" href={reportPath(lang, "content", path)}>
       Report company
     </TextLink>
   );
-  // Save partner, Follow, Send inquiry and Invite to a requirement come with V24, V71 and V41.
+  const connection = viewerIsMember ? null : await getProfileConnection(profile.slug);
+  const connect =
+    connection && hasConnectionActions(connection.access) ? (
+      <ConnectionActions
+        lang={lang}
+        organizationId={connection.id}
+        name={profile.displayName}
+        access={connection.access}
+        saved={connection.saved}
+        following={connection.following}
+        next={path}
+      />
+    ) : null;
+  // Send inquiry and Invite to a requirement come with V71 and V41.
   const actions = viewerIsMember ? (
     <LinkButton href={workforceProfilePath(lang, profile.slug)}>Edit profile</LinkButton>
   ) : user ? (
-    report
+    <div className="grid gap-3">
+      {connect}
+      <div className={connect ? "border-t pt-2" : undefined}>{report}</div>
+    </div>
   ) : (
     <div className="grid gap-3">
       <LinkButton href={signUpPath(lang, "company")}>Sign up to contact</LinkButton>
+      {connect}
       <div className="border-t pt-2">{report}</div>
     </div>
   );

@@ -8,7 +8,9 @@ import { CompanyPageSwitch } from "@/components/organization/company-page-switch
 import { ProfileForm } from "@/components/organization/profile-form";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getBillingState } from "@/lib/dal/billing";
+import { followerCountText } from "@/lib/connections/access";
 import { getCompanyPageEnabled } from "@/lib/dal/company-page";
+import { getFollowerCount } from "@/lib/dal/connections";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
@@ -33,7 +35,9 @@ export default async function OrganizationProfilePage({ params }: PageProps<"/[l
     isReleased("release_partner_directories"),
   ]);
   // The switch of the public company page (FR-K5) belongs to release 2a and stays hidden until it is on.
-  const companyPageEnabled = companyPageReleased ? await getCompanyPageEnabled(organization.id) : null;
+  const [companyPageEnabled, followers] = companyPageReleased
+    ? await Promise.all([getCompanyPageEnabled(organization.id), getFollowerCount(organization.id)])
+    : [null, null];
   if (!profile) notFound();
   const identifier = billing.identifier
     ? `${identifierKindLabels[billing.identifier_kind ?? ""] ?? "Identifier"}: ${billing.identifier}.`
@@ -59,6 +63,11 @@ export default async function OrganizationProfilePage({ params }: PageProps<"/[l
             Company page
           </h2>
           <CompanyPageSwitch slug={slug} enabled={companyPageEnabled} pageHref={companyPagePath(lang, slug)} />
+          {followers ? (
+            <p className="text-body text-muted-foreground">
+              {followerCountText(followers)}. Only the number is shown: no one sees who follows your company.
+            </p>
+          ) : null}
         </section>
       ) : null}
       <section aria-labelledby="identifier-heading" className="grid gap-2">

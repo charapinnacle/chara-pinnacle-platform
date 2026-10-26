@@ -9,6 +9,7 @@ export const privateSegments = [
   "confirm-email",
   "consent",
   "dashboard",
+  "following",
   "forbidden",
   "forgot-password",
   "invitations",

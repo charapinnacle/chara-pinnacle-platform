@@ -9,14 +9,17 @@ import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
+import { countFollowedCompanies, countSavedPartners } from "@/lib/dal/connections";
 import { getFirstSteps, startDashboardLoad } from "@/lib/dal/dashboard";
-import { applicantsPath, billingPath, jobsPath, organizationProfilePath } from "@/lib/routes";
+import { applicantsPath, billingPath, followingPath, jobsPath, organizationProfilePath, savedPartnersPath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
   lang: string;
   organization: { id: string; slug: string; displayName: string; role: MemberRole };
   twoStepDone: boolean;
+  // Release 2a is on: the saved partners and followed companies are counted (FR-L4 AC10).
+  network: boolean;
 };
 
 async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<boolean>; lang: string; slug: string; role: MemberRole }) {
@@ -49,10 +52,24 @@ function EmployerFigures({ lang, slug, loads }: { lang: string; slug: string; lo
   );
 }
 
+// The partners the organisation saved and the companies the user follows, each linked to its list (FR-L4 AC10).
+function NetworkFigures({ lang, organizationId, slug }: { lang: string; organizationId: string; slug: string }) {
+  return (
+    <div className="animate-stagger grid gap-4 sm:grid-cols-2">
+      <Panel promise={countSavedPartners(organizationId)} errorTitle="The saved partners could not be counted">
+        {(count) => <SummaryCard label="Saved partners" value={count} href={savedPartnersPath(lang, slug)} />}
+      </Panel>
+      <Panel promise={countFollowedCompanies()} errorTitle="The followed companies could not be counted">
+        {(count) => <SummaryCard label="Followed companies" value={count} href={followingPath(lang)} />}
+      </Panel>
+    </div>
+  );
+}
+
 // The summary of the hiring of one organisation for a member, or for an owner or admin at aal2. The reads start together;
 // each part shows its own when it is ready, or its own error. An owner or admin also sees the first steps until they are
 // all done. The stage counts are shown once, in the table of the applications.
-export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerDashboardProps) {
+export function EmployerDashboard({ lang, organization, twoStepDone, network }: EmployerDashboardProps) {
   const { slug, role } = organization;
   const { applications, vacancies, plan, empty } = startDashboardLoad(organization.id);
   const manager = role !== "member";
@@ -86,6 +103,7 @@ export function EmployerDashboard({ lang, organization, twoStepDone }: EmployerD
       </Panel>
 
       <EmployerFigures lang={lang} slug={slug} loads={{ applications, vacancies }} />
+      {network ? <NetworkFigures lang={lang} organizationId={organization.id} slug={slug} /> : null}
 
       <Panel promise={plan} errorTitle="The plan could not be loaded">
         {(value) => <PlanCard plan={value} now={now} billingHref={billingHref} />}

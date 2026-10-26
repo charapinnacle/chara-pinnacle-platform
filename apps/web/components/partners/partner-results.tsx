@@ -1,7 +1,10 @@
+import { ConnectionActions } from "@/components/connections/connection-actions";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
+import { hasConnectionActions, type ConnectionAccess } from "@/lib/connections/access";
+import { getConnectionStates } from "@/lib/dal/connections";
 import { searchPartners, type PartnerResult } from "@/lib/dal/partner-search";
 import { getCountries } from "@/lib/dal/reference";
 import { getCurrentUser } from "@/lib/dal/session";
@@ -20,19 +23,29 @@ import { staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 const names = (items: readonly Named[]) => items.map((item) => item.name).join(", ");
 
-type CardProps = { lang: string; kind: PartnerDirectoryKind; partner: PartnerResult; basedIn: string; viewer: Viewer };
+type Connection = { access: ConnectionAccess; saved: boolean; following: boolean };
+
+type CardProps = {
+  lang: string;
+  kind: PartnerDirectoryKind;
+  partner: PartnerResult;
+  basedIn: string;
+  viewer: Viewer;
+  connection: Connection;
+};
 
 // A card names what an employer decides on and nothing else (FR-L1 AC4, AC8; FR-L2 AC6): the partner's own fields, the
 // freshness of its capacity and the filters it matched. A staffing card adds its staffing types and the workers of its
 // fresh listings per occupation, each with its confirmation date, and marks a recruitment company that also offers
 // staffing. No badge, score, plan or word of verification [d1.1, d2.5].
-function PartnerCard({ lang, kind, partner, basedIn, viewer }: CardProps) {
+function PartnerCard({ lang, kind, partner, basedIn, viewer, connection }: CardProps) {
   const staffing = kind === "staffing";
+  const profilePath = partnerProfilePath(lang, partner.slug);
   return (
     <li className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-6">
       <div className="grid min-w-0 gap-1">
         <h2 className="text-h2">
-          <TextLink href={partnerProfilePath(lang, partner.slug)} className="break-words">
+          <TextLink href={profilePath} className="break-words">
             {partner.displayName}
           </TextLink>
         </h2>
@@ -76,10 +89,23 @@ function PartnerCard({ lang, kind, partner, basedIn, viewer }: CardProps) {
           </p>
         ) : null}
       </div>
-      {viewer === "visitor" ? (
-        <LinkButton href={signUpPath(lang, "company")} variant="secondary">
-          Sign up to contact<span className="sr-only"> {partner.displayName}</span>
-        </LinkButton>
+      {viewer === "visitor" || hasConnectionActions(connection.access) ? (
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          {viewer === "visitor" ? (
+            <LinkButton href={signUpPath(lang, "company")} variant="secondary">
+              Sign up to contact<span className="sr-only"> {partner.displayName}</span>
+            </LinkButton>
+          ) : null}
+          <ConnectionActions
+            lang={lang}
+            organizationId={partner.id}
+            name={partner.displayName}
+            access={connection.access}
+            saved={connection.saved}
+            following={connection.following}
+            next={profilePath}
+          />
+        </div>
       ) : null}
     </li>
   );
@@ -129,6 +155,7 @@ export async function PartnerResults({ lang, kind, filters }: { lang: string; ki
 
   const { results, nextCursor } = search;
   const viewer = viewerOf(user);
+  const connections = await getConnectionStates(results.map(({ id, organizationType }) => ({ id, type: organizationType })));
   const countryNames = new Map(countries.map(({ code, name }) => [code, name]));
   const filtered = hasPartnerFilters(filters);
 
@@ -170,6 +197,11 @@ export async function PartnerResults({ lang, kind, filters }: { lang: string; ki
             partner={partner}
             basedIn={countryNames.get(partner.basedInCountry) ?? partner.basedInCountry}
             viewer={viewer}
+            connection={{
+              access: connections.access.get(partner.id) ?? { kind: "none" },
+              saved: connections.saved.has(partner.id),
+              following: connections.followed.has(partner.id),
+            }}
           />
         ))}
       </ul>

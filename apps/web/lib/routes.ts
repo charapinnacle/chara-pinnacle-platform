@@ -113,6 +113,22 @@ export function companyPagePath(lang: string, slug: string): string {
   return `/${lang}/companies/${slug}`;
 }
 
+// The partners an employer saved (FR-L4), optionally from a keyset cursor on.
+export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
+  const path = `/${lang}/org/${slug}/saved-partners`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+}
+
+// The companies the signed-in user follows (FR-L4), optionally from a keyset cursor on.
+export function followingPath(lang: string, cursor?: string): string {
+  return cursor ? `/${lang}/following?cursor=${encodeURIComponent(cursor)}` : `/${lang}/following`;
+}
+
+// The login page, coming back to the page `next` afterwards.
+export function loginPath(lang: string, next: string): string {
+  return `/${lang}/login?next=${encodeURIComponent(next)}`;
+}
+
 export function membersPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/members`;
 }

@@ -11,6 +11,7 @@ import { GuidedSteps } from "@/components/organization/guided-steps";
 import { getFirstSteps } from "@/lib/dal/dashboard";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganizations } from "@/lib/dal/organizations";
+import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { employerDashboardPath, mfaPath } from "@/lib/routes";
 import { BRAND_NAME } from "@/lib/brand";
@@ -74,5 +75,12 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
       </div>
     );
   }
-  return <EmployerDashboard lang={lang} organization={organization} twoStepDone={twoStepDone} />;
+  return (
+    <EmployerDashboard
+      lang={lang}
+      organization={organization}
+      twoStepDone={twoStepDone}
+      network={await isReleased("release_partner_directories")}
+    />
+  );
 }

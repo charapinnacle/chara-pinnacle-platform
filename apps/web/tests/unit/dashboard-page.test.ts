@@ -35,6 +35,8 @@ vi.mock("@/lib/dal/partner-review", () => ({
   getReviewTargetDays: async () => 1,
 }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+const followersMock = vi.hoisted(() => vi.fn(async () => ({ fewerThan: 5 })));
+vi.mock("@/lib/dal/connections", () => ({ getFollowerCount: followersMock }));
 const firstStepsMock = vi.hoisted(() => vi.fn());
 const passportMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/dal/documents", () => ({ getDocumentReminders: vi.fn(async () => []), hasUsableCv: vi.fn(async () => false) }));
@@ -145,6 +147,7 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     expect(html).toContain(">Reason</h3>");
     expect(html).toContain("The registry has no entry for this number.");
     expect(html).toMatch(/<a[^>]*href="\/en\/contact"[^>]*>Contact us about this decision/);
+    expect(html, "no follower count before the company is listed").not.toContain("Followers:");
 
     reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
     outcomeMock.mockResolvedValue({ decision: "approve", reason: null, infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });
@@ -152,6 +155,10 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     expect(html).toContain(">Your company is listed</h2>");
     expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your workforce profile/);
     expect(html).not.toMatch(/approved|verified/i);
+    // FR-L4 AC11: a listed company reads its follower count, never who follows it.
+    expect(html).toContain("Followers: fewer than 5");
+    expect(html).toMatch(/<a[^>]*href="\/en\/following"[^>]*>Companies you follow/);
+    expect(followersMock).toHaveBeenCalledWith("org-9");
 
     reviewMock.mockResolvedValue({ status: "re_review", submittedAt: "2026-11-23T10:00:00Z", infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
     html = await render("employer");

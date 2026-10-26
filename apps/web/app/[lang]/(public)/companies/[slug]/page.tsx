@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CompanyPageView } from "@/components/companies/company-page-view";
+import { ConnectionActions } from "@/components/connections/connection-actions";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { CompanyPageSwitch } from "@/components/organization/company-page-switch";
+import { hasConnectionActions } from "@/lib/connections/access";
 import { getCompanyPage } from "@/lib/dal/company-page";
+import { getProfileConnection } from "@/lib/dal/connections";
 import { isReleased } from "@/lib/dal/release";
 import { companyPagePath, organizationProfilePath, reportPath } from "@/lib/routes";
 import { companyPageMetadata } from "@/lib/seo/metadata";
@@ -32,7 +35,21 @@ export default async function CompanyPage({ params }: PageProps<"/[lang]/compani
   const result = await loadPage(slug);
   if (!result || result.state === "not_found") notFound();
   const { page, viewer } = result;
-  // Follow comes with V24 (FR-L4).
+  const path = companyPagePath(lang, page.slug);
+  const connection = viewer === "outsider" ? await getProfileConnection(page.slug) : null;
+  const follow =
+    connection && hasConnectionActions(connection.access) ? (
+      <ConnectionActions
+        lang={lang}
+        organizationId={connection.id}
+        name={page.displayName}
+        access={connection.access}
+        saved={false}
+        following={connection.following}
+        next={path}
+        visitorLabel="Sign up to follow"
+      />
+    ) : null;
   const actions =
     viewer === "manager" ? (
       <div className="grid gap-4">
@@ -42,9 +59,14 @@ export default async function CompanyPage({ params }: PageProps<"/[lang]/compani
         </div>
       </div>
     ) : viewer === "outsider" ? (
-      <TextLink standalone rel="nofollow" href={reportPath(lang, "content", companyPagePath(lang, page.slug))}>
-        Report company
-      </TextLink>
+      <div className="grid gap-3">
+        {follow}
+        <div className={follow ? "border-t pt-2" : undefined}>
+          <TextLink standalone rel="nofollow" href={reportPath(lang, "content", path)}>
+            Report company
+          </TextLink>
+        </div>
+      </div>
     ) : undefined;
   return (
     <PageContainer layout="page">

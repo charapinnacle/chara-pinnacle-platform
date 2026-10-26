@@ -2,8 +2,9 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReviewChecks } from "@/components/onboarding/review-checks";
+import { followerCountText, type FollowerCount } from "@/lib/connections/access";
 import type { ReviewOutcome } from "@/lib/dal/partner-review";
-import { onboardingPath, workforceProfilePath } from "@/lib/routes";
+import { followingPath, onboardingPath, workforceProfilePath } from "@/lib/routes";
 import { awaitingReview, infoStepLabels, reviewTimeText, type ReviewStatus } from "@/lib/validation/partner-review";
 
 type PartnerReviewDashboardProps = {
@@ -14,6 +15,8 @@ type PartnerReviewDashboardProps = {
   wasListed: boolean;
   outcome: ReviewOutcome | null;
   targetDays: number;
+  // The follower count of a listed company (FR-L4 AC11), never who follows; null while it is not listed.
+  followers: FollowerCount | null;
 };
 
 const decided = {
@@ -40,7 +43,7 @@ function StaffMessage({ outcome, label }: { outcome: ReviewOutcome; label: strin
 // of the review, the message of our team after a decision and what to do next. The recruitment and staffing dashboards
 // replace it (V30); each decision is also emailed (partner_approved, partner_info_requested, partner_declined). Never
 // "approved" or "verified" (decision 2.6).
-export function PartnerReviewDashboard({ lang, organization, status, wasListed, outcome, targetDays }: PartnerReviewDashboardProps) {
+export function PartnerReviewDashboard({ lang, organization, status, wasListed, outcome, targetDays, followers }: PartnerReviewDashboardProps) {
   const profileLink = (
     <TextLink standalone href={workforceProfilePath(lang, organization.slug)}>
       Complete your workforce profile
@@ -91,6 +94,18 @@ export function PartnerReviewDashboard({ lang, organization, status, wasListed, 
           )}
         </Card>
       )}
+      {followers ? (
+        <Card as="section" padding="lg" aria-labelledby="network-heading" className="gap-2">
+          <h2 id="network-heading" className="text-h2">
+            Your network
+          </h2>
+          <p className="text-body">{followerCountText(followers)}</p>
+          <p className="text-small text-muted-foreground">Only the number is shown: no one sees who follows a company.</p>
+          <TextLink standalone href={followingPath(lang)}>
+            Companies you follow
+          </TextLink>
+        </Card>
+      ) : null}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { employerEntry } from "@/components/dashboard/employer-entry";
 import { PartnerReviewDashboard } from "@/components/dashboard/partner-review-dashboard";
 import { WorkerDashboard } from "@/components/dashboard/worker-dashboard";
 import { ReportOutcomes } from "@/components/reports/report-outcomes";
+import { getFollowerCount } from "@/lib/dal/connections";
 import { getDocumentReminders, hasUsableCv } from "@/lib/dal/documents";
 import { getMyOrganization } from "@/lib/dal/organizations";
 import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
@@ -35,7 +36,11 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
     if (organization.type !== "employer") {
       const review = (await isReleased("release_partner_directories")) ? await getPartnerReview(organization.id) : null;
       if (!review || review.status === "onboarding") redirect(onboardingPath(lang));
-      const [outcome, targetDays] = await Promise.all([getReviewOutcome(organization.id), getReviewTargetDays()]);
+      const [outcome, targetDays, followers] = await Promise.all([
+        getReviewOutcome(organization.id),
+        getReviewTargetDays(),
+        review.listedAt !== null && review.status !== "declined" ? getFollowerCount(organization.id) : null,
+      ]);
       return (
         <PartnerReviewDashboard
           lang={lang}
@@ -44,6 +49,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
           wasListed={review.listedAt !== null}
           outcome={outcome}
           targetDays={targetDays}
+          followers={followers}
         />
       );
     }
@@ -54,7 +60,12 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
     </Suspense>
   );
   if (kind === "worker") {
-    const [passport, reminders, hasCv] = await Promise.all([getPassport(user.id), getDocumentReminders(), hasUsableCv()]);
+    const [passport, reminders, hasCv, network] = await Promise.all([
+      getPassport(user.id),
+      getDocumentReminders(),
+      hasUsableCv(),
+      isReleased("release_partner_directories"),
+    ]);
     if (!passport) redirect(`/${lang}/onboarding`);
     const today = todayUtc();
     return (
@@ -67,6 +78,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
           availableFrom={passport.availableFrom}
           reminders={reminders}
           today={today}
+          network={network}
         />
       </>
     );
