@@ -68,8 +68,8 @@ select set_eq(
 );
 select set_eq(
   $$select kind from private.notification_kinds where not mandatory$$,
-  $$values ('application_received')$$,
-  'catalogue: of the Phase 1 kinds only application_received is optional, as Phase 1 treats it'
+  $$values ('application_received'), ('licence_expiring'), ('partner_licence_expired'), ('listing_confirmation_due')$$,
+  'catalogue: of the Phase 1 kinds only application_received is optional, as Phase 1 treats it; the other optional kinds are those of Phase 2 (DATA_MODEL.md section 9)'
 );
 select is(
   (select count(*) from private.notification_kinds where not default_email and mandatory), 0::bigint,
