@@ -1,4 +1,5 @@
 import type { Page, Response } from "@playwright/test";
+import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal, query } from "./support/db";
 import { createCommittedUser } from "./support/login";
@@ -116,7 +117,12 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(capacity).toContainText("Welders and flame cutters from Philippines");
     await expect(capacity).not.toContainText("99 available");
     await expect(page.getByRole("region", { name: "Languages" })).toContainText("English");
-    await expect(page.getByRole("region", { name: "Commitment" })).toContainText("workers pay no recruitment fees");
+    const commitment = page.getByRole("region", { name: "Commitment" });
+    await expect(commitment).toContainText(WORKERS_NEVER_PAY);
+    await expect(commitment.getByRole("link", { name: "Read the employer-pays commitment" })).toHaveAttribute(
+      "href",
+      "/en/legal/employer-pays-commitment",
+    );
     const where = page.getByRole("region", { name: "Where we serve" });
     await expect(where.getByRole("term")).toHaveText(["Based in", "Sources workers from", "Recruits for"]);
     await expect(where.getByRole("definition")).toHaveText(["Philippines", "Nepal, Philippines", "Germany"]);

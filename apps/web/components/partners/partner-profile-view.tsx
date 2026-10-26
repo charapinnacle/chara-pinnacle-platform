@@ -8,6 +8,7 @@ import { formatCount, formatDate } from "@/lib/i18n/format";
 import { publicWebsite } from "@/lib/jobs/presentation";
 import type { Named, PartnerProfile } from "@/lib/partners/profile";
 import { cn } from "@/lib/utils";
+import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 type PartnerProfileViewProps = {
@@ -153,8 +154,11 @@ export function PartnerProfileView({ lang, profile, actions, banner }: PartnerPr
           {profile.commitmentCurrent ? (
             <ProfileSection id="profile-commitment" title="Commitment">
               <p className="max-w-[65ch] text-body">
-                Employer pays: {profile.displayName} has committed that workers pay no recruitment fees or related costs.
+                {WORKERS_NEVER_PAY}. {profile.displayName} has accepted the employer-pays commitment.
               </p>
+              <TextLink standalone href={`/${lang}/legal/employer-pays-commitment`}>
+                Read the employer-pays commitment
+              </TextLink>
             </ProfileSection>
           ) : null}
 
