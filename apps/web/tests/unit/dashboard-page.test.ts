@@ -1,6 +1,7 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MemberRole } from "@/lib/validation/team";
+import type { ReviewOutcome } from "@/lib/dal/partner-review";
 
 const requireUserMock = vi.hoisted(() => vi.fn());
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
@@ -26,8 +27,13 @@ vi.mock("@/lib/dal/organizations", () => ({
 }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 const reviewMock = vi.hoisted(() => vi.fn());
+const outcomeMock = vi.hoisted(() => vi.fn<() => Promise<ReviewOutcome | null>>(async () => null));
 const releasedMock = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/dal/partner-review", () => ({ getPartnerReview: reviewMock, getReviewTargetDays: async () => 1 }));
+vi.mock("@/lib/dal/partner-review", () => ({
+  getPartnerReview: reviewMock,
+  getReviewOutcome: outcomeMock,
+  getReviewTargetDays: async () => 1,
+}));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 const firstStepsMock = vi.hoisted(() => vi.fn());
 const passportMock = vi.hoisted(() => vi.fn());
@@ -116,6 +122,41 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     expect(html).toContain(">Your company is listed</h2>");
     expect(html).not.toMatch(/approved|verified/i);
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-J4 AC7, AC10, NFR-C7: shows the message of our team, the statement of reasons and the listing, never approved", async () => {
+    releasedMock.mockResolvedValue(true);
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "org-9", slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company", role: "owner", suspended: false },
+    ]);
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "where_you_serve", listedAt: null });
+    outcomeMock.mockResolvedValue({ decision: "request_info", reason: "Please add the countries you source from.", infoStep: "where_you_serve", decidedAt: "2026-11-22T10:00:00Z" });
+    let html = await render("employer");
+    expect(html).toContain("Check where you serve and what you offer, then submit your company again.");
+    expect(html).toContain(">Message from our team</h3>");
+    expect(html).toContain("Please add the countries you source from.");
+    expect(outcomeMock).toHaveBeenCalledWith("org-9");
+
+    reviewMock.mockResolvedValue({ status: "declined", submittedAt: null, infoStep: null, listedAt: null });
+    outcomeMock.mockResolvedValue({ decision: "decline", reason: "The registry has no entry for this number.", infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });
+    html = await render("employer");
+    expect(html).toContain(">Your company is not listed</h2>");
+    expect(html).toContain(">Reason</h3>");
+    expect(html).toContain("The registry has no entry for this number.");
+    expect(html).toMatch(/<a[^>]*href="\/en\/contact"[^>]*>Contact us about this decision/);
+
+    reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
+    outcomeMock.mockResolvedValue({ decision: "approve", reason: null, infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });
+    html = await render("employer");
+    expect(html).toContain(">Your company is listed</h2>");
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile"[^>]*>Complete your workforce profile/);
+    expect(html).not.toMatch(/approved|verified/i);
+
+    reviewMock.mockResolvedValue({ status: "re_review", submittedAt: "2026-11-23T10:00:00Z", infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
+    html = await render("employer");
+    expect(html).toContain("Your company stays listed while our team reviews the change.");
+    expect(html).not.toContain("not shown to employers");
   });
 
   it("FR-J1: sends a submitted partner to its onboarding while release 2a is off", async () => {

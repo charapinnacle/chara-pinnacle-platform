@@ -7,7 +7,7 @@ import { WorkerDashboard } from "@/components/dashboard/worker-dashboard";
 import { ReportOutcomes } from "@/components/reports/report-outcomes";
 import { getDocumentReminders, hasUsableCv } from "@/lib/dal/documents";
 import { getMyOrganization } from "@/lib/dal/organizations";
-import { getPartnerReview, getReviewTargetDays } from "@/lib/dal/partner-review";
+import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
 import { getPassport } from "@/lib/dal/passport";
 import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
@@ -35,12 +35,15 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
     if (organization.type !== "employer") {
       const review = (await isReleased("release_partner_directories")) ? await getPartnerReview(organization.id) : null;
       if (!review || review.status === "onboarding") redirect(onboardingPath(lang));
+      const [outcome, targetDays] = await Promise.all([getReviewOutcome(organization.id), getReviewTargetDays()]);
       return (
         <PartnerReviewDashboard
           lang={lang}
           organization={organization}
           status={review.status}
-          targetDays={await getReviewTargetDays()}
+          wasListed={review.listedAt !== null}
+          outcome={outcome}
+          targetDays={targetDays}
         />
       );
     }

@@ -1,5 +1,6 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReviewOutcome } from "@/lib/dal/partner-review";
 
 const requireUserMock = vi.hoisted(() => vi.fn());
 const organizationMock = vi.hoisted(() => vi.fn());
@@ -13,6 +14,7 @@ const offerMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const legalDocumentMock = vi.hoisted(() => vi.fn());
 const reviewMock = vi.hoisted(() => vi.fn());
+const outcomeMock = vi.hoisted(() => vi.fn<() => Promise<ReviewOutcome | null>>(async () => null));
 const headerValues = vi.hoisted(() => ({ acceptLanguage: null as string | null }));
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
@@ -69,7 +71,11 @@ vi.mock("@/lib/dal/legal", () => ({
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
 const billingMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/dal/billing", () => ({ getBillingState: billingMock }));
-vi.mock("@/lib/dal/partner-review", () => ({ getPartnerReview: reviewMock, getReviewTargetDays: async () => 1 }));
+vi.mock("@/lib/dal/partner-review", () => ({
+  getPartnerReview: reviewMock,
+  getReviewOutcome: outcomeMock,
+  getReviewTargetDays: async () => 1,
+}));
 vi.mock("@/lib/actions/partner-review", () => ({ submitForReview: vi.fn() }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn() }));
 vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: vi.fn() }));
@@ -474,10 +480,19 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
     twoStepMock.mockResolvedValue(true);
     reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: "2026-11-21T10:00:00Z", infoStep: "where_you_serve" });
+    outcomeMock.mockResolvedValue({
+      decision: "request_info",
+      reason: "Please add the countries you source workers from.",
+      infoStep: "where_you_serve",
+      decidedAt: "2026-11-22T10:00:00Z",
+    });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Ready");
     expect(html).toContain(">Submit your company again</h1>");
     expect(html).toContain("Our team asked for more information about where you serve and what you offer.");
+    expect(html).toContain("Message from our team");
+    expect(html).toContain("Please add the countries you source workers from.");
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
     expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
     expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toMatch(/<button[^>]*>Submit again for review<\/button>/);
