@@ -1676,6 +1676,11 @@ isOneToOne: false
               "country_code": string,"metric": Database["public"]['Enums']["analytics_metric"],"occupation_id": string,"organization_id": string,"period_end": string,"period_start": string,"suppressed": boolean,"value": number
             }[]
                            },
+"get_partner_dashboard":
+{ Args: { "p_org": string }; Returns: {
+              "licences_current": number,"licences_expired": number,"licences_expiring": number,"listed": boolean,"listings_due": number,"listings_stale": number,"listings_total": number,"next_licence_expiry": string,"oldest_listing_confirmed_at": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_hidden": boolean,"profile_missing": string,"profile_updated_at": string,"profile_views_30d": number,"profile_views_fewer_than": number,"profile_views_in_plan": boolean,"profile_views_suppressed": boolean,"review_status": Database["public"]['Enums']["partner_review_status"]
+            }[]
+                           },
 "get_partner_profile":
 { Args: { "p_key"?: string,"p_proof"?: string,"p_slug": string }; Returns: {
               "based_in_country": string,"based_in_country_name": string,"commitment_current": boolean,"description": string,"display_name": string,"founded_year": number,"industries": Json,"languages": Json,"listings": Json,"occupations": Json,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"served_countries": Json,"service_types": (Database["public"]['Enums']["partner_service_type"])[],"slug": string,"source_countries": Json,"viewer_is_member": boolean,"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
