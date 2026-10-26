@@ -10,6 +10,17 @@ export interface CheckoutInput {
   customerRef?: string;
 }
 
+// A new recurring price of a plan's product (FR-R2 AC8). A price is never edited at the provider: a price change is a new
+// price, which applies to new subscriptions only; existing subscriptions keep theirs until the provider moves them.
+export interface PriceInput {
+  // The plan's product at the provider (billing.plan_provider_refs); the null provider has none.
+  productRef: string | null;
+  amountMinor: number;
+  currency: string;
+  interval: "month";
+  metadata: Record<string, string>;
+}
+
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "paused";
 
 // Every event carries providerCreatedAt, the time the provider created it, which the database compares with the state it
@@ -100,6 +111,8 @@ export interface BillingProvider {
   // configuration names the provider's portal configuration of the organisation's type (its products); without it the
   // provider's default configuration applies.
   createPortal(input: { customerRef: string; returnUrl: string; configuration?: string }): Promise<{ url: string }>;
+  // The reference of the new price; null for the null provider, which holds no prices.
+  createPrice(input: PriceInput): Promise<{ priceRef: string | null }>;
   // Checks the signature against the raw body, before anything in the body is read.
   verifyWebhook(req: Request, rawBody: string): Promise<WebhookVerification>;
   // Empty for a type CHARA does not use; one event for the types it does.

@@ -59,6 +59,7 @@ export function nullProvider(siteUrl: string, webhookSecret?: string): BillingPr
         return { url: `${HOSTED}/portal/${encodeURIComponent(input.customerRef)}?${query}` };
       });
     },
+    createPrice: () => Promise.resolve({ priceRef: null }),
     verifyWebhook: (req, rawBody) => verify(req, rawBody, webhookSecret),
     normalize(payload) {
       const valid = isObject(payload) && EVENT_KINDS.includes(payload.kind as NormalizedEvent["kind"]) &&

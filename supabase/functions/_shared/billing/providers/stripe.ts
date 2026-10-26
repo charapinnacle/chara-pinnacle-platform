@@ -4,6 +4,7 @@ import {
   BillingProviderError,
   type CheckoutInput,
   isObject,
+  type PriceInput,
   type SubscriptionState,
   type WebhookVerification,
 } from "../provider.ts";
@@ -20,6 +21,9 @@ const MAX_SIGNATURES = 3;
 const PAGE_SIZE = 100;
 const SUBSCRIPTION_REF = /^sub_[A-Za-z0-9]+$/;
 const PORTAL_CONFIGURATION = /^bpc_[A-Za-z0-9]+$/;
+const PRODUCT_REF = /^prod_[A-Za-z0-9]+$/;
+const PRICE_REF = /^price_[A-Za-z0-9]+$/;
+const METADATA_KEY = /^[a-z_]{1,40}$/;
 
 function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchParams {
   const params = new URLSearchParams({
@@ -44,6 +48,21 @@ function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchP
     // be updated from the checkout.
     params.set("customer_update[address]", "auto");
     params.set("customer_update[name]", "auto");
+  }
+  return params;
+}
+
+// Prices are exclusive of VAT, as the prices of scripts/sync-stripe-plans.mjs, so Stripe Tax adds the VAT at checkout.
+function priceParams(input: PriceInput & { productRef: string }): URLSearchParams {
+  const params = new URLSearchParams({
+    product: input.productRef,
+    unit_amount: String(input.amountMinor),
+    currency: input.currency.toLowerCase(),
+    "recurring[interval]": input.interval,
+    tax_behavior: "exclusive",
+  });
+  for (const [key, value] of Object.entries(input.metadata)) {
+    params.set(`metadata[${key}]`, value);
   }
   return params;
 }
@@ -129,13 +148,21 @@ export function stripeProvider(
     return body;
   }
 
-  async function post(path: string, params: URLSearchParams, idempotent: boolean): Promise<{ url: string }> {
+  async function postForm(
+    path: string,
+    params: URLSearchParams,
+    idempotent: boolean,
+  ): Promise<Record<string, unknown>> {
     const body = params.toString();
     const headers: Record<string, string> = { "content-type": "application/x-www-form-urlencoded" };
     if (idempotent) {
       headers["idempotency-key"] = await sha256Hex(`${path}?${body}#${Math.floor(now() / IDEMPOTENCY_WINDOW_MS)}`);
     }
-    const { url } = await call({ method: "POST", headers, body }, path);
+    return await call({ method: "POST", headers, body }, path);
+  }
+
+  async function post(path: string, params: URLSearchParams, idempotent: boolean): Promise<{ url: string }> {
+    const { url } = await postForm(path, params, idempotent);
     if (typeof url !== "string" || !url.startsWith("https://")) {
       throw new BillingProviderError("stripe_bad_response");
     }
@@ -161,6 +188,23 @@ export function stripeProvider(
         params.set("configuration", input.configuration);
       }
       return await post("/billing_portal/sessions", params, false);
+    },
+    // Carries the idempotency key of a checkout, so a double submit within five minutes creates one price.
+    async createPrice(input) {
+      if (!input.productRef) {
+        throw new BillingProviderError("stripe_product_missing");
+      }
+      if (
+        !PRODUCT_REF.test(input.productRef) || !Number.isInteger(input.amountMinor) || input.amountMinor <= 0 ||
+        !Object.keys(input.metadata).every((key) => METADATA_KEY.test(key))
+      ) {
+        throw new BillingProviderError("stripe_bad_price_input");
+      }
+      const { id } = await postForm("/prices", priceParams({ ...input, productRef: input.productRef }), true);
+      if (typeof id !== "string" || !PRICE_REF.test(id)) {
+        throw new BillingProviderError("stripe_bad_response");
+      }
+      return { priceRef: id };
     },
     verifyWebhook(req, rawBody) {
       return verifyStripeSignature(req, rawBody, config.webhookSecret, Math.floor(now() / 1000));
