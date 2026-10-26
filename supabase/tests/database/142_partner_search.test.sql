@@ -1,5 +1,5 @@
 begin;
-select plan(94);
+select plan(105);
 
 \ir organizations_fixture.inc
 
@@ -72,13 +72,17 @@ $$;
 \set acm '00000000-0000-0000-0000-0000001f0003'
 \set bet '00000000-0000-0000-0000-0000001f0004'
 \set stf '00000000-0000-0000-0000-0000001f0005'
+\set rcu '00000000-0000-0000-0000-0000001f0006'
+\set stu '00000000-0000-0000-0000-0000001f0007'
 
 select pg_temp.new_user(:'own', 'company', 'maria.santos@manila-skills.example');
 select pg_temp.new_user(:'wrk', 'worker');
 select pg_temp.new_user(:'acm');
 select pg_temp.new_user(:'bet');
 select pg_temp.new_user(:'stf');
-update public.profiles set account_kind = intended_account_kind where id in (:'own', :'wrk', :'acm', :'bet', :'stf');
+select pg_temp.new_user(:'rcu');
+select pg_temp.new_user(:'stu');
+update public.profiles set account_kind = intended_account_kind where id in (:'own', :'wrk', :'acm', :'bet', :'stf', :'rcu', :'stu');
 insert into public.platform_staff (user_id, role) values (:'stf', 'admin');
 
 -- Partners of earlier test data must not change the results below: they are hidden for this transaction.
@@ -88,6 +92,10 @@ select pg_temp.new_org(:'acm', 'employer', 'acme-gmbh') as acme \gset
 select pg_temp.new_org(:'bet', 'employer', 'beta-bau') as beta \gset
 insert into billing.subscriptions (organization_id, plan_code, status, provider)
 values (:'acme', 'employer_starter', 'active', 'null'), (:'beta', 'employer_professional', 'active', 'null');
+-- AC1: the employer serves DE with occupation 7212 too, so only the type keeps it out. It cannot be listed: listed_at is a
+-- partner column (check organizations_partner_columns_partner_only), asserted below.
+insert into public.organization_geographies (organization_id, scope, country_code) values (:'acme', 'serves_market', 'DE');
+insert into public.organization_occupations (organization_id, occupation_id) values (:'acme', '7212');
 
 -- AC1: every listing state, serving DE with occupation 7212 ---------------------------------------------------------------
 select pg_temp.partner(:'own', 'listed-co', '{DE}', '{7212}') as listed \gset
@@ -148,6 +156,8 @@ select is(pg_temp.slugs(), 'listed-co,re-review-co',
 select is(pg_temp.search(:'own', '''recruitment'''), 'ok', 'a search without filters is allowed');
 select ok(pg_temp.slugs() !~ '(pending|info|declined|suspended|hidden|staffing)-co|acme',
   'AC1: without filters too, no unlisted partner, staffing company or employer is returned');
+select throws_ok(format('update public.organizations set listed_at = now() where id = %L', :'acme'), '23514', null,
+  'AC1: an employer cannot carry listed_at, so the fixture employer serves DE with 7212 unlisted and the type excludes it');
 select is(pg_temp.search(null, format('''recruitment'', p_destination => %L', :'pending')), 'P0001|CHARA_INVALID_INPUT|p_destination',
   'AC1: an id cannot be passed as a filter');
 select is(pg_temp.search(null, '''recruitment'', p_occupation => ''pending-co'''), 'P0001|CHARA_INVALID_INPUT|p_occupation',
@@ -168,6 +178,13 @@ select is(pg_temp.result() -> 0 -> 'served_countries', '[{"code": "DE", "name": 
 select ok((pg_temp.result() -> 0 ->> 'capacity_confirmed_at') is not null, 'AC4: the confirmation time of a fresh listing');
 select is((pg_temp.result() -> 1 ->> 'capacity_confirmed_at'), null, 'and none without a listing');
 
+select is((pg_temp.result() -> 0 ->> 'profile_updated_at')::timestamptz, '2026-10-01 08:00+00'::timestamptz,
+  'AC4: profile_updated_at is the time the profile last changed');
+select pg_temp.partner(:'own', 'never-changed', '{LU}', '{7212}', null) as never \gset
+select pg_temp.partner(:'own', 'changed-lu', '{LU}', '{7212}', now() - interval '40 days') as changed_lu \gset
+select is(pg_temp.search(null, '''recruitment'', p_destination => ''LU'''), 'ok', 'a profile that never changed');
+select is(pg_temp.slugs() || '|' || coalesce(pg_temp.result() -> 0 ->> 'profile_updated_at', 'null'), 'never-changed,changed-lu|null',
+  'AC4: before any change profile_updated_at is null, and the listing time (30 days ago) sorts it');
 select pg_temp.partner(:'own', 'many-occupations', '{CH}', '{7212,7411,7126,5120,9313,8322}') as many \gset
 insert into public.organization_geographies (organization_id, scope, country_code) values (:'many', 'sources_from', 'PH');
 insert into public.workforce_availability (organization_id, occupation_id, source_country, available, monthly_capacity,
@@ -310,18 +327,40 @@ select is(pg_temp.search(:'bet', '''recruitment'', p_capacity => 100000, p_withi
 select count(pg_temp.partner(:'own', 'page-' || n, '{KE}', '{7212}', timestamptz '2026-07-01 08:00+00' + make_interval(hours => n)))
 from generate_series(1, 45) n;
 create temp table seen (page integer, slug text, cursor text);
-select is(pg_temp.search(null, '''recruitment'', p_destination => ''KE'''), 'ok', 'page 1');
-insert into seen select 1, e ->> 'slug', e ->> 'next_cursor' from jsonb_array_elements(pg_temp.result()) e;
-update public.organizations set workforce_profile_updated_at = now() where slug = 'page-40';
-select is(pg_temp.search(null, format('''recruitment'', p_destination => ''KE'', p_cursor => %L', (select cursor from seen where page = 1 and cursor is not null))), 'ok', 'page 2');
-insert into seen select 2, e ->> 'slug', e ->> 'next_cursor' from jsonb_array_elements(pg_temp.result()) e;
-select is(pg_temp.search(null, format('''recruitment'', p_destination => ''KE'', p_cursor => %L', (select cursor from seen where page = 2 and cursor is not null))), 'ok', 'page 3');
-insert into seen select 3, e ->> 'slug', e ->> 'next_cursor' from jsonb_array_elements(pg_temp.result()) e;
+create temp table seen_changed (page integer, slug text, cursor text);
+create function pg_temp.fetch_page(p_table text, p_page integer) returns text
+language plpgsql as $$
+declare
+  v_cursor text;
+  v_result text;
+begin
+  if p_page > 1 then
+    execute format('select cursor from %I where page = %s and cursor is not null', p_table, p_page - 1) into v_cursor;
+  end if;
+  v_result := pg_temp.search(null, format('''recruitment'', p_destination => ''KE'', p_cursor => %L', v_cursor));
+  execute format('insert into %I select %s, e ->> ''slug'', e ->> ''next_cursor'' from jsonb_array_elements(%L::jsonb) e',
+    p_table, p_page, pg_temp.result());
+  return v_result;
+end;
+$$;
+select is(pg_temp.fetch_page('seen', 1) || pg_temp.fetch_page('seen', 2) || pg_temp.fetch_page('seen', 3), 'okokok', 'pages 1, 2 and 3');
 select is((select string_agg(c::text, ',' order by p) from (select page as p, count(*) as c from seen group by page) x), '20,20,5',
   'AC12: pages of 20, 20 and 5');
-select is((select count(distinct slug)::integer from seen), 45, 'AC12: no partner twice and none skipped, though one changed in between');
+select is((select count(distinct slug)::integer from seen), 45, 'AC12: no partner twice and none skipped');
 select is((select count(cursor)::integer from seen where page = 3), 0, 'AC12: the last page has no next cursor');
 select is((select count(cursor)::integer from seen where page < 3), 2, 'AC12: the others have exactly one, on their last row');
+
+-- The keyset departure: a partner whose profile changes while someone pages moves to the front, before the cursor.
+select is(pg_temp.fetch_page('seen_changed', 1), 'ok', 'page 1 again');
+update public.organizations set workforce_profile_updated_at = now() where slug = 'page-5';
+select is(pg_temp.fetch_page('seen_changed', 2) || pg_temp.fetch_page('seen_changed', 3), 'okok', 'pages 2 and 3 after page-5 changed');
+select is((select string_agg(c::text, ',' order by p) from (select page as p, count(*) as c from seen_changed group by page) x), '20,20,4',
+  'AC12 departure: the pages after the change hold one partner less');
+select is(
+  (select string_agg(s.slug, ',') from seen s where not exists (select 1 from seen_changed c where c.slug = s.slug)),
+  'page-5', 'AC12 departure: a partner updated before it was shown moves before the cursor and is the one partner skipped'
+);
+select is((select (count(*) - count(distinct slug))::integer from seen_changed), 0, 'AC12 departure: still no partner twice');
 select count(pg_temp.partner(:'own', 'more-' || n, '{KE}', '{7212}')) from generate_series(1, 10) n;
 select is(pg_temp.search(null, '''recruitment'', p_destination => ''KE'', p_limit => 500'), 'ok', 'a limit of 500');
 select is(jsonb_array_length(pg_temp.result()), 50, 'AC12: is capped at 50');
@@ -423,6 +462,12 @@ select throws_ok(
 );
 select throws_ok(format('update public.organizations set slug = %L where id = %L', 'staffing', :'listed'),
   '23505', 'CHARA_CONFLICT', 'nor the slug of the staffing directory');
+select is(pg_temp.run(:'rcu', 'select public.create_organization(''employer'', ''Recruitment GmbH'', ''Recruitment'', ''DE'', ''C'') ->> ''slug'' as slug'),
+  'ok', 'a company called Recruitment signs up');
+select matches(pg_temp.result() -> 0 ->> 'slug', '^recruitment-[0-9a-f]{6}$', 'and create_organization gives it a suffixed slug');
+select is(pg_temp.run(:'stu', 'select public.create_organization(''employer'', ''Staffing GmbH'', ''Staffing'', ''DE'', ''C'') ->> ''slug'' as slug'),
+  'ok', 'a company called Staffing signs up');
+select matches(pg_temp.result() -> 0 ->> 'slug', '^staffing-[0-9a-f]{6}$', 'and create_organization gives it a suffixed slug');
 select lives_ok(
   format('insert into public.organizations (type, slug, legal_name, display_name, based_in_country) values (%L, %L, %L, %L, %L)',
     'employer', 'recruitment-agency', 'Recruitment Agency GmbH', 'Recruitment Agency', 'DE'),
