@@ -17,9 +17,10 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
   const { lang } = await params;
   const user = await requireUser(lang);
   if (user.accountKind !== "worker" && user.accountKind !== "company") redirect(homePath(lang, user.accountKind));
-  const [delivery, kinds] = await Promise.all([
+  const [delivery, kinds, exportLink] = await Promise.all([
     user.accountKind === "company" ? getEmailDelivery() : null,
     isReleased("release_partner_directories").then((released) => (released ? getNotificationKinds() : null)),
+    user.accountKind === "company" ? isReleased("release_data_export") : false,
   ]);
   const optional = kinds?.filter((kind) => !kind.mandatory) ?? [];
   const mandatory = kinds?.filter((kind) => kind.mandatory) ?? [];
@@ -38,7 +39,7 @@ export default async function NotificationSettingsPage({ params }: PageProps<"/[
           />
         }
       />
-      {kinds && user.accountKind === "company" ? (
+      {exportLink ? (
         <TextLink standalone="flush" href={dataExportPath(lang)}>
           Download my data
         </TextLink>

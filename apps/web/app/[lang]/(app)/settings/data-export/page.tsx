@@ -12,11 +12,11 @@ import { homePath, notificationSettingsPath, settingsPath } from "@/lib/routes";
 export const metadata: Metadata = { title: "Download my data", robots: { index: false } };
 
 // A copy of the user's own data (FR-S3 AC8, GDPR Art. 15 and 20), for every signed-in account. A user who still has to
-// accept a new version of the terms can ask all the same. Release 2a only.
+// accept a new version of the terms can ask all the same. Only while release_data_export is on.
 export default async function DataExportPage({ params }: PageProps<"/[lang]/settings/data-export">) {
   const { lang } = await params;
   const user = await requireUser(lang, { consentGate: false });
-  if (!(await isReleased("release_partner_directories"))) notFound();
+  if (!(await isReleased("release_data_export"))) notFound();
   const data = await listMyDataExports();
   const settings =
     user.accountKind === "worker"

@@ -14,7 +14,7 @@ import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveSetting } from "@/lib/actions/plan-editor";
-import { releaseWarning, ruleText, settingFormSchema, settingValueText, type SettingForm, type SettingRule } from "@/lib/validation/plan-editor";
+import { isReleaseSwitch, releaseWarning, ruleText, settingFormSchema, settingValueText, type SettingForm, type SettingRule } from "@/lib/validation/plan-editor";
 
 const FAILURE = "The setting was not saved";
 const booleanOptions = [
@@ -78,7 +78,7 @@ function SettingForm({ rule, onClose }: { rule: SettingRule; onClose: () => void
   }
 
   if (confirming !== null) {
-    const goesLive = rule.releaseFeature !== null && confirming === "true";
+    const goesLive = isReleaseSwitch(rule) && confirming === "true";
     const gaps = releaseWarning(rule, confirming);
     return (
       <div className="grid gap-4">

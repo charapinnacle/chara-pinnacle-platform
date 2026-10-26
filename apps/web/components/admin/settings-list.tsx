@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Section } from "@/components/layout/section";
 import { listEditableSettings } from "@/lib/dal/plan-editor";
-import { releaseWarning, ruleText, settingValueText, type SettingRule } from "@/lib/validation/plan-editor";
+import { isReleaseSwitch, releaseWarning, ruleText, settingValueText, type SettingRule } from "@/lib/validation/plan-editor";
 
 function SettingsTable({ caption, rules, release }: { caption: string; rules: readonly SettingRule[]; release?: boolean }) {
   return (
@@ -26,7 +26,13 @@ function SettingsTable({ caption, rules, release }: { caption: string; rules: re
               )}
             </td>
             <td className={`${cell} break-words`}>
-              {release ? (gaps.length > 0 ? `${gaps.length} not approved: ${gaps.join("; ")}` : "All approved") : ruleText(rule)}
+              {release
+                ? rule.releaseFeature === null
+                  ? "None needed"
+                  : gaps.length > 0
+                    ? `${gaps.length} not approved: ${gaps.join("; ")}`
+                    : "All approved"
+                : ruleText(rule)}
             </td>
             <td className={cell}>
               <SettingDialog rule={rule} />
@@ -42,8 +48,8 @@ function SettingsTable({ caption, rules, release }: { caption: string; rules: re
 export async function SettingsList() {
   const rules = await listEditableSettings();
   if (rules.length === 0) return <EmptyState icon={Settings2} title="No settings can be changed here" />;
-  const releases = rules.filter((rule) => rule.releaseFeature !== null);
-  const others = rules.filter((rule) => rule.releaseFeature === null);
+  const releases = rules.filter(isReleaseSwitch);
+  const others = rules.filter((rule) => !isReleaseSwitch(rule));
 
   return (
     <div className="grid gap-page">

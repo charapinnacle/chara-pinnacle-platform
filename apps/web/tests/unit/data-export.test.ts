@@ -6,6 +6,7 @@ import {
   exportStateTones,
   formatSize,
   isExportState,
+  notIncludedText,
   requestRefusal,
 } from "@/lib/data-export/presentation";
 import { dataExportPath } from "@/lib/routes";
@@ -38,6 +39,11 @@ describe("data export presentation", () => {
     expect(formatSize(512)).toBe("512 bytes");
     expect(formatSize(2048)).toBe("2 KB");
     expect(formatSize(5_400_000)).toBe("5.1 MB");
+  });
+
+  it("says how many documents a copy left out", () => {
+    expect(notIncludedText(1)).toBe("1 document was not included (see README.txt)");
+    expect(notIncludedText(3)).toBe("3 documents were not included (see README.txt)");
   });
 
   it("lives under the account settings", () => {

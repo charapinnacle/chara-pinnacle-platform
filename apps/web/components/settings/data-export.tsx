@@ -12,21 +12,42 @@ import { Notice } from "@/components/forms/notice";
 import { Card } from "@/components/layout/card";
 import { downloadDataExport, requestDataExport } from "@/lib/actions/data-export";
 import type { DataExport, DataExports } from "@/lib/dal/data-export";
-import { exportStateLabels, exportStateTones, formatSize } from "@/lib/data-export/presentation";
+import { exportStateLabels, exportStateTones, formatSize, notIncludedText } from "@/lib/data-export/presentation";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
 
-// While an export is being prepared the page reads the state again, so the download appears without a reload.
+// While an export is being prepared the page reads the state again, so the download appears without a reload; after a
+// quarter of an hour it stops and leaves it to the email.
 const REFRESH_MS = 5_000;
+const REFRESH_LIMIT_MS = 15 * 60_000;
+const READY = "Your data is ready to download.";
 
 export function DataExportPanel({ exports, nextRequestAt }: DataExports) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [seen, setSeen] = useState(exports);
+  const [announcement, setAnnouncement] = useState("");
   const request = useActionCall("Could not request your data");
   const preparing = exports.some((item) => item.state === "preparing");
 
+  // An export that was being prepared and is now ready is announced to screen readers.
+  if (seen !== exports) {
+    const waiting = new Set(seen.filter((item) => item.state === "preparing").map((item) => item.id));
+    if (exports.some((item) => item.state === "ready" && waiting.has(item.id))) setAnnouncement(READY);
+    setSeen(exports);
+  }
+
   useEffect(() => {
     if (!preparing) return;
-    const timer = window.setInterval(() => router.refresh(), REFRESH_MS);
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      if (Date.now() - started > REFRESH_LIMIT_MS) {
+        window.clearInterval(timer);
+        setStopped(true);
+        return;
+      }
+      router.refresh();
+    }, REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [preparing, router]);
 
@@ -36,7 +57,15 @@ export function DataExportPanel({ exports, nextRequestAt }: DataExports) {
 
   return (
     <div className="grid gap-6">
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
       <div className="grid gap-3">
+        {preparing && stopped ? (
+          <Notice tone="info" role="status">
+            Preparing your data is taking a while. We will email you when it is ready.
+          </Notice>
+        ) : null}
         {nextRequestAt && !preparing ? (
           <Notice tone="info" role="status">
             You can ask for a new export from {formatDateTime(nextRequestAt)}.
@@ -98,6 +127,7 @@ function ExportRow({ item }: { item: DataExport }) {
           <p className="text-small text-muted-foreground">
             Available until {formatDateTime(item.expiresAt)}
             {item.sizeBytes ? ` · ${formatSize(item.sizeBytes)}` : ""}
+            {item.filesLeftOut > 0 ? ` · ${notIncludedText(item.filesLeftOut)}` : ""}
           </p>
         ) : item.state === "failed" ? (
           <p className="text-small text-muted-foreground">Something went wrong while preparing this copy. Ask for a new one.</p>

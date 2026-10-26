@@ -17,7 +17,7 @@ const UNAVAILABLE = "Data exports are not available at the moment.";
 // when the next one is accepted.
 export async function requestDataExport(): Promise<{ message?: string }> {
   await requireUser(defaultLocale, { consentGate: false });
-  if (!(await isReleased("release_partner_directories"))) return { message: UNAVAILABLE };
+  if (!(await isReleased("release_data_export"))) return { message: UNAVAILABLE };
   const { error } = await (await createClient()).rpc("request_data_export");
   if (error) {
     if (error.message === "CHARA_RATE_LIMITED") {

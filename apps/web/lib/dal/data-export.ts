@@ -12,6 +12,7 @@ export type DataExport = {
   readyAt: string | null;
   expiresAt: string | null;
   sizeBytes: number | null;
+  filesLeftOut: number;
 };
 
 export type DataExports = { exports: DataExport[]; nextRequestAt: string | null };
@@ -31,6 +32,7 @@ export async function listMyDataExports(): Promise<DataExports> {
             readyAt: row.ready_at ?? null,
             expiresAt: row.expires_at ?? null,
             sizeBytes: row.size_bytes ?? null,
+            filesLeftOut: row.files_left_out ?? 0,
           }]
         : [],
     ),

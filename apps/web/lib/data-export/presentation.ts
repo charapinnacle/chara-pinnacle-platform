@@ -44,3 +44,9 @@ export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${sizeFormat.format(bytes / 1024)} KB`;
   return `${sizeFormat.format(bytes / (1024 * 1024))} MB`;
 }
+
+// The documents a copy lists without their file (still being checked, too large, deleted meanwhile); README.txt and
+// documents.json in the zip say why.
+export function notIncludedText(count: number): string {
+  return `${count} ${count === 1 ? "document was" : "documents were"} not included (see README.txt)`;
+}

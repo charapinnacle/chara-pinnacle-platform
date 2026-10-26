@@ -28,7 +28,7 @@ export default async function SettingsPage({ params }: PageProps<"/[lang]/settin
       <TextLink standalone="flush" href={notificationSettingsPath(lang)}>
         Notification settings
       </TextLink>
-      {released.includes("release_partner_directories") ? (
+      {released.includes("release_data_export") ? (
         <TextLink standalone="flush" href={dataExportPath(lang)}>
           Download my data
         </TextLink>

@@ -282,6 +282,12 @@ export function settingValueText(rule: Pick<SettingRule, "valueType">, value: st
   return value === "" ? "Not set" : value;
 }
 
+// A release switch is a release_ setting; one with a release feature waits for its legal documents, one without (the
+// data export, FR-S3) needs none.
+export function isReleaseSwitch(rule: Pick<SettingRule, "key">): boolean {
+  return rule.key.startsWith("release_");
+}
+
 // A release switch is how a release goes live (DATA_MODEL.md section 1); the legal documents that still stop it are named
 // before the switch is turned on, and the database refuses the switch while there is one.
 export function releaseWarning(rule: Pick<SettingRule, "releaseFeature" | "releaseGaps">, nextValue: string): string[] {
