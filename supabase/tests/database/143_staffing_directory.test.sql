@@ -162,6 +162,8 @@ select pg_temp.partner(:'own', 'staffing_company', 'l2a1-s3', '{DE}', '{temporar
 update public.organizations set status = 'suspended' where id = :'s3';
 select pg_temp.partner(:'own', 'staffing_company', 'l2a1-s4', '{DE}', '{temporary}') as s4 \gset
 update public.organizations set moderation_state = 'hidden' where id = :'s4';
+select pg_temp.partner(:'own', 'staffing_company', 'l2a1-s5', '{DE}', '{temporary}') as s5 \gset
+update public.organizations set review_status = 'declined' where id = :'s5';
 update public.organizations set legal_entity_identifier = 'PHSEC2099999', legal_entity_identifier_kind = 'registration_number'
 where id = :'s1';
 insert into public.partner_licences (organization_id, country_code, issuing_authority, licence_number, valid_until,
@@ -171,7 +173,7 @@ insert into billing.subscriptions (organization_id, plan_code, status, provider)
 
 select is(pg_temp.search(null, '''staffing'', p_destination => ''DE'''), 'ok', 'a visitor searches the staffing directory');
 select is((select string_agg(e ->> 'slug', ',' order by e ->> 'slug') from jsonb_array_elements(pg_temp.result()) e), 'l2a1-r1,l2a1-s1',
-  'FR-L2 AC1: S1 and R1, never R2 (no staffing), S2 (pending), S3 (suspended) or S4 (hidden by moderation)');
+  'FR-L2 AC1: S1 and R1, never R2 (no staffing), S2 (pending), S3 (suspended), S4 (hidden by moderation) or S5 (declined)');
 select is(pg_temp.row_of('l2a1-r1') ->> 'organization_type' || '|' || (pg_temp.row_of('l2a1-r1') ->> 'also_offers_staffing'),
   'recruitment_company|true', 'FR-L2 AC1: R1 is a recruitment company that also offers staffing');
 select is(pg_temp.row_of('l2a1-s1') ->> 'organization_type' || '|' || (pg_temp.row_of('l2a1-s1') ->> 'also_offers_staffing'),
@@ -183,7 +185,7 @@ select ok(
   'privacy: no legal name, identifier, licence, member email, review state or plan in the staffing results'
 );
 select is(pg_temp.search(:'acm', '''staffing'''), 'ok', 'an employer searches without filters');
-select ok(pg_temp.slugs() !~ 'l2a1-(r2|s2|s3|s4)', 'FR-L2 AC1: without filters too, only S1 and R1');
+select ok(pg_temp.slugs() !~ 'l2a1-(r2|s2|s3|s4|s5)', 'FR-L2 AC1: without filters too, only S1 and R1');
 select is(pg_temp.search(null, '''recruitment'', p_destination => ''DE'''), 'ok', 'the recruitment directory');
 select is((select string_agg(e ->> 'slug', ',' order by e ->> 'slug') from jsonb_array_elements(pg_temp.result()) e), 'l2a1-r1,l2a1-r2',
   'FR-L2 AC1: R1 is still returned by kind recruitment, never a staffing company');
@@ -344,10 +346,13 @@ select pg_temp.listing(:'wm', 50, 1, 0, 1, '7212', 'NP');
 select pg_temp.listing(:'wm', 900, 1, 0, 1, '7214', 'PH');
 select pg_temp.listing(:'wp', 80, 30, 45, 1);
 select pg_temp.listing(:'wx', 400, 30, 0, 1);
+select pg_temp.partner(:'own', 'staffing_company', 'k3a7-y', '{DE}', '{temporary}') as wy \gset
+update public.organizations set review_status = 'declined' where id = :'wy';
+select pg_temp.listing(:'wy', 400, 30, 0, 1);
 
 select is(pg_temp.workforce(:'bet', '''de'', ''7212'', 100, 60'), 'ok', 'a Professional employer admin searches');
 select is(pg_temp.slugs(), 'k3a7-m,k3a7-a,k3a7-h,k3a7-b',
-  'FR-K3 AC7: M, A and H cover 100 now (latest confirmed first), then B; C, D, E, F, G, P and the hidden X never');
+  'FR-K3 AC7: M, A and H cover 100 now (latest confirmed first), then B; C, D, E, F, G, P, the hidden X and the declined Y never');
 select is(
   (select string_agg(format('%s=%s/%s', e ->> 'slug', e ->> 'supply', e ->> 'available_now'), ',' order by n)
    from jsonb_array_elements(pg_temp.result()) with ordinality r (e, n)),
