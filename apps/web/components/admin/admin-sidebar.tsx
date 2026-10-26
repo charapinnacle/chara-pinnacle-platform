@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Building2, FileText, Flag, Handshake, KeyRound, Layers, type LucideIcon, ScrollText, Settings2, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
+import { Archive, BarChart3, Building2, FileText, Flag, Handshake, KeyRound, Layers, type LucideIcon, ScrollText, Settings2, ShieldAlert, UserCog, Users, EyeOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SidebarIdentity } from "@/components/layout/sidebar-identity";
 import { SidebarLink } from "@/components/layout/sidebar-link";
@@ -15,6 +15,7 @@ const icons: Record<Segment, LucideIcon> = {
   statistics: BarChart3,
   plans: Layers,
   settings: Settings2,
+  retention: Archive,
   legal: FileText,
   audit: ScrollText,
   staff: UserCog,

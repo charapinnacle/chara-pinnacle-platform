@@ -4,13 +4,14 @@ import { adminEntries, entriesFor } from "@/lib/admin/navigation";
 const labels = (roles: Parameters<typeof entriesFor>[0]) => entriesFor(roles).map((entry) => entry.label);
 
 describe("the entries of the console", () => {
-  it("give the Platform Administrator ten functions, the reports, the plans and the settings among them", () => {
+  it("give the Platform Administrator eleven functions, the reports, the plans, the settings and the retention periods among them", () => {
     expect(labels(["admin"])).toEqual([
       "Users",
       "Organisations",
       "Statistics",
       "Plans and limits",
       "Platform settings",
+      "Retention periods",
       "Legal documents",
       "Audit log",
       "Staff",
@@ -38,8 +39,8 @@ describe("the entries of the console", () => {
   });
 
   it("join the entries of a person with two roles once each, in the order of the console", () => {
-    expect(labels(["trust_safety", "admin"])).toHaveLength(12);
-    expect(new Set(labels(["trust_safety", "admin"])).size).toBe(12);
+    expect(labels(["trust_safety", "admin"])).toHaveLength(13);
+    expect(new Set(labels(["trust_safety", "admin"])).size).toBe(13);
   });
 
   it("give the plan editor and the settings to the Platform Administrator only, outside any release switch (FR-R2)", () => {
@@ -50,6 +51,13 @@ describe("the entries of the console", () => {
     ]);
     expect(labels(["trust_safety"]).join(" ")).not.toMatch(/plan|limit|setting/i);
     expect(entriesFor(["verification_reviewer"], ["release_partner_directories"]).map((entry) => entry.label)).toEqual(["Partner reviews"]);
+  });
+
+  it("give the retention periods to the Platform Administrator only, outside any release switch (FR-S3)", () => {
+    const retention = adminEntries.filter((entry) => entry.segment === "retention");
+    expect(retention.map((entry) => [entry.label, entry.roles, "release" in entry])).toEqual([["Retention periods", ["admin"], false]]);
+    expect(labels(["trust_safety"])).not.toContain("Retention periods");
+    expect(entriesFor(["verification_reviewer"], ["release_partner_directories"]).map((entry) => entry.label)).not.toContain("Retention periods");
   });
 
   it("use one address name for each entry", () => {

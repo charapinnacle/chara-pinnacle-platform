@@ -13,6 +13,7 @@ const ADMIN_ENTRIES = [
   "Statistics",
   "Plans and limits",
   "Platform settings",
+  "Retention periods",
   "Legal documents",
   "Audit log",
   "Staff",

@@ -7,14 +7,16 @@ type Entry = { label: string; segment: string; roles: readonly PlatformRole[]; r
 const both = ["admin", "trust_safety"] as const;
 
 // The functions of the console and the roles that have them. The page guards use the same table, so a role never sees a
-// link to a page that answers it with not found. The plan editor and the settings (FR-R2) belong to the administrator and
-// are not behind a release switch: switching a release on is done there.
+// link to a page that answers it with not found. The plan editor and the settings (FR-R2) and the retention periods
+// (FR-S3) belong to the administrator and are not behind a release switch: switching a release on is done there, and the
+// periods govern Phase 1 data too.
 export const adminEntries = [
   { label: "Users", segment: "users", roles: both },
   { label: "Organisations", segment: "organizations", roles: both },
   { label: "Statistics", segment: "statistics", roles: ["admin"] },
   { label: "Plans and limits", segment: "plans", roles: ["admin"] },
   { label: "Platform settings", segment: "settings", roles: ["admin"] },
+  { label: "Retention periods", segment: "retention", roles: ["admin"] },
   { label: "Legal documents", segment: "legal", roles: ["admin"] },
   { label: "Audit log", segment: "audit", roles: ["admin"] },
   { label: "Staff", segment: "staff", roles: ["admin"] },
