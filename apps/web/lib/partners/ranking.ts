@@ -32,18 +32,40 @@ type RankingFilter = Exclude<MatchedFilter, (typeof narrowingFilters)[number]>;
 export const advancedPartnerSearchFeature = "advanced_partner_search";
 export const advancedFilters = ["capacity", "timeframe"] as const satisfies readonly RankingFilter[];
 
-const rankingFilterText: Record<RankingFilter, string> = {
-  based_in: "the company is based in the country you chose.",
-  sources_from: "the company lists at least one of the source countries you chose as a country it recruits from.",
-  industry: "the company lists the industry you chose on its profile.",
-  language: "the company lists the language you chose on its profile.",
-  recruitment_type: "the company offers the type of recruitment you chose, local or international; a company that offers both matches either.",
-  staffing_type: "the company offers at least one of the staffing types you chose.",
-  workforce_size: "the company's workforce is in the size band you chose.",
-  capacity:
-    "the company has a current availability listing (of the occupation you chose, if you chose one) with at least the number of workers you entered.",
-  timeframe:
-    "the company has a current availability listing (of the occupation you chose, if you chose one) whose workers are available within the number of days you entered. With capacity as well, one listing must meet both.",
+export type PartnerDirectory = "recruitment" | "staffing";
+
+export const directoryNames: Record<PartnerDirectory, string> = {
+  recruitment: "Find Recruitment Partners",
+  staffing: "Find Staffing Partners",
+};
+
+// What each ranking filter means, the directories whose search form offers it (components/partners/partner-search-form.tsx)
+// and the label of the form where it differs from the name on a result card.
+const rankingFilterDetails: Record<RankingFilter, { text: string; directories: readonly PartnerDirectory[]; formLabel?: string }> = {
+  based_in: { text: "the company is based in the country you chose.", directories: ["recruitment", "staffing"] },
+  sources_from: {
+    text: "the company lists at least one of the source countries you chose as a country it recruits from.",
+    directories: ["recruitment"],
+    formLabel: "Sources workers from",
+  },
+  industry: { text: "the company lists the industry you chose on its profile.", directories: ["recruitment", "staffing"] },
+  language: { text: "the company lists the language you chose on its profile.", directories: ["recruitment"] },
+  recruitment_type: {
+    text: "the company offers the type of recruitment you chose, local or international; a company that offers both matches either.",
+    directories: ["recruitment"],
+  },
+  staffing_type: { text: "the company offers at least one of the staffing types you chose.", directories: ["staffing"] },
+  workforce_size: { text: "the company's workforce is in the size band you chose.", directories: ["staffing"] },
+  capacity: {
+    text: "the company has a current availability listing (of the occupation you chose, if you chose one) with at least the number of workers you entered.",
+    directories: ["recruitment", "staffing"],
+    formLabel: "Workers available, at least",
+  },
+  timeframe: {
+    text: "the company has a current availability listing (of the occupation you chose, if you chose one) whose workers are available within the number of days you entered. With capacity as well, one listing must meet both.",
+    directories: ["recruitment", "staffing"],
+    formLabel: "Available within (days)",
+  },
 };
 
 const isRankingFilter = (name: MatchedFilter): name is RankingFilter => !(narrowingFilters as readonly string[]).includes(name);
@@ -52,6 +74,29 @@ const isRankingFilter = (name: MatchedFilter): name is RankingFilter => !(narrow
 export const rankingFilters = matchedFilterNames.filter(isRankingFilter).map((name) => ({
   name,
   label: matchedFilterLabels[name],
-  text: rankingFilterText[name],
+  ...rankingFilterDetails[name],
   advanced: (advancedFilters as readonly string[]).includes(name),
 }));
+
+// The sentences of the page that are not lists of the filters.
+export const rankingCopy = {
+  narrowing:
+    "Destination (Destination country in the form): only companies that serve the destination country you chose are shown. Occupation: only companies that list the occupation you chose are shown. Both directories offer both filters.",
+  weighting:
+    "Each parameter only decides between companies that are equal on the ones before it. Every matched filter weighs the same; none counts more than another.",
+  tieBreakFirst: "Each parameter only decides between companies that are equal on the ones before it.",
+  profileTime: [
+    "The last time the company saved one of the following, most recent first:",
+    "the countries it serves or recruits from, when the save changed them;",
+    "its workforce offer (occupations, industries, languages, services, recruitment type, workforce size), when the save changed it;",
+    "an availability listing it added, changed, confirmed or deleted; saving or confirming a listing counts even when nothing in it changed.",
+    "Before any of these, the time its profile was listed.",
+  ],
+  identifier: "A fixed random number given to each company when it joined, so that companies equal on everything above always appear in the same order.",
+  supplyExample: "For example, a listing of 120 workers available now and 40 a month, needed within 60 days, adds 120 + 40 × 60 / 30 = 200.",
+  paging:
+    "Results come 20 per page by default, with a link to the next page, and searches are limited in number per person and per visitor to prevent scraping; neither changes the order.",
+  advanced:
+    "Capacity and timeframe (both directories) and more than one source country (Find Recruitment Partners only) are advanced filters, available to an organisation whose plan includes them.",
+  size: "Company size (its workforce size band) counts only through the workforce size filter, when you choose it. The number of workers a company lists as available counts only in the capacity filter and in the available workforce search, as described above.",
+} as const;

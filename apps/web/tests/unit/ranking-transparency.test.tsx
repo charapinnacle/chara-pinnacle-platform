@@ -10,6 +10,7 @@ import {
   listedAndVisible,
   partnerProfileTime,
   partnerSearchOrderBy,
+  rankingCopy,
   rankingFilters,
 } from "@/lib/partners/ranking";
 import { matchedFilterNames } from "@/lib/partners/search-params";
@@ -119,10 +120,19 @@ describe("the ranking page (NFR-C8)", () => {
 
   it("describes every ranking filter, the order, the freshness period and what never counts", async () => {
     const text = await renderPage();
-    for (const { label, text: rule } of rankingFilters) expect(text).toContain(`${label.charAt(0).toUpperCase()}${label.slice(1)}: ${rule}`);
+    for (const { label, formLabel, text: rule } of rankingFilters) {
+      const name = `${label.charAt(0).toUpperCase()}${label.slice(1)}${formLabel ? ` (${formLabel} in the form)` : ""}`;
+      expect(text).toContain(`${name}: ${rule}`);
+    }
+    expect(text).toContain("Offered by Find Recruitment Partners.");
+    expect(text).toContain("Offered by Find Staffing Partners.");
+    expect(text).toContain("Offered by Find Recruitment Partners and Find Staffing Partners.");
+    for (const line of rankingCopy.profileTime) expect(text).toContain(line);
+    for (const line of [rankingCopy.weighting, rankingCopy.identifier, rankingCopy.supplyExample, rankingCopy.paging, rankingCopy.size]) {
+      expect(text).toContain(squash(line));
+    }
     expect(text).toContain("confirmed by the company within the last 60 days");
     expect(text).toContain("The number of filters the company matches, most first.");
-    expect(text).toContain("A fixed internal identifier");
     expect(text).toContain("Companies whose workers available today already cover the number of workers come first.");
     expect(text).toContain("whether a company pays, which plan it is on and how much it pays are not read by any of these searches");
     expect(text).toContain("never appears, whatever plan it has");

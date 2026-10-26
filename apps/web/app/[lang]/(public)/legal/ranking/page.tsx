@@ -5,7 +5,7 @@ import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { isReleased } from "@/lib/dal/release";
 import { getAvailabilityRules } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
-import { rankingFilters } from "@/lib/partners/ranking";
+import { directoryNames, rankingCopy, rankingFilters } from "@/lib/partners/ranking";
 import { RECRUITMENT_DIRECTORY_PATH, STAFFING_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { rankingPageMetadata } from "@/lib/seo/metadata";
 
@@ -64,10 +64,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
       </ContentSection>
 
       <ContentSection heading="Filters that narrow the results">
-        <p>
-          Destination: only companies that serve the destination country you chose are shown. Occupation: only companies
-          that list the occupation you chose are shown.
-        </p>
+        <p>{rankingCopy.narrowing}</p>
         <p>Every result matches these filters, so they do not change the order of the results.</p>
       </ContentSection>
 
@@ -77,9 +74,13 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           result names the filters it matched.
         </p>
         <ul className="grid gap-2">
-          {rankingFilters.map(({ name, label, text }) => (
+          {rankingFilters.map(({ name, label, formLabel, directories, text }) => (
             <li key={name}>
-              <span className="font-medium">{sentenceCase(label)}:</span> {text}
+              <span className="font-medium">
+                {sentenceCase(label)}
+                {formLabel ? ` (${formLabel} in the form)` : ""}:
+              </span>{" "}
+              {text} <span className="text-muted-foreground">Offered by {directories.map((kind) => directoryNames[kind]).join(" and ")}.</span>
             </li>
           ))}
         </ul>
@@ -90,15 +91,17 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
         <ol className="grid list-decimal gap-2 ps-5">
           <li>The number of filters the company matches, most first.</li>
           <li>
-            The date and time the company last changed its profile, most recent first: the countries it serves or recruits from,
-            its workforce offer (occupations, industries, languages, services, recruitment type, workforce size) or its
-            availability listings, including confirming a listing. Before any change, the date and time its profile was listed.
+            {rankingCopy.profileTime[0]}
+            <ul className="mt-1 grid list-disc gap-1 ps-5">
+              {rankingCopy.profileTime.slice(1, -1).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {rankingCopy.profileTime.at(-1)}
           </li>
-          <li>
-            A fixed internal identifier, assigned at random when the company was created, so that companies equal on both
-            points above always appear in the same order.
-          </li>
+          <li>{rankingCopy.identifier}</li>
         </ol>
+        <p>{rankingCopy.weighting}</p>
       </ContentSection>
 
       <ContentSection heading="The available workforce search">
@@ -111,20 +114,21 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           listings of the occupation add up to at least the number of workers within that number of days. A listing adds
           the workers available plus its monthly capacity for the days between the later of today and the date its
           workers are available and the end of the period, counted as the monthly capacity times those days divided by
-          30, rounded down. A listing whose workers are available only after the period adds nothing.
+          30, rounded down. A listing whose workers are available only after the period adds nothing.{" "}
+          {rankingCopy.supplyExample}
         </p>
         <p>The results are sorted by these parameters, in this order:</p>
         <ol className="grid list-decimal gap-2 ps-5">
           <li>Companies whose workers available today already cover the number of workers come first.</li>
           <li>The most recent confirmation among the listings that count, most recent first.</li>
-          <li>The same fixed internal identifier as above.</li>
+          <li>The same fixed random number as above.</li>
         </ol>
+        <p>{rankingCopy.tieBreakFirst}</p>
       </ContentSection>
 
       <ContentSection heading="Advanced filters">
         <p>
-          Capacity, timeframe and more than one source country are advanced filters, available to an organisation whose
-          plan includes them (see <TextLink href={`/${lang}/pricing`}>Pricing</TextLink>). They work like every other
+          {rankingCopy.advanced} See <TextLink href={`/${lang}/pricing`}>Pricing</TextLink>. They work like every other
           ranking filter: a match adds to the number of matched filters, and they never remove a company from the
           results.
         </p>
@@ -144,10 +148,8 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
             The plan of the person searching: it decides only which filters and searches they can use, never the order of
             the results.
           </li>
-          <li>
-            Size: a company&apos;s size counts only through the workforce size filter, when you choose it. A larger
-            company does not rank higher than a smaller one.
-          </li>
+          <li>Size: {rankingCopy.size}</li>
+          <li>Paging and limits: {rankingCopy.paging}</li>
         </ul>
       </ContentSection>
 
