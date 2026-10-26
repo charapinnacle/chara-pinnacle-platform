@@ -2,9 +2,10 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { getOrganizationSlug } from "@/lib/dal/organizations";
+import { isReleased } from "@/lib/dal/release";
 import { getAllowance } from "@/lib/dal/team";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -60,12 +61,19 @@ function refusal(error: PostgrestError, slug: string): TeamResult {
   return { message: TEAM_FAILURE };
 }
 
+// The team of an employer, or of a recruitment or staffing company while release 2a is on (FR-J1), as the team page.
+async function teamOrganization(slug: string, minRole: MemberRole) {
+  const { organization } = await requireOrgRole(defaultLocale, slug, minRole, { partner: "either" });
+  if (organization.type !== "employer" && !(await isReleased("release_partner_directories"))) notFound();
+  return organization;
+}
+
 async function runTeamAction(
   slug: string,
   minRole: MemberRole,
   call: (supabase: Supabase, organizationId: string) => PromiseLike<{ error: PostgrestError | null }>,
 ): Promise<TeamResult> {
-  const { organization } = await requireOrgRole(defaultLocale, slug, minRole);
+  const organization = await teamOrganization(slug, minRole);
   const { error } = await call(await createClient(), organization.id);
   if (error) return refusal(error, slug);
   revalidatePath(membersPath(slug));
@@ -93,7 +101,7 @@ export async function inviteMember(input: InviteFormInput & { slug: string }): P
   const parsed = inviteInputSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { slug, email, role } = parsed.data;
-  const { organization } = await requireOrgRole(defaultLocale, slug, "admin");
+  const organization = await teamOrganization(slug, "admin");
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("invite_member", {
