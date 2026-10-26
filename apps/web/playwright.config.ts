@@ -103,6 +103,7 @@ export default defineConfig({
         "**/partner-review-emails.spec.ts",
         "**/partner-checkout.spec.ts",
         "**/plan-editor-release.spec.ts",
+        "**/partner-profile.spec.ts",
       ],
     },
     {
@@ -372,13 +373,21 @@ export default defineConfig({
       testMatch: "**/plan-editor-release.spec.ts",
       dependencies: ["partner-checkout-release"],
     },
+    // The same release switch is set for the public partner profiles (FR-K4), and the profile read limit is lowered for a
+    // moment, so this spec follows the one above.
+    {
+      name: "partner-profile-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-profile.spec.ts",
+      dependencies: ["plan-editor-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["plan-editor-release"],
+      dependencies: ["partner-profile-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
