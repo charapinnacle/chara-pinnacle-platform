@@ -129,7 +129,8 @@ export const networkPeriodLabels = {
 
 export const networkStatisticsSchema = z
   .object({ from: dayString, to: dayString, period: z.enum(networkPeriods, { error: "Choose a period" }) })
-  .superRefine(checkRange);
+  .superRefine(checkRange)
+  .refine((value) => value.to <= new Date().toISOString().slice(0, 10), { path: ["to"], error: "The end date must not be after today" });
 
 export type NetworkStatisticsForm = z.input<typeof networkStatisticsSchema>;
 export type NetworkStatisticsQuery = z.output<typeof networkStatisticsSchema>;

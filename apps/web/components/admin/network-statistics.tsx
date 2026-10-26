@@ -12,7 +12,9 @@ import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import type { NetworkStatisticsAnswer } from "@/lib/actions/admin-statistics";
 import {
+  countedRange,
   countText,
+  dayLabel,
   figureLabel,
   figureText,
   hasNoActivity,
@@ -29,6 +31,8 @@ import {
   type NetworkStatisticsQuery,
 } from "@/lib/validation/admin";
 
+const rowHead = `${cell} text-start font-normal`;
+
 const periodOptions = networkPeriods.map((period) => ({ value: period, label: networkPeriodLabels[period] }));
 
 function FiguresTable({ caption, figures, minCount }: { caption: string; figures: NetworkFigure[]; minCount: number }) {
@@ -40,7 +44,9 @@ function FiguresTable({ caption, figures, minCount }: { caption: string; figures
     <ResultsTable caption={caption} columns={["Figure", "Value", "Based on"]}>
       {rows.map(({ figure, label }) => (
         <tr key={figure.metric}>
-          <td className={cell}>{label}</td>
+          <th scope="row" className={rowHead}>
+            {label}
+          </th>
           <td className={cell}>{figureText(figure, minCount)}</td>
           <td className={cell}>{figure.base === null ? "-" : figure.base}</td>
         </tr>
@@ -60,6 +66,7 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
   });
 
   const { query, statistics } = state;
+  const counted = statistics ? countedRange(statistics.counts, query.period) : null;
 
   return (
     <div className="grid gap-page">
@@ -76,6 +83,12 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
         {state.status === "error" ? <LoadError title="The partner network statistics could not be loaded" retry={() => load(query)} /> : null}
         {state.status === "ready" && statistics ? (
           <>
+            <p className="text-body text-muted-foreground">
+              {counted ? `Whole periods from ${dayLabel(counted.from)} to ${dayLabel(counted.to)}. ` : ""}
+              {statistics.statesFrom
+                ? `States recorded from ${dayLabel(statistics.statesFrom)}; a state of an earlier period reads "-".`
+                : "No states recorded yet."}
+            </p>
             {hasNoActivity(statistics.counts) ? (
               <Notice tone="info" role="status">
                 No partner network activity in this period
@@ -103,10 +116,12 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
                 </h3>
                 {group.metrics.map((metric) => (
                   <ResultsTable key={metric.key} caption={`${group.heading}: ${metric.label}`} columns={["Period", "Count", "Change"]}>
-                    {metricRows(statistics.counts, metric.key).map((row) => (
+                    {metricRows(statistics.counts, metric.key, query.period, statistics.statesFrom).map((row) => (
                       <tr key={row.periodStart}>
-                        <td className={cell}>{periodLabel(row.periodStart, query.period)}</td>
-                        <td className={cell}>{countText(row.count, statistics.minCount)}</td>
+                        <th scope="row" className={rowHead}>
+                          {periodLabel(row.periodStart, query.period)}
+                        </th>
+                        <td className={cell}>{row.unknown ? "-" : countText(row.count, statistics.minCount)}</td>
                         <td className={cell}>{row.trend}</td>
                       </tr>
                     ))}

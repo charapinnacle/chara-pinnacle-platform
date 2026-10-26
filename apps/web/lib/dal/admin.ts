@@ -296,7 +296,7 @@ const networkFiguresSchema = z.array(
   z.object({
     metric: z.string(),
     label: z.string().nullable(),
-    unit: z.enum(["count", "percent", "hours", "ratio"]),
+    unit: z.enum(["count", "percent", "hours", "ratio", "date"]),
     range_figure: z.boolean(),
     value: z.number().nullable(),
     base: z.number().int().nullable(),
@@ -304,7 +304,8 @@ const networkFiguresSchema = z.array(
 );
 
 // The partner network counts per period and the key figures of the range (FR-S2, release 2a parts); answered only to a
-// Platform Administrator while release 2a is on. The first figure is the threshold below which a value is hidden.
+// Platform Administrator while release 2a is on. The first figure is the threshold below which a value is hidden, the
+// second names in its label the first day of the daily partner states.
 export async function networkStatistics(query: NetworkStatisticsQuery): Promise<NetworkStatistics> {
   const supabase = await adminClient();
   const [counts, figures] = await Promise.all([
@@ -317,9 +318,10 @@ export async function networkStatistics(query: NetworkStatisticsQuery): Promise<
   return {
     counts: networkCountsSchema.parse(counts.data).map((row) => ({ metric: row.metric, periodStart: row.period_start, count: row.count })),
     figures: rows
-      .filter((row) => row.metric !== "stats_min_count")
+      .filter((row) => row.metric !== "stats_min_count" && row.metric !== "states_recorded_from")
       .map((row) => ({ metric: row.metric, label: row.label, unit: row.unit, rangeFigure: row.range_figure, value: row.value, base: row.base })),
     minCount: rows.find((row) => row.metric === "stats_min_count")?.value ?? 5,
+    statesFrom: rows.find((row) => row.metric === "states_recorded_from")?.label ?? null,
   };
 }
 

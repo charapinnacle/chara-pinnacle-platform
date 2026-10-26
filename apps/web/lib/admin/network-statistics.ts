@@ -4,7 +4,7 @@ export type NetworkPeriod = NetworkStatisticsQuery["period"];
 
 export type NetworkCount = { metric: string; periodStart: string; count: number | null };
 
-export type NetworkFigureUnit = "count" | "percent" | "hours" | "ratio";
+export type NetworkFigureUnit = "count" | "percent" | "hours" | "ratio" | "date";
 
 export type NetworkFigure = {
   metric: string;
@@ -15,7 +15,8 @@ export type NetworkFigure = {
   base: number | null;
 };
 
-export type NetworkStatistics = { counts: NetworkCount[]; figures: NetworkFigure[]; minCount: number };
+// statesFrom: the first day of the daily partner states; states of a period that ends before it are unknown, not hidden.
+export type NetworkStatistics = { counts: NetworkCount[]; figures: NetworkFigure[]; minCount: number; statesFrom: string | null };
 
 type MetricGroup = { heading: string; metrics: readonly { key: string; label: string }[] };
 
@@ -23,6 +24,8 @@ const partnerTypes = [
   { type: "recruitment_company", heading: "Recruitment companies" },
   { type: "staffing_company", heading: "Staffing companies" },
 ] as const;
+
+const stateKeys = ["onboarding", "pending_review", "info_requested", "re_review", "listed", "declined", "active", "suspended"];
 
 const typeMetrics = [
   ["new", "New sign-ups"],
@@ -87,7 +90,7 @@ const figureLabels: Record<string, string> = {
   stale_listings: "Stale availability listings of listed partners",
   stale_listings_share: "Share of availability listings that are stale",
   licences_expiring: "Licences expiring within the reminder period",
-  licences_expired: "Expired licences not renewed",
+  licences_expired: "Expired licences",
   partner_profiles_hidden_now: "Partner profiles hidden now",
   partner_profile_reports_open: "Open reports on partner profiles",
   appeals_open: "Open appeals",
@@ -143,8 +146,33 @@ export function trendText(count: number | null, previous: number | null | undefi
   return `no change from ${numberFormat.format(previous)}`;
 }
 
+function isStateMetric(metric: string): boolean {
+  const [type, key] = metric.split(".");
+  return partnerTypes.some((partner) => partner.type === type) && stateKeys.includes(key);
+}
+
 const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 const dayFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+export function dayLabel(day: string): string {
+  return dayFormat.format(new Date(`${day}T00:00:00Z`));
+}
+
+// The last day of the UTC period that starts on periodStart.
+export function periodEnd(periodStart: string, period: NetworkPeriod): string {
+  const date = new Date(`${periodStart}T00:00:00Z`);
+  if (period === "week") date.setUTCDate(date.getUTCDate() + 7);
+  else date.setUTCMonth(date.getUTCMonth() + (period === "month" ? 1 : period === "quarter" ? 3 : 12));
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+// The database widens a range to whole periods; this is the range it counted.
+export function countedRange(counts: readonly NetworkCount[], period: NetworkPeriod): { from: string; to: string } | null {
+  if (counts.length === 0) return null;
+  const starts = counts.map((row) => row.periodStart).sort();
+  return { from: starts[0], to: periodEnd(starts[starts.length - 1], period) };
+}
 
 export function periodLabel(periodStart: string, period: NetworkPeriod): string {
   const date = new Date(`${periodStart}T00:00:00Z`);
@@ -160,14 +188,22 @@ export function periodLabel(periodStart: string, period: NetworkPeriod): string 
   }
 }
 
-export type MetricRow = { periodStart: string; count: number | null; trend: string };
+// unknown: a state of a period that ended before the first daily state was recorded; it reads "-", not "fewer than".
+export type MetricRow = { periodStart: string; count: number | null; unknown: boolean; trend: string };
 
 // The rows of one metric in period order, each with its trend against the period before it.
-export function metricRows(counts: readonly NetworkCount[], metric: string): MetricRow[] {
+export function metricRows(
+  counts: readonly NetworkCount[],
+  metric: string,
+  period: NetworkPeriod,
+  statesFrom: string | null,
+): MetricRow[] {
+  const state = isStateMetric(metric);
   const rows = counts.filter((row) => row.metric === metric).sort((a, b) => a.periodStart.localeCompare(b.periodStart));
   return rows.map((row, index) => ({
     periodStart: row.periodStart,
     count: row.count,
+    unknown: state && (statesFrom === null || periodEnd(row.periodStart, period) < statesFrom) && row.count === null,
     trend: index === 0 ? "-" : trendText(row.count, rows[index - 1].count),
   }));
 }
