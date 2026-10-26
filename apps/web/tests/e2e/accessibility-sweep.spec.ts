@@ -117,13 +117,15 @@ const accountStatePages = [
 ];
 
 // The pages of a release that is switched off while this sweep runs; their own specs switch it on and check them at
-// both widths: notifications (in-app-notifications.spec.ts), the partner reviews of the console (partner-approval.spec.ts)
-// and the workforce profile (partner-geographies.spec.ts, partner-workforce-offer.spec.ts, partner-availability.spec.ts).
+// both widths: notifications (in-app-notifications.spec.ts), the partner reviews of the console (partner-approval.spec.ts),
+// the workforce profile (partner-geographies.spec.ts, partner-workforce-offer.spec.ts, partner-availability.spec.ts) and
+// the recruitment directory (partner-search.spec.ts).
 const releasedPages = [
   "/[lang]/notifications",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",
   "/[lang]/org/[slug]/workforce-profile",
+  "/[lang]/partners/recruitment",
 ];
 
 async function expectPage(page: Page, address: string): Promise<void> {
