@@ -39,6 +39,7 @@ process.env.DOCUMENT_URL_PORT ||= "54432";
 process.env.NOTIFY_PORT ||= "54433";
 process.env.BILLING_CHECKOUT_PORT ||= "54434";
 process.env.BILLING_WEBHOOK_PORT ||= "54435";
+process.env.BILLING_PLAN_PRICE_PORT ||= "54436";
 process.env.EDGE_SHARED_SECRET ||= "local-scheduler-secret";
 // Signs the deliveries that tests send to billing-webhook (the null billing provider).
 process.env.BILLING_WEBHOOK_SECRET ||= "local-billing-webhook-secret";
@@ -46,6 +47,7 @@ process.env.BILLING_WEBHOOK_SECRET ||= "local-billing-webhook-secret";
 process.env.RESEND_WEBHOOK_SECRET ||= "whsec_bG9jYWwtcmVzZW5kLXdlYmhvb2stc2VjcmV0LTAxMjM0NQ==";
 process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_URL_PORT}/`;
 process.env.BILLING_CHECKOUT_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_CHECKOUT_PORT}/`;
+process.env.BILLING_PLAN_PRICE_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_PLAN_PRICE_PORT}/`;
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -421,6 +423,12 @@ export default defineConfig({
     {
       command: `../../supabase/functions/serve-local.sh billing-webhook ${process.env.BILLING_WEBHOOK_PORT}`,
       port: Number(process.env.BILLING_WEBHOOK_PORT),
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: `../../supabase/functions/serve-local.sh billing-plan-price ${process.env.BILLING_PLAN_PRICE_PORT}`,
+      port: Number(process.env.BILLING_PLAN_PRICE_PORT),
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,
     },
