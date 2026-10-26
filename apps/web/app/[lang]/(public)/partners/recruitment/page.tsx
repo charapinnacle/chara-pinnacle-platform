@@ -5,8 +5,10 @@ import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Notice } from "@/components/forms/notice";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
+import { AvailableWorkforceSearch } from "@/components/partners/available-workforce-search";
 import { PartnerResults } from "@/components/partners/partner-results";
 import { PartnerSearchForm } from "@/components/partners/partner-search-form";
+import { isEmployerMember } from "@/lib/dal/organizations";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { parsePartnerSearchParams, partnerSearchQuery, usesAdvancedFilters } from "@/lib/partners/search-params";
@@ -18,15 +20,17 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/partners/r
 }
 
 // The directory of recruitment companies (FR-L1), rendered per request: the address holds the filters and the page
-// cursor, so a search can be shared and Back restores it. Nothing is shown while release 2a is off.
+// cursor, so a search can be shared and Back restores it. An employer also finds the Available workforce search here
+// (FR-K3). Nothing is shown while release 2a is off.
 export default async function RecruitmentPartnersPage({ params, searchParams }: PageProps<"/[lang]/partners/recruitment">) {
   const [{ lang }, rawParams] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const [occupations, industries, countries, languages] = await Promise.all([
+  const [occupations, industries, countries, languages, employer] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getLanguages(),
+    isEmployerMember(),
   ]);
   const { filters, errors } = parsePartnerSearchParams(rawParams, "recruitment");
   const ignored = Object.values(errors);
@@ -39,6 +43,8 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
           and by how recently they updated their profile; no company pays to rank higher.
         </p>
       </PageHeader>
+
+      {employer ? <AvailableWorkforceSearch lang={lang} occupations={occupations} countries={countries} /> : null}
 
       {ignored.length > 0 ? (
         <Notice tone="warning" role="alert">

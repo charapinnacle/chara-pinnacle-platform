@@ -8,23 +8,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AvailableWorkforceSearch } from "@/components/partners/available-workforce-search";
 import { PartnerResults } from "@/components/partners/partner-results";
 import { PartnerSearchForm } from "@/components/partners/partner-search-form";
-import { getMyOrganizations } from "@/lib/dal/organizations";
+import { isEmployerMember } from "@/lib/dal/organizations";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
-import { getCurrentUser } from "@/lib/dal/session";
 import { parsePartnerSearchParams, partnerSearchQuery, usesAdvancedFilters } from "@/lib/partners/search-params";
 import { staffingDirectoryMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/partners/staffing">): Promise<Metadata> {
   const { lang } = await params;
   return (await isReleased("release_partner_directories")) ? staffingDirectoryMetadata(lang) : {};
-}
-
-// Only an employer searches the available workforce (FR-K3); the database checks the plan again.
-async function isEmployerMember(): Promise<boolean> {
-  const user = await getCurrentUser();
-  if (!user || user.accountKind !== "company") return false;
-  return (await getMyOrganizations(user.id)).some(({ type, suspended }) => type === "employer" && !suspended);
 }
 
 // The directory of staffing partners (FR-L2): staffing companies and recruitment companies that also offer staffing,
