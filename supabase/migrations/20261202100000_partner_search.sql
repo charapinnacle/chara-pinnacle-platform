@@ -176,8 +176,9 @@ revoke all on table stats.partner_searches from public, anon, authenticated, ser
 -- arrives with V22). Codes are checked for their shape only: an unknown country or occupation answers 0 rows. An anonymous
 -- caller passes the visitor key and proof of the web tier; over the limit the call raises CHARA_RATE_LIMITED with the
 -- seconds to wait as detail (none for a signed-in caller). Pages of 20 by default, at most 50, with an opaque cursor over
--- (matched filter count, profile time, id) on the last row of a page that has a next one. Only the first page of a search
--- is logged, so paging does not count as searching again.
+-- (matched filter count, profile time, id) on the last row of a page that has a next one. profile_updated_at is the time
+-- the profile last changed, null before any change; the sort and the cursor use the listing time in its place. Only the
+-- first page of a search is logged, so paging does not count as searching again.
 create function public.search_partners(
   p_kind text,
   p_destination text default null,
@@ -304,6 +305,7 @@ begin
   with matches as (
     select
       o.id, o.slug, o.display_name, o.based_in_country,
+      o.workforce_profile_updated_at,
       coalesce(o.workforce_profile_updated_at, o.listed_at) as updated_at,
       array_remove(array[
         case when v_destination is not null then 'destination' end,
@@ -383,7 +385,7 @@ begin
      ) t),
     (select max(a.confirmed_at) from public.workforce_availability a
      where a.organization_id = r.id and a.confirmed_at > v_fresh_since),
-    r.updated_at,
+    r.workforce_profile_updated_at,
     r.matched,
     case
       when r.n = v_limit and exists (select 1 from numbered x where x.n > v_limit)
