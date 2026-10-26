@@ -1,5 +1,5 @@
 begin;
-select plan(91);
+select plan(103);
 
 \ir status_fixture.inc
 
@@ -94,13 +94,24 @@ $$;
 
 -- The release switch ---------------------------------------------------------------------------------------------------------
 
-select is(split_part(pg_temp.ask(:'wa'), '|', 3), 'release_off', 'release 2a off: a request is refused');
+select is(
+  (select s.value::text || '|' || r.value_type || '|' || coalesce(r.release_feature, 'none') from private.settings s
+   join private.setting_rules r on r.key = s.key where s.key = 'release_data_export'),
+  'false|boolean|none', 'release_data_export is a switch of its own, off by default, that needs no legal document'
+);
+select is((select value from public.get_public_settings() where key = 'release_data_export'), 'false',
+  'the pages read it through get_public_settings');
+-- Release 2a alone does not open the export.
+update private.settings set value = 'true' where key = 'release_partner_directories';
+select is(split_part(pg_temp.ask(:'wa'), '|', 3), 'release_off', 'switch off: a request is refused, even with release 2a on');
 select is(split_part(pg_temp.run(:'wa', 'select * from public.list_my_data_exports()'), '|', 3), 'release_off',
-  'release 2a off: the list is refused');
-select is(split_part(pg_temp.open(:'wa', gen_random_uuid()), '|', 2), 'CHARA_NOT_FOUND', 'release 2a off: no download');
+  'switch off: the list is refused');
+select is(split_part(pg_temp.open(:'wa', gen_random_uuid()), '|', 2), 'CHARA_NOT_FOUND', 'switch off: no download');
 select is((select count(*)::integer from public.data_export_requests), 0, 'and nothing was written');
 
-update private.settings set value = 'true' where key = 'release_partner_directories';
+-- CHARA may switch the export on before release 2a.
+update private.settings set value = 'false' where key = 'release_partner_directories';
+update private.settings set value = 'true' where key = 'release_data_export';
 
 select is(split_part(pg_temp.ask(null), '|', 1), '42501', 'an anonymous caller cannot ask for an export');
 select is(split_part(pg_temp.run(null, 'select * from public.list_my_data_exports()'), '|', 1), '42501',
@@ -155,6 +166,28 @@ select pg_temp.doc('00000000-0000-0000-0000-0000000d2901', :'wa');
 select pg_temp.doc('00000000-0000-0000-0000-0000000d2902', :'wa');
 update public.worker_documents set deleted_at = now() where id = '00000000-0000-0000-0000-0000000d2902';
 select pg_temp.doc('00000000-0000-0000-0000-0000000d2903', :'wb');
+select pg_temp.doc('00000000-0000-0000-0000-0000000d2904', :'wa', 'pending');
+select pg_temp.doc('00000000-0000-0000-0000-0000000d2905', :'wa', 'rejected');
+-- Rows that name other people next to the user: an opening of the candidate's document by an employer owner, the
+-- candidate's share; for the company user an appeal decided by staff and a transfer to another member; for a member an
+-- invitation sent by the owner.
+insert into audit.document_access_log (share_id, document_id, worker_user_id, organization_id, accessed_by, purpose)
+select a.passport_share_id, '00000000-0000-0000-0000-0000000d2901', :'wa', a.organization_id, :'own1', 'application_review'
+from public.job_applications a where a.id = :'app_a';
+insert into public.moderation_actions (target_type, target_id, action, statement_of_reasons, actor_id)
+values ('organization', current_setting('t.a')::uuid, 'organization_suspended', 'SECRET-DECISION reasons of staff.', :'st_trust')
+returning id as mod_action \gset
+insert into public.appeals (moderation_action_id, organization_id, appellant_user_id, grounds, status, decided_by, reasons,
+  due_at, decided_at)
+values (:mod_action, current_setting('t.a')::uuid, :'own1', 'Our company did nothing wrong at all.', 'upheld', :'st_trust',
+  'The decision stands for these reasons.', now() + interval '7 days', now());
+insert into public.organization_ownership_transfers (organization_id, from_user_id, to_user_id)
+values (current_setting('t.a')::uuid, :'own1', :'adm');
+insert into public.organization_invitations (organization_id, email, role, token_hash, invited_by, expires_at)
+select current_setting('t.a')::uuid, u.email, 'member', encode(extensions.digest('secret-token', 'sha256'), 'hex'), :'own1', now() + interval '7 days'
+from auth.users u where u.id = :'mem';
+select is(pg_temp.ask(:'mem'), 'ok', 'a company member asks for a copy of their data too');
+select (pg_temp.rows() -> 0 ->> 'export_id')::uuid as ex_mem \gset
 insert into public.saved_jobs (worker_user_id, job_id) values (:'wa', pg_temp.open_job('Saved welder'));
 insert into public.follows (user_id, organization_id) values (:'wa', current_setting('t.a')::uuid);
 insert into public.reports (target_type, job_id, category, details, reporter_user_id, good_faith_confirmed, status, handled_by,
@@ -187,17 +220,22 @@ select is(
   'AC7: the applications name the vacancy and the employer by display name, with the status history'
 );
 select is(
-  (select jsonb_agg(e ->> 'file') from jsonb_array_elements((:'data'::jsonb) #> '{sections,documents}') e),
-  '["documents/00000000-0000-0000-0000-0000000d2901/cv.pdf"]'::jsonb,
-  'AC7: the documents list the candidate''s current document with its name in the zip, not the deleted one'
+  (select jsonb_agg(jsonb_build_object('file', e -> 'file', 'note', e -> 'note')) from jsonb_array_elements((:'data'::jsonb) #> '{sections,documents}') e),
+  '[{"file": "documents/00000000-0000-0000-0000-0000000d2901/cv.pdf", "note": null},
+    {"file": null, "note": "Not included because the file has not passed its check."},
+    {"file": null, "note": "Not included because the file has not passed its check."}]'::jsonb,
+  'AC7: the documents list the current documents, not the deleted one; a pending or rejected one has no file and says why'
 );
 select is(
   (:'data'::jsonb) -> 'files',
   jsonb_build_array(jsonb_build_object('bucket_id', 'passport-documents',
     'path', :'wa' || '/00000000-0000-0000-0000-0000000d2901/cv.pdf',
     'name', 'documents/00000000-0000-0000-0000-0000000d2901/cv.pdf', 'size_bytes', 1000)),
-  'AC7: the files to add are the candidate''s own, in their own folder'
+  'AC7: the files to add are the candidate''s own checked files (not the pending or rejected ones), in their own folder'
 );
+select is((:'data'::jsonb) #>> '{sections,document_access,0,organization}', 'Acme Bau',
+  'the openings of the candidate''s documents name the organisation');
+select is((:'data'::jsonb) #>> '{sections,passport_shares,0,organization}', 'Acme Bau', 'the shares name the organisation');
 select is(jsonb_array_length((:'data'::jsonb) #> '{sections,saved_vacancies}'), 1, 'the saved vacancies');
 select is((:'data'::jsonb) #>> '{sections,followed_companies,0,company}', 'Acme Bau', 'the followed companies (Phase 2)');
 select ok(jsonb_array_length((:'data'::jsonb) #> '{sections,consents}') >= 1, 'the consents');
@@ -218,9 +256,26 @@ select ok(
     and position('Bruno' in :'data') = 0 and position('0000000d2903' in :'data') = 0,
   'AC7: no other person''s id, name or document appears, and no staff member'
 );
+select pg_temp.service(format('select public.account_ops_export_data(%L)', :'ex_own')) as data_own \gset
+select pg_temp.service(format('select public.account_ops_export_data(%L)', :'ex_mem')) as data_mem \gset
+select is((:'data_own'::jsonb) #>> '{sections,organization_memberships,0,organization}', 'Acme Bau',
+  'the company user''s export holds the organisation they belong to');
 select is(
-  (pg_temp.service(format('select public.account_ops_export_data(%L)', :'ex_own')) #>> '{sections,organization_memberships,0,organization}'),
-  'Acme Bau', 'the company user''s export holds the organisation they belong to'
+  ((:'data_own'::jsonb) #> '{sections,appeals,0}') - 'lodged_at'::text - 'decided_at'::text,
+  '{"organization": "Acme Bau", "grounds": "Our company did nothing wrong at all.", "status": "upheld", "reasons": "The decision stands for these reasons."}'::jsonb,
+  'the company user''s appeal with its outcome and reasons'
+);
+select is((:'data_own'::jsonb) #>> '{sections,ownership_transfers,0,direction}', 'given', 'the transfer the owner gave');
+select ok(
+  position(:'adm' in :'data_own') = 0 and position(:'st_trust' in :'data_own') = 0 and position(:'wa' in :'data_own') = 0
+    and position('SECRET-DECISION' in :'data_own') = 0,
+  'AC7: the company user''s export names neither the decider of the appeal nor the new owner'
+);
+select is((:'data_mem'::jsonb) #>> '{sections,organization_invitations,0,organization}', 'Acme Bau',
+  'a member''s export holds the invitation they received');
+select ok(
+  position(:'own1' in :'data_mem') = 0 and position(encode(extensions.digest('secret-token', 'sha256'), 'hex') in :'data_mem') = 0,
+  'AC7: without who sent it or its token'
 );
 select is(
   pg_temp.call_as(:'wa', 'authenticated', format('select public.account_ops_export_data(%L)', :'ex1'), 'aal1'),
@@ -254,11 +309,17 @@ select lives_ok(
   format($$insert into storage.objects (bucket_id, name) values ('dsar-exports', %L)$$, :'wa' || '/' || :'ex1' || '.zip'),
   'the file of a request being prepared is accepted at <user>/<request>.zip'
 );
+select throws_ok(
+  format($$update storage.objects set name = %L where bucket_id = 'dsar-exports' and name = %L$$,
+    :'wa' || '/' || gen_random_uuid() || '.zip', :'wa' || '/' || :'ex1' || '.zip'),
+  '42501', 'CHARA_NOT_FOUND', 'the file cannot be renamed to the name of no request'
+);
 
 -- AC8: ready and the notice --------------------------------------------------------------------------------------------------
 
-select is(pg_temp.service(format('select to_jsonb(public.account_ops_export_ready(%L, 4321))', :'ex1')), 'true'::jsonb,
+select is(pg_temp.service(format('select to_jsonb(public.account_ops_export_ready(%L, 4321, 2))', :'ex1')), 'true'::jsonb,
   'AC8: account-ops marks the export ready');
+select is((pg_temp.mine(:'wa') -> 0 ->> 'files_left_out')::integer, 2, 'the list says how many documents were not included');
 select is(
   (select status || '|' || storage_path || '|' || size_bytes || '|' || (expires_at = ready_at + interval '7 days')
    from public.data_export_requests where id = :'ex1'),

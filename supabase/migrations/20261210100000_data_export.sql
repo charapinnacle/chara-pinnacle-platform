@@ -13,15 +13,37 @@
 --   the request deleted.
 -- - data_export_access_grant: the owner opens a ready, unexpired export through document-url, which signs a 10-minute
 --   link; every opening is audited as data_export.downloaded. No storage policy exists for any API role.
--- Every user-facing function answers only while release_partner_directories is on: data export belongs to release 2a
--- (DATA_MODEL.md section 1), whatever data it holds.
+-- Every user-facing function answers only while release_data_export is on (false by default): a switch of its own, so
+-- that CHARA can put the export of Phase 1 data live before release 2a. It needs no partner legal document, so it names
+-- no release feature; the settings editor lists it with the releases by its release_ key.
 
 -- Settings -----------------------------------------------------------------------------------------------------------------
 
-insert into private.settings (key, value) values ('data_export_interval_hours', '24');
+insert into private.settings (key, value) values ('data_export_interval_hours', '24'), ('release_data_export', 'false');
 
 insert into private.setting_rules (key, value_type, min, max, label, release_feature) values
-  ('data_export_interval_hours', 'integer', 1, 168, 'Time between two data exports of one user (hours)', null);
+  ('data_export_interval_hours', 'integer', 1, 168, 'Time between two data exports of one user (hours)', null),
+  ('release_data_export', 'boolean', null, null, 'Data export: Download my data', null);
+
+-- The public settings of 20261206100000_release_settings.sql with release_data_export, so the settings pages show their
+-- link to the export page from it.
+create or replace function public.get_public_settings() returns table (key text, value text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select s.key, s.value #>> '{}'
+  from private.settings s
+  where s.key = any (array[
+    'legal_entity_name', 'legal_entity_address', 'legal_entity_registration_number', 'legal_entity_vat_id',
+    'legal_entity_email', 'privacy_contact', 'data_protection_contact', 'release_partner_directories',
+    'partner_review_target_working_days', 'licence_number_patterns', 'licence_valid_until_max_years',
+    'workforce_listing_stale_days', 'workforce_confirm_reminder_days', 'workforce_available_from_max_days',
+    'release_job_orders', 'release_candidate_submissions', 'release_messaging', 'release_find_workers',
+    'release_data_export'
+  ])
+$$;
 
 -- The table ----------------------------------------------------------------------------------------------------------------
 
@@ -36,6 +58,7 @@ create table public.data_export_requests (
   expires_at timestamptz,
   storage_path text,
   size_bytes bigint check (size_bytes is null or size_bytes > 0),
+  files_left_out integer check (files_left_out is null or files_left_out >= 0),
   check ((status = 'ready') = (ready_at is not null)),
   check ((status = 'ready') = (expires_at is not null)),
   check ((status = 'ready') = (storage_path is not null)),
@@ -89,7 +112,7 @@ begin
   if v_uid is null then
     raise exception 'CHARA_FORBIDDEN' using errcode = '42501';
   end if;
-  if not private.release_on('release_partner_directories') then
+  if not private.release_on('release_data_export') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'release_off';
   end if;
   if not exists (select 1 from public.profiles p where p.id = v_uid) then
@@ -132,6 +155,7 @@ create function public.list_my_data_exports() returns table (
   ready_at timestamptz,
   expires_at timestamptz,
   size_bytes bigint,
+  files_left_out integer,
   next_request_at timestamptz
 )
 language plpgsql
@@ -147,7 +171,7 @@ begin
   if v_uid is null then
     raise exception 'CHARA_FORBIDDEN' using errcode = '42501';
   end if;
-  if not private.release_on('release_partner_directories') then
+  if not private.release_on('release_data_export') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'release_off';
   end if;
   select max(r.requested_at) + private.data_export_interval() into v_next
@@ -164,7 +188,7 @@ begin
       when r.requested_at > now() - private.data_export_interval() then 'preparing'
       else 'failed'
     end,
-    r.requested_at, r.ready_at, r.expires_at, r.size_bytes,
+    r.requested_at, r.ready_at, r.expires_at, r.size_bytes, r.files_left_out,
     case when r.status = 'queued' and r.requested_at > now() - private.data_export_interval() then null else v_next end
   from public.data_export_requests r
   where r.user_id = v_uid
@@ -193,7 +217,7 @@ begin
     raise exception 'CHARA_UNAUTHENTICATED' using errcode = '42501';
   end if;
   perform private.check_rate_limit('document_access', v_uid);
-  if not private.release_on('release_partner_directories') then
+  if not private.release_on('release_data_export') then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
   select * into v_export from public.data_export_requests r
@@ -213,7 +237,8 @@ grant execute on function public.data_export_access_grant(uuid) to authenticated
 -- account-ops ---------------------------------------------------------------------------------------------------------------
 
 -- The data of a queued request as one object: each key becomes <key>.json in the zip (FR-S3 AC7: UTF-8 JSON with
--- readable keys), and files lists the user's own document files to add (bucket, object, name in the zip). Null when the
+-- readable keys), and files lists the user's own document files to add (bucket, object, name in the zip): only those that
+-- passed their check (scan status clean or skipped); the others are listed in documents with a note and no file. Null when the
 -- request is not queued any more (built, deleted, or its account erased), so a job read again builds nothing.
 -- Only the user's own data: another person appears by the display name of an organisation at most, never by a user id,
 -- a name or an address; no staff member is named (the decider of a report or an appeal, the granter of a role), and the
@@ -262,7 +287,10 @@ begin
         select jsonb_agg(jsonb_build_object(
           'title', d.title, 'type', d.type, 'file_name', d.file_name, 'mime', d.mime, 'size_bytes', d.size_bytes,
           'expires_on', d.expires_on, 'uploaded_at', d.created_at,
-          'file', 'documents/' || d.id::text || '/' || d.file_name) order by d.created_at, d.id)
+          'file', case when d.scan_status in ('clean', 'skipped') then 'documents/' || d.id::text || '/' || d.file_name end)
+          || case when d.scan_status in ('clean', 'skipped') then '{}'::jsonb
+               else jsonb_build_object('note', 'Not included because the file has not passed its check.') end
+          order by d.created_at, d.id)
         from public.worker_documents d where d.worker_user_id = v_uid and d.deleted_at is null), '[]'),
       'applications', coalesce((
         select jsonb_agg(jsonb_build_object(
@@ -358,7 +386,8 @@ begin
       select jsonb_agg(jsonb_build_object(
         'bucket_id', d.bucket_id, 'path', d.storage_path, 'name', 'documents/' || d.id::text || '/' || d.file_name,
         'size_bytes', d.size_bytes) order by d.created_at, d.id)
-      from public.worker_documents d where d.worker_user_id = v_uid and d.deleted_at is null), '[]')
+      from public.worker_documents d
+      where d.worker_user_id = v_uid and d.deleted_at is null and d.scan_status in ('clean', 'skipped')), '[]')
   );
 end;
 $$;
@@ -367,9 +396,11 @@ revoke all on function public.account_ops_export_data(uuid) from public, anon, a
 grant execute on function public.account_ops_export_data(uuid) to service_role;
 
 -- The zip of a queued request is in the bucket: the request is ready, kept for the data_exports retention period
--- (7 days), and the user gets the mandatory data_export_ready notice. False when the request is not queued any more
--- (account-ops then removes the file it wrote).
-create function public.account_ops_export_ready(p_export uuid, p_size bigint) returns boolean
+-- (7 days), and the user gets the mandatory data_export_ready notice. p_files_left_out: the documents listed without
+-- their file, which the export page names. False when the request is not queued any more (account-ops then removes the
+-- file it wrote).
+create function public.account_ops_export_ready(p_export uuid, p_size bigint, p_files_left_out integer default 0)
+returns boolean
 language plpgsql
 security definer
 set search_path = ''
@@ -380,14 +411,15 @@ declare
 begin
   update public.data_export_requests r
   set status = 'ready', ready_at = now(), expires_at = now() + make_interval(days => v_days),
-      storage_path = r.user_id::text || '/' || r.id::text || '.zip', size_bytes = p_size
+      storage_path = r.user_id::text || '/' || r.id::text || '.zip', size_bytes = p_size,
+      files_left_out = greatest(coalesce(p_files_left_out, 0), 0)
   where r.id = p_export and r.status = 'queued'
   returning * into v_export;
   if not found then
     return false;
   end if;
   perform private.record_as(v_export.user_id, 'data_export.ready', 'data_export', p_export::text,
-    jsonb_build_object('size_bytes', p_size, 'expires_at', v_export.expires_at));
+    jsonb_build_object('size_bytes', p_size, 'files_left_out', v_export.files_left_out, 'expires_at', v_export.expires_at));
   perform pgmq.send('notifications', jsonb_build_object(
     'kind', 'data_export_ready', 'user_id', v_export.user_id, 'mandatory', true, 'export_id', p_export,
     'expires_at', v_export.expires_at
@@ -396,8 +428,8 @@ begin
 end;
 $$;
 
-revoke all on function public.account_ops_export_ready(uuid, bigint) from public, anon, authenticated, service_role;
-grant execute on function public.account_ops_export_ready(uuid, bigint) to service_role;
+revoke all on function public.account_ops_export_ready(uuid, bigint, integer) from public, anon, authenticated, service_role;
+grant execute on function public.account_ops_export_ready(uuid, bigint, integer) to service_role;
 
 -- Storage ---------------------------------------------------------------------------------------------------------------
 
@@ -409,7 +441,7 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('dsar-exports', 'dsar-exports', false, 52428800, array['application/zip'])
 on conflict (id) do nothing;
 
--- A file is accepted only at the name of a request that is being prepared.
+-- A file is accepted, or renamed, only at the name of a request that is being prepared.
 create function private.dsar_exports_reserved() returns trigger
 language plpgsql
 security definer
@@ -429,7 +461,7 @@ $$;
 revoke all on function private.dsar_exports_reserved() from public, anon, authenticated, service_role;
 
 create trigger dsar_exports_reserved
-  before insert on storage.objects
+  before insert or update of bucket_id, name on storage.objects
   for each row when (new.bucket_id = 'dsar-exports')
   execute function private.dsar_exports_reserved();
 

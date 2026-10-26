@@ -176,13 +176,13 @@ isOneToOne: false
                   ]
                 },"data_export_requests": {
                   Row: {
-                    "expires_at": string | null,"id": string,"ready_at": string | null,"requested_at": string,"size_bytes": number | null,"status": Database["public"]['Enums']["data_export_status"],"storage_path": string | null,"user_id": string
+                    "expires_at": string | null,"files_left_out": number | null,"id": string,"ready_at": string | null,"requested_at": string,"size_bytes": number | null,"status": Database["public"]['Enums']["data_export_status"],"storage_path": string | null,"user_id": string
                   }
                   Insert: {
-                    "expires_at"?: string | null,"id"?: string,"ready_at"?: string | null,"requested_at"?: string,"size_bytes"?: number | null,"status"?: Database["public"]['Enums']["data_export_status"],"storage_path"?: string | null,"user_id": string
+                    "expires_at"?: string | null,"files_left_out"?: number | null,"id"?: string,"ready_at"?: string | null,"requested_at"?: string,"size_bytes"?: number | null,"status"?: Database["public"]['Enums']["data_export_status"],"storage_path"?: string | null,"user_id": string
                   }
                   Update: {
-                    "expires_at"?: string | null,"id"?: string,"ready_at"?: string | null,"requested_at"?: string,"size_bytes"?: number | null,"status"?: Database["public"]['Enums']["data_export_status"],"storage_path"?: string | null,"user_id"?: string
+                    "expires_at"?: string | null,"files_left_out"?: number | null,"id"?: string,"ready_at"?: string | null,"requested_at"?: string,"size_bytes"?: number | null,"status"?: Database["public"]['Enums']["data_export_status"],"storage_path"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1288,7 +1288,7 @@ isOneToOne: false
 { Args: { "p_export": string }; Returns: Json
                            },
 "account_ops_export_ready":
-{ Args: { "p_export": string,"p_size": number }; Returns: boolean
+{ Args: { "p_export": string,"p_files_left_out"?: number,"p_size": number }; Returns: boolean
                            },
 "account_ops_fan_out_legal_version":
 { Args: { "p_after"?: string,"p_limit"?: number,"p_slug": string,"p_version": number }; Returns: {
@@ -1726,7 +1726,7 @@ isOneToOne: false
                            },
 "list_my_data_exports":
 { Args: Record<PropertyKey, never>; Returns: {
-              "expires_at": string,"id": string,"next_request_at": string,"ready_at": string,"requested_at": string,"size_bytes": number,"state": string
+              "expires_at": string,"files_left_out": number,"id": string,"next_request_at": string,"ready_at": string,"requested_at": string,"size_bytes": number,"state": string
             }[]
                            },
 "list_my_notifications":
