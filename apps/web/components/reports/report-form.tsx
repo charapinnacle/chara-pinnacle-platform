@@ -15,7 +15,8 @@ import { submitReport } from "@/lib/actions/reports";
 import { characters, cn } from "@/lib/utils";
 import {
   DETAILS_MAX_CHARS,
-  reportCategoryOptions,
+  isFeeDemand,
+  reportCategoryOptionsFor,
   reportFormSchemaFor,
   type ReportFormInput,
   type ReportInput,
@@ -27,6 +28,8 @@ type ReportFormProps = {
   type: ReportInput["type"];
   // The vacancy, application or path when the page already knows it; the person then has no link to give.
   target?: string;
+  // A category chosen by the link that opened the form, for example "Report a fee demand".
+  category?: ReportInput["category"];
   signedIn: boolean;
 };
 
@@ -43,6 +46,7 @@ const linkLabels = {
   company: { label: "Address of one of its vacancies", description: "Paste the address of a vacancy page of the company." },
   content: { label: "Address of the page", description: `A page of ${BRAND_NAME}, for example /en/pricing.` },
   profile: { label: "", description: "" },
+  partner_profile: { label: "", description: "" },
 } as const;
 
 const FAILURE = "The report was not sent";
@@ -52,10 +56,10 @@ const PROFILE_ADVICE = "Do not write the candidate's name, contact details or do
 
 // One form for every kind of report: the page decides the kind and whether the target is known. The database checks
 // that the target can be reported, and by whom, again.
-export function ReportForm({ lang, type, target, signedIn }: ReportFormProps) {
+export function ReportForm({ lang, type, target, category, signedIn }: ReportFormProps) {
   const form = useForm<ReportFormInput>({
     resolver: zodResolver(reportFormSchemaFor(type, target !== undefined)),
-    defaultValues: { link: "", category: "", details: "", email: "", goodFaith: false },
+    defaultValues: { link: "", category: category ?? "", details: "", email: "", goodFaith: false },
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit } = form;
@@ -84,6 +88,9 @@ export function ReportForm({ lang, type, target, signedIn }: ReportFormProps) {
         <p className="text-body">
           Your reference number is <strong className="font-mono">{reference}</strong>.
         </p>
+        {isFeeDemand(form.getValues("category")) ? (
+          <p className="text-body">Trust &amp; Safety handles reports of fee demands first.</p>
+        ) : null}
         {signedIn ? (
           <p className="text-body text-muted-foreground">
             You are told here when it is closed, with the outcome and a note. <TextLink href={`/${lang}/reports`}>See your reports</TextLink>
@@ -112,7 +119,7 @@ export function ReportForm({ lang, type, target, signedIn }: ReportFormProps) {
         id={ids.category}
         label="What is wrong"
         placeholder="Choose a category"
-        options={reportCategoryOptions}
+        options={reportCategoryOptionsFor(type)}
       />
       <TextareaField
         control={control}

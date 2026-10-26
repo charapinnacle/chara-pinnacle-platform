@@ -179,9 +179,19 @@ export function adminPath(lang: string, segment = ""): string {
 
 // The form to report a vacancy, a company or a page (and the note on candidate profiles), with the target already named when the link comes from a page that
 // knows it (a vacancy by its id, a page by its path).
-export function reportPath(lang: string, type: "job" | "company" | "profile" | "content", target?: string): string {
+const reportTargetParams = { job: "job", company: "job", profile: "job", content: "path", partner_profile: "partner" } as const;
+
+// The report form of a kind of target, with the target when the page knows it (the vacancy, the path or the slug of a
+// partner profile) and a category to preselect, as "Report a fee demand" does.
+export function reportPath(
+  lang: string,
+  type: keyof typeof reportTargetParams,
+  target?: string,
+  category?: Database["public"]["Enums"]["report_category"],
+): string {
   const query = new URLSearchParams({ type });
-  if (target) query.set(type === "content" ? "path" : "job", target);
+  if (target) query.set(reportTargetParams[type], target);
+  if (category) query.set("category", category);
   return `/${lang}/report?${query.toString()}`;
 }
 

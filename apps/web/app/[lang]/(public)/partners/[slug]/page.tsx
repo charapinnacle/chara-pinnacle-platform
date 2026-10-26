@@ -47,10 +47,16 @@ export default async function PartnerProfilePage({ params }: PageProps<"/[lang]/
   }
   const { profile, viewerIsMember } = result;
   const path = partnerProfilePath(lang, profile.slug);
+  // A fee demand opens the same report with its category chosen; Trust & Safety handles it first (FR-J3 AC8, FR-S1).
   const report = (
-    <TextLink standalone rel="nofollow" href={reportPath(lang, "content", path)}>
-      Report company
-    </TextLink>
+    <div className="flex flex-wrap gap-x-6">
+      <TextLink standalone rel="nofollow" href={reportPath(lang, "partner_profile", profile.slug)}>
+        Report company
+      </TextLink>
+      <TextLink standalone rel="nofollow" href={reportPath(lang, "partner_profile", profile.slug, "fee_demanded_from_worker")}>
+        Report a fee demand
+      </TextLink>
+    </div>
   );
   const connection = viewerIsMember ? null : await getProfileConnection(profile.slug);
   const connect =

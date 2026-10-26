@@ -24,6 +24,19 @@ export const reportCategoryLabels = {
 
 export const reportCategoryOptions = Object.entries(reportCategoryLabels).map(([value, label]) => ({ value, label }));
 
+export const FEE_DEMAND = "fee_demanded_from_worker" satisfies Enums["report_category"];
+
+// On a partner profile the fee category says what a worker experienced (FR-J3 AC8); elsewhere it keeps its Phase 1 label.
+export function reportCategoryOptionsFor(type: Enums["report_target_type"]) {
+  if (type !== "partner_profile") return reportCategoryOptions;
+  return reportCategoryOptions.map((option) =>
+    option.value === FEE_DEMAND ? { value: option.value, label: "The company asked me to pay a fee" } : option,
+  );
+}
+
+// The label of a fee-demand report in the queue, where it comes first (FR-S1 AC10).
+export const FEE_DEMAND_LABEL = "Fee demand";
+
 export const reportStatusLabels = {
   new: "New",
   in_review: "In review",
@@ -44,9 +57,19 @@ export const reportTargetLabels = {
   company: "Company",
   profile: "Candidate profile",
   content: "Page",
+  partner_profile: "Partner profile",
 } as const satisfies Record<Enums["report_target_type"], string>;
 
-export const reportTargetTypes = ["job", "company", "profile", "content"] as const satisfies readonly Enums["report_target_type"][];
+export const reportTargetTypes = [
+  "job",
+  "company",
+  "profile",
+  "content",
+  "partner_profile",
+] as const satisfies readonly Enums["report_target_type"][];
+
+// The category a report link may preselect (?category=), for example "Report a fee demand"; anything else selects none.
+export const reportCategorySchema = z.enum(Object.keys(reportCategoryLabels) as [Enums["report_category"], ...Enums["report_category"][]]);
 
 const categorySchema = z.string({ error: "Choose a category." }).pipe(
   z.enum(Object.keys(reportCategoryLabels) as [Enums["report_category"], ...Enums["report_category"][]], { error: "Choose a category." }),
@@ -133,3 +156,32 @@ export const reportListFilterSchema = z.object({
 });
 
 export type ReportListFilter = z.output<typeof reportListFilterSchema>;
+
+// The page of the open queue after a cursor: the priority, due time and id of the last row shown, as one query value
+// ("<priority>_<iso time>_<id>"). A closed list pages on the id alone ("<id>").
+export type ReportQueueCursor = { priority: number; dueAt: string; id: number } | { id: number };
+
+const cursorId = z.string().regex(/^\d{1,15}$/).transform(Number);
+
+export const reportQueueCursorSchema = z.string().transform((value, context): ReportQueueCursor => {
+  const parts = value.split("_");
+  const parsed =
+    parts.length === 3
+      ? z
+          .object({ priority: z.string().regex(/^[1-9]$/).transform(Number), dueAt: z.iso.datetime({ offset: true }), id: cursorId })
+          .safeParse({ priority: parts[0], dueAt: parts[1], id: parts[2] })
+      : z.object({ id: cursorId }).safeParse({ id: parts.length === 1 ? parts[0] : "" });
+  if (!parsed.success) {
+    context.addIssue({ code: "custom", message: "Not a cursor" });
+    return z.NEVER;
+  }
+  return parsed.data;
+});
+
+export function reportQueueCursorParam(cursor: ReportQueueCursor): string {
+  return "priority" in cursor ? `${cursor.priority}_${cursor.dueAt}_${cursor.id}` : String(cursor.id);
+}
+
+export function isFeeDemand(category: string): boolean {
+  return category === FEE_DEMAND;
+}
