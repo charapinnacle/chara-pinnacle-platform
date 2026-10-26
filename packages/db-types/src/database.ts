@@ -1180,6 +1180,11 @@ isOneToOne: false
               "based_in_country": string,"commitment": Json,"created_at": string,"decisions": Json,"description": string,"display_name": string,"due_at": string,"founded_year": number,"geographies": Json,"id": string,"identifier_links": Json,"industries": Json,"industry_code": string,"info_step": string,"languages": Json,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"listed_at": string,"occupations": Json,"owner_email": string,"recruitment_type": Database["public"]['Enums']["recruitment_preference"],"review_status": Database["public"]['Enums']["partner_review_status"],"service_types": Json,"status": Database["public"]['Enums']["organization_status"],"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string,"workforce_size_band": Database["public"]['Enums']["workforce_size_band"]
             }[]
                            },
+"admin_get_plan_price":
+{ Args: { "p_code": string }; Returns: {
+              "code": string,"currency": string,"interval": string,"name": string,"org_type": Database["public"]['Enums']["organization_type"],"price_minor": number,"price_ref": string,"product_ref": string
+            }[]
+                           },
 "admin_get_report":
 { Args: { "p_id": number }; Returns: {
               "category": Database["public"]['Enums']["report_category"],"content_path": string,"created_at": string,"details": string,"handled_at": string,"id": number,"job_id": string,"job_moderation_state": Database["public"]['Enums']["job_moderation_state"],"job_status": Database["public"]['Enums']["job_status"],"job_title": string,"organization_id": string,"organization_name": string,"organization_status": Database["public"]['Enums']["organization_status"],"reference": string,"reporter_email": string,"reporter_kind": string,"resolution_note": string,"status": Database["public"]['Enums']["report_status"],"target_type": Database["public"]['Enums']["report_target_type"]
@@ -1249,6 +1254,9 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: {
               "hidden_vacancies": number,"suspended_organizations": number,"suspended_users": number
             }[]
+                           },
+"admin_record_plan_price":
+{ Args: { "p_code": string,"p_price_minor": number,"p_price_ref": string,"p_reason": string }; Returns: boolean
                            },
 "admin_remove_limit_override":
 { Args: { "p_limit_key": string,"p_org": string,"p_reason": string }; Returns: undefined

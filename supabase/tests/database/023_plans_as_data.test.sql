@@ -168,7 +168,7 @@ language sql as $$
 $$;
 select results_eq(
   $$select * from pg_temp.plan_writers() order by 1$$,
-  $$values ('admin_remove_limit_override'), ('admin_set_limit_override'), ('plan_editor_set_feature'), ('plan_editor_set_limit'), ('plan_editor_set_plan')$$,
+  $$values ('admin_record_plan_price'), ('admin_remove_limit_override'), ('admin_set_limit_override'), ('plan_editor_set_feature'), ('plan_editor_set_limit'), ('plan_editor_set_plan')$$,
   'only the audited plan editor functions of FR-R2 and their private helpers edit plans, limits, features or overrides'
 );
 create function public.plan_writer_probe() returns void language sql as 'update billing.plans set trial_days = 1';
