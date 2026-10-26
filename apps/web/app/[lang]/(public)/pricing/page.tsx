@@ -9,7 +9,8 @@ import { PricingTabs } from "@/components/public/pricing-tabs";
 import type { OrganizationType } from "@/lib/billing/limits";
 import { planCard, planLink, RECOMMENDED_PLAN_CODE, viewerNote, type PricingViewer, type PublicPlan } from "@/lib/billing/pricing";
 import { getPricingViewer, listPublicPlans } from "@/lib/dal/pricing";
-import { isReleased } from "@/lib/dal/release";
+import { releasedSwitches } from "@/lib/dal/release";
+import type { ReleaseSwitch } from "@/lib/release";
 import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 import { BRAND_NAME } from "@/lib/brand";
@@ -50,8 +51,20 @@ const companyTypes = {
 } as const satisfies Record<OrganizationType, { tab: string; list: string }>;
 
 // The plans of one organisation type. A partner Enterprise plan states the price it starts from (DATA_MODEL.md section 8).
-function PlanList({ type, plans, viewer, lang }: { type: OrganizationType; plans: PublicPlan[]; viewer: PricingViewer; lang: string }) {
-  const cards = plans.map((plan) => planCard(plan, type));
+function PlanList({
+  type,
+  plans,
+  viewer,
+  lang,
+  released,
+}: {
+  type: OrganizationType;
+  plans: PublicPlan[];
+  viewer: PricingViewer;
+  lang: string;
+  released: readonly ReleaseSwitch[];
+}) {
+  const cards = plans.map((plan) => planCard(plan, type, released));
   if (cards.length === 0) {
     return (
       <EmptyState title="Pricing is currently unavailable" description="Contact us for the current plans and prices.">
@@ -78,16 +91,13 @@ function PlanList({ type, plans, viewer, lang }: { type: OrganizationType; plans
 // The partner tabs are shown only while release 2a is on (FR-L5); until then the page is the employer page of Phase 1.
 export default async function PricingPage({ params }: PageProps<"/[lang]/pricing">) {
   const { lang } = await params;
-  const [plans, viewer, partners] = await Promise.all([
-    listPublicPlans(),
-    getPricingViewer(),
-    isReleased("release_partner_directories"),
-  ]);
+  const [plans, viewer, released] = await Promise.all([listPublicPlans(), getPricingViewer(), releasedSwitches()]);
+  const partners = released.includes("release_partner_directories");
   const [recruitmentPlans, staffingPlans] = partners
     ? await Promise.all([listPublicPlans("recruitment_company"), listPublicPlans("staffing_company")])
     : [[], []];
   const note = viewerNote(viewer, lang, partners);
-  const employerPlans = <PlanList type="employer" plans={plans} viewer={viewer} lang={lang} />;
+  const employerPlans = <PlanList type="employer" plans={plans} viewer={viewer} lang={lang} released={released} />;
 
   return (
     <PageContainer layout="page" className="grid gap-12 sm:gap-16">
@@ -119,12 +129,12 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
                 {
                   key: "recruitment_company",
                   label: companyTypes.recruitment_company.tab,
-                  panel: <PlanList type="recruitment_company" plans={recruitmentPlans} viewer={viewer} lang={lang} />,
+                  panel: <PlanList type="recruitment_company" plans={recruitmentPlans} viewer={viewer} lang={lang} released={released} />,
                 },
                 {
                   key: "staffing_company",
                   label: companyTypes.staffing_company.tab,
-                  panel: <PlanList type="staffing_company" plans={staffingPlans} viewer={viewer} lang={lang} />,
+                  panel: <PlanList type="staffing_company" plans={staffingPlans} viewer={viewer} lang={lang} released={released} />,
                 },
               ]}
             />

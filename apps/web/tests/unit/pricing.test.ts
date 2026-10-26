@@ -170,3 +170,28 @@ describe("the link of a partner card (FR-R1 AC3, AC4)", () => {
     expect(planLink({ kind: "manager", slug: "acme", type: "employer" }, basic, "en", "staffing_company")).toBeNull();
   });
 });
+
+describe("the features of Phase 2 on a card (FR-L5 AC7)", () => {
+  const every = ["release_partner_directories", "release_job_orders", "release_candidate_submissions", "release_messaging", "release_find_workers"] as const;
+
+  it("lists a delivered feature only while its release is on, and a feature without a label never", () => {
+    const employer = { ...BASIC, features: ["advanced_partner_search", "available_workforce_search", "multi_country_requirements"] };
+    expect(planCard(employer).features).toEqual([]);
+    expect(planCard(employer, "employer", ["release_partner_directories"]).features).toEqual([
+      "Advanced partner search filters",
+      "Available workforce search",
+    ]);
+    const partner = { ...PARTNER_BASIC, features: ["job_order_access", "employer_discovery", "worker_search", "analytics_basic"] };
+    expect(planCard(partner, "staffing_company", ["release_partner_directories"]).features).toEqual([]);
+    expect(planCard(partner, "staffing_company", ["release_job_orders"]).features).toEqual(["Job order access"]);
+  });
+
+  it("says on no card that a plan verifies a company or raises it in search", () => {
+    const all = ["shortlisting", "csv_export", "advanced_partner_search", "available_workforce_search", "job_order_access"];
+    const texts = [planCard({ ...BASIC, features: all }, "employer", every), planCard({ ...PARTNER_BASIC, features: all }, "recruitment_company", every)]
+      .flatMap((card) => [...card.features, ...card.limits, ...card.trial])
+      .join(" ")
+      .toLowerCase();
+    expect(texts).not.toMatch(/verif|rank|priority|higher|top of|featured|boost/);
+  });
+});

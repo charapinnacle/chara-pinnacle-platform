@@ -1,6 +1,7 @@
 import * as z from "zod";
 import type { OrganizationType } from "@/lib/billing/limits";
 import { daysText, formatPrice, oneTrialRule, trialConversion } from "@/lib/billing/presentation";
+import type { ReleaseSwitch } from "@/lib/release";
 import { billingPath, signUpPath } from "@/lib/routes";
 
 export const publicPlanSchema = z
@@ -54,10 +55,15 @@ export const PLAN_LIMIT_KEYS = {
 
 export type PlanLimitKey = (typeof PLAN_LIMIT_KEYS)[OrganizationType][number];
 
+// A feature of Phase 2 is listed only while the release that delivers it is on (FR-L5 AC7), so a card never names a
+// feature nobody can use yet.
 const featureLabels = {
-  shortlisting: "Shortlisting of applicants",
-  csv_export: "CSV export of the applicant list",
-} as const satisfies Record<string, string>;
+  shortlisting: { label: "Shortlisting of applicants", release: null },
+  csv_export: { label: "CSV export of the applicant list", release: null },
+  advanced_partner_search: { label: "Advanced partner search filters", release: "release_partner_directories" },
+  available_workforce_search: { label: "Available workforce search", release: "release_partner_directories" },
+  job_order_access: { label: "Job order access", release: "release_job_orders" },
+} as const satisfies Record<string, { label: string; release: ReleaseSwitch | null }>;
 
 // The plan the pricing page marks as recommended (OPEN_QUESTIONS.md P19: the owner has not named one; the default is the
 // plan in the middle of the range). A code that is not public marks nothing.
@@ -75,8 +81,8 @@ export type PlanCard = {
 };
 
 // A contact-sales partner plan shows the price it starts from ("From EUR 199.00", DATA_MODEL.md section 8); the
-// employer one shows none (FR-H2 AC5).
-export function planCard(plan: PublicPlan, type: OrganizationType = "employer"): PlanCard {
+// employer one shows none (FR-H2 AC5). released names the release switches that are on.
+export function planCard(plan: PublicPlan, type: OrganizationType = "employer", released: readonly ReleaseSwitch[] = []): PlanCard {
   const stated = type !== "employer" && plan.priceMinor > 0 ? `From ${formatPrice(plan.priceMinor, plan.currency)}` : null;
   const price = plan.contactSales ? stated : formatPrice(plan.priceMinor, plan.currency);
   const per = `per ${plan.interval}`;
@@ -94,7 +100,9 @@ export function planCard(plan: PublicPlan, type: OrganizationType = "employer"):
       const text = key in plan.limits ? limitLabels[key](plan.limits[key] ?? null) : null;
       return text ? [text] : [];
     }),
-    features: Object.entries(featureLabels).flatMap(([key, label]) => (plan.features.includes(key) ? [label] : [])),
+    features: Object.entries(featureLabels).flatMap(([key, { label, release }]) =>
+      plan.features.includes(key) && (release === null || released.includes(release)) ? [label] : [],
+    ),
   };
 }
 

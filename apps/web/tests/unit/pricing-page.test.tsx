@@ -6,7 +6,7 @@ let plans: PublicPlan[] = [];
 let partnerPlans: Record<string, PublicPlan[]> = {};
 let viewer: PricingViewer = { kind: "visitor" };
 let failure: Error | null = null;
-let released = false;
+let released: string[] = [];
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/pricing", () => ({
@@ -16,7 +16,7 @@ vi.mock("@/lib/dal/pricing", () => ({
   },
   getPricingViewer: async () => viewer,
 }));
-vi.mock("@/lib/dal/release", () => ({ isReleased: async () => released }));
+vi.mock("@/lib/dal/release", () => ({ releasedSwitches: async () => released }));
 
 const { default: PricingPage } = await import("@/app/[lang]/(public)/pricing/page");
 
@@ -46,7 +46,7 @@ beforeEach(() => {
   };
   viewer = { kind: "visitor" };
   failure = null;
-  released = false;
+  released = [];
 });
 
 describe("the pricing page (FR-H2)", () => {
@@ -129,7 +129,7 @@ describe("the pricing page (FR-H2)", () => {
 
 describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => {
   it("offers the employer, recruitment and staffing plans as labelled tabs, the first selected, and the others' panels hidden", async () => {
-    released = true;
+    released = ["release_partner_directories"];
     const html = renderToStaticMarkup(await PricingPage(props));
     expect(html).toMatch(/<div role="tablist" aria-label="Plans by type of company"/);
     const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)].map(
@@ -147,7 +147,7 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
   });
 
   it("shows each partner plan with its price, trial and limits, Enterprise from its price with a contact link, and the sign-up as the type", async () => {
-    released = true;
+    released = ["release_partner_directories"];
     const html = renderToStaticMarkup(await PricingPage(props));
     const recruitment = html.slice(html.indexOf('aria-label="Recruitment company plans"'), html.indexOf('aria-label="Staffing company plans"'));
     for (const text of ["EUR 49.00", "30 days free trial", "3 countries served", "10 occupations", "1 team member", "From EUR 199.00", "Unlimited occupations", "15 team members"]) {
@@ -165,7 +165,7 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
   });
 
   it("leads the owner of a staffing company to its billing page from the staffing plans only", async () => {
-    released = true;
+    released = ["release_partner_directories"];
     viewer = { kind: "manager", slug: "manila", type: "staffing_company" };
     const html = renderToStaticMarkup(await PricingPage(props));
     expect(html.match(/href="\/en\/org\/manila\/billing"/g)).toHaveLength(1);
@@ -174,7 +174,7 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
   });
 
   it("tells a worker that the plans are for companies", async () => {
-    released = true;
+    released = ["release_partner_directories"];
     viewer = { kind: "worker" };
     const html = renderToStaticMarkup(await PricingPage(props));
     expect(html).toContain("Plans are for companies. Workers never pay.");
@@ -182,10 +182,27 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
   });
 
   it("shows the unavailable notice in a partner tab without public plans", async () => {
-    released = true;
+    released = ["release_partner_directories"];
     partnerPlans = { recruitment_company: [], staffing_company: [] };
     const html = renderToStaticMarkup(await PricingPage(props));
     expect(html.match(/Pricing is currently unavailable/g)).toHaveLength(2);
     expect(html).toMatch(/<a [^>]*href="\/en\/signup\?kind=staffing_company"[^>]*>Create a company account<\/a>/);
+  });
+
+  it("FR-L5 AC7: lists a Phase 2 feature only while its release is on", async () => {
+    plans = [plan({ features: ["shortlisting", "available_workforce_search", "advanced_partner_search"] })];
+    partnerPlans.recruitment_company = [plan({ code: "recruitment_partner", priceMinor: 4900, features: ["job_order_access", "worker_search"] })];
+    const off = renderToStaticMarkup(await PricingPage(props));
+    for (const label of ["Available workforce search", "Advanced partner search filters", "Job order access"]) expect(off).not.toContain(label);
+
+    released = ["release_partner_directories"];
+    const on = renderToStaticMarkup(await PricingPage(props));
+    expect(on).toContain("Available workforce search");
+    expect(on).toContain("Advanced partner search filters");
+    expect(on).not.toContain("Job order access");
+
+    released = ["release_partner_directories", "release_job_orders"];
+    const orders = renderToStaticMarkup(await PricingPage(props));
+    expect(orders).toContain("Job order access");
   });
 });
