@@ -1,5 +1,5 @@
 begin;
-select plan(38);
+select plan(39);
 
 -- FR-F2 AC10 (retention is a configuration value and deletion is narrow) and the database part of AC11 (the monthly export).
 \ir status_fixture.inc
@@ -23,10 +23,14 @@ select is(
   0::bigint, 'AC10: no API role can write retention_policies'
 );
 select is(
-  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  (select string_agg(n.nspname || '.' || p.proname, ',') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where p.prosrc ~* '(insert\s+into|update|delete\s+from)\s+private\.retention_policies'
-     and n.nspname in ('public', 'private', 'audit')), 0::bigint,
-  'AC10: and no function does: the value is changed only by migration'
+     and n.nspname in ('public', 'private', 'audit')), 'public.admin_set_retention_policy',
+  'AC10: only the retention editor of FR-S3 writes the periods'
+);
+select is(
+  (select editable from private.retention_policies where entity = 'audit_log'), false,
+  'AC10: and the editor may not change the audit log period: it is changed only by migration'
 );
 
 -- the four rows of the criterion, aged 1, 2190, 2192 and 3000 days

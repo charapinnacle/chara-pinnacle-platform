@@ -71,7 +71,7 @@ select is(
 select is(
   (select count(*) from audit.log where action = 'retention.run' and entity_id = 'closed_reports'), :'rule_runs'::bigint, 'and writes no audit row'
 );
-insert into private.retention_policies (entity, days) values ('closed_reports', 365);
+insert into private.retention_policies (entity, days, label, description) values ('closed_reports', 365, 'Closed reports', 'Days a report is kept after it was actioned or dismissed.');
 select is(
   pg_temp.call_as(:'st_trust', 'authenticated', 'select * from private.retention_policies', 'aal2'), '42501|permission denied for table retention_policies|',
   'the periods stay unreadable for the API roles'

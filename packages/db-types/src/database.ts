@@ -1245,6 +1245,11 @@ isOneToOne: false
               "category": Database["public"]['Enums']["report_category"],"created_at": string,"handled_at": string,"id": number,"reference": string,"status": Database["public"]['Enums']["report_status"],"target_label": string,"target_type": Database["public"]['Enums']["report_target_type"]
             }[]
                            },
+"admin_list_retention_policies":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "days": number,"description": string,"editable": boolean,"entity": string,"label": string
+            }[]
+                           },
 "admin_list_settings":
 { Args: Record<PropertyKey, never>; Returns: {
               "key": string,"label": string,"max": number,"min": number,"release_feature": string,"release_gaps": (string)[],"value": string,"value_type": string
@@ -1295,6 +1300,9 @@ isOneToOne: false
                            },
 "admin_set_report_status":
 { Args: { "p_id": number,"p_note"?: string,"p_status": Database["public"]['Enums']["report_status"] }; Returns: undefined
+                           },
+"admin_set_retention_policy":
+{ Args: { "p_days": number,"p_entity": string,"p_reason": string }; Returns: boolean
                            },
 "admin_set_setting":
 { Args: { "p_key": string,"p_reason": string,"p_value": string }; Returns: boolean

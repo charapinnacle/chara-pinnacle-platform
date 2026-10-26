@@ -138,8 +138,8 @@ select ok(
   'the periods stay unreadable for API roles'
 );
 select is(
-  (select count(*) from private.retention_policies), 12::bigint,
-  'thirteen entities have a period, less the one removed above'
+  (select count(*) from private.retention_policies), 18::bigint,
+  'nineteen entities have a period (six of them the Phase 2 periods of FR-S3), less the one removed above'
 );
 select is(
   (select days from private.retention_policies where entity = 'document_access_log'), 730,
