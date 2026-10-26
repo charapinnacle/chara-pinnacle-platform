@@ -10,6 +10,7 @@ import {
   homePath,
   jobPath,
   mfaPath,
+  myReportsPath,
   partnerStepPath,
   settingsPath,
   whereYouServePath,
@@ -233,6 +234,21 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
               ? `${org} published ${total} new vacancies`
               : `${org} published new vacancies`,
         href: slug ? companyPagePath(lang, slug) : null,
+      };
+    },
+  },
+  // The affected company reads the decision on its profile; a reporter reads the outcome of the report (FR-S1 step Inform).
+  moderation_decision: {
+    label: "Moderation",
+    present: (payload, { lang }) => {
+      const reference = text(payload, "reference");
+      if (reference) return { title: `Your report ${reference} was closed`, href: myReportsPath(lang) };
+      const title = text(payload, "title") ?? "Your partner profile";
+      const slug = text(payload, "org_slug");
+      const unhidden = text(payload, "decision") === "unhide";
+      return {
+        title: unhidden ? `${title} is shown again` : `${title} was hidden by moderation`,
+        href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
       };
     },
   },

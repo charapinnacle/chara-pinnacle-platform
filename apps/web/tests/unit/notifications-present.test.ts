@@ -11,6 +11,7 @@ import {
   homePath,
   jobPath,
   mfaPath,
+  myReportsPath,
   partnerStepPath,
   settingsPath,
   whereYouServePath,
@@ -61,6 +62,10 @@ describe("in-app notification items (FR-T1)", () => {
     ["followed_company_activity", { org_name: "Acme Bau", org_slug: "acme", total: 1, vacancies: [{ job_id: JOB, job_title: "Welder" }] }, worker, "Acme Bau published a new vacancy: Welder", companyPagePath("en", "acme")],
     ["followed_company_activity", { org_name: "Acme Bau", org_slug: "acme", total: 3, vacancies: [{ job_id: JOB, job_title: "Welder" }] }, company, "Acme Bau published 3 new vacancies", companyPagePath("en", "acme")],
     ["followed_company_activity", {}, worker, "A company you follow published new vacancies", null],
+    ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", org_slug: "manila", decision: "hide", reasons: "x" }, company, "Manila Recruit was hidden by moderation", `${workforceProfilePath("en", "manila")}#moderation-heading`],
+    ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", org_slug: "manila", decision: "unhide" }, company, "Manila Recruit is shown again", workforceProfilePath("en", "manila")],
+    ["moderation_decision", { reference: "R-000123", outcome: "actioned" }, worker, "Your report R-000123 was closed", myReportsPath("en")],
+    ["moderation_decision", {}, company, "Your partner profile was hidden by moderation", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
