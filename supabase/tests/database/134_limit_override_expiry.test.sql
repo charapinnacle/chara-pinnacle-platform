@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(26);
 
 \ir status_fixture.inc
 
@@ -59,6 +59,17 @@ select is(
   'AC5: and the existing members of E are kept'
 );
 select is(private.org_limit(gen_random_uuid(), 'members'), 0, 'an organisation without a plan row still reads 0');
+
+-- an override applies only while the organisation is on an Enterprise plan
+insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value, expires_at)
+values (:'basic', 'active_jobs', 9, now() + interval '30 days');
+select is(private.org_limit(:'basic', 'active_jobs'), (select limit_value from billing.plan_limits where plan_code = 'employer_starter' and limit_key = 'active_jobs'),
+  'an active override of an organisation on Basic is ignored: the Basic limit applies');
+select is(private.org_limit(:'ent', 'active_jobs'), 80, 'the active override of E applies while E is on Enterprise');
+update billing.subscriptions set status = 'canceled' where organization_id = :'ent';
+select is(private.org_limit(:'ent', 'active_jobs'), (select limit_value from billing.plan_limits where plan_code = 'free_employer' and limit_key = 'active_jobs'),
+  'once the Enterprise subscription is cancelled E reads the value of the free plan, not the override');
+update billing.subscriptions set status = 'active' where organization_id = :'ent';
 
 -- the audit rows of the trigger: no reason outside the editor, as before
 select coalesce(max(id), 0) as base from audit.log \gset

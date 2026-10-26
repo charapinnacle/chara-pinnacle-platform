@@ -10,8 +10,10 @@ alter table billing.organization_limit_overrides add column expires_at timestamp
 comment on column billing.organization_limit_overrides.expires_at is
   'The override stops applying at this time (private.org_limit ignores it); null means no expiry.';
 
--- The override first while it has not expired, then the plan row; null is unlimited; 0 for a plan code with no row in
--- billing.plans (replaces the version of the plans migration).
+-- The override first while it has not expired and the organisation is still on an Enterprise plan (a plan sold on
+-- request, or an *_enterprise code: overrides are granted only there), then the plan row; null is unlimited; 0 for a plan
+-- code with no row in billing.plans. An organisation that lapses or moves down to another plan reads that plan's limits
+-- and gets its override back if it returns to Enterprise before the expiry (replaces the version of the plans migration).
 create or replace function private.org_limit(p_org uuid, p_key text) returns integer
 language sql
 stable
@@ -21,7 +23,11 @@ as $$
   select case
     when exists (select 1 from billing.plans p where p.code = private.org_plan_code(p_org)) then coalesce(
       (select o.limit_value from billing.organization_limit_overrides o
-       where o.organization_id = p_org and o.limit_key = p_key and (o.expires_at is null or o.expires_at > now())),
+       where o.organization_id = p_org and o.limit_key = p_key and (o.expires_at is null or o.expires_at > now())
+         and exists (
+           select 1 from billing.plans p
+           where p.code = private.org_plan_code(p_org) and (p.contact_sales or p.code like '%\_enterprise')
+         )),
       (select l.limit_value from billing.plan_limits l where l.plan_code = private.org_plan_code(p_org) and l.limit_key = p_key)
     )
     else 0
@@ -34,7 +40,9 @@ revoke all on function private.org_limit(uuid, text) from public, anon, authenti
 -- made the change (transaction setting chara.audit_reason, empty outside the editor). The setting
 -- chara.billing_audit_suppress = 'on' skips the row: an RPC that writes several rows for one change (a price change
 -- touches plans and plan_provider_refs) writes its single row itself. Only definer code can set it, because no API role
--- can write these tables (replaces the version of the plans migration).
+-- can write these tables. V17 (admin_record_plan_price) must set it with set_config(..., true), so that it lasts at most
+-- until the end of the transaction, and reset it to 'off' right after its own writes, before anything else in the call
+-- writes a billing row (replaces the version of the plans migration).
 create or replace function private.billing_plan_audit() returns trigger
 language plpgsql
 security definer

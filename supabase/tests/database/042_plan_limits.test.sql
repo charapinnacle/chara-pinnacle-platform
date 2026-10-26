@@ -398,7 +398,7 @@ select pg_temp.seed(:'basic_override', 'open', 2);
 select (pg_temp.seed(:'basic_override', 'draft'))[1] as basic_override_job \gset
 select pg_temp.set_enforced('true');
 insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'basic_override', 'active_jobs', 2);
-select is(pg_temp.set_status(:'own1', :'basic_override_job', 'open'), 'P0001|CHARA_LIMIT_REACHED|active_jobs', 'an override of 2 on Basic refuses the third vacancy that the plan alone would allow');
+select is(pg_temp.set_status(:'own1', :'basic_override_job', 'open'), 'ok', 'an override on Basic is ignored (overrides apply on Enterprise plans only, FR-R2): the plan allows the third vacancy');
 
 -- Order and scope of the checks.
 select is(

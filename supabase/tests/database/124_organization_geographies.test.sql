@@ -344,7 +344,7 @@ insert into billing.subscriptions (organization_id, plan_code, status, provider)
   (:'org_partner', 'recruitment_partner', 'active', 'null'),
   (:'org_pro', 'recruitment_professional', 'active', 'null'),
   (:'org_ent', 'recruitment_enterprise', 'active', 'null'),
-  (:'org_ovr', 'recruitment_partner', 'active', 'null'),
+  (:'org_ovr', 'recruitment_enterprise', 'active', 'null'),
   (:'org_down', 'recruitment_professional', 'active', 'null');
 insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'org_ovr', 'markets', 5);
 
