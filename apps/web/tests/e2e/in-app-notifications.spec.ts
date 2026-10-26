@@ -179,7 +179,9 @@ test.describe("in-app notifications (FR-T1)", () => {
     const section = page.locator("#email-notifications");
     const applications = section.getByRole("switch", { name: "New applications" });
     await expect(applications).toBeChecked();
-    await expect(section.getByRole("switch")).toHaveCount(1);
+    // New applications, and the follower digest that every account may receive (FR-L4, V24).
+    await expect(section.getByRole("switch")).toHaveCount(2);
+    await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
     for (const label of ["Vacancy hidden by moderation", "Failed payments", "Team invitations", "New versions of legal documents"]) {
       const row = section.getByRole("listitem").filter({ hasText: label });
       await expect(row).toContainText("Always sent");
@@ -203,6 +205,7 @@ test.describe("in-app notifications (FR-T1)", () => {
     await page.keyboard.press("Space");
     await expect(applications).not.toBeChecked();
     await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
     await expect(section.getByRole("button", { name: "Save email choices" })).toBeFocused();
     await page.keyboard.press("Enter");
     release();
@@ -213,21 +216,27 @@ test.describe("in-app notifications (FR-T1)", () => {
     await page.unroute(`**${SETTINGS}`);
     await section.getByRole("button", { name: "Save email choices" }).click();
     await expect(page.getByText("Email choices saved", { exact: true })).toBeVisible();
-    expect(emailKinds(admin.id)).toEqual({ application_received: false });
+    expect(emailKinds(admin.id)).toEqual({ application_received: false, followed_company_activity: true });
 
     await page.reload();
     await expect(page.locator("#email-notifications").getByRole("switch", { name: "New applications" })).not.toBeChecked();
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
   });
 
-  test("a worker has no switch: every email of a worker is always sent", async ({ context, page }) => {
+  test("a worker's only switch is the follower digest (FR-L4 AC6): every other email of a worker is always sent", async ({ context, page }) => {
     const candidate = await createCommittedUser("worker");
     await signInBrowser(context, candidate);
     await page.goto(SETTINGS);
     const section = page.locator("#email-notifications");
     await expect(section.getByRole("listitem").filter({ hasText: "Application updates" })).toContainText("Always sent");
-    await expect(page.getByRole("switch")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Save email choices" })).toHaveCount(0);
+    await expect(page.getByRole("switch")).toHaveCount(1);
+    const digest = section.getByRole("switch", { name: "New vacancies of companies you follow" });
+    await expect(digest).toBeChecked();
+    await waitForHydration(digest);
+    await digest.click();
+    await section.getByRole("button", { name: "Save email choices" }).click();
+    await expect(page.getByText("Email choices saved", { exact: true })).toBeVisible();
+    expect(emailKinds(candidate.id)).toEqual({ followed_company_activity: false });
     await expectAccessibleAtBothWidths(page);
   });
 
