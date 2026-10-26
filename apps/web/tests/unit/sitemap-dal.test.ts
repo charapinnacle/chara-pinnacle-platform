@@ -26,7 +26,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { listPublishedLegalSlugs, listSitemapPartners, listSitemapVacancies } = await import("@/lib/dal/sitemap");
+const { listPublishedLegalSlugs, listSitemapCompanies, listSitemapPartners, listSitemapVacancies } = await import("@/lib/dal/sitemap");
 
 const entry = (n: number) => ({
   id: `0a1b2c3d-0000-4000-8000-${String(n).padStart(12, "0")}`,
@@ -137,5 +137,34 @@ describe("listSitemapPartners (FR-K4 AC7)", () => {
     await expect(listSitemapPartners(100)).rejects.toThrow("The partner profiles of the sitemap could not be loaded");
     results = [{ data: [{ slug: 5 }], error: null }];
     await expect(listSitemapPartners(100)).rejects.toThrow();
+  });
+});
+
+describe("listSitemapCompanies (FR-K5 AC10)", () => {
+  const company = (n: number) => ({ slug: `company-${String(n).padStart(5, "0")}`, updated_at: "2026-10-20T08:00:00+00:00" });
+  const companies = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => company(from + index));
+
+  it("reads page after page after the slug of the last entry until an empty page", async () => {
+    results = [
+      { data: companies(1, 5000), error: null },
+      { data: companies(5001, 5001), error: null },
+      { data: [], error: null },
+    ];
+    const listed = await listSitemapCompanies(49_000);
+    expect(listed).toHaveLength(5001);
+    expect(listed[0]).toEqual({ slug: "company-00001", updatedAt: company(1).updated_at });
+    expect(calls.map((call) => call.args)).toEqual([
+      { p_after_slug: undefined, p_limit: 49_000 },
+      { p_after_slug: "company-05000", p_limit: 44_000 },
+      { p_after_slug: "company-05001", p_limit: 43_999 },
+    ]);
+    expect(calls.every((call) => call.name === "list_sitemap_companies")).toBe(true);
+  });
+
+  it("returns an empty list when the function gives none (release off) and throws when the read fails", async () => {
+    results = [{ data: [], error: null }];
+    expect(await listSitemapCompanies(100)).toEqual([]);
+    results = [{ data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } }];
+    await expect(listSitemapCompanies(100)).rejects.toThrow("The company pages of the sitemap could not be loaded");
   });
 });

@@ -1,7 +1,7 @@
 import "server-only";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/server";
-import type { SitemapPartner, SitemapVacancy } from "@/lib/seo/sitemap";
+import type { SitemapCompany, SitemapPartner, SitemapVacancy } from "@/lib/seo/sitemap";
 
 const pageSchema = z.array(z.object({ id: z.string(), created_at: z.string(), updated_at: z.string() }));
 
@@ -47,6 +47,24 @@ export async function listSitemapPartners(limit: number): Promise<SitemapPartner
     after = last.slug;
   }
   return partners;
+}
+
+// The public company pages with an open vacancy (FR-K5 AC10), in pages after the slug of the last entry as the partner
+// profiles above. The function answers an empty list while release 2a is off.
+export async function listSitemapCompanies(limit: number): Promise<SitemapCompany[]> {
+  const supabase = await createClient();
+  const companies: SitemapCompany[] = [];
+  let after: string | undefined;
+  while (companies.length < limit) {
+    const { data, error } = await supabase.rpc("list_sitemap_companies", { p_after_slug: after, p_limit: limit - companies.length });
+    if (error) throw new Error("The company pages of the sitemap could not be loaded", { cause: error });
+    const page = partnerPageSchema.parse(data);
+    const last = page.at(-1);
+    if (!last) break;
+    companies.push(...page.map((entry) => ({ slug: entry.slug, updatedAt: entry.updated_at })));
+    after = last.slug;
+  }
+  return companies;
 }
 
 // Row level security hides the versions that are not published yet. A slug can have several versions, so the cut of the

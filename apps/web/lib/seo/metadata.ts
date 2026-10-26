@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { partnerTypeLabels } from "@/components/forms/account-kind-options";
 import { BRAND_NAME } from "@/lib/brand";
 import type { PublicJob } from "@/lib/dal/hiring";
+import type { CompanyPage } from "@/lib/companies/page";
 import { env } from "@/lib/env";
 import { countryInSentence, formatDate } from "@/lib/i18n/format";
 import type { PartnerProfile } from "@/lib/partners/profile";
-import { partnerProfilePath } from "@/lib/routes";
+import { companyPagePath, partnerProfilePath } from "@/lib/routes";
 import { staticPages, type StaticPageKey } from "./pages";
 
 const TITLE_MAX = 60;
@@ -116,4 +117,22 @@ export function partnerProfileMetadata(
   ].join("");
   const description = own ? cut(own, VACANCY_DESCRIPTION_LENGTH).trimEnd() : fit(summary, DESCRIPTION_MAX);
   return pageMetadata(title, description, partnerProfilePath(lang, profile.slug));
+}
+
+// The title names the company, its industry and its country, then the product, as the partner profile (FR-K5 AC10). The
+// description is the beginning of the company's own text, or a sentence made of its own fields. A page without an open
+// vacancy holds nothing to find: it stays out of the index and of the sitemap, and its links are still followed.
+export function companyPageMetadata(
+  lang: string,
+  page: Pick<CompanyPage, "slug" | "displayName" | "basedIn" | "industry" | "description" | "openVacancyCount">,
+): Metadata {
+  const country = countryInSentence(page.basedIn.code, page.basedIn.name);
+  const kind = page.industry ? `${page.industry.name} company` : "Company";
+  const title = `${fit(`${page.displayName} - ${kind} in ${country}`, PARTNER_TITLE_MAX)} | ${BRAND_NAME}`;
+  const own = page.description?.replace(/\s+/g, " ").trim();
+  const description = own
+    ? cut(own, VACANCY_DESCRIPTION_LENGTH).trimEnd()
+    : fit(`Open vacancies at ${page.displayName}, ${kind.toLowerCase()} based in ${country}.`, DESCRIPTION_MAX);
+  const metadata = pageMetadata(title, description, companyPagePath(lang, page.slug));
+  return page.openVacancyCount > 0 ? metadata : { ...metadata, robots: { index: false, follow: true } };
 }
