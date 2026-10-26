@@ -44,7 +44,7 @@ test.describe("vacancy plan limits", () => {
     expect(statusAudit(draft)).toEqual([]);
     await expectNoAxeViolations(page);
     expect(promptRows(acme.id)).toEqual([
-      { actor_id: admin.id, metadata: { limit_key: "active_jobs", plan_code: "employer_starter", limit: 3, open_jobs: 3 } },
+      { actor_id: admin.id, metadata: { limit_key: "active_jobs", plan_code: "employer_starter", limit: 3, used: 3 } },
     ]);
 
     await page.goto(jobUrl(acme.slug, open[0]));

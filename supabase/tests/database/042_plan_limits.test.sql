@@ -454,7 +454,7 @@ select is(
    where id > (select id from t_baseline) and action = 'limit.prompt_shown'),
   jsonb_build_object(
     'actor', :'adm'::uuid, 'org', current_setting('t.a'),
-    'meta', jsonb_build_object('limit_key', 'active_jobs', 'plan_code', 'employer_starter', 'limit', 3, 'open_jobs', 3)
+    'meta', jsonb_build_object('limit_key', 'active_jobs', 'plan_code', 'employer_starter', 'limit', 3, 'used', 3)
   ),
   'at the limit the prompt is recorded with the actor, the plan, the limit and the usage'
 );

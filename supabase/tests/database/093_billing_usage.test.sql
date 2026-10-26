@@ -94,23 +94,23 @@ select pg_temp.subscribe(:'l', 'employer_starter', 'canceled');
 select pg_temp.new_org(:'adm2') as e \gset
 select pg_temp.subscribe(:'e', 'employer_enterprise', 'active');
 
-select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=7/15;members=3/5', 'AC7: the owner at aal2 reads 7 of 15 open vacancies and 3 of 5 members; paused, closed and deleted vacancies are not counted');
-select is(pg_temp.usage(:'own2', :'p'), 'active_jobs=0/15;members=2/5', 'AC7: a pending invitation holds a seat, as the member limit counts it');
-select is(pg_temp.usage(:'adm', :'o'), 'active_jobs=7/15;members=3/5', 'AC7: the admin at aal2 reads the same');
-select is(pg_temp.usage(:'own2', :'b'), 'active_jobs=3/3;members=1/1', 'AC7: a Basic organisation reads 3 of 3 vacancies and 1 of 1 members (the owner counts, C12)');
-select is(pg_temp.usage(:'own2', :'d'), 'active_jobs=5/3;members=1/1', 'AC7: an organisation downgraded to Basic reads 5 of 3: the limit is not applied to the data');
-select is(pg_temp.usage(:'own2', :'f'), 'active_jobs=0/0;members=1/0', 'AC9: an organisation that never subscribed reads the limits of the free plan');
-select is(pg_temp.usage(:'own2', :'l'), 'active_jobs=0/0;members=1/0', 'AC5: a lapsed organisation reads the limits of the free plan');
-select is(pg_temp.usage(:'adm2', :'e'), 'active_jobs=0/50;members=1/15', 'AC7: an Enterprise organisation reads the limits of its plan');
+select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=7/15;active_requirements=0/15;members=3/5;messages_per_month=0/500', 'AC7: the owner at aal2 reads 7 of 15 open vacancies and 3 of 5 members; paused, closed and deleted vacancies are not counted');
+select is(pg_temp.usage(:'own2', :'p'), 'active_jobs=0/15;active_requirements=0/15;members=2/5;messages_per_month=0/500', 'AC7: a pending invitation holds a seat, as the member limit counts it');
+select is(pg_temp.usage(:'adm', :'o'), 'active_jobs=7/15;active_requirements=0/15;members=3/5;messages_per_month=0/500', 'AC7: the admin at aal2 reads the same');
+select is(pg_temp.usage(:'own2', :'b'), 'active_jobs=3/3;active_requirements=0/3;members=1/1;messages_per_month=0/100', 'AC7: a Basic organisation reads 3 of 3 vacancies and 1 of 1 members (the owner counts, C12)');
+select is(pg_temp.usage(:'own2', :'d'), 'active_jobs=5/3;active_requirements=0/3;members=1/1;messages_per_month=0/100', 'AC7: an organisation downgraded to Basic reads 5 of 3: the limit is not applied to the data');
+select is(pg_temp.usage(:'own2', :'f'), 'active_jobs=0/0;active_requirements=0/0;members=1/0;messages_per_month=0/0', 'AC9: an organisation that never subscribed reads the limits of the free plan');
+select is(pg_temp.usage(:'own2', :'l'), 'active_jobs=0/0;active_requirements=0/0;members=1/0;messages_per_month=0/0', 'AC5: a lapsed organisation reads the limits of the free plan');
+select is(pg_temp.usage(:'adm2', :'e'), 'active_jobs=0/50;active_requirements=0/50;members=1/15;messages_per_month=0/2000', 'AC7: an Enterprise organisation reads the limits of its plan');
 
 update billing.plan_limits set limit_value = null where plan_code = 'employer_enterprise' and limit_key = 'members';
 insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (:'e', 'active_jobs', 80);
-select is(pg_temp.usage(:'adm2', :'e'), 'active_jobs=0/80;members=1/null', 'AC7: an override replaces the plan limit and a null limit is unlimited');
+select is(pg_temp.usage(:'adm2', :'e'), 'active_jobs=0/80;active_requirements=0/50;members=1/null;messages_per_month=0/2000', 'AC7: an override replaces the plan limit and a null limit is unlimited');
 
 select pg_temp.seed_jobs(:'o', 'open', 1);
-select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=8/15;members=3/5', 'the count follows the vacancies at once');
+select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=8/15;active_requirements=0/15;members=3/5;messages_per_month=0/500', 'the count follows the vacancies at once');
 delete from public.jobs where organization_id = :'o' and title = 'Usage open 1' and deleted_at is null;
-select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=6/15;members=3/5', 'and drops when two vacancies leave the open state');
+select is(pg_temp.usage(:'own1', :'o'), 'active_jobs=6/15;active_requirements=0/15;members=3/5;messages_per_month=0/500', 'and drops when two vacancies leave the open state');
 
 select is(pg_temp.usage(:'mem', :'o'), 'P0001|CHARA_FORBIDDEN|', 'AC3: a member is refused');
 select is(pg_temp.usage(:'own1', :'o', 'aal1'), 'P0001|CHARA_FORBIDDEN|aal2_required', 'AC3: an owner at aal1 is refused with the reason');
