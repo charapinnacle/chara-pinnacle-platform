@@ -194,6 +194,11 @@ Deno.test("refusals of the database are told apart, with a reason only from the 
       error: "forbidden",
       reason: "terms_version_mismatch",
     }],
+    [database("CHARA_FORBIDDEN", "42501", "plan_not_for_org_type"), 403, {
+      error: "forbidden",
+      reason: "plan_not_for_org_type",
+    }],
+    [database("CHARA_FORBIDDEN", "42501", "release_off"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001", "provider_mismatch"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001", "something internal"), 403, { error: "forbidden", reason: null }],
     [database("CHARA_FORBIDDEN", "P0001"), 403, { error: "forbidden", reason: null }],

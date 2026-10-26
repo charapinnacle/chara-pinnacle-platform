@@ -15,6 +15,7 @@ const REASONS = new Set([
   "aal2_required",
   "organization_suspended",
   "unknown_plan",
+  "plan_not_for_org_type",
   "plan_not_sold",
   "legal_entity_identifier_required",
   "terms_not_published",
