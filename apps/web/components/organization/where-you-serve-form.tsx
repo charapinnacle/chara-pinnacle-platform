@@ -31,7 +31,7 @@ type WhereYouServeFormProps = {
   defaults: GeographiesInput;
   // The served-countries limit when it applies.
   marketsPrompt: UsagePrompt | null;
-  billingHref: string | null;
+  billingHref: string;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
   // The availability listings per source country (FR-K3), on the workforce profile page only.

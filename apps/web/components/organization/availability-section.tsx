@@ -53,7 +53,7 @@ type AvailabilitySectionProps = {
   rules: AvailabilityRules;
   // The listings limit when it applies.
   prompt: UsagePrompt | null;
-  billingHref: string | null;
+  billingHref: string;
   now: string;
 };
 

@@ -1,7 +1,6 @@
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import type { PublicPlan } from "@/lib/billing/pricing";
 import { formatCount, formatDate } from "@/lib/i18n/format";
-import { billingPath } from "@/lib/routes";
 
 export type OrganizationType = "employer" | "recruitment_company" | "staffing_company";
 
@@ -86,12 +85,6 @@ export function planComparison(plans: PublicPlan[], key: string, type: Organizat
   return `${parts.join("; ")}.`;
 }
 
-// The billing page sells employer plans only until partner checkout opens (V15); until then a partner's prompt compares
-// the plans instead of linking to a page that would send it elsewhere.
-export function upgradeHref(lang: string, slug: string, type: OrganizationType): string | null {
-  return type === "employer" ? billingPath(lang, slug) : null;
-}
-
 // The limit the database refuses at, or null when it does not apply (not enforced, or the plan has none).
 export function appliedLimit(usage: OrgUsage, key: string): number | null {
   const item = usage.items[key];
@@ -99,7 +92,7 @@ export function appliedLimit(usage: OrgUsage, key: string): number | null {
 }
 
 // The prompt for a limit that applies, null when it does not. The plans of the organisation's type are compared when
-// they are given (the prompt has no billing link to offer).
+// they are given, next to the link to the billing page.
 export function limitPrompt(
   usage: OrgUsage,
   key: string,

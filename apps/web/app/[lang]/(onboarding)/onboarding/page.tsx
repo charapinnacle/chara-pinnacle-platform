@@ -20,7 +20,6 @@ import { WhereYouServeForm } from "@/components/organization/where-you-serve-for
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { CreatePassportForm } from "@/components/passport/create-passport-form";
 import { commitAccountKind } from "@/lib/actions/consents";
-import { upgradeHref } from "@/lib/billing/limits";
 import { geographiesComplete, getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getBillingState } from "@/lib/dal/billing";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
@@ -38,6 +37,7 @@ import { getWorkforceOffer, workforceOfferComplete, workforceOfferDefaults } fro
 import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
 import {
+  billingPath,
   homePath,
   mfaPath,
   onboardingPath,
@@ -311,7 +311,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           countries={countries}
           defaults={geographies}
           marketsPrompt={prompts.markets}
-          billingHref={upgradeHref(lang, organization.slug, organization.type)}
+          billingHref={billingPath(lang, organization.slug)}
           onboarding
         />
       </OnboardingPanel>
@@ -339,7 +339,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           languages={languages}
           defaults={workforceOfferDefaults(offer)}
           occupationsPrompt={prompts.listed_occupations}
-          billingHref={upgradeHref(lang, organization.slug, organization.type)}
+          billingHref={billingPath(lang, organization.slug)}
           onboarding
         />
       </OnboardingPanel>

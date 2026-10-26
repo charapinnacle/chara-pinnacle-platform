@@ -33,8 +33,7 @@ export async function getOrgUsage(organizationId: string, keys: readonly string[
   };
 }
 
-// The prompts of the given limit keys: the usage once, and the plans of a partner's type to compare (a partner's prompt
-// has no billing link before partner checkout opens, see upgradeHref).
+// The prompts of the given limit keys: the usage once, and the plans of a partner's type to compare.
 export async function getUsagePrompts<K extends string>(
   organizationId: string,
   type: OrganizationType,

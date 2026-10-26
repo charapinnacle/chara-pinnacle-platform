@@ -8,7 +8,6 @@ import {
   limitRefusalMessage,
   planComparison,
   resetText,
-  upgradeHref,
   usageText,
   type OrgUsage,
 } from "@/lib/billing/limits";
@@ -109,9 +108,4 @@ describe("the upgrade prompt data", () => {
     expect(planComparison(recruitmentPlans, "members", "recruitment_company", 1)).toBeNull();
   });
 
-  it("links an employer to its billing page and a partner to none until partner checkout opens", () => {
-    expect(upgradeHref("en", "acme", "employer")).toBe("/en/org/acme/billing");
-    expect(upgradeHref("en", "manila", "recruitment_company")).toBeNull();
-    expect(upgradeHref("en", "manila", "staffing_company")).toBeNull();
-  });
 });

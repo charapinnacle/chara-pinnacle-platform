@@ -11,7 +11,6 @@ import { AvailabilitySection } from "@/components/organization/availability-sect
 import { LicencesSection } from "@/components/organization/licences-section";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
-import { upgradeHref } from "@/lib/billing/limits";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
@@ -23,7 +22,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { onboardingPath } from "@/lib/routes";
+import { billingPath, onboardingPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
@@ -101,7 +100,7 @@ async function Availability({
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
   rules: AvailabilityRules;
-  billingHref: string | null;
+  billingHref: string;
 }) {
   const [listings, prompts] = await Promise.all([
     getWorkforceListings(organizationId),
@@ -158,7 +157,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getCommitmentStatus(organization.id),
       getAvailabilityRules(),
     ]);
-  const billingHref = upgradeHref(lang, slug, partnerType);
+  const billingHref = billingPath(lang, slug);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
   // Not awaited: the profile forms show the warning about listings once the counts arrive.
   const listingCounts = organization.role === "member" ? null : getListingCounts(organization.id);

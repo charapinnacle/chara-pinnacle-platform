@@ -300,7 +300,7 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     expect(html).toContain('Delete<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
   });
 
-  it("AC3: shows the plan limit and, once it is reached, the upgrade prompt with the plans compared instead of the add button", async () => {
+  it("AC3: shows the plan limit and, once it is reached, the upgrade prompt with the plans compared and the billing link instead of the add button", async () => {
     promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: 10 }));
     listingsMock.mockResolvedValue([listing("a", "7212", "PH", daysAgo(0))]);
     let html = await render();
@@ -310,8 +310,8 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     html = await render();
     expect(html).toContain("1 of 1 workforce listing on your Basic plan.");
     expect(html).toContain("Professional includes 50 workforce listings; Enterprise has no limit.");
-    // The billing page does not sell partner plans before V15, so a partner gets no link that would send it elsewhere.
-    expect(html).not.toContain("/billing");
+    // The billing page sells the partner plans of the type (V15).
+    expect(html).toMatch(/<a [^>]*href="\/en\/org\/manila-skills\/billing"[^>]*>Upgrade your plan<\/a>/);
     expect(html).not.toContain("Add a listing");
   });
 
