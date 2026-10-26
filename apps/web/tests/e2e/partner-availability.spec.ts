@@ -217,6 +217,45 @@ test.describe("Workforce availability (FR-K3)", () => {
     await held;
   });
 
+  test("removing a source country or an occupation warns before Save and deletes its listings, audited", async ({ page }) => {
+    test.setTimeout(90_000);
+    const { user, id, slug } = await partnerWithCompany("recruitment_company");
+    seedProfile(id);
+    execute(
+      `insert into public.organization_geographies (organization_id, scope, country_code) values (${literal(id)}, 'serves_market', 'DE');
+       update public.organizations set recruitment_type = 'both' where id = ${literal(id)}`,
+    );
+    seedListing(id, "7212", "PH", 3);
+    seedListing(id, "7126", "PH", 3);
+    seedListing(id, "7212", "NP", 3);
+    const secret = await enrollTotp(user);
+    await signInAtAal2(page, user, secret, `/en/org/${slug}/workforce-profile`);
+
+    const serve = page.getByRole("region", { name: "Where you serve" });
+    await serve.getByRole("button", { name: "Remove Philippines" }).click();
+    await expect(serve.getByRole("status")).toHaveText("Removing Philippines also deletes 2 availability listings.");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await serve.getByRole("button", { name: "Save countries" }).click();
+    await expect(page.getByText("Countries saved", { exact: true })).toBeVisible();
+    await expect(serve.getByText("Removing Philippines")).toHaveCount(0);
+    expect(listings(id).map((row) => `${row.occupation_id}${row.source_country}`)).toEqual(["7212NP"]);
+
+    const offer = page.getByRole("region", { name: "What you offer" });
+    await offer.getByRole("button", { name: "Remove Welders and flame cutters" }).click();
+    await expect(offer.getByRole("status")).toHaveText("Removing Welders and flame cutters also deletes 1 availability listing.");
+    await offer.getByRole("button", { name: "Save what you offer" }).click();
+    await expect(page.getByText("Workforce offer saved", { exact: true })).toBeVisible();
+    expect(listings(id)).toHaveLength(0);
+    expect(
+      query<{ reason: string }>(
+        `select metadata ->> 'reason' as reason from audit.log
+         where action = 'workforce_availability.removed_with_profile' and metadata ->> 'organization_id' = ${literal(id)}
+         order by id`,
+      ).map((row) => row.reason),
+    ).toEqual(["source_country_removed", "source_country_removed", "occupation_removed"]);
+  });
+
   test("the owner is told to fill the profile first, and a plan without listings shows the upgrade link", async ({ page }) => {
     test.setTimeout(90_000);
     const { user, id, slug } = await partnerWithCompany("recruitment_company");

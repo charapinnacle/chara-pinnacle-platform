@@ -34,6 +34,25 @@ export async function getWorkforceListings(organizationId: string): Promise<Work
   );
 }
 
+export type ListingCounts = { occupations: Record<string, number>; countries: Record<string, number> };
+
+// How many listings name each occupation and each source country, for the warning of the profile forms: removing one
+// of them deletes its listings.
+export async function getListingCounts(organizationId: string): Promise<ListingCounts> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workforce_availability")
+    .select("occupation_id, source_country")
+    .eq("organization_id", organizationId);
+  if (error) throw new Error("The availability listings of the organisation could not be counted", { cause: error });
+  const counts: ListingCounts = { occupations: {}, countries: {} };
+  for (const { occupation_id, source_country } of data) {
+    counts.occupations[occupation_id] = (counts.occupations[occupation_id] ?? 0) + 1;
+    counts.countries[source_country] = (counts.countries[source_country] ?? 0) + 1;
+  }
+  return counts;
+}
+
 // The plan limit of listings when it applies; null when the plan has none or limits are not enforced.
 export async function getListingsLimit(organizationId: string): Promise<number | null> {
   const supabase = await createClient();

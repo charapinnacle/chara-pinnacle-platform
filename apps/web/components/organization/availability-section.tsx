@@ -122,7 +122,7 @@ export function AvailabilitySection({
           <ul className="grid gap-4" aria-label="Availability listings">
             {listings.map((listing) => {
               const freshness = listingFreshness(listing.confirmedAt, new Date(now), rules);
-              const { badge, text } = freshnessLabel(freshness, formatDate(listing.confirmedAt));
+              const { badge, text } = freshnessLabel(freshness, listing.confirmedAt, new Date(now));
               return (
                 <li key={listing.id} className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
                   <div className="flex flex-wrap items-center gap-2">

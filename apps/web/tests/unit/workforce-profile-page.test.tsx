@@ -7,6 +7,7 @@ const commitmentMock = vi.hoisted(() => vi.fn());
 const licencesMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn());
 const listingsLimitMock = vi.hoisted(() => vi.fn());
+const countsMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -71,6 +72,7 @@ vi.mock("@/lib/actions/licences", () => ({
 vi.mock("@/lib/dal/workforce-availability", () => ({
   getWorkforceListings: listingsMock,
   getListingsLimit: listingsLimitMock,
+  getListingCounts: countsMock,
   getAvailabilityRules: async () => ({ staleDays: 60, reminderDays: 30, maxDays: 730 }),
 }));
 vi.mock("@/lib/actions/workforce-availability", () => ({
@@ -102,6 +104,7 @@ beforeEach(() => {
   licencesMock.mockResolvedValue([]);
   listingsMock.mockResolvedValue([]);
   listingsLimitMock.mockResolvedValue(null);
+  countsMock.mockResolvedValue({ occupations: {}, countries: {} });
 });
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
@@ -260,7 +263,7 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
   it("AC1: shows the owner the empty state with the button that adds the first listing, and the staleness period", async () => {
     const html = await render();
     expect(html).toContain(">Availability</h2>");
-    expect(html).toContain("signed-in companies see each listing confirmed within the last 60 days");
+    expect(html).toContain("signed-in users see each listing confirmed within the last 60 days");
     expect(html).toContain("No availability listed yet");
     expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
     expect(listingsMock).toHaveBeenCalledWith("org-1");
@@ -296,6 +299,15 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     expect(html).toContain("1 of 1 listing. Your plan includes 1 listing.");
     expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/billing"[^>]*>Upgrade to add more\.<\/a>/);
     expect(html).not.toContain("Add a listing");
+  });
+
+  it("counts the listings per code for the profile forms' warning, but not for a member, who has no form", async () => {
+    await render();
+    expect(countsMock).toHaveBeenCalledWith("org-1");
+    countsMock.mockClear();
+    requireOrgRoleMock.mockResolvedValue(organization("member", "recruitment_company"));
+    await render();
+    expect(countsMock).not.toHaveBeenCalled();
   });
 
   it("AC4: shows a member the listings without any button that changes them", async () => {

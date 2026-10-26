@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { formatCount } from "@/lib/i18n/format";
+import { formatCount, formatDate } from "@/lib/i18n/format";
 import { parseDate, todayUtc } from "@/lib/validation/passport";
 
 // The same bounds as the workforce_availability checks and private.listing_available_from; the database stays the
@@ -92,20 +92,48 @@ export function listingFreshness(confirmedAt: string, now: Date, rules: Availabi
 
 const days = (n: number) => `${formatCount(n)} ${n === 1 ? "day" : "days"}`;
 
-function confirmedAgo(ageDays: number, confirmedOn: string): string {
-  if (ageDays === 0) return "Confirmed today.";
-  return `Confirmed ${ageDays === 1 ? "yesterday" : `${days(ageDays)} ago`}, on ${confirmedOn}.`;
+// The days between the UTC calendar dates of the confirmation and now: a confirmation at 23:50 is "yesterday" ten minutes
+// later, although less than a day has passed (ageDays, which decides the state, counts whole days).
+function calendarDaysBetween(confirmedAt: string, now: Date): number {
+  const day = (time: number) => Math.floor(time / DAY_MS);
+  return Math.max(0, day(now.getTime()) - day(Date.parse(confirmedAt)));
+}
+
+function confirmedAgo(confirmedAt: string, now: Date): string {
+  const daysAgo = calendarDaysBetween(confirmedAt, now);
+  if (daysAgo === 0) return "Confirmed today.";
+  return `Confirmed ${daysAgo === 1 ? "yesterday" : `${days(daysAgo)} ago`}, on ${formatDate(confirmedAt)}.`;
 }
 
 // The words of the list: the badge of a listing hidden from search and the sentence that always says when it was last
-// confirmed, with what to do when it needs confirming (FR-K3 AC1, AC6, AC10). confirmedOn is the formatted date.
-export function freshnessLabel(freshness: ListingFreshness, confirmedOn: string): { badge: string | null; text: string } {
-  const ago = confirmedAgo(freshness.ageDays, confirmedOn);
+// confirmed, with what to do when it needs confirming (FR-K3 AC1, AC6, AC10).
+export function freshnessLabel(
+  freshness: ListingFreshness,
+  confirmedAt: string,
+  now: Date,
+): { badge: string | null; text: string } {
+  const ago = confirmedAgo(confirmedAt, now);
   if (freshness.state === "hidden") return { badge: "Hidden from search", text: `${ago} Confirm to show it again.` };
   if (freshness.state === "due") {
     return { badge: null, text: `${ago} Confirm within ${days(freshness.daysLeft)} to stay visible.` };
   }
   return { badge: null, text: ago };
+}
+
+// The warning next to Save when a profile change removes codes that availability listings name: the listings go with
+// them (the foreign keys cascade). Null when nothing with listings is removed.
+export function listingRemovalWarning(
+  saved: readonly string[],
+  current: readonly string[],
+  counts: Readonly<Record<string, number>>,
+  nameOf: (code: string) => string,
+): string | null {
+  const removed = saved.filter((code) => !current.includes(code) && (counts[code] ?? 0) > 0);
+  if (removed.length === 0) return null;
+  const total = removed.reduce((sum, code) => sum + counts[code], 0);
+  const names = removed.map(nameOf);
+  const named = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Removing ${named} also deletes ${formatCount(total)} availability ${total === 1 ? "listing" : "listings"}.`;
 }
 
 export function listingsLimitMessage(limit: number): string {

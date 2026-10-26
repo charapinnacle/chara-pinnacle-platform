@@ -19,7 +19,12 @@ import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { getAvailabilityRules, getListingsLimit, getWorkforceListings } from "@/lib/dal/workforce-availability";
+import {
+  getAvailabilityRules,
+  getListingCounts,
+  getListingsLimit,
+  getWorkforceListings,
+} from "@/lib/dal/workforce-availability";
 import { getOccupationsLimit, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { billingPath, onboardingPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
@@ -152,6 +157,8 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getAvailabilityRules(),
     ]);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
+  // Not awaited: the profile forms show the warning about listings once the counts arrive.
+  const listingCounts = organization.role === "member" ? null : getListingCounts(organization.id);
   const basedIn = profile ? nameOf(profile.country) : "";
   const named = (items: readonly { code: string; name: string }[], codes: string[]) =>
     codes.map((code) => items.find((item) => item.code === code)?.name ?? code);
@@ -208,6 +215,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             marketsLimit={marketsLimit}
             billingHref={billingPath(lang, slug)}
             onboarding={false}
+            listingCounts={listingCounts?.then((counts) => counts.countries)}
           />
         )}
       </section>
@@ -235,6 +243,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             occupationsLimit={occupationsLimit}
             billingHref={billingPath(lang, slug)}
             onboarding={false}
+            listingCounts={listingCounts?.then((counts) => counts.occupations)}
           />
         )}
       </section>
@@ -244,8 +253,8 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             Availability
           </h2>
           <p className="text-body text-muted-foreground">
-            The workers you can supply per occupation and source country. Once your company is listed, signed-in companies
-            see each listing confirmed within the last {formatCount(availabilityRules.staleDays)} days.
+            The workers you can supply per occupation and source country. Once your company is listed, signed-in users see
+            each listing confirmed within the last {formatCount(availabilityRules.staleDays)} days.
           </p>
         </div>
         <Suspense fallback={<LoadingSkeleton rows={2} />}>
