@@ -11,8 +11,9 @@ export type PublicPartnerProfile =
   | { state: "rate_limited" };
 
 // The public profile of a listed partner (FR-K4), once per request for the page and its metadata. A visitor is counted
-// under the keyed hash of the address with the proof of this minute; a signed-in reader is counted by the database. An
-// unknown slug, a partner that is not public and a switched-off release are all not_found.
+// under the keyed hash of the address with the proof of this minute; a signed-in reader is counted by the database, which
+// also records the read as one profile view a day of each company of a reader who is not a member (FR-R6). An unknown
+// slug, a partner that is not public and a switched-off release are all not_found.
 export const getPartnerProfile = cache(async (slug: string): Promise<PublicPartnerProfile> => {
   const visitor = (await getCurrentUser()) ? null : await visitorProof("partner_profile");
   const supabase = await createClient();
