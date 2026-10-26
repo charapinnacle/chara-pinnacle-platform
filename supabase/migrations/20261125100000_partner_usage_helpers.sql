@@ -27,7 +27,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not exists (select 1 from billing.limit_keys k where k.key = p_limit_key and k.period = 'month') then
+  if p_org is null or not exists (select 1 from billing.limit_keys k where k.key = p_limit_key and k.period = 'month') then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'limit_key', errcode = '22023';
   end if;
   return 0;
@@ -126,7 +126,7 @@ begin
     private.limit_usage(p_org, k.key),
     private.org_limit(p_org, k.key),
     v_applies,
-    case when l.period = 'month' then private.month_start() + interval '1 month' end,
+    case when l.period = 'month' then private.month_start(private.month_start() + interval '32 days') end,
     v_plan_name
   from private.org_usage_keys(p_org) k (key)
   join billing.limit_keys l on l.key = k.key

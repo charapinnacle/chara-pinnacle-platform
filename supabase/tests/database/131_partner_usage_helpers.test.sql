@@ -1,5 +1,5 @@
 begin;
-select plan(64);
+select plan(65);
 
 \ir organizations_fixture.inc
 
@@ -224,10 +224,17 @@ select is(
 select is(
   pg_temp.val_as(:'mb', 'aal1', format(
     $$select string_agg(limit_key || '=' || coalesce((period_resets_at = %L::timestamptz)::text, 'null'), ';' order by limit_key)
-      from public.org_usage(%L)$$, private.month_start() + interval '1 month', :'r')),
+      from public.org_usage(%L)$$, (date_trunc('month', now() at time zone 'UTC') + interval '1 month') at time zone 'UTC', :'r')),
   'candidate_submissions_per_month=true;job_order_responses_per_month=true;listed_occupations=null;markets=null;members=null;messages_per_month=true;workforce_listings=null',
   'AC7: the monthly keys reset at the start of the next UTC month, the others never'
 );
+set local timezone = 'America/Los_Angeles';
+select is(
+  pg_temp.usage_of(:'mb', :'r', 'messages_per_month', 'period_resets_at')::timestamptz,
+  (date_trunc('month', now() at time zone 'UTC') + interval '1 month') at time zone 'UTC',
+  'AC7: the reset date is the next UTC month whatever the session time zone'
+);
+set local timezone = 'UTC';
 select is(pg_temp.usage_of(:'mb', :'r', 'markets', 'plan_name'), 'Basic', 'the plan name is read from billing.plans');
 select is(
   pg_temp.val_as(:'mb', 'aal1', format($$select string_agg(limit_key, ',' order by limit_key) from public.org_usage(%L, '{markets,members,no_such_key}')$$, :'r')),
