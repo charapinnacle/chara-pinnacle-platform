@@ -199,7 +199,13 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
       const viewerCard = cards(viewerPage).filter({ hasText: batch.staffing });
       await expect(viewerCard, label).toHaveCount(1);
       await expect(viewerCard.getByRole("link", { name: /Sign up to contact/ }), label).toHaveCount(0);
-      await expect(viewerCard.getByRole("button", { name: CONTACT_ACTIONS }), label).toHaveCount(0);
+      // Save partner and Follow (FR-L4, V24): employers save and follow, candidates follow, the partner's own member neither.
+      const actions: Record<string, string[]> = { candidate: ["Follow"], "partner member": [], "employer admin": ["Save partner", "Follow"] };
+      const expected = actions[label] ?? [];
+      await expect(viewerCard.getByRole("button", { name: CONTACT_ACTIONS }), label).toHaveCount(expected.length);
+      for (const action of expected) {
+        await expect(viewerCard.getByRole("button", { name: `${action}: ${batch.staffing}` }), label).toHaveAttribute("aria-pressed", "false");
+      }
       await expect(viewerPage.getByRole("region", { name: "Available workforce" }), label).toHaveCount(label === "employer admin" ? 1 : 0);
       await context.close();
     }

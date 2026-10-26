@@ -212,6 +212,10 @@ test.describe("Public company page (FR-K5)", () => {
       `/en/report?type=content&path=${encodeURIComponent(companyUrl(company.slug))}`,
     );
     await expect(page.getByRole("link", { name: "Edit page" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: `Sign up to follow ${company.displayName}` }), "FR-L4 AC9").toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(companyUrl(company.slug))}`,
+    );
     let reached = false;
     for (let step = 0; step < 40 && !reached; step++) {
       await page.keyboard.press("Tab");
@@ -222,6 +226,7 @@ test.describe("Public company page (FR-K5)", () => {
     const worker = await createCommittedUser("worker");
     const member = (await addMember(company, "member")).user;
     for (const [label, user, report] of [["worker", worker, 1], ["member", member, 0]] as const) {
+      const follow = report;
       const context = await browser.newContext();
       await signInBrowser(context, user);
       const viewerPage = await context.newPage();
@@ -230,6 +235,7 @@ test.describe("Public company page (FR-K5)", () => {
       await expect(viewerPage.getByRole("link", { name: "Report company" }), label).toHaveCount(report);
       await expect(viewerPage.getByRole("link", { name: "Edit page" }), label).toHaveCount(0);
       await expect(viewerPage.getByRole("switch"), label).toHaveCount(0);
+      await expect(viewerPage.getByRole("button", { name: `Follow: ${company.displayName}` }), label).toHaveCount(follow);
       await context.close();
     }
 
@@ -242,6 +248,7 @@ test.describe("Public company page (FR-K5)", () => {
     await expect(adminPage.getByRole("link", { name: "Edit page" })).toHaveAttribute("href", profileUrl(company.slug));
     await expect(adminPage.getByRole("switch", { name: "Public company page" })).toHaveAttribute("aria-checked", "true");
     await expect(adminPage.getByRole("link", { name: "Report company" })).toHaveCount(0);
+    await expect(adminPage.getByRole("button", { name: /^Follow/ }), "no Follow of its own company").toHaveCount(0);
     await expect(adminPage.getByRole("link", { name: "View your company page" }), "no link to the page it is on").toHaveCount(0);
     await expectAccessibleAtBothWidths(adminPage);
     await context.close();

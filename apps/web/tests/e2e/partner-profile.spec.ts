@@ -235,6 +235,10 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(page.getByRole("link", { name: "Sign up to contact" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Report company" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Edit profile" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: `Follow ${partner.displayName}` }), "FR-L4 AC9: Follow leads a visitor to log in").toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(profileUrl(partner.slug))}`,
+    );
     const reached: string[] = [];
     for (let step = 0; step < 40 && reached.length < 2; step++) {
       await page.keyboard.press("Tab");
@@ -243,15 +247,16 @@ test.describe("Public partner profile (FR-K4)", () => {
     }
     expect(reached.sort()).toEqual(["Report company", "Sign up to contact"]);
 
-    const viewers: [string, TestUser, boolean][] = [];
+    // FR-L4 roles: employers save and follow, candidates and other partners follow, the partner's own members do neither.
+    const viewers: [string, TestUser, boolean, { save: number; follow: number }][] = [];
     const employer = await createCommittedUser("company");
     await registerOrganization(employer, `${uniqueName("Action Viewer")} GmbH`);
-    viewers.push(["employer", employer, false]);
-    viewers.push(["worker", await createCommittedUser("worker"), false]);
-    viewers.push(["other partner", (await partnerWithCompany("staffing_company")).user, false]);
-    viewers.push(["own member", partner.user, true]);
+    viewers.push(["employer", employer, false, { save: 1, follow: 1 }]);
+    viewers.push(["worker", await createCommittedUser("worker"), false, { save: 0, follow: 1 }]);
+    viewers.push(["other partner", (await partnerWithCompany("staffing_company")).user, false, { save: 0, follow: 1 }]);
+    viewers.push(["own member", partner.user, true, { save: 0, follow: 0 }]);
 
-    for (const [label, user, member] of viewers) {
+    for (const [label, user, member, buttons] of viewers) {
       const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": visitorAddress() } });
       const viewerPage = await context.newPage();
       await logIn(viewerPage, user);
@@ -261,6 +266,8 @@ test.describe("Public partner profile (FR-K4)", () => {
       await expect(viewerPage.getByRole("link", { name: "Sign up to contact" }), label).toHaveCount(0);
       await expect(viewerPage.getByRole("link", { name: "Report company" }), label).toHaveCount(member ? 0 : 1);
       await expect(viewerPage.getByRole("link", { name: "Edit profile" }), label).toHaveCount(member ? 1 : 0);
+      await expect(viewerPage.getByRole("button", { name: `Save partner: ${partner.displayName}` }), label).toHaveCount(buttons.save);
+      await expect(viewerPage.getByRole("button", { name: `Follow: ${partner.displayName}` }), label).toHaveCount(buttons.follow);
       if (member) {
         await expect(viewerPage.getByRole("link", { name: "Edit profile" })).toHaveAttribute("href", `/en/org/${partner.slug}/workforce-profile`);
       }

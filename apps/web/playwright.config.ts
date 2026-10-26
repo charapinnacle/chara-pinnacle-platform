@@ -107,6 +107,7 @@ export default defineConfig({
         "**/partner-search.spec.ts",
         "**/staffing-directory.spec.ts",
         "**/company-page.spec.ts",
+        "**/save-partner-follow.spec.ts",
       ],
     },
     {
@@ -409,13 +410,21 @@ export default defineConfig({
       testMatch: "**/company-page.spec.ts",
       dependencies: ["staffing-directory-release"],
     },
+    // The same release switch is set for saved partners and follows (FR-L4), the save and list functions are withdrawn
+    // for a moment and the follower digest runs over the whole database, so this spec follows the one above.
+    {
+      name: "save-partner-follow-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/save-partner-follow.spec.ts",
+      dependencies: ["company-page-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["company-page-release"],
+      dependencies: ["save-partner-follow-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
