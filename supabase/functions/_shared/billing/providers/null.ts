@@ -53,6 +53,9 @@ export function nullProvider(siteUrl: string, webhookSecret?: string): BillingPr
       return Promise.resolve().then(() => {
         assertAppOrigin(siteUrl, input.returnUrl);
         const query = new URLSearchParams({ return_url: input.returnUrl });
+        if (input.configuration !== undefined) {
+          query.set("configuration", input.configuration);
+        }
         return { url: `${HOSTED}/portal/${encodeURIComponent(input.customerRef)}?${query}` };
       });
     },

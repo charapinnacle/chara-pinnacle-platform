@@ -24,6 +24,7 @@ const REASONS: Record<string, string> = {
   trial_changed: "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue.",
   already_subscribed: "Your organization already has a subscription. Use Manage billing to change it.",
   no_customer: "There is no billing account to manage yet.",
+  portal_not_configured: "Managing billing online is not available for your type of company yet. Contact us to change or cancel your plan.",
 };
 
 const FIELD_ERRORS: Record<string, FieldErrors> = {

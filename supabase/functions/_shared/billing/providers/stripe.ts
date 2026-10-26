@@ -19,6 +19,7 @@ const SIGNATURE_TOLERANCE_SECONDS = 300;
 const MAX_SIGNATURES = 3;
 const PAGE_SIZE = 100;
 const SUBSCRIPTION_REF = /^sub_[A-Za-z0-9]+$/;
+const PORTAL_CONFIGURATION = /^bpc_[A-Za-z0-9]+$/;
 
 function checkoutParams(input: CheckoutInput & { priceRef: string }): URLSearchParams {
   const params = new URLSearchParams({
@@ -152,11 +153,14 @@ export function stripeProvider(
     },
     async createPortal(input) {
       assertAppOrigin(config.siteUrl, input.returnUrl);
-      return await post(
-        "/billing_portal/sessions",
-        new URLSearchParams({ customer: input.customerRef, return_url: input.returnUrl }),
-        false,
-      );
+      const params = new URLSearchParams({ customer: input.customerRef, return_url: input.returnUrl });
+      if (input.configuration !== undefined) {
+        if (!PORTAL_CONFIGURATION.test(input.configuration)) {
+          throw new BillingProviderError("stripe_bad_configuration");
+        }
+        params.set("configuration", input.configuration);
+      }
+      return await post("/billing_portal/sessions", params, false);
     },
     verifyWebhook(req, rawBody) {
       return verifyStripeSignature(req, rawBody, config.webhookSecret, Math.floor(now() / 1000));

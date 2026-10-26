@@ -97,7 +97,9 @@ export type WebhookVerification =
 export interface BillingProvider {
   readonly name: "null" | "stripe";
   createCheckout(input: CheckoutInput): Promise<{ url: string }>;
-  createPortal(input: { customerRef: string; returnUrl: string }): Promise<{ url: string }>;
+  // configuration names the provider's portal configuration of the organisation's type (its products); without it the
+  // provider's default configuration applies.
+  createPortal(input: { customerRef: string; returnUrl: string; configuration?: string }): Promise<{ url: string }>;
   // Checks the signature against the raw body, before anything in the body is read.
   verifyWebhook(req: Request, rawBody: string): Promise<WebhookVerification>;
   // Empty for a type CHARA does not use; one event for the types it does.

@@ -128,6 +128,10 @@ describe("openPortal", () => {
     expect(requestMock).not.toHaveBeenCalled();
     requestMock.mockResolvedValue(refusal(403, "no_customer"));
     await expect(openPortal("acme")).resolves.toEqual({ message: "There is no billing account to manage yet." });
+    requestMock.mockResolvedValue(refusal(503, "portal_not_configured"));
+    await expect(openPortal("acme")).resolves.toEqual({
+      message: "Managing billing online is not available for your type of company yet. Contact us to change or cancel your plan.",
+    });
   });
 });
 

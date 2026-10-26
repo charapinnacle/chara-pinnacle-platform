@@ -22,17 +22,24 @@ const REASONS = new Set([
   "terms_version_mismatch",
   "already_subscribed",
   "no_customer",
+  "portal_not_configured",
 ]);
 const FIELDS = new Set(["billing_country", "identifier", "vat_id", "registration_number"]);
 // FR-G6: the database refuses a worker account with this detail. The answer to the caller is the generic one (it is not
 // in REASONS); the attempt is recorded so that the refusals can be counted.
 const WORKER_ACCOUNT = "worker_account";
 
+export type OrganizationType = "employer" | "recruitment_company" | "staffing_company";
+
+// The portal configuration of each organisation type at the provider, which lists only that type's products.
+export type PortalConfigurations = Partial<Record<OrganizationType, string>>;
+
 interface BillingCheckoutDeps {
   userClient: (authorization: string) => SupabaseClient;
   serviceClient: SupabaseClient;
   provider: Pick<BillingProvider, "name" | "createCheckout" | "createPortal">;
   siteUrl: string;
+  portalConfigurations: PortalConfigurations;
 }
 
 interface Checkout {
@@ -205,11 +212,25 @@ async function startPortal(
   if (error || !row) {
     return error ? answer(error, userId, deps) : json(502, { error: "unavailable" });
   }
+  const type = row.organization_type;
+  const configuration = isOrganizationType(type) ? deps.portalConfigurations[type] : undefined;
+  // Stripe's default portal configuration lists the employer products, so a partner's portal without its own
+  // configuration would offer it plans of another type: it is refused instead (the go-live check requires the
+  // configurations while release 2a is on). The employer portal keeps the default when no configuration is set.
+  if (!configuration && type !== "employer" && deps.provider.name === "stripe") {
+    console.error("billing-checkout portal not configured", { type });
+    return json(503, { error: "unavailable", reason: "portal_not_configured" });
+  }
   const { url } = await deps.provider.createPortal({
     customerRef: String(row.customer_ref),
     returnUrl: returnUrl(deps.siteUrl, String(row.slug)),
+    ...(configuration ? { configuration } : {}),
   });
   return json(200, { url });
+}
+
+function isOrganizationType(value: unknown): value is OrganizationType {
+  return value === "employer" || value === "recruitment_company" || value === "staffing_company";
 }
 
 function returnUrl(siteUrl: string, slug: string): string {
