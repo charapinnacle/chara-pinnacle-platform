@@ -814,7 +814,15 @@ test.describe("Public partner profile (FR-K4)", () => {
     expect(query<{ decision: number }>(
       `select (payload ->> 'moderation_action_id')::int as decision from public.notifications where kind = 'account_suspended' and user_id = ${literal(company.owner.id)}`,
     )).toEqual([{ decision: suspended }]);
-    await page.goto(`/en/appeals/${suspended}`);
+    // The suspension signs the members out: the owner signs in again, reaches the decision from the suspended
+    // organisation's page and appeals it.
+    await page.context().clearCookies();
+    await signInAtAal2(page, company.owner, secret, `/en/org/${company.slug}/jobs`);
+    await expect(page.getByRole("alert")).toContainText("This organization is suspended");
+    await page.getByRole("link", { name: "See the decision and appeal" }).click();
+    await expect(page).toHaveURL("/en/appeals");
+    await page.getByRole("link", { name: `Organisation suspended: ${displayName(company.id)}` }).click();
+    await expect(page).toHaveURL(`/en/appeals/${suspended}`);
     await expect(page.locator("#decision")).toContainText("Fee demands from several candidates were confirmed.");
     const suspendedAppeal = page.getByRole("button", { name: "Appeal" });
     await waitForHydration(suspendedAppeal);
