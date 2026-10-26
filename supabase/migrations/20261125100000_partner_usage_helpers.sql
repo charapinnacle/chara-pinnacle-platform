@@ -237,3 +237,9 @@ begin
   end if;
 end;
 $$;
+
+-- The profile forms read their limits from org_usage since this unit; the three single-limit reads of V06, V07 and V12
+-- have no caller left.
+drop function public.organization_markets_limit(uuid);
+drop function public.organization_occupations_limit(uuid);
+drop function public.workforce_listings_limit(uuid);

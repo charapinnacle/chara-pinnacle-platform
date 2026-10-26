@@ -1513,12 +1513,6 @@ isOneToOne: false
               "applies": boolean,"limit_key": string,"limit_value": number,"period_resets_at": string,"plan_name": string,"used": number
             }[]
                            },
-"organization_markets_limit":
-{ Args: { "p_org": string }; Returns: number
-                           },
-"organization_occupations_limit":
-{ Args: { "p_org": string }; Returns: number
-                           },
 "partner_commitment_status":
 { Args: { "p_org": string }; Returns: Json
                            },
@@ -1655,9 +1649,6 @@ isOneToOne: false
                            },
 "withdraw_consent":
 { Args: { "p_purpose": string }; Returns: undefined
-                           },
-"workforce_listings_limit":
-{ Args: { "p_org": string }; Returns: number
                            }
           }
           Enums: {

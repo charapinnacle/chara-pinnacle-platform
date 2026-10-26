@@ -4,7 +4,7 @@ select plan(59);
 \ir organizations_fixture.inc
 
 -- Where you serve (V06, FR-K1 AC1, AC3, AC4, AC6; NFR-S8, NFR-A4, NFR-M3): the table organization_geographies, its read
--- policies, set_organization_geographies with the markets limit and organization_markets_limit.
+-- policies, set_organization_geographies with the markets limit, read through org_usage.
 
 create function pg_temp.new_partner(p_id uuid, p_type text) returns void
 language sql as $$
@@ -115,12 +115,12 @@ select ok(
 select ok(
   (select bool_and(prosecdef and proconfig = array['search_path=""']) from pg_proc
    where oid in ('public.set_organization_geographies(uuid, text[], text[])'::regprocedure,
-                 'public.organization_markets_limit(uuid)'::regprocedure))
+                 'public.org_usage(uuid, text[])'::regprocedure))
   and has_function_privilege('authenticated', 'public.set_organization_geographies(uuid, text[], text[])', 'execute')
   and not has_function_privilege('anon', 'public.set_organization_geographies(uuid, text[], text[])', 'execute')
   and not has_function_privilege('service_role', 'public.set_organization_geographies(uuid, text[], text[])', 'execute')
-  and has_function_privilege('authenticated', 'public.organization_markets_limit(uuid)', 'execute')
-  and not has_function_privilege('anon', 'public.organization_markets_limit(uuid)', 'execute'),
+  and has_function_privilege('authenticated', 'public.org_usage(uuid, text[])', 'execute')
+  and not has_function_privilege('anon', 'public.org_usage(uuid, text[])', 'execute'),
   'both functions are security definer with an empty search_path and run for authenticated only'
 );
 
@@ -146,7 +146,7 @@ select pg_temp.new_org(:'own2', 'employer', 'DE') as emp2 \gset
 update private.settings set value = 'false' where key = 'release_partner_directories';
 select is(
   pg_temp.set_geo(:'ow', :'manila', array['PH'], array['DE'])
-    || ',' || pg_temp.call_as(:'ow', 'authenticated', format('select public.organization_markets_limit(%L)', :'manila'), 'aal1'),
+    || ',' || pg_temp.call_as(:'ow', 'authenticated', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'manila'), 'aal1'),
   'P0001|CHARA_FORBIDDEN|release_off,42501|CHARA_FORBIDDEN|release_off',
   'while release 2a is off both functions refuse'
 );
@@ -393,23 +393,23 @@ select is(
 
 select is(
   format('%s,%s,%s,%s,%s',
-    pg_temp.val_as(:'pp', 'aal1', format('select public.organization_markets_limit(%L)', :'org_partner')),
-    pg_temp.val_as(:'pr', 'aal1', format('select public.organization_markets_limit(%L)', :'org_pro')),
-    coalesce(pg_temp.val_as(:'pe', 'aal1', format('select public.organization_markets_limit(%L)', :'org_ent')), 'null'),
-    pg_temp.val_as(:'po', 'aal1', format('select public.organization_markets_limit(%L)', :'org_ovr')),
-    pg_temp.val_as(:'mb', 'aal1', format('select public.organization_markets_limit(%L)', :'manila'))),
+    pg_temp.val_as(:'pp', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'org_partner')),
+    pg_temp.val_as(:'pr', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'org_pro')),
+    coalesce(pg_temp.val_as(:'pe', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'org_ent')), 'null'),
+    pg_temp.val_as(:'po', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'org_ovr')),
+    pg_temp.val_as(:'mb', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'manila'))),
   '3,10,null,5,3',
   'AC5: the form reads the limit that applies: 3, 10, unlimited, the override 5, and 3 for a member of a company on the free plan'
 );
 select is(
-  pg_temp.call_as(:'ow2', 'authenticated', format('select public.organization_markets_limit(%L)', :'manila'), 'aal1')
-    || ',' || pg_temp.call_as(null, 'anon', format('select public.organization_markets_limit(%L)', :'manila')),
-  '42501|CHARA_FORBIDDEN|,42501|permission denied for function organization_markets_limit|',
+  pg_temp.call_as(:'ow2', 'authenticated', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'manila'), 'aal1')
+    || ',' || pg_temp.call_as(null, 'anon', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'manila')),
+  '42501|CHARA_FORBIDDEN|,42501|permission denied for function org_usage|',
   'the limit is read by members only'
 );
 update private.settings set value = 'false' where key = 'entitlements_enforced';
 select is(
-  coalesce(pg_temp.val_as(:'pp', 'aal1', format('select public.organization_markets_limit(%L)', :'org_partner')), 'null')
+  coalesce(pg_temp.val_as(:'pp', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''markets'']) u)', :'org_partner')), 'null')
     || ',' || pg_temp.set_geo(:'pp', :'org_partner', null, pg_temp.countries(4)),
   'null,ok',
   'while entitlements are not enforced no limit is shown or applied'
