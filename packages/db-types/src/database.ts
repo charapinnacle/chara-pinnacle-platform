@@ -1487,6 +1487,11 @@ isOneToOne: false
 "confirm_workforce_availability":
 { Args: { "p_listing": string }; Returns: string
                            },
+"connection_target":
+{ Args: { "p_slug": string }; Returns: {
+              "organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"]
+            }[]
+                           },
 "count_applications_in_progress":
 { Args: { "p_job_id": string }; Returns: number
                            },

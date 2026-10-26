@@ -1,5 +1,5 @@
 begin;
-select plan(119);
+select plan(125);
 
 \ir status_fixture.inc
 
@@ -135,8 +135,28 @@ select is(pg_temp.run(:'wa', 'select * from public.list_followed_companies()'), 
 select is(pg_temp.run(:'gadm', format('select public.follower_count(%L)', :'gamma')), 'P0001|CHARA_FORBIDDEN|release_off',
   'release off: the follower count is refused');
 select is(private.queue_follower_digests(), 0, 'release off: the digest queues nothing');
+select is(pg_temp.run(:'wa', 'select * from public.connection_target(''gamma-staffing'')') || pg_temp.result()::text, 'ok[]',
+  'release off: connection_target names no company');
 
 update private.settings set value = 'true' where key = 'release_partner_directories';
+
+-- connection_target: the id and type behind a public slug, for the buttons -----------------------------------------------
+select ok(
+  not has_function_privilege('anon', 'public.connection_target(text)', 'execute')
+  and has_function_privilege('authenticated', 'public.connection_target(text)', 'execute')
+  and (select prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid = 'public.connection_target(text)'::regprocedure),
+  'connection_target is a definer function for signed-in callers only'
+);
+select is(pg_temp.run(:'wa', 'select * from public.connection_target(''gamma-staffing'')'), 'ok', 'a candidate asks for Gamma');
+select is(pg_temp.result(), jsonb_build_array(jsonb_build_object('organization_id', :'gamma', 'organization_type', 'staffing_company')),
+  'and gets its id and type');
+select is(pg_temp.run(:'wa', 'select * from public.connection_target(''beta-works'')') || pg_temp.result()::text,
+  'ok' || jsonb_build_array(jsonb_build_object('organization_id', :'beta', 'organization_type', 'employer'))::text,
+  'an employer whose page is on is named');
+select is(
+  pg_temp.run(:'wa', 'select * from public.connection_target(''kappa-recruit'') union all select * from public.connection_target(''zeta-works'') union all select * from public.connection_target(''lambda-recruit'')')
+    || pg_temp.result()::text,
+  'ok[]', 'a partner pending review, an employer whose page is off and a suspended partner are not');
 
 -- AC1: saving toggles one row and is audited ---------------------------------------------------------------------------------
 select is(pg_temp.save_as(:'adm', :'delta'), 'ok', 'AC1: the Acme admin saves Delta');
