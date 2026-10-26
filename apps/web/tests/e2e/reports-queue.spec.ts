@@ -1,12 +1,12 @@
 import type { Page } from "@playwright/test";
 import { signInStaff, uniqueTag } from "./support/admin";
 import { displayName, expectAccessibleAtBothWidths, newApplicant } from "./support/applications";
-import { literal, query } from "./support/db";
+import { execute, literal, query } from "./support/db";
 import { evidence } from "./support/evidence";
 import { waitForHydration } from "./support/hydration";
 import { newCompany, seedJob } from "./support/jobs";
 import { logIn } from "./support/login-page";
-import { DETAILS, fillReport, referenceOf, reportsOfUser, sendReport } from "./support/reports";
+import { DETAILS, fillReport, openQueueAfter, referenceOf, reportsOfUser, sendReport } from "./support/reports";
 import { signInBrowser } from "./support/session";
 import { newVisitor } from "./support/team";
 import { expect, test } from "./support/test";
@@ -57,7 +57,7 @@ test.describe("working the reports queue", () => {
     await expect(item).not.toContainText("Note from Trust");
 
     const staff = await newVisitor(browser);
-    const { user: trust } = await signInStaff(staff.page, "trust_safety", `/en/admin/reports?status=open&after=${mine.id - 1}`);
+    const { user: trust } = await signInStaff(staff.page, "trust_safety", `/en/admin/reports?status=open&after=${openQueueAfter(mine.id)}`);
     await expect(staff.page.getByRole("heading", { name: "Reports", level: 1 })).toBeVisible();
     await expect(staff.page.getByRole("navigation", { name: "Administration" }).getByRole("link", { name: "Reports" })).toBeVisible();
     const row = reportRow(staff.page, reference);
@@ -73,12 +73,12 @@ test.describe("working the reports queue", () => {
     await staff.page.getByRole("button", { name: "Apply filters" }).click();
     await expect(staff.page).toHaveURL(/status=dismissed/);
     await expect(reportRow(staff.page, reference)).toHaveCount(0);
-    await staff.page.goto(`/en/admin/reports?status=new&type=job&after=${mine.id - 1}`);
+    await staff.page.goto(`/en/admin/reports?status=new&type=job&after=${openQueueAfter(mine.id)}`);
     await expect(reportRow(staff.page, reference)).toBeVisible();
-    await staff.page.goto(`/en/admin/reports?status=new&type=content&after=${mine.id - 1}`);
+    await staff.page.goto(`/en/admin/reports?status=new&type=content&after=${openQueueAfter(mine.id)}`);
     await expect(reportRow(staff.page, reference)).toHaveCount(0);
 
-    await staff.page.goto(`/en/admin/reports?status=open&after=${mine.id - 1}`);
+    await staff.page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(mine.id)}`);
     await reportRow(staff.page, reference).getByRole("link", { name: reference }).click();
     await expect(staff.page).toHaveURL(`/en/admin/reports/${mine.id}`);
     await expect(staff.page.getByRole("heading", { name: `Report ${reference}`, level: 1 })).toBeVisible();
@@ -133,7 +133,7 @@ test.describe("working the reports queue", () => {
     expect(audit[2].metadata).toMatchObject({ from: "in_review", to: "actioned", reason: NOTE });
     expect(audit[2].metadata.request_id).toMatch(/^[0-9a-f-]{36}$/);
 
-    await staff.page.goto(`/en/admin/reports?status=open&after=${mine.id - 1}`);
+    await staff.page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(mine.id)}`);
     await expect(reportRow(staff.page, reference)).toHaveCount(0);
     await staff.page.goto(`/en/admin/reports?status=actioned&after=${mine.id + 1}`);
     await expect(reportRow(staff.page, reference)).toContainText("Actioned");
@@ -151,6 +151,64 @@ test.describe("working the reports queue", () => {
     await expect(done).toContainText(NOTE);
     await evidence(page, "my-reports-closed");
     await expectAccessibleAtBothWidths(page);
+  });
+
+  test("FR-S1 AC3, AC10: the open queue lists fee demands first with their label, shows each due time, flags overdue reports and pages on the whole cursor", async ({ page }) => {
+    const tag = uniqueTag();
+    const seed = (category: string, path: string, createdAt: string) =>
+      Number(
+        execute(
+          `insert into public.reports (target_type, content_path, category, details, good_faith_confirmed, created_at)
+           values ('content', ${literal(path)}, ${literal(category)}, 'A report seeded for the queue order test.', true, ${createdAt}) returning id`,
+        ).trim().split("\n")[0],
+      );
+    const late = seed("discrimination", `/en/late-${tag}`, "now() - interval '10 days'");
+    const fee = seed("fee_demanded_from_worker", `/en/fee-${tag}`, "now()");
+    // Made on a Saturday, all 26 share one due time (the Wednesday after), so the page order is their ids: reports left by
+    // an earlier run of this test sort before them.
+    execute(
+      `insert into public.reports (target_type, content_path, category, details, good_faith_confirmed, created_at)
+       select 'content', ${literal(`/en/page-${tag}-`)} || n, 'other', 'A report seeded for the paging of the queue.', true,
+              '2020-01-04 09:00+00'::timestamptz + make_interval(mins => n)
+       from generate_series(1, 26) n`,
+    );
+    const [first] = query<{ id: number }>(`select id from public.reports where content_path = ${literal(`/en/page-${tag}-1`)}`);
+
+    await signInStaff(page, "trust_safety", "/en/admin/reports");
+    const rows = table(page).getByRole("row");
+    await expect(rows.nth(1)).toContainText("Fee demand");
+    const categories = await table(page).locator("tbody tr td:nth-child(3)").allInnerTexts();
+    const firstOther = categories.findIndex((text) => !text.includes("Fee demand"));
+    expect(firstOther === -1 || categories.slice(firstOther).every((text) => !text.includes("Fee demand")), "no fee demand after another report").toBe(true);
+    await expect(table(page).getByRole("columnheader", { name: "Due" })).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
+
+    await page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(fee)}`);
+    const feeRow = rows.nth(1);
+    await expect(feeRow).toContainText(referenceOf(fee));
+    await expect(feeRow).toContainText("Fee demand");
+    await expect(feeRow).not.toContainText("Overdue");
+    const [feeDue] = query<{ due: string }>(`select to_json(due_at) #>> '{}' as due from public.reports where id = ${fee}`);
+    await expect(feeRow.locator("td").last().locator("time")).toHaveAttribute("datetime", feeDue.due);
+
+    await page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(late)}`);
+    await expect(rows.nth(1)).toContainText(referenceOf(late));
+    await expect(rows.nth(1)).toContainText("Overdue");
+    await expect(rows.nth(1)).not.toContainText("Fee demand");
+    await rows.nth(1).getByRole("link", { name: referenceOf(late) }).click();
+    await expect(page.locator("#report")).toContainText("Overdue");
+
+    await page.goto(`/en/admin/reports?status=open&type=content&after=${openQueueAfter(first.id)}`);
+    await expect(rows.nth(1)).toContainText(`/en/page-${tag}-1`);
+    await expect(rows).toHaveCount(26);
+    await expect(rows.nth(25)).toContainText(`/en/page-${tag}-25`);
+    const more = page.getByRole("link", { name: "Show more" });
+    const [last] = query<{ cursor: string }>(
+      `select priority || '_' || (to_json(due_at) #>> '{}') || '_' || id as cursor from public.reports where content_path = ${literal(`/en/page-${tag}-25`)}`,
+    );
+    await expect(more).toHaveAttribute("href", `/en/admin/reports?status=open&type=content&after=${encodeURIComponent(last.cursor)}`);
+    await more.click();
+    await expect(rows.nth(1)).toContainText(`/en/page-${tag}-26`);
   });
 
   test("FR-F4: a report is dismissed with a note, and a reporter who is not signed in has nothing to be told", async ({ page }) => {
@@ -187,7 +245,7 @@ test.describe("working the reports queue", () => {
     await page.context().clearCookies();
 
     const admin = await newVisitor(browser);
-    await signInStaff(admin.page, "admin", `/en/admin/reports?status=open&after=${id - 1}`);
+    await signInStaff(admin.page, "admin", `/en/admin/reports?status=open&after=${openQueueAfter(id)}`);
     await expect(admin.page.getByRole("navigation", { name: "Administration" }).getByRole("link", { name: "Reports" })).toBeVisible();
     await expect(reportRow(admin.page, reference)).toBeVisible();
     await admin.page.goto(`/en/admin/reports/${id}`);

@@ -37,6 +37,15 @@ export function referenceOf(id: number): string {
   return `R-${String(id).padStart(6, "0")}`;
 }
 
+// The cursor of the open queue that makes the report the first row of the page: its priority and due time with the id
+// before its own, so that no other report of the shared database sits between.
+export function openQueueAfter(id: number): string {
+  const [row] = query<{ cursor: string }>(
+    `select priority || '_' || (to_json(due_at) #>> '{}') || '_' || (id - 1) as cursor from public.reports where id = ${id}`,
+  );
+  return encodeURIComponent(row.cursor);
+}
+
 export const DETAILS = "The vacancy asks every worker for a fee before the first day of work.";
 export const GOOD_FAITH = /I confirm that this report is accurate/;
 

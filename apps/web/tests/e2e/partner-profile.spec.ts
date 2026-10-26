@@ -6,7 +6,10 @@ import { createCommittedUser } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
 import { registerOrganization, uniqueName } from "./support/organizations";
 import { partnerWithCompany, setPartnerRelease, type PartnerType } from "./support/partners";
-import { fillReport, sendReport } from "./support/reports";
+import { signInStaff } from "./support/admin";
+import { waitForHydration } from "./support/hydration";
+import { fillReport, GOOD_FAITH, openQueueAfter, sendReport } from "./support/reports";
+import { newVisitor } from "./support/team";
 import { readHead, robotsMeta, SITE } from "./support/seo";
 import { expect, test, visitorAddress } from "./support/test";
 import type { TestUser } from "./support/test-user";
@@ -265,6 +268,7 @@ test.describe("Public partner profile (FR-K4)", () => {
       await expect(viewerPage.getByRole("heading", { level: 1 })).toHaveText(partner.displayName);
       await expect(viewerPage.getByRole("link", { name: "Sign up to contact" }), label).toHaveCount(0);
       await expect(viewerPage.getByRole("link", { name: "Report company" }), label).toHaveCount(member ? 0 : 1);
+      await expect(viewerPage.getByRole("link", { name: "Report a fee demand" }), label).toHaveCount(member ? 0 : 1);
       await expect(viewerPage.getByRole("link", { name: "Edit profile" }), label).toHaveCount(member ? 1 : 0);
       await expect(viewerPage.getByRole("button", { name: `Save partner: ${partner.displayName}` }), label).toHaveCount(buttons.save);
       await expect(viewerPage.getByRole("button", { name: `Follow: ${partner.displayName}` }), label).toHaveCount(buttons.follow);
@@ -315,20 +319,95 @@ test.describe("Public partner profile (FR-K4)", () => {
     expect(viewsOf()).toHaveLength(1);
   });
 
-  test("AC10: a visitor reports the company from its profile", async ({ page }) => {
+  test("AC10, FR-S1 AC1: a visitor reports the company from its profile as a partner_profile report", async ({ page }) => {
     const partner = await listedPartner({ complete: false });
     await page.goto(profileUrl(partner.slug));
     await page.getByRole("link", { name: "Report company" }).click();
-    await expect(page).toHaveURL(`/en/report?type=content&path=${encodeURIComponent(`/en/partners/${partner.slug}`)}`);
+    await expect(page).toHaveURL(`/en/report?type=partner_profile&partner=${partner.slug}`);
+    await expect(page.getByRole("heading", { name: "Report a company", level: 1 })).toBeVisible();
     await expect(page.getByText(`/en/partners/${partner.slug}`)).toBeVisible();
+    await expect(page.getByLabel("What is wrong")).toHaveValue("");
     await fillReport(page, { category: "misleading_or_fraud", details: "This company claims placements it never made.", email: "visitor@example.test" });
     const reference = await sendReport(page);
     expect(reference).toMatch(/^R-\d{6,}$/);
     await expect(page.getByText(/other reports/i)).toHaveCount(0);
-    const rows = query<{ target_type: string; content_path: string; category: string }>(
-      `select target_type::text, content_path, category::text from public.reports where content_path = ${literal(`/en/partners/${partner.slug}`)}`,
+    await expect(page.getByText("Trust & Safety handles reports of fee demands first")).toHaveCount(0);
+    const rows = query<{ target_type: string; organization_id: string; content_path: string | null; job_id: string | null; category: string; reporter_email: string }>(
+      `select target_type::text, organization_id, content_path, job_id, category::text, reporter_email from public.reports
+       where organization_id = ${literal(partner.id)}`,
     );
-    expect(rows).toEqual([{ target_type: "content", content_path: `/en/partners/${partner.slug}`, category: "misleading_or_fraud" }]);
+    expect(rows).toEqual([
+      { target_type: "partner_profile", organization_id: partner.id, content_path: null, job_id: null, category: "misleading_or_fraud", reporter_email: "visitor@example.test" },
+    ]);
+    await expectAccessibleAtBothWidths(page);
+  });
+
+  test("FR-J3 AC8, FR-S1 AC3, AC10: a worker reports a fee demand from the profile, and Trust & Safety see it first with its due time", async ({ page, browser }) => {
+    test.setTimeout(120_000);
+    const partner = await listedPartner({ complete: false });
+    const worker = await createCommittedUser("worker");
+    await logIn(page, worker);
+    await page.waitForURL((url) => !url.pathname.endsWith("/login"));
+    await page.goto(profileUrl(partner.slug));
+    const trigger = page.getByRole("link", { name: "Report a fee demand" });
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(`/en/report?type=partner_profile&partner=${partner.slug}&category=fee_demanded_from_worker`);
+    const category = page.getByLabel("What is wrong");
+    await waitForHydration(page.getByLabel("What happened"));
+    await expect(category).toHaveValue("fee_demanded_from_worker");
+    await expect(category.locator("option:checked")).toHaveText("The company asked me to pay a fee");
+    await expect(page.getByLabel("Your email (optional)")).toHaveCount(0);
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.getByLabel("What happened").fill("The recruiter asked me for 900 euros before the visa.");
+    await page.getByLabel(GOOD_FAITH).check();
+    const reference = await sendReport(page);
+    await expect(page.getByRole("status")).toContainText("Trust & Safety handles reports of fee demands first.");
+    const [stored] = query<{ id: number; target_type: string; priority: number; on_time: boolean; reporter_user_id: string }>(
+      `select id, target_type::text, priority, due_at = private.add_working_days(created_at, 1) as on_time, reporter_user_id
+       from public.reports where organization_id = ${literal(partner.id)}`,
+    );
+    expect(stored).toEqual({ id: Number(reference.slice(2)), target_type: "partner_profile", priority: 1, on_time: true, reporter_user_id: worker.id });
+
+    const staff = await newVisitor(browser);
+    await signInStaff(staff.page, "trust_safety", `/en/admin/reports?status=open&after=${openQueueAfter(stored.id)}`);
+    const row = staff.page.getByRole("table", { name: "Reports" }).getByRole("row").nth(1);
+    await expect(row).toContainText(reference);
+    await expect(row).toContainText(`Partner profile: ${partner.displayName}`);
+    await expect(row).toContainText("Fee demand");
+    await expect(row.locator("td").last().locator("time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
+    await expect(row).not.toContainText("Overdue");
+    await row.getByRole("link", { name: reference }).click();
+    await expect(staff.page.getByRole("heading", { name: `Report ${reference}`, level: 1 })).toBeVisible();
+    const report = staff.page.locator("#report");
+    await expect(report).toContainText("Partner profile");
+    await expect(report).toContainText("Fee demand");
+    await expect(report).toContainText("Due");
+    await expect(report).toContainText("A signed-in account");
+    await expect(report).not.toContainText(worker.email);
+    const target = staff.page.locator("#target");
+    await expect(target).toContainText(partner.displayName);
+    await expect(target.getByRole("link", { name: "Open the public profile" })).toHaveAttribute("href", profileUrl(partner.slug));
+    await expect(target.getByRole("link", { name: "Open the organisation to suspend or reinstate it" })).toHaveAttribute("href", `/en/admin/organizations/${partner.id}`);
+    await expectAccessibleAtBothWidths(staff.page);
+    await staff.context.close();
+  });
+
+  test("FR-S1 AC2: a profile that is not public cannot be reported, and the report form of a partner needs release 2a", async ({ page }) => {
+    const unlisted = await partnerWithCompany("recruitment_company");
+    await page.goto(`/en/report?type=partner_profile&partner=${unlisted.slug}`);
+    await fillReport(page, { category: "other", details: "This company is not what it claims to be." });
+    await page.getByRole("button", { name: "Send report" }).click();
+    await expect(page.getByText("This company profile cannot be reported: it is not public.").first()).toBeVisible();
+    expect(query(`select 1 from public.reports where organization_id = ${literal(unlisted.id)}`)).toEqual([]);
+    expect((await page.request.get("/en/report?type=partner_profile")).status(), "no slug").toBe(404);
+    setPartnerRelease(false);
+    try {
+      expect((await page.request.get(`/en/report?type=partner_profile&partner=${unlisted.slug}`)).status(), "release off").toBe(404);
+    } finally {
+      setPartnerRelease(true);
+    }
   });
 
   test("AC11: a profile without listings and languages says so, omits Languages and fits 360 px", async ({ page }) => {
