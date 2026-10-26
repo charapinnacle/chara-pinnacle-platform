@@ -9,12 +9,14 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { AvailabilitySection } from "@/components/organization/availability-section";
 import { LicencesSection } from "@/components/organization/licences-section";
+import { ModerationNotice } from "@/components/organization/moderation-notice";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
+import { getPartnerProfileModeration } from "@/lib/dal/partner-profile";
 import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
@@ -144,6 +146,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
     languages,
     commitment,
     availabilityRules,
+    moderation,
   ] =
     await Promise.all([
       getOrganizationGeographies(organization.id),
@@ -156,6 +159,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getLanguages(),
       getCommitmentStatus(organization.id),
       getAvailabilityRules(),
+      getPartnerProfileModeration(organization.id),
     ]);
   const billingHref = billingPath(lang, slug);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
@@ -191,6 +195,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
           Preview your public profile
         </TextLink>
       </PageHeader>
+      <ModerationNotice lang={lang} moderation={moderation} />
       {commitment.accepted ? null : (
         <CommitmentNotice lang={lang} owner={organization.role === "owner"} outdated={commitmentOutdated(commitment)} />
       )}

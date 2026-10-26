@@ -1,4 +1,5 @@
 import "server-only";
+import type { Database } from "@chara-pinnacle/db-types";
 import { cache } from "react";
 import { visitorProof } from "@/lib/dal/rate-limit";
 import { getCurrentUser } from "@/lib/dal/session";
@@ -40,4 +41,26 @@ export async function getPartnerProfilePreview(organizationId: string): Promise<
   if (!row) throw new Error("The profile preview is empty");
   const { is_public: isPublic, ...rest } = row;
   return { profile: partnerProfileFrom(rest), isPublic };
+}
+
+export type PartnerProfileModeration = {
+  state: Database["public"]["Enums"]["job_moderation_state"];
+  decision: { id: number; reasons: string; decidedAt: string } | null;
+};
+
+// The moderation state of the member's own partner profile and, while it is hidden, the decision with its statement of
+// reasons (FR-S1 AC12). Every member reads it; the appeal is the owner's and the admins' (V28).
+export async function getPartnerProfileModeration(organizationId: string): Promise<PartnerProfileModeration> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("partner_profile_moderation", { p_org: organizationId });
+  if (error) throw new Error("The moderation state could not be loaded", { cause: error });
+  const [row] = data;
+  if (!row) throw new Error("The moderation state is empty");
+  return {
+    state: row.moderation_state,
+    decision:
+      row.moderation_action_id === null || row.reasons === null || row.decided_at === null
+        ? null
+        : { id: row.moderation_action_id, reasons: row.reasons, decidedAt: row.decided_at },
+  };
 }

@@ -8,6 +8,7 @@ const licencesMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn());
 const promptsMock = vi.hoisted(() => vi.fn());
 const countsMock = vi.hoisted(() => vi.fn());
+const moderationMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -58,6 +59,7 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
+vi.mock("@/lib/dal/partner-profile", () => ({ getPartnerProfileModeration: moderationMock }));
 vi.mock("@/lib/dal/licences", () => ({
   getPartnerLicences: licencesMock,
   getLicenceSettings: async () => ({ patterns: {}, maxYears: 20 }),
@@ -116,6 +118,7 @@ beforeEach(() => {
   listingsMock.mockResolvedValue([]);
   promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: null }));
   countsMock.mockResolvedValue({ occupations: {}, countries: {} });
+  moderationMock.mockResolvedValue({ state: "visible", decision: null });
 });
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
@@ -175,6 +178,18 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
   it("says a suspended partner's details are not available", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("owner", "staffing_company", true));
     expect(await render()).toContain("This organization is suspended, so its details are not available.");
+  });
+
+  it("FR-S1 AC12: shows every member the badge and the statement of reasons of a hidden profile, and nothing while it is visible", async () => {
+    expect(await render()).not.toContain("Hidden by moderation");
+    expect(moderationMock).toHaveBeenCalledWith("org-1");
+    moderationMock.mockResolvedValue({ state: "hidden", decision: { id: 4, reasons: "Claims of placements never made.", decidedAt: "2026-10-20T09:00:00+00:00" } });
+    for (const role of ["owner", "member"]) {
+      requireOrgRoleMock.mockResolvedValue(organization(role));
+      const html = await render();
+      expect(html).toContain("Hidden by moderation");
+      expect(html).toContain("Claims of placements never made.");
+    }
   });
 
   it("says nothing about the commitment while the current version is accepted", async () => {
