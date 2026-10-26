@@ -2,6 +2,7 @@ import type { Database } from "@chara-pinnacle/db-types";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import { formatDate } from "@/lib/i18n/format";
 import {
+  appealPath,
   applicantPath,
   applicationPath,
   billingPath,
@@ -54,6 +55,12 @@ function isApplicationStatus(value: string | undefined): value is ApplicationSta
 // The onboarding step staff reopened with a request for information (FR-J4).
 function infoStepPath(lang: string, step: InfoStep): string {
   return step === "where_you_serve" ? whereYouServePath(lang) : partnerStepPath(lang, step);
+}
+
+// The moderation decision a notice names, which its appeal page is addressed by.
+function decisionId(payload: Record<string, unknown>): number | null {
+  const value = payload.moderation_action_id;
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
@@ -145,9 +152,16 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
+  // An organisation suspended while release 2a is on is led to the decision and its appeal (FR-S1).
   account_suspended: {
     label: "Account",
-    present: (_payload, { lang }) => ({ title: "Your account was suspended", href: `/${lang}/suspended` }),
+    present: (payload, { lang }) => {
+      const decision = decisionId(payload);
+      const org = text(payload, "org_name");
+      return decision
+        ? { title: `${org ?? "Your organisation"} was suspended`, href: appealPath(lang, decision) }
+        : { title: "Your account was suspended", href: `/${lang}/suspended` };
+    },
   },
   account_reinstated: {
     label: "Account",
@@ -237,12 +251,22 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
-  // The affected company reads the decision on its profile; a reporter reads the outcome of the report (FR-S1 step Inform).
+  // The affected company reads the decision on its profile; a reporter reads the outcome of the report (FR-S1 step Inform);
+  // the appellant reads the outcome of the appeal on the decision page (step Appeal).
   moderation_decision: {
     label: "Moderation",
     present: (payload, { lang }) => {
       const reference = text(payload, "reference");
       if (reference) return { title: `Your report ${reference} was closed`, href: myReportsPath(lang) };
+      const outcome = text(payload, "appeal_outcome");
+      if (outcome) {
+        const decision = decisionId(payload);
+        const about = text(payload, "title");
+        return {
+          title: `${about ? `Your appeal about ${about}` : "Your appeal"} was decided: ${outcome === "restored" ? "the decision was reversed" : "the decision was upheld"}`,
+          href: decision ? appealPath(lang, decision) : null,
+        };
+      }
       const title = text(payload, "title") ?? "Your partner profile";
       const slug = text(payload, "org_slug");
       const unhidden = text(payload, "decision") === "unhide";

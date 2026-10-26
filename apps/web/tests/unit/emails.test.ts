@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
 import { BRAND_NAME } from "@/lib/brand";
-import { applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
+import { appealPath, applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
@@ -186,7 +186,7 @@ describe("notification templates", () => {
       partner_licence_expired: "/en/org/manila-recruit/workforce-profile#licences-heading",
       listing_confirmation_due: "/en/org/manila-recruit/workforce-profile#availability-heading",
       followed_company_activity: "/en/companies/acme-bau",
-      moderation_decision: "/en/legal/complaints-and-dispute-process",
+      moderation_decision: appealPath("en", 42),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);

@@ -2,21 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import {
-  applicantPath,
-  applicationPath,
-  billingPath,
-  companyPagePath,
-  employerDashboardPath,
-  homePath,
-  jobPath,
-  mfaPath,
-  myReportsPath,
-  partnerStepPath,
-  settingsPath,
-  whereYouServePath,
-  workforceProfilePath,
-} from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, employerDashboardPath, homePath, jobPath, mfaPath, myReportsPath, partnerStepPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -45,6 +31,7 @@ describe("in-app notification items (FR-T1)", () => {
     ["mfa_reset", {}, company, "Your two-step verification was reset", mfaPath("en")],
     ["deletion_requested", { erases_on: "2026-11-02T08:00:00+00:00" }, worker, "Your account will be deleted on 2 November 2026", settingsPath("en")],
     ["account_suspended", { reasons: "x" }, worker, "Your account was suspended", "/en/suspended"],
+    ["account_suspended", { reasons: "x", org_name: "Acme Bau", moderation_action_id: 6 }, company, "Acme Bau was suspended", appealPath("en", 6)],
     ["account_reinstated", {}, worker, "Your account was reinstated", homePath("en", "worker")],
     ["account_exists", {}, company, "Someone tried to sign up with your email address", null],
     ["partner_approved", { org_name: "Manila Recruit", org_slug: "manila" }, company, "Manila Recruit is now listed in the partner directories", employerDashboardPath("en")],
@@ -66,6 +53,8 @@ describe("in-app notification items (FR-T1)", () => {
     ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", org_slug: "manila", decision: "unhide" }, company, "Manila Recruit is shown again", workforceProfilePath("en", "manila")],
     ["moderation_decision", { reference: "R-000123", outcome: "actioned" }, worker, "Your report R-000123 was closed", myReportsPath("en")],
     ["moderation_decision", {}, company, "Your partner profile was hidden by moderation", null],
+    ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", appeal_id: 7, appeal_outcome: "restored", moderation_action_id: 42 }, company, "Your appeal about Manila Recruit was decided: the decision was reversed", appealPath("en", 42)],
+    ["moderation_decision", { target_type: "job", appeal_id: 7, appeal_outcome: "upheld" }, company, "Your appeal was decided: the decision was upheld", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);

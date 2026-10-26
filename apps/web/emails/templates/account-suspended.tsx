@@ -11,6 +11,9 @@ export const accountSuspended: Template = {
   Body: ({ payload, siteUrl }) => {
     const org = field(payload, "org_name");
     const reasons = field(payload, "reasons");
+    // An organisation suspended while release 2a is on appeals the decision (FR-S1); a user, and every suspension before
+    // the release, follows the Complaints and Dispute Process.
+    const decision = field(payload, "moderation_action_id");
     return (
       <Layout
         preview={org ? `${org} was suspended` : "Your account was suspended"}
@@ -23,8 +26,20 @@ export const accountSuspended: Template = {
           The reasons:
         </Paragraph>
         {reasons ? <Quote>{reasons}</Quote> : null}
-        <Paragraph>If you think this was a mistake, you can appeal. The route is described on the Complaints and Dispute Process page.</Paragraph>
-        <Action href={url(siteUrl, "/legal/complaints-and-dispute-process")}>How to appeal</Action>
+        {decision ? (
+          <>
+            <Paragraph>
+              If you think this was a mistake, the owner or an admin can appeal. A moderator who did not take the decision reviews the
+              appeal.
+            </Paragraph>
+            <Action href={url(siteUrl, `/appeals/${decision}`)}>Appeal this decision</Action>
+          </>
+        ) : (
+          <>
+            <Paragraph>If you think this was a mistake, you can appeal. The route is described on the Complaints and Dispute Process page.</Paragraph>
+            <Action href={url(siteUrl, "/legal/complaints-and-dispute-process")}>How to appeal</Action>
+          </>
+        )}
       </Layout>
     );
   },
