@@ -12,9 +12,16 @@ import { getReport, type ReportDetail } from "@/lib/dal/admin-reports";
 import { formatDateTime } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { statusLabels } from "@/lib/jobs/presentation";
-import { adminPath } from "@/lib/routes";
+import { adminPath, partnerProfilePath } from "@/lib/routes";
 import { isPrivatePath } from "@/lib/seo/private-routes";
-import { reportCategoryLabels, reportStatusLabels, reportStatusTones, reportTargetLabels } from "@/lib/validation/report";
+import {
+  FEE_DEMAND_LABEL,
+  isFeeDemand,
+  reportCategoryLabels,
+  reportStatusLabels,
+  reportStatusTones,
+  reportTargetLabels,
+} from "@/lib/validation/report";
 
 // The path was typed by a visitor, so it is a link only when it is a public page of the site: a staff member's click carries
 // their session, and it must never reach a page that acts (a checkout, an export) or one for signed-in people.
@@ -75,6 +82,11 @@ function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; 
         ]}
       />
       <div className="flex flex-wrap gap-x-6">
+        {organization && report.targetType === "partner_profile" ? (
+          <TextLink standalone href={partnerProfilePath(lang, organization.slug)}>
+            Open the public profile
+          </TextLink>
+        ) : null}
         {organization ? (
           <TextLink standalone href={adminPath(lang, `organizations/${organization.id}`)}>
             Open the organisation to suspend or reinstate it
@@ -105,9 +117,38 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
         <DetailList
           items={[
             { label: "About", value: reportTargetLabels[report.targetType] },
-            { label: "Category", value: reportCategoryLabels[report.category] },
+            {
+              label: "Category",
+              value: isFeeDemand(report.category) ? (
+                <>
+                  <StatusBadge status="danger" className="me-2">
+                    {FEE_DEMAND_LABEL}
+                  </StatusBadge>
+                  {reportCategoryLabels[report.category]}
+                </>
+              ) : (
+                reportCategoryLabels[report.category]
+              ),
+            },
             { label: "Status", value: <StatusBadge status={reportStatusTones[report.status]}>{reportStatusLabels[report.status]}</StatusBadge> },
             { label: "Reported", value: formatDateTime(report.createdAt) },
+            ...(report.status === "new" || report.status === "in_review"
+              ? [
+                  {
+                    label: "Due",
+                    value: (
+                      <>
+                        {report.overdue ? (
+                          <StatusBadge status="danger" className="me-2">
+                            Overdue
+                          </StatusBadge>
+                        ) : null}
+                        <time dateTime={report.dueAt}>{formatDateTime(report.dueAt)}</time>
+                      </>
+                    ),
+                  },
+                ]
+              : []),
             {
               label: "Reporter",
               value:
