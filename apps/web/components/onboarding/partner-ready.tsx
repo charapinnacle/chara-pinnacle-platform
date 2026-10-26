@@ -5,7 +5,15 @@ import { OnboardingSteps } from "@/components/onboarding/onboarding-steps";
 import { ReviewChecks } from "@/components/onboarding/review-checks";
 import { SubmitForReview } from "@/components/onboarding/submit-for-review";
 import { WelcomeTiles } from "@/components/onboarding/welcome-tiles";
-import { homePath, partnerStepPath, whatYouOfferPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import {
+  billingPath,
+  homePath,
+  membersPath,
+  partnerStepPath,
+  whatYouOfferPath,
+  whereYouServePath,
+  workforceProfilePath,
+} from "@/lib/routes";
 import {
   infoStepIndex,
   infoStepLabels,
@@ -94,13 +102,19 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
   );
 }
 
-type PartnerReviewPendingProps = { lang: string; organization: Organization; targetDays: number; wasListed: boolean };
+type PartnerReviewPendingProps = {
+  lang: string;
+  organization: Organization;
+  targetDays: number;
+  wasListed: boolean;
+  // The owner or an admin chooses the plan and invites the team; a member is offered the profile and the dashboard.
+  manager: boolean;
+};
 
 // The Ready step once the company is in the staff queue (FR-J1 AC11): it says the company is being reviewed, how long that
-// usually takes and what staff check, and offers what can be done meanwhile. Never "approved" or "verified" (decision
-// 2.6). Choosing a plan and inviting the team are not offered yet: the billing page of a partner comes with V15 and no
-// team page is open to partners.
-export function PartnerReviewPending({ lang, organization, targetDays, wasListed }: PartnerReviewPendingProps) {
+// usually takes and what staff check, and offers what can be done meanwhile: the workforce profile, and for the owner and
+// admins choosing a plan and inviting the team. Never "approved" or "verified" (decision 2.6).
+export function PartnerReviewPending({ lang, organization, targetDays, wasListed, manager }: PartnerReviewPendingProps) {
   return (
     <OnboardingPanel
       steps={<OnboardingSteps kind="partner" current={4} />}
@@ -119,12 +133,23 @@ export function PartnerReviewPending({ lang, organization, targetDays, wasListed
               title: "Complete your workforce profile",
               text: "Check the countries and occupations employers will find you by.",
             },
+            ...(manager
+              ? [
+                  {
+                    href: billingPath(lang, organization.slug),
+                    title: "Choose a plan",
+                    text: "Compare the plans for your company.",
+                  },
+                  {
+                    href: membersPath(lang, organization.slug),
+                    title: "Invite your team",
+                    text: "Keep your profile and listings up to date together.",
+                  },
+                ]
+              : []),
             { href: homePath(lang, "company"), title: "Go to your dashboard", text: "See where your review stands." },
           ]}
         />
-        <p className="text-small text-muted-foreground">
-          Choosing a plan and inviting your team open here once plans for recruitment and staffing companies are available.
-        </p>
       </section>
     </OnboardingPanel>
   );

@@ -230,6 +230,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
         organization={organization}
         targetDays={await getReviewTargetDays()}
         wasListed={review.listedAt !== null}
+        manager={organization.role !== "member"}
       />
     );
   }

@@ -35,6 +35,7 @@ import {
   billingPath,
   companyDashboardPath,
   followingPath,
+  membersPath,
   mfaPath,
   onboardingPath,
   partnerStepPath,
@@ -216,6 +217,22 @@ function NetworkCard({ followers, lang }: { followers: FollowerCount; lang: stri
   );
 }
 
+// The team of the company (FR-J1 AC11): the owner and admins invite colleagues there, a member sees who is in it.
+function TeamCard({ href, canManage }: { href: string; canManage: boolean }) {
+  return (
+    <BlockCard id="team-heading" title="Your team">
+      <p className="text-body text-muted-foreground">
+        {canManage
+          ? "Invite colleagues to keep your workforce profile, listings and licences up to date with you."
+          : "See who works on your company's profile with you."}
+      </p>
+      <TextLink standalone href={href}>
+        {canManage ? "Invite your team" : "See your team"}
+      </TextLink>
+    </BlockCard>
+  );
+}
+
 type PlanUsageProps = { plan: DashboardPlan; usage: OrgUsage; type: PartnerType; billingHref: string | null };
 
 // The plan and its usage against the limits of release 2a (FR-R3 AC9, FR-R4 AC8): the usage figures are those that
@@ -258,13 +275,14 @@ function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
   );
 }
 
-// The dashboard of a recruitment or staffing company (FR-R3, FR-R4), release 2a blocks: the next actions, the review and
-// listing state, the workforce profile, profile views, followers, licences, the available workforce and the plan with its
-// usage. Every figure is read from the database on each request and each part loads, fails and retries on its own. The
-// blocks of job orders, invitations, submissions, projects, partner requests, matching employers and unread messages, and
-// the actions Find job orders, Find employers, Submit candidates, Find companies and Respond to request, come with their
-// releases (V55, V75); until then they are absent, not shown as zero. A member sees every block but none of the actions
-// of the owner and admins. Owners and admins see the plan once at aal2, as on the billing page (FR-A4).
+// The dashboard of a recruitment or staffing company (FR-R3, FR-R4), release 2a blocks: the next actions, the review
+// and listing state, the workforce profile, profile views, followers, licences, the team, the available workforce and
+// the plan with its usage. Every figure is read from the database on each request and each part loads, fails and
+// retries on its own. The blocks of job orders, invitations, submissions, projects, partner requests, matching
+// employers and unread messages, and the actions Find job orders, Find employers, Submit candidates, Find companies and
+// Respond to request, come with their releases (V55, V75); until then they are absent, not shown as zero. A member sees
+// every block but none of the actions of the owner and admins. Owners and admins see the plan once at aal2, as on the
+// billing page (FR-A4).
 export async function PartnerDashboard({ lang, user, organization }: PartnerDashboardProps) {
   const { id, slug, role, type } = organization;
   const canManage = role !== "member";
@@ -325,6 +343,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
             <ProfileCard figures={value} lang={lang} slug={slug} canManage={canManage} />
             <ViewsCard figures={value} billingHref={billingHref} />
             <LicencesCard figures={value} href={licencesHref} canManage={canManage} />
+            <TeamCard href={membersPath(lang, slug)} canManage={canManage} />
           </div>
         )}
       </Panel>

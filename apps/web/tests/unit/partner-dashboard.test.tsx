@@ -241,6 +241,19 @@ describe("available workforce (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
   });
 });
 
+describe("the team (FR-J1 AC11)", () => {
+  it("offers Invite your team to the owner and admins, and the team to a member", async () => {
+    for (const role of ["owner", "admin"] as const) {
+      const html = await render({ role });
+      expect(html).toMatch(/<h2 id="team-heading"[^>]*>Your team<\/h2>/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/members"[^>]*>Invite your team/);
+    }
+    const html = await render({ role: "member", aal: "aal1" });
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/members"[^>]*>See your team/);
+    expect(html).not.toContain("Invite your team");
+  });
+});
+
 describe("plan and usage (FR-R3 AC9, FR-R4 AC8)", () => {
   it("shows the plan, its free month, the usage against the limits and Manage plan to managers only", async () => {
     let html = await render({ type: "staffing_company" });
@@ -249,7 +262,7 @@ describe("plan and usage (FR-R3 AC9, FR-R4 AC8)", () => {
     expect(html).toContain("20 November 2026");
     expect(html).toContain("2 of 3 countries served");
     expect(html).toContain("7 workforce listings (no limit)");
-    expect(html, "the members limit comes with the team pages of partners (V81)").not.toContain("team members");
+    expect(html, "the members limit of the partner plans (V81)").toContain("1 of 3 team members");
     expect(html).toMatch(/href="\/en\/org\/manila-skills\/billing"[^>]*>Manage plan/);
     html = await render({ role: "member", aal: "aal1" });
     expect(html).toContain("2 of 3 countries served");

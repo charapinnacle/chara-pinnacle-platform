@@ -490,12 +490,27 @@ describe("the partner journey of onboarding (FR-J1)", () => {
       );
       expect(tiles).toEqual([
         ["/en/org/manila-skills/workforce-profile", "Complete your workforce profile"],
+        ["/en/org/manila-skills/billing", "Choose a plan"],
+        ["/en/org/manila-skills/members", "Invite your team"],
         ["/en/dashboard/employer", "Go to your dashboard"],
       ]);
       expect(html).not.toMatch(/approved|verified/i);
       expect(html).not.toContain("<form");
     }
     expect(geographiesMock).not.toHaveBeenCalled();
+    // A member is offered neither the plan nor the invitations, which are for the owner and admins.
+    organizationMock.mockResolvedValue({
+      ...owner,
+      role: "member",
+      slug: "manila-skills",
+      displayName: "Manila Skills",
+      type: "recruitment_company",
+    });
+    reviewMock.mockResolvedValue({ status: "pending_review", submittedAt: "2026-11-21T10:00:00Z", infoStep: null });
+    const memberHtml = await render(OnboardingPage);
+    expect(memberHtml).not.toContain("Invite your team");
+    expect(memberHtml).not.toContain("Choose a plan");
+    organizationMock.mockResolvedValue({ ...owner, slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company" });
     for (const status of ["listed", "declined"]) {
       reviewMock.mockResolvedValue({ status, submittedAt: null, infoStep: null });
       await expect(render(OnboardingPage)).rejects.toThrow("REDIRECT:/en/dashboard/employer");

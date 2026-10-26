@@ -151,8 +151,8 @@ export function nextActions(figures: PartnerFigures, canManage: boolean): NextAc
 }
 
 // The limit keys of release 2a shown in the plan block. The monthly response and submission keys arrive with their
-// features (V55), the members key with the team pages of partners (V81).
-export const planUsageKeys = ["markets", "listed_occupations", "workforce_listings"] as const;
+// features (V55).
+export const planUsageKeys = ["markets", "listed_occupations", "workforce_listings", "members"] as const;
 
 // "7 of 10 workforce listings", or "7 workforce listings (no limit)" when the plan has none (FR-R4 AC8): the limit of the
 // plan, as the billing page shows it, whether or not the limits are enforced yet.
