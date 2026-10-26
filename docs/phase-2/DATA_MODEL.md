@@ -133,6 +133,7 @@ Columns are the essentials; check constraints follow the Phase 1 text rules (tri
 | `private.profile_view_events` | (viewed_organization_id, viewer_organization_id, viewed_on) | none; retained 35 days |
 | `private.org_analytics_daily` | organization_id, day, metric, country_code, occupation_id, value | via `public.v_org_analytics` (members, suppressed below `stats_min_count`) |
 | `public.appeals` | moderation_action_id (unique), appellant_user_id, grounds, status, decided_by, reasons, lodged_at, due_at, decided_at | via RPCs |
+| `private.retired_licence_evidence` | licence_id, organization_id, storage_path, cause (replaced, removed), retired_at; no foreign keys | none (retention job `licence_evidence`) |
 | `public.data_export_requests` | user_id, status, requested_at, ready_at, expires_at, storage_path | own rows without the path |
 | `private.notification_kinds` | kind, mandatory, default_email, audience, label | via `notification_kind_catalogue()` |
 
