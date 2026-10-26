@@ -100,29 +100,27 @@ export async function getUsage(organizationId: string, orgType: OrganizationType
   });
 }
 
-const answerSchema = z.object({
-  url: z.url({ protocol: /^https$/ }).optional(),
-  error: z.string().optional(),
-  reason: z.string().nullish(),
-  field: z.string().nullish(),
-});
+export type FunctionRefusal = { status: number; reason: string | null; field: string | null };
 
-export type HostedSession =
-  | { url: string }
-  | { refusal: { status: number; reason: string | null; field: string | null } };
+const refusalSchema = z.object({ reason: z.string().nullish(), field: z.string().nullish() });
 
-// The billing-checkout function runs the checks of the database with the person's own token and holds the keys of the
-// payment provider; this server only forwards the session and sends the person to the address it answers with.
-export async function requestHostedSession(body: Record<string, unknown>): Promise<HostedSession> {
+// A billing Edge Function called with the person's own token: the function runs the checks of the database as that person
+// and holds the keys of the payment provider. A success is an answer that matches the schema; anything else is a refusal
+// with the function's reason or field. Status 0 is a network failure or a timeout, 502 a success the schema does not accept.
+export async function callBillingFunction<T>(
+  endpoint: string,
+  body: unknown,
+  schema: z.ZodType<T>,
+  extraHeaders: Record<string, string> = {},
+): Promise<{ data: T } | { refusal: FunctionRefusal }> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getSession();
   if (!data.session) return { refusal: { status: 401, reason: null, field: null } };
-  const endpoint = serverEnv().BILLING_CHECKOUT_ENDPOINT ?? `${env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/billing-checkout`;
   let response: Response;
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: { authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
+      headers: { ...extraHeaders, authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
       body: JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -130,13 +128,26 @@ export async function requestHostedSession(body: Record<string, unknown>): Promi
   } catch {
     return { refusal: { status: 0, reason: null, field: null } };
   }
-  const answer = answerSchema.safeParse(await response.json().catch(() => null));
-  if (response.ok && answer.success && answer.data.url) return { url: answer.data.url };
+  const payload: unknown = await response.json().catch(() => null);
+  const answer = response.ok ? schema.safeParse(payload) : null;
+  if (answer?.success) return { data: answer.data };
+  const refusal = refusalSchema.safeParse(payload);
   return {
     refusal: {
       status: response.ok ? 502 : response.status,
-      reason: (answer.success && answer.data.reason) || null,
-      field: (answer.success && answer.data.field) || null,
+      reason: (refusal.success && refusal.data.reason) || null,
+      field: (refusal.success && refusal.data.field) || null,
     },
   };
+}
+
+const sessionSchema = z.object({ url: z.url({ protocol: /^https$/ }) });
+
+export type HostedSession = { url: string } | { refusal: FunctionRefusal };
+
+// billing-checkout answers with the address of the provider's hosted page; this server only sends the person there.
+export async function requestHostedSession(body: Record<string, unknown>): Promise<HostedSession> {
+  const endpoint = serverEnv().BILLING_CHECKOUT_ENDPOINT ?? `${env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/billing-checkout`;
+  const result = await callBillingFunction(endpoint, body, sessionSchema);
+  return "data" in result ? { url: result.data.url } : result;
 }
