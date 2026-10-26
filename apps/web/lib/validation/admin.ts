@@ -102,13 +102,37 @@ export function lastThirtyDays(now = new Date()): { from: string; to: string } {
   return { from: start.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
 }
 
-export const rangeSchema = z
-  .object({ from: z.string().refine(isDay, "Enter a date as year-month-day"), to: z.string().refine(isDay, "Enter a date as year-month-day") })
-  .superRefine((value, ctx) => {
-    const days = (Date.parse(value.to) - Date.parse(value.from)) / 86_400_000 + 1;
-    if (days < 1) ctx.addIssue({ code: "custom", path: ["from"], message: "The start date must not be after the end date" });
-    else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days` });
-  });
+// The first day of the month five months back to today: six calendar months, the default of the partner network counts.
+export function lastSixMonths(now = new Date()): { from: string; to: string } {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+  return { from: start.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
+}
+
+const dayString = z.string().refine(isDay, "Enter a date as year-month-day");
+
+function checkRange(value: { from: string; to: string }, ctx: z.RefinementCtx): void {
+  const days = (Date.parse(value.to) - Date.parse(value.from)) / 86_400_000 + 1;
+  if (days < 1) ctx.addIssue({ code: "custom", path: ["from"], message: "The start date must not be after the end date" });
+  else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days` });
+}
+
+export const rangeSchema = z.object({ from: dayString, to: dayString }).superRefine(checkRange);
+
+export const networkPeriods = ["week", "month", "quarter", "year"] as const;
+
+export const networkPeriodLabels = {
+  week: "Week",
+  month: "Month",
+  quarter: "Quarter",
+  year: "Year",
+} as const satisfies Record<(typeof networkPeriods)[number], string>;
+
+export const networkStatisticsSchema = z
+  .object({ from: dayString, to: dayString, period: z.enum(networkPeriods, { error: "Choose a period" }) })
+  .superRefine(checkRange);
+
+export type NetworkStatisticsForm = z.input<typeof networkStatisticsSchema>;
+export type NetworkStatisticsQuery = z.output<typeof networkStatisticsSchema>;
 
 export const legalDocumentSchema = z.object({
   slug: z

@@ -2,6 +2,7 @@ import "server-only";
 import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
 import * as z from "zod";
+import type { NetworkStatistics } from "@/lib/admin/network-statistics";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { clientAddress } from "@/lib/visitor-address";
@@ -9,6 +10,7 @@ import {
   ADMIN_PAGE_SIZE,
   type AuditFilter,
   type NameCursor,
+  type NetworkStatisticsQuery,
   type PlatformRole,
   type TimeCursor,
 } from "@/lib/validation/admin";
@@ -286,6 +288,38 @@ export async function partnerSearchCounts(kind: PartnerSearchKind, from: string,
     withResults: row.with_results,
     zeroResults: row.zero_results,
     zeroByDestination: zeroByDestinationSchema.parse(row.zero_by_destination),
+  };
+}
+
+const networkCountsSchema = z.array(z.object({ metric: z.string(), period_start: z.string(), count: z.number().int().nullable() }));
+const networkFiguresSchema = z.array(
+  z.object({
+    metric: z.string(),
+    label: z.string().nullable(),
+    unit: z.enum(["count", "percent", "hours", "ratio"]),
+    range_figure: z.boolean(),
+    value: z.number().nullable(),
+    base: z.number().int().nullable(),
+  }),
+);
+
+// The partner network counts per period and the key figures of the range (FR-S2, release 2a parts); answered only to a
+// Platform Administrator while release 2a is on. The first figure is the threshold below which a value is hidden.
+export async function networkStatistics(query: NetworkStatisticsQuery): Promise<NetworkStatistics> {
+  const supabase = await adminClient();
+  const [counts, figures] = await Promise.all([
+    supabase.rpc("admin_network_counts", { p_from: query.from, p_to: query.to, p_period: query.period }),
+    supabase.rpc("admin_network_kpis", { p_from: query.from, p_to: query.to }),
+  ]);
+  if (counts.error) throw failure("The partner network counts", counts.error);
+  if (figures.error) throw failure("The partner network figures", figures.error);
+  const rows = networkFiguresSchema.parse(figures.data);
+  return {
+    counts: networkCountsSchema.parse(counts.data).map((row) => ({ metric: row.metric, periodStart: row.period_start, count: row.count })),
+    figures: rows
+      .filter((row) => row.metric !== "stats_min_count")
+      .map((row) => ({ metric: row.metric, label: row.label, unit: row.unit, rangeFigure: row.range_figure, value: row.value, base: row.base })),
+    minCount: rows.find((row) => row.metric === "stats_min_count")?.value ?? 5,
   };
 }
 
