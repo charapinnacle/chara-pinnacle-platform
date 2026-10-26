@@ -523,6 +523,7 @@ describe("the partner network statistics", () => {
         : {
             data: [
               { metric: "stats_min_count", label: null, unit: "count", range_figure: false, value: 8, base: 8 },
+              { metric: "states_recorded_from", label: "2026-03-31", unit: "date", range_figure: false, value: null, base: null },
               { metric: "approval_share", label: null, unit: "percent", range_figure: true, value: null, base: null },
             ],
             error: null,
@@ -539,6 +540,7 @@ describe("the partner network statistics", () => {
       ],
       figures: [{ metric: "approval_share", label: null, unit: "percent", rangeFigure: true, value: null, base: null }],
       minCount: 8,
+      statesFrom: "2026-03-31",
     });
   });
 

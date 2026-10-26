@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  countedRange,
   countText,
   figureLabel,
   figureText,
   hasNoActivity,
   metricRows,
   networkMetricGroups,
+  periodEnd,
   periodLabel,
   trendText,
   type NetworkFigure,
@@ -59,12 +61,35 @@ describe("the partner network statistics", () => {
         { metric: "partner_saves", periodStart: "2026-05-01", count: null },
       ],
       "partner_saves",
+      "month",
+      "2026-04-15",
     );
     expect(rows).toEqual([
-      { periodStart: "2026-03-01", count: 9, trend: "-" },
-      { periodStart: "2026-04-01", count: 12, trend: "up from 9" },
-      { periodStart: "2026-05-01", count: null, trend: "-" },
+      { periodStart: "2026-03-01", count: 9, unknown: false, trend: "-" },
+      { periodStart: "2026-04-01", count: 12, unknown: false, trend: "up from 9" },
+      { periodStart: "2026-05-01", count: null, unknown: false, trend: "-" },
     ]);
+  });
+
+  it("read a hidden state as unknown only for a period that ended before the first snapshot", () => {
+    const counts = [
+      { metric: "staffing_company.listed", periodStart: "2026-02-01", count: null },
+      { metric: "staffing_company.listed", periodStart: "2026-03-01", count: null },
+      { metric: "partner_saves", periodStart: "2026-02-01", count: null },
+    ];
+    expect(metricRows(counts, "staffing_company.listed", "month", "2026-03-31").map((row) => row.unknown)).toEqual([true, false]);
+    expect(metricRows(counts, "staffing_company.listed", "month", null).map((row) => row.unknown)).toEqual([true, true]);
+    expect(metricRows(counts, "partner_saves", "month", "2026-03-31").map((row) => row.unknown)).toEqual([false]);
+  });
+
+  it("give the last day of each period and the whole range the database counted", () => {
+    expect(periodEnd("2026-03-30", "week")).toBe("2026-04-05");
+    expect(periodEnd("2026-02-01", "month")).toBe("2026-02-28");
+    expect(periodEnd("2026-10-01", "quarter")).toBe("2026-12-31");
+    expect(periodEnd("2026-01-01", "year")).toBe("2026-12-31");
+    expect(countedRange([{ metric: "x", periodStart: "2026-04-01", count: 1 }, { metric: "x", periodStart: "2026-03-01", count: 1 }], "month"))
+      .toEqual({ from: "2026-03-01", to: "2026-04-30" });
+    expect(countedRange([], "month")).toBeNull();
   });
 
   it("show a hidden count as fewer than the threshold", () => {
@@ -87,6 +112,7 @@ describe("the partner network statistics", () => {
       "Staffing companies on the Professional plan",
     );
     expect(figureLabel(figure({ metric: "review_median_hours" }))).toBe("Median time from submission to review decision");
+    expect(figureLabel(figure({ metric: "licences_expired" }))).toBe("Expired licences");
     expect(figureLabel(figure({ metric: "requirements_open" }))).toBeNull();
   });
 
@@ -123,5 +149,11 @@ describe("the partner network range", () => {
     expect(networkStatisticsSchema.safeParse({ from: "2026-03-01", to: "2026-03-31", period: "day" }).error?.issues[0].message).toBe(
       "Choose a period",
     );
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    expect(networkStatisticsSchema.safeParse({ from: today, to: tomorrow, period: "month" }).error?.issues).toEqual([
+      expect.objectContaining({ path: ["to"], message: "The end date must not be after today" }),
+    ]);
+    expect(networkStatisticsSchema.safeParse({ from: today, to: today, period: "month" }).success).toBe(true);
   });
 });

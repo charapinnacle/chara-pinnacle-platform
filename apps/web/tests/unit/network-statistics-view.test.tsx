@@ -17,10 +17,12 @@ const ready: NetworkStatisticsAnswer = {
   ok: true,
   statistics: {
     minCount: 5,
+    statesFrom: "2026-03-31",
     counts: [
       { metric: "recruitment_company.listed", periodStart: "2026-03-01", count: 9 },
       { metric: "recruitment_company.listed", periodStart: "2026-04-01", count: 12 },
       { metric: "recruitment_company.pending_review", periodStart: "2026-03-01", count: null },
+      { metric: "recruitment_company.pending_review", periodStart: "2026-02-01", count: null },
     ],
     figures: [
       { metric: "review_median_hours", label: null, unit: "hours", rangeFigure: true, value: 9, base: 17 },
@@ -49,6 +51,17 @@ describe("the partner network section", () => {
     expect(html).toContain("up from 9");
     expect(html).toContain("fewer than 5");
     expect(html).not.toContain("No partner network activity in this period");
+    expect(html).toContain('<th scope="row"');
+  });
+
+  it("names the whole periods counted and reads a state before the first snapshot as unknown", () => {
+    const html = render(ready);
+    expect(html).toContain("Whole periods from 1 February 2026 to 30 April 2026.");
+    expect(html).toContain("States recorded from 31 March 2026");
+    const row = html.indexOf(">February 2026</th>");
+    const february = html.slice(row, html.indexOf("</tr>", row));
+    expect(february).toContain("<td class=\"px-3 py-3 align-top\">-</td>");
+    expect(february).not.toContain("fewer than");
   });
 
   it("shows the key figures of the range and of now with what they are based on", () => {
@@ -62,7 +75,7 @@ describe("the partner network section", () => {
   });
 
   it("says there was no activity when every count is hidden", () => {
-    const html = render({ ok: true, statistics: { minCount: 5, figures: [], counts: [{ metric: "partner_saves", periodStart: "2026-03-01", count: null }] } });
+    const html = render({ ok: true, statistics: { minCount: 5, statesFrom: null, figures: [], counts: [{ metric: "partner_saves", periodStart: "2026-03-01", count: null }] } });
     expect(html).toContain("No partner network activity in this period");
     expect(html).toContain("fewer than 5");
   });

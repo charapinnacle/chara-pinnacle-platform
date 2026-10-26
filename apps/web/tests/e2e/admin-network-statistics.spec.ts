@@ -121,6 +121,8 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
       await expect(section(page).getByRole("region", { name: `Key figures from ${MARCH} to ${APRIL_END}` })).toContainText(
         "Saves and follows of partners per 100 partner searches",
       );
+      await expect(section(page).getByText("Whole periods from 1 March 2025 to 30 April 2025.")).toBeVisible();
+      await expect(section(page).getByText(/States recorded from 31 March 2025/)).toBeVisible();
       await expect(page.getByText(`Netstat ${seed.tag}`)).toHaveCount(0);
       await expect(section(page).getByText("No partner network activity in this period")).toHaveCount(0);
       await expectAccessibleAtBothWidths(page);
@@ -150,6 +152,9 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     release();
     await expect(network.getByText("No partner network activity in this period")).toBeVisible();
     await expect(metricTable(page, "Recruitment companies: New sign-ups").getByRole("row", { name: /January 2024/ })).toContainText("fewer than 5");
+    // January 2024 ends before the first daily state, so its states are unknown, not hidden.
+    const state = metricTable(page, "Recruitment companies: Listed at the end of the period").getByRole("row", { name: /January 2024/ });
+    await expect(state.getByRole("cell").first()).toHaveText("-");
     await page.unroute(`**${STATISTICS}`);
     await expectAccessibleAtBothWidths(page);
 
@@ -158,6 +163,11 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     const from = network.getByLabel("From", { exact: true });
     await expect(from).toHaveAttribute("aria-invalid", "true");
     await expect(network.getByText("The start date must not be after the end date")).toBeVisible();
+    expect(calls.length).toBe(before);
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    await showRange(page, new Date().toISOString().slice(0, 10), tomorrow);
+    await expect(network.getByLabel("To", { exact: true })).toHaveAttribute("aria-invalid", "true");
+    await expect(network.getByText("The end date must not be after today")).toBeVisible();
     expect(calls.length).toBe(before);
 
     execute(`revoke execute on function ${FUNCTION} from authenticated`);
