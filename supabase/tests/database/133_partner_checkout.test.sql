@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(31);
 
 \ir organizations_fixture.inc
 
@@ -151,6 +151,9 @@ select is((select string_agg(identifier_key, ',') from billing.trial_grants wher
 select pg_temp.new_org(:'d_owner', 'recruitment_company') as d \gset
 select is(pg_temp.checkout(:'d_owner', :'d', 'recruitment_partner', 'HRB424242'), 'ok:0:-',
   'AC5: a later checkout of an organisation of another type with the same identifier receives no trial');
+select pg_temp.new_org(:'own2', 'employer') as e \gset
+select is(pg_temp.checkout(:'own2', :'e', 'employer_starter', 'HRB 424242'), 'ok:0:-',
+  'AC5: and an employer with the identifier of the staffing company that had its trial receives none either');
 select is(
   public.billing_apply_event(public.billing_ingest_event('null', 'd_wrong', 'subscription.activated', jsonb_build_object(
     'orgId', :'d', 'planCode', 'employer_starter', 'status', 'active', 'providerSubscriptionRef', 'sub_d'), true, now())),
