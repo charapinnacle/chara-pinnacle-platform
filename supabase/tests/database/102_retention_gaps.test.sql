@@ -77,8 +77,8 @@ select results_eq(
   'each rule writes one audit row with its period and the number removed'
 );
 select is(
-  (select count(*) from audit.log where action = 'retention.run' and actor_id is null), 14::bigint,
-  'fourteen rules ran (two of them for licence evidence, FR-S3), all without an actor'
+  (select count(*) from audit.log where action = 'retention.run' and actor_id is null), 16::bigint,
+  'sixteen rules ran (two of them for licence evidence, FR-S3, two for analytics, FR-R6), all without an actor'
 );
 
 -- Idempotent, configurable, and a missing row skips its rule.
@@ -138,8 +138,8 @@ select ok(
   'the periods stay unreadable for API roles'
 );
 select is(
-  (select count(*) from private.retention_policies), 19::bigint,
-  'twenty entities have a period (seven of them added by FR-S3), less the one removed above'
+  (select count(*) from private.retention_policies), 21::bigint,
+  'twenty-two entities have a period (seven of them added by FR-S3, two by FR-R6), less the one removed above'
 );
 select is(
   (select days from private.retention_policies where entity = 'document_access_log'), 730,
