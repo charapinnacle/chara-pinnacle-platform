@@ -1,0 +1,155 @@
+begin;
+select plan(11);
+
+-- The personal-data catalogue (V19; FR-S3 AC9; SOP P2-43 step Check and control "tests for every new table";
+-- DATA_MODEL.md section 10). Every table that holds a user id or an email address is listed below with how account
+-- erasure handles it and which retention period applies, or with the reason why none does. A table found in the database
+-- that the list does not name fails the first test, so a later unit that adds one has to decide both. A table is found
+-- when a column refers to auth.users, public.profiles or public.worker_profiles, when a uuid column is named like a user
+-- (user_id, *_user_id, *_by, actor_id), when a text column is named email or *_email, or when a column holds an address
+-- (inet). The export column of AC9 is added by V29, which builds the export.
+--   erasure:   erase_user  the table is named in public.erase_user, which deletes or pseudonymises its rows
+--              cascade     every user column refers to a user table with on delete cascade or set null, so the
+--                          deletion of the profile by erase_user removes or clears it
+--              any other   the reason why erasure leaves the table alone
+--   retention: policy:<e>  a row <e> of private.retention_policies, applied by a private function that names the table
+--              any other   the reason why the table has no period
+
+create temp table catalogue (tbl text primary key, erasure text not null, retention text not null);
+insert into catalogue values
+  ('audit.document_access_log', 'erase_user', 'policy:document_access_log'),
+  ('audit.log', 'erase_user', 'policy:audit_log'),
+  ('audit.partner_document_access_log',
+   'accessed_by is a Verification Reviewer, a Trust & Safety Administrator or an owner or admin of the partner, never a candidate: erase_user erases candidate accounts only',
+   'policy:partner_document_access_log'),
+  ('private.login_failures', 'cascade', 'policy:login_failures'),
+  ('public.application_events', 'erase_user',
+   'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)'),
+  ('public.consents', 'erase_user', 'consent evidence is kept for the life of the account (GDPR Art. 7(1)) and pseudonymised at erasure'),
+  ('public.job_applications', 'erase_user', 'applications have no period yet (OPEN_QUESTIONS.md L6); pseudonymised at erasure'),
+  ('public.jobs', 'cascade', 'organisation data: a vacancy follows its organisation; the creator link is cleared at erasure'),
+  ('public.moderation_actions', 'actor_id is a platform staff member, and erase_user refuses staff accounts',
+   'the statement of reasons of a moderation decision has no period yet (OPEN_QUESTIONS.md L6)'),
+  ('public.notification_preferences', 'erase_user', 'one row per account, deleted with the account'),
+  ('public.notifications', 'erase_user', 'policy:notifications'),
+  ('public.organization_invitations',
+   'email is the invited address of a company invitation, never a candidate account; invited_by is cleared with the profile',
+   'policy:organization_invitations'),
+  ('public.organization_members', 'cascade', 'a membership lasts as long as the account and ends with it'),
+  ('public.organization_ownership_transfers', 'cascade', 'a transfer lives with the memberships of both accounts and is deleted with either'),
+  ('public.partner_licences', 'cascade',
+   'organisation data kept until the partner removes the entry (Phase 3 badge history); replaced and removed files follow licence_evidence'),
+  ('public.partner_review_decisions', 'decided_by is a platform staff member, and erase_user refuses staff accounts',
+   'the append-only review record of an organisation is kept with the organisation'),
+  ('public.passport_shares', 'erase_user', 'kept with the application it was given for; revoked and pseudonymised at erasure'),
+  ('public.platform_staff', 'cascade', 'a staff role lasts as long as the account'),
+  ('public.profiles', 'erase_user', 'the account itself; inactive candidate accounts are put up for deletion after inactive_worker_data'),
+  ('public.reports', 'erase_user', 'policy:closed_reports'),
+  ('public.saved_jobs', 'cascade', 'policy:saved_jobs'),
+  ('public.worker_documents', 'erase_user', 'policy:deleted_worker_documents'),
+  ('public.worker_languages', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
+  ('public.worker_preferred_countries', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
+  ('public.worker_profiles', 'erase_user', 'the passport; inactive accounts are put up for deletion after inactive_worker_data'),
+  ('public.worker_skills', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
+  ('public.worker_work_authorizations', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data'),
+  ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)');
+
+-- The user columns of every table of the five application schemas, extension tables left out.
+create function pg_temp.user_columns() returns table (tbl text, col text, refers_on_delete "char")
+language sql stable as $$
+  select format('%s.%s', n.nspname, c.relname), a.attname::text,
+    (select k.confdeltype from pg_constraint k
+     where k.conrelid = c.oid and k.contype = 'f' and a.attnum = any (k.conkey)
+       and k.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass, 'public.worker_profiles'::regclass)
+     limit 1)
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+  where c.relkind in ('r', 'p') and n.nspname in ('public', 'private', 'audit', 'billing', 'stats')
+    and not exists (select 1 from pg_depend d where d.classid = 'pg_class'::regclass and d.objid = c.oid and d.deptype = 'e')
+    and (
+      exists (select 1 from pg_constraint k where k.conrelid = c.oid and k.contype = 'f' and a.attnum = any (k.conkey)
+              and k.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass, 'public.worker_profiles'::regclass))
+      or (a.atttypid = 'uuid'::regtype and a.attname ~ '((^|_)user_id|_by|^actor_id)$')
+      or (a.atttypid in ('text'::regtype, 'extensions.citext'::regtype) and a.attname ~ '(^|_)email$')
+      or a.atttypid = 'inet'::regtype
+    )
+$$;
+
+create function pg_temp.uncovered() returns text
+language sql stable as $$
+  select coalesce(string_agg(distinct u.tbl, ',' order by u.tbl), '')
+  from pg_temp.user_columns() u where u.tbl not in (select tbl from catalogue)
+$$;
+
+select is(pg_temp.uncovered(), '', 'AC9: every table with a user id or an email address is in the catalogue');
+select is(
+  (select coalesce(string_agg(tbl, ',' order by tbl), '') from catalogue where tbl not in (select tbl from pg_temp.user_columns())),
+  '', 'and every catalogue entry still holds a user column'
+);
+select is(
+  (select coalesce(string_agg(tbl, ',' order by tbl), '') from catalogue
+   where erasure = 'erase_user' and position(tbl in pg_get_functiondef('public.erase_user(uuid)'::regprocedure)) = 0),
+  '', 'AC9: every table said to be handled by erase_user is named there'
+);
+select is(
+  (select coalesce(string_agg(distinct u.tbl || '.' || u.col, ',' order by u.tbl || '.' || u.col), '')
+   from catalogue k join pg_temp.user_columns() u on u.tbl = k.tbl
+   where k.erasure = 'cascade' and u.refers_on_delete is distinct from 'c' and u.refers_on_delete is distinct from 'n'),
+  '', 'AC9: every user column of a table erased by cascade refers to a user table with on delete cascade or set null'
+);
+select is(
+  (select coalesce(string_agg(k.tbl, ',' order by k.tbl), '') from catalogue k
+   where k.retention like 'policy:%'
+     and not (
+       exists (select 1 from private.retention_policies p where p.entity = substr(k.retention, 8))
+       and exists (select 1 from pg_proc f where f.pronamespace = 'private'::regnamespace
+                   and f.prosrc like '%''' || substr(k.retention, 8) || '''%' and f.prosrc like '%' || k.tbl || '%')
+     )),
+  '', 'AC9: every period named has a row in retention_policies and a private function that applies it to the table'
+);
+select is(
+  (select coalesce(string_agg(tbl, ',' order by tbl), '') from catalogue
+   where (erasure not in ('erase_user', 'cascade') and char_length(erasure) < 30)
+      or (retention not like 'policy:%' and char_length(retention) < 30)),
+  '', 'AC9: every table left alone by erasure or retention states its reason'
+);
+
+-- The test fails for a new table that holds a user id and is in none of the lists.
+create table public.catalogue_probe (id uuid primary key, owner_user_id uuid references public.profiles (id));
+create table private.catalogue_probe_log (id bigint primary key, contact_email text);
+select is(pg_temp.uncovered(), 'private.catalogue_probe_log,public.catalogue_probe',
+  'AC9: a new table with a user id or an email column that no list names is reported');
+drop table public.catalogue_probe;
+drop table private.catalogue_probe_log;
+
+-- The Phase 2 tables that AC9 names and that later units create: each must be catalogued once it exists, even one whose
+-- personal data is reached only through another table (a conversation through its messages and participants).
+select is(
+  (select coalesce(string_agg(t, ',' order by t), '')
+   from unnest(array['public.partner_responses', 'public.candidate_submissions', 'public.contact_requests', 'public.conversations',
+     'public.conversation_participants', 'public.messages', 'public.workforce_requirements', 'public.requirement_invitations',
+     'public.partner_licences']) t
+   where to_regclass(t) is not null and t not in (select tbl from catalogue)),
+  '', 'AC9: each table of the criterion that exists is in the catalogue (V58 and V74 add theirs)'
+);
+select is(
+  (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
+     'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages',
+     'public.workforce_requirements', 'public.requirement_invitations']) t where to_regclass(t) is null),
+  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages,public.partner_responses,public.requirement_invitations,public.workforce_requirements',
+  'the tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74)'
+);
+select is(
+  (select string_agg(entity, ',' order by entity) from private.retention_policies
+   where entity in ('conversations', 'partner_responses', 'candidate_submissions', 'closed_requirements', 'contact_requests', 'licence_evidence')),
+  'candidate_submissions,closed_requirements,contact_requests,conversations,licence_evidence,partner_responses',
+  'AC9: each of them already has its retention entity to apply'
+);
+select is(
+  (select count(*)::integer from catalogue where tbl like 'public.partner_%' or tbl like 'audit.partner_%' or tbl = 'public.workforce_availability'),
+  4, 'the four Phase 2 tables of release 2a with a user column are catalogued: licences, review decisions, availability, evidence access log'
+);
+
+select * from finish();
+rollback;
