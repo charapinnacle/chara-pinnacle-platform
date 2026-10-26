@@ -157,7 +157,7 @@ test.describe("Save partner and follow company (FR-L4)", () => {
     execute(
       `select set_config('request.jwt.claims', json_build_object('sub', ${literal(acme.owner.id)}, 'role', 'authenticated')::text, true);
        update public.jobs set status = 'open' where id = ${literal(jobId)};
-       select private.queue_follower_digests(now() + interval '1 minute')`,
+       select private.queue_follower_digests(now() + interval '10 minutes')`,
     );
     const items = query<{ n: number }>(
       `select count(*)::int as n from public.notifications where user_id = ${literal(candidate.id)} and kind = 'followed_company_activity'`,
