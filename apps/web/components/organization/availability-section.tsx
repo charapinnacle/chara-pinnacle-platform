@@ -15,7 +15,8 @@ import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { confirmListing, deleteListing, saveListing } from "@/lib/actions/workforce-availability";
+import { ConfirmListing } from "@/components/organization/confirm-listing";
+import { deleteListing, saveListing } from "@/lib/actions/workforce-availability";
 import type { UsagePrompt } from "@/lib/billing/limits";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
@@ -300,21 +301,6 @@ function ListingForm({ slug, listing, occupations, countries, maxDays, name, onC
         </FormButton>
       </div>
     </form>
-  );
-}
-
-type ConfirmListingProps = { slug: string; listing: WorkforceListing; name: string; onConfirmed: () => void };
-
-export function ConfirmListing({ slug, listing, name, onConfirmed }: ConfirmListingProps) {
-  const confirm = useActionCall("Could not confirm the listing");
-  return (
-    <FormButton
-      type="button"
-      busy={confirm.pending}
-      onClick={() => confirm.run(() => confirmListing(slug, listing.id), `Listing confirmed: ${name}`, onConfirmed)}
-    >
-      Confirm<span className="sr-only"> the listing for {name}</span>
-    </FormButton>
   );
 }
 

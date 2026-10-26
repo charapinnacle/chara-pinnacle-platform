@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { LinkButton } from "@/components/layout/link-button";
-import { ConfirmListing } from "@/components/organization/availability-section";
+import { ConfirmListing } from "@/components/organization/confirm-listing";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
-import { freshnessLabel, listingFreshness, type AvailabilityRules } from "@/lib/validation/workforce-availability";
+import { freshnessLabel, listingFreshness, type AvailabilityRules } from "@/lib/workforce/freshness";
 
 type PartnerWorkforceListingsProps = {
   slug: string;
