@@ -2,7 +2,7 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
-import { getLicenceSettings, requestEvidenceUpload } from "@/lib/dal/licences";
+import { getLicenceSettings, requestEvidenceLink, requestEvidenceUpload } from "@/lib/dal/licences";
 import { getCountries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -21,6 +21,7 @@ import { slugSchema } from "@/lib/validation/team";
 
 export type LicenceResult = { errors?: FieldErrors; message?: string; licenceId?: string };
 export type EvidenceUploadResult = { message?: string; upload?: { path: string; token: string } };
+export type EvidenceDownloadResult = { message?: string; url?: string };
 
 const RELEASE_OFF = "Licences cannot be changed at the moment.";
 const SUSPENDED = "This organization is suspended, so its licences cannot be changed.";
@@ -114,4 +115,19 @@ export async function startEvidenceUpload(slug: string, licenceId: string, file:
     return { message: GENERIC_FAILURE };
   }
   return { upload };
+}
+
+// A 60-second link that makes the browser save the scanned evidence of an entry; the opening is logged by the database.
+export async function getEvidenceDownload(slug: string, licenceId: string): Promise<EvidenceDownloadResult> {
+  const id = licenceIdSchema.safeParse(licenceId);
+  if (!id.success) return { message: GENERIC_FAILURE };
+  const organization = await managedOrganization(slug);
+  if (organization === null) return { message: GENERIC_FAILURE };
+  if (organization === "release_off") return { message: RELEASE_OFF };
+  const link = await requestEvidenceLink(id.data);
+  if ("url" in link) return { url: link.url };
+  if (link.refusal === "not_scanned") return { message: "This file cannot be downloaded until it has been checked." };
+  if (link.refusal === "unavailable") return { message: GONE };
+  if (link.refusal === "rate_limited") return { message: "Too many files were opened in a short time. Wait a minute and try again." };
+  return { message: GENERIC_FAILURE };
 }

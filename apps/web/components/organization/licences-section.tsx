@@ -18,10 +18,10 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormField, InputField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Input } from "@/components/ui/input";
-import { deleteLicence, saveLicence, startEvidenceUpload } from "@/lib/actions/licences";
+import { deleteLicence, getEvidenceDownload, saveLicence, startEvidenceUpload } from "@/lib/actions/licences";
 import type { PartnerLicence } from "@/lib/dal/licences";
 import type { ReferenceItem } from "@/lib/dal/reference";
-import { formatFileSize } from "@/lib/documents/presentation";
+import { USABLE_SCAN_STATUSES, formatFileSize } from "@/lib/documents/presentation";
 import { formatDate } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import { createLazyClient } from "@/lib/supabase/lazy-browser";
@@ -115,6 +115,9 @@ export function LicencesSection({ slug, canManage, licences, countries, patterns
                 <p className="text-small text-muted-foreground">{LICENCE_STAFF_ONLY}</p>
                 {canManage ? (
                   <div className="flex flex-wrap gap-2">
+                    {licence.evidence && (USABLE_SCAN_STATUSES as readonly string[]).includes(licence.evidence.status) ? (
+                      <DownloadEvidence slug={slug} licenceId={licence.id} country={nameOf(licence.country)} />
+                    ) : null}
                     <FormButton type="button" variant="secondary" onClick={() => setEditing(licence)}>
                       Edit<span className="sr-only"> the licence for {nameOf(licence.country)}</span>
                     </FormButton>
@@ -281,6 +284,26 @@ function LicenceForm({ slug, licence, countries, patterns, maxYears, onClose, on
         </FormButton>
       </div>
     </form>
+  );
+}
+
+function DownloadEvidence({ slug, licenceId, country }: { slug: string; licenceId: string; country: string }) {
+  const download = useActionCall("Could not download the file");
+  return (
+    <FormButton
+      type="button"
+      variant="secondary"
+      busy={download.pending}
+      onClick={() =>
+        download.run(async () => {
+          const result = await getEvidenceDownload(slug, licenceId);
+          if (result.url) window.location.assign(result.url);
+          return result;
+        }, "Your download is starting")
+      }
+    >
+      Download<span className="sr-only"> the document for {country}</span>
+    </FormButton>
   );
 }
 

@@ -59,7 +59,12 @@ vi.mock("@/lib/dal/licences", () => ({
   getPartnerLicences: licencesMock,
   getLicenceSettings: async () => ({ patterns: {}, maxYears: 20 }),
 }));
-vi.mock("@/lib/actions/licences", () => ({ saveLicence: vi.fn(), deleteLicence: vi.fn(), startEvidenceUpload: vi.fn() }));
+vi.mock("@/lib/actions/licences", () => ({
+  saveLicence: vi.fn(),
+  deleteLicence: vi.fn(),
+  startEvidenceUpload: vi.fn(),
+  getEvidenceDownload: vi.fn(),
+}));
 
 const { default: WorkforceProfilePage } = await import("@/app/[lang]/(app)/org/[slug]/workforce-profile/page");
 
@@ -208,6 +213,8 @@ describe("the licences of the workforce profile page (FR-J2)", () => {
     expect(html.match(/Seen only by Chara Pinnacle staff until verification is available<\/p>/g)).toHaveLength(2);
     expect(html).toContain("Edit<span class=\"sr-only\"> the licence for Philippines</span>");
     expect(html).toContain("Delete<span class=\"sr-only\"> the licence for Germany</span>");
+    expect(html).toContain("Download<span class=\"sr-only\"> the document for Philippines</span>");
+    expect(html).not.toContain("the document for Germany");
   });
 
   it("AC4: shows a member the entries without any button that changes them", async () => {
@@ -217,6 +224,7 @@ describe("the licences of the workforce profile page (FR-J2)", () => {
     expect(html).toContain(">DMW-a</dd>");
     expect(html).not.toContain("Add a licence");
     expect(html).not.toContain("Edit<span");
+    expect(html).not.toContain("Download<span");
     licencesMock.mockResolvedValue([]);
     expect(await render()).toContain("Your owner or an administrator adds the licences of your company.");
   });

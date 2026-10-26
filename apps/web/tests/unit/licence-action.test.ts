@@ -5,6 +5,7 @@ const rpcMock = vi.fn();
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const uploadMock = vi.hoisted(() => vi.fn());
+const linkMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
@@ -18,10 +19,11 @@ vi.mock("@/lib/dal/reference", () => ({
 vi.mock("@/lib/dal/licences", () => ({
   getLicenceSettings: async () => ({ patterns: { PH: "^DMW-" }, maxYears: 20 }),
   requestEvidenceUpload: uploadMock,
+  requestEvidenceLink: linkMock,
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { deleteLicence, saveLicence, startEvidenceUpload } = await import("@/lib/actions/licences");
+const { deleteLicence, getEvidenceDownload, saveLicence, startEvidenceUpload } = await import("@/lib/actions/licences");
 
 const LICENCE = "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a90";
 const input: LicenceInput = {
@@ -118,5 +120,22 @@ describe("deleteLicence and startEvidenceUpload (FR-J2)", () => {
     expect(await startEvidenceUpload("manila-skills", LICENCE, pdf)).toEqual({ message: "Choose a PDF, JPG or PNG file of up to 15 MB." });
     uploadMock.mockResolvedValueOnce({ refusal: "unavailable" });
     expect(await startEvidenceUpload("manila-skills", LICENCE, pdf)).toEqual({ message: "This licence no longer exists." });
+  });
+
+  it("gives the owner or an admin a download link of the scanned file, and says why there is none", async () => {
+    linkMock.mockResolvedValueOnce({ url: "http://stack.test/storage/v1/object/sign/partner-documents/x?token=t" });
+    expect(await getEvidenceDownload("manila-skills", LICENCE)).toEqual({
+      url: "http://stack.test/storage/v1/object/sign/partner-documents/x?token=t",
+    });
+    expect(linkMock).toHaveBeenCalledWith(LICENCE);
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "manila-skills", "admin", { hideFromOutsiders: true, partner: true });
+    linkMock.mockResolvedValueOnce({ refusal: "not_scanned" });
+    expect(await getEvidenceDownload("manila-skills", LICENCE)).toEqual({
+      message: "This file cannot be downloaded until it has been checked.",
+    });
+    linkMock.mockResolvedValueOnce({ refusal: "unavailable" });
+    expect(await getEvidenceDownload("manila-skills", LICENCE)).toEqual({ message: "This licence no longer exists." });
+    expect(await getEvidenceDownload("manila-skills", "not-a-uuid")).toHaveProperty("message");
+    expect(linkMock).toHaveBeenCalledTimes(3);
   });
 });

@@ -58,13 +58,16 @@ export async function getLicenceSettings(): Promise<{ patterns: Record<string, s
 }
 
 const uploadSchema = z.object({ path: z.string().min(1), token: z.string().min(1) });
+const linkSchema = z.object({ url: z.url({ protocol: /^https?$/ }) });
 
-export type EvidenceUpload = { path: string; token: string } | { refusal: "invalid_file" | "unavailable" | "failed" };
+type Refusal = "invalid_file" | "unavailable" | "not_scanned" | "rate_limited" | "failed";
+export type EvidenceUpload = { path: string; token: string } | { refusal: Refusal };
+export type EvidenceLink = { url: string } | { refusal: Refusal };
 
-// An upload URL for the evidence of a licence from the document-url function, which runs partner_document_access_grant
-// with the member's own token: the role, aal2, the type and size of the file and the reserved object name are the
-// database's. The function is the only holder of the key that signs the URL; this server only forwards the session.
-export async function requestEvidenceUpload(licenceId: string, file: { type: string; size: number }): Promise<EvidenceUpload> {
+// The document-url function runs partner_document_access_grant with the member's own token: the role, aal2, the type and
+// size of a file, the scan state and the reserved object name are the database's. The function is the only holder of the
+// key that signs; this server only forwards the session.
+async function callDocumentUrl<T>(body: Record<string, unknown>, schema: z.ZodType<T>): Promise<T | { refusal: Refusal }> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getSession();
   if (!data.session) return { refusal: "failed" };
@@ -74,7 +77,7 @@ export async function requestEvidenceUpload(licenceId: string, file: { type: str
     response = await fetch(endpoint, {
       method: "POST",
       headers: { authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
-      body: JSON.stringify({ licenceId, purpose: "evidence_upload", mime: file.type, size: file.size }),
+      body: JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
@@ -83,6 +86,18 @@ export async function requestEvidenceUpload(licenceId: string, file: { type: str
   }
   if (response.status === 400) return { refusal: "invalid_file" };
   if (response.status === 403 || response.status === 404) return { refusal: "unavailable" };
-  const upload = response.ok ? uploadSchema.safeParse(await response.json().catch(() => null)) : null;
-  return upload?.success ? upload.data : { refusal: "failed" };
+  if (response.status === 409) return { refusal: "not_scanned" };
+  if (response.status === 429) return { refusal: "rate_limited" };
+  const parsed = response.ok ? schema.safeParse(await response.json().catch(() => null)) : null;
+  return parsed?.success ? parsed.data : { refusal: "failed" };
+}
+
+// An upload URL for the evidence of a licence (owner or admin at aal2).
+export async function requestEvidenceUpload(licenceId: string, file: { type: string; size: number }): Promise<EvidenceUpload> {
+  return callDocumentUrl({ licenceId, purpose: "evidence_upload", mime: file.type, size: file.size }, uploadSchema);
+}
+
+// A 60-second download link to the scanned evidence of a licence of the own organisation (owner or admin at aal2).
+export async function requestEvidenceLink(licenceId: string): Promise<EvidenceLink> {
+  return callDocumentUrl({ licenceId, purpose: "evidence_owner" }, linkSchema);
 }

@@ -85,7 +85,7 @@ test.describe("Licences (FR-J2)", () => {
   test.beforeAll(() => setPartnerRelease(true));
   test.afterAll(() => setPartnerRelease(false));
 
-  test("AC1, AC5, AC6, AC11: the owner adds a licence with a document by keyboard and staff open the document, logged", async ({
+  test("AC1, AC5, AC6, AC11: the owner adds a licence with a document by keyboard; staff and the owner open it, logged", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -176,6 +176,20 @@ test.describe("Licences (FR-J2)", () => {
 
     await page.reload();
     await expect(item).toContainText("2 MB - File received");
+
+    // The owner downloads the own file through a 60-second link; the opening is logged without a staff role.
+    const download = page.waitForEvent("download");
+    await item.getByRole("button", { name: "Download the document for Philippines" }).click();
+    expect((await download).suggestedFilename()).toBe("licence-ph.pdf");
+    expect(
+      query<{ role: string | null; purpose: string }>(
+        `select staff_role as role, purpose from audit.partner_document_access_log
+         where licence_id = ${literal(row.id)} order by id`,
+      ),
+    ).toEqual([
+      { role: "verification_reviewer", purpose: "partner_review" },
+      { role: null, purpose: "evidence_owner" },
+    ]);
   });
 
   test("AC11: expired entries come first; the dialog keeps focus and values when a save fails; edit and delete", async ({

@@ -241,3 +241,15 @@ Deno.test("evidence refusals: a refused file, an unscanned file, an outsider and
     assert.equal(signer.calls.length, 0);
   }
 });
+
+Deno.test("the owner or an admin opening the own licence evidence gets a 60-second download link", async () => {
+  const { user, signer, response } = runEvidence(
+    request({ licenceId: LICENCE, purpose: "evidence_owner" }),
+    reply(200, [{ bucket_id: "partner-documents", object_path: EVIDENCE, file_name: "licence-ph.pdf" }]),
+  );
+  const result = await response;
+  assert.equal(result.status, 200);
+  assert.ok((await result.json()).url.includes("download=licence-ph.pdf"));
+  assert.deepEqual(user.calls.map((c) => c.body), [{ p_licence: LICENCE, p_purpose: "evidence_owner" }]);
+  assert.deepEqual(signer.calls.map((c) => c.body), [{ expiresIn: 60 }]);
+});
