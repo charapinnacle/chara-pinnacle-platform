@@ -13,7 +13,7 @@ import type { TestUser } from "./support/test-user";
 
 const DIRECTORY = "/en/partners/recruitment";
 const SEARCH_PARTNERS =
-  "public.search_partners(text, text, text, text, text[], text, text, public.recruitment_preference, integer, integer, text, integer, text, text)";
+  "public.search_partners(text, text, text, text, text[], text, text, public.recruitment_preference, text[], text, integer, integer, text, integer, text, text)";
 const FORBIDDEN_WORDS = /\b(verified|approved|licensed|rating|reviews?|score|badge|basic|professional|enterprise|plan)\b/i;
 const CONTACT_ACTIONS = /^(Save partner|Follow|Send inquiry|Invite to a requirement)/;
 
@@ -177,6 +177,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     const empty = page.getByRole("heading", { name: "No recruitment partners match your search" });
     await expect(empty).toBeVisible();
     await expect(page.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", DIRECTORY);
+    await expect(page.getByRole("link", { name: "Find Staffing Partners" })).toHaveAttribute("href", "/en/partners/staffing");
     for (const label of ["Destination country", "Occupation", "Based in", "Industry", "Language"]) {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
     }
@@ -243,7 +244,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     execute(`update private.settings set value = '1' where key = 'rate_limit_partner_search_max'`);
     try {
       await page.goto(`${DIRECTORY}?destination=DE`);
-      await expect(page.getByText("Too many searches, please try again in a minute")).toBeVisible();
+      await expect(page.getByText("Too many searches. Please wait a minute and try again.")).toBeVisible();
       await expect(cards(page)).toHaveCount(0);
     } finally {
       execute(`update private.settings set value = '60' where key = 'rate_limit_partner_search_max'`);
@@ -263,7 +264,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
       const section = page.getByRole("region", { name: "Partner searches" });
       await expect(section.getByRole("heading", { name: "Partner searches" })).toBeVisible();
       await expect(section.getByRole("region", { name: /^Recruitment partner searches from/ })).toContainText("Without results");
-      const destinations = section.getByRole("region", { name: /^Searches without results by destination/ });
+      const destinations = section.getByRole("region", { name: /^Recruitment partner searches without results by destination/ });
       await expect(destinations.getByRole("row", { name: /Iceland/ })).toBeVisible();
       await expectAccessibleAtBothWidths(page);
       setPartnerRelease(false);

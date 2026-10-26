@@ -105,6 +105,7 @@ export default defineConfig({
         "**/plan-editor-release.spec.ts",
         "**/partner-profile.spec.ts",
         "**/partner-search.spec.ts",
+        "**/staffing-directory.spec.ts",
       ],
     },
     {
@@ -390,13 +391,22 @@ export default defineConfig({
       testMatch: "**/partner-search.spec.ts",
       dependencies: ["partner-profile-release"],
     },
+    // The same release switch is set for the staffing directory and the available workforce search (FR-L2, FR-K3), the
+    // two search functions are withdrawn, the search limit lowered and the entitlements enforced for a moment, so this
+    // spec follows the one above.
+    {
+      name: "staffing-directory-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/staffing-directory.spec.ts",
+      dependencies: ["partner-search-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-search-release"],
+      dependencies: ["staffing-directory-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
