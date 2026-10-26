@@ -40,10 +40,10 @@ export type PartnerSearch =
   | { state: "rate_limited" }
   | { state: "advanced_not_in_plan" };
 
-// One page of the recruitment (FR-L1) or the staffing (FR-L2) directory. A visitor is counted under the keyed hash of the address with the proof
-// of this minute, a signed-in reader by the database, which also logs the first page of each search without anything
-// personal. Advanced filters outside the reader's plan and the visitor limit are states of the page; anything else is an
-// error for the route's boundary.
+// One page of the recruitment (FR-L1) or the staffing (FR-L2) directory. A visitor is counted under the keyed hash of
+// the address with the proof of this minute, a signed-in reader by the database, which also logs the first page of each
+// search without anything personal. Advanced filters outside the reader's plan and the visitor limit are states of the
+// page; anything else is an error for the route's boundary.
 export async function searchPartners(kind: PartnerDirectoryKind, filters: PartnerSearchFilters): Promise<PartnerSearch> {
   const visitor = (await getCurrentUser()) ? null : await visitorProof("partner_search");
   const supabase = await createClient();
