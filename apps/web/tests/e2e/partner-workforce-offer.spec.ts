@@ -226,9 +226,9 @@ test.describe("What you offer (FR-K2)", () => {
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
-    // The billing page does not sell partner plans yet (V15): the prompt compares them instead of linking there.
+    // The prompt compares the higher plans and links to the billing page that sells them (V15).
     await expect(notice).toContainText(COMPARISON);
-    await expect(notice.getByRole("link")).toHaveCount(0);
+    await expect(notice.getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", /\/en\/org\/[^/]+\/billing$/);
     await expectAccessibleAtBothWidths(page);
 
     // AC4: the database refuses an eleventh occupation as well and keeps the previous set.

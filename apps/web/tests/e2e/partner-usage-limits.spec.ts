@@ -43,7 +43,7 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
   test.beforeAll(() => setPartnerRelease(true));
   test.afterAll(() => setPartnerRelease(false));
 
-  test("the owner at a limit sees the usage, the plan and the higher plans, and each prompt is recorded", async ({ page }) => {
+  test("the owner at a limit sees the usage, the plan, the higher plans and the billing link, and each prompt is recorded", async ({ page }) => {
     test.setTimeout(90_000);
     const { user, id, slug } = await partnerWithCompany("staffing_company");
     seedProfile(id, ["DE", "AE", "SA"]);
@@ -57,7 +57,8 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
       "Basic includes 10 workforce listings; Professional includes 50 workforce listings; Enterprise has no limit.",
     );
     await expect(availability.getByRole("button", { name: "Add a listing" })).toHaveCount(0);
-    await expect(availability.getByRole("link")).toHaveCount(0);
+    await expect(availability.getByRole("link")).toHaveText(["Upgrade your plan"]);
+    await expect(availability.getByRole("link")).toHaveAttribute("href", `/en/org/${slug}/billing`);
     await expect.poll(() => prompts(id)).toEqual(["workforce_listings"]);
 
     // A fourth served country is not added; the prompt in the live region names the usage and is reported.

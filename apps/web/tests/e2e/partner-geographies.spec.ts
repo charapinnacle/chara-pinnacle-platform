@@ -81,9 +81,9 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, RECRUITS_FOR)).toHaveCount(3);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
-    // The billing page does not sell partner plans yet (V15): the prompt compares them instead of linking there.
+    // The prompt compares the higher plans and links to the billing page that sells them (V15).
     await expect(notice).toContainText(COMPARISON);
-    await expect(notice.getByRole("link")).toHaveCount(0);
+    await expect(notice.getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", /\/en\/org\/[^/]+\/billing$/);
     await expect(page.getByText("3 of 3 countries", { exact: true })).toBeVisible();
     // A second blocked add replaces the notice in the live region, so it is announced again.
     await notice.locator(":scope > div").evaluate((element) => element.setAttribute("data-first", "true"));
