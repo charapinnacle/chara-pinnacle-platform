@@ -47,6 +47,7 @@ type Release = {
   current_legal_documents?: unknown;
   rate_limit_proof_key_set?: unknown;
   legal_release_gaps?: unknown;
+  edge_secrets?: unknown;
 };
 
 const PUBLISHED: Release = {
@@ -145,7 +146,12 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
   const partner = (overrides: Plan = {}) =>
     sold("staffing_partner", 5900, { org_type: "staffing_company", limits: PARTNER_LIMITS, ...overrides });
   const PARTNER_CHECKOUT_ON = JSON.stringify({ entitlements_enforced: true, ...ENTITY, release_partner_directories: true });
-  const NO_GAPS = { ...PUBLISHED, legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] } };
+  const PORTAL_SECRETS = ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"];
+  const NO_GAPS = {
+    ...PUBLISHED,
+    legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] },
+    edge_secrets: PORTAL_SECRETS,
+  };
 
   it("names a partner plan without a Stripe price but passes while the partner checkout is off (FR-R1, decision 7.3)", () => {
     const result = run(ENFORCED, [...MIRRORED, partner({ price_ref: null, stripe_amount: null })]);
@@ -172,6 +178,22 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
     expect(mirrored.status).toBe(0);
     expect(mirrored.stderr).toBe("");
     expect(mirrored.stdout).not.toContain("not yet ready to sell");
+  });
+
+  it("requires the Stripe portal configuration of each partner type once the partner checkout is on", () => {
+    const missing = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner()], { ...NO_GAPS, edge_secrets: [PORTAL_SECRETS[0]] });
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toContain(
+      "Go-live check failed: the Edge Function secret STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY is not set",
+    );
+    expect(missing.stderr).not.toContain("RECRUITMENT_COMPANY is not set");
+
+    const unexported = Object.fromEntries(Object.entries(NO_GAPS).filter(([key]) => key !== "edge_secrets"));
+    const absent = run(PARTNER_CHECKOUT_ON, [...MIRRORED, partner()], unexported);
+    expect(absent.status).toBe(1);
+    expect(absent.stderr).toContain("release_partner_directories is on but release.json has no edge_secrets");
+
+    expect(run(ENFORCED, [...MIRRORED, partner()]).status).toBe(0);
   });
 
   it("never asks a contact-sales or free partner plan for a Stripe price", () => {
@@ -394,7 +416,11 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
   });
 
   it("passes a switched-on release whose documents are approved", () => {
-    const result = run(released({ release_partner_directories: true }), MIRRORED, { ...PUBLISHED, legal_release_gaps: NO_GAPS });
+    const result = run(released({ release_partner_directories: true }), MIRRORED, {
+      ...PUBLISHED,
+      legal_release_gaps: NO_GAPS,
+      edge_secrets: ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"],
+    });
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
   });

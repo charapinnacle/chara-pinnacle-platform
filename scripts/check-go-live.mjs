@@ -13,6 +13,10 @@
 // --allow-draft-legal lets draft legal texts pass, for a launch that counsel has not cleared yet; the gate still names
 // them. The Auth settings that no export can show are checked by hand (security-checklist.md section 3).
 //
+// A partner plan (FR-R1) is held to the rule of a sold plan, with the partner limit keys, and the Stripe portal
+// configurations of the partner types must be set, only while release_partner_directories is on: until then no partner
+// can buy, and the gaps of the partner plans are only named.
+//
 // The Phase 2 gate (FR-S4 AC9) is separate: a release feature whose release switch is on in settings.json goes live only
 // while private.legal_release_gaps returns no row for it (release.json key legal_release_gaps, one list per feature).
 // --allow-draft-legal does not apply to it, and the Phase 2 documents are not part of the Phase 1 draft rule, so their
@@ -39,6 +43,9 @@ const LIMIT_KEYS = {
 // no partner plan can be bought, so its missing Stripe price is named but does not stop the launch; once it is on, the
 // partner plans are held to the same rule as the employer plans.
 const PARTNER_CHECKOUT_SWITCH = "release_partner_directories";
+// The Stripe portal configuration of each partner type (billing-checkout refuses a partner's portal without it), required
+// once the partner checkout is on; release.json key edge_secrets holds the names of the Edge Function secrets.
+const PARTNER_PORTAL_SECRETS = ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"];
 const LEGAL_ENTITY_KEYS = ["legal_entity_name", "legal_entity_address", "privacy_contact", "data_protection_contact"];
 const ALLOW_DRAFT_LEGAL = "--allow-draft-legal";
 const PHASE_2_LEGAL_SLUGS = new Set([
@@ -148,6 +155,16 @@ for (const plan of plans.filter(isSold)) {
     failures.push(...planFailures(plan));
   } else {
     partnerPending.push(...planFailures(plan));
+  }
+}
+if (partnerCheckoutOn) {
+  const secrets = release.edge_secrets;
+  if (!Array.isArray(secrets)) {
+    failures.push(`${PARTNER_CHECKOUT_SWITCH} is on but release.json has no edge_secrets (the names of the Edge Function secrets)`);
+  } else {
+    for (const name of PARTNER_PORTAL_SECRETS.filter((secret) => !secrets.includes(secret))) {
+      failures.push(`the Edge Function secret ${name} is not set: the customer portal of that partner type is refused`);
+    }
   }
 }
 const administrators = release.active_administrators;
