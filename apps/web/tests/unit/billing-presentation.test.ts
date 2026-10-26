@@ -42,7 +42,7 @@ describe("the disclosures before the redirect (FR-G2 AC2)", () => {
       },
       { title: "How to cancel", text: "Open Manage billing on the billing page and cancel before the trial ends, and you are not charged." },
       {
-        title: "Commitment",
+        title: "No long-term commitment",
         text: "A card is needed to start. There is no long-term commitment: the subscription runs from month to month until you cancel.",
       },
     ]);
@@ -54,7 +54,7 @@ describe("the disclosures before the redirect (FR-G2 AC2)", () => {
 
   it("shows no trial period, and says the first payment is due at once, for a company that had its trial", () => {
     const items = checkoutDisclosures(BASIC, true);
-    expect(items.map((item) => item.title)).toEqual(["Trial period", "Price", "Billing frequency", "Automatic conversion", "How to cancel", "Commitment"]);
+    expect(items.map((item) => item.title)).toEqual(["Trial period", "Price", "Billing frequency", "Automatic conversion", "How to cancel", "No long-term commitment"]);
     expect(items[0].text).toBe(
       "There is no free trial: a free trial has already been used for this company, so the first payment is due at once.",
     );

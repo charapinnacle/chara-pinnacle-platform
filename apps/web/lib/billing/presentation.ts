@@ -108,9 +108,10 @@ export function trialConversion(planName: string): string {
 
 type Disclosure = { title: string; text: string };
 
-// The things the person is told before the redirect (FR-G2, FR-R1 AC6): the trial period, the price after it, the
-// billing frequency, the automatic conversion, how to cancel, and that a card is needed with no long-term commitment. trialUsed says that the legal entity already had its trial,
-// so that the first payment is due at once and no trial period is shown.
+// The six things the person is told before the redirect (FR-G2, FR-R1 AC6): the trial period, the price after it, the
+// billing frequency, the automatic conversion, how to cancel, and that a card is needed with no long-term commitment.
+// trialUsed says that the legal entity already had its trial, so that the first payment is due at once and no trial
+// period is shown.
 export function checkoutDisclosures(plan: SoldPlan, trialUsed: boolean): Disclosure[] {
   const trialDays = trialUsed ? 0 : plan.trialDays;
   return [
@@ -138,7 +139,7 @@ export function checkoutDisclosures(plan: SoldPlan, trialUsed: boolean): Disclos
           : "Open Manage billing on the billing page to cancel at any time.",
     },
     {
-      title: "Commitment",
+      title: "No long-term commitment",
       text: `A card is needed to start. There is no long-term commitment: the subscription runs from ${plan.interval} to ${plan.interval} until you cancel.`,
     },
   ];
