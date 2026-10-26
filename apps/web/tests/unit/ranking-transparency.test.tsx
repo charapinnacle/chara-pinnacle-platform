@@ -4,11 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   advancedPartnerSearchFeature,
   availableWorkforceCovers,
+  availableWorkforceExclusions,
+  availableWorkforceHaving,
   availableWorkforceOrderBy,
   availableWorkforceSupply,
   freshListing,
   listedAndVisible,
   partnerProfileTime,
+  partnerSearchExclusions,
   partnerSearchOrderBy,
   rankingCopy,
   rankingFilters,
@@ -34,10 +37,13 @@ const { default: RankingPage } = await import("@/app/[lang]/(public)/legal/ranki
 
 const squash = (text: string) => text.replace(/\s+/g, " ");
 
+// The start of a create function statement for public.<name>, in any case and spacing, names quoted or not.
+const createFunction = (name: string) => new RegExp(String.raw`create\s+(or\s+replace\s+)?function\s+"?public"?\."?${name}"?\s*\(`, "i");
+
 // The body of the function as the last migration that creates it defines it, whitespace collapsed.
 function latestDefinition(name: string): string {
   const migrations = new URL("../../../../supabase/migrations/", import.meta.url);
-  const start = new RegExp(`create (or replace )?function public\\.${name}\\(`);
+  const start = createFunction(name);
   const file = readdirSync(migrations)
     .filter((entry) => entry.endsWith(".sql"))
     .sort()
@@ -51,6 +57,7 @@ function latestDefinition(name: string): string {
 }
 
 const searchPartners = latestDefinition("search_partners");
+const clause = (body: string, pattern: RegExp) => pattern.exec(body)?.[1] ?? "";
 const availableWorkforce = latestDefinition("search_available_workforce");
 
 async function renderPage(): Promise<string> {
@@ -65,6 +72,25 @@ beforeEach(() => {
 
 // NFR-C8: the page says what the searches do. Each test fails when the SQL changes and lib/partners/ranking.ts does not.
 describe("the ranking page and the search functions (NFR-C8)", () => {
+  it("finds a create function statement however it is cased, spaced or quoted", () => {
+    for (const sql of [
+      "create function public.search_partners(",
+      'CREATE OR REPLACE FUNCTION "public"."search_partners" (',
+      "create  or\n  replace function public.\"search_partners\"(",
+    ]) {
+      expect(createFunction("search_partners").test(sql), sql).toBe(true);
+    }
+    expect(createFunction("search_partners").test("create function public.search_partners_other(")).toBe(false);
+  });
+
+  it("nothing but the conditions the page describes leaves a company out", () => {
+    expect(clause(searchPartners, /\) listing on true (where .*?) \), page as \(/)).toBe(partnerSearchExclusions);
+    expect(clause(availableWorkforce, /join public\.organizations o on o\.id = a\.organization_id (where .*?) \), fits as \(/)).toBe(
+      availableWorkforceExclusions,
+    );
+    expect(clause(availableWorkforce, /group by c\.organization_id (having .*?) \), ranked as \(/)).toBe(availableWorkforceHaving);
+  });
+
   it("search_partners orders by the matched filters, the profile time and the id", () => {
     expect(searchPartners).toContain(partnerSearchOrderBy);
     expect(searchPartners).toContain(partnerProfileTime);

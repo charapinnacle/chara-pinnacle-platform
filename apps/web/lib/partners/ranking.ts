@@ -23,6 +23,14 @@ export const listedAndVisible = [
   "o.moderation_state = 'visible'",
 ] as const;
 
+// Everything that leaves a partner out, whitespace collapsed: the where clause of the matches CTE of search_partners and
+// the where clause of counted and the having clause of fits of search_available_workforce. Nothing else excludes.
+export const partnerSearchExclusions =
+  "where ( (p_kind = 'recruitment' and o.type = 'recruitment_company') or (p_kind = 'staffing' and (o.type = 'staffing_company' or (o.type = 'recruitment_company' and exists ( select 1 from public.organization_service_types st where st.organization_id = o.id and st.service = 'staffing' )))) ) and o.listed_at is not null and o.review_status <> 'declined' and o.status = 'active' and o.moderation_state = 'visible' and (v_destination is null or exists ( select 1 from public.organization_geographies g where g.organization_id = o.id and g.scope = 'serves_market' and g.country_code = v_destination )) and (p_occupation is null or exists ( select 1 from public.organization_occupations oo where oo.organization_id = o.id and oo.occupation_id = p_occupation ))";
+export const availableWorkforceExclusions =
+  "where a.occupation_id = p_occupation and a.confirmed_at > v_fresh_since and a.available_from <= v_by and o.type <> 'employer' and o.listed_at is not null and o.review_status <> 'declined' and o.status = 'active' and o.moderation_state = 'visible' and exists ( select 1 from public.organization_geographies g where g.organization_id = o.id and g.scope = 'serves_market' and g.country_code = v_destination )";
+export const availableWorkforceHaving = "having sum(c.supply) >= p_workers_needed";
+
 // The filters that leave out the partners that do not match; every result matches them, so they count the same for all.
 export const narrowingFilters = ["destination", "occupation"] as const satisfies readonly MatchedFilter[];
 
