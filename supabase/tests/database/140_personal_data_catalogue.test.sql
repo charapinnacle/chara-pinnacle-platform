@@ -1,12 +1,12 @@
 begin;
-select plan(11);
+select plan(12);
 
 -- The personal-data catalogue (V19; FR-S3 AC9; SOP P2-43 step Check and control "tests for every new table";
 -- DATA_MODEL.md section 10). Every table that holds a user id or an email address is listed below with how account
 -- erasure handles it and which retention period applies, or with the reason why none does. A table found in the database
 -- that the list does not name fails the first test, so a later unit that adds one has to decide both. A table is found
 -- when a column refers to auth.users, public.profiles or public.worker_profiles, when a uuid column is named like a user
--- (user_id, *_user_id, *_by, actor_id), when a text column is named email or *_email, or when a column holds an address
+-- (user_id, *_user_id, *_by, actor_id, author_id, sender_id, recipient_id, owner_id, member_id, worker_id, candidate_id), when a text column is named email or *_email, or when a column holds an address
 -- (inet). The export column of AC9 is added by V29, which builds the export.
 --   erasure:   erase_user  the table is named in public.erase_user, which deletes or pseudonymises its rows
 --              cascade     every user column refers to a user table with on delete cascade or set null, so the
@@ -23,6 +23,7 @@ insert into catalogue values
    'accessed_by is a Verification Reviewer, a Trust & Safety Administrator or an owner or admin of the partner, never a candidate: erase_user erases candidate accounts only',
    'policy:partner_document_access_log'),
   ('private.login_failures', 'cascade', 'policy:login_failures'),
+  ('public.application_notes', 'erase_user', 'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)'),
   ('public.application_events', 'erase_user',
    'kept with the application it belongs to; applications have no period yet (OPEN_QUESTIONS.md L6)'),
   ('public.consents', 'erase_user', 'consent evidence is kept for the life of the account (GDPR Art. 7(1)) and pseudonymised at erasure'),
@@ -70,7 +71,7 @@ language sql stable as $$
     and (
       exists (select 1 from pg_constraint k where k.conrelid = c.oid and k.contype = 'f' and a.attnum = any (k.conkey)
               and k.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass, 'public.worker_profiles'::regclass))
-      or (a.atttypid = 'uuid'::regtype and a.attname ~ '((^|_)user_id|_by|^actor_id)$')
+      or (a.atttypid = 'uuid'::regtype and a.attname ~ '((^|_)user_id|_by|^(actor|author|sender|recipient|owner|member|worker|candidate)_id)$')
       or (a.atttypid in ('text'::regtype, 'extensions.citext'::regtype) and a.attname ~ '(^|_)email$')
       or a.atttypid = 'inet'::regtype
     )
@@ -115,13 +116,23 @@ select is(
   '', 'AC9: every table left alone by erasure or retention states its reason'
 );
 
+-- The notes of an employer about a candidate go with the candidate: erase_user deletes the notes of the candidate's
+-- applications (the behaviour is tested in 065_application_notes), whoever wrote them.
+select ok(
+  pg_get_functiondef('public.erase_user(uuid)'::regprocedure)
+    ~ 'delete from public\.application_notes n using public\.job_applications a\s+where a\.id = n\.application_id and a\.worker_user_id = p_user_id',
+  'AC9: erase_user deletes the notes on the applications of the erased candidate'
+);
+
 -- The test fails for a new table that holds a user id and is in none of the lists.
 create table public.catalogue_probe (id uuid primary key, owner_user_id uuid references public.profiles (id));
 create table private.catalogue_probe_log (id bigint primary key, contact_email text);
-select is(pg_temp.uncovered(), 'private.catalogue_probe_log,public.catalogue_probe',
-  'AC9: a new table with a user id or an email column that no list names is reported');
+create table public.catalogue_probe_note (id bigint primary key, author_id uuid, body text);
+select is(pg_temp.uncovered(), 'private.catalogue_probe_log,public.catalogue_probe,public.catalogue_probe_note',
+  'AC9: a new table with a user id, an author id or an email column that no list names is reported');
 drop table public.catalogue_probe;
 drop table private.catalogue_probe_log;
+drop table public.catalogue_probe_note;
 
 -- The Phase 2 tables that AC9 names and that later units create: each must be catalogued once it exists, even one whose
 -- personal data is reached only through another table (a conversation through its messages and participants).
