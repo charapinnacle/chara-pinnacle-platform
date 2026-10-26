@@ -1,6 +1,8 @@
+import type { ReleaseSwitch } from "@/lib/dal/release";
 import type { PlatformRole } from "@/lib/validation/admin";
 
-type Entry = { label: string; segment: string; roles: readonly PlatformRole[] };
+// An entry of a Phase 2 release is shown only while its release switch is on, as its pages answer not found otherwise.
+type Entry = { label: string; segment: string; roles: readonly PlatformRole[]; release?: ReleaseSwitch };
 
 const both = ["admin", "trust_safety"] as const;
 
@@ -17,8 +19,16 @@ export const adminEntries = [
   { label: "Reports", segment: "reports", roles: both },
   { label: "Vacancy moderation", segment: "moderation", roles: ["trust_safety"] },
   { label: "Suspensions and reinstatements", segment: "suspensions", roles: ["trust_safety"] },
+  {
+    label: "Partner reviews",
+    segment: "partners",
+    roles: ["trust_safety", "verification_reviewer", "admin"],
+    release: "release_partner_directories",
+  },
 ] as const satisfies readonly Entry[];
 
-export function entriesFor(roles: readonly PlatformRole[]) {
-  return adminEntries.filter((entry) => entry.roles.some((role) => roles.includes(role)));
+export function entriesFor(roles: readonly PlatformRole[], released: readonly ReleaseSwitch[] = []) {
+  return adminEntries.filter(
+    (entry: Entry) => entry.roles.some((role) => roles.includes(role)) && (!entry.release || released.includes(entry.release)),
+  );
 }

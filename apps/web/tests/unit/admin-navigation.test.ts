@@ -12,9 +12,18 @@ describe("the entries of the console", () => {
     expect(labels(["trust_safety"])).toEqual(["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions and reinstatements"]);
   });
 
-  it("give the Verification Reviewer none", () => {
+  it("give the Verification Reviewer none while release 2a is off", () => {
     expect(entriesFor(["verification_reviewer"])).toEqual([]);
     expect(entriesFor([])).toEqual([]);
+    expect(entriesFor([], ["release_partner_directories"])).toEqual([]);
+  });
+
+  it("add the partner reviews for all three roles once release 2a is on (FR-J4)", () => {
+    const released = ["release_partner_directories"] as const;
+    expect(entriesFor(["verification_reviewer"], released).map((entry) => entry.label)).toEqual(["Partner reviews"]);
+    expect(entriesFor(["admin"], released).map((entry) => entry.label)).toContain("Partner reviews");
+    expect(entriesFor(["trust_safety"], released).map((entry) => entry.label)).toContain("Partner reviews");
+    expect(labels(["admin"])).not.toContain("Partner reviews");
   });
 
   it("join the entries of a person with two roles once each, in the order of the console", () => {

@@ -13,6 +13,9 @@ const FORBIDDEN = [
   "document_access_grant",
   "v_my_document_access_log",
 ];
+// The one module of the console that calls the broker: it opens the evidence of a partner's licence for the staff review
+// (FR-J2 AC6, FR-J4 AC2) and sends no purpose but partner_review, which the database refuses for any candidate document.
+const PARTNER_EVIDENCE = "lib/dal/partner-evidence.ts";
 // Every module the console imports is read, except shared infrastructure: the primitives, the environment and the Supabase clients.
 const INFRASTRUCTURE = /^@\/(components\/ui\/|lib\/env|lib\/supabase\/|lib\/utils$)/;
 const IMPORT = /(?:from|import)\s*\(?\s*["']((?:@\/|\.\.?\/)[^"']+)["']/g;
@@ -51,6 +54,10 @@ function offences(text: string): string[] {
   return FORBIDDEN.filter((word) => text.includes(word));
 }
 
+function allowed(file: string, word: string): boolean {
+  return file === PARTNER_EVIDENCE && word === "document-url";
+}
+
 describe("the source of the administration console", () => {
   const files = reachable().map((file) => path.relative(root, file));
 
@@ -67,8 +74,19 @@ describe("the source of the administration console", () => {
   });
 
   it("contains no code that opens, signs, lists or logs a document", () => {
-    const found = files.flatMap((file) => offences(readFileSync(path.join(root, file), "utf8")).map((word) => `${file}: ${word}`));
+    const found = files.flatMap((file) =>
+      offences(readFileSync(path.join(root, file), "utf8"))
+        .filter((word) => !allowed(file, word))
+        .map((word) => `${file}: ${word}`),
+    );
     expect(found).toEqual([]);
+  });
+
+  it("lets the partner evidence module ask the broker for the staff review of a licence and for nothing else", () => {
+    expect(files).toContain(PARTNER_EVIDENCE);
+    const source = readFileSync(path.join(root, PARTNER_EVIDENCE), "utf8");
+    expect([...source.matchAll(/purpose: "([a-z_]+)"/g)].map(([, purpose]) => purpose)).toEqual(["partner_review"]);
+    expect(source).not.toMatch(/documentId|passport|createSignedUrl/);
   });
 
   it("imports no module whose path names a document or a storage client", () => {
