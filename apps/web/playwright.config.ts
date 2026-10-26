@@ -109,6 +109,7 @@ export default defineConfig({
         "**/company-page.spec.ts",
         "**/save-partner-follow.spec.ts",
         "**/partner-network-pages.spec.ts",
+        "**/data-export.spec.ts",
       ],
     },
     {
@@ -427,13 +428,21 @@ export default defineConfig({
       testMatch: "**/partner-network-pages.spec.ts",
       dependencies: ["save-partner-follow-release"],
     },
+    // The same release switch is set for the data export (FR-S3), whose spec also runs account-ops, notify and the
+    // retention job over the whole database and withdraws the export functions for a moment, so it follows the one above.
+    {
+      name: "data-export-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/data-export.spec.ts",
+      dependencies: ["partner-network-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-network-release"],
+      dependencies: ["data-export-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

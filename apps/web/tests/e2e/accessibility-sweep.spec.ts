@@ -124,8 +124,9 @@ const accountStatePages = [
 // the recruitment directory with results and empty (partner-search.spec.ts), the staffing directory with results, empty,
 // over the search limit and with the available workforce results of an employer (staffing-directory.spec.ts), the
 // public company page with vacancies, empty and as its administrator (company-page.spec.ts), the saved partners of an
-// employer and the followed companies, with rows and empty (save-partner-follow.spec.ts), and the moderation decisions
-// and appeals of an organisation and of the console (partner-profile.spec.ts).
+// employer and the followed companies, with rows and empty (save-partner-follow.spec.ts), the moderation decisions
+// and appeals of an organisation and of the console (partner-profile.spec.ts), and the export of a user's own data, empty,
+// being prepared and ready, as a candidate and a company user (data-export.spec.ts).
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -142,6 +143,7 @@ const releasedPages = [
   "/[lang]/partners/[slug]",
   "/[lang]/partners/recruitment",
   "/[lang]/partners/staffing",
+  "/[lang]/settings/data-export",
 ];
 
 async function expectPage(page: Page, address: string): Promise<void> {
