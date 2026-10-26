@@ -99,11 +99,25 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await partner.context.close();
   });
 
-  test("AC3: the pages of 2b and 2c do not exist and the sitemap lists none of them, while it lists both directories", async ({ request }) => {
+  test("AC3: the pages of 2b and 2c do not exist and neither the sitemap nor the menu names them, even with their switches on, while both directories are listed", async ({ request }) => {
     for (const path of UNRELEASED_PATHS) expect((await request.get(path)).status(), path).toBe(404);
     const sitemap = await (await request.get("/sitemap.xml")).text();
     for (const path of ["/en/partners/recruitment", "/en/partners/staffing"]) expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`);
     for (const path of UNRELEASED_PATHS) expect(sitemap).not.toContain(`<loc>${SITE}${path}</loc>`);
+
+    // Their switches alone publish nothing: each page's own unit adds its link and sitemap entry.
+    setRelease("release_job_orders", true);
+    setRelease("release_find_workers", true);
+    try {
+      for (const path of UNRELEASED_PATHS) expect((await request.get(path)).status(), path).toBe(404);
+      const switched = await (await request.get("/sitemap.xml")).text();
+      for (const path of UNRELEASED_PATHS) expect(switched).not.toContain(`<loc>${SITE}${path}</loc>`);
+      const menu = await (await request.get("/en")).text();
+      for (const path of UNRELEASED_PATHS) expect(menu).not.toContain(`href="${path}"`);
+    } finally {
+      setRelease("release_job_orders", false);
+      setRelease("release_find_workers", false);
+    }
 
     setPartnerRelease(false);
     const off = await (await request.get("/sitemap.xml")).text();

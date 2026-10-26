@@ -18,18 +18,21 @@ export const headerLinks = [
 export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
 
 // The navigation of the client's structure (section 2) that Phase 1 does not have, in its order, with the release that
-// makes each item a page and its address then (FR-L5). Until its release is on an item is named in the menu as plain text,
-// never a link, so the client sees where it will go; Workforce Corridors belongs to no release of Phase 2.
+// makes an item a page and its address then (FR-L5). Until its release is on an item is named in the menu as plain text,
+// never a link, so the client sees where it will go. Only the partner directories exist yet: Find Companies (V53), Job
+// Orders (V40), Find Workers (V69) and Request Workers (V71) stay labels whatever their switch says until the unit that
+// builds the page gives the item its path and release here, which also puts it in the sitemap. Workforce Corridors
+// belongs to no release of Phase 2.
 type NetworkFeature = { label: string } & ({ path: string; release: ReleaseSwitch } | { path: null; release: null });
 
 export const networkFeatures: readonly NetworkFeature[] = [
-  { label: "Find workers", path: "find-workers", release: "release_find_workers" },
-  { label: "Request workers", path: "request-workers", release: "release_find_workers" },
-  { label: "Find companies", path: "companies", release: "release_job_orders" },
+  { label: "Find workers", path: null, release: null },
+  { label: "Request workers", path: null, release: null },
+  { label: "Find companies", path: null, release: null },
   { label: "Recruitment partners", path: RECRUITMENT_DIRECTORY_PATH, release: "release_partner_directories" },
   { label: "Staffing partners", path: STAFFING_DIRECTORY_PATH, release: "release_partner_directories" },
   { label: "Workforce corridors", path: null, release: null },
-  { label: "Job orders", path: "job-orders", release: "release_job_orders" },
+  { label: "Job orders", path: null, release: null },
 ];
 
 export const laterPhaseFeatures = networkFeatures.map(({ label }) => label);

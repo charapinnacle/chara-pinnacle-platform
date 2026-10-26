@@ -124,56 +124,36 @@ describe("the links for an account kind", () => {
 
 describe("the network items of the menu (FR-L5 AC4)", () => {
   const order = ["Find workers", "Request workers", "Find companies", "Recruitment partners", "Staffing partners", "Workforce corridors", "Job orders"];
-  const paths: Record<string, string> = {
-    "Find workers": "find-workers",
-    "Request workers": "request-workers",
-    "Find companies": "companies",
-    "Recruitment partners": "partners/recruitment",
-    "Staffing partners": "partners/staffing",
-    "Job orders": "job-orders",
-  };
-  const follows: Record<string, ReleaseSwitch | null> = {
-    "Find workers": "release_find_workers",
-    "Request workers": "release_find_workers",
-    "Find companies": "release_job_orders",
-    "Recruitment partners": "release_partner_directories",
-    "Staffing partners": "release_partner_directories",
-    "Workforce corridors": null,
-    "Job orders": "release_job_orders",
-  };
+  const directories = [
+    { path: "partners/recruitment", label: "Recruitment partners" },
+    { path: "partners/staffing", label: "Staffing partners" },
+  ];
   const three = ["release_partner_directories", "release_job_orders", "release_find_workers"] as const;
   const combinations: ReleaseSwitch[][] = Array.from({ length: 8 }, (_, bits) => three.filter((_, index) => bits & (1 << index)));
 
-  it("makes each released item a link with its path and keeps every other one a label, for every combination of the three switches", () => {
+  it("links the two partner directories exactly while release 2a is on, for every combination of the three switches", () => {
     for (const released of combinations) {
       const { links, later } = networkMenu(released);
-      const live = order.filter((label) => {
-        const release = follows[label];
-        return release !== null && released.includes(release);
-      });
-      expect(links, released.join()).toEqual(live.map((label) => ({ path: paths[label], label })));
-      expect(later, released.join()).toEqual(order.filter((label) => !live.includes(label)));
+      const live = released.includes("release_partner_directories") ? directories : [];
+      expect(links, released.join()).toEqual(live);
+      expect(later, released.join()).toEqual(order.filter((label) => !live.some((link) => link.label === label)));
     }
   });
 
-  it("keeps the order of the client's structure, Workforce Corridors always a label, and a missing switch counts as off", () => {
+  it("keeps the items whose pages do not exist yet as labels whatever their switch says, in the order of the client's structure", () => {
     expect(networkFeatures.map(({ label }) => label)).toEqual(order);
     expect(networkMenu([]).later).toEqual(order);
-    expect(networkMenu(["release_candidate_submissions", "release_messaging"]).links).toEqual([]);
     const all = networkMenu([...three, "release_candidate_submissions", "release_messaging"]);
-    expect(all.later).toEqual(["Workforce corridors"]);
-    expect(all.links.map(({ label }) => label)).toEqual(order.filter((label) => label !== "Workforce corridors"));
+    expect(all.links).toEqual(directories);
+    expect(all.later).toEqual(["Find workers", "Request workers", "Find companies", "Workforce corridors", "Job orders"]);
+    expect(networkFeatures.filter(({ path }) => path !== null).map(({ path }) => path)).toEqual(directories.map(({ path }) => path));
   });
 
   it("offers a worker none of the network's pages, and a company and a visitor every released one", () => {
-    const explore = [...menuLinks, ...networkMenu(["release_partner_directories", "release_job_orders", "release_find_workers"]).links];
+    const explore = [...menuLinks, ...networkMenu(["release_partner_directories"]).links];
     const labels = (links: readonly { label: string }[]) => links.map(({ label }) => label);
     expect(labels(forAccountKind(explore, "worker"))).toEqual(["Find jobs", "For job seekers", "How Chara Pinnacle works"]);
-    expect(labels(forAccountKind(explore, "company"))).toEqual([
-      "For employers",
-      "How Chara Pinnacle works",
-      ...order.filter((label) => label !== "Workforce corridors"),
-    ]);
+    expect(labels(forAccountKind(explore, "company"))).toEqual(["For employers", "How Chara Pinnacle works", "Recruitment partners", "Staffing partners"]);
     expect(labels(forAccountKind(explore, null))).toEqual(labels(explore));
   });
 });
