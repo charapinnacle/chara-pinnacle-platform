@@ -2,12 +2,14 @@
 
 import type { PostgrestError } from "@supabase/supabase-js";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { recordLimitPrompt } from "@/lib/actions/limits";
+import { limitRefusalMessage } from "@/lib/billing/limits";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/server";
-import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
+import { fieldErrors, partnerTypeSchema, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 import { listingFormSchema, listingIdSchema, type ListingInput } from "@/lib/validation/workforce-availability";
 
@@ -16,7 +18,8 @@ export type ListingResult = { errors?: FieldErrors; message?: string; saved?: tr
 const RELEASE_OFF = "Availability cannot be changed at the moment.";
 const SUSPENDED = "This organization is suspended, so its availability cannot be changed.";
 const GONE = "This listing no longer exists.";
-const LIMIT_REACHED = "Your plan's limit of availability listings is reached. Upgrade to add more.";
+
+type ManagedOrganization = { id: string; type: string };
 
 // The database names the refused field; the form shows the message at it.
 const invalidField: Record<string, [keyof ListingInput, string]> = {
@@ -25,13 +28,16 @@ const invalidField: Record<string, [keyof ListingInput, string]> = {
   available_from: ["availableFrom", "Choose a date within the allowed range."],
 };
 
-function refusal(error: PostgrestError): ListingResult {
+async function refusal(error: PostgrestError, organization: ManagedOrganization): Promise<ListingResult> {
   if (error.message === "CHARA_CONFLICT" && error.details === "listing") {
     return { errors: { country: "You already list this occupation from this country." } };
   }
   const invalid = error.message === "CHARA_INVALID_INPUT" ? invalidField[error.details] : undefined;
   if (invalid) return { errors: { [invalid[0]]: invalid[1] } };
-  if (error.message === "CHARA_LIMIT_REACHED" && error.details === "workforce_listings") return { message: LIMIT_REACHED };
+  if (error.message === "CHARA_LIMIT_REACHED") {
+    await recordLimitPrompt(organization.id, error.details);
+    return { message: limitRefusalMessage(error.details, partnerTypeSchema.parse(organization.type)) };
+  }
   if (error.code === "P0002") return { message: GONE };
   if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_suspended") return { message: SUSPENDED };
   if (error.message === "CHARA_FORBIDDEN" && error.details === "release_off") return { message: RELEASE_OFF };
@@ -75,7 +81,7 @@ export async function saveListing(slug: string, listingId: string | null, input:
         p_source_country: country,
         ...values,
       });
-  return error ? refusal(error) : { saved: true };
+  return error ? refusal(error, organization) : { saved: true };
 }
 
 // Confirms a listing unchanged, so it stays or becomes visible again (FR-K3 AC6, AC10).
@@ -87,7 +93,7 @@ export async function confirmListing(slug: string, listingId: string): Promise<{
   if (organization === "release_off") return { message: RELEASE_OFF };
   const supabase = await createClient();
   const { error } = await supabase.rpc("confirm_workforce_availability", { p_listing: id.data });
-  return error ? { message: refusal(error).message ?? GENERIC_FAILURE } : {};
+  return error ? { message: (await refusal(error, organization)).message ?? GENERIC_FAILURE } : {};
 }
 
 export async function deleteListing(slug: string, listingId: string): Promise<{ message?: string }> {
@@ -98,6 +104,6 @@ export async function deleteListing(slug: string, listingId: string): Promise<{ 
   if (organization === "release_off") return { message: RELEASE_OFF };
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_workforce_availability", { p_listing: id.data });
-  if (error && error.code !== "P0002") return { message: refusal(error).message ?? GENERIC_FAILURE };
+  if (error && error.code !== "P0002") return { message: (await refusal(error, organization)).message ?? GENERIC_FAILURE };
   return {};
 }

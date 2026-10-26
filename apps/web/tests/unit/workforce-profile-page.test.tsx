@@ -6,7 +6,7 @@ const releasedMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const licencesMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn());
-const listingsLimitMock = vi.hoisted(() => vi.fn());
+const promptsMock = vi.hoisted(() => vi.fn());
 const countsMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
@@ -21,8 +21,9 @@ vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/organizations", () => ({ getOrganizationProfile: async () => ({ country: "PH" }) }));
 vi.mock("@/lib/dal/geographies", () => ({
   getOrganizationGeographies: async () => ({ sourcesFrom: ["NP", "PH"], servesMarket: ["DE"] }),
-  getMarketsLimit: async () => 3,
 }));
+vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock }));
+vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: vi.fn() }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [
     { code: "DE", name: "Germany" },
@@ -54,7 +55,6 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
     sizeBand: "50_249",
     foundedYear: 2019,
   }),
-  getOccupationsLimit: async () => 10,
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
@@ -71,7 +71,6 @@ vi.mock("@/lib/actions/licences", () => ({
 
 vi.mock("@/lib/dal/workforce-availability", () => ({
   getWorkforceListings: listingsMock,
-  getListingsLimit: listingsLimitMock,
   getListingCounts: countsMock,
   getAvailabilityRules: async () => ({ staleDays: 60, reminderDays: 30, maxDays: 730 }),
 }));
@@ -92,6 +91,18 @@ async function render() {
   return (await new Response(prelude).text()).replace(/<!-- -->/g, "");
 }
 
+// The prompts of the limits that apply (null: no limit applies), on the Basic plan.
+function prompts(limits: Record<string, number | null>) {
+  return Object.fromEntries(
+    Object.entries(limits).map(([limitKey, limit]) => [
+      limitKey,
+      limit === null
+        ? null
+        : { limitKey, used: 0, limit, resetsAt: null, planName: "Basic", comparison: "Professional includes 50 workforce listings; Enterprise has no limit." },
+    ]),
+  );
+}
+
 const organization = (role: string, type = "staffing_company", suspended = false) => ({
   organization: { id: "org-1", slug: "manila-skills", displayName: "Manila Staff", type, role, suspended },
 });
@@ -103,7 +114,7 @@ beforeEach(() => {
   commitmentMock.mockResolvedValue({ version: 1, isDraft: false, accepted: true, acceptedVersion: 1 });
   licencesMock.mockResolvedValue([]);
   listingsMock.mockResolvedValue([]);
-  listingsLimitMock.mockResolvedValue(null);
+  promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: null }));
   countsMock.mockResolvedValue({ occupations: {}, countries: {} });
 });
 
@@ -119,7 +130,7 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "manila-skills", "member", { hideFromOutsiders: true, partner: true });
   });
 
-  it("lets the owner change the countries, with the saved ones as chips, the limit and the billing link target", async () => {
+  it("lets the owner change the countries, with the saved ones as chips and the limit", async () => {
     const html = await render();
     expect(html).toContain(">Workforce profile</h1>");
     expect(html).toContain(">Where you serve</h2>");
@@ -267,7 +278,8 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     expect(html).toContain("No availability listed yet");
     expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
     expect(listingsMock).toHaveBeenCalledWith("org-1");
-    expect(listingsLimitMock).toHaveBeenCalledWith("org-1");
+    expect(promptsMock).toHaveBeenCalledWith("org-1", "staffing_company", ["markets", "listed_occupations"]);
+    expect(promptsMock).toHaveBeenCalledWith("org-1", "staffing_company", ["workforce_listings"]);
   });
 
   it("AC1, AC10: lists each listing with its numbers and when it was confirmed, marks the stale one and names it in its buttons", async () => {
@@ -288,16 +300,18 @@ describe("the availability of the workforce profile page (FR-K3)", () => {
     expect(html).toContain('Delete<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
   });
 
-  it("AC3: shows the plan limit and, once it is reached, the upgrade link instead of the add button", async () => {
-    listingsLimitMock.mockResolvedValue(10);
+  it("AC3: shows the plan limit and, once it is reached, the upgrade prompt with the plans compared instead of the add button", async () => {
+    promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: 10 }));
     listingsMock.mockResolvedValue([listing("a", "7212", "PH", daysAgo(0))]);
     let html = await render();
     expect(html).toContain("1 of 10 listings.");
     expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
-    listingsLimitMock.mockResolvedValue(1);
+    promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: 1 }));
     html = await render();
-    expect(html).toContain("1 of 1 listing. Your plan includes 1 listing.");
-    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/billing"[^>]*>Upgrade to add more\.<\/a>/);
+    expect(html).toContain("1 of 1 workforce listing on your Basic plan.");
+    expect(html).toContain("Professional includes 50 workforce listings; Enterprise has no limit.");
+    // The billing page does not sell partner plans before V15, so a partner gets no link that would send it elsewhere.
+    expect(html).not.toContain("/billing");
     expect(html).not.toContain("Add a listing");
   });
 

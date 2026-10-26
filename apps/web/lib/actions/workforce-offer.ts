@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { recordLimitPrompt } from "@/lib/actions/limits";
+import { limitRefusalMessage } from "@/lib/billing/limits";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -10,7 +12,6 @@ import { createClient } from "@/lib/supabase/server";
 import { fieldErrors, partnerTypeSchema, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 import {
-  occupationsLimitMessage,
   toServiceTypes,
   workforceOfferSchema,
   type WorkforceOfferInput,
@@ -67,9 +68,9 @@ export async function saveWorkforceOffer(
     p_founded_year: offer.foundedYear === "" ? undefined : Number(offer.foundedYear),
   });
   if (error) {
-    if (error.message === "CHARA_LIMIT_REACHED" && error.details === "listed_occupations") {
-      const { data: limit } = await supabase.rpc("organization_occupations_limit", { p_org: organization.id });
-      return { errors: { occupations: limit === null ? GENERIC_FAILURE : occupationsLimitMessage(limit) } };
+    if (error.message === "CHARA_LIMIT_REACHED") {
+      await recordLimitPrompt(organization.id, error.details);
+      return { errors: { occupations: limitRefusalMessage(error.details, type) } };
     }
     const invalid = error.message === "CHARA_INVALID_INPUT" ? invalidField[error.details] : undefined;
     if (invalid) return { errors: { [invalid[0]]: invalid[1] } };

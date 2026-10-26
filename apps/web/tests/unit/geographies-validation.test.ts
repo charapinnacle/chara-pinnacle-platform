@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chosenCount } from "@/lib/chips";
-import { countryNoun, geographiesSchema, marketsLimitMessage, servedQuestion } from "@/lib/validation/geographies";
+import { countryNoun, geographiesSchema, servedQuestion } from "@/lib/validation/geographies";
 
 describe("Where you serve (FR-K1)", () => {
   it("upper-cases, trims and merges the codes of both lists", () => {
@@ -39,10 +39,5 @@ describe("Where you serve (FR-K1)", () => {
     expect(chosenCount(0, 1, countryNoun)).toBe("0 of 1 country");
     expect(chosenCount(1, null, countryNoun)).toBe("1 country");
     expect(chosenCount(4, null, countryNoun)).toBe("4 countries");
-  });
-
-  it("states the limit of the plan (AC5)", () => {
-    expect(marketsLimitMessage(3)).toBe("Your plan includes 3 countries served.");
-    expect(marketsLimitMessage(1)).toBe("Your plan includes 1 country served.");
   });
 });

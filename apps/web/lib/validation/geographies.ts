@@ -32,8 +32,4 @@ export function geographiesSchema(type: PartnerType) {
 
 export type GeographiesInput = z.input<ReturnType<typeof geographiesSchema>>;
 
-export function marketsLimitMessage(limit: number): string {
-  return `Your plan includes ${limit} ${limit === 1 ? "country" : "countries"} served.`;
-}
-
 export const countryNoun: Noun = { one: "country", other: "countries" };

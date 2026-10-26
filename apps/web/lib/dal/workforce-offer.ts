@@ -45,14 +45,6 @@ export async function getWorkforceOffer(organizationId: string): Promise<Organiz
   };
 }
 
-// The plan limit of listed occupations when it applies; null when the plan has none or limits are not enforced.
-export async function getOccupationsLimit(organizationId: string): Promise<number | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("organization_occupations_limit", { p_org: organizationId });
-  if (error) throw new Error("The plan limit of occupations could not be loaded", { cause: error });
-  return data;
-}
-
 // What you offer is done once it names an occupation and the recruitment type, and a staffing company a staffing type
 // (submission for review needs an occupation, FR-J1 AC10; the recruitment type is required before it, FR-K2).
 export function workforceOfferComplete(type: PartnerType, offer: OrganizationWorkforceOffer): boolean {

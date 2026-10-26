@@ -4,7 +4,6 @@ import {
   listingFormSchema,
   listingFreshness,
   listingRemovalWarning,
-  listingsLimitMessage,
   sortListings,
   type ListingInput,
 } from "@/lib/validation/workforce-availability";
@@ -127,11 +126,5 @@ describe("the list", () => {
     expect(
       sortListings([listing("7212", "PH", daysAgo(1)), listing("7212", "NP", daysAgo(65)), listing("7126", "PH", daysAgo(1))]),
     ).toEqual([listing("7212", "NP", daysAgo(65)), listing("7126", "PH", daysAgo(1)), listing("7212", "PH", daysAgo(1))]);
-  });
-
-  it("names the plan limit", () => {
-    expect(listingsLimitMessage(10)).toBe("Your plan includes 10 listings.");
-    expect(listingsLimitMessage(1)).toBe("Your plan includes 1 listing.");
-    expect(listingsLimitMessage(0)).toBe("Your plan does not include availability listings.");
   });
 });

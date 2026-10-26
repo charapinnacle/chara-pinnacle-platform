@@ -9,7 +9,7 @@ const passportMock = vi.hoisted(() => vi.fn());
 const welcomeDueMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const geographiesMock = vi.hoisted(() => vi.fn());
-const marketsLimitMock = vi.hoisted(() => vi.fn());
+const marketsLimitMock = vi.hoisted(() => vi.fn<() => number | null>());
 const offerMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const legalDocumentMock = vi.hoisted(() => vi.fn());
@@ -43,13 +43,22 @@ vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/geographies", async () => ({
   ...(await vi.importActual<typeof import("@/lib/dal/geographies")>("@/lib/dal/geographies")),
   getOrganizationGeographies: geographiesMock,
-  getMarketsLimit: marketsLimitMock,
 }));
+// The served-countries limit of marketsLimitMock and 10 occupations, on the Free plan.
+vi.mock("@/lib/dal/usage", () => ({
+  getUsagePrompts: async (_organizationId: string, _type: string, keys: string[]) =>
+    Object.fromEntries(
+      keys.map((limitKey) => {
+        const limit = limitKey === "markets" ? marketsLimitMock() : 10;
+        return [limitKey, limit === null ? null : { limitKey, used: 0, limit, resetsAt: null, planName: "Free", comparison: null }];
+      }),
+    ),
+}));
+vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: vi.fn() }));
 vi.mock("@/lib/actions/geographies", () => ({ saveOrganizationGeographies: vi.fn() }));
 vi.mock("@/lib/dal/workforce-offer", async () => ({
   ...(await vi.importActual<typeof import("@/lib/dal/workforce-offer")>("@/lib/dal/workforce-offer")),
   getWorkforceOffer: offerMock,
-  getOccupationsLimit: async () => 10,
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
@@ -138,7 +147,7 @@ beforeEach(() => {
   welcomeDueMock.mockResolvedValue(true);
   releasedMock.mockResolvedValue(true);
   geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: [] });
-  marketsLimitMock.mockResolvedValue(3);
+  marketsLimitMock.mockReturnValue(3);
   offerMock.mockResolvedValue(emptyOffer);
   commitmentMock.mockResolvedValue(openCommitment);
   legalDocumentMock.mockResolvedValue(commitmentDraft);
@@ -247,7 +256,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: [] });
-    marketsLimitMock.mockResolvedValue(null);
+    marketsLimitMock.mockReturnValue(null);
     const html = await render(OnboardingPage);
     expect(html).toContain("Where do you recruit for?");
     expect(html).toContain('aria-label="Remove Austria"');

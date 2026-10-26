@@ -95,7 +95,3 @@ export function fromServiceTypes(services: readonly ServiceType[]): Pick<Workfor
     staffingTypes: staffingTypes.filter((service) => services.includes(service)),
   };
 }
-
-export function occupationsLimitMessage(limit: number): string {
-  return `Your plan includes ${limit} ${limit === 1 ? "occupation" : "occupations"}.`;
-}

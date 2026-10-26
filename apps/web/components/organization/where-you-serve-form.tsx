@@ -4,19 +4,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { ChipsField } from "@/components/forms/chips-field";
 import { FormButton } from "@/components/forms/form-button";
-import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ListingRemovalNotice } from "@/components/organization/listing-removal-notice";
 import { saveOrganizationGeographies } from "@/lib/actions/geographies";
+import type { UsagePrompt } from "@/lib/billing/limits";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import {
   countryNoun,
   geographiesSchema,
-  marketsLimitMessage,
   servedQuestion,
   type GeographiesInput,
 } from "@/lib/validation/geographies";
@@ -24,12 +24,14 @@ import type { PartnerType } from "@/lib/validation/sign-up";
 
 type WhereYouServeFormProps = {
   slug: string;
+  organizationId: string;
   partnerType: PartnerType;
   basedIn: string;
   countries: ReferenceItem[];
   defaults: GeographiesInput;
-  marketsLimit: number | null;
-  billingHref: string;
+  // The served-countries limit when it applies.
+  marketsPrompt: UsagePrompt | null;
+  billingHref: string | null;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
   // The availability listings per source country (FR-K3), on the workforce profile page only.
@@ -42,11 +44,12 @@ const FAILURE_TITLE = "Could not save your countries";
 // source and served countries are chosen from the code list. A failed save keeps the chosen countries.
 export function WhereYouServeForm({
   slug,
+  organizationId,
   partnerType,
   basedIn,
   countries,
   defaults,
-  marketsLimit,
+  marketsPrompt,
   billingHref,
   onboarding,
   listingCounts,
@@ -109,12 +112,16 @@ export function WhereYouServeForm({
             ? "The countries where you supply workers to employers."
             : "The countries where you place workers with employers."
         }
-        limit={marketsLimit}
+        limit={marketsPrompt?.limit ?? null}
         limitNotice={
-          marketsLimit === null ? null : (
-            <p className="text-small">
-              {marketsLimitMessage(marketsLimit)} <TextLink href={billingHref}>Upgrade to add more.</TextLink>
-            </p>
+          marketsPrompt === null ? null : (
+            <UpgradePrompt
+              organizationId={organizationId}
+              organizationType={partnerType}
+              prompt={{ ...marketsPrompt, used: marketsPrompt.limit }}
+              billingHref={billingHref}
+              canUpgrade
+            />
           )
         }
       />

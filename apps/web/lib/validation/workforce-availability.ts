@@ -136,12 +136,6 @@ export function listingRemovalWarning(
   return `Removing ${named} also deletes ${formatCount(total)} availability ${total === 1 ? "listing" : "listings"}.`;
 }
 
-export function listingsLimitMessage(limit: number): string {
-  return limit === 0
-    ? "Your plan does not include availability listings."
-    : `Your plan includes ${formatCount(limit)} ${limit === 1 ? "listing" : "listings"}.`;
-}
-
 // The listings confirmed longest ago first (they need the partner's attention), then by occupation and country.
 export function sortListings<T extends { confirmedAt: string; occupation: string; country: string }>(items: T[]): T[] {
   return [...items].sort(

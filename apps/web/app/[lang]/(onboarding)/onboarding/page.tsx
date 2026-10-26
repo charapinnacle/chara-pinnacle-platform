@@ -20,7 +20,8 @@ import { WhereYouServeForm } from "@/components/organization/where-you-serve-for
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
 import { CreatePassportForm } from "@/components/passport/create-passport-form";
 import { commitAccountKind } from "@/lib/actions/consents";
-import { geographiesComplete, getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
+import { upgradeHref } from "@/lib/billing/limits";
+import { geographiesComplete, getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getBillingState } from "@/lib/dal/billing";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getLegalDocument, getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
@@ -32,16 +33,11 @@ import { getInvitationPreview } from "@/lib/dal/team";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
-import {
-  getOccupationsLimit,
-  getWorkforceOffer,
-  workforceOfferComplete,
-  workforceOfferDefaults,
-} from "@/lib/dal/workforce-offer";
+import { getUsagePrompts } from "@/lib/dal/usage";
+import { getWorkforceOffer, workforceOfferComplete, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
 import {
-  billingPath,
   homePath,
   mfaPath,
   onboardingPath,
@@ -296,9 +292,9 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   }
 
   if (!geographiesDone || (!member && step === "where-you-serve")) {
-    const [profile, marketsLimit] = await Promise.all([
+    const [profile, prompts] = await Promise.all([
       getOrganizationProfile(organization.id),
-      getMarketsLimit(organization.id),
+      getUsagePrompts(organization.id, organization.type, ["markets"]),
     ]);
     const basedIn = countries.find(({ code }) => code === profile?.country)?.name ?? profile?.country ?? "";
     return (
@@ -309,12 +305,13 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       >
         <WhereYouServeForm
           slug={organization.slug}
+          organizationId={organization.id}
           partnerType={organization.type}
           basedIn={basedIn}
           countries={countries}
           defaults={geographies}
-          marketsLimit={marketsLimit}
-          billingHref={billingPath(lang, organization.slug)}
+          marketsPrompt={prompts.markets}
+          billingHref={upgradeHref(lang, organization.slug, organization.type)}
           onboarding
         />
       </OnboardingPanel>
@@ -322,8 +319,8 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   }
 
   if (!offerDone || (!member && step === "what-you-offer")) {
-    const [occupationsLimit, occupations, languages] = await Promise.all([
-      getOccupationsLimit(organization.id),
+    const [prompts, occupations, languages] = await Promise.all([
+      getUsagePrompts(organization.id, organization.type, ["listed_occupations"]),
       getOccupations(),
       getLanguages(),
     ]);
@@ -335,13 +332,14 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
       >
         <WorkforceOfferForm
           slug={organization.slug}
+          organizationId={organization.id}
           partnerType={organization.type}
           occupations={occupations}
           industries={industries}
           languages={languages}
           defaults={workforceOfferDefaults(offer)}
-          occupationsLimit={occupationsLimit}
-          billingHref={billingPath(lang, organization.slug)}
+          occupationsPrompt={prompts.listed_occupations}
+          billingHref={upgradeHref(lang, organization.slug, organization.type)}
           onboarding
         />
       </OnboardingPanel>
