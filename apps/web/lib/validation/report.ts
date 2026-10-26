@@ -202,19 +202,31 @@ type DecisionTarget = {
   organization: { status: Enums["organization_status"]; moderationState: Enums["job_moderation_state"] | null } | null;
 };
 
-// What the console offers for the target of a report, as the database allows it: a visible vacancy or partner profile can
-// be hidden, the active organisation of a vacancy, a company or a partner can be suspended, and every report can be
-// dismissed. A report about a candidate or a page has nothing on the platform to act on; it is closed with a note instead.
-export function reportDecisionsFor({ targetType, job, organization }: DecisionTarget): ReportDecisionValue[] {
-  const decisions: ReportDecisionValue[] = [];
-  if (
-    (targetType === "job" && job?.moderationState === "visible") ||
-    (targetType === "partner_profile" && organization?.moderationState === "visible")
-  ) {
-    decisions.push("hide");
-  }
-  if ((targetType === "job" || targetType === "company" || targetType === "partner_profile") && organization?.status === "active") {
-    decisions.push("suspend_organization");
+// A decision the console offers. A report that asks for what an earlier decision already did (the item is hidden, the
+// organisation suspended) is closed actioned with the same decision, which the database records without acting again.
+export type ReportDecisionOption = "hide" | "hide_in_effect" | "suspend_organization" | "suspend_in_effect" | "dismiss";
+
+export const decisionOfOption = {
+  hide: "hide",
+  hide_in_effect: "hide",
+  suspend_organization: "suspend_organization",
+  suspend_in_effect: "suspend_organization",
+  dismiss: "dismiss",
+} as const satisfies Record<ReportDecisionOption, ReportDecisionValue>;
+
+// What the console offers for the target of a report, as the database allows it: a vacancy or partner profile can be
+// hidden (or the report closed on a hide in effect), the organisation of a vacancy, a company or a partner suspended (or
+// the report closed on a suspension in effect), and every report dismissed. An item hidden with the suspension of its
+// organisation is not hidden on its own. A report about a candidate or a page has nothing on the platform to act on; it
+// is closed with a note instead.
+export function reportDecisionsFor({ targetType, job, organization }: DecisionTarget): ReportDecisionOption[] {
+  const decisions: ReportDecisionOption[] = [];
+  const itemState = targetType === "job" ? job?.moderationState : targetType === "partner_profile" ? organization?.moderationState : null;
+  if (itemState === "visible") decisions.push("hide");
+  if (itemState === "hidden") decisions.push("hide_in_effect");
+  if (targetType === "job" || targetType === "company" || targetType === "partner_profile") {
+    if (organization?.status === "active") decisions.push("suspend_organization");
+    if (organization?.status === "suspended") decisions.push("suspend_in_effect");
   }
   decisions.push("dismiss");
   return decisions;

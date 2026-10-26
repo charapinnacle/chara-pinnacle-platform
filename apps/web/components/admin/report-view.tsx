@@ -12,6 +12,7 @@ import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
 import { getReport, type ReportDetail } from "@/lib/dal/admin-reports";
+import { isReleased } from "@/lib/dal/release";
 import { formatDateTime } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { statusLabels } from "@/lib/jobs/presentation";
@@ -126,7 +127,7 @@ function decisionTarget(report: ReportDetail): DecisionTarget {
 }
 
 export async function ReportView({ lang, id, canAct }: { lang: string; id: number; canAct: boolean }) {
-  const report = await getReport(id);
+  const [report, released] = await Promise.all([getReport(id), isReleased("release_partner_directories")]);
   if (!report) notFound();
 
   return (
@@ -195,7 +196,9 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
         description={
           report.resolutionNote
             ? undefined
-            : "Hide the item, suspend its organisation or dismiss the report, with a statement of reasons. The report is closed with the decision."
+            : released
+              ? "Hide the item, suspend its organisation or dismiss the report, with a statement of reasons. The report is closed with the decision."
+              : "Hiding a vacancy and suspending an organisation are done with their own controls, linked above. Close the report afterwards."
         }
       >
         {report.status === "new" || report.status === "in_review" ? (
@@ -206,8 +209,9 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
               reference={report.reference}
               signedIn={report.reporterKind === "account"}
               target={decisionTarget(report)}
-              decisions={reportDecisionsFor(report)}
-              closeWithNote={closesWithNote(report.targetType)}
+              decisions={released ? reportDecisionsFor(report) : []}
+              closeWithNote={!released || closesWithNote(report.targetType)}
+              dismissWithNote={!released}
             />
           ) : (
             <Notice tone="info" role="status">

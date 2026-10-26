@@ -18,6 +18,7 @@ import {
   closesWithNote,
   reportDecisionInputSchema,
   reportDecisionsFor,
+  decisionOfOption,
   reportReference,
 } from "@/lib/validation/report";
 import { reportPath } from "@/lib/routes";
@@ -189,15 +190,21 @@ describe("the reference of a report", () => {
 describe("the decisions on a report (FR-S1 AC4, AC10)", () => {
   const org = (status: "active" | "suspended", moderationState: "visible" | "hidden" | "org_suspended" | null) => ({ status, moderationState });
 
-  it("offers a hide only for a visible vacancy or partner profile, a suspension only of an active organisation, and always a dismissal", () => {
+  it("offers a hide for a visible vacancy or partner profile, a suspension of an active organisation, and always a dismissal", () => {
     expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("active", "visible") })).toEqual(["hide", "suspend_organization", "dismiss"]);
-    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("active", "hidden") })).toEqual(["suspend_organization", "dismiss"]);
-    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("suspended", "org_suspended") })).toEqual(["dismiss"]);
     expect(reportDecisionsFor({ targetType: "job", job: { moderationState: "visible" }, organization: org("active", null) })).toEqual(["hide", "suspend_organization", "dismiss"]);
-    expect(reportDecisionsFor({ targetType: "job", job: { moderationState: "hidden" }, organization: org("active", null) })).toEqual(["suspend_organization", "dismiss"]);
     expect(reportDecisionsFor({ targetType: "company", job: { moderationState: "visible" }, organization: org("active", null) })).toEqual(["suspend_organization", "dismiss"]);
     expect(reportDecisionsFor({ targetType: "profile", job: { moderationState: "visible" }, organization: org("active", null) })).toEqual(["dismiss"]);
     expect(reportDecisionsFor({ targetType: "content", job: null, organization: null })).toEqual(["dismiss"]);
+  });
+
+  it("offers the decision in effect for a second report on one partner: the hidden profile or the suspended organisation", () => {
+    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("active", "hidden") })).toEqual(["hide_in_effect", "suspend_organization", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("suspended", "org_suspended") })).toEqual(["suspend_in_effect", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "partner_profile", job: null, organization: org("suspended", "hidden") })).toEqual(["hide_in_effect", "suspend_in_effect", "dismiss"]);
+    expect(reportDecisionsFor({ targetType: "job", job: { moderationState: "hidden" }, organization: org("active", null) })).toEqual(["hide_in_effect", "suspend_organization", "dismiss"]);
+    expect(decisionOfOption.hide_in_effect).toBe("hide");
+    expect(decisionOfOption.suspend_in_effect).toBe("suspend_organization");
   });
 
   it("closes only reports about a candidate or a page with a note", () => {

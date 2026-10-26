@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReportDetail } from "@/lib/dal/admin-reports";
 
 const getMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/admin-reports", () => ({ getReport: getMock, getPartnerModeration: vi.fn(async () => null) }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("next/navigation", () => ({ notFound: vi.fn(), useRouter: () => ({ refresh: vi.fn() }) }));
 
 const { ReportView } = await import("@/components/admin/report-view");
@@ -37,7 +39,10 @@ async function render(contentPath: string) {
 }
 
 describe("the page of a content report", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    releasedMock.mockResolvedValue(true);
+  });
 
   it("links a public page of the site", async () => {
     expect(await render("/en/pricing")).toContain('href="/en/pricing"');
@@ -53,6 +58,7 @@ describe("the page of a content report", () => {
 });
 
 describe("the page of a partner profile report (FR-S1)", () => {
+  beforeEach(() => releasedMock.mockResolvedValue(true));
   const ORG = "0b9c7a2e-3d4f-4e5a-8b6c-7d8e9f0a1b2c";
   const partnerReport = (overrides: Partial<ReportDetail>): ReportDetail => ({
     ...content("/en/jobs"),
@@ -95,6 +101,7 @@ describe("the page of a partner profile report (FR-S1)", () => {
 });
 
 describe("the decision on a report (FR-S1 AC10)", () => {
+  beforeEach(() => releasedMock.mockResolvedValue(true));
   const ORG = "0b9c7a2e-3d4f-4e5a-8b6c-7d8e9f0a1b2c";
   const open = (overrides: Partial<ReportDetail>): ReportDetail => ({
     ...content("/en/jobs"),
@@ -117,14 +124,31 @@ describe("the decision on a report (FR-S1 AC10)", () => {
     expect(html).toContain('dateTime="2026-10-08T10:00:00+00:00"');
   });
 
-  it("offers no Hide for a profile already hidden and no suspension of a suspended partner", async () => {
+  it("offers the decision in effect for a second report on a partner already hidden or suspended", async () => {
     getMock.mockResolvedValue(
       open({ organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "suspended", type: "recruitment_company", moderationState: "org_suspended" } }),
     );
+    const suspended = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(suspended).not.toContain(">Hide<");
+    expect(suspended).not.toContain(">Suspend organisation<");
+    expect(suspended).toContain(">Suspend organisation (already suspended)<");
+    expect(suspended).toContain(">Dismiss<");
+    getMock.mockResolvedValue(
+      open({ organization: { id: ORG, name: "Manila Skills", slug: "manila-skills", status: "active", type: "recruitment_company", moderationState: "hidden" } }),
+    );
+    const hidden = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
+    expect(hidden).toContain(">Hide (already hidden)<");
+    expect(hidden).toContain(">Suspend organisation<");
+  });
+
+  it("keeps the Phase 1 moves while release 2a is off: Dismiss and Mark actioned with a note, no Hide or Suspend", async () => {
+    releasedMock.mockResolvedValue(false);
+    getMock.mockResolvedValue(open({ targetType: "job", job: { id: "j", title: "Welder", status: "open", moderationState: "visible" } }));
     const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: true }));
-    expect(html).not.toContain(">Hide<");
-    expect(html).not.toContain(">Suspend organisation<");
     expect(html).toContain(">Dismiss<");
+    expect(html).toContain(">Mark actioned<");
+    expect(html).not.toMatch(/>(Hide|Suspend organisation)</);
+    expect(html).toContain("done with their own controls");
   });
 
   it("closes a report about a page with a note, and shows a Platform Administrator no decision at all", async () => {
