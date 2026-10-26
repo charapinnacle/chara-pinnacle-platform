@@ -116,12 +116,15 @@ select is(
 select is(pg_temp.call_ids(:'st_trust', $$select * from public.admin_list_reports('open', 'job')$$), format('%s,%s,%s', :'r1', :'r5', :'r6'), 'the list filters by kind');
 select is(pg_temp.call_ids(:'st_trust', $$select * from public.admin_list_reports('open', 'profile')$$), :'r4'::text, 'the kind profile is listed too');
 select is(pg_temp.call_ids(:'st_trust', 'select * from public.admin_list_reports(null, null, 3)'), format('%s,%s,%s', :'r1', :'r2', :'r3'), 'a page of three, and null is the open queue');
-select is(pg_temp.call_ids(:'st_trust', format('select * from public.admin_list_reports(%L, null, 3, %s)', 'open', :'r3')), format('%s,%s,%s', :'r4', :'r5', :'r6'), 'the next page continues after the last id');
+select is(
+  pg_temp.call_ids(:'st_trust', format('select * from public.admin_list_reports(%L, null, 3, %s, %s::smallint, %L)', 'open', :'r3', 2, (select due_at from public.reports where id = :'r3'))),
+  format('%s,%s,%s', :'r4', :'r5', :'r6'), 'the next page continues after the cursor (priority, due_at, id) of the last row'
+);
 select is(pg_temp.call_ids(:'st_trust', $$select * from public.admin_list_reports('bogus')$$), 'P0001|CHARA_INVALID_INPUT|status', 'an unknown status is refused');
 select is(
   (select array_agg(a.name order by a.ord) from pg_proc p, unnest(p.proargnames, p.proargmodes) with ordinality as a (name, mode, ord)
-   where p.oid = 'public.admin_list_reports(text, public.report_target_type, integer, bigint)'::regprocedure and a.mode = 't'),
-  array['id', 'reference', 'target_type', 'target_label', 'category', 'status', 'created_at', 'handled_at'],
+   where p.oid = 'public.admin_list_reports(text, public.report_target_type, integer, bigint, smallint, timestamptz)'::regprocedure and a.mode = 't'),
+  array['id', 'reference', 'target_type', 'target_label', 'category', 'status', 'priority', 'due_at', 'overdue', 'created_at', 'handled_at'],
   'the queue shows no text of a report and no address'
 );
 select is(

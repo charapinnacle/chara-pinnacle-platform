@@ -55,14 +55,14 @@ select pg_temp.seed_app('applied', current_setting('t.b')::uuid) as app_b \gset
 select gen_random_uuid() as nobody \gset
 
 -- Structure and privileges
-select enum_has_labels('public', 'report_target_type', array['job', 'company', 'profile', 'content'], 'the four kinds of target');
+select enum_has_labels('public', 'report_target_type', array['job', 'company', 'profile', 'content', 'partner_profile'], 'the five kinds of target (partner_profile since V26)');
 select enum_has_labels('public', 'report_category',
   array['illegal_content', 'misleading_or_fraud', 'discrimination', 'fee_demanded_from_worker', 'harassment', 'privacy_violation', 'other'],
   'the seven categories');
 select enum_has_labels('public', 'report_status', array['new', 'in_review', 'actioned', 'dismissed'], 'the four statuses');
 select columns_are('public', 'reports',
   array['id', 'target_type', 'job_id', 'organization_id', 'application_id', 'content_path', 'category', 'details', 'reporter_user_id',
-        'reporter_email', 'good_faith_confirmed', 'status', 'handled_by', 'handled_at', 'resolution_note', 'created_at'],
+        'reporter_email', 'good_faith_confirmed', 'status', 'handled_by', 'handled_at', 'resolution_note', 'created_at', 'priority', 'due_at'],
   'reports has the columns of the record and no name, no phone, no address of a reporter beyond the optional email');
 select ok(
   (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.reports'::regclass)
@@ -78,10 +78,10 @@ select ok(
 );
 select ok(
   (select prosecdef and proconfig = array['search_path=""'] from pg_proc
-   where oid = 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text)'::regprocedure)
-  and has_function_privilege('anon', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text)', 'execute')
-  and not has_function_privilege('service_role', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text)', 'execute'),
+   where oid = 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)'::regprocedure)
+  and has_function_privilege('anon', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)', 'execute')
+  and not has_function_privilege('service_role', 'public.submit_report(public.report_target_type, public.report_category, text, boolean, text, uuid, uuid, text, text, text, text)', 'execute'),
   'submit_report is a definer function with an empty search_path, open to visitors and signed-in users only'
 );
 select is(
