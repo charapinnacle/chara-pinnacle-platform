@@ -2,6 +2,7 @@
 
 import {
   Bookmark,
+  Building2,
   BriefcaseBusiness,
   CreditCard,
   Flag,
@@ -30,6 +31,7 @@ const icons: Record<NavIcon, LucideIcon> = {
   vacancies: BriefcaseBusiness,
   applicants: Users,
   team: UsersRound,
+  workforce: Building2,
   billing: CreditCard,
   reports: Flag,
   settings: Settings,

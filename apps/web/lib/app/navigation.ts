@@ -2,6 +2,7 @@ import {
   applicantsPath,
   applicationsPath,
   billingPath,
+  companyDashboardPath,
   employerDashboardPath,
   homePath,
   jobsPath,
@@ -9,6 +10,7 @@ import {
   myReportsPath,
   notificationSettingsPath,
   settingsPath,
+  workforceProfilePath,
 } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
@@ -22,6 +24,7 @@ export type NavIcon =
   | "vacancies"
   | "applicants"
   | "team"
+  | "workforce"
   | "billing"
   | "reports"
   | "settings";
@@ -38,6 +41,8 @@ export type NavOrganization = {
   role: MemberRole;
   roleLabel: string;
   suspended: boolean;
+  // Set for a recruitment or staffing company: the segment of its dashboard (FR-R3, FR-R4).
+  partnerSegment?: "recruitment" | "staffing";
 };
 
 // The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered.
@@ -53,15 +58,31 @@ export function workerLinks(lang: string): NavLink[] {
 }
 
 // The pages of one organisation. Billing is for owners and administrators, as the page itself requires, and a suspended
-// organisation has none of them: each answers with a notice that it is suspended.
-export function organizationLinks(lang: string, { slug, role, suspended }: Pick<NavOrganization, "slug" | "role" | "suspended">): NavLink[] {
+// organisation has none of them: each answers with a notice that it is suspended. A recruitment or staffing company has
+// its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1).
+export function organizationLinks(
+  lang: string,
+  { slug, role, suspended, partnerSegment }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment">,
+): NavLink[] {
   if (suspended) return [];
-  const links: NavLink[] = [
-    { label: "Organisation", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "organisation" },
-    { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
-    { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
-    { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" },
-  ];
+  const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
+  const links: NavLink[] = partnerSegment
+    ? [
+        {
+          label: "Organisation",
+          href: companyDashboardPath(lang, partnerSegment, slug),
+          match: `/${lang}/dashboard/${partnerSegment}`,
+          icon: "organisation",
+        },
+        { label: "Workforce profile", href: workforceProfilePath(lang, slug), match: workforceProfilePath(lang, slug), icon: "workforce" },
+        team,
+      ]
+    : [
+        { label: "Organisation", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "organisation" },
+        { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
+        { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
+        team,
+      ];
   if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });
   return links;
 }

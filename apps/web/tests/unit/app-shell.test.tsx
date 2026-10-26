@@ -192,7 +192,29 @@ describe("the layout of the signed-in area", () => {
     expect(organizationsMock).toHaveBeenCalledWith("u1");
   });
 
-  it("FR-J1: gives a member of a recruitment or staffing company none of the employer organisation links", async () => {
+  it("FR-J1: gives a recruitment or staffing company its own links once release 2a is on, and the switch is read once", async () => {
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockResolvedValue(0);
+    userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "o3", slug: "manila", displayName: "Manila Skills", type: "recruitment_company", role: "owner", suspended: false },
+      { id: "o4", slug: "staff", displayName: "Staff Co", type: "staffing_company", role: "member", suspended: false },
+    ]);
+    const props = await shell();
+    expect(props.headerActions?.props.organizations).toEqual([
+      { slug: "manila", displayName: "Manila Skills", role: "owner", roleLabel: "Owner", suspended: false, partnerSegment: "recruitment" },
+      { slug: "staff", displayName: "Staff Co", role: "member", roleLabel: "Member", suspended: false, partnerSegment: "staffing" },
+    ]);
+    navigation.pathname = "/en/org/manila/members";
+    const html = renderToStaticMarkup(props.headerActions);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Team", "Billing"]);
+    expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Team<\/a>/);
+    expect(html).not.toContain(">Vacancies<");
+    navigation.pathname = "/en/org/staff/members";
+    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Workforce profile", "Team"]);
+  });
+
+  it("FR-J1: gives a member of a recruitment or staffing company no organisation links while release 2a is off", async () => {
     userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
     organizationsMock.mockResolvedValue([
       { id: "o3", slug: "manila", displayName: "Manila Skills", type: "recruitment_company", role: "owner", suspended: false },

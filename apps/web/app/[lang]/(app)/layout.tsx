@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FooterLinks } from "@/components/layout/footer-links";
 import { getUnreadNotificationCount } from "@/lib/dal/notifications";
 import { getMyOrganizations } from "@/lib/dal/organizations";
+import { partnerSegments } from "@/lib/dashboard/partner-dashboard";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { appFooterLinks } from "@/lib/public/navigation";
@@ -32,6 +33,16 @@ async function bellOrNone(userId: string): Promise<{ userId: string; initialUnre
   }
 }
 
+// The links of a partner organisation follow release 2a; a failed read counts it as off and keeps the header.
+async function partnersReleasedOrOff(): Promise<boolean> {
+  try {
+    return await isReleased("release_partner_directories");
+  } catch (error) {
+    console.error("The release switch of the header could not be read", error);
+    return false;
+  }
+}
+
 // What the header offers follows the account kind and the organisations of the person; every page still asks for its
 // own role, because a layout does not run again when a person moves between pages. A suspended account and an account
 // whose kind is not committed yet (on the consent page) get the way out and nothing else.
@@ -39,23 +50,27 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
   const { lang } = await params;
   const user = await getCurrentUser();
   const accountKind = user && !user.suspended ? user.accountKind : null;
-  const [organizations, notifications] = await Promise.all([
+  const [organizations, notifications, partnersReleased] = await Promise.all([
     user && accountKind === "company" ? organizationsOrNone(user.id) : [],
     user && accountKind ? bellOrNone(user.id) : null,
+    user && accountKind === "company" ? partnersReleasedOrOff() : false,
   ]);
   const navigation = user
     ? {
         lang,
         email: user.email,
         accountKind,
-        // A partner organisation gets none of the employer links (FR-J1); its own navigation comes with later units.
-        organizations: organizations.filter(({ type }) => type === "employer").map(({ slug, displayName, role, suspended }) => ({
-          slug,
-          displayName,
-          role,
-          roleLabel: roleLabels[role],
-          suspended,
-        })),
+        // A partner organisation gets none of the employer links (FR-J1), and its own links only while release 2a is on.
+        organizations: organizations
+          .filter(({ type }) => type === "employer" || partnersReleased)
+          .map(({ slug, displayName, role, suspended, type }) => ({
+            slug,
+            displayName,
+            role,
+            roleLabel: roleLabels[role],
+            suspended,
+            ...(type === "employer" ? {} : { partnerSegment: partnerSegments[type] }),
+          })),
         notifications,
       }
     : null;

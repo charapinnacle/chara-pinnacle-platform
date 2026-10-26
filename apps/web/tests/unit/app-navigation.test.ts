@@ -58,6 +58,25 @@ describe("the header links of an organisation", () => {
     ]);
   });
 
+  it("FR-J1: give a recruitment or staffing company its dashboard, workforce profile and team, and Billing to managers", () => {
+    expect(
+      organizationLinks("en", { slug: "manila", role: "admin", suspended: false, partnerSegment: "recruitment" }).map(
+        ({ label, href, match }) => [label, href, match],
+      ),
+    ).toEqual([
+      ["Organisation", "/en/dashboard/recruitment?org=manila", "/en/dashboard/recruitment"],
+      ["Workforce profile", "/en/org/manila/workforce-profile", "/en/org/manila/workforce-profile"],
+      ["Team", "/en/org/manila/members", "/en/org/manila/members"],
+      ["Billing", "/en/org/manila/billing", "/en/org/manila/billing"],
+    ]);
+    expect(labels(organizationLinks("en", { slug: "staff", role: "member", suspended: false, partnerSegment: "staffing" }))).toEqual([
+      "Organisation",
+      "Workforce profile",
+      "Team",
+    ]);
+    expect(organizationLinks("en", { slug: "staff", role: "owner", suspended: true, partnerSegment: "staffing" })).toEqual([]);
+  });
+
   it("give a suspended organisation none, because each of its pages only says that it is suspended", () => {
     for (const role of ["owner", "admin", "member"] as const) {
       expect(organizationLinks("en", { slug: "acme", role, suspended: true })).toEqual([]);
