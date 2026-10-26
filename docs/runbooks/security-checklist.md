@@ -17,7 +17,7 @@ What each control does is in D79 of `OPEN_QUESTIONS.md` and the header of its mi
 | SA-14 | pgTAP `101` |
 | SA-18 | review of `.github/` |
 
-Change a quota with a ticketed `update private.settings ...`, and a retention period at `/en/admin/retention` (the audit log period with a ticketed `update private.retention_policies ...`). How often the quotas are hit is the count of the web log lines `{"alert":"quota_refused",...}` (item 7); the database rolls a refusal back with its count.
+Change a quota with a ticketed `update private.settings ...`, and a retention period at `/en/admin/retention` (the audit log and inactive candidate account periods with a ticketed `update private.retention_policies ...`). How often the quotas are hit is the count of the web log lines `{"alert":"quota_refused",...}` (item 7); the database rolls a refusal back with its count.
 
 ## 2. The automated gate
 
