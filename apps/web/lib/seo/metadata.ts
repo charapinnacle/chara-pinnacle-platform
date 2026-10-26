@@ -81,8 +81,9 @@ const countries = (items: readonly { code: string; name: string }[]) =>
   items.map((item) => countryInSentence(item.code, item.name)).join(", ");
 
 // The title names the company, its type and its country, then the product (FR-K4 AC7 gives it whole, so the product name
-// is kept even past the 60 characters of the other titles; the part before it is cut at 70). The description is the beginning of the partner's
-// own text, or, without one, a sentence made of its own fields; no figure of the platform and no word of verification.
+// is kept even past the 60 characters of the other titles; the part before it is cut at 70). The description is the
+// beginning of the partner's own text, or, without one, a sentence made of its own fields; no figure of the platform and
+// no word of verification.
 export function partnerProfileMetadata(
   lang: string,
   profile: Pick<PartnerProfile, "slug" | "displayName" | "type" | "basedIn" | "description" | "sourceCountries" | "servedCountries">,
