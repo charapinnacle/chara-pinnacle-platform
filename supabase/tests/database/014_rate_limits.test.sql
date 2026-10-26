@@ -40,6 +40,7 @@ select results_eq(
     ('rate_limit_mfa_code_max', '10'), ('rate_limit_mfa_code_seconds', '300'),
     ('rate_limit_org_audited_write_max', '2000'), ('rate_limit_org_audited_write_seconds', '86400'),
     ('rate_limit_partner_profile_max', '120'), ('rate_limit_partner_profile_seconds', '60'),
+    ('rate_limit_partner_search_max', '60'), ('rate_limit_partner_search_seconds', '60'),
     ('rate_limit_report_max', '10'), ('rate_limit_report_seconds', '3600'),
     ('rate_limit_resend_max', '10'), ('rate_limit_resend_seconds', '300'),
     ('rate_limit_reset_password_max', '10'), ('rate_limit_reset_password_seconds', '300'),
