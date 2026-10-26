@@ -5,6 +5,8 @@ const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const licencesMock = vi.hoisted(() => vi.fn());
+const listingsMock = vi.hoisted(() => vi.fn());
+const listingsLimitMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -66,6 +68,17 @@ vi.mock("@/lib/actions/licences", () => ({
   getEvidenceDownload: vi.fn(),
 }));
 
+vi.mock("@/lib/dal/workforce-availability", () => ({
+  getWorkforceListings: listingsMock,
+  getListingsLimit: listingsLimitMock,
+  getAvailabilityRules: async () => ({ staleDays: 60, reminderDays: 30, maxDays: 730 }),
+}));
+vi.mock("@/lib/actions/workforce-availability", () => ({
+  saveListing: vi.fn(),
+  confirmListing: vi.fn(),
+  deleteListing: vi.fn(),
+}));
+
 const { default: WorkforceProfilePage } = await import("@/app/[lang]/(app)/org/[slug]/workforce-profile/page");
 
 async function render() {
@@ -87,6 +100,8 @@ beforeEach(() => {
   requireOrgRoleMock.mockResolvedValue(organization("owner"));
   commitmentMock.mockResolvedValue({ version: 1, isDraft: false, accepted: true, acceptedVersion: 1 });
   licencesMock.mockResolvedValue([]);
+  listingsMock.mockResolvedValue([]);
+  listingsLimitMock.mockResolvedValue(null);
 });
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
@@ -227,5 +242,70 @@ describe("the licences of the workforce profile page (FR-J2)", () => {
     expect(html).not.toContain("Download<span");
     licencesMock.mockResolvedValue([]);
     expect(await render()).toContain("Your owner or an administrator adds the licences of your company.");
+  });
+});
+
+const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+const listing = (id: string, occupation: string, country: string, confirmedAt: string) => ({
+  id,
+  occupation,
+  country,
+  available: 120,
+  monthlyCapacity: 40,
+  availableFrom: "2027-03-01",
+  confirmedAt,
+});
+
+describe("the availability of the workforce profile page (FR-K3)", () => {
+  it("AC1: shows the owner the empty state with the button that adds the first listing, and the staleness period", async () => {
+    const html = await render();
+    expect(html).toContain(">Availability</h2>");
+    expect(html).toContain("signed-in companies see each listing confirmed within the last 60 days");
+    expect(html).toContain("No availability listed yet");
+    expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
+    expect(listingsMock).toHaveBeenCalledWith("org-1");
+    expect(listingsLimitMock).toHaveBeenCalledWith("org-1");
+  });
+
+  it("AC1, AC10: lists each listing with its numbers and when it was confirmed, marks the stale one and names it in its buttons", async () => {
+    requireOrgRoleMock.mockResolvedValue(organization("admin", "recruitment_company"));
+    listingsMock.mockResolvedValue([
+      listing("b", "7212", "NP", daysAgo(65)),
+      listing("c", "7212", "PH", daysAgo(50)),
+      listing("a", "7212", "PH", daysAgo(0)),
+    ]);
+    const html = await render();
+    expect(html).toMatch(/>Welders and flame cutters, Nepal<\/h3><span[^>]*>Hidden from search<\/span>/);
+    expect(html).toContain(">120 available, 40 per month, from 1 March 2027</p>");
+    expect(html).toMatch(/Confirmed 65 days ago, on [^<]+\. Confirm to show it again\.<\/p>/);
+    expect(html).toMatch(/Confirmed 50 days ago, on [^<]+\. Confirm within 10 days to stay visible\.<\/p>/);
+    expect(html).toContain(">Confirmed today.</p>");
+    expect(html).toContain('Confirm<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
+    expect(html).toContain('Edit<span class="sr-only"> the listing for Welders and flame cutters from Philippines</span>');
+    expect(html).toContain('Delete<span class="sr-only"> the listing for Welders and flame cutters from Nepal</span>');
+  });
+
+  it("AC3: shows the plan limit and, once it is reached, the upgrade link instead of the add button", async () => {
+    listingsLimitMock.mockResolvedValue(10);
+    listingsMock.mockResolvedValue([listing("a", "7212", "PH", daysAgo(0))]);
+    let html = await render();
+    expect(html).toContain("1 of 10 listings.");
+    expect(html).toMatch(/<button[^>]*>Add a listing<\/button>/);
+    listingsLimitMock.mockResolvedValue(1);
+    html = await render();
+    expect(html).toContain("1 of 1 listing. Your plan includes 1 listing.");
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/billing"[^>]*>Upgrade to add more\.<\/a>/);
+    expect(html).not.toContain("Add a listing");
+  });
+
+  it("AC4: shows a member the listings without any button that changes them", async () => {
+    requireOrgRoleMock.mockResolvedValue(organization("member", "recruitment_company"));
+    listingsMock.mockResolvedValue([listing("a", "7212", "PH", daysAgo(3))]);
+    const html = await render();
+    expect(html).toContain("Confirmed 3 days ago");
+    expect(html).not.toContain("Add a listing");
+    expect(html).not.toContain("Confirm<span");
+    listingsMock.mockResolvedValue([]);
+    expect(await render()).toContain("Your owner or an administrator lists the workers your company can supply.");
   });
 });
