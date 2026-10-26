@@ -4,3 +4,7 @@ export function json(status: number, body: Record<string, unknown>): Response {
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 }
+
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

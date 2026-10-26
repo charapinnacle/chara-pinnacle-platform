@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { signedInUser } from "../_shared/auth.ts";
-import { json } from "../_shared/http.ts";
+import { isObject, json } from "../_shared/http.ts";
 import { type BillingProvider, BillingProviderError } from "../_shared/billing/provider.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,10 +56,6 @@ interface Checkout {
 interface Portal {
   action: "portal";
   orgId: string;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isBoundedInteger(value: unknown, max: number): value is number {

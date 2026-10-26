@@ -124,10 +124,6 @@ export interface BillingProvider {
   listSubscriptions(startingAfter?: string): Promise<{ subscriptions: SubscriptionState[]; next: string | null }>;
 }
 
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 export class BillingProviderError extends Error {
   // A short code that is safe to log: it never holds the provider's text.
   constructor(readonly code: string) {

@@ -1,9 +1,9 @@
+import { isObject } from "../../http.ts";
 import {
   assertAppOrigin,
   type BillingProvider,
   BillingProviderError,
   type CheckoutInput,
-  isObject,
   type PriceInput,
   type SubscriptionState,
   type WebhookVerification,

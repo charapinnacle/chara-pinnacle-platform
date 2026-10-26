@@ -1,8 +1,8 @@
+import { isObject } from "../../http.ts";
 import {
   assertAppOrigin,
   type BillingProvider,
   EVENT_KINDS,
-  isObject,
   type NormalizedEvent,
   type WebhookVerification,
 } from "../provider.ts";

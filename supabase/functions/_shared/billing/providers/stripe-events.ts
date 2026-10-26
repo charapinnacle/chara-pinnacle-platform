@@ -1,4 +1,5 @@
-import { isObject, type NormalizedEvent, type SubscriptionState, type SubscriptionStatus } from "../provider.ts";
+import { isObject } from "../../http.ts";
+import type { NormalizedEvent, SubscriptionState, SubscriptionStatus } from "../provider.ts";
 
 // Stripe's event and object shapes, read defensively: the body is signed by Stripe, but its API version is chosen in the
 // account, so a field may sit in the older place (subscription.current_period_end, invoice.subscription) or the newer
