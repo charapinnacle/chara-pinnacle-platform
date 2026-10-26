@@ -94,8 +94,93 @@ revoke all on function private.plan_editor_plan(text) from public, anon, authent
 
 -- Plans --------------------------------------------------------------------------------------------------------------
 
--- Name, visibility and trial length of a plan. Codes never change and no plan is deleted; only a paid plan may be
--- public. Returns whether anything changed.
+-- The changes themselves, shared by the single RPCs and admin_update_plan_bundle: each checks its values, writes nothing
+-- when the value is already set and returns whether it wrote. The caller has checked the role, taken the reason and
+-- locked the plan row.
+
+-- Name, visibility and trial length of a plan. Codes never change and no plan is deleted; only a paid plan may be public.
+create function private.plan_editor_set_plan(
+  p_plan billing.plans, p_name text, p_is_public boolean, p_trial_days integer
+) returns boolean
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_name text := btrim(p_name);
+begin
+  if v_name is null or char_length(v_name) not between 1 and 60 or v_name ~ '[[:cntrl:]]' then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'name';
+  end if;
+  if p_trial_days is null or p_trial_days not between 0 and 365 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'trial_days';
+  end if;
+  if p_is_public is null or (p_is_public and p_plan.price_minor = 0) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'is_public';
+  end if;
+  if (p_plan.name, p_plan.is_public, p_plan.trial_days) = (v_name, p_is_public, p_trial_days) then
+    return false;
+  end if;
+  update billing.plans set name = v_name, is_public = p_is_public, trial_days = p_trial_days where code = p_plan.code;
+  return true;
+end;
+$$;
+
+revoke all on function private.plan_editor_set_plan(billing.plans, text, boolean, integer) from public, anon, authenticated, service_role;
+
+-- One limit of a plan: an integer 0 to 1,000,000, or null for unlimited; the key must apply to the plan's organisation
+-- type. The change is read by the next limit check; nothing is redefined.
+create function private.plan_editor_set_limit(p_plan billing.plans, p_limit_key text, p_value integer) returns boolean
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_row billing.plan_limits;
+begin
+  if not exists (select 1 from billing.limit_keys k where k.key = p_limit_key and p_plan.org_type = any (k.org_types)) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'unknown_limit_key';
+  end if;
+  if p_value not between 0 and 1000000 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'limit_value';
+  end if;
+  select * into v_row from billing.plan_limits l where l.plan_code = p_plan.code and l.limit_key = p_limit_key for update;
+  if found and v_row.limit_value is not distinct from p_value then
+    return false;
+  end if;
+  insert into billing.plan_limits (plan_code, limit_key, limit_value) values (p_plan.code, p_limit_key, p_value)
+  on conflict (plan_code, limit_key) do update set limit_value = excluded.limit_value;
+  return true;
+end;
+$$;
+
+revoke all on function private.plan_editor_set_limit(billing.plans, text, integer) from public, anon, authenticated, service_role;
+
+-- Switches one feature of a plan on or off; the key must apply to the plan's organisation type.
+create function private.plan_editor_set_feature(p_plan billing.plans, p_feature_key text, p_enabled boolean) returns boolean
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_changed integer;
+begin
+  if not exists (select 1 from billing.feature_keys k where k.key = p_feature_key and p_plan.org_type = any (k.org_types)) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'unknown_feature_key';
+  end if;
+  if p_enabled is null then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'enabled';
+  end if;
+  if p_enabled then
+    insert into billing.plan_features (plan_code, feature_key) values (p_plan.code, p_feature_key) on conflict do nothing;
+  else
+    delete from billing.plan_features where plan_code = p_plan.code and feature_key = p_feature_key;
+  end if;
+  get diagnostics v_changed = row_count;
+  return v_changed > 0;
+end;
+$$;
+
+revoke all on function private.plan_editor_set_feature(billing.plans, text, boolean) from public, anon, authenticated, service_role;
+
+-- The single changes. Each returns whether anything changed; the audit rows come from the row trigger with the reason.
 create function public.admin_update_plan(
   p_code text, p_name text, p_is_public boolean, p_trial_days integer, p_reason text
 ) returns boolean
@@ -104,37 +189,20 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_plan billing.plans;
-  v_name text := btrim(p_name);
+  v_changed boolean;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   perform private.plan_editor_reason(p_reason);
-  v_plan := private.plan_editor_plan(p_code);
-  if v_name is null or char_length(v_name) not between 1 and 60 or v_name ~ '[[:cntrl:]]' then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'name';
-  end if;
-  if p_trial_days is null or p_trial_days not between 0 and 365 then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'trial_days';
-  end if;
-  if p_is_public is null or (p_is_public and v_plan.price_minor = 0) then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'is_public';
-  end if;
-
-  if (v_plan.name, v_plan.is_public, v_plan.trial_days) = (v_name, p_is_public, p_trial_days) then
-    return false;
-  end if;
-  update billing.plans set name = v_name, is_public = p_is_public, trial_days = p_trial_days where code = p_code;
+  v_changed := private.plan_editor_set_plan(private.plan_editor_plan(p_code), p_name, p_is_public, p_trial_days);
   perform set_config('chara.audit_reason', '', true);
-  return true;
+  return v_changed;
 end;
 $$;
 
 revoke all on function public.admin_update_plan(text, text, boolean, integer, text) from public, anon, authenticated, service_role;
 grant execute on function public.admin_update_plan(text, text, boolean, integer, text) to authenticated;
 
--- One limit of a plan: an integer 0 to 1,000,000, or null for unlimited. The key must apply to the plan's organisation
--- type. The change is read by the next limit check; nothing is redefined. The defaults let a client leave p_value out
--- for unlimited; a missing reason is refused like any other.
+-- The defaults let a client leave p_value out for unlimited; a missing reason is refused like any other.
 create function public.admin_set_plan_limit(
   p_code text, p_limit_key text, p_value integer default null, p_reason text default null
 ) returns boolean
@@ -143,66 +211,119 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_plan billing.plans;
-  v_row billing.plan_limits;
+  v_changed boolean;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   perform private.plan_editor_reason(p_reason);
-  v_plan := private.plan_editor_plan(p_code);
-  if not exists (select 1 from billing.limit_keys k where k.key = p_limit_key and v_plan.org_type = any (k.org_types)) then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'unknown_limit_key';
-  end if;
-  if p_value not between 0 and 1000000 then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'limit_value';
-  end if;
-
-  select * into v_row from billing.plan_limits l where l.plan_code = p_code and l.limit_key = p_limit_key for update;
-  if found and v_row.limit_value is not distinct from p_value then
-    return false;
-  end if;
-  insert into billing.plan_limits (plan_code, limit_key, limit_value) values (p_code, p_limit_key, p_value)
-  on conflict (plan_code, limit_key) do update set limit_value = excluded.limit_value;
+  v_changed := private.plan_editor_set_limit(private.plan_editor_plan(p_code), p_limit_key, p_value);
   perform set_config('chara.audit_reason', '', true);
-  return true;
+  return v_changed;
 end;
 $$;
 
 revoke all on function public.admin_set_plan_limit(text, text, integer, text) from public, anon, authenticated, service_role;
 grant execute on function public.admin_set_plan_limit(text, text, integer, text) to authenticated;
 
--- Switches one feature of a plan on or off; the key must apply to the plan's organisation type.
 create function public.admin_set_plan_feature(p_code text, p_feature_key text, p_enabled boolean, p_reason text) returns boolean
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_plan billing.plans;
-  v_changed integer;
+  v_changed boolean;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   perform private.plan_editor_reason(p_reason);
-  v_plan := private.plan_editor_plan(p_code);
-  if not exists (select 1 from billing.feature_keys k where k.key = p_feature_key and v_plan.org_type = any (k.org_types)) then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'unknown_feature_key';
-  end if;
-  if p_enabled is null then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'enabled';
-  end if;
-
-  if p_enabled then
-    insert into billing.plan_features (plan_code, feature_key) values (p_code, p_feature_key) on conflict do nothing;
-  else
-    delete from billing.plan_features where plan_code = p_code and feature_key = p_feature_key;
-  end if;
-  get diagnostics v_changed = row_count;
+  v_changed := private.plan_editor_set_feature(private.plan_editor_plan(p_code), p_feature_key, p_enabled);
   perform set_config('chara.audit_reason', '', true);
-  return v_changed > 0;
+  return v_changed;
 end;
 $$;
 
 revoke all on function public.admin_set_plan_feature(text, text, boolean, text) from public, anon, authenticated, service_role;
 grant execute on function public.admin_set_plan_feature(text, text, boolean, text) to authenticated;
+
+-- One edit of the console as one transaction: the plan fields, limits and features of p_changes with one reason, all or
+-- nothing (FR-R2 AC10). p_changes is {"plan": {"name", "is_public", "trial_days"} | null, "limits": [{"key", "value"}],
+-- "features": [{"key", "enabled"}]}; each part may carry "expected", the value the editor showed (for the plan an object
+-- of the three fields), and a change whose current value differs raises CHARA_CONFLICT naming it, so an edit made from a
+-- stale page overwrites nothing. Returns the number of rows changed; 0 writes nothing.
+create function public.admin_update_plan_bundle(p_code text, p_changes jsonb, p_reason text) returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_plan billing.plans;
+  v_part jsonb;
+  v_value integer;
+  v_changed integer := 0;
+begin
+  perform private.assert_staff(array['admin']::public.platform_role[]);
+  perform private.plan_editor_reason(p_reason);
+  v_plan := private.plan_editor_plan(p_code);
+  if p_changes is null or jsonb_typeof(p_changes) <> 'object'
+     or jsonb_typeof(coalesce(p_changes -> 'plan', 'null')) not in ('object', 'null')
+     or jsonb_typeof(coalesce(p_changes -> 'limits', '[]')) <> 'array'
+     or jsonb_typeof(coalesce(p_changes -> 'features', '[]')) <> 'array' then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'changes';
+  end if;
+
+  v_part := p_changes -> 'plan';
+  if jsonb_typeof(v_part) = 'object' then
+    if v_part ? 'expected' and (
+      v_part -> 'expected' ->> 'name' is distinct from v_plan.name
+      or (v_part -> 'expected' ->> 'is_public')::boolean is distinct from v_plan.is_public
+      or (v_part -> 'expected' ->> 'trial_days')::integer is distinct from v_plan.trial_days
+    ) then
+      raise exception 'CHARA_CONFLICT' using detail = 'plan';
+    end if;
+    if jsonb_typeof(v_part -> 'is_public') is distinct from 'boolean' or jsonb_typeof(v_part -> 'trial_days') is distinct from 'number'
+       or jsonb_typeof(v_part -> 'name') is distinct from 'string' or v_part ->> 'trial_days' !~ '^[0-9]{1,9}$' then
+      raise exception 'CHARA_INVALID_INPUT' using detail = 'changes';
+    end if;
+    if private.plan_editor_set_plan(v_plan, v_part ->> 'name', (v_part ->> 'is_public')::boolean, (v_part ->> 'trial_days')::integer) then
+      v_changed := v_changed + 1;
+    end if;
+  end if;
+
+  for v_part in select e from jsonb_array_elements(coalesce(p_changes -> 'limits', '[]')) e loop
+    if jsonb_typeof(v_part -> 'key') is distinct from 'string' or coalesce(jsonb_typeof(v_part -> 'value'), 'missing') not in ('number', 'null')
+       or (v_part ->> 'value' is not null and v_part ->> 'value' !~ '^[0-9]{1,9}$') then
+      raise exception 'CHARA_INVALID_INPUT' using detail = 'changes';
+    end if;
+    v_value := (v_part ->> 'value')::integer;
+    if v_part ? 'expected' and (v_part ->> 'expected')::integer is distinct from (
+      select l.limit_value from billing.plan_limits l where l.plan_code = p_code and l.limit_key = v_part ->> 'key'
+    ) then
+      raise exception 'CHARA_CONFLICT' using detail = 'limit:' || (v_part ->> 'key');
+    end if;
+    if private.plan_editor_set_limit(v_plan, v_part ->> 'key', v_value) then
+      v_changed := v_changed + 1;
+    end if;
+  end loop;
+
+  for v_part in select e from jsonb_array_elements(coalesce(p_changes -> 'features', '[]')) e loop
+    if jsonb_typeof(v_part -> 'key') is distinct from 'string' or jsonb_typeof(v_part -> 'enabled') is distinct from 'boolean' then
+      raise exception 'CHARA_INVALID_INPUT' using detail = 'changes';
+    end if;
+    if v_part ? 'expected' and (v_part ->> 'expected')::boolean is distinct from exists (
+      select 1 from billing.plan_features f where f.plan_code = p_code and f.feature_key = v_part ->> 'key'
+    ) then
+      raise exception 'CHARA_CONFLICT' using detail = 'feature:' || (v_part ->> 'key');
+    end if;
+    if private.plan_editor_set_feature(v_plan, v_part ->> 'key', (v_part ->> 'enabled')::boolean) then
+      v_changed := v_changed + 1;
+    end if;
+  end loop;
+
+  perform set_config('chara.audit_reason', '', true);
+  return v_changed;
+end;
+$$;
+
+revoke all on function public.admin_update_plan_bundle(text, jsonb, text) from public, anon, authenticated, service_role;
+grant execute on function public.admin_update_plan_bundle(text, jsonb, text) to authenticated;
 
 -- Overrides ----------------------------------------------------------------------------------------------------------
 
@@ -280,7 +401,8 @@ grant execute on function public.admin_remove_limit_override(uuid, text, text) t
 -- Settings -----------------------------------------------------------------------------------------------------------
 
 -- One allow-listed setting, given as text and stored as the jsonb of its type (an integer, a boolean or a string, read
--- as value #>> '{}' like every setting). A setting outside the allow-list is refused without saying whether it exists.
+-- as value #>> '{}' like every setting). A setting outside the allow-list is refused without saying whether it exists. A
+-- release switch is refused on (CHARA_FORBIDDEN release_legal_gaps) while private.legal_release_gaps names a document.
 create function public.admin_set_setting(p_key text, p_value text, p_reason text) returns boolean
 language plpgsql
 security definer
@@ -292,6 +414,7 @@ declare
   v_text text := btrim(p_value);
   v_new jsonb;
   v_old jsonb;
+  v_gaps text;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   v_reason := private.plan_editor_reason(p_reason);
@@ -329,6 +452,14 @@ begin
   select s.value into v_old from private.settings s where s.key = p_key for update;
   if v_old = v_new then
     return false;
+  end if;
+  -- The go-live gate: a release switch goes on only while every legal document of its release is published and
+  -- approved. Switching a release off is always allowed. The documents are named in the hint.
+  if v_rule.release_feature is not null and v_new = 'true'::jsonb then
+    select string_agg(g.slug || ':' || g.state, ',') into v_gaps from private.legal_release_gaps(v_rule.release_feature) g;
+    if v_gaps is not null then
+      raise exception 'CHARA_FORBIDDEN' using detail = 'release_legal_gaps', hint = v_gaps;
+    end if;
   end if;
   update private.settings set value = v_new where key = p_key;
   perform private.audit_admin('setting.changed', 'setting', p_key, v_reason, jsonb_build_object('before', v_old, 'after', v_new));
@@ -380,13 +511,13 @@ $$;
 revoke all on function public.admin_list_plans() from public, anon, authenticated, service_role;
 grant execute on function public.admin_list_plans() to authenticated;
 
--- The changes of one plan from the audit log, newest first: the administrator, the table and key changed, the values
--- before and after and the reason. Rows written by a migration have no administrator. Prices and provider references
--- are plan data; no customer, subscription or payment data is read.
+-- The changes of one plan from the audit log, newest first: the administrator, the table and key changed with its
+-- catalogue label, the values before and after and the reason. Rows written by a migration have no administrator.
+-- Prices and provider references are plan data; no customer, subscription or payment data is read.
 create function public.admin_list_plan_history(p_code text, p_limit integer default 50, p_before_id bigint default null)
 returns table (
   id bigint, created_at timestamptz, actor_id uuid, actor_name text, table_name text, operation text, limit_key text,
-  feature_key text, before jsonb, after jsonb, reason text
+  feature_key text, label text, before jsonb, after jsonb, reason text
 )
 language plpgsql
 stable
@@ -397,11 +528,13 @@ begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   return query
   select l.id, l.created_at, l.actor_id, coalesce(pr.display_name, u.email::text), l.metadata ->> 'table',
-    l.metadata ->> 'operation', l.metadata ->> 'limit_key', l.metadata ->> 'feature_key', l.metadata -> 'before',
-    l.metadata -> 'after', l.metadata ->> 'reason'
+    l.metadata ->> 'operation', l.metadata ->> 'limit_key', l.metadata ->> 'feature_key', coalesce(lk.label, fk.label),
+    l.metadata -> 'before', l.metadata -> 'after', l.metadata ->> 'reason'
   from audit.log l
   left join public.profiles pr on pr.id = l.actor_id
   left join auth.users u on u.id = l.actor_id
+  left join billing.limit_keys lk on lk.key = l.metadata ->> 'limit_key'
+  left join billing.feature_keys fk on fk.key = l.metadata ->> 'feature_key'
   where l.action = 'billing.plan_changed' and l.entity_type = 'plan' and l.entity_id = p_code
     and (p_before_id is null or l.id < p_before_id)
   order by l.id desc

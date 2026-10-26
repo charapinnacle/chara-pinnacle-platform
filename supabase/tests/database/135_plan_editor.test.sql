@@ -1,5 +1,5 @@
 begin;
-select plan(57);
+select plan(76);
 
 \ir status_fixture.inc
 
@@ -68,6 +68,7 @@ insert into calls values
   ('admin_set_limit_override', format($$select public.admin_set_limit_override(%L, 'members', 20, now() + interval '30 days', 'Matrix call reason')$$, :'e')),
   ('admin_remove_limit_override', format($$select public.admin_remove_limit_override(%L, 'members', 'Matrix call reason')$$, :'e')),
   ('admin_set_setting', $$select public.admin_set_setting('stats_min_count', '6', 'Matrix call reason')$$),
+  ('admin_update_plan_bundle', $$select public.admin_update_plan_bundle('staffing_professional', '{"limits": [{"key": "markets", "value": 11}]}', 'Matrix call reason')$$),
   ('admin_list_plans', $$select * from public.admin_list_plans()$$),
   ('admin_list_plan_history', $$select * from public.admin_list_plan_history('staffing_professional')$$),
   ('admin_list_limit_overrides', $$select * from public.admin_list_limit_overrides()$$),
@@ -85,17 +86,17 @@ select pg_temp.state() as before_matrix \gset
 select is_empty(
   $$select c.label, f.fn, pg_temp.call_as(c.uid, c.db_role, f.sql, c.aal) as outcome from callers c cross join calls f
     where pg_temp.call_as(c.uid, c.db_role, f.sql, c.aal) <> c.expected$$,
-  'AC3: aal1 gets aal2_required; a revoked administrator, T&S, a reviewer, an owner and a candidate get CHARA_FORBIDDEN, for all 11 functions'
+  'AC3: aal1 gets aal2_required; a revoked administrator, T&S, a reviewer, an owner and a candidate get CHARA_FORBIDDEN, for all 12 functions'
 );
 select is(
-  (select count(*) from calls f where pg_temp.call_as(null, 'anon', f.sql) ~ '^42501\|permission denied for function'), 11::bigint,
-  'AC3: the anonymous caller lacks EXECUTE on all 11'
+  (select count(*) from calls f where pg_temp.call_as(null, 'anon', f.sql) ~ '^42501\|permission denied for function'), 12::bigint,
+  'AC3: the anonymous caller lacks EXECUTE on all 12'
 );
 select is(
   (select count(*) from calls f where not has_function_privilege('anon', (
      select p.oid from pg_proc p where p.proname = f.fn and p.pronamespace = 'public'::regnamespace), 'execute')
      and has_function_privilege('authenticated', (
-     select p.oid from pg_proc p where p.proname = f.fn and p.pronamespace = 'public'::regnamespace), 'execute')), 11::bigint,
+     select p.oid from pg_proc p where p.proname = f.fn and p.pronamespace = 'public'::regnamespace), 'execute')), 12::bigint,
   'AC3: EXECUTE is granted to authenticated only'
 );
 select is(
@@ -335,23 +336,133 @@ select is(
   (select format('%s|%s', jsonb_typeof(value), value #>> '{}') from private.settings where key = 'legal_entity_email'),
   'string|legal@chara.example', 'a text setting is stored as a JSON string and read as value #>> ''{}'''
 );
-select pg_temp.admin($$select public.admin_set_setting('release_partner_directories', 'true', 'Go live with release 2a')$$) as switched \gset
-select is(
-  :'switched' || '|' || private.release_on('release_partner_directories')::text || '|'
-  || (select jsonb_typeof(value) from private.settings where key = 'release_partner_directories'),
-  'ok|true|boolean', 'switching a release on through the editor is what puts it live'
-);
 select is(
   (select x -> 'release_gaps' from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_settings()$$, 'aal2')) x
    where x ->> 'key' = 'release_partner_directories'),
   (select to_jsonb(array_agg(slug || ':' || state)) from private.legal_release_gaps('partner_accounts')),
   'the settings list names the legal documents that still stop the release'
 );
+select ok(exists (select 1 from private.legal_release_gaps('partner_accounts')), 'the seeded partner documents are drafts or missing');
+
+-- The hint of a refusal, which names the documents of the go-live gate.
+create function pg_temp.hint_as(p_user uuid, p_sql text) returns text
+language plpgsql as $$
+declare
+  v_hint text;
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  set local role authenticated;
+  begin
+    execute p_sql;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
+  return v_hint;
+end;
+$$;
+select coalesce(max(id), 0) as base from audit.log \gset
+select is(
+  pg_temp.admin($$select public.admin_set_setting('release_partner_directories', 'true', 'Go live with release 2a')$$),
+  'P0001|CHARA_FORBIDDEN|release_legal_gaps', 'the go-live gate: a release is refused on while a legal document of it is not approved'
+);
+select is(
+  pg_temp.hint_as(:'st_admin', $$select public.admin_set_setting('release_partner_directories', 'true', 'Go live with release 2a')$$),
+  (select string_agg(slug || ':' || state, ',') from private.legal_release_gaps('partner_accounts')),
+  'the refusal names each document and its state'
+);
+select is(
+  (select format('%s|%s', private.release_on('release_partner_directories'), (select count(*) from audit.log where id > :base))),
+  'f|0', 'the refused switch stays off and writes nothing'
+);
+-- counsel's texts are published: a non-draft version of each document of the release
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
+select g.slug, coalesce((select max(d.version) from public.legal_documents d where d.slug = g.slug), 0) + 1, 'Approved ' || g.slug,
+  'The approved text.', 'Approved by legal counsel.', now() - interval '1 minute', false
+from private.legal_release_gaps('partner_accounts') g;
+select is_empty($$select * from private.legal_release_gaps('partner_accounts')$$, 'with the approved texts the release has no gap');
+select pg_temp.admin($$select public.admin_set_setting('release_partner_directories', 'true', 'Go live with release 2a')$$) as switched \gset
+select is(
+  :'switched' || '|' || private.release_on('release_partner_directories')::text || '|'
+  || (select jsonb_typeof(value) from private.settings where key = 'release_partner_directories'),
+  'ok|true|boolean', 'then switching the release on through the editor is what puts it live'
+);
+select is(
+  (select format('%s|%s|%s', metadata ->> 'before', metadata ->> 'after', metadata ->> 'reason') from audit.log
+   where action = 'setting.changed' and entity_id = 'release_partner_directories' order by id desc limit 1),
+  'false|true|Go live with release 2a', 'and the switch is audited'
+);
+insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
+select 'partner-terms', max(version) + 1, 'Partner terms draft', 'A new draft.', 'A draft for review.', now(), true
+from public.legal_documents where slug = 'partner-terms';
+select is(
+  pg_temp.admin($$select public.admin_set_setting('release_partner_directories', 'false', 'Pause release 2a now')$$),
+  'ok', 'switching a release off is always allowed, also while a document is a draft again'
+);
 select is(
   (select count(*) from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_settings()$$, 'aal2')) x
    where x ->> 'key' in ('entitlements_enforced', 'audit_retention_years')), 0::bigint,
   'the settings list never offers entitlements_enforced or audit_retention_years'
 );
+
+-- AC10 data: one edit as one transaction (admin_update_plan_bundle) ---------------------------------------------------
+select pg_temp.state() as before_bundle \gset
+select is(
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional',
+    '{"plan": {"name": "Professional Two", "is_public": true, "trial_days": 30}, "limits": [{"key": "markets", "value": 20}, {"key": "members", "value": 1000001}], "features": [{"key": "analytics_enterprise", "enabled": true}]}',
+    'Bundle with one bad value')$$),
+  'P0001|CHARA_INVALID_INPUT|limit_value', 'AC10: an edit with one value out of range is refused naming the field'
+);
+select is(pg_temp.state(), :'before_bundle', 'AC10: all or nothing: the name and the valid limit of the same edit are not saved, no audit row');
+select is(
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional',
+    '{"limits": [{"key": "markets", "value": 20, "expected": 99}]}', 'Bundle from a stale page')$$),
+  'P0001|CHARA_CONFLICT|limit:markets', 'AC10: a change whose shown value is no longer current is refused as a conflict'
+);
+select is(
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional',
+    '{"plan": {"name": "Professional", "is_public": true, "trial_days": 30, "expected": {"name": "Other", "is_public": true, "trial_days": 30}}}', 'Bundle from a stale page')$$),
+  'P0001|CHARA_CONFLICT|plan', 'AC10: so is a plan row that changed since the page was read'
+);
+select is(pg_temp.state(), :'before_bundle', 'AC10: and a conflict writes nothing');
+select is(
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional', '{"limits": [{"key": "markets"}]}', 'Bundle without a value')$$) || ',' ||
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional', '[]', 'Bundle that is no object')$$) || ',' ||
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional', '{"limits": [{"key": "markets", "value": 5}]}', 'short')$$) || ',' ||
+  pg_temp.admin($$select public.admin_update_plan_bundle('staffing_professional', '{"limits": [{"key": "markets", "value": 5}]}', 'Valid reason text')$$, :'st_admin', 'aal1'),
+  'P0001|CHARA_INVALID_INPUT|changes,P0001|CHARA_INVALID_INPUT|changes,P0001|CHARA_INVALID_INPUT|reason,P0001|CHARA_FORBIDDEN|aal2_required',
+  'AC10: a malformed edit, a short reason and aal1 are refused'
+);
+select coalesce(max(id), 0) as base from audit.log \gset
+select is(
+  pg_temp.json_as(:'st_admin', $$select public.admin_update_plan_bundle('staffing_professional',
+    '{"plan": {"name": "Professional Two", "is_public": true, "trial_days": 30, "expected": {"name": "Professional", "is_public": true, "trial_days": 30}}, "limits": [{"key": "markets", "value": 20, "expected": 10}, {"key": "members", "value": null, "expected": 5}], "features": [{"key": "analytics_enterprise", "enabled": true, "expected": false}]}',
+    'Bundle of four changes') as changed$$, 'aal2'),
+  '[{"changed": 4}]'::jsonb, 'AC10: a valid edit saves the plan row, two limits and a feature at once'
+);
+select is(
+  (select format('%s|%s|%s|%s', name, (select limit_value from billing.plan_limits where plan_code = code and limit_key = 'markets'),
+     coalesce((select limit_value::text from billing.plan_limits where plan_code = code and limit_key = 'members'), 'unlimited'),
+     exists (select 1 from billing.plan_features where plan_code = code and feature_key = 'analytics_enterprise'))
+   from billing.plans where code = 'staffing_professional'),
+  'Professional Two|20|unlimited|t', 'AC10: every change of the edit is stored'
+);
+select is(
+  (select format('%s|%s|%s', count(*), count(*) filter (where metadata ->> 'reason' = 'Bundle of four changes'), count(distinct metadata ->> 'request_id'))
+   from audit.log where id > :base),
+  '4|4|1', 'AC10: one audit row per changed row, each with the reason, all of one request'
+);
+select is(
+  pg_temp.json_as(:'st_admin', $$select public.admin_update_plan_bundle('staffing_professional',
+    '{"limits": [{"key": "markets", "value": 20}], "features": [{"key": "analytics_enterprise", "enabled": true}]}', 'Bundle that repeats') as changed$$, 'aal2'),
+  '[{"changed": 0}]'::jsonb, 'an edit that changes nothing returns 0'
+);
+select is((select count(*) from audit.log where id > :base), 4::bigint, 'and writes nothing');
+update billing.plans set name = 'Professional' where code = 'staffing_professional';
+update billing.plan_limits set limit_value = case limit_key when 'markets' then 10 else 5 end
+where plan_code = 'staffing_professional' and limit_key in ('markets', 'members');
+delete from billing.plan_features where plan_code = 'staffing_professional' and feature_key = 'analytics_enterprise';
 
 -- AC11 data: history and the plan list -------------------------------------------------------------------------------
 select pg_temp.admin($$select public.admin_set_plan_limit('recruitment_professional', 'markets', 11, 'First change of the plan')$$) as h1 \gset
@@ -370,6 +481,11 @@ select is(
   (select count(*) from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_plan_history('recruitment_professional', 100)$$, 'aal2')) x
    where x::text ~* 'customer|subscription|card|stripe_customer'), 0::bigint,
   'AC11: the history holds no customer, subscription or card data'
+);
+select is(
+  (select x ->> 'label' from jsonb_array_elements(pg_temp.json_as(:'st_admin', $$select * from public.admin_list_plan_history('recruitment_professional', 3)$$, 'aal2')) x
+   where x ->> 'limit_key' = 'markets' limit 1),
+  'Countries served', 'AC11: a history row carries the catalogue label of its key'
 );
 select is(
   (select format('%s|%s|%s', count(*), count(*) filter (where not (x ->> 'is_public')::boolean), max(l ->> 'value') filter (where x ->> 'code' = 'recruitment_professional' and l ->> 'key' = 'markets'))

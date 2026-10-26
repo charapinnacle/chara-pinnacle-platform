@@ -1227,7 +1227,7 @@ isOneToOne: false
                            },
 "admin_list_plan_history":
 { Args: { "p_before_id"?: number,"p_code": string,"p_limit"?: number }; Returns: {
-              "actor_id": string,"actor_name": string,"after": Json,"before": Json,"created_at": string,"feature_key": string,"id": number,"limit_key": string,"operation": string,"reason": string,"table_name": string
+              "actor_id": string,"actor_name": string,"after": Json,"before": Json,"created_at": string,"feature_key": string,"id": number,"label": string,"limit_key": string,"operation": string,"reason": string,"table_name": string
             }[]
                            },
 "admin_list_plans":
@@ -1296,6 +1296,9 @@ isOneToOne: false
                            },
 "admin_update_plan":
 { Args: { "p_code": string,"p_is_public": boolean,"p_name": string,"p_reason": string,"p_trial_days": number }; Returns: boolean
+                           },
+"admin_update_plan_bundle":
+{ Args: { "p_changes": Json,"p_code": string,"p_reason": string }; Returns: number
                            },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
