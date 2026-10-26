@@ -1154,7 +1154,7 @@ isOneToOne: false
                            },
 "admin_list_partner_reviews":
 { Args: { "p_after_at"?: string,"p_after_id"?: string,"p_limit"?: number }; Returns: {
-              "based_in_country": string,"display_name": string,"due_at": string,"id": string,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"owner_email": string,"review_status": Database["public"]['Enums']["partner_review_status"],"same_identifier": boolean,"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string
+              "based_in_country": string,"display_name": string,"due_at": string,"id": string,"legal_entity_identifier": string,"legal_entity_identifier_kind": string,"legal_name": string,"review_status": Database["public"]['Enums']["partner_review_status"],"same_identifier": boolean,"submitted_at": string,"type": Database["public"]['Enums']["organization_type"],"website": string
             }[]
                            },
 "admin_list_reports":

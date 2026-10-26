@@ -30,7 +30,6 @@ export type PartnerReviewRow = {
   submittedAt: string;
   dueAt: string;
   sameIdentifier: boolean;
-  ownerEmail: string | null;
 };
 
 export type PartnerReviewLicence = {
@@ -139,7 +138,6 @@ export async function listPartnerReviews(after: QueueCursor | null): Promise<Pag
       submittedAt: row.submitted_at,
       dueAt: row.due_at,
       sameIdentifier: row.same_identifier,
-      ownerEmail: row.owner_email ?? null,
     }),
   );
   return paged(rows, (row) => ({ at: row.submittedAt, id: row.id }));
