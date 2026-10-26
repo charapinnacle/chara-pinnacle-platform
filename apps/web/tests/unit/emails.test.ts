@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
 import { BRAND_NAME } from "@/lib/brand";
-import { appealPath, applicantPath, applicantsPath, applicationPath, billingPath, jobPath, settingsPath } from "@/lib/routes";
+import { appealPath, applicantPath, applicantsPath, applicationPath, billingPath, dataExportPath, jobPath, settingsPath } from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
@@ -86,6 +86,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
     reasons: "The profile claims placements that were never made.",
     moderation_action_id: 42,
   },
+  data_export_ready: { export_id: ACCOUNT, expires_at: "2026-12-17T08:00:00+00:00" },
 };
 
 const LEAKS = {
@@ -187,6 +188,7 @@ describe("notification templates", () => {
       listing_confirmation_due: "/en/org/manila-recruit/workforce-profile#availability-heading",
       followed_company_activity: "/en/companies/acme-bau",
       moderation_decision: appealPath("en", 42),
+      data_export_ready: dataExportPath("en"),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);

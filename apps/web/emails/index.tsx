@@ -5,6 +5,7 @@ import { accountExists } from "./templates/account-exists.tsx";
 import { accountReinstated } from "./templates/account-reinstated.tsx";
 import { accountSuspended } from "./templates/account-suspended.tsx";
 import { applicationReceived } from "./templates/application-received.tsx";
+import { dataExportReady } from "./templates/data-export-ready.tsx";
 import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
 import { erasurePaused } from "./templates/erasure-paused.tsx";
@@ -47,6 +48,7 @@ const TEMPLATES = {
   listing_confirmation_due: listingConfirmationDue,
   followed_company_activity: followedCompanyActivity,
   moderation_decision: moderationDecision,
+  data_export_ready: dataExportReady,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

@@ -7,6 +7,7 @@ import {
   applicationPath,
   billingPath,
   companyPagePath,
+  dataExportPath,
   employerDashboardPath,
   homePath,
   jobPath,
@@ -289,6 +290,16 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: unhidden ? `${title} is shown again` : `${title} was hidden by moderation`,
         href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
+      };
+    },
+  },
+  data_export_ready: {
+    label: "Account",
+    present: (payload, { lang }) => {
+      const until = text(payload, "expires_at");
+      return {
+        title: until ? `Your data is ready to download until ${formatDate(until)}` : "Your data is ready to download",
+        href: dataExportPath(lang),
       };
     },
   },

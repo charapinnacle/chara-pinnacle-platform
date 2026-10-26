@@ -59,6 +59,11 @@ export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }
 
+// The copy of a user's own data (FR-S3 AC8).
+export function dataExportPath(lang: string): string {
+  return `${settingsPath(lang)}/data-export`;
+}
+
 // The organisation is carried so that the header of an employer in several organisations stays on the one they work in.
 export function notificationSettingsPath(lang: string, orgSlug?: string): string {
   const path = `${settingsPath(lang)}/notifications`;
