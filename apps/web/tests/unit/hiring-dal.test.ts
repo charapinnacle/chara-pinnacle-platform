@@ -202,6 +202,7 @@ describe("getPublicJob", () => {
     employer_industry: null,
     employer_website: "https://acme.example",
     employer_description: "We build halls.\nSince 1999.",
+    employer_company_slug: null,
   };
 
   it("asks the public function for the vacancy and reads no table, so a member's session sees no more than a visitor's", async () => {
@@ -238,7 +239,13 @@ describe("getPublicJob", () => {
         website: "https://acme.example",
         description: "We build halls.\nSince 1999.",
       },
+      employerCompanySlug: null,
     });
+  });
+
+  it("carries the slug of the company page while the page is public (FR-K5 AC5)", async () => {
+    result = { data: [{ ...publicRow, employer_company_slug: "acme-bau" }], error: null };
+    await expect(getPublicJob(row.id)).resolves.toMatchObject({ employerCompanySlug: "acme-bau" });
   });
 
   it("gives null for the description of an employer that wrote none", async () => {

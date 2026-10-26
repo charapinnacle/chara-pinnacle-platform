@@ -67,8 +67,15 @@ export type Employer = {
   description: string | null;
 };
 
-// An open vacancy as a visitor sees it, with the employer, the date it was first published and the date it was created.
-export type PublicJob = VacancyDetails & { countryCode: string; publishedAt: string; createdAt: string; employer: Employer };
+// An open vacancy as a visitor sees it, with the employer, the slug of its company page while that page is public
+// (FR-K5), the date it was first published and the date it was created.
+export type PublicJob = VacancyDetails & {
+  countryCode: string;
+  publishedAt: string;
+  createdAt: string;
+  employer: Employer;
+  employerCompanySlug: string | null;
+};
 
 type JobPage = { jobs: JobSummary[]; nextCursor: string | null };
 
@@ -193,6 +200,7 @@ export const getPublicJob = cache(async (id: string): Promise<PublicJob | null> 
       website: row.employer_website ?? null,
       description: row.employer_description ?? null,
     },
+    employerCompanySlug: row.employer_company_slug ?? null,
   };
 });
 

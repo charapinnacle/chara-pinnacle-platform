@@ -108,6 +108,11 @@ export function partnerProfilePath(lang: string, slug: string): string {
   return `/${lang}/partners/${slug}`;
 }
 
+// The public company page of an employer (FR-K5).
+export function companyPagePath(lang: string, slug: string): string {
+  return `/${lang}/companies/${slug}`;
+}
+
 export function membersPath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/members`;
 }
