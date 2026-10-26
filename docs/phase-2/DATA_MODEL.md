@@ -239,3 +239,4 @@ One catalogue (`private.notification_kinds`), one email template per kind in `ap
 10. Retention periods other than messages.
 11. Network analytics page may move to Phase 3 if time is short.
 12. Decision numbers quoted inside some acceptance criteria do not match the Decisions document; this file uses the Decisions document numbering.
+13. Platform staff read stale and suspended availability listings through the moderation unit (V27); until then staff see what any signed-in user sees.
