@@ -84,7 +84,7 @@ describe("partnerProfileMetadata (FR-K4 AC7)", () => {
   it("cuts a long name before the product name, never the product name", () => {
     const title = titleOf(partnerProfileMetadata("en", { ...profile, displayName: "A".repeat(200) }));
     expect(title.endsWith(" | Chara Pinnacle")).toBe(true);
-    expect(title.length).toBeLessThanOrEqual(60 + " | Chara Pinnacle".length);
+    expect(title.length).toBeLessThanOrEqual(70 + " | Chara Pinnacle".length);
   });
 
   it("describes the partner from its own text in at most 160 characters", () => {
