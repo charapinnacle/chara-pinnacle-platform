@@ -6,8 +6,9 @@
 --
 -- Members read the figures of their organisation through get_org_analytics and public.v_org_analytics, for the periods
 -- of the last 7, 30 and 90 days and 12 months, each ending with the previous UTC day. A value below
--- private.stats_min_count (never below 5) is null with suppressed true; in a breakdown with exactly one suppressed cell
--- the next smallest cell is suppressed too, so the total minus the shown cells reveals nothing (AC5). The plan sets the
+-- private.stats_min_count (never below 5) is null with suppressed true; a breakdown also hides the cells hidden in a
+-- shorter period and, when its hidden cells are one cell or add up to less than the threshold, the smallest shown cell,
+-- so neither the total nor another period reveals a hidden cell (AC5; see org_analytics_figures). The plan sets the
 -- level (AC6): totals with analytics_basic, breakdowns by country and occupation with analytics_advanced (a higher level
 -- includes the lower ones). Staff, other organisations, candidates and visitors read nothing (AC7). The analytics page
 -- and the export of Enterprise are V60.
@@ -40,8 +41,9 @@ revoke all on table private.org_analytics_daily from public, anon, authenticated
 -- The daily job -----------------------------------------------------------------------------------------------------------
 
 -- Builds the counts of one past UTC day (the previous day by default) from the view events. Running it again for the same
--- day replaces that day's counts with the same rows (AC3). A day whose events the retention period has removed is
--- refused, so a late run never wipes counts it can no longer rebuild. Returns the number of rows written.
+-- day replaces that day's counts with the same rows (AC3). It refuses a day whose events the retention period has
+-- removed, and a day that has counts but no events (for example after the period was raised again), so a late run never
+-- wipes counts it can no longer rebuild. Runs one at a time. Returns the number of rows written.
 create function private.aggregate_org_analytics(p_day date default ((now() at time zone 'utc')::date - 1)) returns integer
 language plpgsql
 security definer
@@ -52,7 +54,12 @@ declare
   v_kept integer := coalesce((select p.days from private.retention_policies p where p.entity = 'profile_view_events'), 35);
   v_rows integer;
 begin
+  perform pg_advisory_xact_lock(hashtext('aggregate_org_analytics'));
   if p_day is null or p_day >= v_today or p_day < v_today - v_kept then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_day';
+  end if;
+  if not exists (select 1 from private.profile_view_events e where e.viewed_on = p_day)
+     and exists (select 1 from private.org_analytics_daily d where d.day = p_day and d.metric = 'profile_views') then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_day';
   end if;
 
@@ -70,7 +77,31 @@ $$;
 
 revoke all on function private.aggregate_org_analytics(date) from public, anon, authenticated, service_role;
 
-select cron.schedule('aggregate-org-analytics', '5 0 * * *', 'select private.aggregate_org_analytics()');
+-- The scheduled run: the previous UTC day, and again the day before it, so a run that was missed or a view recorded
+-- around midnight is caught the next day. A day without events is skipped: it has nothing to count, and its counts, if
+-- any, are kept.
+create function private.aggregate_recent_org_analytics() returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_today date := (now() at time zone 'utc')::date;
+  v_day date;
+  v_rows integer := 0;
+begin
+  foreach v_day in array array[v_today - 1, v_today - 2] loop
+    if exists (select 1 from private.profile_view_events e where e.viewed_on = v_day) then
+      v_rows := v_rows + private.aggregate_org_analytics(v_day);
+    end if;
+  end loop;
+  return v_rows;
+end;
+$$;
+
+revoke all on function private.aggregate_recent_org_analytics() from public, anon, authenticated, service_role;
+
+select cron.schedule('aggregate-org-analytics', '5 0 * * *', 'select private.aggregate_recent_org_analytics()');
 
 -- The figures -------------------------------------------------------------------------------------------------------------
 
@@ -94,6 +125,12 @@ revoke all on function private.analytics_level(uuid) from public, anon, authenti
 -- The figures of one organisation for one period ('7d', '30d', '90d', '12m') and dimension ('total', 'country',
 -- 'occupation'), suppressed. Totals list every metric, with 0 when nothing happened; a breakdown lists the cells that
 -- exist. Checks nothing: called by get_org_analytics and private.my_org_analytics only.
+--
+-- A breakdown cell is hidden when it is below the threshold, or when it is hidden in the next shorter standard period
+-- (7 days inside 30, 30 inside 90, 90 inside 12 months, all ending yesterday), so comparing two periods does not reveal
+-- a cell the shorter one hides. Then, when the hidden cells of a metric are a single cell or add up to less than the
+-- threshold, the smallest shown cell is hidden too, so the total minus the shown cells reveals nothing (AC5). Totals
+-- follow the threshold only.
 create function private.org_analytics_figures(p_org uuid, p_period text, p_dimension text)
 returns table (
   organization_id uuid,
@@ -105,10 +142,16 @@ returns table (
   value integer,
   suppressed boolean
 )
-language sql
+language plpgsql
 stable
 set search_path = ''
 as $$
+#variable_conflict use_column
+declare
+  v_shorter text := case when p_dimension = 'total' then null
+                         else case p_period when '30d' then '7d' when '90d' then '30d' when '12m' then '90d' end end;
+begin
+  return query
   with bounds as (
     select case p_period
              when '7d' then e - 6
@@ -118,6 +161,11 @@ as $$
            end as s,
            e
     from (select (now() at time zone 'utc')::date - 1 as e) t
+  ),
+  inherited as (
+    select f.metric, f.country_code, f.occupation_id
+    from private.org_analytics_figures(p_org, v_shorter, p_dimension) f
+    where v_shorter is not null and f.suppressed
   ),
   cells as (
     select m.metric, null::text as country_code, null::text as occupation_id, coalesce(sum(d.value), 0)::integer as v
@@ -140,21 +188,34 @@ as $$
     where p_dimension = 'occupation' and d.organization_id = p_org and d.day between b.s and b.e and d.occupation_id is not null
     group by d.metric, d.occupation_id
   ),
-  ranked as (
-    select c.*, c.v < k.k as small,
-      count(*) filter (where c.v < k.k) over (partition by c.metric) as smalls,
-      row_number() over (partition by c.metric, c.v < k.k order by c.v, c.country_code, c.occupation_id) as rank_in_group
+  primary_hidden as (
+    select c.*, k.k,
+      c.v < k.k or exists (
+        select 1 from inherited i
+        where i.metric = c.metric and i.country_code is not distinct from c.country_code
+          and i.occupation_id is not distinct from c.occupation_id
+      ) as hidden
     from cells c
     cross join (select private.stats_min_count() as k) k
+  ),
+  ranked as (
+    select h.*,
+      count(*) filter (where h.hidden) over (partition by h.metric) as hidden_cells,
+      coalesce(sum(h.v) filter (where h.hidden) over (partition by h.metric), 0) as hidden_sum,
+      row_number() over (partition by h.metric, h.hidden order by h.v, h.country_code, h.occupation_id) as rank_in_group
+    from primary_hidden h
   )
   select p_org, b.s, b.e, r.metric, r.country_code, r.occupation_id,
-    case when h.hidden then null else r.v end, h.hidden
+    case when x.hidden then null else r.v end, x.hidden
   from ranked r
   cross join bounds b
   cross join lateral (
-    select r.small or (p_dimension <> 'total' and r.smalls = 1 and r.rank_in_group = 1) as hidden
-  ) h
-  order by r.metric, r.country_code, r.occupation_id
+    select r.hidden or (
+      p_dimension <> 'total' and r.rank_in_group = 1 and r.hidden_cells >= 1 and (r.hidden_cells = 1 or r.hidden_sum < r.k)
+    ) as hidden
+  ) x
+  order by r.metric, r.country_code, r.occupation_id;
+end;
 $$;
 
 revoke all on function private.org_analytics_figures(uuid, text, text) from public, anon, authenticated, service_role;
