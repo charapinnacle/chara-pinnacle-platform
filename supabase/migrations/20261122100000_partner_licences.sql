@@ -6,7 +6,8 @@
 -- the RPCs below; the evidence goes through the document-url and scan-document Edge Functions like candidate documents,
 -- and every opening by staff is logged in audit.partner_document_access_log. The daily job partner-licence-expiry marks
 -- an entry expired the day after its valid-until date; the reminder 30 days before and the expiry notice are queued by
--- that job once V14 adds their kinds and email templates. Everything here belongs to release 2a and is refused while
+-- that job once V14 adds their kinds and email templates. A replaced evidence file is kept until its successor is
+-- scanned, so staff always have the last good file. Everything here belongs to release 2a and is refused while
 -- release_partner_directories is false.
 
 -- Number formats per country, {"PH": "^DMW-[0-9A-Z-]{6,30}$"}: empty at launch, staff add them after legal review.
@@ -46,6 +47,11 @@ create table public.partner_licences (
   evidence_mime text check (evidence_mime in ('application/pdf', 'image/jpeg', 'image/png')),
   evidence_size_bytes integer check (evidence_size_bytes between 1 and 15728640),
   evidence_scan_status text check (evidence_scan_status in ('pending', 'skipped', 'clean', 'rejected')),
+  evidence_requested_at timestamptz,
+  previous_evidence_path text,
+  previous_evidence_mime text check (previous_evidence_mime in ('application/pdf', 'image/jpeg', 'image/png')),
+  previous_evidence_size_bytes integer check (previous_evidence_size_bytes between 1 and 15728640),
+  previous_evidence_scan_status text check (previous_evidence_scan_status in ('skipped', 'clean')),
   confirmed_at timestamptz not null,
   partner_terms_version integer not null,
   status text not null default 'current' check (status in ('current', 'expired')),
@@ -61,6 +67,18 @@ create table public.partner_licences (
   ),
   check (evidence_path is null or evidence_path ~ (
     '^' || organization_id::text || '/' || id::text || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  )),
+  check ((evidence_path is null) = (evidence_requested_at is null)),
+  -- A replaced file is kept until its successor is scanned: it exists only while the new file is pending.
+  check (
+    (previous_evidence_path is null and previous_evidence_mime is null and previous_evidence_size_bytes is null
+     and previous_evidence_scan_status is null)
+    or (previous_evidence_path is not null and previous_evidence_mime is not null
+        and previous_evidence_size_bytes is not null and previous_evidence_scan_status is not null
+        and evidence_scan_status = 'pending')
+  ),
+  check (previous_evidence_path is null or previous_evidence_path ~ (
+    '^' || organization_id::text || '/' || id::text || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
   ))
 );
 
@@ -68,6 +86,8 @@ comment on table public.partner_licences is
   'Licences and registrations a partner declares per country, FR-J2. Members read them without the evidence path; staff through admin_list_partner_licences; never public or shown to employers [d2.6]. Written only by the partner licence RPCs and the expiry job.';
 comment on column public.partner_licences.evidence_scan_status is
   'pending (reserved by partner_document_access_grant, then the file arrives), skipped, clean or rejected; written only by partner_document_set_scan_status.';
+comment on column public.partner_licences.previous_evidence_path is
+  'The file a pending replacement would supersede, still the one staff open: removed once the new file is scanned skipped or clean, restored when it is rejected or never arrives.';
 comment on column public.partner_licences.status is
   'current while valid_until is today or later (UTC), expired afterwards: set by the RPCs and the daily job partner-licence-expiry.';
 comment on column public.partner_licences.expiry_notified_on is
@@ -76,13 +96,15 @@ comment on column public.partner_licences.expiry_notified_on is
 -- The unique key leads with organization_id and serves the member policy and the list. The storage guard, the scan
 -- result and the rescan look an entry up by its object name; the daily job reads the current entries by date.
 create unique index partner_licences_evidence_path_key on public.partner_licences (evidence_path) where evidence_path is not null;
+create index partner_licences_pending_evidence_idx on public.partner_licences (evidence_requested_at)
+  where evidence_scan_status = 'pending';
 create index partner_licences_current_valid_until_idx on public.partner_licences (valid_until) where status = 'current';
 create index partner_licences_created_by_idx on public.partner_licences (created_by);
 
 alter table public.partner_licences enable row level security;
 alter table public.partner_licences force row level security;
 revoke all on table public.partner_licences from public, anon, authenticated, service_role;
--- Every column but the evidence path: the path is the staff's way to the file, and staff read through document-url.
+-- Every column but the paths and the replacement in progress: files are reached only through document-url.
 grant select (
   id, organization_id, country_code, issuing_authority, licence_number, valid_until, evidence_mime, evidence_size_bytes,
   evidence_scan_status, confirmed_at, partner_terms_version, status, expiry_notified_on, created_by, created_at, updated_at
@@ -92,19 +114,21 @@ create policy partner_licences_select_member on public.partner_licences
   for select to authenticated
   using (organization_id in (select private.member_org_ids()));
 
--- Who opened which evidence file, as which staff role and why (FR-J2 AC6). No foreign key: the log outlives the entry.
+-- Who opened which evidence file, as which staff role (none for the partner's own owner or admin) and why (FR-J2 AC6).
+-- No foreign key: the log outlives the entry.
 create table audit.partner_document_access_log (
   id bigint generated always as identity primary key,
   licence_id uuid not null,
   organization_id uuid not null,
   accessed_by uuid not null,
-  staff_role public.platform_role not null,
-  purpose text not null check (purpose in ('partner_review')),
-  accessed_at timestamptz not null default now()
+  staff_role public.platform_role,
+  purpose text not null check (purpose in ('partner_review', 'evidence_owner')),
+  accessed_at timestamptz not null default now(),
+  check ((staff_role is not null) = (purpose = 'partner_review'))
 );
 
 comment on table audit.partner_document_access_log is
-  'Append-only log of evidence openings by staff, FR-J2. Written only by partner_document_access_grant; nobody reads it through the API.';
+  'Append-only log of evidence openings by staff and by the partner''s owner or admins, FR-J2. Written only by partner_document_access_grant; nobody reads it through the API.';
 
 create index partner_document_access_log_licence_idx on audit.partner_document_access_log (licence_id, accessed_at desc);
 create index partner_document_access_log_accessed_at_idx on audit.partner_document_access_log (accessed_at);
@@ -313,7 +337,7 @@ $$;
 revoke all on function public.update_partner_licence(uuid, text, text, text, date, boolean) from public, anon, authenticated, service_role;
 grant execute on function public.update_partner_licence(uuid, text, text, text, date, boolean) to authenticated;
 
--- Deletes a licence entry and queues the removal of its evidence file (the Any -> Deleted transition of FR-J2). A second
+-- Deletes a licence entry and queues the removal of its evidence files (the Any -> Deleted transition of FR-J2). A second
 -- call finds nothing (CHARA_NOT_FOUND) and queues nothing.
 create function public.delete_partner_licence(p_licence uuid) returns void
 language plpgsql
@@ -339,6 +363,9 @@ begin
   if v_old.evidence_path is not null then
     perform private.queue_evidence_removal(v_old.organization_id, v_old.evidence_path);
   end if;
+  if v_old.previous_evidence_path is not null then
+    perform private.queue_evidence_removal(v_old.organization_id, v_old.previous_evidence_path);
+  end if;
   perform audit.record('partner_licence.deleted', 'partner_licence', p_licence::text,
     jsonb_build_object('organization_id', v_old.organization_id, 'country_code', v_old.country_code));
 end;
@@ -349,13 +376,40 @@ grant execute on function public.delete_partner_licence(uuid) to authenticated;
 
 -- Evidence --------------------------------------------------------------------------------------------------------------
 
--- The broker of the evidence files, called by document-url with the caller's token (FR-J2 AC5, AC6).
+-- Puts the replaced file back as the evidence of an entry whose replacement was rejected or never arrived, or clears the
+-- evidence when nothing was replaced. The caller removes or abandons the replacement's object.
+create function private.restore_previous_evidence(p_licence uuid) returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.partner_licences
+  set evidence_path = previous_evidence_path,
+      evidence_mime = previous_evidence_mime,
+      evidence_size_bytes = previous_evidence_size_bytes,
+      evidence_scan_status = previous_evidence_scan_status,
+      evidence_requested_at = case when previous_evidence_path is null then null else evidence_requested_at end,
+      previous_evidence_path = null,
+      previous_evidence_mime = null,
+      previous_evidence_size_bytes = null,
+      previous_evidence_scan_status = null,
+      updated_at = now()
+  where id = p_licence
+$$;
+
+revoke all on function private.restore_previous_evidence(uuid) from public, anon, authenticated, service_role;
+
+-- The broker of the evidence files, called by document-url with the caller's token (FR-J2 AC5, AC6). Every call counts
+-- against the document_access rate limit of the caller (30 a minute).
 --   evidence_upload: the owner or an admin at aal2 reserves a new object name for a PDF, JPEG or PNG of at most 15 MB
---     (anything else raises CHARA_INVALID_INPUT detail file). The entry points to the new name with scan status pending
---     and a file it had before is queued for removal; the function signs an upload URL for that name only.
---   partner_review: a Verification Reviewer or Trust & Safety Administrator at aal2 opens a scanned file; each grant
---     writes one row of audit.partner_document_access_log. A file not yet scanned (or rejected) raises
---     CHARA_DOCUMENT_NOT_SCANNED.
+--     (anything else raises CHARA_INVALID_INPUT detail file). The entry points to the new name with scan status pending;
+--     a scanned file it had stays as the previous evidence until the new one is scanned (partner_document_set_scan_status)
+--     or abandoned (the daily job), and a pending or rejected file it had is queued for removal. The function signs an
+--     upload URL for that name only.
+--   partner_review: a Verification Reviewer or Trust & Safety Administrator at aal2 opens the scanned file.
+--   evidence_owner: the owner or an admin at aal2 opens the scanned file of the own organisation.
+--   For both, the file is the current one once scanned skipped or clean, or else the previous one while a replacement
+--   waits; without either, CHARA_DOCUMENT_NOT_SCANNED. Each grant writes one row of audit.partner_document_access_log.
 -- Everyone else, an unknown entry and an entry without a file get CHARA_NOT_FOUND, so nothing tells an outsider that an
 -- entry exists; a member below admin gets CHARA_FORBIDDEN.
 create function public.partner_document_access_grant(
@@ -370,38 +424,17 @@ declare
   v_licence public.partner_licences;
   v_role public.platform_role;
   v_path text;
+  v_mime text;
 begin
   if v_uid is null then
     raise exception 'CHARA_UNAUTHENTICATED' using errcode = '42501';
   end if;
+  perform private.check_rate_limit('document_access', v_uid);
   if not private.release_on('release_partner_directories') then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
-
-  if p_purpose = 'evidence_upload' then
-    select * into v_licence from public.partner_licences l where l.id = p_licence;
-    if not found or not private.is_org_member(v_licence.organization_id) then
-      raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
-    end if;
-    perform private.assert_licence_manager(v_licence.organization_id);
-    if p_mime is null or p_mime not in ('application/pdf', 'image/jpeg', 'image/png')
-       or p_size is null or p_size not between 1 and 15728640 then
-      raise exception 'CHARA_INVALID_INPUT' using detail = 'file';
-    end if;
-    select * into v_licence from public.partner_licences l where l.id = p_licence for update;
-    if v_licence.evidence_path is not null then
-      perform private.queue_evidence_removal(v_licence.organization_id, v_licence.evidence_path);
-    end if;
-    v_path := v_licence.organization_id::text || '/' || v_licence.id::text || '/' || gen_random_uuid()::text;
-    update public.partner_licences
-    set evidence_path = v_path, evidence_mime = p_mime, evidence_size_bytes = p_size, evidence_scan_status = 'pending',
-        updated_at = now()
-    where id = p_licence;
-    perform audit.record('partner_licence.evidence_requested', 'partner_licence', p_licence::text,
-      jsonb_build_object('organization_id', v_licence.organization_id, 'mime', p_mime, 'size_bytes', p_size,
-        'replaced', v_licence.evidence_path is not null));
-    return query select 'partner-documents'::text, v_path, null::text;
-    return;
+  if p_purpose is null or p_purpose not in ('evidence_upload', 'partner_review', 'evidence_owner') then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'purpose';
   end if;
 
   if p_purpose = 'partner_review' then
@@ -416,21 +449,64 @@ begin
       raise exception 'CHARA_FORBIDDEN' using detail = 'aal2_required';
     end if;
     select * into v_licence from public.partner_licences l where l.id = p_licence;
-    if not found or v_licence.evidence_path is null then
+    if not found then
       raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
     end if;
-    if v_licence.evidence_scan_status not in ('skipped', 'clean') then
-      raise exception 'CHARA_DOCUMENT_NOT_SCANNED';
+  else
+    select * into v_licence from public.partner_licences l where l.id = p_licence;
+    if not found or not private.is_org_member(v_licence.organization_id) then
+      raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
     end if;
-    insert into audit.partner_document_access_log (licence_id, organization_id, accessed_by, staff_role, purpose)
-    values (v_licence.id, v_licence.organization_id, v_uid, v_role, p_purpose);
-    return query select 'partner-documents'::text, v_licence.evidence_path,
-      'licence-' || lower(v_licence.country_code) || case v_licence.evidence_mime
-        when 'application/pdf' then '.pdf' when 'image/jpeg' then '.jpg' else '.png' end;
+    perform private.assert_licence_manager(v_licence.organization_id);
+  end if;
+
+  if p_purpose = 'evidence_upload' then
+    if p_mime is null or p_mime not in ('application/pdf', 'image/jpeg', 'image/png')
+       or p_size is null or p_size not between 1 and 15728640 then
+      raise exception 'CHARA_INVALID_INPUT' using detail = 'file';
+    end if;
+    select * into v_licence from public.partner_licences l where l.id = p_licence for update;
+    v_path := v_licence.organization_id::text || '/' || v_licence.id::text || '/' || gen_random_uuid()::text;
+    if v_licence.evidence_scan_status in ('pending', 'rejected') then
+      perform private.queue_evidence_removal(v_licence.organization_id, v_licence.evidence_path);
+    end if;
+    update public.partner_licences
+    set previous_evidence_path = case when v_licence.evidence_scan_status in ('skipped', 'clean')
+          then v_licence.evidence_path else previous_evidence_path end,
+        previous_evidence_mime = case when v_licence.evidence_scan_status in ('skipped', 'clean')
+          then v_licence.evidence_mime else previous_evidence_mime end,
+        previous_evidence_size_bytes = case when v_licence.evidence_scan_status in ('skipped', 'clean')
+          then v_licence.evidence_size_bytes else previous_evidence_size_bytes end,
+        previous_evidence_scan_status = case when v_licence.evidence_scan_status in ('skipped', 'clean')
+          then v_licence.evidence_scan_status else previous_evidence_scan_status end,
+        evidence_path = v_path, evidence_mime = p_mime, evidence_size_bytes = p_size, evidence_scan_status = 'pending',
+        evidence_requested_at = now(), updated_at = now()
+    where id = p_licence;
+    perform audit.record('partner_licence.evidence_requested', 'partner_licence', p_licence::text,
+      jsonb_build_object('organization_id', v_licence.organization_id, 'mime', p_mime, 'size_bytes', p_size,
+        'replaced', v_licence.evidence_path is not null));
+    return query select 'partner-documents'::text, v_path, null::text;
     return;
   end if;
 
-  raise exception 'CHARA_INVALID_INPUT' using detail = 'purpose';
+  if v_licence.evidence_scan_status in ('skipped', 'clean') then
+    v_path := v_licence.evidence_path;
+    v_mime := v_licence.evidence_mime;
+  else
+    v_path := v_licence.previous_evidence_path;
+    v_mime := v_licence.previous_evidence_mime;
+  end if;
+  if v_path is null and v_licence.evidence_path is null then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if v_path is null then
+    raise exception 'CHARA_DOCUMENT_NOT_SCANNED';
+  end if;
+  insert into audit.partner_document_access_log (licence_id, organization_id, accessed_by, staff_role, purpose)
+  values (v_licence.id, v_licence.organization_id, v_uid, v_role, p_purpose);
+  return query select 'partner-documents'::text, v_path,
+    'licence-' || lower(v_licence.country_code) || case v_mime
+      when 'application/pdf' then '.pdf' when 'image/jpeg' then '.jpg' else '.png' end;
 end;
 $$;
 
@@ -438,8 +514,10 @@ revoke all on function public.partner_document_access_grant(uuid, text, text, bi
 grant execute on function public.partner_document_access_grant(uuid, text, text, bigint) to authenticated;
 
 -- The scan-document verdict for an evidence file, as document_set_scan_status for candidate documents: only the pending
--- entry of that object moves, a file whose stored type or size is not what was declared becomes rejected, and a repeat
--- leaves the entry as it is and returns its status.
+-- entry of that object moves, and a file whose stored type or size is not what was declared becomes rejected. A file
+-- scanned skipped or clean supersedes the previous one, which is queued for removal; a rejected file is queued for
+-- removal itself when a previous one exists, and the previous one is restored (the verdict returned is still rejected).
+-- A repeat leaves the entry as it is and returns its status, or CHARA_NOT_FOUND once a rejected file was dropped.
 create function public.partner_document_set_scan_status(
   p_licence uuid, p_path text, p_status text, p_mime text, p_size bigint
 ) returns text
@@ -448,32 +526,44 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_licence public.partner_licences;
   v_status text;
-  v_org uuid;
 begin
   if p_status is null or p_status not in ('skipped', 'clean', 'rejected') then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'status';
   end if;
 
-  update public.partner_licences l
-  set evidence_scan_status = case
-    when p_status = 'rejected' or l.evidence_mime is distinct from p_mime or l.evidence_size_bytes is distinct from p_size
-      then 'rejected'
-    else p_status
-  end
-  where l.id = p_licence and l.evidence_path = p_path and l.evidence_scan_status = 'pending'
-  returning l.evidence_scan_status, l.organization_id into v_status, v_org;
-  if found then
-    perform audit.record('partner_licence.evidence_scanned', 'partner_licence', p_licence::text,
-      jsonb_build_object('organization_id', v_org, 'scan_status', v_status));
-    return v_status;
-  end if;
-
-  select l.evidence_scan_status into v_status from public.partner_licences l
-  where l.id = p_licence and l.evidence_path = p_path;
+  select * into v_licence from public.partner_licences l
+  where l.id = p_licence and l.evidence_path = p_path
+  for update;
   if not found then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
+  if v_licence.evidence_scan_status <> 'pending' then
+    return v_licence.evidence_scan_status;
+  end if;
+
+  v_status := case
+    when p_status = 'rejected' or v_licence.evidence_mime is distinct from p_mime
+      or v_licence.evidence_size_bytes is distinct from p_size then 'rejected'
+    else p_status
+  end;
+  if v_status = 'rejected' and v_licence.previous_evidence_path is not null then
+    perform private.queue_evidence_removal(v_licence.organization_id, p_path);
+    perform private.restore_previous_evidence(p_licence);
+  else
+    if v_licence.previous_evidence_path is not null then
+      perform private.queue_evidence_removal(v_licence.organization_id, v_licence.previous_evidence_path);
+    end if;
+    update public.partner_licences
+    set evidence_scan_status = v_status,
+        previous_evidence_path = null, previous_evidence_mime = null, previous_evidence_size_bytes = null,
+        previous_evidence_scan_status = null
+    where id = p_licence;
+  end if;
+  perform audit.record('partner_licence.evidence_scanned', 'partner_licence', p_licence::text,
+    jsonb_build_object('organization_id', v_licence.organization_id, 'scan_status', v_status,
+      'previous_restored', v_status = 'rejected' and v_licence.previous_evidence_path is not null));
   return v_status;
 end;
 $$;
@@ -518,6 +608,9 @@ grant execute on function public.admin_list_partner_licences(uuid) to authentica
 
 -- Marks expired every current entry whose valid-until date has passed (UTC); an entry valid until today stays current. A
 -- second run on the same day finds nothing. Audited per entry. Returns the number of entries marked.
+-- The same daily run releases evidence reservations whose file never arrived: an upload URL lives two hours (the fixed
+-- lifetime of Storage's signed upload URLs), so a reservation older than that without an object will not get one. The
+-- previous file is restored, or the evidence cleared when there was none; audited as partner_licence.evidence_abandoned.
 create function private.expire_partner_licences() returns integer
 language plpgsql
 security definer
@@ -527,6 +620,17 @@ declare
   v_licence record;
   v_count integer := 0;
 begin
+  for v_licence in
+    select l.id, l.organization_id from public.partner_licences l
+    where l.evidence_scan_status = 'pending' and l.evidence_requested_at < now() - interval '2 hours'
+      and not exists (select 1 from storage.objects o where o.bucket_id = 'partner-documents' and o.name = l.evidence_path)
+    for update
+  loop
+    perform private.restore_previous_evidence(v_licence.id);
+    perform audit.record('partner_licence.evidence_abandoned', 'partner_licence', v_licence.id::text,
+      jsonb_build_object('organization_id', v_licence.organization_id));
+  end loop;
+
   for v_licence in
     update public.partner_licences l
     set status = 'expired', updated_at = now()

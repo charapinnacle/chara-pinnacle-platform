@@ -1,5 +1,5 @@
 begin;
-select plan(110);
+select plan(139);
 
 \ir organizations_fixture.inc
 
@@ -98,6 +98,13 @@ select is(
    from unnest(array['anon', 'authenticated', 'service_role']) r),
   'anon:false,authenticated:false,service_role:false',
   'decision 2.6: no API role may read the evidence path'
+);
+select is(
+  (select string_agg(c || ':' || has_column_privilege('authenticated', 'public.partner_licences', c, 'select'), ',' order by c)
+   from unnest(array['evidence_requested_at', 'previous_evidence_mime', 'previous_evidence_path', 'previous_evidence_scan_status',
+     'previous_evidence_size_bytes']) c),
+  'evidence_requested_at:false,previous_evidence_mime:false,previous_evidence_path:false,previous_evidence_scan_status:false,previous_evidence_size_bytes:false',
+  'nor the replacement in progress'
 );
 select is(
   (select string_agg(r || ':' || has_any_column_privilege(r, 'public.partner_licences', 'select') || ':'
@@ -392,10 +399,98 @@ select is(pg_temp.run(:'ow', format('(select count(*) from public.admin_list_par
 select throws_ok('update audit.partner_document_access_log set purpose = purpose', '42501', null, 'AC6: the log refuses UPDATE');
 select throws_ok('delete from audit.partner_document_access_log', '42501', null, 'AC6: the log refuses DELETE');
 
+-- The owner and admins open the own file; members, outsiders and aal1 do not. Every opening is logged.
+select is(pg_temp.run(:'ad', format('(select file_name from public.partner_document_access_grant(%L, ''evidence_owner''))', :'lic')),
+  'ok', 'the admin at aal2 opens the own file');
+select is(current_setting('t.result'), 'licence-ph.png', 'under the same neutral name');
+select is(pg_temp.run(:'ow', format('(select count(*) from public.partner_document_access_grant(%L, ''evidence_owner''))', :'lic'), 'aal1'),
+  'P0001|CHARA_FORBIDDEN|aal2_required', 'the owner at aal1 gets aal2_required');
+select is(pg_temp.run(:'mb', format('(select count(*) from public.partner_document_access_grant(%L, ''evidence_owner''))', :'lic')),
+  'P0001|CHARA_FORBIDDEN|', 'a member cannot open the file');
+select is(pg_temp.run(:'ow2', format('(select count(*) from public.partner_document_access_grant(%L, ''evidence_owner''))', :'lic')),
+  'P0002|CHARA_NOT_FOUND|', 'another partner gets not found');
+select is(
+  (select concat_ws(':', accessed_by, coalesce(staff_role::text, 'none'), purpose) from audit.partner_document_access_log
+   where licence_id = :'lic' order by id desc limit 1),
+  :'ad' || ':none:evidence_owner', 'the owner''s opening is logged without a staff role'
+);
+
+-- Replacement: the scanned file stays the evidence until its successor is scanned.
+select is(pg_temp.grant_upload(:'ow', :'lic', 'application/pdf', 3000), 'ok', 'a replacement is reserved');
+select current_setting('t.result') as path_r \gset
+select is(pg_temp.removals(:'path_png'), 0, 'the scanned file is not queued for removal when it is replaced');
+select is(
+  (select concat_ws('|', evidence_scan_status, previous_evidence_path = :'path_png', previous_evidence_scan_status)
+   from public.partner_licences where id = :'lic'),
+  'pending|t|skipped', 'it becomes the previous evidence'
+);
+select is(pg_temp.grant_review(:'rev', :'lic'), 'ok', 'staff still open a file while the replacement is pending');
+select is(current_setting('t.result'), 'partner-documents:licence-ph.png', 'the previous one');
+insert into storage.objects (bucket_id, name, metadata) values ('partner-documents', :'path_r', '{"mimetype": "application/pdf", "size": 3000}');
+set local role service_role;
+select is(public.partner_document_set_scan_status(:'lic', :'path_r', 'rejected', 'application/pdf', 3000), 'rejected',
+  'replace then rejected: the verdict is rejected');
+reset role;
+select is(
+  (select concat_ws('|', evidence_path = :'path_png', evidence_scan_status, evidence_mime, previous_evidence_path is null)
+   from public.partner_licences where id = :'lic'),
+  't|skipped|image/png|t', 'replace then rejected: the previous file is restored'
+);
+select is(pg_temp.removals(:'path_r') || ':' || pg_temp.removals(:'path_png'), '1:0',
+  'replace then rejected: the rejected file is queued for removal, the restored one is not');
+
+select is(pg_temp.grant_upload(:'ow', :'lic', 'application/pdf', 4000), 'ok', 'a second replacement is reserved');
+select current_setting('t.result') as path_s \gset
+insert into storage.objects (bucket_id, name, metadata) values ('partner-documents', :'path_s', '{"mimetype": "application/pdf", "size": 4000}');
+set local role service_role;
+select is(public.partner_document_set_scan_status(:'lic', :'path_s', 'skipped', 'application/pdf', 4000), 'skipped',
+  'the replacement is scanned skipped');
+reset role;
+select is(
+  (select concat_ws('|', evidence_path = :'path_s', evidence_scan_status, previous_evidence_path is null)
+   from public.partner_licences where id = :'lic'),
+  't|skipped|t', 'it becomes the evidence and the previous columns are cleared'
+);
+select is(pg_temp.removals(:'path_png'), 1, 'the superseded file is queued for removal only now');
+
+select is(pg_temp.grant_upload(:'ow', :'lic', 'image/png', 5000), 'ok', 'a third replacement is reserved and never uploaded');
+select current_setting('t.result') as path_f \gset
+update public.partner_licences set evidence_requested_at = now() - interval '1 hour' where id = :'lic';
+select private.expire_partner_licences();
+select is((select evidence_path from public.partner_licences where id = :'lic'), :'path_f',
+  'a reservation younger than the two hours of an upload URL is kept');
+update public.partner_licences set evidence_requested_at = now() - interval '3 hours' where id = :'lic';
+select private.expire_partner_licences();
+select is(
+  (select concat_ws('|', evidence_path = :'path_s', evidence_scan_status, previous_evidence_path is null)
+   from public.partner_licences where id = :'lic'),
+  't|skipped|t', 'replace then upload fails: the daily job restores the previous file'
+);
+select is(pg_temp.audits(:'lic', 'partner_licence.evidence_abandoned'), 1, 'and audits it');
+select is(pg_temp.removals(:'path_s'), 0, 'the restored file is not removed');
+select is(pg_temp.add(:'ow', :'manila', 'NL', 'Inspectorate', 'NL-1', pg_temp.today() + 30), 'ok', 'an entry without a file');
+select current_setting('t.result')::uuid as lic_nl \gset
+select is(pg_temp.grant_upload(:'ow', :'lic_nl', 'image/png', 5000), 'ok', 'its first file is reserved and never uploaded');
+update public.partner_licences set evidence_requested_at = now() - interval '3 hours' where id = :'lic_nl';
+select private.expire_partner_licences();
+select is(
+  (select concat_ws('|', coalesce(evidence_path, 'none'), coalesce(evidence_scan_status, 'none'), coalesce(evidence_requested_at::text, 'none'))
+   from public.partner_licences where id = :'lic_nl'),
+  'none|none|none', 'an abandoned first file leaves the entry without evidence'
+);
+
+-- Rate limit: the broker counts against document_access.
+update private.settings set value = '0' where key = 'rate_limit_document_access_max';
+select is(pg_temp.grant_review(:'ts', :'lic'), 'P0001|CHARA_RATE_LIMITED|', 'a caller over the document_access limit is refused');
+update private.settings set value = '30' where key = 'rate_limit_document_access_max';
+
 -- Deleting an entry with a file queues the file's removal.
+select is(pg_temp.grant_upload(:'ow', :'lic', 'application/pdf', 6000), 'ok', 'a replacement is pending when the entry is deleted');
+select current_setting('t.result') as path_d \gset
 select is(pg_temp.run(:'ow', format('public.delete_partner_licence(%L)', :'lic')), 'ok', 'the owner deletes the entry with its file');
-select is(pg_temp.removals(:'path_png'), 1, 'the file is queued for removal through account-ops');
-select is((select count(*)::integer from audit.partner_document_access_log where licence_id = :'lic'), 2,
+select is(pg_temp.removals(:'path_d') || ':' || pg_temp.removals(:'path_s'), '1:1',
+  'the pending and the previous file are both queued for removal through account-ops');
+select is((select count(*)::integer from audit.partner_document_access_log where licence_id = :'lic'), 4,
   'the access log outlives the entry');
 
 -- AC8: expiry ----------------------------------------------------------------------------------------------------------
