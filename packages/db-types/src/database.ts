@@ -1435,6 +1435,16 @@ isOneToOne: false
               "hidden_vacancies": number,"suspended_organizations": number,"suspended_users": number
             }[]
                            },
+"admin_network_counts":
+{ Args: { "p_from": string,"p_period"?: string,"p_to": string }; Returns: {
+              "count": number,"metric": string,"period_start": string
+            }[]
+                           },
+"admin_network_kpis":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "base": number,"label": string,"metric": string,"range_figure": boolean,"unit": string,"value": number
+            }[]
+                           },
 "admin_partner_search_stats":
 { Args: { "p_from": string,"p_kind": string,"p_to": string }; Returns: {
               "searches": number,"with_results": number,"zero_by_destination": Json,"zero_results": number
