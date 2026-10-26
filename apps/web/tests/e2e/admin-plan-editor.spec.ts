@@ -50,7 +50,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
        update billing.plan_limits set limit_value = 5 where plan_code = 'staffing_professional' and limit_key = 'members';
        update billing.plans set trial_days = 30 where code = 'staffing_professional';
        update private.settings set value = '10' where key = 'limit_prompt_per_org_key_hour_max';
-       grant execute on function public.admin_set_plan_limit(text, text, integer, text) to authenticated;`,
+       grant execute on function public.admin_update_plan_bundle(text, jsonb, text) to authenticated;`,
     );
   });
 
@@ -127,7 +127,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
     expect(limitValue("recruitment_partner", "job_order_responses_per_month")).toBe(12);
     expect(auditCount("recruitment_partner", "job_order_responses_per_month")).toBe(before + 1);
 
-    execute("revoke execute on function public.admin_set_plan_limit(text, text, integer, text) from authenticated");
+    execute("revoke execute on function public.admin_update_plan_bundle(text, jsonb, text) from authenticated");
     try {
       await edit.click();
       await dialog.getByRole("textbox", { name: "Job order responses per month" }).fill("13");
@@ -139,7 +139,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
       await expect(dialog.getByRole("textbox", { name: "Reason for the change" })).toHaveValue("Another raise that fails");
       expect(limitValue("recruitment_partner", "job_order_responses_per_month")).toBe(12);
     } finally {
-      execute("grant execute on function public.admin_set_plan_limit(text, text, integer, text) to authenticated");
+      execute("grant execute on function public.admin_update_plan_bundle(text, jsonb, text) to authenticated");
     }
   });
 

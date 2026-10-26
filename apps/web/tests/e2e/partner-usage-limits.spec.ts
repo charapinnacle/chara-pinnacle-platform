@@ -84,12 +84,17 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
     await expect(serve.getByText("2 of 3 countries", { exact: true })).toBeVisible();
     await pickWithKeys(page, SUPPLIES_FOR, "saudi", "Saudi Arabia");
     await expect(serve.getByText("3 of 3 countries", { exact: true })).toBeVisible();
-    // Staff lower the limit while the form is open: the database refuses the third country.
-    execute(
-      `insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value) values (${literal(id)}, 'markets', 2)`,
-    );
-    await serve.getByRole("button", { name: "Save countries" }).click();
-    await expect(serve.getByText("Your plan's limit of countries served is reached.")).toBeVisible();
+    // The limit drops while the form is open: the free plan's limit is lowered for a moment (the tests of this file run one
+    // after the other; an override would not do, as overrides apply on Enterprise plans only since FR-R2), and the
+    // database refuses the third country.
+    execute(`update billing.plan_limits set limit_value = 2 where plan_code = 'free_staffing_company' and limit_key = 'markets'`);
+    try {
+      await serve.getByRole("button", { name: "Save countries" }).click();
+      await expect(serve.getByText("Your plan's limit of countries served is reached.")).toBeVisible();
+      await expect.poll(() => prompts(id)).toContain("markets");
+    } finally {
+      execute(`update billing.plan_limits set limit_value = 3 where plan_code = 'free_staffing_company' and limit_key = 'markets'`);
+    }
     await expect(chips(page, SUPPLIES_FOR)).toHaveText(["United Arab Emirates", "Germany", "Saudi Arabia"]);
     await expect(serve.getByText(/markets|CHARA/)).toHaveCount(0);
     expect(
@@ -98,7 +103,6 @@ test.describe("Partner usage and the upgrade prompt (FR-R1)", () => {
          where organization_id = ${literal(id)} and scope = 'serves_market'`,
       )[0].count,
     ).toBe(2);
-    await expect.poll(() => prompts(id)).toContain("markets");
     await expectAccessibleAtBothWidths(page);
   });
 
