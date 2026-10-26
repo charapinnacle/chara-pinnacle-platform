@@ -5,8 +5,11 @@ import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { Bullets, PlanCard } from "@/components/public/plan-card";
-import { planCard, planLink, RECOMMENDED_PLAN_CODE, viewerNote, type PricingViewer } from "@/lib/billing/pricing";
+import { PricingTabs } from "@/components/public/pricing-tabs";
+import type { OrganizationType } from "@/lib/billing/limits";
+import { planCard, planLink, RECOMMENDED_PLAN_CODE, viewerNote, type PricingViewer, type PublicPlan } from "@/lib/billing/pricing";
 import { getPricingViewer, listPublicPlans } from "@/lib/dal/pricing";
+import { isReleased } from "@/lib/dal/release";
 import { signUpPath } from "@/lib/routes";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 import { BRAND_NAME } from "@/lib/brand";
@@ -40,11 +43,51 @@ function WorkersCard({ lang, viewer }: { lang: string; viewer: PricingViewer }) 
   );
 }
 
+const companyTypes = {
+  employer: { tab: "Employers", list: "Employer plans" },
+  recruitment_company: { tab: "Recruitment companies", list: "Recruitment company plans" },
+  staffing_company: { tab: "Staffing companies", list: "Staffing company plans" },
+} as const satisfies Record<OrganizationType, { tab: string; list: string }>;
+
+// The plans of one organisation type. A partner Enterprise plan states the price it starts from (DATA_MODEL.md section 8).
+function PlanList({ type, plans, viewer, lang }: { type: OrganizationType; plans: PublicPlan[]; viewer: PricingViewer; lang: string }) {
+  const cards = plans.map((plan) => planCard(plan, type));
+  if (cards.length === 0) {
+    return (
+      <EmptyState title="Pricing is currently unavailable" description="Contact us for the current plans and prices.">
+        {viewer.kind === "visitor" ? (
+          <LinkButton href={signUpPath(lang, type === "employer" ? "company" : type)}>
+            {type === "employer" ? "Start hiring" : "Create a company account"}
+          </LinkButton>
+        ) : null}
+        <TextLink standalone href={`/${lang}/contact`}>
+          Contact us
+        </TextLink>
+      </EmptyState>
+    );
+  }
+  return (
+    <ul aria-label={companyTypes[type].list} className="grid animate-stagger gap-6 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
+      {cards.map((card) => (
+        <PlanCard key={card.code} card={card} link={planLink(viewer, card, lang, type)} recommended={card.code === RECOMMENDED_PLAN_CODE} />
+      ))}
+    </ul>
+  );
+}
+
+// The partner tabs are shown only while release 2a is on (FR-L5); until then the page is the employer page of Phase 1.
 export default async function PricingPage({ params }: PageProps<"/[lang]/pricing">) {
   const { lang } = await params;
-  const [plans, viewer] = await Promise.all([listPublicPlans(), getPricingViewer()]);
-  const cards = plans.map(planCard);
+  const [plans, viewer, partners] = await Promise.all([
+    listPublicPlans(),
+    getPricingViewer(),
+    isReleased("release_partner_directories"),
+  ]);
+  const [recruitmentPlans, staffingPlans] = partners
+    ? await Promise.all([listPublicPlans("recruitment_company"), listPublicPlans("staffing_company")])
+    : [[], []];
   const note = viewerNote(viewer, lang);
+  const employerPlans = <PlanList type="employer" plans={plans} viewer={viewer} lang={lang} />;
 
   return (
     <PageContainer layout="page" className="grid gap-12 sm:gap-16">
@@ -54,7 +97,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
         <section aria-labelledby="pricing-employers" className="grid gap-4 lg:col-span-2 lg:row-span-2 lg:grid-rows-subgrid">
           <div className="grid gap-1 lg:self-end">
             <h2 id="pricing-employers" className="text-h2">
-              Employers
+              {partners ? "Companies" : "Employers"}
             </h2>
             {note ? (
               <p className="text-body text-muted-foreground">
@@ -68,19 +111,25 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
               </p>
             ) : null}
           </div>
-          {cards.length > 0 ? (
-            <ul aria-label="Employer plans" className="grid animate-stagger gap-6 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
-              {cards.map((card) => (
-                <PlanCard key={card.code} card={card} link={planLink(viewer, card, lang)} recommended={card.code === RECOMMENDED_PLAN_CODE} />
-              ))}
-            </ul>
+          {partners ? (
+            <PricingTabs
+              label="Plans by type of company"
+              tabs={[
+                { key: "employer", label: companyTypes.employer.tab, panel: employerPlans },
+                {
+                  key: "recruitment_company",
+                  label: companyTypes.recruitment_company.tab,
+                  panel: <PlanList type="recruitment_company" plans={recruitmentPlans} viewer={viewer} lang={lang} />,
+                },
+                {
+                  key: "staffing_company",
+                  label: companyTypes.staffing_company.tab,
+                  panel: <PlanList type="staffing_company" plans={staffingPlans} viewer={viewer} lang={lang} />,
+                },
+              ]}
+            />
           ) : (
-            <EmptyState title="Pricing is currently unavailable" description="Contact us for the current plans and prices.">
-              {viewer.kind === "visitor" ? <LinkButton href={signUpPath(lang, "company")}>Start hiring</LinkButton> : null}
-              <TextLink standalone href={`/${lang}/contact`}>
-                Contact us
-              </TextLink>
-            </EmptyState>
+            employerPlans
           )}
         </section>
       </div>
@@ -89,6 +138,12 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
         <div className="grid max-w-[65ch] gap-3">
           <p>All prices exclude VAT.</p>
           <p>A paid plan does not make an organisation verified or move its vacancies up in search results.</p>
+          {partners ? (
+            <p>
+              A paid plan does not make a recruitment or staffing company verified or move it up in the partner directories.
+              The plans for companies have one free trial for each legal entity, whatever the type of company.
+            </p>
+          ) : null}
           <p>
             The terms of a subscription are in the{" "}
             <TextLink href={`/${lang}/legal/subscription-and-billing-terms`}>Subscription and Billing Terms</TextLink>.

@@ -73,7 +73,7 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
 
   it("sends a visitor to the sign-up and an owner or admin to the billing page of the organisation", () => {
     expect(links({ kind: "visitor" })).toEqual({ href: "/en/signup?kind=company", label: "Sign up for Basic" });
-    expect(links({ kind: "manager", slug: "acme-bau" })).toEqual({ href: "/en/org/acme-bau/billing", label: "Choose Basic" });
+    expect(links({ kind: "manager", slug: "acme-bau", type: "employer" })).toEqual({ href: "/en/org/acme-bau/billing", label: "Choose Basic" });
   });
 
   it("gives a worker, a member and a person who has not finished setting up no link to buy", () => {
@@ -89,10 +89,83 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
 
   it("tells a worker, a member and a person still setting up what applies to them", () => {
     expect(viewerNote({ kind: "visitor" }, "en")).toBeNull();
-    expect(viewerNote({ kind: "manager", slug: "x" }, "en")).toBeNull();
+    expect(viewerNote({ kind: "manager", slug: "x", type: "employer" }, "en")).toBeNull();
     expect(viewerNote({ kind: "worker" }, "en")?.text).toBe("Plans are for employers. Workers never pay.");
     expect(viewerNote({ kind: "member" }, "en")?.text).toBe("The owner or an admin of your organisation manages its plan.");
     expect(viewerNote({ kind: "setup" }, "en")?.link?.href).toBe("/en/onboarding");
     expect(viewerNote({ kind: "unknown" }, "en")).toBeNull();
+  });
+});
+
+const PARTNER_BASIC: PublicPlan = {
+  code: "staffing_partner",
+  name: "Basic",
+  priceMinor: 5900,
+  currency: "EUR",
+  interval: "month",
+  trialDays: 30,
+  contactSales: false,
+  limits: {
+    active_jobs: 0,
+    markets: 3,
+    listed_occupations: 10,
+    workforce_listings: 10,
+    members: 1,
+    job_order_responses_per_month: 10,
+    candidate_submissions_per_month: 25,
+    messages_per_month: 100,
+  },
+  features: ["job_order_access", "worker_search", "employer_discovery", "analytics_basic"],
+};
+
+describe("the cards of the partner plans (FR-R1 AC3)", () => {
+  it("shows the price, the trial and the limits of the workforce profile and the team, and nothing of a later release", () => {
+    const card = planCard(PARTNER_BASIC, "staffing_company");
+    expect(card).toMatchObject({ price: "EUR 59.00", per: "per month", features: [] });
+    expect(card.trial[0]).toBe("30 days free trial");
+    expect(card.limits).toEqual(["3 countries served", "10 occupations", "10 workforce listings", "1 team member"]);
+    expect(planCard({ ...PARTNER_BASIC, code: "recruitment_partner" }, "recruitment_company").limits).toEqual([
+      "3 countries served",
+      "10 occupations",
+      "1 team member",
+    ]);
+    expect(card.limits.join(" ")).not.toMatch(/response|submission|message/i);
+  });
+
+  it("lists a partner limit without a value as unlimited", () => {
+    const card = planCard(
+      { ...PARTNER_BASIC, limits: { markets: null, listed_occupations: null, workforce_listings: null, members: 15 } },
+      "staffing_company",
+    );
+    expect(card.limits).toEqual(["Unlimited countries served", "Unlimited occupations", "Unlimited workforce listings", "15 team members"]);
+  });
+
+  it("states the price a contact-sales partner plan starts from, without a trial, and keeps the employer one without a price", () => {
+    const enterprise = { ...PARTNER_BASIC, name: "Enterprise", priceMinor: 24900, contactSales: true };
+    expect(planCard(enterprise, "staffing_company")).toMatchObject({ price: "From EUR 249.00", trial: [] });
+    expect(planCard(enterprise)).toMatchObject({ price: null, trial: [] });
+    expect(planCard({ ...enterprise, priceMinor: 0 }, "staffing_company").price).toBeNull();
+  });
+});
+
+describe("the link of a partner card (FR-R1 AC3, AC4)", () => {
+  const basic = planCard(PARTNER_BASIC, "staffing_company");
+
+  it("signs a visitor up as a company of the tab's type", () => {
+    expect(planLink({ kind: "visitor" }, basic, "en", "staffing_company")).toEqual({
+      href: "/en/signup?kind=staffing_company",
+      label: "Sign up for Basic",
+    });
+    expect(planLink({ kind: "visitor" }, basic, "en", "recruitment_company")?.href).toBe("/en/signup?kind=recruitment_company");
+  });
+
+  it("leads an owner or admin to the billing page only from the plans of the own organisation's type", () => {
+    expect(planLink({ kind: "manager", slug: "manila", type: "staffing_company" }, basic, "en", "staffing_company")).toEqual({
+      href: "/en/org/manila/billing",
+      label: "Choose Basic",
+    });
+    expect(planLink({ kind: "manager", slug: "manila", type: "staffing_company" }, basic, "en", "recruitment_company")).toBeNull();
+    expect(planLink({ kind: "manager", slug: "manila", type: "staffing_company" }, planCard(BASIC), "en")).toBeNull();
+    expect(planLink({ kind: "manager", slug: "acme", type: "employer" }, basic, "en", "staffing_company")).toBeNull();
   });
 });

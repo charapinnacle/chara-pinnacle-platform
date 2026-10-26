@@ -1,4 +1,5 @@
 import * as z from "zod";
+import type { OrganizationType } from "@/lib/billing/limits";
 import { daysText, formatPrice, oneTrialRule, trialConversion } from "@/lib/billing/presentation";
 import { billingPath, signUpPath } from "@/lib/routes";
 
@@ -29,11 +30,29 @@ export const publicPlanSchema = z
 export type PublicPlan = z.infer<typeof publicPlanSchema>;
 
 // A plan lists only the limits and features this release delivers (FR-H2): a key without a label here is not shown,
-// whatever the plan records hold. A feature of a later phase gets its label with the release that delivers it.
+// whatever the plan records hold. A feature of a later phase gets its label with the release that delivers it, so the
+// partner limits of job order responses, candidate submissions and messages are labelled by the units that deliver them
+// (V44, V48, V66). An employer limit without a value is not listed (FR-H2 AC6); a partner limit without one is listed as
+// unlimited (FR-R1 AC3).
 const limitLabels = {
-  active_jobs: (value) => `${value} active ${value === 1 ? "vacancy" : "vacancies"}`,
-  members: (value) => `${value} team ${value === 1 ? "member" : "members"}`,
-} as const satisfies Record<string, (value: number) => string>;
+  active_jobs: (value) => (value === null ? null : `${value} active ${value === 1 ? "vacancy" : "vacancies"}`),
+  members: (value) => (value === null ? null : `${value} team ${value === 1 ? "member" : "members"}`),
+  markets: (value) => (value === null ? "Unlimited countries served" : `${value} ${value === 1 ? "country" : "countries"} served`),
+  listed_occupations: (value) => (value === null ? "Unlimited occupations" : `${value} ${value === 1 ? "occupation" : "occupations"}`),
+  workforce_listings: (value) =>
+    value === null ? "Unlimited workforce listings" : `${value} workforce ${value === 1 ? "listing" : "listings"}`,
+} as const satisfies Record<string, (value: number | null) => string | null>;
+
+// The limits a plan of each organisation type lists, and the billing page counts, in this order: those of the features
+// the type has in this release. A partner plan carries a row for every partner key (DATA_MODEL.md section 8), even for a
+// feature of the other partner type or of a later release.
+export const PLAN_LIMIT_KEYS = {
+  employer: ["active_jobs", "members"],
+  recruitment_company: ["markets", "listed_occupations", "members"],
+  staffing_company: ["markets", "listed_occupations", "workforce_listings", "members"],
+} as const satisfies Record<OrganizationType, readonly (keyof typeof limitLabels)[]>;
+
+export type PlanLimitKey = (typeof PLAN_LIMIT_KEYS)[OrganizationType][number];
 
 const featureLabels = {
   shortlisting: "Shortlisting of applicants",
@@ -55,8 +74,11 @@ export type PlanCard = {
   features: string[];
 };
 
-export function planCard(plan: PublicPlan): PlanCard {
-  const price = plan.contactSales ? null : formatPrice(plan.priceMinor, plan.currency);
+// A contact-sales partner plan shows the price it starts from ("From EUR 199.00", DATA_MODEL.md section 8); the
+// employer one shows none (FR-H2 AC5).
+export function planCard(plan: PublicPlan, type: OrganizationType = "employer"): PlanCard {
+  const stated = type !== "employer" && plan.priceMinor > 0 ? `From ${formatPrice(plan.priceMinor, plan.currency)}` : null;
+  const price = plan.contactSales ? stated : formatPrice(plan.priceMinor, plan.currency);
   const per = `per ${plan.interval}`;
   return {
     code: plan.code,
@@ -65,12 +87,12 @@ export function planCard(plan: PublicPlan): PlanCard {
     price,
     per,
     trial:
-      price && plan.trialDays > 0
+      !plan.contactSales && price && plan.trialDays > 0
         ? [`${daysText(plan.trialDays)} free trial`, `Then ${price} ${per} excl. VAT.`, `${trialConversion(plan.name)} ${oneTrialRule}`]
         : [],
-    limits: Object.entries(limitLabels).flatMap(([key, label]) => {
-      const value = plan.limits[key];
-      return typeof value === "number" ? [label(value)] : [];
+    limits: PLAN_LIMIT_KEYS[type].flatMap((key: PlanLimitKey) => {
+      const text = key in plan.limits ? limitLabels[key](plan.limits[key] ?? null) : null;
+      return text ? [text] : [];
     }),
     features: Object.entries(featureLabels).flatMap(([key, label]) => (plan.features.includes(key) ? [label] : [])),
   };
@@ -80,17 +102,23 @@ export type PricingViewer =
   | { kind: "visitor" }
   | { kind: "worker" }
   | { kind: "member" }
-  | { kind: "manager"; slug: string }
+  | { kind: "manager"; slug: string; type: OrganizationType }
   | { kind: "setup" }
   | { kind: "unknown" };
 
 export type Link = { href: string; label: string };
 
-// The link of a card for the person who reads it. Every label holds the plan name, so the links of a page differ.
-export function planLink(viewer: PricingViewer, card: PlanCard, lang: string): Link | null {
+// The link of a card for the person who reads it, among the plans of one organisation type. Every label holds the plan
+// name, so the links of a tab differ. A visitor signs up as that type; an owner or admin is led to the billing page only
+// from the plans of the own organisation's type, which are the only ones its checkout sells (FR-R1 AC4).
+export function planLink(viewer: PricingViewer, card: PlanCard, lang: string, type: OrganizationType = "employer"): Link | null {
   if (card.contactSales) return { href: `/${lang}/contact`, label: `Contact sales about ${card.name}` };
-  if (viewer.kind === "visitor") return { href: signUpPath(lang, "company"), label: `Sign up for ${card.name}` };
-  if (viewer.kind === "manager") return { href: billingPath(lang, viewer.slug), label: `Choose ${card.name}` };
+  if (viewer.kind === "visitor") {
+    return { href: signUpPath(lang, type === "employer" ? "company" : type), label: `Sign up for ${card.name}` };
+  }
+  if (viewer.kind === "manager" && viewer.type === type) {
+    return { href: billingPath(lang, viewer.slug), label: `Choose ${card.name}` };
+  }
   return null;
 }
 

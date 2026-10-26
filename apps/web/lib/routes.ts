@@ -47,7 +47,7 @@ export function employerDashboardPath(lang: string, slug?: string): string {
 }
 
 // The sign-up page, optionally with the account type preselected (the person can still change it).
-export function signUpPath(lang: string, kind?: "worker" | "company"): string {
+export function signUpPath(lang: string, kind?: "worker" | "company" | "recruitment_company" | "staffing_company"): string {
   return kind ? `/${lang}/signup?kind=${kind}` : `/${lang}/signup`;
 }
 
