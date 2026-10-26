@@ -365,7 +365,7 @@ comment on column public.workforce_availability.reminded_at is
   'When the daily job workforce-availability-confirm last found the listing due for confirmation (workforce_confirm_reminder_days) and queued listing_confirmation_due for its organisation.';
 
 -- The organisation types of the user: those of the organisations they are an accepted member of, and the one they signed
--- up for while they have no organisation yet.
+-- up for (so a partner sees its switches before its organisation exists).
 create function private.user_organization_types(p_user uuid) returns public.organization_type[]
 language sql
 stable
