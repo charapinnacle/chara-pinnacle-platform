@@ -251,7 +251,9 @@ export async function getEmployer(organizationId: string): Promise<Employer | nu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("display_name, website, description, countries(name), industries(name)")
+    .select(
+      "display_name, website, description, countries!organizations_based_in_country_fkey(name), industries!organizations_industry_code_fkey(name)",
+    )
     .eq("id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The employer could not be loaded", { cause: error });
