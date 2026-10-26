@@ -78,8 +78,18 @@ create trigger reports_due_at
   before insert on public.reports
   for each row execute function private.set_report_due_at();
 
--- The target check of 20261110110000 (generated name reports_check) with partner_profile: the organisation only.
-alter table public.reports drop constraint reports_check;
+-- The target check of 20261110110000 with partner_profile: the organisation only. The old check has a generated name
+-- (reports_check locally), so it is found by its definition; exactly one check names target_type.
+do $$
+declare
+  v_name text;
+begin
+  select c.conname into strict v_name
+  from pg_catalog.pg_constraint c
+  where c.conrelid = 'public.reports'::regclass and c.contype = 'c' and pg_catalog.pg_get_constraintdef(c.oid) like '%target_type%';
+  execute format('alter table public.reports drop constraint %I', v_name);
+end;
+$$;
 alter table public.reports add constraint reports_target_check check (case target_type
   when 'job' then job_id is not null and organization_id is null and application_id is null and content_path is null
   when 'company' then organization_id is not null and application_id is null and content_path is null
