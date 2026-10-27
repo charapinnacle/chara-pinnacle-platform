@@ -15,6 +15,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcM
 const { saveRequirement } = await import("@/lib/actions/requirements");
 
 const REQUIREMENT = "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a90";
+const VERSION = "2026-10-27T08:15:30.123456+00:00";
 const input: RequirementFormInput = {
   title: "",
   workersNeeded: "100",
@@ -70,16 +71,27 @@ describe("saveRequirement (FR-M1)", () => {
     );
   });
 
-  it("saves the changes of a requirement by its id", async () => {
-    await saveRequirement("acme-bau", REQUIREMENT, input);
-    expect(rpcMock).toHaveBeenCalledWith("save_requirement", expect.objectContaining({ p_requirement: REQUIREMENT }));
+  it("saves the changes of a requirement by its id, naming the version the form was loaded with", async () => {
+    await saveRequirement("acme-bau", { id: REQUIREMENT, expectedUpdatedAt: VERSION }, input);
+    expect(rpcMock).toHaveBeenCalledWith(
+      "save_requirement",
+      expect.objectContaining({ p_requirement: REQUIREMENT, p_expected_updated_at: VERSION }),
+    );
+  });
+
+  it("tells the editor that someone else saved first", async () => {
+    rpcMock.mockResolvedValueOnce(refusal("CHARA_CONFLICT", "stale"));
+    expect(await saveRequirement("acme-bau", { id: REQUIREMENT, expectedUpdatedAt: VERSION }, input)).toEqual({
+      message: "Someone else changed this requirement, reload.",
+    });
   });
 
   it("refuses an invalid form, the release switch off and a bad id before the database is asked", async () => {
     expect(await saveRequirement("acme-bau", null, { ...input, occupations: [{ occupation: "7212", quantity: "90" }] })).toEqual({
       errors: { "occupations.root": "Quantities must add up to 100." },
     });
-    expect(await saveRequirement("acme-bau", "not-a-uuid", input)).toHaveProperty("message");
+    expect(await saveRequirement("acme-bau", { id: "not-a-uuid", expectedUpdatedAt: VERSION }, input)).toHaveProperty("message");
+    expect(await saveRequirement("acme-bau", { id: REQUIREMENT, expectedUpdatedAt: "yesterday" }, input)).toHaveProperty("message");
     expect(await saveRequirement("Not A Slug!", null, input)).toHaveProperty("message");
     releasedMock.mockResolvedValue(false);
     expect(await saveRequirement("acme-bau", null, input)).toEqual({ message: "Workforce requirements cannot be changed at the moment." });
@@ -122,7 +134,8 @@ describe("requirementRefusal (FR-M1 AC3, AC4, AC7)", () => {
     [refusal("CHARA_FORBIDDEN", "aal2_required").error, { kind: "message", message: "You are not allowed to create or edit workforce requirements for this company." }],
     [refusal("CHARA_FORBIDDEN", "organization_suspended").error, { kind: "message", message: "This organization is suspended, so its workforce requirements cannot be changed." }],
     [refusal("CHARA_NOT_FOUND", null, "P0002").error, { kind: "message", message: "This workforce requirement could not be found." }],
-    [refusal("CHARA_INVALID_TRANSITION", "closed").error, { kind: "message", message: "This workforce requirement is closed or filled, so it can no longer be changed." }],
+    [refusal("CHARA_CONFLICT", "stale").error, { kind: "message", message: "Someone else changed this requirement, reload." }],
+    [refusal("CHARA_INVALID_STATE", "closed").error, { kind: "message", message: "This workforce requirement is closed or filled, so it can no longer be changed." }],
     [refusal("CHARA_RATE_LIMITED", null).error, { kind: "message", message: "Too many changes were made today. Try again tomorrow." }],
     [refusal("CHARA_INVALID_INPUT", "something_new").error, { kind: "fault" }],
   ])("maps %j", (error, expected) => {
