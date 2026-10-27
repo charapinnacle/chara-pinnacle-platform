@@ -269,7 +269,7 @@ declare
   v_currency text := upper(nullif(btrim(coalesce(p_salary_currency, '')), ''));
   v_old public.workforce_requirements;
   v_new public.workforce_requirements;
-  v_old_occupations jsonb := '[]';
+  v_old_occupations jsonb := '[]'::jsonb;
   v_new_occupations jsonb;
   v_changed jsonb;
   v_criterion text;
