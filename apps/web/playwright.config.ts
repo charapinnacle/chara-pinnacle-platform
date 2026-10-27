@@ -115,6 +115,7 @@ export default defineConfig({
         "**/partner-team.spec.ts",
         "**/ranking-transparency.spec.ts",
         "**/release-2a-journey.spec.ts",
+        "**/workforce-requirements.spec.ts",
       ],
     },
     {
@@ -481,13 +482,20 @@ export default defineConfig({
       testMatch: "**/release-2a-journey.spec.ts",
       dependencies: ["ranking-transparency-release"],
     },
+    // The workforce requirements (FR-M1) set release 2b for the whole database, so they follow the release 2a projects.
+    {
+      name: "workforce-requirements-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/workforce-requirements.spec.ts",
+      dependencies: ["release-2a-journey"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["release-2a-journey"],
+      dependencies: ["workforce-requirements-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

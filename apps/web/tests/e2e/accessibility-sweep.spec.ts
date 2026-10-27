@@ -130,7 +130,9 @@ const accountStatePages = [
 // segments of /[lang]/dashboard/[kind] with data, empty, failed and as a member (partner-dashboards.spec.ts). The team page
 // /[lang]/org/[slug]/members of a recruitment or staffing company, as its owner, an admin and a member, empty and with
 // members, and its invitation and sign-up pages, are checked in partner-team.spec.ts (the employer's are swept here). The
-// ranking page /[lang]/legal/ranking is checked in ranking-transparency.spec.ts.
+// ranking page /[lang]/legal/ranking is checked in ranking-transparency.spec.ts. The workforce requirements of an
+// employer (release 2b), the list empty and with a draft, the form new, refused and in edit and a requirement as its owner
+// and as a member, are checked in workforce-requirements.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -142,6 +144,10 @@ const releasedPages = [
   "/[lang]/notifications",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",
+  "/[lang]/org/[slug]/requirements",
+  "/[lang]/org/[slug]/requirements/[id]",
+  "/[lang]/org/[slug]/requirements/[id]/edit",
+  "/[lang]/org/[slug]/requirements/new",
   "/[lang]/org/[slug]/saved-partners",
   "/[lang]/org/[slug]/workforce-profile",
   "/[lang]/org/[slug]/workforce-profile/preview",
