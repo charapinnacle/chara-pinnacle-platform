@@ -1,12 +1,12 @@
 import { LinkButton } from "@/components/layout/link-button";
 import type { Requirement } from "@/lib/dal/requirements";
-import { countryInSentence } from "@/lib/i18n/format";
+import { destinationsText } from "@/lib/requirements/suggestions";
 import { requirementPartnersPath } from "@/lib/routes";
 
 // The way from a requirement that needs partners to its suggested partners (FR-M3 step Trigger; FR-M1 AC9): a preview
 // while it is a draft, the list once it is published.
 export function RequirementPartners({ lang, slug, requirement }: { lang: string; slug: string; requirement: Requirement }) {
-  const country = countryInSentence(requirement.countryCode, requirement.country);
+  const country = destinationsText([{ code: requirement.countryCode, name: requirement.country }, ...requirement.destinations]);
   return (
     <section aria-labelledby="requirement-partners-heading" className="grid gap-3">
       <h2 id="requirement-partners-heading" className="text-h2">

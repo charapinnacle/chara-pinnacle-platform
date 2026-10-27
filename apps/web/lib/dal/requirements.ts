@@ -229,16 +229,30 @@ export async function getMultiCountryPlan(organizationId: string): Promise<Multi
 
 const namedSchema = z.array(z.object({ code: z.string(), name: z.string() }));
 const criteriaSchema = z.array(z.enum(suggestionCriteria));
+const coverageSchema = z.array(
+  z.object({
+    code: z.string(),
+    name: z.string(),
+    quantity: z.number(),
+    available: z.number().nullable(),
+    available_from: z.string().nullable(),
+    confirmed_at: z.string().nullable(),
+  }),
+);
 
-export type PartnerSuggestions = { state: "found"; suggestions: Suggestion[]; more: boolean } | { state: "unavailable" };
+export type PartnerSuggestions =
+  | { state: "found"; suggestions: Suggestion[]; more: boolean }
+  | { state: "unavailable" }
+  | { state: "rate_limited" };
 
 // The partners suggested for a requirement (FR-M3), for the members of its organisation. A requirement that is closed,
-// filled or needs no partners has none (CHARA_INVALID_STATE); anything else that fails is an error for the route's
-// boundary.
+// filled or needs no partners has none (CHARA_INVALID_STATE); over the partner search allowance the page says so
+// (CHARA_RATE_LIMITED); anything else that fails is an error for the route's boundary.
 export async function suggestPartners(organizationId: string, requirementId: string): Promise<PartnerSuggestions> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("suggest_partners", { p_org: organizationId, p_requirement: requirementId });
   if (error?.message === "CHARA_INVALID_STATE") return { state: "unavailable" };
+  if (error?.message === "CHARA_RATE_LIMITED") return { state: "rate_limited" };
   if (error) throw new Error("The partner suggestions could not be loaded", { cause: error });
   return {
     state: "found",
@@ -252,11 +266,14 @@ export async function suggestPartners(organizationId: string, requirementId: str
       criteriaMet: criteriaSchema.parse(row.criteria_met),
       criteriaNotMet: criteriaSchema.parse(row.criteria_not_met),
       servedDestinations: namedSchema.parse(row.served_destinations),
-      matchingOccupations: namedSchema.parse(row.matching_occupations),
-      listing:
-        row.listing_occupation_id === null
-          ? null
-          : { occupation: row.listing_occupation, available: row.available, availableFrom: row.available_from, confirmedAt: row.confirmed_at },
+      matchingOccupations: coverageSchema.parse(row.matching_occupations).map((item) => ({
+        code: item.code,
+        name: item.name,
+        quantity: item.quantity,
+        available: item.available,
+        availableFrom: item.available_from,
+        confirmedAt: item.confirmed_at,
+      })),
     })),
   };
 }

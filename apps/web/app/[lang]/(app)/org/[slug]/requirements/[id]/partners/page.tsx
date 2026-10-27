@@ -10,9 +10,8 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { isReleased } from "@/lib/dal/release";
 import { getRequirement, suggestPartners } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
-import { countryInSentence } from "@/lib/i18n/format";
 import { RANKING_PATH } from "@/lib/public/navigation";
-import { canSuggestPartners } from "@/lib/requirements/suggestions";
+import { canSuggestPartners, destinationsText, suggestionPlanDisclosure } from "@/lib/requirements/suggestions";
 import { requirementPath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
@@ -35,7 +34,7 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
   const result = canSuggestPartners(requirement.status, requirement.partnerNeed)
     ? await suggestPartners(organization.id, requirement.id)
     : ({ state: "unavailable" } as const);
-  const country = countryInSentence(requirement.countryCode, requirement.country);
+  const countries = destinationsText([{ code: requirement.countryCode, name: requirement.country }, ...requirement.destinations]);
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -53,9 +52,9 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
         }
       >
         <p className="max-w-[65ch] text-body leading-relaxed text-muted-foreground">
-          Listed partners that serve {country} and list at least one occupation of this requirement. They are ordered by the
-          number of criteria they meet, then by how recently they updated their profile; no partner pays to rank higher, and
-          partners are not told that they were suggested.{" "}
+          Listed partners that serve {countries} and list at least one occupation of this requirement. They are ordered by
+          the number of criteria they meet, then by how recently they updated their profile. {suggestionPlanDisclosure}{" "}
+          Partners are not told that they were suggested.{" "}
           <TextLink href={`/${lang}/${RANKING_PATH}`}>How suggestions are ordered</TextLink>
         </p>
       </PageHeader>
@@ -64,6 +63,10 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
           Partners are suggested for requirements that need partners and are not closed or filled.{" "}
           <TextLink href={requirementPath(lang, slug, requirement.id)}>Back to the requirement</TextLink>
         </Notice>
+      ) : result.state === "rate_limited" ? (
+        <Notice tone="warning" role="alert">
+          <p className="font-semibold">Too many searches. Please wait a minute and try again.</p>
+        </Notice>
       ) : (
         <>
           {requirement.status === "draft" ? (
@@ -71,7 +74,7 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
               This requirement is a draft. These suggestions are a preview; publish the requirement to work with partners.
             </Notice>
           ) : null}
-          <PartnerSuggestions lang={lang} requirement={requirement} suggestions={result.suggestions} more={result.more} />
+          <PartnerSuggestions lang={lang} organizationId={organization.id} requirement={requirement} suggestions={result.suggestions} more={result.more} />
         </>
       )}
     </div>

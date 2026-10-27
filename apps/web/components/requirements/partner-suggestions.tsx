@@ -4,10 +4,12 @@ import { TextLink } from "@/components/forms/text-link";
 import { hasConnectionActions, type ConnectionAccess } from "@/lib/connections/access";
 import { getConnectionStates } from "@/lib/dal/connections";
 import type { Requirement } from "@/lib/dal/requirements";
-import { countryInSentence, formatDate } from "@/lib/i18n/format";
+import { formatDate } from "@/lib/i18n/format";
 import { partnerDirectoryPath, type PartnerDirectoryKind } from "@/lib/partners/search-params";
 import {
   criteriaLists,
+  latestConfirmation,
+  noSuggestionsText,
   partnerKindText,
   suggestionCountText,
   suggestionSentence,
@@ -62,6 +64,7 @@ type CardProps = {
 function SuggestionCard({ lang, suggestion, connection, saved, following }: CardProps) {
   const profilePath = partnerProfilePath(lang, suggestion.slug);
   const { met, notMet } = criteriaLists(suggestion);
+  const confirmedAt = latestConfirmation(suggestion);
   return (
     <li className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-6">
       <div className="grid min-w-0 gap-2">
@@ -74,9 +77,9 @@ function SuggestionCard({ lang, suggestion, connection, saved, following }: Card
           <p className="text-small text-muted-foreground">{partnerKindText(suggestion)}</p>
         </div>
         <p className="text-body break-words">{suggestionSentence(suggestion)}</p>
-        {suggestion.listing ? (
+        {confirmedAt ? (
           <p className="text-small text-muted-foreground">
-            Listing confirmed <time dateTime={suggestion.listing.confirmedAt}>{formatDate(suggestion.listing.confirmedAt)}</time>
+            Availability confirmed <time dateTime={confirmedAt}>{formatDate(confirmedAt)}</time>
           </p>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
@@ -103,6 +106,8 @@ function SuggestionCard({ lang, suggestion, connection, saved, following }: Card
 
 type PartnerSuggestionsProps = {
   lang: string;
+  // The employer whose page this is: Save partner saves for it.
+  organizationId: string;
   requirement: Requirement;
   suggestions: Suggestion[];
   more: boolean;
@@ -110,16 +115,16 @@ type PartnerSuggestionsProps = {
 
 // The suggested partners of a requirement (FR-M3 steps Select to Explain, AC7, AC10, AC11): the count in a polite live
 // region, the cards, the directories when more partners fit, and an empty state that leads to the directories.
-export async function PartnerSuggestions({ lang, requirement, suggestions, more }: PartnerSuggestionsProps) {
+export async function PartnerSuggestions({ lang, organizationId, requirement, suggestions, more }: PartnerSuggestionsProps) {
   const kinds: PartnerDirectoryKind[] =
     requirement.partnerNeed === "both" ? ["recruitment", "staffing"] : requirement.partnerNeed === "staffing" ? ["staffing"] : ["recruitment"];
-  const country = countryInSentence(requirement.countryCode, requirement.country);
+  const countries = [{ code: requirement.countryCode, name: requirement.country }, ...requirement.destinations];
 
   if (suggestions.length === 0) {
     return (
       <div role="status">
         <EmptyState
-          title={`No listed partners serve ${country} for these occupations yet`}
+          title={noSuggestionsText(requirement.partnerNeed, countries)}
           description="Look for partners in the directories, or come back later."
         >
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
@@ -135,7 +140,10 @@ export async function PartnerSuggestions({ lang, requirement, suggestions, more 
     );
   }
 
-  const connections = await getConnectionStates(suggestions.map(({ organizationId, organizationType }) => ({ id: organizationId, type: organizationType })));
+  const connections = await getConnectionStates(
+    suggestions.map((suggestion) => ({ id: suggestion.organizationId, type: suggestion.organizationType })),
+    organizationId,
+  );
   return (
     <div className="grid gap-4">
       <p role="status" aria-live="polite" className="text-body text-muted-foreground">
