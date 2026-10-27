@@ -80,6 +80,9 @@ insert into catalogue values
    'export:passport'),
   ('public.worker_work_authorizations', 'cascade', 'passport data deleted with the passport; inactive accounts are put up for deletion after inactive_worker_data',
    'export:passport'),
+  ('public.workforce_requirements', 'cascade',
+   'organisation data: a requirement belongs to its employer; closed requirements follow closed_requirements (730 days), applied from V58',
+   'organisation data: the workforce requirements of an employer; created_by only names the member who wrote one'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -197,9 +200,9 @@ select is(
 select is(
   (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
      'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages',
-     'public.workforce_requirements', 'public.requirement_invitations']) t where to_regclass(t) is null),
-  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages,public.partner_responses,public.requirement_invitations,public.workforce_requirements',
-  'the tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74)'
+     'public.requirement_invitations']) t where to_regclass(t) is null),
+  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages,public.partner_responses,public.requirement_invitations',
+  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32'
 );
 select is(
   (select string_agg(entity, ',' order by entity) from private.retention_policies
