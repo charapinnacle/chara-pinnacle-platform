@@ -56,7 +56,7 @@ export async function DirectHiringRuleList() {
               </td>
               <td className={cell}>
                 <div className="grid gap-2">
-                  <DirectHiringRuleDialog countries={countries} rule={rule} />
+                  <DirectHiringRuleDialog rule={rule} />
                   <DeleteDirectHiringRuleDialog rule={rule} />
                 </div>
               </td>

@@ -103,6 +103,9 @@ export type DeleteRuleForm = z.input<typeof deleteRuleFormSchema>;
 
 export const deleteRuleInputSchema = deleteRuleFormSchema.extend({ id: z.uuid() });
 
+// What an editor save that changed nothing answers: a review is recorded by the new legal opinion reference.
+export const RULE_UNCHANGED = "Nothing changed. To record a review, update the legal opinion reference.";
+
 export function destinationText(name: string | null): string {
   return name ?? "All destinations";
 }

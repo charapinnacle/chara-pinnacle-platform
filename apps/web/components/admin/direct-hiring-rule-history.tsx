@@ -20,7 +20,7 @@ export async function DirectHiringRuleHistory() {
               <td className={`${cell} whitespace-nowrap`}>
                 <time dateTime={change.createdAt}>{formatDateTime(change.createdAt)}</time>
               </td>
-              <td className={`${cell} break-words`}>{change.actorName ?? "Migration"}</td>
+              <td className={`${cell} break-words`}>{change.actorName ?? "Former administrator"}</td>
               <td className={`${cell} break-words`}>{changeText(change)}</td>
               <td className={`${cell} break-words`}>{change.reason ?? <span className="text-muted-foreground">None recorded</span>}</td>
             </tr>

@@ -18,6 +18,7 @@ import {
   NOTICE_MAX,
   NOTICE_MIN,
   REFERENCE_MAX,
+  RULE_UNCHANGED,
   ruleFormFrom,
   ruleFormSchema,
   ruleLabels,
@@ -32,8 +33,9 @@ const ruleOptions = ruleValues.map((value) => ({ value, label: ruleLabels[value]
 type Country = { code: string; name: string };
 
 // Adds a rule, or edits one (FR-Q5 AC1, AC10). The source and destination of an existing rule are its key and stay as they
-// are; a rule for another pair is added instead. A rule for a pair that already has one changes that rule.
-export function DirectHiringRuleDialog({ countries, rule }: { countries: readonly Country[]; rule?: DirectHiringRule }) {
+// are; a rule for another pair is added instead, so only the add dialog needs the countries. A rule for a pair that
+// already has one changes that rule.
+export function DirectHiringRuleDialog({ countries = [], rule }: { countries?: readonly Country[]; rule?: DirectHiringRule }) {
   const [open, setOpen] = useState(false);
   const title = rule ? `Edit the rule for ${rule.sourceName}, ${destinationText(rule.destinationName)}` : "Add a rule";
   return (
@@ -78,7 +80,7 @@ function RuleFormView({ countries, rule, onClose }: { countries: readonly Countr
     return submit(
       () => saveDirectHiringRule(values),
       (result) => {
-        if (result.message) toastError(FAILURE, result.message);
+        if (result.message && result.message !== RULE_UNCHANGED) toastError(FAILURE, result.message);
         if (!result.done) return;
         onClose();
         toast({ title: "The rule is saved" });
