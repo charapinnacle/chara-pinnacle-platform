@@ -1,5 +1,5 @@
 begin;
-select plan(120);
+select plan(127);
 
 \ir apply_fixture.inc
 \ir billing_events_fixture.inc
@@ -467,6 +467,11 @@ select is(
   pg_temp.deliver('del_o7', 'subscription.canceled', pg_temp.sub_event(:'o7', 'employer_starter', 'canceled', 'sub_o7'),
     '2026-11-05T00:00:00Z'),
   'applied', 'AC7: the lapse is applied');
+select ok(exists (
+    select 1 from pg_locks l
+    where l.pid = pg_backend_pid() and l.locktype = 'advisory' and l.objsubid = 1
+      and ((l.classid::bigint << 32) | l.objid::bigint) = hashtextextended('active_requirements:' || :'o7', 0)),
+  'the lapse holds the advisory lock of the limit trigger (same key), so it serialises with a publish or reopen');
 select is(pg_temp.lapse_states(:'o7'), 'L 1 March:paused,L 2 March:paused,L 3 March:paused,L 4 March:paused,L draft:draft',
   'AC7: with the free plan''s 0 all four open requirements are paused and the draft is untouched');
 select is(
@@ -542,6 +547,13 @@ select is(
   '2|3|t|Basic', 'a member reads the usage through org_usage, without aal2');
 select is(pg_temp.read_as(:'own2', format('select count(*) from public.org_usage(%L)', :'o10')), '42501|CHARA_FORBIDDEN|',
   'NFR-S8: an owner of another organisation reads none');
+select gen_random_uuid() as p_org \gset
+insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country)
+values (:'p_org', 'recruitment_company', 'org-' || left(:'p_org', 8), 'Partner Usage Ltd', 'Partner Usage', 'PH');
+select pg_temp.join_org(:'p_org', :'own2', 'owner');
+select pg_temp.join_org(:'p_org', :'mem', 'member');
+select is(pg_temp.read_as(:'mem', format('select count(*) from public.org_usage(%L)', :'p_org')), '42501|CHARA_FORBIDDEN|release_off',
+  'with release 2b on and 2a off a member of a partner organisation reads no usage');
 update private.settings set value = 'false' where key = 'release_job_orders';
 select is(pg_temp.read_as(:'mem', format('select count(*) from public.org_usage(%L)', :'o10')), '42501|CHARA_FORBIDDEN|release_off',
   'org_usage is closed while releases 2a and 2b are both off');
@@ -561,6 +573,21 @@ select is(
   'AC9: records one limit.prompt_shown row with detail active_requirements');
 select is(pg_temp.call_as(:'mem', 'authenticated', format($$select public.record_limit_prompt(%L, 'active_requirements')$$, :'o10')),
   '42501|CHARA_FORBIDDEN|', 'AC9: a member records no prompt');
+select is(pg_temp.call_as(:'own1', 'authenticated', format($$select public.record_limit_prompt(%L, 'active_requirements')$$, :'o10')), 'ok',
+  'AC9: a second prompt call of the owner within the hour');
+select is((select count(*)::integer from audit.log where action = 'limit.prompt_shown' and entity_id = :'o10'), 1,
+  'AC9: records nothing: at most one active_requirements prompt per user and hour');
+select pg_temp.join_org(:'o10', :'adm', 'admin');
+select is(pg_temp.call_as(:'adm', 'authenticated', format($$select public.record_limit_prompt(%L, 'active_requirements')$$, :'o10')), 'ok',
+  'AC9: another admin''s prompt call');
+select is((select count(*)::integer from audit.log where action = 'limit.prompt_shown' and entity_id = :'o10' and actor_id = :'adm'), 1,
+  'AC9: another user still records one');
+update billing.plan_limits set limit_value = 2 where plan_code = 'employer_starter' and limit_key = 'members';
+select pg_temp.call_as(:'own1', 'authenticated', format($$select public.record_limit_prompt(%L, 'members')$$, :'o10')) as ignored \gset
+select pg_temp.call_as(:'own1', 'authenticated', format($$select public.record_limit_prompt(%L, 'members')$$, :'o10')) as ignored \gset
+select is((select count(*)::integer from audit.log where action = 'limit.prompt_shown' and entity_id = :'o10' and metadata ->> 'limit_key' = 'members'), 2,
+  'other keys keep the hourly ceilings: two members prompts of one user are both recorded');
+update billing.plan_limits set limit_value = 3 where plan_code = 'employer_starter' and limit_key = 'members';
 
 -- Who may ask about the feature (NFR-S8) ----------------------------------------------------------------------------------------
 
