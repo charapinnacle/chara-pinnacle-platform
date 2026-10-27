@@ -225,7 +225,7 @@ test.describe("Download my data (FR-S3 AC7, AC8)", () => {
   test("the console lists the export switch among the releases, needing no legal document", async ({ page }) => {
     await signInStaff(page, "admin", "/en/admin/settings");
     const row = page.getByRole("region", { name: "Release switches" }).getByRole("row").filter({ hasText: "release_data_export" });
-    await expect(row).toContainText("Data export: Download my data");
+    await expect(row).toContainText("Data export: a user exports a copy of their own data");
     await expect(row).toContainText("Live");
     await expect(row).toContainText("None needed");
   });
