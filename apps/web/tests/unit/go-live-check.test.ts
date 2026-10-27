@@ -48,6 +48,7 @@ type Release = {
   rate_limit_proof_key_set?: unknown;
   legal_release_gaps?: unknown;
   edge_secrets?: unknown;
+  stray_organization_consents?: unknown;
 };
 
 const PUBLISHED: Release = {
@@ -151,6 +152,7 @@ describe("the go-live gate for the plans that are sold (FR-G1 AC11)", () => {
     ...PUBLISHED,
     legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] },
     edge_secrets: PORTAL_SECRETS,
+    stray_organization_consents: 0,
   };
 
   it("names a partner plan without a Stripe price but passes while the partner checkout is off (FR-R1, decision 7.3)", () => {
@@ -420,9 +422,11 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
       ...PUBLISHED,
       legal_release_gaps: NO_GAPS,
       edge_secrets: ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"],
+      stray_organization_consents: 0,
     });
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Release switches on: release_partner_directories\n");
   });
 
   it("fails a switched-on release when the export has no gate result for it", () => {
@@ -437,5 +441,41 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Go-live check failed: entitlements_enforced must be true");
     expect(result.stderr).toContain("Phase 2 go-live check failed: partner_accounts is switched on");
+  });
+});
+
+describe("the release 2a items of the gate (V78)", () => {
+  const RELEASE_2A: Release = {
+    ...PUBLISHED,
+    legal_release_gaps: { partner_accounts: [], job_orders: [], find_workers: [] },
+    edge_secrets: ["STRIPE_PORTAL_CONFIGURATION_RECRUITMENT_COMPANY", "STRIPE_PORTAL_CONFIGURATION_STAFFING_COMPANY"],
+  };
+  const switched = (switches: Record<string, unknown>) => JSON.stringify({ entitlements_enforced: true, ...ENTITY, ...switches });
+
+  it("fails while an acceptance of an organisation-level document did not come through the Commitments step", () => {
+    for (const on of [true, false]) {
+      const result = run(switched({ release_partner_directories: on }), MIRRORED, { ...RELEASE_2A, stray_organization_consents: 2 });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        "Phase 2 go-live check failed: 2 acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step",
+      );
+    }
+  });
+
+  it("requires the count while release 2a is on, and not before", () => {
+    const on = run(switched({ release_partner_directories: true }), MIRRORED, RELEASE_2A);
+    expect(on.status).toBe(1);
+    expect(on.stderr).toContain("release_partner_directories is on but release.json has no stray_organization_consents");
+    const off = run(switched({}), MIRRORED, RELEASE_2A);
+    expect(off.status).toBe(0);
+    expect(off.stderr).toBe("");
+  });
+
+  it("names every release switch that is on, the data export included, which has no legal gate", () => {
+    const result = run(switched({ release_data_export: "true", release_job_orders: false }), MIRRORED, RELEASE_2A);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Release switches on: release_data_export\n");
+    const none = run(switched({}), MIRRORED, RELEASE_2A);
+    expect(none.stdout).toContain("Release switches on: none\n");
   });
 });
