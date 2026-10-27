@@ -236,6 +236,8 @@ select is(pg_temp.prefs_as(:'adm', '{"application_received": true}'), 'ok', 'pre
 select is((select digest from public.notification_preferences where user_id = :'adm'), true, 'digest: and the per-kind save leaves the digest alone');
 
 -- notification_kind_catalogue(): the kinds of the caller's audience, with the email state.
+-- adm belongs to no organisation until here; it creates an employer so that the employer-only kinds apply to it.
+select pg_temp.call_as(:'adm', 'authenticated', $$select public.create_organization('employer', 'Catalogue Employer GmbH', null, 'DE', 'F')$$, 'aal1') as adm_org \gset
 select is(
   (select jsonb_agg(c ->> 'kind' order by c ->> 'kind') from jsonb_array_elements(pg_temp.json_as(:'adm', 'select * from public.notification_kind_catalogue()')) c),
   (select jsonb_agg(kind order by kind) from private.notification_kinds
