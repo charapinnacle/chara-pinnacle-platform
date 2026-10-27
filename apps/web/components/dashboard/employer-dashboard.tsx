@@ -11,7 +11,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { countFollowedCompanies, countSavedPartners } from "@/lib/dal/connections";
 import { getFirstSteps, startDashboardLoad } from "@/lib/dal/dashboard";
-import { applicantsPath, billingPath, followingPath, jobsPath, organizationProfilePath, savedPartnersPath } from "@/lib/routes";
+import {
+  applicantsPath,
+  billingPath,
+  followingPath,
+  jobsPath,
+  organizationProfilePath,
+  requirementsPath,
+  savedPartnersPath,
+} from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
@@ -20,6 +28,8 @@ type EmployerDashboardProps = {
   twoStepDone: boolean;
   // Release 2a is on: the saved partners and followed companies are counted (FR-L4 AC10).
   network: boolean;
+  // Release 2b is on: the workforce requirements are linked (FR-M1, SOP step Start).
+  requirements: boolean;
 };
 
 async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<boolean>; lang: string; slug: string; role: MemberRole }) {
@@ -69,7 +79,7 @@ function NetworkFigures({ lang, organizationId, slug }: { lang: string; organiza
 // The summary of the hiring of one organisation for a member, or for an owner or admin at aal2. The reads start together;
 // each part shows its own when it is ready, or its own error. An owner or admin also sees the first steps until they are
 // all done. The stage counts are shown once, in the table of the applications.
-export function EmployerDashboard({ lang, organization, twoStepDone, network }: EmployerDashboardProps) {
+export function EmployerDashboard({ lang, organization, twoStepDone, network, requirements }: EmployerDashboardProps) {
   const { slug, role } = organization;
   const { applications, vacancies, plan, empty } = startDashboardLoad(organization.id);
   const manager = role !== "member";
@@ -82,17 +92,26 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network }: 
       <PageHeader
         title="Dashboard"
         actions={
-          manager ? (
+          manager || requirements ? (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-              <TextLink standalone href={organizationProfilePath(lang, slug)}>
-                Company profile
-              </TextLink>
-              <TextLink standalone href={billingPath(lang, slug)}>
-                Billing
-              </TextLink>
-              <LinkButton href={`${jobsPath(lang, slug)}/new`} size="default">
-                Post job
-              </LinkButton>
+              {requirements ? (
+                <TextLink standalone href={requirementsPath(lang, slug)}>
+                  Workforce requirements
+                </TextLink>
+              ) : null}
+              {manager ? (
+                <>
+                  <TextLink standalone href={organizationProfilePath(lang, slug)}>
+                    Company profile
+                  </TextLink>
+                  <TextLink standalone href={billingPath(lang, slug)}>
+                    Billing
+                  </TextLink>
+                  <LinkButton href={`${jobsPath(lang, slug)}/new`} size="default">
+                    Post job
+                  </LinkButton>
+                </>
+              ) : null}
             </div>
           ) : null
         }
