@@ -1,12 +1,12 @@
 -- Workforce requirements (FR-M1, SOP P2-15; docs/phase-2/DATA_MODEL.md sections 2, 5, 6, 7 and 10, release 2b). An
 -- employer describes one need for a group of workers once: how many, where, in which industry, one to ten occupations
--- with quantities that add up to the number of workers, and the terms. A requirement is not a vacancy: no candidate reads
--- or applies to it [d3.1]. It is saved as a draft by an owner or admin at aal2 through save_requirement, the only writer;
--- members of the employer read it, partners only through the job order functions of V39 and V41, workers and anonymous
--- callers never. Occupations and destination countries are rows of their own, each a foreign key to its code list
--- (NFR-M3). Nothing here stores a gender, an age, a nationality or another characteristic of a person, and wording that
--- asks for one is refused against private.prohibited_terms. Publishing, the lifecycle and the reminders are V33, the
--- active_requirements limit at publish and several destinations V34, linked vacancies V35, partner suggestions V36,
+-- with quantities that add up to the number of workers, and the terms. A requirement is not a vacancy: no candidate
+-- reads or applies to it [d3.1]. It is saved as a draft by an owner or admin at aal2 through save_requirement, the only
+-- writer; members of the employer read it, partners only through the job order functions of V39 and V41, workers and
+-- anonymous callers never. Occupations and destination countries are rows of their own, each a foreign key to its code
+-- list (NFR-M3). Nothing here stores a gender, an age, a nationality or another characteristic of a person, and wording
+-- that asks for one is refused against private.prohibited_terms. Publishing, the lifecycle and the reminders are V33,
+-- the active_requirements limit at publish and several destinations V34, linked vacancies V35, partner suggestions V36,
 -- versions and change notices V43, moderation V57. Everything here is refused while release_job_orders is false.
 
 create type public.requirement_status as enum ('draft', 'open', 'paused', 'closed', 'filled');
@@ -66,8 +66,8 @@ comment on column public.workforce_requirements.show_identity is
 comment on column public.workforce_requirements.created_by is
   'The member who created the requirement; set by the default, null after the account is erased. Not readable through the Data API.';
 
--- The member list (keyset on created_at, id) and the policy filter on organization_id; the count of open requirements of
--- the active_requirements limit; the erasure of a creator.
+-- The member list (keyset on created_at, id) and the policy filter on organization_id; the count of open requirements
+-- of the active_requirements limit; the erasure of a creator.
 create index workforce_requirements_organization_created_idx
   on public.workforce_requirements (organization_id, created_at desc, id desc);
 create index workforce_requirements_organization_status_idx on public.workforce_requirements (organization_id, status);
@@ -135,13 +135,18 @@ create policy requirement_countries_select_member on public.requirement_countrie
     select r.id from public.workforce_requirements r where r.organization_id in (select private.member_org_ids())
   ));
 
--- Prohibited criteria ----------------------------------------------------------------------------------------------------
+-- Prohibited criteria -------------------------------------------------------------------------------------------------
 
 -- Wording that asks for a personal characteristic (FR-M1 AC7; SOP risk "discriminatory requirements"). Each pattern is
--- a POSIX regular expression matched against private.fold_text of the text, so it is written in lower case without
--- accents (the word-end escape \M aside). The last part of the check compiles the pattern, so a row that is not a valid expression is refused (2201B)
--- instead of breaking every later save. No API role reads the list; it complements moderation (FR-S1), it does not
--- replace it.
+-- a POSIX regular expression matched against the folded text of private.prohibited_criterion, so it is written in lower
+-- case without accents (the word-end escape \M aside). The patterns are phrases, not single words, so that ordinary
+-- wording ("Sex education teacher", "Married quarters", "disabled parking", "Religious professionals") passes; a
+-- lookahead keeps experience out of the age patterns ("under 2 years of experience"). The last part of the check
+-- compiles the pattern, so a row that is not a valid expression is refused (2201B) instead of breaking every later
+-- save. No API role reads the list; it complements moderation (FR-S1), it does not replace it. Trust & Safety and
+-- counsel review it before release 2b goes live. A backend caches 32 compiled expressions, and prohibited_criterion
+-- uses one of its own, so the list keeps to 31 patterns at most (related phrases share a pattern): beyond that every
+-- pattern is compiled again on every call.
 create table private.prohibited_terms (
   id smallint generated always as identity primary key,
   pattern text not null unique check (
@@ -161,42 +166,57 @@ alter table private.prohibited_terms force row level security;
 revoke all on table private.prohibited_terms from public, anon, authenticated, service_role;
 
 insert into private.prohibited_terms (pattern, label) values
-  ('\m(males?|females?|men|women|man|woman|ladies|gents)\s+only\M', 'gender'),
-  ('\monly\s+(males?|females?|men|women|ladies)\M', 'gender'),
-  ('\mno\s+(males?|females?|men|women|ladies)\M', 'gender'),
-  ('\m(gender|sex)\M', 'gender'),
-  ('\m(under|below|younger than|older than)\s+\d{1,2}\s*(years?|yrs?)\M', 'age'),
-  ('\m\d{1,2}\s*(years?|yrs?)\s+(old|of age)\M', 'age'),
-  ('\m(aged?|age limit|age:)\s*\d', 'age'),
+  ('\m(males?|females?|men|women|man|woman|ladies|gents|girls|boys)\s+only\M', 'gender'),
+  ('\monly\s+(males?|females?|men|women|ladies|gents|girls|boys)\M', 'gender'),
+  ('\mno\s+(males?|females?|men|women|ladies|girls|boys)\M(?!'')', 'gender'),
+  ('\m(males?|females?|men|women|ladies|girls|boys)\s+(preferred|wanted|required|needed)\M', 'gender'),
+  ('\mmust\s+be\s+(an?\s+)?(male|female|man|woman)\M', 'gender'),
+  ('\m((gender|sex)\s*:|(preferred|required)\s+(gender|sex)\M)', 'gender'),
+  ('\m(under|below|younger\s+than|not\s+older\s+than|no\s+older\s+than|max\.?|maximum)\s+(age\s+(of\s+)?)?\d{1,2}\s*(years?|yrs?)\M(?!\s+(of\s+)?(\w+\s+){0,2}experience)', 'age'),
+  ('\mbetween\s+\d{1,2}\s*(and|-|to)\s*\d{1,2}\s*(years?|yrs?)\M(?!\s+(of\s+)?(\w+\s+){0,2}experience)', 'age'),
+  ('\maged?\s*:?\s*\d{1,2}\s*(-|to|and)\s*\d{1,2}\M', 'age'),
+  ('\m(age\s+limit|maximum\s+age|max\.?\s+age|upper\s+age)\M', 'age'),
+  ('\m\d{1,2}\s*(years?|yrs?)\s+old\s+(or\s+)?(younger|less|under|max|maximum)\M', 'age'),
   ('\m(young|younger|old|older)\s+(workers?|candidates?|people|persons?|applicants?|men|women)\M', 'age'),
   ('\mnationalit(y|ies)\M', 'nationality'),
-  ('\m(citizens?|nationals)\s+only\M', 'nationality'),
-  ('\m(religion|religious)\M', 'religion'),
-  ('\m(muslims?|christians?|hindus?|jews|jewish|buddhists?|sikhs?)\M', 'religion'),
-  ('\m(marital status|married|unmarried|divorced|widowed)\M', 'marital_status'),
-  ('\m(ethnic|ethnicity|race|racial|skin colou?r|caste)\M', 'ethnicity'),
-  ('\m(pregnant|pregnancy|childless|no children)\M', 'pregnancy'),
-  ('\m(date of birth|birth date|dob)\M', 'date_of_birth'),
-  ('\m(with|send|attach)\s+(an?\s+)?(photo|photograph|picture)\M', 'photo'),
-  ('\m(photo|photograph|picture)\s+(required|needed|attached)\M', 'photo'),
-  ('\m(id|identity|passport)\s+(card\s+)?number\M', 'identity_number'),
-  ('\m(disabled|disability|handicapped)\M', 'disability');
+  ('\m(citizens?|nationals)\s+(only|preferred|wanted|required)\M', 'nationality'),
+  ('\monly\s+\w+\s+(citizens|nationals)\M', 'nationality'),
+  ('\m(religion|religious\s+(beliefs?|affiliations?|background))\M', 'religion'),
+  ('\m(muslims?|christians?|hindus?|jews|jewish|buddhists?|sikhs?|catholics?)\s+(only|preferred|wanted|required|needed)\M', 'religion'),
+  ('\m(only|no)\s+(muslims?|christians?|hindus?|jews|buddhists?|sikhs?|catholics?)\M', 'religion'),
+  ('\mmarital\s+status\M', 'marital_status'),
+  ('\m(married|unmarried|single|divorced|widowed)\s+(only|preferred|required|candidates?|applicants?|persons?|people|men|women)\M', 'marital_status'),
+  ('\mmust\s+be\s+(married|unmarried|single)\M', 'marital_status'),
+  ('\m((ethnicity|ethnic\s+(origin|background|group)|racial|skin\s+colou?r|caste)\M|race\s*:)', 'ethnicity'),
+  ('\m(pregnant|pregnancy|childless)\M', 'pregnancy'),
+  ('\m(no|without)\s+(children|kids)\M(?!'')', 'pregnancy'),
+  ('\m(date\s+of\s+birth|birth\s*date|dob)\M', 'date_of_birth'),
+  ('\m((with|send|attach)\s+(an?\s+)?(photo|photograph|picture)|(photo|photograph|picture)\s+(required|needed|attached))\M', 'photo'),
+  ('\m(id|identity|national\s+id)\s+(card\s+)?number\M', 'identity_number'),
+  ('\m(no|not)\s+(disabled|handicapped)\M', 'disability'),
+  ('\m(able[- ]bodied\s+(only|men|women|workers?|candidates?|applicants?)|without\s+(any\s+)?disabilit(y|ies))\M', 'disability');
 
--- The label of the first prohibited pattern the text matches, null when none does (or the text is null).
+-- The label of the first prohibited pattern the text matches, null when none does (or the text is null). The text is
+-- normalised (NFKC, so full-width letters and no-break spaces count as their plain forms), stripped of the invisible
+-- characters (soft hyphen, zero-width spaces and joiners, direction marks, word joiner, byte order mark) that would
+-- otherwise split a phrase without changing what a reader sees, and folded. The stripping comes before the folding,
+-- because unaccent turns a soft hyphen into a visible hyphen.
 create function private.prohibited_criterion(p_text text) returns text
 language sql
 stable
 set search_path = ''
 as $$
   select t.label from private.prohibited_terms t
-  where p_text is not null and private.fold_text(p_text) ~ t.pattern
+  where p_text is not null
+    and private.fold_text(regexp_replace(normalize(p_text, NFKC), E'[\u00ad\u200b-\u200f\u2060-\u2064\ufeff]', '', 'g'))
+        ~ t.pattern
   order by t.id
   limit 1
 $$;
 
 revoke all on function private.prohibited_criterion(text) from public, anon, authenticated, service_role;
 
--- Saving ------------------------------------------------------------------------------------------------------------------
+-- Saving --------------------------------------------------------------------------------------------------------------
 
 -- An owner or admin at aal2 of an active employer, release 2b only. A recruitment or staffing company posts no
 -- requirement (CHARA_FORBIDDEN employer_only).
@@ -221,16 +241,18 @@ $$;
 
 revoke all on function private.assert_requirement_manager(uuid) from public, anon, authenticated, service_role;
 
--- Creates a draft (p_requirement null) or changes a requirement of p_org that is not closed or filled (FR-M1 AC1 to AC7).
--- The organisation comes from the caller; status, visibility, created_by and the dates are not parameters. Refusals:
--- a start date before today (UTC) or more than three years ahead, CHARA_INVALID_INPUT start_date (an unchanged start
--- date of an existing requirement is kept); occupations not an array of 1 to 10 distinct {occupation_id, quantity},
--- CHARA_INVALID_INPUT occupations; quantities that do not add up to workers_needed, CHARA_INVALID_INPUT
--- occupation_quantities; prohibited wording in the title, the skills or the city or region, CHARA_INVALID_INPUT
--- prohibited_criterion:<field>; values outside the column checks 23514 and codes outside the lists 23503, both named by
--- their constraint. Everything is written in one transaction with one audit row: requirement.created, or
--- requirement.updated with the names of the changed fields (never their values) when something changed. Each save counts
--- against the daily quota of audited writes (CHARA_RATE_LIMITED).
+-- Creates a draft (p_requirement null) or changes a requirement of p_org that is not closed or filled (FR-M1 AC1 to
+-- AC7; CHARA_INVALID_STATE otherwise). A change names the updated_at it was made from (p_expected_updated_at, null when
+-- creating); another value means someone saved since, CHARA_CONFLICT stale. The organisation comes from the caller;
+-- status, visibility, created_by and the dates are not parameters. Refusals: a start date before today (UTC) or more
+-- than three years ahead, CHARA_INVALID_INPUT start_date (an unchanged start date of an existing requirement is kept);
+-- occupations not an array of 1 to 10 distinct {occupation_id, quantity}, CHARA_INVALID_INPUT occupations; quantities
+-- that do not add up to workers_needed, CHARA_INVALID_INPUT occupation_quantities; prohibited wording in the title, the
+-- skills or the city or region, CHARA_INVALID_INPUT prohibited_criterion:<field> (the title only when the caller wrote
+-- it: one written here or kept unchanged is not checked again); values outside the column checks 23514 and codes
+-- outside the lists 23503, both named by their constraint. Everything is written in one transaction with one audit row:
+-- requirement.created, or requirement.updated with the names of the changed fields (never their values) when something
+-- changed. Each save counts against the daily quota of audited writes (CHARA_RATE_LIMITED).
 create function public.save_requirement(
   p_org uuid,
   p_workers_needed integer,
@@ -253,7 +275,8 @@ create function public.save_requirement(
   p_salary_min numeric default null,
   p_salary_max numeric default null,
   p_salary_currency text default null,
-  p_salary_period public.salary_period default null
+  p_salary_period public.salary_period default null,
+  p_expected_updated_at timestamptz default null
 ) returns uuid
 language plpgsql
 security definer
@@ -285,7 +308,10 @@ begin
       raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
     end if;
     if v_old.status in ('closed', 'filled') then
-      raise exception 'CHARA_INVALID_TRANSITION' using detail = v_old.status::text;
+      raise exception 'CHARA_INVALID_STATE' using detail = v_old.status::text;
+    end if;
+    if p_expected_updated_at is distinct from v_old.updated_at then
+      raise exception 'CHARA_CONFLICT' using detail = 'stale';
     end if;
     select coalesce(jsonb_agg(jsonb_build_object('occupation_id', o.occupation_id, 'quantity', o.quantity)
              order by o.occupation_id), '[]')
@@ -316,7 +342,10 @@ begin
   from jsonb_array_elements(p_occupations) e;
 
   foreach v_field in array array['title', 'skills', 'city_region'] loop
-    v_criterion := private.prohibited_criterion(case v_field when 'title' then v_title when 'skills' then v_skills else v_city end);
+    v_criterion := private.prohibited_criterion(case v_field
+      when 'title' then case when v_title is distinct from v_old.title then v_title end
+      when 'skills' then v_skills
+      else v_city end);
     if v_criterion is not null then
       raise exception 'CHARA_INVALID_INPUT' using detail = 'prohibited_criterion:' || v_field;
     end if;
@@ -399,11 +428,11 @@ $$;
 
 revoke all on function public.save_requirement(
   uuid, integer, text, text, text, jsonb, date, public.employment_type, public.recruitment_preference, public.partner_need,
-  boolean, boolean, boolean, uuid, text, text, smallint, smallint, numeric, numeric, text, public.salary_period
+  boolean, boolean, boolean, uuid, text, text, smallint, smallint, numeric, numeric, text, public.salary_period, timestamptz
 ) from public, anon, authenticated, service_role;
 grant execute on function public.save_requirement(
   uuid, integer, text, text, text, jsonb, date, public.employment_type, public.recruitment_preference, public.partner_need,
-  boolean, boolean, boolean, uuid, text, text, smallint, smallint, numeric, numeric, text, public.salary_period
+  boolean, boolean, boolean, uuid, text, text, smallint, smallint, numeric, numeric, text, public.salary_period, timestamptz
 ) to authenticated;
 
 -- Usage and reference data --------------------------------------------------------------------------------------------
