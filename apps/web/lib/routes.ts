@@ -128,6 +128,16 @@ export function companyPagePath(lang: string, slug: string): string {
   return `/${lang}/companies/${slug}`;
 }
 
+// The workforce requirements of an employer (FR-M1), optionally from a keyset cursor on.
+export function requirementsPath(lang: string, slug: string, after?: string): string {
+  const path = `/${lang}/org/${slug}/requirements`;
+  return after ? `${path}?after=${encodeURIComponent(after)}` : path;
+}
+
+export function requirementPath(lang: string, slug: string, id: string): string {
+  return `${requirementsPath(lang, slug)}/${id}`;
+}
+
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.
 export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
   const path = `/${lang}/org/${slug}/saved-partners`;
