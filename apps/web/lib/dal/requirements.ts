@@ -40,6 +40,7 @@ export type Requirement = RequirementSummary & {
   recruitmentPreference: Enums["recruitment_preference"];
   partnerNeed: Enums["partner_need"];
   visibility: Enums["requirement_visibility"] | null;
+  updatedAt: string;
 };
 
 // Members read the requirements of their organisation under row level security (workforce_requirements_select_member);
@@ -81,7 +82,7 @@ const selectRequirement = (supabase: Client) =>
   supabase
     .from("workforce_requirements")
     .select(
-      "id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, created_at, countries!workforce_requirements_country_code_fkey(name), industries(name), requirement_occupations(occupation_id, quantity, occupations(label))",
+      "id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, created_at, updated_at, countries!workforce_requirements_country_code_fkey(name), industries(name), requirement_occupations(occupation_id, quantity, occupations(label))",
     );
 
 type RequirementRow = QueryData<ReturnType<typeof selectRequirement>>[number];
@@ -116,6 +117,7 @@ function toRequirement(row: RequirementRow): Requirement {
     status: row.status,
     visibility: row.visibility,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

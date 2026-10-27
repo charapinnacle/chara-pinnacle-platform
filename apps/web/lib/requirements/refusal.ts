@@ -17,6 +17,7 @@ export const REQUIREMENT_MESSAGES = {
   notAllowed: "You are not allowed to create or edit workforce requirements for this company.",
   notFound: "This workforce requirement could not be found.",
   final: "This workforce requirement is closed or filled, so it can no longer be changed.",
+  stale: "Someone else changed this requirement, reload.",
   tooManyChanges: "Too many changes were made today. Try again tomorrow.",
 } as const;
 
@@ -66,7 +67,8 @@ export function requirementRefusal(error: RefusalError): RequirementRefusal {
   }
   if (error.code === "42501") return { kind: "message", message: REQUIREMENT_MESSAGES.notAllowed };
   if (error.code === "P0002") return { kind: "message", message: REQUIREMENT_MESSAGES.notFound };
-  if (error.message === "CHARA_INVALID_TRANSITION") return { kind: "message", message: REQUIREMENT_MESSAGES.final };
+  if (error.message === "CHARA_INVALID_STATE") return { kind: "message", message: REQUIREMENT_MESSAGES.final };
+  if (error.message === "CHARA_CONFLICT" && error.details === "stale") return { kind: "message", message: REQUIREMENT_MESSAGES.stale };
   if (error.message === "CHARA_RATE_LIMITED") return { kind: "message", message: REQUIREMENT_MESSAGES.tooManyChanges };
   return { kind: "fault" };
 }

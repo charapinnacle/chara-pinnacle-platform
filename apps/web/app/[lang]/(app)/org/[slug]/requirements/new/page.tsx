@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Post workforce requirement", robots:
 export default async function NewRequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/new">) {
   const { lang, slug } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
-  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
+  const { user, organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
   if (organization.type !== "employer") notFound();
   if (organization.suspended) return <SuspendedOrganization title="Post workforce requirement" subject="workforce requirements" />;
   const [occupations, industries, countries, currencies] = await Promise.all([
@@ -42,7 +42,7 @@ export default async function NewRequirementPage({ params }: PageProps<"/[lang]/
           />
         }
       />
-      <RequirementForm slug={slug} occupations={occupations} industries={industries} countries={countries} currencies={currencies} />
+      <RequirementForm slug={slug} userId={user.id} occupations={occupations} industries={industries} countries={countries} currencies={currencies} />
     </div>
   );
 }

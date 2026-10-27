@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Edit workforce requirement", robots:
 export default async function EditRequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/edit">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
-  const { organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
+  const { user, organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
   if (organization.type !== "employer") notFound();
   if (organization.suspended) return <SuspendedOrganization title="Edit workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
@@ -57,11 +57,12 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
       {editable ? (
         <RequirementForm
           slug={slug}
+          userId={user.id}
           occupations={occupations}
           industries={industries}
           countries={countries}
           currencies={currencies}
-          edit={{ requirementId: requirement.id, values: toRequirementFormInput(requirement) }}
+          edit={{ requirementId: requirement.id, values: toRequirementFormInput(requirement), expectedUpdatedAt: requirement.updatedAt }}
         />
       ) : (
         <Notice tone="info" role="status">

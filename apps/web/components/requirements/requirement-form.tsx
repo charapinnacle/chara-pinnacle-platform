@@ -3,9 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm, useWatch, type FieldErrors, type FieldPath, type FieldValues } from "react-hook-form";
-import * as z from "zod";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
@@ -22,7 +21,13 @@ import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import { formatCount } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { toOptions } from "@/lib/reference-options";
-import { employmentTypeOptions, recruitmentPreferenceOptions, salaryPeriodOptions, salaryPeriods } from "@/lib/validation/job";
+import {
+  clearRequirementDraft,
+  readRequirementDraft,
+  requirementDraftKey,
+  writeRequirementDraft,
+} from "@/lib/requirements/draft-storage";
+import { employmentTypeOptions, recruitmentPreferenceOptions, salaryPeriodOptions } from "@/lib/validation/job";
 import {
   emptyRequirementForm,
   OCCUPATIONS_MAX,
@@ -35,11 +40,13 @@ import {
 
 type RequirementFormProps = {
   slug: string;
+  userId: string;
   occupations: OccupationItem[];
   industries: ReferenceItem[];
   countries: ReferenceItem[];
   currencies: ReferenceItem[];
-  edit?: { requirementId: string; values: RequirementFormInput };
+  // expectedUpdatedAt is the version the page was loaded with; a save from an older one is refused.
+  edit?: { requirementId: string; values: RequirementFormInput; expectedUpdatedAt: string };
 };
 
 type Path = FieldPath<RequirementFormInput>;
@@ -69,61 +76,7 @@ const ids = {
 const occupationId = (index: number) => `requirement-occupation-${index}`;
 const quantityId = (index: number) => `requirement-quantity-${index}`;
 
-// What a new requirement keeps in this tab until it is saved (FR-M1 AC12): a draft row needs every field, so a half-filled
-// form is kept in the browser, never on the server. Only the values of the form, no person; unreadable storage is ignored.
-const draftSchema = z.object({
-  title: z.string(),
-  workersNeeded: z.string(),
-  country: z.string(),
-  cityRegion: z.string(),
-  industry: z.string(),
-  occupations: z.array(z.object({ occupation: z.string(), quantity: z.string() })).min(1).max(OCCUPATIONS_MAX),
-  skills: z.string(),
-  experienceYears: z.string(),
-  startDate: z.string(),
-  durationMonths: z.string(),
-  employmentType: z.string(),
-  salaryMin: z.string(),
-  salaryMax: z.string(),
-  salaryCurrency: z.string(),
-  salaryPeriod: z.union([z.literal(""), z.enum(salaryPeriods)]),
-  accommodation: z.boolean(),
-  workPermitSupport: z.boolean(),
-  visaSupport: z.boolean(),
-  recruitmentPreference: z.string(),
-  partnerNeed: z.string(),
-});
-
-const draftKey = (slug: string) => `chara:requirement-draft:${slug}`;
-
-function readDraft(slug: string): RequirementFormInput | null {
-  try {
-    const stored = window.sessionStorage.getItem(draftKey(slug));
-    if (!stored) return null;
-    const parsed = draftSchema.safeParse(JSON.parse(stored));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeDraft(slug: string, values: unknown): void {
-  try {
-    window.sessionStorage.setItem(draftKey(slug), JSON.stringify(values));
-  } catch {
-    // Storage that is full or blocked only costs the convenience of a restored draft.
-  }
-}
-
-function clearDraft(slug: string): void {
-  try {
-    window.sessionStorage.removeItem(draftKey(slug));
-  } catch {
-    // As writeDraft.
-  }
-}
-
-export function RequirementForm({ slug, occupations, industries, countries, currencies, edit }: RequirementFormProps) {
+export function RequirementForm({ slug, userId, occupations, industries, countries, currencies, edit }: RequirementFormProps) {
   const form = useForm<RequirementFormInput, unknown, RequirementFormValues>({
     resolver: zodResolver(requirementFormSchema()),
     defaultValues: edit?.values ?? emptyRequirementForm,
@@ -132,6 +85,7 @@ export function RequirementForm({ slug, occupations, industries, countries, curr
   const { fields, append, remove } = useFieldArray({ control, name: "occupations" });
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not save the workforce requirement" });
   const router = useRouter();
+  const [removed, setRemoved] = useState("");
 
   const occupationOptions = useMemo(
     () => occupations.map(({ code, label, synonyms }) => ({ value: code, label: `${code} · ${label}`, keywords: synonyms.join(" ") })),
@@ -143,16 +97,26 @@ export function RequirementForm({ slug, occupations, industries, countries, curr
   const total = rows.reduce((sum, row) => sum + (/^\d+$/.test(row.quantity.trim()) ? Number(row.quantity.trim()) : 0), 0);
   const rowName = (index: number) => labelOf.get(rows[index]?.occupation ?? "") ?? `occupation ${index + 1}`;
 
+  const draftKey = requirementDraftKey(userId, slug);
+
   useEffect(() => {
     if (edit) return;
-    const draft = readDraft(slug);
+    const draft = readRequirementDraft(draftKey);
     if (draft) form.reset(draft);
-    return form.subscribe({ formState: { values: true }, callback: ({ values }) => writeDraft(slug, values) });
-  }, [edit, form, slug]);
+    return form.subscribe({ formState: { values: true }, callback: ({ values }) => writeRequirementDraft(draftKey, values) });
+  }, [draftKey, edit, form]);
 
   function clearForm() {
-    clearDraft(slug);
+    clearRequirementDraft(draftKey);
     form.reset(emptyRequirementForm);
+  }
+
+  // The row before the removed one (or the new first row) takes the focus, and the removal is announced.
+  function removeRow(index: number) {
+    const label = rowName(index);
+    remove(index);
+    setRemoved(`Removed ${label}`);
+    requestAnimationFrame(() => form.setFocus(`occupations.${Math.max(index - 1, 0)}.occupation`));
   }
 
   function focusField(key: string) {
@@ -161,10 +125,10 @@ export function RequirementForm({ slug, occupations, industries, countries, curr
 
   function onValid() {
     return submit(
-      () => saveRequirement(slug, edit?.requirementId ?? null, form.getValues()),
+      () => saveRequirement(slug, edit ? { id: edit.requirementId, expectedUpdatedAt: edit.expectedUpdatedAt } : null, form.getValues()),
       (result) => {
         if (result.savedHref) {
-          if (!edit) clearDraft(slug);
+          if (!edit) clearRequirementDraft(draftKey);
           toast({ title: edit ? "Workforce requirement saved" : "Draft saved" });
           router.push(result.savedHref);
           return;
@@ -233,7 +197,10 @@ export function RequirementForm({ slug, occupations, industries, countries, curr
         <ComboboxField control={control} name="industry" id={ids.industry} label="Industry" placeholder="Choose an industry" options={toOptions(industries)} />
       </fieldset>
 
-      <fieldset className="grid gap-4" aria-describedby="requirement-occupations-total">
+      <fieldset
+        className="grid gap-4"
+        aria-describedby={listError ? "requirement-occupations-total requirement-occupations-error" : "requirement-occupations-total"}
+      >
         <legend className="mb-2 text-h2">Occupations</legend>
         <p className="text-small text-muted-foreground">
           One to {OCCUPATIONS_MAX} occupations from the ISCO-08 list. The quantities add up to the number of workers.
@@ -263,7 +230,7 @@ export function RequirementForm({ slug, occupations, industries, countries, curr
                   variant="secondary"
                   className="gap-1.5 sm:mt-7"
                   aria-label={`Remove ${rowName(index)}`}
-                  onClick={() => remove(index)}
+                  onClick={() => removeRow(index)}
                 >
                   <X aria-hidden className="size-4" />
                   Remove
@@ -276,6 +243,9 @@ export function RequirementForm({ slug, occupations, industries, countries, curr
           {workersCount === null
             ? `Total: ${formatCount(total)} workers`
             : `Total: ${formatCount(total)} of ${formatCount(workersCount)} workers`}
+        </p>
+        <p aria-live="polite" className="sr-only">
+          {removed}
         </p>
         {listError ? (
           <p className="text-small font-medium text-destructive" id="requirement-occupations-error">
