@@ -53,9 +53,6 @@ begin;
 update private.settings set value = 'true' where key = 'release_partner_directories';
 ${fixture}
 select pg_temp.seed_find_partners(5000, 1000);
-analyze public.organizations, public.organization_geographies, public.organization_occupations,
-  public.organization_industries, public.organization_languages, public.organization_service_types,
-  public.workforce_availability;
 select pg_temp.load_employer() as employer \\gset
 select pg_temp.prepare_find_partners_cases(:'employer');
 select pg_temp.run_find_partners_load(:'employer', ${runs});

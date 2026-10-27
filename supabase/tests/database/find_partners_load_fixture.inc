@@ -95,6 +95,12 @@ begin
     submitted_at = case when p.n % 4 > 0 then now() - interval '1 day' end
   from load_partners p where p.id = o.id and not p.listed;
   update public.organizations o set moderation_state = 'hidden' from load_partners p where p.id = o.id and p.listed and p.n % 100 = 0;
+
+  -- Planner statistics for every table the searches read: a freshly reset database has none, and the plans (and the
+  -- plan-shape checks of 155) must be those of a network of this size. The analyze rolls back with the transaction.
+  analyze public.organizations, public.organization_geographies, public.organization_occupations,
+    public.organization_industries, public.organization_languages, public.organization_service_types,
+    public.workforce_availability, public.occupations, public.countries;
 end;
 $$;
 
