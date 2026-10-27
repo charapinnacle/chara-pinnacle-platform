@@ -81,9 +81,12 @@ returns table (
 language plpgsql
 security definer
 set search_path = ''
+set plan_cache_mode = 'force_custom_plan'
 as $$
 declare
   v_row public.workforce_requirements;
+  v_destinations text[];
+  v_occupations text[];
   v_limit integer := coalesce(
     (select (s.value #>> '{}')::integer from private.settings s where s.key = 'partner_suggestions_max'), 50);
   v_fresh_since timestamptz := private.workforce_fresh_since();
@@ -111,6 +114,10 @@ begin
   if v_row.partner_need = 'none' then
     raise exception 'CHARA_INVALID_STATE' using detail = 'partners_not_needed';
   end if;
+  -- The destinations and occupations as values, so that each call is planned for them and the lookups of the partners
+  -- that serve and list them use the indexes of organization_geographies and organization_occupations (NFR-P3).
+  v_destinations := array(select rc.country_code from public.requirement_countries rc where rc.requirement_id = v_row.id);
+  v_occupations := array(select ro.occupation_id from public.requirement_occupations ro where ro.requirement_id = v_row.id);
 
   return query
   with occ as (
@@ -132,12 +139,10 @@ begin
       and o.moderation_state = 'visible'
       and exists (
         select 1 from public.organization_geographies g
-        join public.requirement_countries rc on rc.requirement_id = v_row.id and rc.country_code = g.country_code
-        where g.organization_id = o.id and g.scope = 'serves_market'
+        where g.organization_id = o.id and g.scope = 'serves_market' and g.country_code = any (v_destinations)
       )
       and exists (
-        select 1 from public.organization_occupations oo join occ q on q.occupation_id = oo.occupation_id
-        where oo.organization_id = o.id
+        select 1 from public.organization_occupations oo where oo.organization_id = o.id and oo.occupation_id = any (v_occupations)
       )
   ),
   typed as (
@@ -192,9 +197,8 @@ begin
     (select coalesce(jsonb_agg(jsonb_build_object('code', c.code, 'name', c.name)
               order by c.code = v_row.country_code desc, c.name), '[]'::jsonb)
      from public.organization_geographies g
-     join public.requirement_countries rc on rc.requirement_id = v_row.id and rc.country_code = g.country_code
      join public.countries c on c.code = g.country_code
-     where g.organization_id = r.id and g.scope = 'serves_market'),
+     where g.organization_id = r.id and g.scope = 'serves_market' and g.country_code = any (v_destinations)),
     (select coalesce(jsonb_agg(jsonb_build_object('code', q.occupation_id, 'name', q.label) order by q.quantity desc, q.label),
               '[]'::jsonb)
      from occ q

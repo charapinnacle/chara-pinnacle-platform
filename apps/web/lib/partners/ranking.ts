@@ -117,8 +117,8 @@ export const suggestionOrderBy = "order by cardinality(j.met) desc, j.updated_at
 // Who is suggested: the partners shown in Find Partners (listedAndVisible) of the types the requirement asks for, serving
 // one of its destinations and listing one of its occupations.
 export const suggestionSelection = [
-  "join public.requirement_countries rc on rc.requirement_id = v_row.id and rc.country_code = g.country_code where g.organization_id = o.id and g.scope = 'serves_market'",
-  "select 1 from public.organization_occupations oo join occ q on q.occupation_id = oo.occupation_id where oo.organization_id = o.id",
+  "select 1 from public.organization_geographies g where g.organization_id = o.id and g.scope = 'serves_market' and g.country_code = any (v_destinations)",
+  "select 1 from public.organization_occupations oo where oo.organization_id = o.id and oo.occupation_id = any (v_occupations)",
   "where (v_row.partner_need in ('recruitment', 'both') and s.type = 'recruitment_company') or (v_row.partner_need in ('staffing', 'both') and (s.type = 'staffing_company' or s.staffing_service))",
 ] as const;
 
