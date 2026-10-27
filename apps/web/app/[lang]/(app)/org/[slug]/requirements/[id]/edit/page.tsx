@@ -9,10 +9,10 @@ import { RequirementForm } from "@/components/requirements/requirement-form";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
-import { getRequirement, toRequirementFormInput } from "@/lib/dal/requirements";
+import { getMultiCountryPlan, getRequirement, toRequirementFormInput } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
 import { isRequirementEditable } from "@/lib/requirements/presentation";
-import { requirementPath, requirementsPath } from "@/lib/routes";
+import { billingPath, requirementPath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Edit workforce requirement", robots: { index: false } };
@@ -27,12 +27,13 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
   if (organization.suspended) return <SuspendedOrganization title="Edit workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, occupations, industries, countries, currencies] = await Promise.all([
+  const [requirement, occupations, industries, countries, currencies, multiCountry] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getOccupations(),
     getIndustries(),
     getCountries(),
     getCurrencies(),
+    getMultiCountryPlan(organization.id),
   ]);
   if (!requirement) notFound();
   const requirementHref = requirementPath(lang, slug, requirement.id);
@@ -62,6 +63,8 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
           industries={industries}
           countries={countries}
           currencies={currencies}
+          multiCountry={multiCountry}
+          billingHref={billingPath(lang, slug)}
           edit={{ requirementId: requirement.id, values: toRequirementFormInput(requirement), expectedUpdatedAt: requirement.updatedAt }}
         />
       ) : (

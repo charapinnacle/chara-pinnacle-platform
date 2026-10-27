@@ -1,13 +1,20 @@
+import { limitRefusalMessage } from "@/lib/billing/limits";
+import { ACTIVE_REQUIREMENTS, MULTI_COUNTRY_FEATURE } from "@/lib/requirements/limits";
 import { PROHIBITED_CRITERION, type RequirementFormInput } from "@/lib/validation/requirement";
 
 type RefusalError = { code?: string; message: string; details?: string | null };
 
-type FieldPath = keyof RequirementFormInput | "occupations.root";
+type FieldPath = keyof RequirementFormInput | "occupations.root" | "destinations.root";
+
+// A refusal of the plan (FR-M4 AC12): the limit of open requirements, which the page answers with the upgrade prompt and
+// the usage, or the feature of several destinations, which it answers with the plan that has it.
+type PlanRefusal = { kind: "limit" } | { kind: "feature" };
 
 export type RequirementRefusal =
   | { kind: "field"; field: FieldPath; message: string }
   | { kind: "message"; message: string }
-  | { kind: "fault" };
+  | { kind: "fault" }
+  | { kind: "feature" };
 
 const CHECK_VALUE = "Check this value.";
 
@@ -30,6 +37,7 @@ const invalidDetail: Record<string, [FieldPath, string]> = {
   "prohibited_criterion:title": ["title", PROHIBITED_CRITERION],
   "prohibited_criterion:skills": ["skills", PROHIBITED_CRITERION],
   "prohibited_criterion:city_region": ["cityRegion", PROHIBITED_CRITERION],
+  countries: ["destinations.root", "Add up to 9 further destination countries from the list."],
 };
 
 const fieldByConstraint: Record<string, [FieldPath, string]> = {
@@ -48,11 +56,13 @@ const fieldByConstraint: Record<string, [FieldPath, string]> = {
   workforce_requirements_salary_currency_fkey: ["salaryCurrency", "Select a currency from the list."],
   requirement_occupations_occupation_id_fkey: ["occupations.root", "Select each occupation from the list."],
   requirement_occupations_quantity_check: ["occupations.root", "Enter a whole number of workers for each occupation."],
+  requirement_countries_country_code_fkey: ["destinations.root", "Select each destination country from the list."],
 };
 
 // What the form shows for a refusal of save_requirement: a field error, a message for the form, or a fault the caller
 // logs with a reference. No SQL text or detail of an unexpected error reaches the screen.
 export function requirementRefusal(error: RefusalError): RequirementRefusal {
+  if (error.message === "CHARA_FEATURE_NOT_IN_PLAN" && error.details === MULTI_COUNTRY_FEATURE) return { kind: "feature" };
   if (error.message === "CHARA_INVALID_INPUT" && error.details && invalidDetail[error.details]) {
     const [field, message] = invalidDetail[error.details];
     return { kind: "field", field, message };
@@ -84,7 +94,10 @@ export const LIFECYCLE_MESSAGES = {
 // What the status actions show for a refusal of publish_requirement, set_requirement_status or extend_requirement: a
 // message for the toast or the dialog, or a fault the caller logs. The refusals they share with save_requirement (who
 // may act, a stale version, the quota) read as they do there.
-export function lifecycleRefusal(error: RefusalError): { kind: "message"; message: string } | { kind: "fault" } {
+export function lifecycleRefusal(error: RefusalError): { kind: "message"; message: string } | { kind: "fault" } | PlanRefusal {
+  if (error.message === "CHARA_LIMIT_REACHED") {
+    return error.details === ACTIVE_REQUIREMENTS ? { kind: "limit" } : { kind: "message", message: limitRefusalMessage(null, "employer") };
+  }
   if (error.message === "CHARA_INVALID_TRANSITION") return { kind: "message", message: LIFECYCLE_MESSAGES.notPossible };
   if (error.message === "CHARA_INVALID_STATE") {
     if (error.details === "closes_on_passed") return { kind: "message", message: LIFECYCLE_MESSAGES.closesOnPassed };
@@ -98,5 +111,5 @@ export function lifecycleRefusal(error: RefusalError): { kind: "message"; messag
     return { kind: "fault" };
   }
   const refusal = requirementRefusal(error);
-  return refusal.kind === "message" ? refusal : { kind: "fault" };
+  return refusal.kind === "message" || refusal.kind === "feature" ? refusal : { kind: "fault" };
 }

@@ -9,13 +9,16 @@ import { Card } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { RequirementUsage } from "@/components/requirements/requirement-usage";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { isReleased } from "@/lib/dal/release";
 import { listRequirements } from "@/lib/dal/requirements";
+import { getUsagePrompts } from "@/lib/dal/usage";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { isRequirementEditable, requirementStatusLabels, requirementStatusTones, workersText } from "@/lib/requirements/presentation";
-import { requirementPath, requirementsPath } from "@/lib/routes";
+import { ACTIVE_REQUIREMENTS } from "@/lib/requirements/limits";
+import { billingPath, requirementPath, requirementsPath } from "@/lib/routes";
 import { parseJobCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Workforce requirements", robots: { index: false } };
@@ -31,7 +34,10 @@ export default async function RequirementsPage({ params, searchParams }: PagePro
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirements" subject="workforce requirements" />;
 
   const cursor = parseJobCursor(after);
-  const { requirements, nextCursor } = await listRequirements(organization.id, cursor);
+  const [{ requirements, nextCursor }, prompts] = await Promise.all([
+    listRequirements(organization.id, cursor),
+    getUsagePrompts(organization.id, "employer", [ACTIVE_REQUIREMENTS]),
+  ]);
   const canCreate = organization.role !== "member";
   const newRequirement = canCreate ? (
     <LinkButton href={`${requirementsPath(lang, slug)}/new`} size="default" className="gap-2">
@@ -47,6 +53,13 @@ export default async function RequirementsPage({ params, searchParams }: PagePro
         description={`${organization.displayName}. Describe a need for a group of workers once; candidates do not apply to it.`}
         actions={requirements.length > 0 ? newRequirement : null}
         breadcrumb={<Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Workforce requirements" }]} />}
+      />
+
+      <RequirementUsage
+        organizationId={organization.id}
+        prompt={prompts[ACTIVE_REQUIREMENTS]}
+        billingHref={billingPath(lang, slug)}
+        canUpgrade={canCreate}
       />
 
       {requirements.length === 0 ? (

@@ -49,7 +49,10 @@ export type Subscription = {
   pastDueSince: string | null;
 };
 
-export type Usage = { key: PlanLimitKey; used: number; limit: number | null };
+// The keys of the billing page: those its plans list, and the open workforce requirements while release 2b is on (FR-M4).
+export type UsageKey = PlanLimitKey | "active_requirements";
+
+export type Usage = { key: UsageKey; used: number; limit: number | null };
 
 // The plans a company of the given type can buy online: public, priced and not for contact.
 export async function listSoldPlans(orgType: OrganizationType = "employer"): Promise<SoldPlan[]> {
@@ -87,12 +90,16 @@ export async function getSubscription(organizationId: string): Promise<Subscript
 
 // The usage against the limits of the plan (null is unlimited) for the keys the plans of the organisation's type list:
 // open vacancies and team members for an employer, the workforce profile and the team for a partner. billing_usage also
-// returns the keys of later releases, which the page shows once their features are released.
-export async function getUsage(organizationId: string, orgType: OrganizationType = "employer"): Promise<Usage[]> {
+// returns the keys of later releases, which the page shows once their features are released (extraKeys).
+export async function getUsage(
+  organizationId: string,
+  orgType: OrganizationType = "employer",
+  extraKeys: readonly UsageKey[] = [],
+): Promise<Usage[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("billing_usage", { p_org: organizationId });
   if (error) throw new Error("The usage could not be loaded", { cause: error });
-  const keys: readonly PlanLimitKey[] = PLAN_LIMIT_KEYS[orgType];
+  const keys: readonly UsageKey[] = [...PLAN_LIMIT_KEYS[orgType], ...extraKeys];
   const rows = usageSchema.parse(data);
   return keys.flatMap((key) => {
     const row = rows.find((candidate) => candidate.limit_key === key);

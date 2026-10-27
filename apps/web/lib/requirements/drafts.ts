@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { ADDITIONAL_COUNTRIES_MAX } from "@/lib/requirements/limits";
 import { salaryPeriods } from "@/lib/validation/job";
 import { OCCUPATIONS_MAX, type RequirementFormInput } from "@/lib/validation/requirement";
 
@@ -14,6 +15,7 @@ const draftSchema = z.object({
   country: z.string(),
   cityRegion: z.string(),
   industry: z.string(),
+  destinations: z.array(z.object({ country: z.string() })).max(ADDITIONAL_COUNTRIES_MAX).default([]),
   occupations: z.array(z.object({ occupation: z.string(), quantity: z.string() })).min(1).max(OCCUPATIONS_MAX),
   skills: z.string(),
   experienceYears: z.string(),

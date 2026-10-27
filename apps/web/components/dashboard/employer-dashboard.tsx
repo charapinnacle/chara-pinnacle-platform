@@ -9,8 +9,11 @@ import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
+import { RequirementUsage } from "@/components/requirements/requirement-usage";
 import { countFollowedCompanies, countSavedPartners } from "@/lib/dal/connections";
 import { getFirstSteps, startDashboardLoad } from "@/lib/dal/dashboard";
+import { getUsagePrompts } from "@/lib/dal/usage";
+import { ACTIVE_REQUIREMENTS } from "@/lib/requirements/limits";
 import {
   applicantsPath,
   billingPath,
@@ -85,6 +88,9 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network, re
   const manager = role !== "member";
   const firstSteps = manager ? getFirstSteps(organization.id) : null;
   const billingHref = manager ? billingPath(lang, slug) : null;
+  const requirementUsage = requirements ? getUsagePrompts(organization.id, "employer", [ACTIVE_REQUIREMENTS]) : null;
+  // Read inside the plan card, which is not drawn when the plan fails to load; the failure is then not left unhandled.
+  void requirementUsage?.catch(() => undefined);
   const now = new Date();
 
   return (
@@ -125,7 +131,22 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network, re
       {network ? <NetworkFigures lang={lang} organizationId={organization.id} slug={slug} /> : null}
 
       <Panel promise={plan} errorTitle="The plan could not be loaded">
-        {(value) => <PlanCard plan={value} now={now} billingHref={billingHref} />}
+        {(value) => (
+          <PlanCard plan={value} now={now} billingHref={billingHref}>
+            {requirementUsage ? (
+              <Panel promise={requirementUsage} errorTitle="The open workforce requirements could not be counted">
+                {(prompts) => (
+                  <RequirementUsage
+                    organizationId={organization.id}
+                    prompt={prompts[ACTIVE_REQUIREMENTS]}
+                    billingHref={billingPath(lang, slug)}
+                    canUpgrade={manager}
+                  />
+                )}
+              </Panel>
+            ) : null}
+          </PlanCard>
+        )}
       </Panel>
 
       <div className="animate-stagger grid items-start gap-6 lg:grid-cols-12">

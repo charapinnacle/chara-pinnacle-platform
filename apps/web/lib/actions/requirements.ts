@@ -3,11 +3,15 @@
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { featurePlanName, limitRefusalMessage, type UsagePrompt } from "@/lib/billing/limits";
+import { listPublicPlans } from "@/lib/dal/pricing";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
+import { getUsagePrompts } from "@/lib/dal/usage";
 import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { reportQuotaRefused } from "@/lib/quota-refused";
+import { ACTIVE_REQUIREMENTS, MULTI_COUNTRY_FEATURE, multiCountryText } from "@/lib/requirements/limits";
 import { lifecycleRefusal, REQUIREMENT_MESSAGES, requirementRefusal } from "@/lib/requirements/refusal";
 import { requirementPath, requirementsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -40,6 +44,11 @@ function formErrors(errors: FieldErrors): FieldErrors {
   return Object.fromEntries(Object.entries(errors).map(([key, message]) => [key === "occupations" ? "occupations.root" : key, message]));
 }
 
+// The first public plan with several destinations, for the prompt; a failed read names no plan.
+async function multiCountryPlanName(): Promise<string | null> {
+  return featurePlanName(await listPublicPlans("employer").catch(() => []), MULTI_COUNTRY_FEATURE);
+}
+
 // Creates a draft (target null) or saves the changes of one (FR-M1 AC1, AC3 to AC8, AC12). The organisation comes from
 // the slug, the caller an owner or admin at aal2 (requireOrgRole sends an aal1 session to two-step verification);
 // save_requirement checks all of it again, with the wording, the quantities, the code lists and the version.
@@ -67,6 +76,7 @@ export async function saveRequirement(
   if (error) {
     const refusal = requirementRefusal(error);
     if (refusal.kind === "field") return { errors: { [refusal.field]: refusal.message } };
+    if (refusal.kind === "feature") return { errors: { "destinations.root": multiCountryText(await multiCountryPlanName()) } };
     if (refusal.kind === "message") {
       if (error.message === "CHARA_RATE_LIMITED") reportQuotaRefused("audited_write", "requirement");
       return { message: refusal.message };
@@ -78,7 +88,23 @@ export async function saveRequirement(
   return { savedHref: requirementPath(defaultLocale, organization.slug, data) };
 }
 
-export type RequirementStatusResult = { message?: string; errors?: FieldErrors; done?: boolean };
+// limitReached is the usage the upgrade prompt shows after a refusal at the open-requirements limit; multiCountry names
+// the plan with several destinations after a refusal of a requirement that has more than one (FR-M4 AC9).
+export type RequirementStatusResult = {
+  message?: string;
+  errors?: FieldErrors;
+  done?: boolean;
+  limitReached?: UsagePrompt;
+  multiCountry?: { planName: string | null };
+};
+
+// Read after the refusal, so the prompt shows what another admin's publish left behind; without the usage the refusal
+// is said in words.
+async function limitResult(organizationId: string): Promise<RequirementStatusResult> {
+  const prompts = await getUsagePrompts(organizationId, "employer", [ACTIVE_REQUIREMENTS]).catch(() => null);
+  const prompt = prompts?.[ACTIVE_REQUIREMENTS];
+  return prompt ? { limitReached: prompt } : { message: limitRefusalMessage(ACTIVE_REQUIREMENTS, "employer") };
+}
 
 type LifecycleCall = (organizationId: string, target: { id: string; expectedUpdatedAt: string }) => PromiseLike<{
   error: { code?: string; message: string; details?: string | null } | null;
@@ -99,6 +125,8 @@ async function runLifecycle(slug: string, target: LifecycleTarget, what: string,
   revalidatePath(requirementPath(defaultLocale, organization.slug, parsedTarget.data.id));
   if (!error) return { done: true };
   const refusal = lifecycleRefusal(error);
+  if (refusal.kind === "limit") return limitResult(organization.id);
+  if (refusal.kind === "feature") return { multiCountry: { planName: await multiCountryPlanName() } };
   if (refusal.kind === "message") {
     if (error.message === "CHARA_RATE_LIMITED") reportQuotaRefused("audited_write", "requirement");
     return { message: refusal.message };

@@ -31,7 +31,7 @@ const nouns: Record<string, Noun> = {
   workforce_listings: { one: "workforce listing", other: "workforce listings" },
   candidate_submissions_per_month: { one: "candidate submission this month", other: "candidate submissions this month" },
   messages_per_month: { one: "message this month", other: "messages this month" },
-  active_requirements: { one: "active workforce requirement", other: "active workforce requirements" },
+  active_requirements: { one: "open workforce requirement", other: "open workforce requirements" },
 };
 
 const responseNouns: Record<OrganizationType, Noun> = {
@@ -110,4 +110,10 @@ export function limitPrompt(
     planName: usage.planName,
     comparison: plans ? planComparison(plans, key, type, limit) : null,
   };
+}
+
+// The first public plan of the type, in the order of billing.plans, that has the feature: "Professional" for further
+// destination countries. Null when no public plan has it.
+export function featurePlanName(plans: readonly PublicPlan[], feature: string): string | null {
+  return plans.find((plan) => plan.features.includes(feature))?.name ?? null;
 }

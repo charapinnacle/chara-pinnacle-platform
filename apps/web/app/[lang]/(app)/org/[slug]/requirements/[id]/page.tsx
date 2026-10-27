@@ -12,7 +12,7 @@ import { isReleased } from "@/lib/dal/release";
 import { getRequirement, getRequirementDurations } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
 import { isRequirementEditable } from "@/lib/requirements/presentation";
-import { requirementPath, requirementsPath } from "@/lib/routes";
+import { billingPath, requirementPath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Workforce requirement", robots: { index: false } };
@@ -50,7 +50,9 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
       <RequirementStatusNotice requirement={requirement} today={today} reminderDays={durations.reminderDays} />
       {manager ? (
         <RequirementStatusActions
+          organizationId={organization.id}
           slug={slug}
+          billingHref={billingPath(lang, slug)}
           target={{ id: requirement.id, expectedUpdatedAt: requirement.updatedAt }}
           status={requirement.status}
           startDate={requirement.startDate}

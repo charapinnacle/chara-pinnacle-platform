@@ -1,6 +1,7 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { formatCount } from "@/lib/i18n/format";
+import { ADDITIONAL_COUNTRIES_MAX } from "@/lib/requirements/limits";
 import { characters } from "@/lib/utils";
 import {
   amountField,
@@ -83,6 +84,14 @@ const occupationRowSchema = z.object({
     .refine((value) => wholeNumber(value, 1, WORKERS_MAX), { error: rangeMessage(1, WORKERS_MAX) }),
 });
 
+const destinationRowSchema = z.object({
+  country: z
+    .string({ error: "Select a country from the list." })
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/, { error: "Select a country from the list." }),
+});
+
 // The form's own schema: numbers stay strings so the form can use it as its resolver; toRequirementArgs converts them.
 // Keys the form does not own, such as status, created_by, organization_id or published_at, are dropped by the parse.
 // today is the UTC date the start date is compared with, as save_requirement compares it.
@@ -110,6 +119,11 @@ export function requirementFormSchema(today: string = todayUtc()) {
         .trim()
         .toUpperCase()
         .min(1, { error: "Select an industry from the list." }),
+      // Further destination countries next to the main one (FR-M4); the plan decides whether the form offers them and
+      // save_requirement whether they are written.
+      destinations: z
+        .array(destinationRowSchema)
+        .max(ADDITIONAL_COUNTRIES_MAX, { error: `Add at most ${ADDITIONAL_COUNTRIES_MAX} further destination countries.` }),
       occupations: z
         .array(occupationRowSchema)
         .min(1, { error: "Add at least one occupation." })
@@ -161,6 +175,11 @@ export function requirementFormSchema(today: string = todayUtc()) {
 
       salaryIssues(value, (path, message) => issue([path], message));
 
+      const destinations = [value.country, ...value.destinations.map((row) => row.country)];
+      value.destinations.forEach((row, index) => {
+        if (destinations.indexOf(row.country) !== index + 1) issue(["destinations", index, "country"], "This country is already a destination.");
+      });
+
       const codes = value.occupations.map((row) => row.occupation);
       value.occupations.forEach((row, index) => {
         if (codes.indexOf(row.occupation) !== index) issue(["occupations", index, "occupation"], "This occupation is already listed.");
@@ -184,6 +203,7 @@ export const emptyRequirementForm: RequirementFormInput = {
   country: "",
   cityRegion: "",
   industry: "",
+  destinations: [],
   occupations: [{ occupation: "", quantity: "" }],
   skills: "",
   experienceYears: "",
@@ -213,6 +233,7 @@ export function toRequirementArgs(values: RequirementFormValues): RequirementArg
     p_country_code: values.country,
     p_city_region: values.cityRegion,
     p_industry_code: values.industry,
+    p_additional_countries: values.destinations.map((row) => row.country),
     p_occupations: values.occupations.map((row) => ({ occupation_id: row.occupation, quantity: Number(row.quantity) })),
     p_skills: values.skills === "" ? undefined : values.skills,
     p_experience_years: optional(values.experienceYears),

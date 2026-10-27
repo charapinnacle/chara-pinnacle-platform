@@ -8,7 +8,8 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { getCountries, getCurrencies, getIndustries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { requirementsPath } from "@/lib/routes";
+import { getMultiCountryPlan } from "@/lib/dal/requirements";
+import { billingPath, requirementsPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Post workforce requirement", robots: { index: false } };
 
@@ -20,11 +21,12 @@ export default async function NewRequirementPage({ params }: PageProps<"/[lang]/
   const { user, organization } = await requireOrgRole(lang, slug, "admin", { hideFromOutsiders: true, partner: "either" });
   if (organization.type !== "employer") notFound();
   if (organization.suspended) return <SuspendedOrganization title="Post workforce requirement" subject="workforce requirements" />;
-  const [occupations, industries, countries, currencies] = await Promise.all([
+  const [occupations, industries, countries, currencies, multiCountry] = await Promise.all([
     getOccupations(),
     getIndustries(),
     getCountries(),
     getCurrencies(),
+    getMultiCountryPlan(organization.id),
   ]);
 
   return (
@@ -42,7 +44,16 @@ export default async function NewRequirementPage({ params }: PageProps<"/[lang]/
           />
         }
       />
-      <RequirementForm slug={slug} userId={user.id} occupations={occupations} industries={industries} countries={countries} currencies={currencies} />
+      <RequirementForm
+        slug={slug}
+        userId={user.id}
+        occupations={occupations}
+        industries={industries}
+        countries={countries}
+        currencies={currencies}
+        multiCountry={multiCountry}
+        billingHref={billingPath(lang, slug)}
+      />
     </div>
   );
 }

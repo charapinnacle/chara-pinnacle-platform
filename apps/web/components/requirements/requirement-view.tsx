@@ -15,6 +15,9 @@ export function RequirementView({ requirement }: { requirement: Requirement }) {
   const details: (readonly [string, React.ReactNode])[] = [
     ["Number of workers", workersText(requirement.workersNeeded)],
     ["Location", `${requirement.cityRegion}, ${requirement.country}`],
+    ...(requirement.destinations.length > 0
+      ? [["Further destination countries", requirement.destinations.map((item) => item.name).join(", ")] as const]
+      : []),
     ["Industry", requirement.industry],
     ["Start date", <time key="start" dateTime={requirement.startDate}>{formatDate(requirement.startDate)}</time>],
     ["Project duration", requirement.durationMonths === null ? "Permanent or open-ended" : monthsText(requirement.durationMonths)],

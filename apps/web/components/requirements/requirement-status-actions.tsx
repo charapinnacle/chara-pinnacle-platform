@@ -4,17 +4,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Ban, CircleCheck, Lock, Store } from "lucide-react";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { toast } from "@/components/feedback/toast-store";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
+import { Notice } from "@/components/forms/notice";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
+import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { changeRequirementStatus, extendRequirement, publishRequirement } from "@/lib/actions/requirements";
+import { changeRequirementStatus, extendRequirement, publishRequirement, type RequirementStatusResult } from "@/lib/actions/requirements";
+import type { UsagePrompt } from "@/lib/billing/limits";
 import { formatDate } from "@/lib/i18n/format";
 import { extendLabel, requirementActions, requirementClosesOn, type RequirementAction } from "@/lib/requirements/lifecycle";
+import { multiCountryText } from "@/lib/requirements/limits";
 import {
   closeFormSchema,
   publishFormSchema,
@@ -26,7 +31,9 @@ import {
 import type { Database } from "@chara-pinnacle/db-types";
 
 type RequirementStatusActionsProps = {
+  organizationId: string;
   slug: string;
+  billingHref: string;
   target: RequirementTarget;
   status: Database["public"]["Enums"]["requirement_status"];
   startDate: string;
@@ -37,22 +44,57 @@ type RequirementStatusActionsProps = {
 
 type Dialog = "publish" | "close" | "fill";
 
+// What the plan refused for the last publish or reopen (FR-M4 AC9): the open-requirements limit with its usage, or
+// several destinations with the plan that has them. Local state, since it belongs to that attempt.
+type PlanRefusal = { kind: "limit"; prompt: UsagePrompt } | { kind: "feature"; planName: string | null };
+
+function planRefusalOf(result: RequirementStatusResult): PlanRefusal | null {
+  if (result.limitReached) return { kind: "limit", prompt: result.limitReached };
+  if (result.multiCountry) return { kind: "feature", planName: result.multiCountry.planName };
+  return null;
+}
+
 // The status actions of FR-M2 AC12 for an owner or admin. Pause, Reopen and Extend run at once; Publish asks for the
 // channel, Close for the reason and Mark as filled for a confirmation, each in a dialog. Every action names the version
 // the page was drawn with, and revalidates the page, so the buttons follow the new status.
-export function RequirementStatusActions({ slug, target, status, startDate, today, openDays, extensionDays }: RequirementStatusActionsProps) {
+export function RequirementStatusActions({
+  organizationId,
+  slug,
+  billingHref,
+  target,
+  status,
+  startDate,
+  today,
+  openDays,
+  extensionDays,
+}: RequirementStatusActionsProps) {
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [refusal, setRefusal] = useState<PlanRefusal | null>(null);
   const [running, setRunning] = useState<RequirementAction | null>(null);
   const call = useActionCall("The requirement was not changed");
   const actions = requirementActions[status];
 
   function run(action: RequirementAction, request: () => ReturnType<typeof extendRequirement>, done: string) {
     setRunning(action);
-    call.run(request, done);
+    setRefusal(null);
+    call.run(async () => {
+      const result = await request();
+      const planRefusal = planRefusalOf(result);
+      if (!planRefusal) return result;
+      setRefusal(planRefusal);
+      return { silent: true };
+    }, done);
   }
 
   const buttons: Record<RequirementAction, { label: string; onClick: () => void; variant: "primary" | "secondary" | "destructive" }> = {
-    publish: { label: "Publish", variant: "primary", onClick: () => setDialog("publish") },
+    publish: {
+      label: "Publish",
+      variant: "primary",
+      onClick: () => {
+        setRefusal(null);
+        setDialog("publish");
+      },
+    },
     reopen: {
       label: "Reopen",
       variant: "primary",
@@ -94,6 +136,24 @@ export function RequirementStatusActions({ slug, target, status, startDate, toda
           </FormButton>
         ))}
       </div>
+      {refusal?.kind === "limit" ? (
+        <Notice tone="warning" role="alert">
+          <UpgradePrompt organizationId={organizationId} organizationType="employer" prompt={refusal.prompt} billingHref={billingHref} canUpgrade />
+          <p className="mt-1">
+            This requirement was not opened.
+            {refusal.prompt.limit > 0 ? " Pause or close an open requirement to make room." : null}
+          </p>
+        </Notice>
+      ) : null}
+      {refusal?.kind === "feature" ? (
+        <Notice tone="warning" role="alert">
+          <p className="font-medium">{multiCountryText(refusal.planName)}</p>
+          <p>
+            This requirement was not opened. Edit it to keep one destination country, or{" "}
+            <TextLink href={billingHref}>upgrade your plan</TextLink>.
+          </p>
+        </Notice>
+      ) : null}
       <ModalDialog open={dialog === "publish"} onClose={closeDialog} title="Publish this requirement">
         <PublishForm
           slug={slug}
@@ -101,6 +161,10 @@ export function RequirementStatusActions({ slug, target, status, startDate, toda
           closesOn={requirementClosesOn(today, startDate, openDays)}
           extensionDays={extensionDays}
           onClose={closeDialog}
+          onRefused={(planRefusal) => {
+            closeDialog();
+            setRefusal(planRefusal);
+          }}
         />
       </ModalDialog>
       <ModalDialog open={dialog === "close"} onClose={closeDialog} title="Close this requirement">
@@ -150,7 +214,9 @@ const visibilityOptions = [
   },
 ] as const;
 
-function PublishForm({ slug, target, closesOn, extensionDays, onClose }: FormProps & { closesOn: string; extensionDays: number }) {
+type PublishFormProps = FormProps & { closesOn: string; extensionDays: number; onRefused: (refusal: PlanRefusal) => void };
+
+function PublishForm({ slug, target, closesOn, extensionDays, onClose, onRefused }: PublishFormProps) {
   const form = useForm<PublishFormInput>({
     resolver: zodResolver(publishFormSchema),
     defaultValues: { visibility: undefined, showIdentity: false },
@@ -164,6 +230,8 @@ function PublishForm({ slug, target, closesOn, extensionDays, onClose }: FormPro
     return submit(
       () => publishRequirement(slug, target, values),
       (result) => {
+        const planRefusal = planRefusalOf(result);
+        if (planRefusal) onRefused(planRefusal);
         if (!result.done) return;
         onClose();
         toast({ title: "The requirement is published" });

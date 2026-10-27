@@ -5,12 +5,13 @@ import { Card } from "@/components/layout/card";
 import type { DashboardPlan } from "@/lib/dal/dashboard";
 import { daysLeft, daysLeftText, planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
 
-type PlanCardProps = { plan: DashboardPlan; now: Date; billingHref: string | null };
+// children is a line of usage under the plan, such as the open workforce requirements of release 2b (FR-M4).
+type PlanCardProps = { plan: DashboardPlan; now: Date; billingHref: string | null; children?: React.ReactNode };
 
 // The plan on one line: its name and status, the date that matters, and the way to billing. The plan name is the one in
 // billing.plans. Only an owner or an admin gets the link to the billing page (billingHref); a member is told whom to ask.
 // No provider reference reaches this component.
-export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
+export function PlanCard({ plan, now, billingHref, children }: PlanCardProps) {
   const free = plan.status === "free";
   return (
     <Card as="section" aria-labelledby="plan-heading" padding="md" className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -41,6 +42,7 @@ export function PlanCard({ plan, now, billingHref }: PlanCardProps) {
       ) : free ? (
         <p className="text-small text-muted-foreground">Contact an owner or admin of your company to choose a plan.</p>
       ) : null}
+      {children ? <div className="basis-full">{children}</div> : null}
     </Card>
   );
 }

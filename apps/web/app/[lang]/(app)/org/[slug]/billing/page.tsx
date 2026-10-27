@@ -36,7 +36,8 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
   const entitled = subscription !== null && ENTITLED_STATUSES.includes(subscription.status);
   const isOwner = organization.role === "owner";
   const plan = subscription ? plans.find((candidate) => candidate.code === subscription.planCode) : undefined;
-  const usage = entitled ? await getUsage(organization.id, organization.type) : [];
+  const requirements = !partner && (await isReleased("release_job_orders"));
+  const usage = entitled ? await getUsage(organization.id, organization.type, requirements ? ["active_requirements"] : []) : [];
   const changes = entitled && state.has_customer ? planChanges(subscription.planCode, plans) : [];
   const canUpgrade = changes.some((change) => change.kind === "upgrade");
 

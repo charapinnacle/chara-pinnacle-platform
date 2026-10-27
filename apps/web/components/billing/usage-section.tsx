@@ -9,6 +9,7 @@ const USAGE_NAMES = {
   markets: "Countries served",
   listed_occupations: "Occupations listed",
   workforce_listings: "Workforce listings",
+  active_requirements: "Open workforce requirements",
 } as const satisfies Record<Usage["key"], string>;
 
 // What stays when a lower plan applies: nothing is deleted (FR-G4, FR-R1 lapse).
@@ -18,6 +19,7 @@ const OVER_LIMIT_TEXT = {
   markets: "The countries you serve stay on your profile. No more can be added until usage is below the limit.",
   listed_occupations: "The occupations you list stay on your profile. No more can be added until usage is below the limit.",
   workforce_listings: "Your listings stay. No more can be added until usage is below the limit.",
+  active_requirements: "Open requirements stay open. No more can be published or reopened until usage is below the limit.",
 } as const satisfies Record<Usage["key"], string>;
 
 const STATE_TEXT: Record<UsageState, string | null> = {

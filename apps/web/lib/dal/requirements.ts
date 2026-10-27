@@ -1,7 +1,10 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
+import { featurePlanName } from "@/lib/billing/limits";
+import { listPublicPlans } from "@/lib/dal/pricing";
 import { getPublicSettings } from "@/lib/dal/settings";
+import { MULTI_COUNTRY_FEATURE } from "@/lib/requirements/limits";
 import type { RequirementDurations } from "@/lib/requirements/lifecycle";
 import { createClient } from "@/lib/supabase/server";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
@@ -24,6 +27,8 @@ export type RequirementSummary = {
 
 export type Requirement = RequirementSummary & {
   countryCode: string;
+  // The destinations next to the main country, by name (FR-M4).
+  destinations: { code: string; name: string }[];
   industry: string;
   industryCode: string;
   occupations: { code: string; label: string; quantity: number }[];
@@ -89,7 +94,7 @@ const selectRequirement = (supabase: Client) =>
   supabase
     .from("workforce_requirements")
     .select(
-      "id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, show_identity, published_at, closes_on, close_reason, status_changed_at, created_at, updated_at, countries!workforce_requirements_country_code_fkey(name), industries(name), requirement_occupations(occupation_id, quantity, occupations(label))",
+      "id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, show_identity, published_at, closes_on, close_reason, status_changed_at, created_at, updated_at, countries!workforce_requirements_country_code_fkey(name), industries(name), requirement_occupations(occupation_id, quantity, occupations(label)), requirement_countries(country_code, countries(name))",
     );
 
 type RequirementRow = QueryData<ReturnType<typeof selectRequirement>>[number];
@@ -102,6 +107,10 @@ function toRequirement(row: RequirementRow): Requirement {
     cityRegion: row.city_region,
     country: row.countries?.name ?? row.country_code,
     countryCode: row.country_code,
+    destinations: row.requirement_countries
+      .filter((item) => item.country_code !== row.country_code)
+      .map((item) => ({ code: item.country_code, name: item.countries?.name ?? item.country_code }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     industry: row.industries?.name ?? row.industry_code,
     industryCode: row.industry_code,
     occupations: row.requirement_occupations
@@ -149,6 +158,7 @@ export function toRequirementFormInput(requirement: Requirement): RequirementFor
     country: requirement.countryCode,
     cityRegion: requirement.cityRegion,
     industry: requirement.industryCode,
+    destinations: requirement.destinations.map((item) => ({ country: item.code })),
     occupations: requirement.occupations.map((item) => ({ occupation: item.code, quantity: String(item.quantity) })),
     skills: requirement.skills ?? "",
     experienceYears: numberText(requirement.experienceYears),
@@ -175,4 +185,18 @@ export async function getRequirementDurations(): Promise<RequirementDurations> {
     extensionDays: Number(settings.requirement_extension_days),
     reminderDays: Number(settings.requirement_closing_reminder_days),
   };
+}
+
+export type MultiCountryPlan = { allowed: boolean; planName: string | null };
+
+// Whether the form offers further destination countries (the plan has multi_country_requirements, or the feature is not
+// enforced for the organisation), and the first public plan that has the feature, for the prompt (FR-M4 AC4, AC9).
+export async function getMultiCountryPlan(organizationId: string): Promise<MultiCountryPlan> {
+  const supabase = await createClient();
+  const [{ data, error }, plans] = await Promise.all([
+    supabase.rpc("requirement_multi_country", { p_org: organizationId }),
+    listPublicPlans("employer"),
+  ]);
+  if (error) throw new Error("The plan of the workforce requirements could not be loaded", { cause: error });
+  return { allowed: data, planName: featurePlanName(plans, MULTI_COUNTRY_FEATURE) };
 }

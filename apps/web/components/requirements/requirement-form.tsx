@@ -14,10 +14,11 @@ import { InputField, TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { summaryItems } from "@/components/forms/summary-items";
-import { LegalLink, textLinkVariants } from "@/components/forms/text-link";
+import { LegalLink, TextLink, textLinkVariants } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { saveRequirement } from "@/lib/actions/requirements";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
+import type { MultiCountryPlan } from "@/lib/dal/requirements";
 import { formatCount } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { toOptions } from "@/lib/reference-options";
@@ -27,6 +28,7 @@ import {
   requirementDraftKey,
   writeRequirementDraft,
 } from "@/lib/requirements/drafts";
+import { ADDITIONAL_COUNTRIES_MAX, multiCountryText } from "@/lib/requirements/limits";
 import { employmentTypeOptions, recruitmentPreferenceOptions, salaryPeriodOptions } from "@/lib/validation/job";
 import {
   emptyRequirementForm,
@@ -45,6 +47,10 @@ type RequirementFormProps = {
   industries: ReferenceItem[];
   countries: ReferenceItem[];
   currencies: ReferenceItem[];
+  // Whether the plan offers further destination countries, and which plan does (FR-M4); billingHref leads to a higher
+  // plan, for an owner or admin.
+  multiCountry: MultiCountryPlan;
+  billingHref: string;
   // expectedUpdatedAt is the version the page was loaded with; a save from an older one is refused.
   edit?: { requirementId: string; values: RequirementFormInput; expectedUpdatedAt: string };
 };
@@ -73,16 +79,28 @@ const ids = {
   partnerNeed: "requirement-partner-need",
 } as const;
 
+const destinationId = (index: number) => `requirement-destination-${index}`;
 const occupationId = (index: number) => `requirement-occupation-${index}`;
 const quantityId = (index: number) => `requirement-quantity-${index}`;
 
-export function RequirementForm({ slug, userId, occupations, industries, countries, currencies, edit }: RequirementFormProps) {
+export function RequirementForm({
+  slug,
+  userId,
+  occupations,
+  industries,
+  countries,
+  currencies,
+  multiCountry,
+  billingHref,
+  edit,
+}: RequirementFormProps) {
   const form = useForm<RequirementFormInput, unknown, RequirementFormValues>({
     resolver: zodResolver(requirementFormSchema()),
     defaultValues: edit?.values ?? emptyRequirementForm,
   });
   const { control, formState, handleSubmit } = form;
   const { fields, append, remove } = useFieldArray({ control, name: "occupations" });
+  const destinationRows = useFieldArray({ control, name: "destinations" });
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not save the workforce requirement" });
   const router = useRouter();
   const [removed, setRemoved] = useState("");
@@ -96,6 +114,11 @@ export function RequirementForm({ slug, userId, occupations, industries, countri
   const workers = useWatch({ control, name: "workersNeeded" });
   const total = rows.reduce((sum, row) => sum + (/^\d+$/.test(row.quantity.trim()) ? Number(row.quantity.trim()) : 0), 0);
   const rowName = (index: number) => labelOf.get(rows[index]?.occupation ?? "") ?? `occupation ${index + 1}`;
+  const countryOptions = useMemo(() => toOptions(countries), [countries]);
+  const countryName = useMemo(() => new Map(countries.map(({ code, name }) => [code, name])), [countries]);
+  const destinations = useWatch({ control, name: "destinations" });
+  const destinationName = (index: number) =>
+    countryName.get(destinations[index]?.country ?? "") ?? `destination country ${index + 1}`;
 
   const draftKey = requirementDraftKey(userId, slug);
 
@@ -119,7 +142,20 @@ export function RequirementForm({ slug, userId, occupations, industries, countri
     requestAnimationFrame(() => form.setFocus(`occupations.${Math.max(index - 1, 0)}.occupation`));
   }
 
+  function removeDestination(index: number) {
+    const label = destinationName(index);
+    destinationRows.remove(index);
+    setRemoved(`Removed ${label}`);
+    requestAnimationFrame(() =>
+      index > 0 ? form.setFocus(`destinations.${index - 1}.country`) : document.getElementById("requirement-add-destination")?.focus(),
+    );
+  }
+
   function focusField(key: string) {
+    if (key === "destinations.root" || key === "destinations") {
+      document.getElementById(destinationRows.fields.length > 0 ? destinationId(0) : "requirement-destinations-heading")?.focus();
+      return;
+    }
     form.setFocus((key.startsWith("occupations") && !/\.\d+\./.test(key) ? "occupations.0.occupation" : key) as Path);
   }
 
@@ -147,6 +183,8 @@ export function RequirementForm({ slug, userId, occupations, industries, countri
     country: ids.country,
     cityRegion: ids.cityRegion,
     industry: ids.industry,
+    ...Object.fromEntries(destinationRows.fields.map((field, index) => [`destinations.${index}.country`, destinationId(index)])),
+    "destinations.root": destinationRows.fields.length > 0 ? destinationId(0) : "requirement-destinations-heading",
     ...Object.fromEntries(
       fields.flatMap((field, index) => [
         [`occupations.${index}.occupation`, occupationId(index)],
@@ -167,6 +205,7 @@ export function RequirementForm({ slug, userId, occupations, industries, countri
     partnerNeed: ids.partnerNeed,
   };
   const listError = formState.errors.occupations?.root?.message ?? formState.errors.occupations?.message;
+  const destinationsError = formState.errors.destinations?.root?.message ?? formState.errors.destinations?.message;
   const errors: FieldErrors = formState.errors;
   const workersCount = /^\d+$/.test(workers.trim()) ? Number(workers.trim()) : null;
 
@@ -192,9 +231,71 @@ export function RequirementForm({ slug, userId, occupations, industries, countri
           autoComplete="off"
         />
         <InputField control={control} name="workersNeeded" id={ids.workersNeeded} label="Number of workers" inputMode="numeric" />
-        <ComboboxField control={control} name="country" id={ids.country} label="Country" placeholder="Choose a country" options={toOptions(countries)} />
+        <ComboboxField control={control} name="country" id={ids.country} label="Country" placeholder="Choose a country" options={countryOptions} />
         <InputField control={control} name="cityRegion" id={ids.cityRegion} label="City or region" autoComplete="off" />
         <ComboboxField control={control} name="industry" id={ids.industry} label="Industry" placeholder="Choose an industry" options={toOptions(industries)} />
+      </fieldset>
+
+      <fieldset className="grid gap-4" aria-describedby={destinationsError ? "requirement-destinations-error" : undefined}>
+        <legend id="requirement-destinations-heading" tabIndex={-1} className="mb-2 text-h2">
+          Further destination countries
+        </legend>
+        <p className="text-small text-muted-foreground">
+          The country above is the main destination.
+          {multiCountry.allowed ? ` If the workers are needed in several countries, add up to ${ADDITIONAL_COUNTRIES_MAX} more.` : null}
+        </p>
+        {destinationRows.fields.length > 0 ? (
+          <ul className="grid gap-4">
+            {destinationRows.fields.map((field, index) => (
+              <li key={field.id} className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <ComboboxField
+                  control={control}
+                  name={`destinations.${index}.country`}
+                  id={destinationId(index)}
+                  label={`Destination country ${index + 2}`}
+                  placeholder="Choose a country"
+                  options={countryOptions}
+                />
+                <FormButton
+                  type="button"
+                  variant="secondary"
+                  className="gap-1.5 sm:mt-7"
+                  aria-label={`Remove ${destinationName(index)}`}
+                  onClick={() => removeDestination(index)}
+                >
+                  <X aria-hidden className="size-4" />
+                  Remove
+                </FormButton>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {destinationsError ? (
+          <p className="text-small font-medium text-destructive" id="requirement-destinations-error">
+            {destinationsError}
+          </p>
+        ) : null}
+        {multiCountry.allowed ? (
+          <div>
+            <FormButton
+              type="button"
+              variant="secondary"
+              id="requirement-add-destination"
+              className="gap-2"
+              disabled={destinationRows.fields.length >= ADDITIONAL_COUNTRIES_MAX}
+              onClick={() => destinationRows.append({ country: "" })}
+            >
+              <Plus aria-hidden className="size-4" />
+              Add destination country
+            </FormButton>
+          </div>
+        ) : (
+          <Notice tone="info">
+            {multiCountryText(multiCountry.planName)}{" "}
+            {destinationRows.fields.length > 0 ? "Remove the further destinations to reopen this requirement on your plan. " : null}
+            <TextLink href={billingHref}>Upgrade</TextLink>
+          </Notice>
+        )}
       </fieldset>
 
       <fieldset
