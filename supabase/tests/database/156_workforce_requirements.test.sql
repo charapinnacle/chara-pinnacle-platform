@@ -81,6 +81,21 @@ $$;
 create function pg_temp.req() returns uuid
 language sql as $$ select current_setting('t.req')::uuid $$;
 
+-- Puts a requirement straight into a published state, as the lifecycle functions of V33 leave it (published today,
+-- closing in 90 days), past the guard trigger that tests 157 cover.
+create function pg_temp.force_req(p_id uuid, p_status text, p_visibility text) returns void
+language plpgsql as $$
+begin
+  alter table public.workforce_requirements disable trigger workforce_requirements_guard_transition;
+  update public.workforce_requirements
+  set status = p_status::public.requirement_status, visibility = p_visibility::public.requirement_visibility,
+      published_at = now(), closes_on = (now() at time zone 'utc')::date + 90,
+      close_reason = case p_status when 'closed' then 'cancelled' when 'filled' then 'filled' end::public.requirement_close_reason
+  where id = p_id;
+  alter table public.workforce_requirements enable always trigger workforce_requirements_guard_transition;
+end;
+$$;
+
 -- Rows of the three tables and the requirement audit rows, to compare before and after refused saves.
 create function pg_temp.req_counts() returns text
 language sql as $$
@@ -389,11 +404,11 @@ select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid,
 select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid,
     jsonb_build_object('start', ((now() at time zone 'utc')::date - 5)::text), 'aal2', current_setting('t.r1')::uuid),
   'P0001|CHARA_INVALID_INPUT|start_date', 'but it cannot be moved to another past date');
-update public.workforce_requirements set status = 'closed', visibility = 'private' where id = current_setting('t.r1')::uuid;
+select pg_temp.force_req(current_setting('t.r1')::uuid, 'closed', 'private');
 select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{}', 'aal2', current_setting('t.r1')::uuid),
   'P0001|CHARA_INVALID_STATE|closed', 'a closed requirement is final');
 select throws_ok(
-  format($$update public.workforce_requirements set status = 'draft', visibility = 'private' where id = %L$$, current_setting('t.r1')),
+  format($$update public.workforce_requirements set visibility = 'private' where id = %L$$, current_setting('t.r2636')),
   '23514', null, 'a draft has no visibility');
 
 -- AC11 and NFR-S8: who reads ------------------------------------------------------------------------------------------
@@ -401,12 +416,12 @@ select throws_ok(
 select is(pg_temp.save_as(:'own2', current_setting('t.b')::uuid), 'ok', 'the owner of Beta saves a requirement');
 select set_config('t.rb', pg_temp.req()::text, true) as rb \gset
 -- One requirement of Acme open on the marketplace and one open and private, as V33 will leave them.
-update public.workforce_requirements set status = 'open', visibility = 'job_order_marketplace'
-where id = (select id from public.workforce_requirements where organization_id = current_setting('t.a')::uuid and status = 'draft'
-            order by created_at, id limit 1);
-update public.workforce_requirements set status = 'open', visibility = 'private'
-where id = (select id from public.workforce_requirements where organization_id = current_setting('t.a')::uuid and status = 'draft'
-            order by created_at, id limit 1);
+select set_config('t.d1', (select id::text from public.workforce_requirements
+  where organization_id = current_setting('t.a')::uuid and status = 'draft' order by created_at, id limit 1), true) as d1 \gset
+select pg_temp.force_req(:'d1', 'open', 'job_order_marketplace');
+select set_config('t.d2', (select id::text from public.workforce_requirements
+  where organization_id = current_setting('t.a')::uuid and status = 'draft' order by created_at, id limit 1), true) as d2 \gset
+select pg_temp.force_req(:'d2', 'open', 'private');
 select set_config('t.acme', (select count(*) from public.workforce_requirements where organization_id = current_setting('t.a')::uuid)::text, true) as acme \gset
 
 select is(pg_temp.read_as(:'own1', 'select count(*) from public.workforce_requirements'), current_setting('t.acme'),
