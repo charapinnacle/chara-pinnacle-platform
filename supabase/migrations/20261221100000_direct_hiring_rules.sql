@@ -134,12 +134,12 @@ $$;
 
 revoke all on function private.direct_hiring_rule_values(public.direct_hiring_rules) from public, anon, authenticated, service_role;
 
--- Creates the rule of a source and destination (null = any destination) or changes the one that exists (FR-Q5 AC1, AC3):
+-- Creates the rule of a source and destination (null or left out = any destination) or changes the one that exists (FR-Q5 AC1, AC3):
 -- one row per pair, so a second rule for the same pair edits the first. Input is checked here and named in the detail
 -- (source_country, destination_country, rule, notice, legal_opinion_ref, reason); the table's own checks stay behind it.
 -- Returns whether anything changed; the same values again write nothing.
 create function public.admin_upsert_direct_hiring_rule(
-  p_source text, p_destination text, p_rule text, p_notice text, p_legal_opinion_ref text, p_reason text
+  p_source text, p_rule text, p_notice text, p_legal_opinion_ref text, p_reason text, p_destination text default null
 ) returns boolean
 language plpgsql
 security definer

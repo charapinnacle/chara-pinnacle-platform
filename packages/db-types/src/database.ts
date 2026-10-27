@@ -1656,7 +1656,7 @@ isOneToOne: false
 { Args: { "p_changes": Json,"p_code": string,"p_reason": string }; Returns: number
                            },
 "admin_upsert_direct_hiring_rule":
-{ Args: { "p_destination": string,"p_legal_opinion_ref": string,"p_notice": string,"p_reason": string,"p_rule": string,"p_source": string }; Returns: boolean
+{ Args: { "p_destination"?: string,"p_legal_opinion_ref": string,"p_notice": string,"p_reason": string,"p_rule": string,"p_source": string }; Returns: boolean
                            },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
