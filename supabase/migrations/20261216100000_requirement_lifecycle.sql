@@ -254,9 +254,10 @@ revoke all on function public.publish_requirement(uuid, uuid, public.requirement
 grant execute on function public.publish_requirement(uuid, uuid, public.requirement_visibility, boolean, timestamptz)
   to authenticated;
 
--- Pauses, reopens, closes or fills a published requirement (FR-M2 AC1 to AC3, AC10). Closing needs the reason cancelled
--- (expired is the daily job's, filled is the status filled), CHARA_INVALID_INPUT close_reason otherwise; another reason
--- than filled for filled is refused the same way. The status it already has is a no-op without an audit row. A draft is
+-- Pauses, reopens, closes or fills a published requirement (FR-M2 AC1 to AC3, AC10). On an open or paused requirement,
+-- closing needs the reason cancelled (expired is the daily job's, filled is the status filled), CHARA_INVALID_INPUT
+-- close_reason otherwise; another reason than filled for filled is refused the same way. A move the table refuses is
+-- left to the guard, so it answers CHARA_INVALID_TRANSITION whatever reason it names. The status it already has is a no-op without an audit row. A draft is
 -- opened by publish_requirement (CHARA_INVALID_INPUT publish_required). A paused requirement whose closing date has
 -- passed is extended before it reopens (CHARA_INVALID_STATE closes_on_passed). Every other change outside the table is
 -- the guard's CHARA_INVALID_TRANSITION. Counts against the daily quota of audited writes.
@@ -278,8 +279,9 @@ begin
   if p_status is null then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'status';
   end if;
-  if (p_status = 'closed' and p_close_reason is distinct from 'cancelled')
-     or (p_status <> 'closed' and p_close_reason is not null and not (p_status = 'filled' and p_close_reason = 'filled')) then
+  if v_row.status in ('open', 'paused')
+     and ((p_status = 'closed' and p_close_reason is distinct from 'cancelled')
+          or (p_status <> 'closed' and p_close_reason is not null and not (p_status = 'filled' and p_close_reason = 'filled'))) then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'close_reason';
   end if;
   if v_row.status = p_status then
@@ -309,10 +311,10 @@ grant execute on function public.set_requirement_status(
 ) to authenticated;
 
 -- Moves the closing date of an open or paused requirement by requirement_extension_days, counted from today when the
--- date has already passed (FR-M2 AC7: "never earlier than today after an extension"). The new date may not pass
--- requirement_extension_horizon_days after the later of the start date and today (CHARA_INVALID_STATE extension_limit),
--- so a requirement is not kept open for ever. A draft, closed or filled requirement is refused (CHARA_INVALID_STATE and
--- its status). One audit row requirement.extended with both dates per call; counts against the daily quota.
+-- date has already passed (FR-M2 AC7: "never earlier than today after an extension"). An extension that would go further
+-- is refused (CHARA_INVALID_STATE extension_limit), so the closing date never lies more than
+-- requirement_extension_horizon_days after the later of the start date and today. A draft, closed or filled requirement
+-- is refused (CHARA_INVALID_STATE and its status). One audit row requirement.extended with both dates per call; counts against the daily quota.
 create function public.extend_requirement(p_org uuid, p_requirement uuid, p_expected_updated_at timestamptz)
 returns jsonb
 language plpgsql
@@ -458,10 +460,11 @@ $$;
 
 -- The closing reminder ------------------------------------------------------------------------------------------------------
 
--- Optional, email on by default, for every company type: the employer's owners and admins now, the partners involved
--- from V43.
-insert into private.notification_kinds (kind, mandatory, default_email, audience, label) values
-  ('requirement_closing_soon', false, true, 'company', 'Workforce requirement closing reminders');
+-- Optional, email on by default, for employers: their owners and admins. V43 widens it to the recruitment and staffing
+-- companies involved, when they are told too.
+insert into private.notification_kinds (kind, mandatory, default_email, audience, label, organization_types) values
+  ('requirement_closing_soon', false, true, 'company', 'Workforce requirement closing reminders',
+    array['employer']::public.organization_type[]);
 
 alter table public.notifications drop constraint notifications_kind_check;
 alter table public.notifications add constraint notifications_kind_check check (kind in (

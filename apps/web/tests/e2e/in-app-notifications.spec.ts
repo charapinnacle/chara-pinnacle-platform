@@ -180,7 +180,7 @@ test.describe("in-app notifications (FR-T1)", () => {
     const applications = section.getByRole("switch", { name: "New applications" });
     await expect(applications).toBeChecked();
     // New applications, the follower digest that every account may receive (FR-L4, V24) and the closing reminder of
-    // workforce requirements that every company may receive (FR-M2, V33).
+    // workforce requirements, an employer kind until V43 offers it to partners (FR-M2, V33).
     await expect(section.getByRole("switch")).toHaveCount(3);
     await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
     await expect(section.getByRole("switch", { name: "Workforce requirement closing reminders" })).toBeChecked();

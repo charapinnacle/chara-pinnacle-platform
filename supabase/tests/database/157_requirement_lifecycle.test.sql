@@ -1,5 +1,5 @@
 begin;
-select plan(152);
+select plan(155);
 
 \ir apply_fixture.inc
 \ir billing_events_fixture.inc
@@ -148,6 +148,10 @@ select is(
   'NFR-O5: the durations are settings of the settings editor with their bounds');
 select is((select count(*)::integer from private.missing_reference_data() where kind = 'setting'), 0,
   'the deployment check finds every setting the functions read');
+select is((select organization_types::text from private.notification_kinds where kind = 'requirement_closing_soon'), '{employer}',
+  'requirement_closing_soon is offered to employers until V43 widens it to partners');
+select is((select count(*)::integer from private.notification_kinds where kind = 'requirement_closing_soon' and not mandatory and default_email), 1,
+  'requirement_closing_soon is optional and emailed by default');
 select alike(pg_temp.read_as(:'own1', 'select closing_reminder_for from public.workforce_requirements limit 1'), '42501|%',
   'closing_reminder_for is not readable through the Data API');
 
@@ -266,6 +270,11 @@ select is(
    where r.status::text = split_part(t.change, '>', 1)),
   14, 'AC2: every row keeps its status');
 select is((select count(*)::integer from t_ac2 t join audit.log l on l.entity_id = t.req::text), 0, 'AC2: and no audit row is written');
+select pg_temp.seed_req(current_setting('t.a')::uuid, 'filled') as r_fill_null \gset
+select pg_temp.seed_req(current_setting('t.a')::uuid, 'draft') as r_draft_null \gset
+select is(pg_temp.st(:'own1', :'r_fill_null', 'closed') || ',' || pg_temp.st(:'own1', :'r_draft_null', 'closed'),
+  'P0001|CHARA_INVALID_TRANSITION|filled to closed,P0001|CHARA_INVALID_TRANSITION|draft to closed',
+  'AC2: a refused move without a reason is refused as a transition, not for its reason');
 select pg_temp.seed_req(current_setting('t.a')::uuid, 'open') as r_same \gset
 select pg_temp.seed_req(current_setting('t.a')::uuid, 'filled') as r_fill \gset
 select is(pg_temp.st(:'own1', :'r_same', 'open') || '|' || pg_temp.st(:'own1', :'r_fill', 'filled'), 'ok|ok',
