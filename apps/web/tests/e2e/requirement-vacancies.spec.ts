@@ -173,7 +173,7 @@ test.describe("Vacancies from a workforce requirement (FR-M1 AC9, AC10)", () => 
     await memberContext.close();
   });
 
-  test("NFR-S11: an anonymous job order warns that a published vacancy shows the company name and copies no identifying facts", async ({
+  test("NFR-S11: an anonymous job order warns that a published vacancy shows the company name and copies no identifying facts, city or salary", async ({
     page,
   }) => {
     test.setTimeout(150_000);
@@ -184,6 +184,9 @@ test.describe("Vacancies from a workforce requirement (FR-M1 AC9, AC10)", () => 
     await signInAtAal2(page, team.owner, team.ownerSecret, requirementUrl(team.slug, id));
     const notice = section(page).getByRole("status").filter({ hasText: "without your company name" });
     await expect(notice).toContainText("A published vacancy shows your company name, so edit each vacancy before you publish it");
+    await expect(notice).toContainText(
+      "entering the same city and salary as the job order lets partners link the vacancy to it",
+    );
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     await waitForHydration(section(page).getByRole("button", { name: CREATE }));
@@ -196,8 +199,15 @@ test.describe("Vacancies from a workforce requirement (FR-M1 AC9, AC10)", () => 
     for (const description of descriptions) {
       expect(description).not.toContain("MIG/MAG");
       expect(description).not.toMatch(/\b(80|20) workers\b/);
-      expect(description).toContain("workers needed in Hamburg, Germany, from");
+      expect(description).toContain("workers needed in Germany from");
+      expect(description).not.toContain("Hamburg");
     }
+    expect(query<{ city: string; salary_min: string | null }>(
+      `select city, salary_min::text from public.jobs where requirement_id = ${literal(id)}`,
+    )).toEqual([
+      { city: "-", salary_min: null },
+      { city: "-", salary_min: null },
+    ]);
 
     execute(`update public.workforce_requirements set show_identity = true where id = ${literal(id)}`);
     await page.reload();
