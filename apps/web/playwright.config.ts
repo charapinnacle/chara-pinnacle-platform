@@ -114,6 +114,7 @@ export default defineConfig({
         "**/admin-network-statistics.spec.ts",
         "**/partner-team.spec.ts",
         "**/ranking-transparency.spec.ts",
+        "**/release-2a-journey.spec.ts",
       ],
     },
     {
@@ -472,13 +473,21 @@ export default defineConfig({
       testMatch: "**/ranking-transparency.spec.ts",
       dependencies: ["partner-team-release"],
     },
+    // The journey of release 2a from sign-up to the public profile (NFR-O4) sets release 2a for the whole database and
+    // runs last of the release 2a projects.
+    {
+      name: "release-2a-journey",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/release-2a-journey.spec.ts",
+      dependencies: ["ranking-transparency-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["ranking-transparency-release"],
+      dependencies: ["release-2a-journey"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
