@@ -75,29 +75,35 @@ select ok(
   'NFR-P3: the broad requirement fills the list and says that more partners exist'
 );
 
--- The plan shape, independent of the speed of the machine: the selection of suggest_partners (listed partners of the
--- requirement's destinations and occupations) reads every table through an index, with no sequential scan.
+-- The plan shape, independent of the speed of the machine: in the selection of suggest_partners (planned for the values
+-- of the requirement's destinations and occupations) the partners that serve and list them are read through the indexes
+-- of organization_geographies and organization_occupations, never by scanning those tables. Which listed partners
+-- remain is the planner's choice: for a destination most partners serve, reading organizations in full is cheaper.
 analyze public.organizations, public.organization_geographies, public.organization_occupations, public.workforce_availability;
 create function pg_temp.plan_of(p_sql text) returns text
 language plpgsql as $$
 declare
-  v_plan json;
+  v_line text;
+  v_plan text := '';
 begin
-  execute 'explain (format json) ' || p_sql into v_plan;
-  return v_plan::text;
+  for v_line in execute 'explain ' || p_sql loop
+    v_plan := v_plan || v_line || E'\n';
+  end loop;
+  return v_plan;
 end;
 $$;
-select ok(
-  pg_temp.plan_of($$select o.id from public.organizations o
+select pg_temp.plan_of($$select o.id from public.organizations o
     where o.type in ('recruitment_company', 'staffing_company')
       and o.listed_at is not null and o.review_status <> 'declined' and o.status = 'active' and o.moderation_state = 'visible'
       and exists (select 1 from public.organization_geographies g
-        join public.requirement_countries rc on rc.requirement_id = '00000000-0000-0000-0000-0000000f3699' and rc.country_code = g.country_code
-        where g.organization_id = o.id and g.scope = 'serves_market')
+        where g.organization_id = o.id and g.scope = 'serves_market' and g.country_code = any ('{DE}'::text[]))
       and exists (select 1 from public.organization_occupations oo
-        join public.requirement_occupations q on q.requirement_id = '00000000-0000-0000-0000-0000000f3699' and q.occupation_id = oo.occupation_id
-        where oo.organization_id = o.id)$$) not like '%"Node Type": "Seq Scan"%',
-  'NFR-P3: the selection of suggest_partners scans no table sequentially at 5,000 partners'
+        where oo.organization_id = o.id and oo.occupation_id = any ('{7212,5322}'::text[]))$$) as selection_plan \gset
+select ok(
+  :'selection_plan' !~ 'Seq Scan on organization_(geographies|occupations)'
+  and :'selection_plan' ~ 'Index[A-Za-z ]* Scan[A-Za-z ]* on organization_geographies'
+  and :'selection_plan' ~ 'Index[A-Za-z ]* Scan[A-Za-z ]* on organization_occupations',
+  'NFR-P3: the destination and occupation lookups of suggest_partners read their tables through indexes at 5,000 partners'
 );
 
 select * from finish();
