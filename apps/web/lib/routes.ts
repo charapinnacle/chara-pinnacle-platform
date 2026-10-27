@@ -138,6 +138,11 @@ export function requirementPath(lang: string, slug: string, id: string): string 
   return `${requirementsPath(lang, slug)}/${id}`;
 }
 
+// The partners suggested for one requirement (FR-M3).
+export function requirementPartnersPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/partners`;
+}
+
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.
 export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
   const path = `/${lang}/org/${slug}/saved-partners`;

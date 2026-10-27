@@ -1,11 +1,13 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
+import * as z from "zod";
 import { featurePlanName } from "@/lib/billing/limits";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { MULTI_COUNTRY_FEATURE } from "@/lib/requirements/limits";
 import type { RequirementDurations } from "@/lib/requirements/lifecycle";
+import { suggestionCriteria, type Suggestion } from "@/lib/requirements/suggestions";
 import { createClient } from "@/lib/supabase/server";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
 import type { RequirementFormInput } from "@/lib/validation/requirement";
@@ -223,4 +225,38 @@ export async function getMultiCountryPlan(organizationId: string): Promise<Multi
   ]);
   if (error) throw new Error("The plan of the workforce requirements could not be loaded", { cause: error });
   return { allowed: data, planName: featurePlanName(plans, MULTI_COUNTRY_FEATURE) };
+}
+
+const namedSchema = z.array(z.object({ code: z.string(), name: z.string() }));
+const criteriaSchema = z.array(z.enum(suggestionCriteria));
+
+export type PartnerSuggestions = { state: "found"; suggestions: Suggestion[]; more: boolean } | { state: "unavailable" };
+
+// The partners suggested for a requirement (FR-M3), for the members of its organisation. A requirement that is closed,
+// filled or needs no partners has none (CHARA_INVALID_STATE); anything else that fails is an error for the route's
+// boundary.
+export async function suggestPartners(organizationId: string, requirementId: string): Promise<PartnerSuggestions> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("suggest_partners", { p_org: organizationId, p_requirement: requirementId });
+  if (error?.message === "CHARA_INVALID_STATE") return { state: "unavailable" };
+  if (error) throw new Error("The partner suggestions could not be loaded", { cause: error });
+  return {
+    state: "found",
+    more: data.some((row) => row.more_partners),
+    suggestions: data.map((row) => ({
+      organizationId: row.organization_id,
+      slug: row.slug,
+      displayName: row.display_name,
+      organizationType: row.organization_type,
+      alsoOffersStaffing: row.also_offers_staffing,
+      criteriaMet: criteriaSchema.parse(row.criteria_met),
+      criteriaNotMet: criteriaSchema.parse(row.criteria_not_met),
+      servedDestinations: namedSchema.parse(row.served_destinations),
+      matchingOccupations: namedSchema.parse(row.matching_occupations),
+      listing:
+        row.listing_occupation_id === null
+          ? null
+          : { occupation: row.listing_occupation, available: row.available, availableFrom: row.available_from, confirmedAt: row.confirmed_at },
+    })),
+  };
 }

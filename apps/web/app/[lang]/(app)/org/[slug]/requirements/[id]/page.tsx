@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { RequirementPartners } from "@/components/requirements/requirement-partners";
 import { RequirementStatusActions } from "@/components/requirements/requirement-status-actions";
 import { RequirementStatusNotice } from "@/components/requirements/requirement-status-notice";
 import { RequirementVacancies } from "@/components/requirements/requirement-vacancies";
@@ -13,6 +14,7 @@ import { isReleased } from "@/lib/dal/release";
 import { getRequirement, getRequirementDurations, listRequirementVacancies } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
 import { isRequirementEditable } from "@/lib/requirements/presentation";
+import { canSuggestPartners } from "@/lib/requirements/suggestions";
 import { canCreateVacancies } from "@/lib/requirements/vacancies";
 import { billingPath, requirementPath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
@@ -21,7 +23,7 @@ export const metadata: Metadata = { title: "Workforce requirement", robots: { in
 
 // One requirement as its organisation reads it, with its status, the date that matters next and, for an owner or admin,
 // the status actions (FR-M1 AC1, FR-M2 AC12, NFR-U4), and the vacancies for direct applications copied from it (FR-M1
-// AC10). The other next steps after publishing (suggested partners, invitations) come with V36 and V41.
+// AC10), and the way to the suggested partners when it needs partners (FR-M3, V36). Invitations come with V41 and V42.
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -30,10 +32,11 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, durations, vacancies] = await Promise.all([
+  const [requirement, durations, vacancies, directories] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getRequirementDurations(),
     listRequirementVacancies(organization.id, parsedId.data).catch(() => null),
+    isReleased("release_partner_directories"),
   ]);
   if (!requirement) notFound();
   const manager = organization.role !== "member";
@@ -66,6 +69,9 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
           openDays={durations.openDays}
           extensionDays={durations.extensionDays}
         />
+      ) : null}
+      {directories && canSuggestPartners(requirement.status, requirement.partnerNeed) ? (
+        <RequirementPartners lang={lang} slug={slug} requirement={requirement} />
       ) : null}
       <RequirementVacancies
         lang={lang}
