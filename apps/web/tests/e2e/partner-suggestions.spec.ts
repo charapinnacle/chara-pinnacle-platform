@@ -5,7 +5,7 @@ import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
-import { addMember, newTeam, signInAtAal1, signInAtAal2, type Team } from "./support/team";
+import { addMember, joinTeam, newTeam, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import { expect, test } from "./support/test";
 
 // Partner suggestions for a workforce requirement (FR-M3 steps Trigger to Explain, AC7, AC10, AC11; FR-M1 AC9): from the
@@ -110,6 +110,8 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     await expect(page).toHaveURL(partnersUrl(team.slug, id));
     await expect(page.getByRole("heading", { name: FIND, level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: "How suggestions are ordered" })).toHaveAttribute("href", "/en/legal/ranking");
+    // P2B article 5(3): the plan's part in the order is disclosed (decided, user delegated).
+    await expect(page.getByText("Availability listings, which the capacity and start date criteria use, can be added only within the allowance of a partner's plan.", { exact: false })).toBeVisible();
 
     const count = page.getByRole("status").filter({ hasText: /partners? suggested/ });
     await expect(count).toHaveAttribute("aria-live", "polite");
@@ -120,20 +122,20 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     await expect(first.getByRole("list", { name: `Criteria met by ${q1.displayName}` }).getByRole("listitem")).toHaveText([
       "Works in your industry",
       "Offers the type of recruitment you need",
-      "A current listing covers the number of workers you need",
-      "Workers available by your start date",
+      "Current listings cover the number of workers you need for every occupation",
+      "Enough workers for every occupation are available by your start date",
     ]);
     await expect(first.getByRole("list", { name: `Criteria not met by ${q1.displayName}` })).toHaveCount(0);
     await expect(first.getByRole("link", { name: q1.displayName })).toHaveAttribute("href", `/en/partners/${q1.slug}`);
 
     const fourth = card(page, q4.displayName);
     await expect(fourth.getByRole("list", { name: `Criteria met by ${q4.displayName}` }).getByRole("listitem")).toHaveText([
-      "A current listing covers the number of workers you need",
+      "Current listings cover the number of workers you need for every occupation",
     ]);
     await expect(fourth.getByRole("list", { name: `Criteria not met by ${q4.displayName}` }).getByRole("listitem")).toHaveText([
       "Does not list your industry",
       "Does not offer the type of recruitment you need",
-      "No listing covering your need is available by your start date",
+      "Not enough workers for every occupation are available by your start date",
     ]);
     // The partner with every criterion comes before the one with one, whatever else the database holds.
     const names = await page.getByRole("list", { name: "Suggested partners" }).getByRole("heading", { level: 2 }).allTextContents();
@@ -199,7 +201,7 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     const id = seedRequirement(team, { country: "LI" });
 
     await signInAtAal2(page, team.owner, team.ownerSecret, partnersUrl(team.slug, id));
-    const empty = page.getByRole("status").filter({ hasText: "No listed partners serve Liechtenstein for these occupations yet" });
+    const empty = page.getByRole("status").filter({ hasText: "No listed recruitment partners serve Liechtenstein for these occupations yet" });
     await expect(empty).toBeVisible();
     await expect(empty.getByRole("link", { name: "Recruitment Partners" })).toHaveAttribute("href", "/en/partners/recruitment");
     await expect(empty.getByRole("link", { name: "Staffing Partners" })).toHaveAttribute("href", "/en/partners/staffing");
@@ -218,7 +220,29 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     const retry = page.getByRole("button", { name: "Try again" });
     await waitForHydration(retry);
     await retry.click();
-    await expect(page.getByRole("status").filter({ hasText: "No listed partners serve Liechtenstein for these occupations yet" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "No listed recruitment partners serve Liechtenstein for these occupations yet" })).toBeVisible();
+  });
+
+  test("a person in two employers saves a suggested partner for the organisation of the page", async ({ page }) => {
+    test.setTimeout(180_000);
+    const first = await newTeam();
+    const second = await newTeam();
+    // The owner of the first team also joins the second: the first employer they joined is their own.
+    joinTeam(second, first.owner, "member");
+    const q1 = await listedPartner("DE", { industries: ["C"], recruitment: "both", listing: { available: 120, from: "2027-02-01" } });
+    const id = seedRequirement(second);
+
+    await signInAtAal2(page, first.owner, first.ownerSecret, partnersUrl(second.slug, id));
+    const save = card(page, q1.displayName).getByRole("button", { name: `Save partner: ${q1.displayName}` });
+    await waitForHydration(save);
+    await save.click();
+    await expect(card(page, q1.displayName).getByRole("button", { name: `Saved: ${q1.displayName}` })).toBeVisible();
+    const saved = (org: string) =>
+      query<{ n: number }>(`select count(*)::integer as n from public.saved_items where organization_id = ${literal(org)} and target_organization_id = ${literal(q1.id)}`)[0].n;
+    await expect.poll(() => saved(second.id)).toBe(1);
+    expect(saved(first.id)).toBe(0);
+    await page.reload();
+    await expect(card(page, q1.displayName).getByRole("button", { name: `Saved: ${q1.displayName}` })).toBeVisible();
   });
 
   test("the ranking page describes the suggestions while release 2b is on", async ({ page }) => {

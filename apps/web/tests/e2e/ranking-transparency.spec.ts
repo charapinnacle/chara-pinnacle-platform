@@ -50,7 +50,8 @@ test.describe("the ranking transparency page (NFR-C8)", () => {
       await expect(main.getByRole("heading", { level: 2, name: heading })).toBeVisible();
     }
     await expect(main.getByText(`confirmed by the company within the last ${staleDays()} days`)).toBeVisible();
-    await expect(main.getByText("No company can pay to appear higher.")).toBeVisible();
+    await expect(main.getByText("Nobody can pay for a higher place.", { exact: false })).toBeVisible();
+    await expect(main.getByText("can be added only within the allowance of the company's plan", { exact: false })).toBeVisible();
     await expect(main.getByText(/verified/i)).toHaveCount(0);
     await expect(page).toHaveTitle("How search results are ranked — Chara Pinnacle");
 
