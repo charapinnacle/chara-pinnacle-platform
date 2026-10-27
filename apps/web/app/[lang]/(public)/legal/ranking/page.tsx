@@ -5,8 +5,9 @@ import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { isReleased } from "@/lib/dal/release";
 import { getAvailabilityRules } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
-import { directoryNames, rankingCopy, rankingFilters } from "@/lib/partners/ranking";
+import { directoryNames, rankingCopy, rankingFilters, suggestionCopy, suggestionCriterionTexts } from "@/lib/partners/ranking";
 import { RECRUITMENT_DIRECTORY_PATH, STAFFING_DIRECTORY_PATH } from "@/lib/public/navigation";
+import { suggestionCriteria } from "@/lib/requirements/suggestions";
 import { rankingPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/legal/ranking">): Promise<Metadata> {
@@ -18,12 +19,13 @@ const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice
 
 // The main parameters of the order of Find Partners (NFR-C8: P2B Regulation article 5, DSA article 27), written from
 // lib/partners/ranking.ts, whose values a unit test holds against public.search_partners and
-// public.search_available_workforce. It describes release 2a, so it exists only while release 2a is on; the job order
+// public.search_available_workforce (and public.suggest_partners). It describes release 2a, so it exists only while
+// release 2a is on; the partner suggestions of release 2b (V36) are described while release 2b is on, and the job order
 // board (V79) and Find Workers (V80) add their sections.
 export default async function RankingPage({ params }: PageProps<"/[lang]/legal/ranking">) {
   const { lang } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const { staleDays } = await getAvailabilityRules();
+  const [{ staleDays }, suggestions] = await Promise.all([getAvailabilityRules(), isReleased("release_job_orders")]);
   const current = `confirmed by the company within the last ${formatCount(staleDays)} days`;
 
   return (
@@ -47,6 +49,9 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
             of workers.
           </li>
         </ul>
+        {suggestions ? (
+          <p>It also describes the partners suggested to an employer for a workforce requirement.</p>
+        ) : null}
       </ContentSection>
 
       <ContentSection heading="Which companies are shown">
@@ -125,6 +130,28 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
         </ol>
         <p>{rankingCopy.tieBreakFirst}</p>
       </ContentSection>
+
+      {suggestions ? (
+        <ContentSection heading="Partner suggestions for a workforce requirement">
+          <p>{suggestionCopy.selection}</p>
+          <p>The criteria:</p>
+          <ul className="grid gap-2">
+            {suggestionCriteria.map((name) => (
+              <li key={name}>
+                <span className="font-medium">{sentenceCase(name.replaceAll("_", " "))}:</span> {suggestionCriterionTexts[name]}
+              </li>
+            ))}
+          </ul>
+          <p>Suggestions are sorted by these parameters, in this order:</p>
+          <ol className="grid list-decimal gap-2 ps-5">
+            <li>The number of criteria the company meets, most first.</li>
+            <li>The last time the company changed its profile, as for the directories above.</li>
+            <li>The same fixed random number as above.</li>
+          </ol>
+          <p>{suggestionCopy.explain}</p>
+          <p>{suggestionCopy.limit}</p>
+        </ContentSection>
+      ) : null}
 
       <ContentSection heading="Advanced filters">
         <p>

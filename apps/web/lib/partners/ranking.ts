@@ -108,3 +108,35 @@ export const rankingCopy = {
     "Capacity and timeframe (both directories) and more than one source country (Find Recruitment Partners only) are advanced filters, available to an organisation whose plan includes them.",
   size: "Company size (its workforce size band) counts only through the workforce size filter, when you choose it. The number of workers a company lists as available counts only in the capacity filter and in the available workforce search, as described above.",
 } as const;
+
+// The partner suggestions for a workforce requirement as public.suggest_partners builds them (FR-M3, V36). The page
+// describes them while release 2b is on; tests/unit/ranking-transparency.test.tsx holds these values against the latest
+// definition of the function.
+export const suggestionOrderBy = "order by cardinality(j.met) desc, j.updated_at desc, j.id";
+
+// Who is suggested: the partners shown in Find Partners (listedAndVisible) of the types the requirement asks for, serving
+// one of its destinations and listing one of its occupations.
+export const suggestionSelection = [
+  "join public.requirement_countries rc on rc.requirement_id = v_row.id and rc.country_code = g.country_code where g.organization_id = o.id and g.scope = 'serves_market'",
+  "select 1 from public.organization_occupations oo join occ q on q.occupation_id = oo.occupation_id where oo.organization_id = o.id",
+  "where (v_row.partner_need in ('recruitment', 'both') and s.type = 'recruitment_company') or (v_row.partner_need in ('staffing', 'both') and (s.type = 'staffing_company' or s.staffing_service))",
+] as const;
+
+// What each criterion means, in the order a suggestion names them (lib/requirements/suggestions.ts suggestionCriteria).
+export const suggestionCriterionTexts = {
+  industry: "the company lists the industry of the requirement on its profile.",
+  recruitment_type:
+    "the company offers the type of recruitment the requirement asks for, local or international; a company or a requirement that names both counts for either.",
+  capacity: `the company has a current availability listing of one of the requirement's occupations with at least the number of workers the requirement needs for that occupation.`,
+  available_before_start:
+    "such a listing (one that covers the number of workers) has its workers available on or before the start date of the requirement.",
+} as const;
+
+export const suggestionCopy = {
+  selection:
+    "An employer who needs partners for a workforce requirement can see suggested partners. A company is suggested only when it would be shown in the directories (see Which companies are shown), is of a type the requirement asks for (recruitment companies for recruitment; staffing companies and recruitment companies that also offer staffing for staffing; all of them for both), serves at least one of the requirement's destination countries and lists at least one of its occupations.",
+  explain:
+    "Each suggestion names the criteria it meets and those it does not, and the facts behind them. Every criterion weighs the same. A suggestion is not a score and says nothing about the quality of a company; companies are not told that they were suggested.",
+  limit:
+    "A limited number of suggestions is shown, with links to the directories when more companies fit; the limit does not change the order.",
+} as const;
