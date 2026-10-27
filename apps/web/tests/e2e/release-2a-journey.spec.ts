@@ -177,10 +177,20 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await visitor.page.getByRole("option", { name: /^7411 · Building and related electricians$/ }).click();
     await visitor.page.getByRole("button", { name: "Search partners" }).click();
     await expect(visitor.page).toHaveURL("/en/partners/recruitment?destination=IS&occupation=7411");
+    // The card is found by the token of this run's name; on a database that earlier runs left partners for Iceland and
+    // 7411 in, it is followed through the next pages until it shows.
     const card = visitor.page
       .getByRole("main")
       .getByRole("listitem")
-      .filter({ has: visitor.page.getByRole("heading", { name: displayName, level: 2 }) });
+      .filter({ has: visitor.page.getByRole("heading", { name: new RegExp(`\\b${token}$`), level: 2 }) });
+    for (let pageNumber = 1; pageNumber < 10; pageNumber++) {
+      await expect(visitor.page.getByRole("status").filter({ hasText: "shown" })).toBeVisible();
+      if ((await card.count()) > 0) break;
+      const before = visitor.page.url();
+      await visitor.page.getByRole("link", { name: "Show more partners" }).click();
+      await visitor.page.waitForURL((url) => url.toString() !== before);
+    }
+    await expect(card.getByRole("heading", { level: 2 })).toHaveText(displayName);
     await expect(card).toContainText("Based in Philippines");
     await expect(card).toContainText("Recruits for Germany, Iceland");
     await expect(card).toContainText("Matches: destination, occupation");
