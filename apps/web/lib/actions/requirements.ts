@@ -12,8 +12,8 @@ import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { reportQuotaRefused } from "@/lib/quota-refused";
 import { ACTIVE_REQUIREMENTS, MULTI_COUNTRY_FEATURE, multiCountryText } from "@/lib/requirements/limits";
-import { lifecycleRefusal, REQUIREMENT_MESSAGES, requirementRefusal } from "@/lib/requirements/refusal";
-import { requirementPath, requirementsPath } from "@/lib/routes";
+import { lifecycleRefusal, REQUIREMENT_MESSAGES, requirementRefusal, vacanciesRefusal } from "@/lib/requirements/refusal";
+import { jobsPath, requirementPath, requirementsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
   requirementFormSchema,
@@ -169,4 +169,35 @@ export async function extendRequirement(slug: string, target: LifecycleTarget): 
   return runLifecycle(slug, target, "Extending the workforce requirement", (organizationId, { id, expectedUpdatedAt }) =>
     supabase.rpc("extend_requirement", { p_org: organizationId, p_requirement: id, p_expected_updated_at: expectedUpdatedAt }),
   );
+}
+
+export type RequirementVacanciesResult = { message?: string; created?: number };
+
+// "Create vacancies for direct applications" (FR-M1 step Next steps, AC10): one draft vacancy per occupation of an open
+// requirement, for an owner or admin at aal2 while release 2b is on; the function checks all of it again, with the
+// status and the version the page was drawn with.
+export async function createRequirementVacancies(slug: string, target: LifecycleTarget): Promise<RequirementVacanciesResult> {
+  const parsedSlug = slugSchema.safeParse(slug);
+  const parsedTarget = requirementTargetSchema.safeParse(target);
+  if (!parsedSlug.success || !parsedTarget.success) return { message: GENERIC_FAILURE };
+  if (!(await isReleased("release_job_orders"))) return { message: REQUIREMENT_MESSAGES.releaseOff };
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", { hideFromOutsiders: true });
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_vacancies_from_requirement", {
+    p_org: organization.id,
+    p_requirement: parsedTarget.data.id,
+    p_expected_updated_at: parsedTarget.data.expectedUpdatedAt,
+  });
+  revalidatePath(requirementPath(defaultLocale, organization.slug, parsedTarget.data.id));
+  if (!error) {
+    revalidatePath(jobsPath(defaultLocale, organization.slug));
+    return { created: data.length };
+  }
+  const refusal = vacanciesRefusal(error);
+  if (refusal.kind === "message") {
+    if (error.message === "CHARA_RATE_LIMITED") reportQuotaRefused("audited_write", "requirement");
+    return { message: refusal.message };
+  }
+  return { message: faultMessage(logFault("Creating vacancies from the workforce requirement", error)) };
 }

@@ -113,3 +113,15 @@ export function lifecycleRefusal(error: RefusalError): { kind: "message"; messag
   const refusal = requirementRefusal(error);
   return refusal.kind === "message" || refusal.kind === "feature" ? refusal : { kind: "fault" };
 }
+
+export const VACANCIES_MESSAGES = {
+  notOpen: "Vacancies can be created from an open requirement only. Reload the page.",
+} as const;
+
+// What the vacancies action shows for a refusal of create_vacancies_from_requirement: a requirement that is no longer
+// open, or a refusal it shares with the other actions (who may act, a stale version, the quota).
+export function vacanciesRefusal(error: RefusalError): { kind: "message"; message: string } | { kind: "fault" } {
+  if (error.message === "CHARA_INVALID_STATE") return { kind: "message", message: VACANCIES_MESSAGES.notOpen };
+  const refusal = requirementRefusal(error);
+  return refusal.kind === "message" ? refusal : { kind: "fault" };
+}

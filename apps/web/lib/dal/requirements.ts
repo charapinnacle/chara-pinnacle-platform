@@ -187,6 +187,29 @@ export async function getRequirementDurations(): Promise<RequirementDurations> {
   };
 }
 
+export type RequirementVacancy = {
+  id: string;
+  title: string;
+  status: Enums["job_status"];
+  moderationState: Enums["job_moderation_state"];
+  createdAt: string;
+};
+
+// The vacancies copied from a requirement (FR-M1 AC10), for the members of its organisation; jobs.requirement_id is not
+// readable through the Data API (NFR-S11), so requirement_vacancies answers them.
+export async function listRequirementVacancies(organizationId: string, requirementId: string): Promise<RequirementVacancy[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("requirement_vacancies", { p_org: organizationId, p_requirement: requirementId });
+  if (error) throw new Error("The vacancies of the workforce requirement could not be loaded", { cause: error });
+  return data.map((row) => ({
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    moderationState: row.moderation_state,
+    createdAt: row.created_at,
+  }));
+}
+
 export type MultiCountryPlan = { allowed: boolean; planName: string | null };
 
 // Whether the form offers further destination countries (the plan has multi_country_requirements, or the feature is not
