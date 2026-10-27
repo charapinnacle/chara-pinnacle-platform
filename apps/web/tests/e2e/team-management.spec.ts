@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { accountButton, mainNavigation, openAccountMenu } from "./support/app-shell";
 import { expectNoAxeViolations } from "./support/axe";
 import { literal, query } from "./support/db";
@@ -173,7 +173,6 @@ test.describe("team membership: page guard and status", () => {
     setName(bare.user.id, "Bo Bare");
     setName(member.user.id, "Max Member");
     await signInAtAal2(page, team.owner, team.ownerSecret, `/en/org/${team.slug}/billing`);
-    await page.waitForLoadState("networkidle");
 
     await page.route(
       (url) => url.pathname === membersPath(team.slug) && url.searchParams.has("_rsc"),
@@ -182,6 +181,29 @@ test.describe("team membership: page guard and status", () => {
         await route.continue();
       },
     );
+    // The skeleton is the prefetched loading state, so Team is clicked once Next.js is done with its prefetch: it aborts
+    // the request once it has read the loading state, so the request fails or finishes. The billing page is loaded afresh
+    // first, because the code page reaches it by a client-side move that networkidle does not wait for, and only the
+    // prefetches the new document starts are counted (those of the old one are aborted when it goes).
+    await page.goto(`/en/org/${team.slug}/billing`, { waitUntil: "commit" });
+    const prefetches = new Set<Request>();
+    await new Promise<void>((resolve) => {
+      page.on("request", (request) => {
+        const headers = request.headers();
+        if (
+          new URL(request.url()).pathname === membersPath(team.slug) &&
+          headers["next-router-prefetch"] === "1" &&
+          !headers["next-router-segment-prefetch"]
+        ) {
+          prefetches.add(request);
+        }
+      });
+      const settle = (request: Request) => {
+        if (prefetches.has(request)) resolve();
+      };
+      page.on("requestfinished", settle);
+      page.on("requestfailed", settle);
+    });
     await mainNavigation(page).getByRole("link", { name: "Team" }).click();
     await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Team", level: 1 })).toBeVisible();
