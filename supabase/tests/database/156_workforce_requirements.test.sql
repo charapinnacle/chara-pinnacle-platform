@@ -1,5 +1,5 @@
 begin;
-select plan(102);
+select plan(152);
 
 \ir apply_fixture.inc
 
@@ -38,7 +38,8 @@ values (:'zeta', 'employer', 'zeta-works', 'Zeta Works GmbH', 'Zeta Works', 'DE'
 insert into public.organization_members (organization_id, user_id, role, accepted_at) values (:'zeta', :'zown', 'owner', now());
 
 -- The call of save_requirement for p_org (and p_req, null to create) with the valid requirement of AC1, each key of
--- p_over replacing a value; the new or changed id lands in t.req.
+-- p_over replacing a value; a change names the requirement's current updated_at unless p_over says otherwise. The new
+-- or changed id lands in t.req.
 create function pg_temp.req_sql(p_org uuid, p_req uuid, p_over jsonb default '{}') returns text
 language sql as $$
   with v as (
@@ -48,7 +49,8 @@ language sql as $$
       'skills', 'MIG/MAG welding, blueprint reading', 'experience', 2,
       'start', ((now() at time zone 'utc')::date + 120)::text, 'duration', 12, 'employment', 'full_time',
       'salary_min', 2800, 'salary_max', 3400, 'currency', 'EUR', 'period', 'month', 'accommodation', true,
-      'permit', true, 'visa', true, 'preference', 'international', 'need', 'both'
+      'permit', true, 'visa', true, 'preference', 'international', 'need', 'both',
+      'expected', (select r.updated_at from public.workforce_requirements r where r.id = p_req)
     ) || p_over as j
   )
   select format(
@@ -59,12 +61,13 @@ language sql as $$
       p_employment_type => %L::public.employment_type, p_salary_min => %L::numeric, p_salary_max => %L::numeric,
       p_salary_currency => %L, p_salary_period => %L::public.salary_period, p_accommodation => %L::boolean,
       p_work_permit_support => %L::boolean, p_visa_support => %L::boolean,
-      p_recruitment_preference => %L::public.recruitment_preference, p_partner_need => %L::public.partner_need
+      p_recruitment_preference => %L::public.recruitment_preference, p_partner_need => %L::public.partner_need,
+      p_expected_updated_at => %L::timestamptz
     )::text, true)$f$,
     p_org, p_req, j ->> 'title', j ->> 'workers', j ->> 'country', j ->> 'city', j ->> 'industry', j -> 'occupations',
     j ->> 'skills', j ->> 'experience', j ->> 'start', j ->> 'duration', j ->> 'employment', j ->> 'salary_min',
     j ->> 'salary_max', j ->> 'currency', j ->> 'period', j ->> 'accommodation', j ->> 'permit', j ->> 'visa',
-    j ->> 'preference', j ->> 'need')
+    j ->> 'preference', j ->> 'need', j ->> 'expected')
   from v
 $$;
 
@@ -281,7 +284,7 @@ select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, jsonb_build_obje
 from unnest(array['male only', 'MALE ONLY', 'Welders under 35 years', 'no women', 'Nationality: Indian preferred', 'Mâle only']) s;
 select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{"title": "Welders, women only"}'),
   'P0001|CHARA_INVALID_INPUT|prohibited_criterion:title', 'the title is checked too');
-select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{"city": "Hamburg, married couples"}'),
+select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{"city": "Hamburg, single applicants"}'),
   'P0001|CHARA_INVALID_INPUT|prohibited_criterion:city_region', 'the city or region is checked too');
 select is(pg_temp.req_counts(), current_setting('t.counts'), 'AC7: the refused wording wrote nothing');
 select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{"skills": "MIG/MAG welding, 2 years, English B1"}'),
@@ -291,7 +294,62 @@ select alike(pg_temp.read_as(:'adm', 'select count(*) from private.prohibited_te
 select throws_ok($$insert into private.prohibited_terms (pattern, label) values ('(unclosed', 'broken')$$, '2201B', null,
   'a pattern that is not a valid regular expression is refused');
 
+-- The list against examples: ordinary wording that names a word of a characteristic passes, wording that asks for one
+-- is refused, also when invisible characters, no-break spaces or full-width letters split it.
+create temp table examples (text text primary key, refused boolean not null);
+insert into examples values
+  ('Under 2 years of experience accepted', false), ('aged 18 or over', false), ('must be 18 years old or older', false),
+  ('Sex education teacher', false), ('Gender-neutral uniforms provided', false),
+  ('valid passport number for travel', false), ('disabled parking', false), ('Race track maintenance', false),
+  ('No children''s toys assembly', false), ('Married quarters accommodation', false),
+  ('Sikh community kitchen cooks', false), ('Religious professionals', false), ('Religious associate professionals', false),
+  ('between 2 and 5 years of relevant experience', false), ('maximum 3 years of welding experience', false),
+  ('MIG/MAG welding, 2 years, English B1', false),
+  ('male only', true), ('MALE ONLY', true), ('Mâle only', true), ('Welders under 35 years', true), ('no women', true),
+  ('Nationality: Indian preferred', true), ('females preferred', true), ('must be male', true), ('girls only', true),
+  ('Max 35 years', true), ('between 20 and 35 years', true), ('Indian nationals preferred', true),
+  ('under 35 years', true), ('Women only', true), ('Welders, women only', true), ('Hamburg, single applicants', true),
+  ('ma' || chr(173) || 'le only', true), ('ma' || chr(8203) || 'le only', true), ('wo' || chr(8205) || 'men only', true),
+  ('male' || chr(8288) || ' only', true), (chr(65279) || 'girls only', true), ('male' || chr(160) || 'only', true),
+  ('ｍａｌｅ ｏｎｌｙ', true);
+select is(private.prohibited_criterion(e.text) is not null, e.refused,
+  format('the list %s "%s"', case when e.refused then 'refuses' else 'accepts' end, e.text))
+from examples e order by e.refused, e.text;
+select ok((select count(*) from private.prohibited_terms) <= 31,
+  'the list keeps within the 31 patterns that stay compiled in a backend');
+select is(
+  (select count(*)::integer from public.occupations o
+   where private.prohibited_criterion(o.label) is not null
+      or exists (select 1 from unnest(o.synonyms) y where private.prohibited_criterion(y) is not null)),
+  0, 'no occupation label or synonym of the code list matches the list');
+select is((select count(*)::integer from public.industries i where private.prohibited_criterion(i.name) is not null), 0,
+  'no industry of the code list matches the list');
+select is((select count(*)::integer from public.cities c where private.prohibited_criterion(c.name) is not null), 0,
+  'no city of the code list matches the list');
+select is((select count(*)::integer from public.countries c where private.prohibited_criterion(c.name) is not null), 0,
+  'no country of the code list matches the list');
+select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, jsonb_build_object('skills', 'wo' || chr(8203) || 'men only')),
+  'P0001|CHARA_INVALID_INPUT|prohibited_criterion:skills', 'a zero-width space does not get refused wording through a save');
+
+-- A requirement for religious professionals (ISCO 2636): its written title names the occupation and is not checked
+-- again when an edit sends it back unchanged.
+select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid,
+    '{"workers": 5, "occupations": [{"occupation_id": "2636", "quantity": 5}], "skills": null}'), 'ok',
+  'a requirement for occupation 2636 is created with a written title');
+select set_config('t.r2636', pg_temp.req()::text, true) as r2636 \gset
+select is((select title from public.workforce_requirements where id = current_setting('t.r2636')::uuid),
+  '5 workers: Religious professionals, Hamburg', 'the written title names the occupation');
+select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid,
+    '{"title": "5 workers: Religious professionals, Hamburg", "workers": 5, "occupations": [{"occupation_id": "2636", "quantity": 5}], "skills": "Pastoral care"}',
+    'aal2', current_setting('t.r2636')::uuid), 'ok', 'an edit that sends the written title back is saved');
+
 -- Editing -------------------------------------------------------------------------------------------------------------
+
+select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{"expected": "2000-01-01T00:00:00Z"}', 'aal2',
+    current_setting('t.r1')::uuid),
+  'P0001|CHARA_CONFLICT|stale', 'a change made from an older version is refused as stale');
+select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{"expected": null}', 'aal2', current_setting('t.r1')::uuid),
+  'P0001|CHARA_CONFLICT|stale', 'a change that names no version is refused as stale');
 
 select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid,
     '{"workers": 120, "occupations": [{"occupation_id": "7214", "quantity": 20}, {"occupation_id": "7212", "quantity": 100}]}',
@@ -333,7 +391,7 @@ select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid,
   'P0001|CHARA_INVALID_INPUT|start_date', 'but it cannot be moved to another past date');
 update public.workforce_requirements set status = 'closed', visibility = 'private' where id = current_setting('t.r1')::uuid;
 select is(pg_temp.save_as(:'adm', current_setting('t.a')::uuid, '{}', 'aal2', current_setting('t.r1')::uuid),
-  'P0001|CHARA_INVALID_TRANSITION|closed', 'a closed requirement is final');
+  'P0001|CHARA_INVALID_STATE|closed', 'a closed requirement is final');
 select throws_ok(
   format($$update public.workforce_requirements set status = 'draft', visibility = 'private' where id = %L$$, current_setting('t.r1')),
   '23514', null, 'a draft has no visibility');
@@ -376,8 +434,9 @@ select alike(pg_temp.read_as(:'own1', 'select created_by from public.workforce_r
   'created_by is not readable through the Data API');
 select set_config('t.apps', (select count(*) from public.job_applications)::text, true) as apps \gset
 -- apply_to_job answers an id that is no open vacancy as it always did (Phase 1), whatever the id names.
-select is(pg_temp.apply_as(:'wa', current_setting('t.r1')::uuid), 'P0001|CHARA_JOB_NOT_OPEN|',
-  'AC11: apply_to_job with a requirement id is refused as for any id that is no open vacancy');
+select is(pg_temp.apply_as(:'wa', (select id from public.workforce_requirements where status = 'open' limit 1)),
+  'P0001|CHARA_JOB_NOT_OPEN|',
+  'AC11: apply_to_job with an open requirement id is refused as for any id that is no open vacancy');
 select is((select count(*) from public.job_applications)::text, current_setting('t.apps'), 'AC11: and creates no application');
 
 -- Usage, quota and deployment check -----------------------------------------------------------------------------------
