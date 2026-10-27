@@ -174,7 +174,7 @@ declare
   v_new public.workforce_requirements;
   v_old_occupations jsonb := '[]'::jsonb;
   v_new_occupations jsonb;
-  v_old_countries text[] := '{}';
+  v_old_countries text[] := '{}'::text[];
   v_new_countries text[];
   v_additional text[];
   v_changed jsonb;
