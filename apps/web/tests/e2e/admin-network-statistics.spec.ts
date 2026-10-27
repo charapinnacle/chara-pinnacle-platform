@@ -174,7 +174,7 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     try {
       await showRange(page, "2024-01-01", "2024-01-31");
       await expect(network.getByRole("heading", { name: "The partner network statistics could not be loaded" })).toBeVisible();
-      await expect(page.getByText("Check your connection and try again.")).toBeVisible();
+      await expect(page.getByText("Check your connection and try again.", { exact: true })).toBeVisible();
       await expectAccessibleAtBothWidths(page);
     } finally {
       execute(`grant execute on function ${FUNCTION} to authenticated`);
