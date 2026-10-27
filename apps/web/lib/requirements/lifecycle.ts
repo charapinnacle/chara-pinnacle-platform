@@ -1,8 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { formatCount } from "@/lib/i18n/format";
 
-// Without zod, so that the status actions of the requirement page do not load the validation library (bundle budget).
-
 type RequirementStatus = Database["public"]["Enums"]["requirement_status"];
 
 // The periods of the public settings requirement_open_days, requirement_extension_days and
