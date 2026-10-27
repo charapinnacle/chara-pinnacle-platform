@@ -21,6 +21,7 @@ import { partnerDeclined } from "./templates/partner-declined.tsx";
 import { partnerInfoRequested } from "./templates/partner-info-requested.tsx";
 import { partnerLicenceExpired } from "./templates/partner-licence-expired.tsx";
 import { paymentFailed } from "./templates/payment-failed.tsx";
+import { requirementClosingSoon } from "./templates/requirement-closing-soon.tsx";
 import { statusChanged } from "./templates/status-changed.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
 import { vacancyHidden } from "./templates/vacancy-hidden.tsx";
@@ -49,6 +50,7 @@ const TEMPLATES = {
   followed_company_activity: followedCompanyActivity,
   moderation_decision: moderationDecision,
   data_export_ready: dataExportReady,
+  requirement_closing_soon: requirementClosingSoon,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

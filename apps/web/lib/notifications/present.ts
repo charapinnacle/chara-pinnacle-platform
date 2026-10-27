@@ -14,6 +14,7 @@ import {
   mfaPath,
   myReportsPath,
   partnerStepPath,
+  requirementPath,
   settingsPath,
   whereYouServePath,
   workforceProfilePath,
@@ -68,6 +69,13 @@ function infoStepPath(lang: string, step: InfoStep): string {
 function decisionId(payload: Record<string, unknown>): number | null {
   const value = payload.moderation_action_id;
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+// The requirement a closing reminder names, on the page of the recipient's organisation.
+function closingRequirementPath(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "requirement_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementPath(lang, slug, id) : null;
 }
 
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
@@ -290,6 +298,18 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: unhidden ? `${title} is shown again` : `${title} was hidden by moderation`,
         href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
+      };
+    },
+  },
+  requirement_closing_soon: {
+    label: "Workforce requirements",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const value = text(payload, "closes_on");
+      const closes = value && !Number.isNaN(Date.parse(value)) ? formatDate(value) : undefined;
+      return {
+        title: `${title ? `"${title}"` : "A workforce requirement"} closes ${closes ? `on ${closes}` : "soon"}`,
+        href: closingRequirementPath(lang, payload),
       };
     },
   },
