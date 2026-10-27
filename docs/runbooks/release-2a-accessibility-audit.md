@@ -66,7 +66,7 @@ CI runs axe (`tests/e2e/support/axe.ts`, serious and critical violations) throug
 
 | Page | Who | States | Axe in CI |
 |---|---|---|---|
-| `/[lang]/admin/partners` (Partners to review) | Trust & Safety, Verification Reviewer, Platform Administrator | queue, Overdue, same identifier flag, empty, focus after a decision | `partner-approval.spec.ts` (K), `release-2a-journey.spec.ts` |
+| `/[lang]/admin/partners` (Partners to review) | Trust & Safety, Verification Reviewer, Platform Administrator | queue, Overdue, same identifier flag, empty, focus after a decision | `partner-approval.spec.ts` (K) |
 | `/[lang]/admin/partners/[id]` (partner review) | the same | evidence download, checklist, List, Request information and Decline dialogs with errors, read-only notice | `partner-approval.spec.ts` (K) |
 | `/[lang]/admin/plans`, `/admin/plans/[code]`, `/admin/plans/overrides` | Platform Administrator | edit forms, errors, price change confirmation | `admin-plan-editor.spec.ts`, `admin-plan-price.spec.ts`, `accessibility-sweep.spec.ts` |
 | `/[lang]/admin/settings` (settings and release switches) | Platform Administrator | switch refused while legal drafts exist | `admin-plan-editor.spec.ts`, `accessibility-sweep.spec.ts` |

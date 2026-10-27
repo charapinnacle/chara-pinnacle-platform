@@ -31,7 +31,7 @@ V78, 27 October 2026. NFR-C7 (business user traceability and moderation): partne
 
 | Question | As built | Evidence |
 |---|---|---|
-| Who and when | The owner or an admin of the affected organisation at aal2, once per decision, while the decision is in effect and within `appeal_window_months` (6, setting) of it; grounds of at least 50 characters. | pgTAP `149` |
+| Who and when | The owner or an admin of the affected organisation at aal2, once per decision, while the decision is in effect and within `appeal_window_months` (6, setting) of it; grounds of 20 to 2,000 characters. | pgTAP `149` |
 | Second-person review | `decide_appeal` refuses the moderator who took the decision (`same_reviewer`) and a member of the organisation (`own_organization`); the console tells the decider that the appeal is someone else's. With a single Trust & Safety administrator no appeal can be decided: two named people are a go-live condition (`docs/runbooks/release-2a-go-live.md` item 4). | pgTAP `149`; e2e `partner-profile.spec.ts` |
 | Statement of reasons | Upholding and reversing both need reasons, sent to the appellant and shown on the appeal page. | pgTAP `149`; Vitest `appeal-view` |
 | Audit | `appeal.lodged`, `appeal.upheld` or `appeal.restored` (with the reversal's own moderation row); the reversal rate is stored (`appeals.reversal_action_id`). Decided appeals are kept 365 days after the decision and never before the longest window has passed. | pgTAP `149` |

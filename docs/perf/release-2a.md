@@ -51,11 +51,35 @@ What the plans show:
 
 ## Operational check at the HTTP level
 
-No HTTP load tool is installed in the project (and none is added: no new dependencies), so the render time of the pages under load is checked by hand on staging before release 2a goes live (`docs/runbooks/release-2a-go-live.md`): with staging seeded to 5,000 listed partners, request `/en/partners/recruitment?destination=DE&occupation=7212`, `/en/partners/staffing?destination=DE` and a partner profile 100 times each from a host near the web tier (for example `curl -s -o /dev/null -w '%{time_starttransfer}\n'` in a loop, ten in parallel) and record the 95th percentile of the time to first byte. It must be under 500 ms. Record the date, the person and the figures in the release record.
+No HTTP load tool is installed in the project (and none is added: no new dependencies), so the render time of the pages under load is checked by hand on staging before release 2a goes live (`docs/runbooks/release-2a-go-live.md` item 14). Record the date, the person and the figures in the release record.
+
+1. **A disposable copy of staging.** Restore staging into a new project or database branch used for nothing else (never production, never the shared staging database: the seed writes 6,000 organisations, one user and their audit rows, and the audit log is append-only). Deploy the release tag's web build against it.
+2. **Seed it, committed.** The same statements as the load test, committed instead of rolled back:
+
+   ```sh
+   { echo "begin;"
+     echo "update private.settings set value = 'true' where key = 'release_partner_directories';"
+     cat supabase/tests/database/find_partners_load_fixture.inc
+     echo "select pg_temp.seed_find_partners(5000, 1000);"
+     echo "analyze public.organizations, public.organization_geographies, public.organization_occupations, public.organization_industries, public.organization_languages, public.organization_service_types, public.workforce_availability;"
+     echo "commit;"; } | psql "$STAGING_COPY_URL" -v ON_ERROR_STOP=1
+   ```
+
+3. **Measure.** Request `/en/partners/recruitment?destination=DE&occupation=7212`, `/en/partners/staffing?destination=DE` and the profile `/en/partners/load-partner-1` 100 times each from a host near the web tier (for example `curl -s -o /dev/null -w '%{time_starttransfer}\n'` in a loop, ten in parallel; on the copy, raise `rate_limit_partner_search_max` and `rate_limit_partner_profile_max` first, so the visitor rate limit of one measuring host does not answer instead of the page) and take the 95th percentile of the time to first byte. It must be under 500 ms.
+4. **Clean up** (or delete the copy): the organisations cascade to their geographies, offer, listings and members, and the seeded users are the `@load.test` addresses:
+
+   ```sh
+   psql "$STAGING_COPY_URL" -v ON_ERROR_STOP=1 -c "begin;
+     delete from public.organizations where slug like 'load-partner-%';
+     delete from auth.users where email like '%@load.test';
+     update private.settings set value = 'false' where key = 'release_partner_directories';
+     commit;"
+   ```
 
 ## Query plans
 
 The main statement of each search on the 51st run, from `node scripts/load/find-partners.mjs --plans` (`auto_explain`, `log_analyze`, `log_buffers`, nested statements; the query text is left out, it is the body of the function in `supabase/migrations/20261203100000_staffing_directory.sql` and `20261203100100_available_workforce_search.sql`).
+
 ### recruitment: no filter
 
 ```
