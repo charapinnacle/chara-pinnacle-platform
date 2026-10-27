@@ -149,6 +149,12 @@ describe("saveDirectHiringRule (FR-Q5 AC1, AC3)", () => {
     expect(rpcMock.mock.calls[1][1]).toMatchObject({ p_destination: "DE" });
   });
 
+  it("says that nothing changed, without success, when the rule already has these values", async () => {
+    rpcMock.mockResolvedValueOnce({ data: false, error: null });
+    expect(await saveDirectHiringRule(valid)).toEqual({ message: "Nothing changed. To record a review, update the legal opinion reference." });
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
   it("refuses invalid input before calling anything", async () => {
     expect((await saveDirectHiringRule({ ...valid, legalOpinionRef: "" })).errors).toHaveProperty("legalOpinionRef");
     expect((await saveDirectHiringRule({ ...valid, sourceCountry: "DE", destinationCountry: "DE" })).errors).toHaveProperty("destinationCountry");
