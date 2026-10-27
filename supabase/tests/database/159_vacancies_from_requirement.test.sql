@@ -1,5 +1,5 @@
 begin;
-select plan(89);
+select plan(91);
 
 \ir apply_fixture.inc
 
@@ -356,8 +356,13 @@ update public.workforce_requirements set visibility = 'job_order_marketplace', s
 select is(pg_temp.make(:'adm', :'anon_req'), 'ok', 'an anonymous marketplace requirement is copied');
 select is(
   (select description from public.jobs where requirement_id = :'anon_req' and occupation_id = '7212'),
-  E'Welders and flame cutters: workers needed in Hamburg, Germany, from March 2027.\n\nProject duration: 12 months.\n\nExperience: 2 years.\n\nAccommodation is provided. Work permit support is provided. Visa support is provided.',
-  'NFR-S11: its description has neither the quantity, nor the exact start date, nor the skills');
+  E'Welders and flame cutters: workers needed in Germany from March 2027.\n\nProject duration: 12 months.\n\nExperience: 2 years.\n\nAccommodation is provided. Work permit support is provided. Visa support is provided.',
+  'NFR-S11: its description has neither the city, nor the quantity, nor the exact start date, nor the skills');
+select ok(
+  (select bool_and(city = '-' and salary_min is null and salary_max is null and salary_currency is null and salary_period is null)
+     and count(*) = 2
+   from public.jobs where requirement_id = :'anon_req'),
+  'NFR-S11 (V39 review): its copies carry neither the city (''-'', the nearest to empty jobs.city accepts) nor the salary');
 select ok(
   not exists (select 1 from public.jobs where requirement_id = :'anon_req'
     and (description like '%MIG/MAG%' or description ~ '\m(80|20)\M' or description like '%1 March 2027%')),
@@ -370,6 +375,12 @@ select ok(
    from public.jobs where requirement_id = :'named_req')
   and exists (select 1 from public.jobs where requirement_id = :'named_req' and description like '%: 80 workers needed%'),
   'with the company name shown the description keeps the quantity, the date and the skills');
+select ok(
+  (select bool_and(j.city = r.city_region and j.salary_min = r.salary_min and j.salary_max = r.salary_max
+     and j.salary_currency = r.salary_currency and j.salary_period = r.salary_period)
+   from public.jobs j join public.workforce_requirements r on r.id = j.requirement_id
+   where j.requirement_id = :'named_req' and r.salary_min is not null),
+  'with the company name shown the copies keep the city and the salary');
 
 -- The description's variants ---------------------------------------------------------------------------------------------
 

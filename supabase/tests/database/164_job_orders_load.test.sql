@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(8);
 
 -- The job order list at 2,000 open requirements (V39, FR-N1 AC12; NFR-P3: the job order board renders within 500 ms
 -- server time at 2,000 open requirements and 5,000 partners; the board's own load test with the page is V79). Seeded
@@ -29,6 +29,21 @@ update public.organizations set review_status = 'listed', listed_at = now() - in
 where id = '00000000-0000-0000-0000-0000000f3991';
 insert into billing.subscriptions (organization_id, plan_code, status, provider)
 values ('00000000-0000-0000-0000-0000000f3991', 'recruitment_professional', 'active', 'null');
+
+-- A partner on the free plan: every job order is a reduced row, so a filter on a hidden field reads them all and
+-- answers none (the slowest case of the list).
+\set fown '00000000-0000-0000-0000-0000000f3992'
+select pg_temp.new_user(:'fown');
+update public.profiles set account_kind = intended_account_kind where id = :'fown';
+insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country)
+values ('00000000-0000-0000-0000-0000000f3993', 'recruitment_company', 'load-v39-free', 'Load V39 Free Ltd', 'Load V39 Free', 'PH');
+insert into public.organization_members (organization_id, user_id, role, accepted_at)
+values ('00000000-0000-0000-0000-0000000f3993', :'fown', 'owner', now());
+insert into public.organization_geographies (organization_id, scope, country_code)
+values ('00000000-0000-0000-0000-0000000f3993', 'serves_market', 'DE');
+insert into public.organization_occupations (organization_id, occupation_id) values ('00000000-0000-0000-0000-0000000f3993', '7212');
+update public.organizations set review_status = 'listed', listed_at = now() - interval '30 days', submitted_at = now() - interval '31 days'
+where id = '00000000-0000-0000-0000-0000000f3993';
 
 create temp table load_employers as
 select gen_random_uuid() as id, n from generate_series(1, 200) n;
@@ -109,6 +124,10 @@ select pg_temp.time_call(:'pown', 'filtered',
 select pg_temp.time_call(:'pown', 'deep page',
   format($$select * from public.list_job_orders('00000000-0000-0000-0000-0000000f3991', p_cursor => %L, p_limit => 50)$$,
     (select id from load_requirements where n = 1900)), 5);
+select pg_temp.time_call(:'fown', 'free partner, hidden filter',
+  $$select * from public.list_job_orders('00000000-0000-0000-0000-0000000f3993', p_industry => 'C', p_limit => 50)$$, 5);
+select pg_temp.time_call(:'pown', 'sparse filter',
+  $$select * from public.list_job_orders('00000000-0000-0000-0000-0000000f3991', p_destination => 'PL', p_occupation => '7212', p_start_from => '2027-03-01', p_start_to => '2027-03-15', p_limit => 50)$$, 5);
 select pg_temp.time_call(:'pown', 'job order',
   format($$select * from public.get_job_order('00000000-0000-0000-0000-0000000f3991', %L)$$,
     (select id from load_requirements where n = 1000)), 5);
@@ -122,9 +141,12 @@ select ok(
    from (select percentile_cont(0.5) within group (order by ms) as median, max(ms) as max from load_runs group by call) m),
   'NFR-P3: each job order call answers within 100 ms at the median and never takes 500 ms at 2,000 open requirements');
 select is(
-  (select array_agg(call || '=' || row_count order by call) from (select distinct call, row_count from load_runs) r),
+  (select array_agg(call || '=' || row_count order by call) from (select distinct call, row_count from load_runs) r
+   where call not in ('free partner, hidden filter', 'sparse filter')),
   array['deep page=50', 'filtered=50', 'first page=20', 'job order=1'],
-  'NFR-P3: every timed run answers full pages (no run is timed on an empty answer)');
+  'NFR-P3: the page runs answer full pages (no run is timed on an empty answer); the free partner''s hidden filter answers none');
+select ok((select min(row_count) between 1 and 49 from load_runs where call = 'sparse filter'),
+  'NFR-P3: the sparse filter (a destination, an occupation and two weeks of start dates) answers a few job orders, read to the end');
 
 create temp table load_page (id uuid, eligible boolean);
 grant all on load_page to authenticated;
@@ -163,17 +185,21 @@ end;
 $$;
 select pg_temp.plan_of($$select r.id from public.workforce_requirements r join public.organizations e on e.id = r.organization_id
   where r.status = 'open' and r.visibility = 'job_order_marketplace' and e.status = 'active'
+    and (r.published_at < now() - interval '1000 minutes'
+      or (r.published_at = now() - interval '1000 minutes' and r.id > '00000000-0000-0000-0000-000000000000'))
   order by r.published_at desc, r.id limit 21$$) as list_plan \gset
 select ok(
   :'list_plan' ~ 'Index[A-Za-z ]* Scan[^\n]* using workforce_requirements_job_orders_idx'
   and :'list_plan' !~ 'Seq Scan on workforce_requirements',
-  'NFR-P3, AC12: the list reads the open marketplace requirements through workforce_requirements_job_orders_idx in order');
+  'NFR-P3, AC12: the list reads the open marketplace requirements after a cursor through workforce_requirements_job_orders_idx in order');
 select ok(
   position($p$where r.status = 'open' and r.visibility = 'job_order_marketplace' and e.status = 'active'$p$
     in regexp_replace(pg_get_functiondef('public.list_job_orders(uuid, text, text, text, text, integer, integer, date, date, public.recruitment_preference, uuid, integer)'::regprocedure), '\s+', ' ', 'g')) > 0
+  and position($p$and (p_cursor is null or r.published_at < v_cursor_published or (r.published_at = v_cursor_published and r.id > p_cursor))$p$
+    in regexp_replace(pg_get_functiondef('public.list_job_orders(uuid, text, text, text, text, integer, integer, date, date, public.recruitment_preference, uuid, integer)'::regprocedure), '\s+', ' ', 'g')) > 0
   and position($p$order by r.published_at desc, r.id limit v_limit + 1$p$
     in regexp_replace(pg_get_functiondef('public.list_job_orders(uuid, text, text, text, text, integer, integer, date, date, public.recruitment_preference, uuid, integer)'::regprocedure), '\s+', ' ', 'g')) > 0,
-  'NFR-P3: the plan checked above is that of the predicates and order of list_job_orders as defined');
+  'NFR-P3: the plan checked above is that of the predicates, the cursor and the order of list_job_orders as defined');
 
 select * from finish();
 rollback;

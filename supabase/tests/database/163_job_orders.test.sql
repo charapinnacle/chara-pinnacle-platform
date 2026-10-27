@@ -1,5 +1,5 @@
 begin;
-select plan(164);
+select plan(183);
 
 \ir jobs_fixture.inc
 
@@ -123,18 +123,22 @@ language sql as $$ select current_setting('t.result')::jsonb $$;
 create function pg_temp.row_of(p_id uuid) returns jsonb
 language sql as $$ select e from jsonb_array_elements(pg_temp.result()) e where e ->> 'id' = p_id::text $$;
 
--- The titles of the rows in order, only those starting with p_prefix.
+-- The employers' own titles (from the table, whatever title the row shows) of the rows in order, only those starting
+-- with p_prefix.
 create function pg_temp.titles(p_prefix text default '') returns text
 language sql as $$
-  select coalesce(string_agg(e ->> 'title', ',' order by n), '')
+  select coalesce(string_agg(w.title, ',' order by n), '')
   from jsonb_array_elements(pg_temp.result()) with ordinality r (e, n)
-  where e ->> 'title' like p_prefix || '%'
+  join public.workforce_requirements w on w.id = (e ->> 'id')::uuid
+  where w.title like p_prefix || '%'
 $$;
 
 create function pg_temp.sorted_titles(p_prefix text) returns text
 language sql as $$
-  select coalesce(string_agg(e ->> 'title', ',' order by e ->> 'title'), '')
-  from jsonb_array_elements(pg_temp.result()) e where e ->> 'title' like p_prefix || '%'
+  select coalesce(string_agg(w.title, ',' order by w.title), '')
+  from jsonb_array_elements(pg_temp.result()) e
+  join public.workforce_requirements w on w.id = (e ->> 'id')::uuid
+  where w.title like p_prefix || '%'
 $$;
 
 create function pg_temp.ids() returns text
@@ -201,7 +205,7 @@ select is(
 select is(
   (select count(*)::integer from pg_proc p
    where p.pronamespace = 'private'::regnamespace
-     and p.proname in ('record_requirement_reveal', 'text_names_organization', 'job_order_neutral_title', 'name_words',
+     and p.proname in ('record_requirement_reveal', 'city_names_organization', 'organization_name_keys', 'job_order_neutral_title', 'name_key',
        'requirement_response_count', 'job_order_partner_facts', 'job_order_reasons', 'assert_job_order_partner', 'mark_reveals_seen')
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
        or has_function_privilege('service_role', p.oid, 'execute'))),
@@ -295,25 +299,25 @@ select is(pg_temp.jo(:'u1', :'p1') || pg_temp.titles(), 'okNamed welders,Germany
 
 select is(pg_temp.jo(:'u1', :'p1'), 'ok', 'P1 lists');
 select is(pg_temp.row_of(:'r') - 'published_on',
-  jsonb_build_object('id', :'r', 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 100 welders', 'country_code', 'DE',
+  jsonb_build_object('id', :'r', 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 100 Welders and flame cutters', 'country_code', 'DE',
     'workers_needed', 100, 'countries', '["DE"]'::jsonb, 'city_region', 'Hamburg', 'industry_code', 'C',
     'occupations', '[{"code": "7212", "name": "Welders and flame cutters", "quantity": 80}, {"code": "7214", "name": "Structural-metal preparers and erectors", "quantity": 20}]'::jsonb,
     'start_date', '2027-01-15', 'employment_type', 'full_time', 'recruitment_preference', 'both', 'response_count', null,
     'responses_fewer_than', 5, 'employer_name', null, 'employer_company_slug', null, 'next_cursor', null, 'n', 2),
-  'AC2: the full job order: title, destination and city, industry, occupations with quantities, workers, start date, employment type, recruitment preference, response count; no employer name (anonymous)');
+  'AC2: the full job order: the generated title, destination and city, industry, occupations with quantities, workers, start date, employment type, recruitment preference, response count; no employer name (anonymous)');
 select is(pg_temp.row_of(:'r') ->> 'published_on', ((now() - interval '10 days') at time zone 'utc')::date::text,
   'AC2, NFR-S11: the publication is a date, not a time');
 select is(pg_temp.one(:'u1', :'p1', :'r'), 'ok', 'P1 opens R');
 select is(pg_temp.result() - 'published_on',
-  jsonb_build_object('id', :'r', 'open', true, 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 100 welders',
+  jsonb_build_object('id', :'r', 'open', true, 'eligible', true, 'reasons', '[]'::jsonb, 'title', 'Germany, 100 Welders and flame cutters',
     'country_code', 'DE', 'workers_needed', 100, 'countries', '["DE"]'::jsonb, 'city_region', 'Hamburg', 'industry_code', 'C',
     'occupations', '[{"code": "7212", "name": "Welders and flame cutters", "quantity": 80}, {"code": "7214", "name": "Structural-metal preparers and erectors", "quantity": 20}]'::jsonb,
-    'skills', 'MIG and TIG welding', 'experience_years', null, 'start_date', '2027-01-15', 'duration_months', 12,
+    'skills', null, 'experience_years', null, 'start_date', '2027-01-15', 'duration_months', 12,
     'employment_type', 'full_time', 'salary_min', 2500.00, 'salary_max', 3000.00, 'salary_currency', 'EUR',
     'salary_period', 'month', 'accommodation', false, 'work_permit_support', false, 'visa_support', false,
     'recruitment_preference', 'both', 'partner_need', 'both', 'closes_on', '2027-02-14', 'response_count', null,
     'responses_fewer_than', 5, 'employer_name', null, 'employer_company_slug', null),
-  'AC2: the job order page carries the terms as well, and no employer name');
+  'AC2: the job order page carries the terms as well; anonymous: the generated title, no skills text, no employer name');
 select is(pg_temp.jo(:'us', :'ps') || (pg_temp.row_of(:'r') ->> 'eligible'), 'oktrue',
   'a staffing company sees job orders on the same rules');
 
@@ -321,7 +325,7 @@ select is(pg_temp.jo(:'us', :'ps') || (pg_temp.row_of(:'r') ->> 'eligible'), 'ok
 
 select is(pg_temp.jo(:'u2', :'p2'), 'ok', 'P2 (serves PL only) lists');
 select is(pg_temp.row_of(:'r'),
-  jsonb_build_object('id', :'r', 'eligible', false, 'reasons', '["served_country_missing"]'::jsonb, 'title', 'Germany, 100 welders',
+  jsonb_build_object('id', :'r', 'eligible', false, 'reasons', '["served_country_missing"]'::jsonb, 'title', 'Germany, 100 Welders and flame cutters',
     'country_code', 'DE', 'workers_needed', 100, 'countries', null, 'city_region', null, 'industry_code', null, 'occupations', null,
     'start_date', null, 'employment_type', null, 'recruitment_preference', null, 'published_on', null, 'response_count', null,
     'responses_fewer_than', null, 'employer_name', null, 'employer_company_slug', null, 'next_cursor', null, 'n', 2),
@@ -347,8 +351,18 @@ select is(pg_temp.one(:'u6', :'p6', :'r'), '42501|CHARA_FORBIDDEN|organization_s
 
 -- Several reasons at once, in a fixed order.
 select pg_temp.req(current_setting('t.b')::uuid, 'Poland masons', 'open', 'job_order_marketplace', '{"7112": 20}', 'PL') as rpl \gset
-select is(pg_temp.jo(:'u4', :'p4') || (pg_temp.row_of(:'rpl') ->> 'reasons'),
-  'ok["served_country_missing", "occupation_missing", "plan_required"]', 'every missing condition is named, in a fixed order');
+select is(pg_temp.jo(:'u4', :'p4') || (pg_temp.row_of(:'rpl') ->> 'reasons'), 'ok["plan_required"]',
+  'without a paid plan only plan_required is named, though country and occupation are missing too');
+select is(pg_temp.jo(:'u3', :'p3') || (pg_temp.row_of(:'rpl') ->> 'reasons'), 'ok["served_country_missing", "occupation_missing"]',
+  'with a paid plan every missing condition is named, in a fixed order');
+select is(pg_temp.jo(:'u2', :'p2') || (pg_temp.row_of(:'rpl') ->> 'reasons'), 'ok["occupation_missing"]',
+  'P2 serves PL: only the occupation is missing');
+-- A free partner that changes its occupations one at a time learns nothing about the job order's occupations.
+select is(pg_temp.jo(:'u4', :'p4') || (pg_temp.row_of(:'r') ->> 'reasons'), 'ok["plan_required"]', 'P4 listing 7212: plan_required');
+update public.organization_occupations set occupation_id = '5120' where organization_id = :'p4';
+select is(pg_temp.jo(:'u4', :'p4') || (pg_temp.row_of(:'r') ->> 'reasons'), 'ok["plan_required"]',
+  'P4 listing 5120 instead: still plan_required only (no occupation probe)');
+update public.organization_occupations set occupation_id = '7212' where organization_id = :'p4';
 
 -- Trialing and past due keep access; the feature decides while entitlements_enforced is on.
 update billing.subscriptions set status = 'trialing' where organization_id = :'p1' and status = 'active';
@@ -437,6 +451,7 @@ select is(pg_temp.reveal_audits(:'r'), 0, 'AC5: P1''s read writes no reveal audi
 
 select is(pg_temp.jo(:'u7', :'p7') || (pg_temp.row_of(:'r') ->> 'employer_name'), 'okAcme Bau', 'AC5: invited P7 sees the name of R in the list');
 select is(pg_temp.reveal_audits(:'r'), 1, 'AC5: the first time P7 sees it, one audit row');
+select is(pg_temp.row_of(:'r') ->> 'title', 'Germany, 100 welders', 'a named row shows the employer''s own title');
 select ok(
   exists (select 1 from audit.log where action = 'requirement.employer_revealed' and entity_id = :'r'
     and actor_id = :'u7' and metadata = jsonb_build_object('organization_id', :'p7', 'cause', 'invitation')),
@@ -450,36 +465,76 @@ select is(pg_temp.reveal_audits(:'r'), 2, 'AC5: P8''s first sight is audited onc
 select ok(
   (select seen_at is not null from private.requirement_reveals where requirement_id = :'r' and organization_id = :'p8'),
   'the reveal of P8 is marked seen');
-select is(pg_temp.jo(:'u2', :'p2') || coalesce(pg_temp.row_of(:'r') ->> 'employer_name', 'none'), 'oknone',
-  'AC5: a revealed partner that is not eligible still gets the reduced row without the name');
-select is(pg_temp.reveal_audits(:'r'), 2, 'AC5: and nothing is audited as seen');
+select is(pg_temp.jo(:'u2', :'p2') || (pg_temp.row_of(:'r') ->> 'employer_name'), 'okAcme Bau',
+  'AC5: a revealed partner that is not eligible sees the name on its reduced row');
+select is((pg_temp.row_of(:'r') ->> 'title') || ' / ' || coalesce(pg_temp.row_of(:'r') ->> 'city_region', 'no city'),
+  'Germany, 100 welders / no city', 'AC5: with the employer''s own title, still without the details of a full row');
+select is(pg_temp.reveal_audits(:'r'), 3, 'AC5: its first sight is audited once');
+select is(pg_temp.one(:'u2', :'p2', :'r') || (pg_temp.result() ->> 'employer_name'), 'okAcme Bau', 'AC5: the page names the employer too');
+select is(pg_temp.reveal_audits(:'r'), 3, 'AC5: no further row');
 select is(pg_temp.jo(:'u1', :'p1') || coalesce(pg_temp.row_of(:'r') ->> 'employer_name', 'none'), 'oknone',
   'AC5: the reveals to P7 and P8 change nothing for P1');
 
--- NFR-S11: free text that names a hidden employer is not shown
+-- NFR-S11: no free text on an unnamed row; a city naming the employer is left out
 select pg_temp.req(current_setting('t.a')::uuid, 'ACME-BAU welders wanted', 'open', 'job_order_marketplace', '{"7212": 30}',
   p_city => 'Hamburg, Acme Bau yard', p_skills => 'Experience with the acme-bau.de site rules',
   p_published => now() - interval '20 days') as rt \gset
 select pg_temp.req(current_setting('t.a')::uuid, 'Acme Bau welders, named', 'open', 'job_order_marketplace', '{"7212": 30}',
-  p_show => true, p_city => 'Hamburg, Acme Bau yard', p_published => now() - interval '21 days') as rtn \gset
+  p_show => true, p_city => 'Hamburg, Acme Bau yard', p_skills => 'Acme Bau site rules', p_published => now() - interval '21 days') as rtn \gset
 select pg_temp.req(current_setting('t.a')::uuid, 'Welders for Hamburg harbour', 'open', 'job_order_marketplace', '{"7212": 30}',
-  p_skills => 'Restoration in the Acme Bauhaus style', p_published => now() - interval '22 days') as rtc \gset
+  p_skills => 'Plain welding', p_city => 'Hamburg Altona', p_published => now() - interval '22 days') as rtc \gset
 select is(pg_temp.jo(:'u1', :'p1'), 'ok', 'P1 lists');
-select is(pg_temp.row_of(:'rt') ->> 'title', 'Germany, 30 Welders and flame cutters',
-  'NFR-S11: a title naming the hidden employer (any case, any punctuation) is replaced by a neutral title');
+select is(pg_temp.row_of(:'rt') ->> 'title', 'Germany, 30 Welders and flame cutters', 'NFR-S11: an unnamed row shows the generated title');
+select is(pg_temp.row_of(:'rtc') ->> 'title', 'Germany, 30 Welders and flame cutters',
+  'NFR-S11: even when the employer''s own title does not name it (the AC: the title is generated)');
 select is(pg_temp.row_of(:'rt') ->> 'city_region', null, 'NFR-S11: a city naming the hidden employer is left out');
-select is(pg_temp.one(:'u1', :'p1', :'rt') || coalesce(pg_temp.result() ->> 'skills', 'none'), 'oknone',
-  'NFR-S11: skills naming the website of the hidden employer are left out');
-select is(pg_temp.result() ->> 'title', 'Germany, 30 Welders and flame cutters', 'NFR-S11: the page shows the neutral title as well');
-select is(pg_temp.jo(:'u1', :'p1') || (pg_temp.row_of(:'rtn') ->> 'title') || ' / ' || (pg_temp.row_of(:'rtn') ->> 'city_region'),
-  'okAcme Bau welders, named / Hamburg, Acme Bau yard', 'with the name shown, the employer''s own words stay');
-select is((pg_temp.row_of(:'rtc') ->> 'title'), 'Welders for Hamburg harbour', 'a title that does not name the employer stays');
-select is(pg_temp.one(:'u1', :'p1', :'rtc') || (pg_temp.result() ->> 'skills'), 'okRestoration in the Acme Bauhaus style',
-  'only whole names count: "Acme Bauhaus" is not the name "Acme Bau"');
-select is(pg_temp.jo(:'u2', :'p2') || (pg_temp.row_of(:'rt') ->> 'title'), 'okGermany, 30 Welders and flame cutters',
-  'NFR-S11: a partner that sees titles only gets the neutral title too');
+select is(pg_temp.row_of(:'rtc') ->> 'city_region', 'Hamburg Altona', 'a city that does not name the employer stays');
+select is(pg_temp.one(:'u1', :'p1', :'rtc') || coalesce(pg_temp.result() ->> 'skills', 'none'), 'oknone',
+  'NFR-S11: an unnamed job order page carries no skills text at all');
+select is(pg_temp.result() ->> 'title', 'Germany, 30 Welders and flame cutters', 'NFR-S11: the page shows the generated title as well');
+select is(pg_temp.one(:'u1', :'p1', :'rtn') || (pg_temp.result() ->> 'title') || ' / ' || (pg_temp.result() ->> 'city_region')
+  || ' / ' || (pg_temp.result() ->> 'skills'),
+  'okAcme Bau welders, named / Hamburg, Acme Bau yard / Acme Bau site rules', 'with the name shown, the employer''s own words stay');
+select is(pg_temp.jo(:'u2', :'p2') || (pg_temp.row_of(:'rtn') ->> 'title'), 'okGermany, 30 Welders and flame cutters',
+  'NFR-S11: a reduced row of a named job order is unnamed, so it shows the generated title');
 select is(pg_temp.jo(:'u7', :'p7') || (pg_temp.row_of(:'rt') ->> 'title'), 'okGermany, 30 Welders and flame cutters',
-  'NFR-S11: a partner revealed on another job order of the employer gets the neutral title of this one');
+  'NFR-S11: a partner revealed on another job order of the employer gets the generated title of this one');
+
+-- The city matcher against an employer "Müller Bau GmbH & Co. KG" (display name Müller Bau) with its site at
+-- mueller-bau.de: every spelling of its name in a city is found; ordinary places and legal-form words are not.
+insert into public.organizations (id, type, slug, legal_name, display_name, based_in_country, website)
+values ('00000000-0000-0000-0000-0000000f39b1', 'employer', 'mueller-bau-v39', 'Müller Bau GmbH & Co. KG', 'Müller Bau', 'DE',
+  'https://jobs.mueller-bau.de/karriere');
+insert into public.organization_members (organization_id, user_id, role, accepted_at)
+values ('00000000-0000-0000-0000-0000000f39b1', :'zown', 'owner', now());
+select is(
+  (select string_agg(c.city || '=' || private.city_names_organization(c.city, '00000000-0000-0000-0000-0000000f39b1'), '; ' order by c.n)
+   from unnest(array['Müller-Bau Werk Hamburg', 'Mueller Bau site', 'MUELLERBAU yard', 'Werk Müller, Hamburg', 'Muller Hamburg',
+     'Hamburg (mueller-bau.de)', 'Gelände der Mueller-Bau GmbH', 'Hamburg, MüllerBau-Halle']) with ordinality c (city, n)),
+  'Müller-Bau Werk Hamburg=true; Mueller Bau site=true; MUELLERBAU yard=true; Werk Müller, Hamburg=true; Muller Hamburg=true; '
+  || 'Hamburg (mueller-bau.de)=true; Gelände der Mueller-Bau GmbH=true; Hamburg, MüllerBau-Halle=true',
+  'NFR-S11: Müller Bau with and without accents, ue for ü, hyphens, spaces or none, its domain: all found');
+select is(
+  (select string_agg(c.city || '=' || private.city_names_organization(c.city, '00000000-0000-0000-0000-0000000f39b1'), '; ' order by c.n)
+   from unnest(array['Hamburg Altona', 'GmbH-Park Bremen', 'Bauhaus-Viertel', 'Jobs Center Kiel', 'Karriere-Allee 4']) with ordinality c (city, n)),
+  'Hamburg Altona=false; GmbH-Park Bremen=false; Bauhaus-Viertel=false; Jobs Center Kiel=false; Karriere-Allee 4=false',
+  'NFR-S11: ordinary places, legal forms, the three-letter "Bau", and generic words of the address (jobs, karriere) are not names');
+select is(private.organization_name_keys('00000000-0000-0000-0000-0000000f39b1'),
+  array['muller bau', 'muller bau', 'muller bau v39', 'muller bau'],
+  'the names: display name, legal name without GmbH & Co. KG, slug, and the registrable label of the site (not "jobs")');
+update public.organizations set website = 'https://www.linkedin.com/company/acme-bauwerke' where id = '00000000-0000-0000-0000-0000000f39b1';
+select ok(private.city_names_organization('Hamburg, Acme Bauwerke Halle', '00000000-0000-0000-0000-0000000f39b1'),
+  'on a social site the name is the first path segment that is not generic');
+update public.organizations set website = 'https://muellerhaus.wixsite.com/home' where id = '00000000-0000-0000-0000-0000000f39b1';
+select ok(private.city_names_organization('Muellerhaus Halle', '00000000-0000-0000-0000-0000000f39b1'),
+  'on a hosting site the subdomain is a name');
+update public.organizations set website = 'https://www.mueller.co.uk' where id = '00000000-0000-0000-0000-0000000f39b1';
+select is((private.organization_name_keys('00000000-0000-0000-0000-0000000f39b1'))[4], 'muller',
+  'a two-part public suffix (co.uk) gives the label before it');
+select is(private.job_order_neutral_title(:'r'), 'Germany, 100 Welders and flame cutters', 'the generated title');
+delete from public.requirement_occupations where requirement_id = :'rtc';
+select is(private.job_order_neutral_title(:'rtc'), 'Germany, 30', 'without an occupation the title has no trailing space');
+insert into public.requirement_occupations (requirement_id, occupation_id, quantity) values (:'rtc', '7212', 30);
 
 -- Several destinations: the full row names them all; the reduced row only the main one -------------------------------------
 
@@ -492,6 +547,13 @@ select is(pg_temp.jo(:'u2', :'p2', ', p_destination => ''DE''') || coalesce(pg_t
   'a reduced row is filtered on its main destination only, so its further destinations stay hidden');
 select is(pg_temp.jo(:'u1', :'p1', ', p_destination => ''DE''') || (pg_temp.row_of(:'rm') ->> 'eligible'), 'oktrue',
   'an eligible partner finds it under any of its destinations');
+-- P3 (paid, 5120) serving DE, a further destination of rm, and P2-like partners serving nothing of it get the same reasons.
+select is(pg_temp.jo(:'u3', :'p3') || (pg_temp.row_of(:'rm') ->> 'reasons'), 'ok["served_country_missing", "occupation_missing"]',
+  'a partner serving only a further destination is told the main one is missing, so the further one is not revealed');
+update public.organization_geographies set country_code = 'FR' where organization_id = :'p3';
+select is(pg_temp.jo(:'u3', :'p3') || (pg_temp.row_of(:'rm') ->> 'reasons'), 'ok["served_country_missing", "occupation_missing"]',
+  'the same reasons when it serves no destination of the job order at all');
+update public.organization_geographies set country_code = 'DE' where organization_id = :'p3';
 
 -- AC6: filters narrow the list and combine with AND -------------------------------------------------------------------------
 
@@ -512,8 +574,7 @@ declare
   v_state text := pg_temp.jo(current_setting('t.uf')::uuid, current_setting('t.pf')::uuid, p_args || ', p_limit => 50');
 begin
   if v_state <> 'ok' then return v_state; end if;
-  return (select coalesce(string_agg(e ->> 'title', ',' order by e ->> 'title'), '') from jsonb_array_elements(pg_temp.result()) e
-          where e ->> 'title' like 'F0_');
+  return pg_temp.sorted_titles('F0');
 end;
 $$;
 select set_config('t.uf', :'uf', false) as setup_uf \gset
@@ -564,6 +625,8 @@ select is(pg_temp.jo(:'u1', :'p1', ', p_workers_max => 100001'), 'P0001|CHARA_IN
 select is(pg_temp.jo(:'u1', :'p1', ', p_workers_min => 1, p_workers_max => 100000'), 'ok', '1 and 100,000 are accepted');
 select is(pg_temp.jo(:'u1', :'p1', ', p_workers_min => 200, p_workers_max => 100'), 'P0001|CHARA_INVALID_INPUT|p_workers_min',
   'a minimum above the maximum names the minimum');
+select is(pg_temp.jo(:'u1', :'p1', ', p_workers_min => 200, p_workers_max => 0'), 'P0001|CHARA_INVALID_INPUT|p_workers_max',
+  'each range is checked before the two are compared: a maximum of 0 is named, not the minimum');
 select is(pg_temp.jo(:'u1', :'p1', ', p_start_from => ''2027-03-01'', p_start_to => ''2027-02-01'''),
   'P0001|CHARA_INVALID_INPUT|p_start_from', 'a start from after the start to names start from');
 select is(pg_temp.jo(:'u1', :'p1', ', p_recruitment => ''both'''), 'P0001|CHARA_INVALID_INPUT|p_recruitment', 'recruitment both is refused');
@@ -626,7 +689,8 @@ select is(pg_temp.jo(:'u1', :'p1', ', p_industry => ''Q''')
 update private.settings set value = '5' where key = 'job_order_response_count_min';
 select is(pg_temp.jo(:'u4', :'p4', ', p_destination => ''DE'', p_workers_max => 10, p_limit => 50')
   || (select count(*) from jsonb_array_elements(pg_temp.result()) e
-      where e ->> 'title' like 'O_' and (e ->> 'response_count' is not null or e ->> 'responses_fewer_than' is not null)),
+      join public.workforce_requirements w on w.id = (e ->> 'id')::uuid
+      where w.title like 'O_' and (e ->> 'response_count' is not null or e ->> 'responses_fewer_than' is not null)),
   'ok0', 'AC3: a reduced row carries no response count');
 
 -- KPI, rate limit, release switch ---------------------------------------------------------------------------------------------
