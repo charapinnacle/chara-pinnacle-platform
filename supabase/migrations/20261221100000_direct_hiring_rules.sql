@@ -8,7 +8,7 @@
 -- The source is always the worker's current country (worker_profiles.current_country), never a nationality, which the
 -- platform does not hold. private.direct_hiring_rule resolves a pair: the rule for the pair, else the rule for the source
 -- with no destination, else allowed with the general notice. hiring_rule_notice gives anyone the rule value and notice of a
--- pair while release 2b is on; the legal opinion reference, who changed a rule and its history are read by
+-- pair while release 2b or 2c is on; the legal opinion reference, who changed a rule and its history are read by
 -- administrators only. Enforcement in Find Workers, contact requests, invitations to apply and apply_to_job, and the
 -- licence check of partner responses, arrive with V72 and V44; the partner channel is never refused by a rule.
 --
@@ -20,9 +20,16 @@
 create type public.direct_hiring_rule_value as enum ('allowed', 'licensed_partner_required', 'blocked');
 
 insert into private.settings (key, value) values
+  -- The two paragraphs of the worker statement of the Platform Rules (version 1, migration 20261104110000) word for word,
+  -- joined by a space because a setting holds no line break. Like that statement it is a draft for counsel
+  -- (OPEN_QUESTIONS.md L5) and is changed in the settings editor when counsel approves the Platform Rules.
   ('direct_hiring_general_notice', to_jsonb(
-    'Workers never pay. Nobody may ask you for a fee, a deposit or any other payment for finding work or for applying. '
-    || 'If anyone asks, do not pay and report the request to CHARA.'::text)),
+    'Workers never pay. A worker never pays CHARA, an employer, a recruitment company, a staffing company or anyone else '
+    || 'a fee, a deposit or any other payment for finding work, for applying for a vacancy or for using CHARA. CHARA does '
+    || 'not offer a paid plan to workers. '
+    || 'Reporting a request for a fee. If anyone asks you for money in connection with finding work, applying or using '
+    || 'CHARA, do not pay. Report the request to the Trust & Safety Administrator of CHARA through the complaints and '
+    || 'dispute process. CHARA reviews the report and may restrict the account of the person who made the request.'::text)),
   ('direct_hiring_review_days', '365')
 on conflict (key) do nothing;
 
@@ -66,6 +73,7 @@ revoke all on table public.direct_hiring_rules from public, anon, authenticated,
 
 -- The rule of a source and destination: the pair, else the source with any destination, else allowed with the general
 -- notice and no rule id. A null source (a worker who has not given a country) and a null destination match no pair.
+-- Hiring within one country (source equal to destination) is not cross-border recruitment: it always gets the default.
 create function private.direct_hiring_rule(p_source text, p_destination text)
 returns table (rule public.direct_hiring_rule_value, notice text, rule_id uuid)
 language sql
@@ -82,6 +90,7 @@ as $$
     select x.rule, x.notice, x.id, 1
     from public.direct_hiring_rules x
     where x.source_country = p_source and x.destination_country is null
+      and p_destination is distinct from p_source
     union all
     select 'allowed'::public.direct_hiring_rule_value, s.value #>> '{}', null::uuid, 2
     from private.settings s
@@ -93,8 +102,9 @@ $$;
 
 revoke all on function private.direct_hiring_rule(text, text) from public, anon, authenticated, service_role;
 
--- The rule value and notice of a pair for any caller (FR-Q5 AC11), while release 2b is on: what a vacancy, a job order or
--- a requirement page shows. A malformed code is CHARA_INVALID_INPUT; a code without a rule gets the default.
+-- The rule value and notice of a pair for any caller (FR-Q5 AC11), while release 2b or 2c is on (release_job_orders or
+-- release_find_workers): what a vacancy, a job order, a requirement page or Find Workers shows. The enforcing functions
+-- of V72 use the same gate. A malformed code is CHARA_INVALID_INPUT; a code without a rule gets the default.
 create function public.hiring_rule_notice(p_source text, p_destination text default null)
 returns table (rule public.direct_hiring_rule_value, notice text)
 language plpgsql
@@ -103,7 +113,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not private.release_on('release_job_orders') then
+  if not (private.release_on('release_job_orders') or private.release_on('release_find_workers')) then
     raise exception 'CHARA_FORBIDDEN' using detail = 'release_off', errcode = '42501';
   end if;
   if p_source is null or p_source !~ '^[A-Z]{2}$' then
@@ -178,12 +188,19 @@ begin
   for update;
 
   if not found then
+    -- Two administrators adding the same pair at once: the second insert finds the first row and edits it instead.
     insert into public.direct_hiring_rules (source_country, destination_country, rule, notice, legal_opinion_ref, updated_by)
     values (p_source, p_destination, v_rule, v_notice, v_ref, v_uid)
+    on conflict on constraint direct_hiring_rules_pair_key do nothing
     returning * into v_new;
-    perform private.audit_admin('direct_hiring_rule.created', 'direct_hiring_rule', v_new.id::text, v_reason,
-      jsonb_build_object('before', null, 'after', private.direct_hiring_rule_values(v_new)));
-    return true;
+    if v_new.id is not null then
+      perform private.audit_admin('direct_hiring_rule.created', 'direct_hiring_rule', v_new.id::text, v_reason,
+        jsonb_build_object('before', null, 'after', private.direct_hiring_rule_values(v_new)));
+      return true;
+    end if;
+    select * into v_old from public.direct_hiring_rules r
+    where r.source_country = p_source and r.destination_country is not distinct from p_destination
+    for update;
   end if;
 
   if v_old.rule = v_rule and v_old.notice = v_notice and v_old.legal_opinion_ref = v_ref then
