@@ -4,7 +4,9 @@
 -- list one of its occupations, each with the ranking criteria it meets and does not meet and the facts behind them. It is
 -- rule-based, not a match score (decision 1.1): the order is the number of criteria met, then the time the profile last
 -- changed (the listing time before any change), then the id, as in Find Partners; nothing in a sort key, a column or a
--- tie-break reads billing.* (NFR-C8), and no column names a score, a rank, a plan or a verification.
+-- tie-break reads billing.* (NFR-C8), and no column names a score, a rank, a plan or a verification. Two criteria use
+-- availability listings, which a partner adds only within the workforce_listings allowance of its plan
+-- (billing.plan_limits); the pages disclose that (P2B Regulation article 5(3)) instead of claiming plans play no part.
 --
 -- A suggestion is not an invitation: the call writes nothing a partner can read (no notification, no profile view, no
 -- audit row), so no partner learns of a requirement by being suggested (invitations are V41 and V42). What it writes is
@@ -12,7 +14,9 @@
 -- "requirements with at least three suggestions").
 --
 -- The list size is the setting partner_suggestions_max (50, editable in the settings editor); the freshness of a listing
--- is workforce_listing_stale_days, as everywhere else. Everything refuses to run while release_job_orders or
+-- is workforce_listing_stale_days, as everywhere else. Calls are counted per user with the partner search allowance
+-- (private.check_rate_limit 'partner_search', settings rate_limit_partner_search_max and _seconds), since the
+-- suggestions are a search of the same partners. Everything refuses to run while release_job_orders or
 -- release_partner_directories is false: suggested partners are shown with their public profile, which exists only in
 -- release 2a.
 
@@ -45,20 +49,22 @@ revoke all on table stats.requirement_suggestions from public, anon, authenticat
 
 -- The suggestions for the requirement p_requirement of p_org (FR-M3 AC1 to AC6, AC11), for any accepted member of the
 -- active employer p_org while releases 2a and 2b are on. Refusals: a caller who is not a member of p_org, CHARA_FORBIDDEN
--- (42501); a release off, CHARA_FORBIDDEN release_off; a partner organisation, CHARA_FORBIDDEN employer_only; a
--- suspended employer, CHARA_FORBIDDEN organization_suspended; no such requirement of p_org, CHARA_NOT_FOUND; a closed or
--- filled requirement, CHARA_INVALID_STATE and its status; partner need none, CHARA_INVALID_STATE partners_not_needed. A
--- draft answers as a preview, a paused requirement as an open one.
+-- (42501); a release off, CHARA_FORBIDDEN release_off; over the partner search allowance, CHARA_RATE_LIMITED; a partner
+-- organisation, CHARA_FORBIDDEN employer_only; a suspended employer, CHARA_FORBIDDEN organization_suspended; no such
+-- requirement of p_org, CHARA_NOT_FOUND; a closed or filled requirement, CHARA_INVALID_STATE and its status; partner need
+-- none, CHARA_INVALID_STATE partners_not_needed. A draft answers as a preview, a paused requirement as an open one.
 --
 -- Selected: listed, active, visible partners (as search_partners) of the types of the partner need (recruitment:
 -- recruitment companies; staffing: staffing companies and recruitment companies with the service type staffing; both:
 -- all of these, once each) serving one of the requirement's destinations and listing one of its occupations.
 -- Criteria (each counts once): industry (the partner lists the requirement's industry), recruitment_type (the partner's
--- type equals the requirement's preference, or either is both), capacity (a fresh listing of a requested occupation with
--- at least that occupation's quantity available) and available_before_start (such a listing available on or before
--- the start date). The listing shown is the best fresh listing of a requested occupation: one available before the start
--- with the quantity, else one with the quantity, else the largest; a partner without a fresh listing shows none.
--- At most partner_suggestions_max rows; more_partners says that more partners were selected.
+-- type equals the requirement's preference, or either is both), capacity (for every occupation of the requirement, the
+-- partner's fresh listings of it, summed over its source countries, hold at least the quantity) and
+-- available_before_start (for every occupation, the fresh listings available on or before the start date hold at least
+-- the quantity). matching_occupations names, per requested occupation the partner lists, the quantity and the facts of
+-- its fresh listings (workers summed, the latest available_from and confirmed_at among them; null without one).
+-- profile_updated_at is the sort key: the last profile change, or the listing time before any change. At most
+-- partner_suggestions_max rows; more_partners says that more partners were selected.
 create function public.suggest_partners(p_org uuid, p_requirement uuid)
 returns table (
   organization_id uuid,
@@ -70,11 +76,6 @@ returns table (
   criteria_not_met text[],
   served_destinations jsonb,
   matching_occupations jsonb,
-  listing_occupation_id text,
-  listing_occupation text,
-  available integer,
-  available_from date,
-  confirmed_at timestamptz,
   profile_updated_at timestamptz,
   more_partners boolean
 )
@@ -84,6 +85,7 @@ set search_path = ''
 set plan_cache_mode = 'force_custom_plan'
 as $$
 declare
+  v_uid uuid := (select auth.uid());
   v_row public.workforce_requirements;
   v_destinations text[];
   v_occupations text[];
@@ -92,12 +94,13 @@ declare
   v_fresh_since timestamptz := private.workforce_fresh_since();
   v_rows integer;
 begin
-  if (select auth.uid()) is null or not private.is_org_member(p_org) then
+  if v_uid is null or not private.is_org_member(p_org) then
     raise exception 'CHARA_FORBIDDEN' using errcode = '42501';
   end if;
   if not private.release_on('release_job_orders') or not private.release_on('release_partner_directories') then
     raise exception 'CHARA_FORBIDDEN' using detail = 'release_off', errcode = '42501';
   end if;
+  perform private.check_rate_limit('partner_search', v_uid);
   if private.org_type(p_org) <> 'employer' then
     raise exception 'CHARA_FORBIDDEN' using detail = 'employer_only', errcode = '42501';
   end if;
@@ -128,7 +131,7 @@ begin
   ),
   selected as (
     select
-      o.id, o.slug, o.display_name, o.type, o.recruitment_type, o.workforce_profile_updated_at,
+      o.id, o.slug, o.display_name, o.type, o.recruitment_type,
       coalesce(o.workforce_profile_updated_at, o.listed_at) as updated_at,
       o.type = 'recruitment_company' and exists (
         select 1 from public.organization_service_types st where st.organization_id = o.id and st.service = 'staffing'
@@ -152,29 +155,38 @@ begin
   ),
   judged as (
     select
-      t.*, l.occupation_id as l_occupation_id, l.label as l_label, l.available as l_available,
-      l.available_from as l_available_from, l.confirmed_at as l_confirmed_at,
+      t.*, cov.facts,
       array_remove(array[
         case when exists (
           select 1 from public.organization_industries i where i.organization_id = t.id and i.industry_code = v_row.industry_code
         ) then 'industry' end,
         case when t.recruitment_type = 'both' or v_row.recruitment_preference = 'both'
           or t.recruitment_type = v_row.recruitment_preference then 'recruitment_type' end,
-        case when l.covers then 'capacity' end,
-        case when l.before_start then 'available_before_start' end
+        case when cov.covered then 'capacity' end,
+        case when cov.covered_by_start then 'available_before_start' end
       ], null) as met
     from typed t
-    left join lateral (
-      select a.occupation_id, q.label, a.available, a.available_from, a.confirmed_at,
-        a.available >= q.quantity as covers,
-        a.available >= q.quantity and a.available_from <= v_row.start_date as before_start
-      from public.workforce_availability a
-      join occ q on q.occupation_id = a.occupation_id
-      where a.organization_id = t.id and a.confirmed_at > v_fresh_since
-      order by (a.available >= q.quantity and a.available_from <= v_row.start_date) desc, (a.available >= q.quantity) desc,
-        a.available desc, a.available_from, q.label, a.id
-      limit 1
-    ) l on true
+    cross join lateral (
+      select
+        coalesce(jsonb_agg(jsonb_build_object('code', q.occupation_id, 'name', q.label, 'quantity', q.quantity,
+            'available', f.available, 'available_from', f.available_from, 'confirmed_at', f.confirmed_at)
+          order by q.quantity desc, q.label) filter (where f.listed), '[]'::jsonb) as facts,
+        bool_and(coalesce(f.available, 0) >= q.quantity) as covered,
+        bool_and(coalesce(f.available_by_start, 0) >= q.quantity) as covered_by_start
+      from occ q
+      cross join lateral (
+        select
+          exists (
+            select 1 from public.organization_occupations oo where oo.organization_id = t.id and oo.occupation_id = q.occupation_id
+          ) as listed,
+          sum(a.available)::integer as available,
+          (sum(a.available) filter (where a.available_from <= v_row.start_date))::integer as available_by_start,
+          max(a.available_from) as available_from,
+          max(a.confirmed_at) as confirmed_at
+        from public.workforce_availability a
+        where a.organization_id = t.id and a.occupation_id = q.occupation_id and a.confirmed_at > v_fresh_since
+      ) f
+    ) cov
   ),
   ranked as (
     select j.*, count(*) over () as total
@@ -199,16 +211,8 @@ begin
      from public.organization_geographies g
      join public.countries c on c.code = g.country_code
      where g.organization_id = r.id and g.scope = 'serves_market' and g.country_code = any (v_destinations)),
-    (select coalesce(jsonb_agg(jsonb_build_object('code', q.occupation_id, 'name', q.label) order by q.quantity desc, q.label),
-              '[]'::jsonb)
-     from occ q
-     join public.organization_occupations oo on oo.occupation_id = q.occupation_id and oo.organization_id = r.id),
-    r.l_occupation_id,
-    r.l_label,
-    r.l_available,
-    r.l_available_from,
-    r.l_confirmed_at,
-    r.workforce_profile_updated_at,
+    r.facts,
+    r.updated_at,
     r.total > v_limit
   from ranked r
   order by cardinality(r.met) desc, r.updated_at desc, r.id;
