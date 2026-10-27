@@ -5,7 +5,14 @@ import { ContentPage, ContentSection } from "@/components/public/content-page";
 import { isReleased } from "@/lib/dal/release";
 import { getAvailabilityRules } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
-import { directoryNames, rankingCopy, rankingFilters, suggestionCopy, suggestionCriterionTexts } from "@/lib/partners/ranking";
+import {
+  directoryNames,
+  jobOrderCopy,
+  rankingCopy,
+  rankingFilters,
+  suggestionCopy,
+  suggestionCriterionTexts,
+} from "@/lib/partners/ranking";
 import { RECRUITMENT_DIRECTORY_PATH, STAFFING_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { suggestionCriteria } from "@/lib/requirements/suggestions";
 import { rankingPageMetadata } from "@/lib/seo/metadata";
@@ -19,9 +26,9 @@ const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice
 
 // The main parameters of the order of Find Partners (NFR-C8: P2B Regulation article 5, DSA article 27), written from
 // lib/partners/ranking.ts, whose values a unit test holds against public.search_partners and
-// public.search_available_workforce (and public.suggest_partners). It describes release 2a, so it exists only while
-// release 2a is on; the partner suggestions of release 2b (V36) are described while release 2b is on, and the job order
-// board (V79) and Find Workers (V80) add their sections.
+// public.search_available_workforce (and public.suggest_partners and public.list_job_orders). It describes release 2a,
+// so it exists only while release 2a is on; the partner suggestions (V36) and the job orders (V39) of release 2b are
+// described while release 2b is on, and Find Workers (V80) adds its section.
 export default async function RankingPage({ params }: PageProps<"/[lang]/legal/ranking">) {
   const { lang } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
@@ -50,7 +57,10 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           </li>
         </ul>
         {suggestions ? (
-          <p>It also describes the partners suggested to an employer for a workforce requirement.</p>
+          <p>
+            It also describes the partners suggested to an employer for a workforce requirement, and the order of the job
+            orders that recruitment and staffing companies see.
+          </p>
         ) : null}
       </ContentSection>
 
@@ -151,6 +161,23 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           <p>{suggestionCopy.explain}</p>
           <p>{suggestionCopy.disclosure}</p>
           <p>{suggestionCopy.limit}</p>
+        </ContentSection>
+      ) : null}
+
+      {suggestions ? (
+        <ContentSection heading="Job orders">
+          <p>{jobOrderCopy.selection}</p>
+          <p>Job orders are sorted by these parameters, in this order:</p>
+          <ol className="grid list-decimal gap-2 ps-5">
+            <li>The time the employer published the job order, newest first.</li>
+            <li>
+              A fixed random number given to each job order when it was created, so that job orders published at the same
+              moment always appear in the same order.
+            </li>
+          </ol>
+          <p>{jobOrderCopy.details}</p>
+          <p>{jobOrderCopy.payment}</p>
+          <p>{jobOrderCopy.paging}</p>
         </ContentSection>
       ) : null}
 
