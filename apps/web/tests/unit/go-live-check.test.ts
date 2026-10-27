@@ -370,7 +370,7 @@ describe("the Phase 2 legal gate (FR-S4 AC9)", () => {
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("Go-live check passed");
     expect(result.stdout).toContain(
-      "Phase 2 legal documents not yet approved (release switch off): partner_accounts: partner-terms (draft), employer-pays-commitment (draft); job_orders: partner-dpa (missing); find_workers: worker-visibility-consent (missing)",
+      "Phase 2 items not yet ready (release switch off): partner_accounts: partner-terms (draft), employer-pays-commitment (draft); job_orders: partner-dpa (missing); find_workers: worker-visibility-consent (missing)",
     );
   });
 
@@ -452,23 +452,35 @@ describe("the release 2a items of the gate (V78)", () => {
   };
   const switched = (switches: Record<string, unknown>) => JSON.stringify({ entitlements_enforced: true, ...ENTITY, ...switches });
 
-  it("fails while an acceptance of an organisation-level document did not come through the Commitments step", () => {
-    for (const on of [true, false]) {
-      const result = run(switched({ release_partner_directories: on }), MIRRORED, { ...RELEASE_2A, stray_organization_consents: 2 });
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain(
-        "Phase 2 go-live check failed: 2 acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step",
-      );
-    }
+  it("fails while release 2a is on and an acceptance did not come through the Commitments step", () => {
+    const result = run(switched({ release_partner_directories: true }), MIRRORED, { ...RELEASE_2A, stray_organization_consents: 2 });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      "Phase 2 go-live check failed: 2 acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step",
+    );
+  });
+
+  it("lists the stray acceptances as pending while release 2a is off, without saying it is on", () => {
+    const result = run(switched({}), MIRRORED, { ...RELEASE_2A, stray_organization_consents: 2 });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain(
+      "Phase 2 items not yet ready (release switch off): 2 acceptance(s) of the employer-pays commitment or the partner DPA",
+    );
+    const broken = run(switched({}), MIRRORED, { ...RELEASE_2A, stray_organization_consents: null });
+    expect(broken.status).toBe(0);
+    expect(broken.stdout).toContain("release.json has no count stray_organization_consents (found: null)");
+    expect(broken.stdout).not.toContain("release_partner_directories is on");
   });
 
   it("requires the count while release 2a is on, and not before", () => {
     const on = run(switched({ release_partner_directories: true }), MIRRORED, RELEASE_2A);
     expect(on.status).toBe(1);
-    expect(on.stderr).toContain("release_partner_directories is on but release.json has no stray_organization_consents");
+    expect(on.stderr).toContain("release_partner_directories is on but release.json has no count stray_organization_consents (found: null)");
     const off = run(switched({}), MIRRORED, RELEASE_2A);
     expect(off.status).toBe(0);
     expect(off.stderr).toBe("");
+    expect(off.stdout).not.toContain("stray_organization_consents");
   });
 
   it("names every release switch that is on, the data export included, which has no legal gate", () => {

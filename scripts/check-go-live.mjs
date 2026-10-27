@@ -24,9 +24,10 @@
 //
 // Release 2a (V78, docs/runbooks/release-2a-go-live.md): release.json key stray_organization_consents counts the
 // acceptances of an organisation-level document (employer-pays commitment, partner DPA) that did not come through the
-// owner's Commitments step and that no later withdrawal cancels; before V08 a user could accept them for themselves,
-// and such a row would count for an organisation its user later owns. Any such row fails the Phase 2 gate; the key is
-// required while release_partner_directories is on. The gate also prints every release switch that is on,
+// owner's Commitments step and are still the user's latest row for that document; before V08 a user could accept them
+// for themselves, and such a row would count for an organisation its user later owns. Every granted partner DPA counts
+// until the DPA has an acceptance route (decision 6.3). While release_partner_directories is on any such row fails the
+// Phase 2 gate and the key is required; while it is off the count is listed with the pending items. The gate also prints every release switch that is on,
 // release_data_export (FR-S3) included: that switch needs no legal document, so it has no legal gate of its own.
 import { readFileSync } from "node:fs";
 import { isSold } from "./sync-stripe-plans.mjs";
@@ -117,14 +118,20 @@ function phase2Results(settings, gaps) {
   return { failures, pending };
 }
 
-function strayConsentFailures(settings, stray) {
-  if (stray === undefined && !isTrue(settings?.[PARTNER_CHECKOUT_SWITCH])) return [];
-  if (!Number.isInteger(stray)) {
-    return [`${PARTNER_CHECKOUT_SWITCH} is on but release.json has no stray_organization_consents (the count of the check)`];
+// While release 2a is off a stray acceptance cannot yet count for a listed partner: it is named with the pending items.
+// Once the switch is on it is a failure, and so is an export without the count.
+function strayConsentResults(settings, stray) {
+  const on = isTrue(settings?.[PARTNER_CHECKOUT_SWITCH]);
+  if (stray === undefined && !on) return { failures: [], pending: [] };
+  if (!Number.isInteger(stray) || stray < 0) {
+    const message = `release.json has no count stray_organization_consents (found: ${JSON.stringify(stray ?? null)})`;
+    return on
+      ? { failures: [`${PARTNER_CHECKOUT_SWITCH} is on but ${message}`], pending: [] }
+      : { failures: [], pending: [message] };
   }
-  return stray > 0
-    ? [`${stray} acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step: remove them before release 2a goes live (docs/runbooks/release-2a-go-live.md)`]
-    : [];
+  if (stray === 0) return { failures: [], pending: [] };
+  const message = `${stray} acceptance(s) of the employer-pays commitment or the partner DPA did not come through the Commitments step: cancel them before release 2a goes live (docs/runbooks/release-2a-go-live.md)`;
+  return on ? { failures: [message], pending: [] } : { failures: [], pending: [message] };
 }
 
 function planFailures(plan) {
@@ -210,12 +217,14 @@ if (drafts.length > 0 && !allowDraftLegal) {
 }
 
 const phase2 = phase2Results(settings, release.legal_release_gaps);
-phase2.failures.push(...strayConsentFailures(settings, release.stray_organization_consents));
+const stray = strayConsentResults(settings, release.stray_organization_consents);
+phase2.failures.push(...stray.failures);
+phase2.pending.push(...stray.pending);
 process.stderr.write(phase2.failures.map((failure) => `Phase 2 go-live check failed: ${failure}\n`).join(""));
 const switchesOn = RELEASE_SWITCHES.filter((key) => isTrue(settings?.[key]));
 process.stdout.write(`Release switches on: ${switchesOn.length > 0 ? switchesOn.join(", ") : "none"}\n`);
 if (phase2.pending.length > 0) {
-  process.stdout.write(`Phase 2 legal documents not yet approved (release switch off): ${phase2.pending.join("; ")}\n`);
+  process.stdout.write(`Phase 2 items not yet ready (release switch off): ${phase2.pending.join("; ")}\n`);
 }
 if (partnerPending.length > 0) {
   process.stdout.write(`Partner plans not yet ready to sell (${PARTNER_CHECKOUT_SWITCH} off): ${partnerPending.join("; ")}\n`);
