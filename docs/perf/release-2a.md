@@ -6,7 +6,7 @@ NFR-P3 (network search response time): 95 % of Find Partners renders within 500 
 
 - **Data.** `supabase/tests/database/find_partners_load_fixture.inc` seeds, in a transaction that is rolled back, 5,000 listed partner organisations (7 in 10 recruitment companies, 3 in 10 staffing companies; one in a hundred hidden by moderation) and 1,000 unlisted ones (onboarding, pending review, information requested, declined). Each partner is based in and sources from one to four of 25 labour-sending countries, recruits for one to six of 30 destinations (Germany, the Gulf states and the United Kingdom weighted up), lists 3 to 15 occupations (mostly from 40 common ISCO-08 unit groups, the rest from the whole list), one to three industries, one to four languages, staffing types, a recruitment type and a workforce size; six in ten keep one to four availability listings confirmed in the last 90 days, so about a third of the listings are stale. That is about 50,400 occupation rows, 39,000 geography rows and 10,300 listings (3,400 of them stale). `setseed` makes every run seed the same network.
 - **Searches.** Twelve typical searches (table below): a visitor (anonymous, with a visitor key, as the web tier calls them) on both directories with no filter, a destination, a destination and an occupation, five filters, a rare combination and the second page through the cursor; a signed-in employer with the advanced filters (capacity, timeframe, two source countries) and two available-workforce searches. Each runs as the API role through the same function as the page, rate limit and search log included; the rate-limit window is emptied before each run so the limit is not what is measured.
-- **Measure.** The server time of each call in the database (`clock_timestamp` around the call), 50 runs per search, after `analyze` of the seeded tables. The plans are the `EXPLAIN ANALYZE` output of the main statement of each function, taken with `auto_explain` (nested statements) on one more run.
+- **Measure.** The server time of each call in the database (`clock_timestamp` around the call), 50 runs per search after one untimed warm-up run, after `analyze` of the seeded tables. The plans are the `EXPLAIN ANALYZE` output of the main statement of each function, taken with `auto_explain` (nested statements) on one more run.
 - **Budget.** The page adds its own rendering and the round trip to PostgREST to the database time, so the database is held to 100 ms at the 95th percentile, a fifth of the 500 ms NFR-P3 target. The script and the CI test fail above it.
 
 ## How to run it
@@ -18,11 +18,11 @@ node scripts/load/find-partners.mjs --runs 200     # more runs, no plans
 DATABASE_URL=postgres://... node scripts/load/find-partners.mjs   # a staging copy (never production)
 ```
 
-CI runs the light version on every change: pgTAP `supabase/tests/database/155_find_partners_load.test.sql` (part of `npm run db:test`, about 5 seconds) seeds the same network, runs each search five times and fails when one is over 100 ms at the 95th percentile, when a search finds nothing, or when an unlisted, declined or hidden partner reaches the results.
+CI runs the light version on every change: pgTAP `supabase/tests/database/155_find_partners_load.test.sql` (part of `npm run db:test`, about 5 seconds) seeds the same network, runs each search once untimed and five times timed, and fails when a search's median is 100 ms or more or one run takes 500 ms (five runs on a shared runner give no stable 95th percentile, so the strict 95th-percentile budget stays with the script), when the plan shape changes (the destination and occupation lookups leave `organization_geographies_country_idx` and `organization_occupations_occupation_idx`, or the listed partners they narrow to are no longer read through `organizations_listed_partners_idx`), when a search finds nothing, or when an unlisted, declined or hidden partner reaches the results.
 
 ## Results (V78, 27 October 2026)
 
-Local stack: PostgreSQL 17.11 in Docker (8 CPUs, 8 GB) on an Apple M1 Pro, database freshly reset, 50 runs per search.
+Local stack: PostgreSQL 17.11 in Docker (8 CPUs, 8 GB) on an Apple M1 Pro, database freshly reset, 50 runs per search. This run predates the warm-up: the first, cold run of each search is among the 50, so the maximum column is an upper bound.
 
 | Search | Rows | p50 ms | p95 ms | max ms |
 |---|---|---|---|---|

@@ -1,11 +1,14 @@
 begin;
-select plan(18);
+select plan(21);
 
 -- Find Partners at 5,000 partner organisations (V78, NFR-P3), the light version of scripts/load/find-partners.mjs that
--- runs in CI: the same seeded network and the same typical searches, five runs each instead of fifty and without the
--- query plans. Every search must stay within the database share of the NFR-P3 target (95 % of renders within 500 ms
--- server time): 100 ms at the 95th percentile, which leaves the rest for the page and the network
--- (docs/perf/release-2a.md). The searches must also still skip every partner that is not listed and visible.
+-- runs in CI: the same seeded network and the same typical searches, one warm-up and five timed runs each instead of
+-- fifty, and without the captured plans. The strict check (95th percentile under 100 ms over 50 runs, the database share
+-- of the 500 ms target) is the script's; on a shared CI runner five runs give no stable 95th percentile, so this file
+-- holds the median under 100 ms and every run under 500 ms, and checks the plan shape, which does not depend on the
+-- speed of the machine: the destination and occupation lookups that search_partners makes use their indexes and the
+-- listed partners they narrow to are read through organizations_listed_partners_idx (docs/perf/release-2a.md). The
+-- searches must also still skip every partner that is not listed and visible.
 
 \ir find_partners_load_fixture.inc
 
@@ -29,8 +32,8 @@ select pg_temp.prepare_find_partners_cases(:'employer');
 select pg_temp.run_find_partners_load(:'employer', 5);
 
 select ok(
-  (select r.p95_ms < 100 from load_results r where r.label = c.label),
-  format('NFR-P3: %s stays within 100 ms at the 95th percentile', c.label)
+  (select r.p50_ms < 100 and r.max_ms < 500 from load_results r where r.label = c.label),
+  format('NFR-P3: %s answers within 100 ms at the median and never takes 500 ms', c.label)
 )
 from load_cases c order by c.position;
 
@@ -54,8 +57,40 @@ select is(
 );
 select is(
   (select count(*)::integer from stats.partner_searches) - :searches_before,
-  57,
-  'NFR-P3: the timed searches are logged as real searches are: the cursor read, 11 first-page searches x 5 runs and the page above'
+  68,
+  'NFR-P3: the searches are logged as real searches are: the cursor read, 11 first-page searches x (1 warm-up + 5 runs) and the page above'
+);
+
+-- The plan shape, independent of the speed of the machine.
+create function pg_temp.plan_of(p_sql text) returns text
+language plpgsql as $$
+declare
+  v_plan json;
+begin
+  execute 'explain (format json) ' || p_sql into v_plan;
+  return v_plan::text;
+end;
+$$;
+
+select ok(
+  pg_temp.plan_of($$select g.organization_id from public.organization_geographies g
+                    where g.scope = 'serves_market' and g.country_code = 'DE'$$) like '%organization_geographies_country_idx%',
+  'NFR-P3: the destination lookup of a search uses organization_geographies_country_idx at 5,000 partners'
+);
+select ok(
+  pg_temp.plan_of($$select oo.organization_id from public.organization_occupations oo where oo.occupation_id = '7212'$$)
+    like '%organization_occupations_occupation_idx%',
+  'NFR-P3: the occupation lookup of a search uses organization_occupations_occupation_idx at 5,000 partners'
+);
+select ok(
+  pg_temp.plan_of($$select o.id from public.organizations o
+                    where o.type = 'recruitment_company' and o.listed_at is not null and o.review_status <> 'declined'
+                      and o.status = 'active'
+                      and o.id in (select g.organization_id from public.organization_geographies g
+                                   where g.scope = 'serves_market' and g.country_code = 'JP')
+                      and o.id in (select oo.organization_id from public.organization_occupations oo
+                                   where oo.occupation_id = '2221')$$) like '%organizations_listed_partners_idx%',
+  'NFR-P3: the listed partners a destination and an occupation narrow to are read through organizations_listed_partners_idx'
 );
 
 select * from finish();

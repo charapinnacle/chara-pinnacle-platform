@@ -1,8 +1,8 @@
 -- The Find Partners load (V78, NFR-P3): 5,000 listed partner organisations with the geographies, occupations, offer and
 -- availability listings of a realistic network, plus unlisted and hidden partners that the searches must skip, and the
--- timing helper. Included with \ir by 158_find_partners_load.test.sql (the light CI check) and by
--- scripts/load/find-partners.sql (the runbook check with query plans, docs/perf/release-2a.md). Everything it writes is
--- rolled back with the transaction of the file that includes it. setseed makes every run seed the same network.
+-- timing helper. Included with \ir by 155_find_partners_load.test.sql (the light CI check) and read into the psql input
+-- of scripts/load/find-partners.mjs (the runbook check with query plans, docs/perf/release-2a.md). Everything it writes
+-- is rolled back with the transaction that runs it. setseed makes every run seed the same network.
 
 -- The labour-migration markets: where partners are based and source workers, where they recruit for, and the
 -- occupations most of them list (each also lists a few others from the whole ISCO-08 list).
@@ -195,8 +195,9 @@ begin
 end;
 $$;
 
--- Runs every case p_runs times and records the server time of each run in load_results. The rate-limit window is emptied
--- before each run, so the limit never stops the load (it is not what is measured).
+-- Runs every case once untimed (a warm-up, so the first plan and the cold cache are not measured) and then p_runs times,
+-- and records the server time of each timed run in load_results. The rate-limit window is emptied before each run, so
+-- the limit never stops the load (it is not what is measured).
 create function pg_temp.run_find_partners_load(p_employer uuid, p_runs integer) returns void
 language plpgsql as $$
 declare
@@ -207,12 +208,14 @@ declare
 begin
   for v_case in select * from load_cases order by position loop
     v_times := '{}';
-    for i in 1..p_runs loop
+    for i in 0..p_runs loop
       delete from private.rate_limit_hits;
       perform pg_temp.load_act_as(case when v_case.as_employer then p_employer end);
       v_started := clock_timestamp();
       execute format('select count(*) from (%s) r', v_case.sql) into v_rows;
-      v_times := v_times || (extract(epoch from clock_timestamp() - v_started) * 1000)::numeric;
+      if i > 0 then
+        v_times := v_times || (extract(epoch from clock_timestamp() - v_started) * 1000)::numeric;
+      end if;
       reset role;
       perform set_config('request.jwt.claims', '', true);
     end loop;

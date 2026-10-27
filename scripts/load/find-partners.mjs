@@ -2,8 +2,8 @@
 // Load test of Find Partners at 5,000 partner organisations (NFR-P3, V78; docs/perf/release-2a.md,
 // docs/runbooks/release-2a-go-live.md). In one transaction that is rolled back it seeds the network of
 // supabase/tests/database/find_partners_load_fixture.inc (5,000 listed partners and 1,000 unlisted ones), runs the
-// typical searches of the recruitment and staffing directories and of the available workforce --runs times each (50 by
-// default), prints the 50th and 95th percentile and the slowest server time of each, and with --plans the EXPLAIN
+// typical searches of the recruitment and staffing directories and of the available workforce once untimed (warm-up) and
+// then --runs times each (50 by default), prints the 50th and 95th percentile and the slowest server time of each, and with --plans the EXPLAIN
 // ANALYZE plan of the main query of each search (auto_explain, nested statements). It exits 1 when a search is over the
 // database budget at the 95th percentile: 100 ms, the share of the 500 ms NFR-P3 target left after the page and the
 // network. The light version runs in CI as pgTAP 155_find_partners_load.
