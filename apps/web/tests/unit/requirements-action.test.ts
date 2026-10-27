@@ -22,6 +22,7 @@ const input: RequirementFormInput = {
   country: "de",
   cityRegion: " Hamburg ",
   industry: "c",
+  destinations: [],
   occupations: [
     { occupation: "7212", quantity: "80" },
     { occupation: "7214", quantity: "20" },

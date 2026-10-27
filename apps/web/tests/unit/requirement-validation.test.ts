@@ -17,6 +17,7 @@ const valid: RequirementFormInput = {
   country: "DE",
   cityRegion: "Hamburg",
   industry: "C",
+  destinations: [],
   occupations: [
     { occupation: "7212", quantity: "80" },
     { occupation: "7214", quantity: "20" },
@@ -174,6 +175,7 @@ describe("the payload of save_requirement (FR-M1 AC2)", () => {
       p_country_code: "DE",
       p_city_region: "Hamburg",
       p_industry_code: "C",
+      p_additional_countries: [],
       p_occupations: [
         { occupation_id: "7212", quantity: 80 },
         { occupation_id: "7214", quantity: 20 },
@@ -203,5 +205,29 @@ describe("the payload of save_requirement (FR-M1 AC2)", () => {
     expect(args).toMatchObject({ p_title: "Welders", p_skills: undefined, p_experience_years: undefined, p_duration_months: undefined });
     expect(args.p_salary_currency).toBeUndefined();
     expect(args.p_salary_period).toBeUndefined();
+  });
+});
+
+describe("further destination countries (FR-M4 AC4)", () => {
+  it("accepts up to 9 more countries, upper-cased, and sends them to save_requirement", () => {
+    const destinations = ["nl", "AT", "be", "CZ", "DK", "EE", "ES", "FI", "FR"].map((country) => ({ country }));
+    const args = toRequirementArgs(schema.parse({ ...valid, destinations }));
+    expect(args.p_additional_countries).toEqual(["NL", "AT", "BE", "CZ", "DK", "EE", "ES", "FI", "FR"]);
+  });
+
+  it("refuses a tenth, a code that is not a country, the main country and a repeat", () => {
+    const ten = ["NL", "AT", "BE", "CZ", "DK", "EE", "ES", "FI", "FR", "GR"].map((country) => ({ country }));
+    expect(errorsFor({ destinations: ten })).toEqual({ destinations: "Add at most 9 further destination countries." });
+    expect(errorsFor({ destinations: [{ country: "Netherlands" }] })).toEqual({
+      "destinations.0.country": "Select a country from the list.",
+    });
+    expect(errorsFor({ destinations: [{ country: "de" }, { country: "NL" }, { country: "nl" }] })).toEqual({
+      "destinations.0.country": "This country is already a destination.",
+      "destinations.2.country": "This country is already a destination.",
+    });
+  });
+
+  it("starts empty", () => {
+    expect(emptyRequirementForm.destinations).toEqual([]);
   });
 });
