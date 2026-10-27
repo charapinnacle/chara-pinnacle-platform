@@ -1,4 +1,4 @@
-import { TextLink } from "@/components/forms/text-link";
+import { COMPLAINTS_SLUG, TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { ReviewChecks } from "@/components/onboarding/review-checks";
 import type { ReviewOutcome } from "@/lib/dal/partner-review";
@@ -80,8 +80,9 @@ export function PartnerReviewCard({ lang, organization, status, wasListed, outco
           Review and submit again
         </TextLink>
       ) : status === "declined" ? (
-        <TextLink standalone href={`/${lang}/contact`}>
-          Contact us about this decision
+        // The same redress route as the decline email (NFR-C7, V78 review).
+        <TextLink standalone href={`/${lang}/legal/${COMPLAINTS_SLUG}`}>
+          How to appeal this decision
         </TextLink>
       ) : status === "info_requested" ? null : (
         profileLink

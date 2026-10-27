@@ -152,7 +152,8 @@ describe("the review and listing state (FR-J1 AC11, FR-J4 AC7, AC10, NFR-C7)", (
     html = await render();
     expect(html).toContain(">Your company is not listed</h2>");
     expect(html).toContain(">Reason</h3>");
-    expect(html).toMatch(/<a[^>]*href="\/en\/contact"[^>]*>Contact us about this decision/);
+    // NFR-C7: the same redress route as the decline email.
+    expect(html).toMatch(/<a[^>]*href="\/en\/legal\/complaints-and-dispute-process"[^>]*>How to appeal this decision/);
 
     reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null, listedAt: "2026-11-22T10:00:00Z" });
     outcomeMock.mockResolvedValue({ decision: "approve", reason: null, infoStep: null, decidedAt: "2026-11-22T10:00:00Z" });

@@ -266,6 +266,11 @@ test.describe("Partner reviews (FR-J4)", () => {
     await logIn(declined.page, second.user, "/en/dashboard/employer");
     await expect(declined.page.getByRole("heading", { name: "Your company is not listed", level: 2 })).toBeVisible();
     await expect(declined.page.getByText(reason)).toBeVisible();
+    // NFR-C7: the decline names the same redress route as its email.
+    await expect(declined.page.getByRole("link", { name: "How to appeal this decision" })).toHaveAttribute(
+      "href",
+      "/en/legal/complaints-and-dispute-process",
+    );
     expect(await declined.page.locator("main").innerText()).not.toContain(trust.email);
     await expectAccessibleAtBothWidths(declined.page);
     await declined.context.close();
