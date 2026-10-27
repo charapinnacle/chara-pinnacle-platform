@@ -22,7 +22,7 @@ language sql as $$ select pg_temp.call_as(p_user, 'authenticated', p_sql, p_aal)
 create function pg_temp.upsert(p_source text, p_dest text, p_rule text, p_notice text, p_ref text, p_reason text default 'Rule set after the legal opinion of November.')
 returns text
 language sql as $$
-  select pg_temp.admin(format('select public.admin_upsert_direct_hiring_rule(%L, %L, %L, %L, %L, %L)',
+  select pg_temp.admin(format('select public.admin_upsert_direct_hiring_rule(p_source => %L, p_destination => %L, p_rule => %L, p_notice => %L, p_legal_opinion_ref => %L, p_reason => %L)',
     p_source, p_dest, p_rule, p_notice, p_ref, p_reason))
 $$;
 
@@ -77,7 +77,7 @@ insert into callers values
 create temp table calls (fn text primary key, sql text not null);
 insert into calls values
   ('admin_upsert_direct_hiring_rule',
-   format($$select public.admin_upsert_direct_hiring_rule('PH', null, 'blocked', %L, 'LO-2026-11 PH', %L)$$, :'notice200', :'reason')),
+   format($$select public.admin_upsert_direct_hiring_rule('PH', 'blocked', %L, 'LO-2026-11 PH', %L)$$, :'notice200', :'reason')),
   ('admin_delete_direct_hiring_rule', format($$select public.admin_delete_direct_hiring_rule(gen_random_uuid(), %L)$$, :'reason')),
   ('admin_list_direct_hiring_rules', $$select * from public.admin_list_direct_hiring_rules()$$),
   ('admin_list_direct_hiring_rule_history', $$select * from public.admin_list_direct_hiring_rule_history()$$);
@@ -147,7 +147,7 @@ select is(pg_temp.upsert('PH', null, 'licensed_partner_required', 'Hiring from t
   'ok', 'the same values again (spaces trimmed) are accepted');
 select is(pg_temp.audits(), 3, 'and write nothing');
 select is(
-  pg_temp.val_as(:'st_admin', 'aal2', format($$select public.admin_upsert_direct_hiring_rule('PH', null, 'licensed_partner_required',
+  pg_temp.val_as(:'st_admin', 'aal2', format($$select public.admin_upsert_direct_hiring_rule('PH', 'licensed_partner_required',
     'Hiring from the Philippines needs a licensed recruitment partner.', 'LO-2026-11 PH', %L)::text$$, :'reason')),
   'false', 'an unchanged call answers false'
 );
