@@ -98,6 +98,9 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     test.setTimeout(180_000);
     seedRule("NP", null, "licensed_partner_required", "Hiring from Nepal needs a licensed recruitment partner.", "LO-2025-09 NP", 400);
     seedRule("NG", "DE", "blocked", "Direct hiring from Nigeria to Germany is not available.", "LO-2026-10 NG-DE", 10);
+    // A change whose administrator no longer exists has no actor in the audit log.
+    execute(`select audit.record('direct_hiring_rule.created', 'direct_hiring_rule', gen_random_uuid()::text,
+      jsonb_build_object('after', jsonb_build_object('source_country', 'NP', 'rule', 'licensed_partner_required', 'notice', 'n', 'legal_opinion_ref', 'LO-2025-09 NP'), 'reason', ${literal(REASON)}))`);
     await signInStaff(page, "admin", PAGE);
 
     const nepal = row(page, "Nepal", "All destinations");
@@ -162,6 +165,15 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
       "Changed PH -> all destinations: rule Licensed partner required -> Direct hiring blocked; legal opinion LO-2026-11 PH -> LO-2026-12 PH",
     );
     await expect(changes.getByRole("row").nth(1)).toContainText(REASON);
+    await expect(changes.getByRole("row").filter({ hasText: "Added NP -> all destinations" })).toContainText("Former administrator");
+
+    await row(page, "Philippines", "All destinations").getByRole("button", { name: "Edit the rule for Philippines, All destinations" }).click();
+    await edit.getByRole("textbox", { name: "Reason for the change" }).fill(REASON);
+    await edit.getByRole("button", { name: "Save rule" }).click();
+    await expect(edit.getByText("Nothing changed. To record a review, update the legal opinion reference.").first()).toBeVisible();
+    await expect(edit).toBeVisible();
+    expect(audits().slice(before).map((entry) => entry.action)).toEqual(["direct_hiring_rule.created", "direct_hiring_rule.updated"]);
+    await edit.getByRole("button", { name: "Cancel" }).click();
 
     await row(page, "Philippines", "All destinations").getByRole("button", { name: "Delete the rule for Philippines, All destinations" }).click();
     const confirm = page.getByRole("dialog", { name: "Delete the rule for Philippines, All destinations" });
