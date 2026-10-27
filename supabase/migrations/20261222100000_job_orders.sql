@@ -10,16 +10,18 @@
 -- partner plan whose features include job_order_access. A partner on a free plan code (never subscribed, or its
 -- subscription lapsed) sees titles only whether entitlements_enforced is on or off, as DATA_MODEL.md section 4 says
 -- ("regardless of entitlements_enforced"); with the switch on, a paid plan without the feature does too. Every other
--- partner gets the reduced row: id, title, destination and number of workers with the reasons, nothing else.
+-- partner gets the reduced row: id, title, destination and number of workers with the reasons, nothing else (the reasons
+-- tell no more than that row: a missing country is the main destination, and without a paid plan only plan_required).
 --
--- The employer's name (decision 3.2, NFR-S11) is returned only on a full row and only when the employer chose to show it
--- (show_identity) or the partner was invited, shortlisted or selected (private.requirement_reveals, written by V41 and
--- V45 through private.record_requirement_reveal). The first time a revealed partner is shown the name, seen_at is set and
--- one audit row requirement.employer_revealed is written (SOP control "audit of reveals"). Where the name is not shown,
--- no field leads to the employer: no organisation id, slug, website or logo is returned; a title, city or skills text that
--- contains the employer's display name, legal name, slug or website name is replaced by a neutral title or left out; the
--- publication is given as a date, not a time; the vacancies copied from the requirement do not name it (V35).
---
+-- The employer's name (decision 3.2, NFR-S11) is returned when the partner was invited, shortlisted or selected
+-- (private.requirement_reveals, written by V41 and V45 through private.record_requirement_reveal), on a full or a reduced
+-- row, and on a full row when the employer chose to show it (show_identity). The first time a revealed partner is shown
+-- the name, seen_at is set and one audit row requirement.employer_revealed is written (SOP control "audit of reveals").
+-- Where the name is not shown, no field leads to the employer: no organisation id, slug, website or logo; the title is
+-- generated from destination, workers and main occupation, the skills text is left out and the city is left out when it
+-- contains one of the employer's names (private.city_names_organization); the publication is given as a date, not a
+-- time; the vacancies copied from an anonymous requirement carry neither its city nor its salary (20261223100000).
+
 -- The order is newest first, then the id (published_at descending, id ascending), the same for every partner and every
 -- plan; nothing in the order reads billing.* (NFR-C8), and the ranking page describes it. Calls are counted per user
 -- like the partner searches (private.check_rate_limit 'job_orders', settings rate_limit_job_orders_max and _seconds).
@@ -104,45 +106,122 @@ revoke all on table stats.job_order_partner_weeks from public, anon, authenticat
 
 -- Helpers -------------------------------------------------------------------------------------------------------------------
 
--- The words of a text for comparing names: folded, everything but letters and digits a single space.
-create function private.name_words(p_text text) returns text
+-- The key of a name or a place for comparing them: folded (accents removed, so ß is ss), the German spellings ae, oe and
+-- ue taken as a, o and u (Müller, Muller and Mueller compare equal), everything but letters and digits a single space.
+create function private.name_key(p_text text) returns text
 language sql
 immutable
 set search_path = ''
-as $$ select btrim(regexp_replace(private.fold_text(p_text), '[^[:alnum:]]+', ' ', 'g')) $$;
+as $$
+  select btrim(regexp_replace(regexp_replace(private.fold_text(p_text), '([aou])e', '\1', 'g'), '[^[:alnum:]]+', ' ', 'g'))
+$$;
 
-revoke all on function private.name_words(text) from public, anon, authenticated, service_role;
+revoke all on function private.name_key(text) from public, anon, authenticated, service_role;
 
--- Whether p_text contains, as whole words, the display name, the legal name, the slug or the website name (host without
--- www, and its first label) of p_org. Names shorter than three characters are not looked for.
-create function private.text_names_organization(p_text text, p_org uuid) returns boolean
-language sql
+-- The names of p_org as keys without their legal forms (GmbH, Ltd, AG, Sp. z o.o. and the like): the display name, the
+-- legal name, the slug and the website's registrable label ("mueller-bau" for https://jobs.mueller-bau.co.uk). On a
+-- social or hosting site the name is in the address instead: the first path segment that is not a generic one
+-- (linkedin.com/company/mueller-bau gives mueller-bau) and a subdomain of the host (muellerbau.wixsite.com).
+create function private.organization_name_keys(p_org uuid) returns text[]
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  select p_text is not null and exists (
-    select 1
-    from public.organizations o
-    cross join lateral (select lower(substring(o.website from '^https?://(?:www\.)?([^/:?#]+)')) as host) h
-    cross join lateral unnest(array[o.display_name, o.legal_name, replace(o.slug, '-', ' '), h.host, split_part(h.host, '.', 1)])
-      n (name)
-    where o.id = p_org
-      and char_length(private.name_words(n.name)) >= 3
-      and position(' ' || private.name_words(n.name) || ' ' in ' ' || private.name_words(p_text) || ' ') > 0
-  )
+declare
+  v_org public.organizations;
+  v_names text[];
+  v_host text;
+  v_labels text[];
+  v_n integer;
+  v_at integer;
+  v_legal_forms text[] := '{gmbh,mbh,ltd,limited,ag,kg,kgaa,co,inc,incorporated,llc,llp,lp,sa,sas,sarl,bv,nv,oy,oyj,ab,as,asa,aps,sp,z,o,oo,srl,s,r,l,spa,sl,plc,ug,gbr,ohg,se,corp,corporation,pte,pty,pvt,haftungsbeschrankt,und,and,et,cie}';
+  v_hosts text[] := '{facebook.com,fb.com,linkedin.com,instagram.com,twitter.com,x.com,xing.com,youtube.com,tiktok.com,wixsite.com,wordpress.com,blogspot.com,github.io,google.com,business.site,jimdosite.com,jimdo.com,weebly.com,squarespace.com,webnode.page,linktr.ee,t.me,wa.me,site123.me,strikingly.com,carrd.co,notion.site}';
+  v_path_skip text[] := '{company,companies,pages,page,in,people,groups,group,channel,c,user,pg,p,profile,sites,site,view,home,www}';
+begin
+  select * into v_org from public.organizations o where o.id = p_org;
+  v_names := array[v_org.display_name, v_org.legal_name, replace(v_org.slug, '-', ' ')];
+  v_host := lower(substring(v_org.website from '^https?://(?:www\.)?([^/:?#]+)'));
+  if v_host is not null then
+    v_labels := string_to_array(v_host, '.');
+    v_n := cardinality(v_labels);
+    v_at := case
+      when v_n >= 3 and char_length(v_labels[v_n]) = 2
+        and v_labels[v_n - 1] in ('co', 'com', 'org', 'net', 'ac', 'gov', 'edu', 'ltd', 'plc', 'or', 'ne') then v_n - 2
+      else v_n - 1 end;
+    if v_at >= 1 then
+      if array_to_string(v_labels[v_at:v_n], '.') = any (v_hosts) then
+        v_names := v_names || (
+          select ltrim(seg.part, '@')
+          from unnest(string_to_array(substring(v_org.website from '^https?://[^/]+/([^?#]*)'), '/')) with ordinality seg (part, n)
+          where ltrim(seg.part, '@') <> '' and lower(ltrim(seg.part, '@')) <> all (v_path_skip)
+          order by seg.n
+          limit 1);
+        if v_at > 1 then
+          v_names := v_names || v_labels[v_at - 1];
+        end if;
+      else
+        v_names := v_names || v_labels[v_at];
+      end if;
+    end if;
+  end if;
+  return array(
+    select k.key
+    from unnest(v_names) n (name)
+    cross join lateral (
+      select array_to_string(array(
+        select w.word from regexp_split_to_table(private.name_key(n.name), ' ') with ordinality w (word, i)
+        where w.word <> '' and w.word <> all (v_legal_forms) order by w.i), ' ') as key
+    ) k
+    where n.name is not null and k.key <> '');
+end;
 $$;
 
-revoke all on function private.text_names_organization(text, uuid) from public, anon, authenticated, service_role;
+revoke all on function private.organization_name_keys(uuid) from public, anon, authenticated, service_role;
 
--- The title of a job order whose own title would name a hidden employer: destination, number of workers and the main
--- occupation (the largest quantity, then the name), as in "Germany, 100 Welders and flame cutters".
+-- Whether the city or region p_city names p_org: a word of one of its names with four letters or more (generic words
+-- such as jobs or group aside) is a word of the place, or a name of six letters or more, spaces and hyphens removed, is
+-- inside the place with its spaces and hyphens removed ("Müller Bau" in "MUELLERBAU-Werk").
+create function private.city_names_organization(p_city text, p_org uuid) returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_city text := ' ' || private.name_key(p_city) || ' ';
+  v_joined text := replace(private.name_key(p_city), ' ', '');
+  v_name text;
+  v_word text;
+  v_generic text[] := '{jobs,karriere,career,careers,company,group,gruppe,holding,international,global,services,service,solutions,team,home,info,official,sites,site,view,personal,recruiting,recruitment,staffing,work,works,page,pages}';
+begin
+  if p_city is null then
+    return false;
+  end if;
+  foreach v_name in array private.organization_name_keys(p_org) loop
+    if char_length(replace(v_name, ' ', '')) >= 6 and position(replace(v_name, ' ', '') in v_joined) > 0 then
+      return true;
+    end if;
+    foreach v_word in array string_to_array(v_name, ' ') loop
+      if char_length(v_word) >= 4 and v_word <> all (v_generic) and position(' ' || v_word || ' ' in v_city) > 0 then
+        return true;
+      end if;
+    end loop;
+  end loop;
+  return false;
+end;
+$$;
+
+revoke all on function private.city_names_organization(text, uuid) from public, anon, authenticated, service_role;
+
+-- The title of a job order shown without the employer's name: destination, number of workers and the main occupation
+-- (the largest quantity, then the name), as in "Germany, 100 Welders and flame cutters" (FR-N1: the title is generated).
 create function private.job_order_neutral_title(p_requirement uuid) returns text
 language sql
 stable
 set search_path = ''
 as $$
-  select left(format('%s, %s %s', c.name, r.workers_needed, (
+  select left(c.name || ', ' || concat_ws(' ', r.workers_needed, (
       select oc.label from public.requirement_occupations ro join public.occupations oc on oc.code = ro.occupation_id
       where ro.requirement_id = r.id order by ro.quantity desc, oc.label limit 1)), 120)
   from public.workforce_requirements r
@@ -178,22 +257,37 @@ $$;
 
 revoke all on function private.job_order_partner_facts(uuid) from public, anon, authenticated, service_role;
 
--- Why a partner with these facts sees only the title of a job order, in a fixed order; empty when it is eligible.
+-- Why a partner with these facts sees only the title of a job order; empty when it is eligible (a paid plan, one of the
+-- destinations served, one of the occupations listed). The reasons tell no more than the reduced row shows: a country
+-- is missing when the main destination is not served (further destinations stay hidden), and a partner without a paid
+-- plan is told only plan_required, so changing its profile reveals nothing of the occupations.
 create function private.job_order_reasons(p_requirement uuid, p_paid boolean, p_served text[], p_occupations text[])
 returns text[]
 language sql
 stable
 set search_path = ''
 as $$
-  select array_remove(array[
-    case when not exists (
-      select 1 from public.requirement_countries rc where rc.requirement_id = p_requirement and rc.country_code = any (p_served)
-    ) then 'served_country_missing' end,
-    case when not exists (
-      select 1 from public.requirement_occupations ro where ro.requirement_id = p_requirement and ro.occupation_id = any (p_occupations)
-    ) then 'occupation_missing' end,
-    case when not p_paid then 'plan_required' end
-  ], null)
+  with f as (
+    select
+      exists (
+        select 1 from public.requirement_countries rc where rc.requirement_id = p_requirement and rc.country_code = any (p_served)
+      ) as served,
+      exists (
+        select 1 from public.workforce_requirements r where r.id = p_requirement and r.country_code = any (p_served)
+      ) as served_main,
+      exists (
+        select 1 from public.requirement_occupations ro where ro.requirement_id = p_requirement and ro.occupation_id = any (p_occupations)
+      ) as listed
+  )
+  select case
+    when not p_paid then array['plan_required']
+    when f.served and f.listed then '{}'::text[]
+    else array_remove(array[
+      case when not f.served_main then 'served_country_missing' end,
+      case when not f.listed then 'occupation_missing' end
+    ], null)
+  end
+  from f
 $$;
 
 revoke all on function private.job_order_reasons(uuid, boolean, text[], text[]) from public, anon, authenticated, service_role;
@@ -268,8 +362,8 @@ revoke all on function private.mark_reveals_seen(uuid, uuid[]) from public, anon
 -- both, and local ones whose destination it is), occupation, industry, workers from and to (1 to 100,000), start date
 -- from and to, recruitment type local or international (job orders of that type or both). Codes are checked for their
 -- shape only: an unknown code answers no rows. Refusals: those of private.assert_job_order_partner, then
--- CHARA_INVALID_INPUT naming the parameter (a minimum above the maximum names the minimum; a cursor that is not a job
--- order, p_cursor). A reduced row is filtered only on what it shows: with a filter on anything but the destination and
+-- CHARA_INVALID_INPUT naming the parameter (each range is checked first, then a minimum above the maximum names the
+-- minimum; a cursor that is not a job order, p_cursor). A reduced row is filtered only on what it shows: with a filter on anything but the destination and
 -- the number of workers, the list holds eligible job orders only, so a filter never tells a partner what it cannot see.
 create function public.list_job_orders(
   p_org uuid,
@@ -338,11 +432,14 @@ begin
   if v_industry !~ '^[A-Z]$' then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_industry';
   end if;
-  if p_workers_min not between 1 and 100000 or p_workers_min > p_workers_max then
+  if p_workers_min not between 1 and 100000 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_workers_min';
   end if;
   if p_workers_max not between 1 and 100000 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_workers_max';
+  end if;
+  if p_workers_min > p_workers_max then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_workers_min';
   end if;
   if p_start_from > p_start_to then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'p_start_from';
@@ -408,21 +505,20 @@ begin
   ),
   shown as (
     select p.*, cardinality(p.why) = 0 as full_row,
-      cardinality(p.why) = 0 and (p.show_identity or p.revealed) as named
+      p.revealed or (cardinality(p.why) = 0 and p.show_identity) as named
     from page p
   )
   select
     s.id,
     s.full_row,
     s.why,
-    case when not s.named and private.text_names_organization(s.title, s.organization_id)
-      then private.job_order_neutral_title(s.id) else s.title end,
+    case when s.named then s.title else private.job_order_neutral_title(s.id) end,
     s.country_code,
     s.workers_needed,
     case when s.full_row then array(
       select rc.country_code from public.requirement_countries rc where rc.requirement_id = s.id
       order by rc.country_code <> s.country_code, rc.country_code) end,
-    case when s.full_row and (s.named or not private.text_names_organization(s.city_region, s.organization_id))
+    case when s.full_row and (s.named or not private.city_names_organization(s.city_region, s.organization_id))
       then s.city_region end,
     case when s.full_row then s.industry_code end,
     case when s.full_row then (
@@ -443,10 +539,12 @@ begin
   from shown s
   order by s.n;
 
+  -- The reveals whose name was shown: every page row but the eligible ones the employer names anyway.
   perform private.mark_reveals_seen(p_org, array(
     select r.id from public.workforce_requirements r
-    where r.id = any (v_ids) and not r.show_identity
-      and cardinality(private.job_order_reasons(r.id, v_facts.paid, v_facts.served, v_facts.occupations)) = 0));
+    where r.id = any (v_ids)
+      and not (r.show_identity
+        and cardinality(private.job_order_reasons(r.id, v_facts.paid, v_facts.served, v_facts.occupations)) = 0)));
 end;
 $$;
 
@@ -510,6 +608,7 @@ declare
   v_why text[];
   v_full boolean;
   v_named boolean;
+  v_revealed boolean;
   v_count integer;
   v_count_min integer := coalesce(
     (select (s.value #>> '{}')::integer from private.settings s where s.key = 'job_order_response_count_min'), 5);
@@ -534,8 +633,9 @@ begin
   select * into v_facts from private.job_order_partner_facts(p_org);
   v_why := private.job_order_reasons(v_row.id, v_facts.paid, v_facts.served, v_facts.occupations);
   v_full := cardinality(v_why) = 0;
-  v_named := v_full and (v_row.show_identity or exists (
-    select 1 from private.requirement_reveals rv where rv.requirement_id = v_row.id and rv.organization_id = p_org));
+  v_revealed := exists (
+    select 1 from private.requirement_reveals rv where rv.requirement_id = v_row.id and rv.organization_id = p_org);
+  v_named := v_revealed or (v_full and v_row.show_identity);
   v_count := private.requirement_response_count(v_row.id);
 
   return query select
@@ -543,14 +643,13 @@ begin
     true,
     v_full,
     v_why,
-    case when not v_named and private.text_names_organization(v_row.title, v_row.organization_id)
-      then private.job_order_neutral_title(v_row.id) else v_row.title end,
+    case when v_named then v_row.title else private.job_order_neutral_title(v_row.id) end,
     v_row.country_code,
     v_row.workers_needed,
     case when v_full then array(
       select rc.country_code from public.requirement_countries rc where rc.requirement_id = v_row.id
       order by rc.country_code <> v_row.country_code, rc.country_code) end,
-    case when v_full and (v_named or not private.text_names_organization(v_row.city_region, v_row.organization_id))
+    case when v_full and (v_named or not private.city_names_organization(v_row.city_region, v_row.organization_id))
       then v_row.city_region end,
     case when v_full then v_row.industry_code end,
     case when v_full then (
@@ -558,8 +657,7 @@ begin
         order by ro.quantity desc, oc.label)
       from public.requirement_occupations ro join public.occupations oc on oc.code = ro.occupation_id
       where ro.requirement_id = v_row.id) end,
-    case when v_full and (v_named or not private.text_names_organization(v_row.skills, v_row.organization_id))
-      then v_row.skills end,
+    case when v_full and v_named then v_row.skills end,
     case when v_full then v_row.experience_years end,
     case when v_full then v_row.start_date end,
     case when v_full then v_row.duration_months end,
@@ -580,7 +678,7 @@ begin
     case when v_named then v_employer.display_name end,
     case when v_named and v_employer.public_page_enabled then v_employer.slug end;
 
-  if v_full and not v_row.show_identity then
+  if v_revealed and not (v_full and v_row.show_identity) then
     perform private.mark_reveals_seen(p_org, array[v_row.id]);
   end if;
 end;
