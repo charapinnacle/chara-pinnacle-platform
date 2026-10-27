@@ -137,7 +137,8 @@ $$;
 -- A second session publishes a requirement of an organisation at 2 of its 3 open requirements and keeps its transaction
 -- open; this one finds the organisation's advisory lock taken, waits for it, and once the other publish is committed
 -- counts it and is refused. The organisation, its owner and the release switch must be committed for the second session,
--- so a third session writes them and removes them again at the end of the block (the audit rows stay: audit.log is
+-- so a third session writes them and removes them again at the end of the block, with the quota counters the committed
+-- publish left, which 014 expects to find none of (the audit rows stay: audit.log is
 -- append-only). This transaction reads the committed release switch and changes only entitlements_enforced, which the
 -- third session does not write, so no session waits for a row this one holds.
 select gen_random_uuid() as cown, gen_random_uuid() as org_c, gen_random_uuid() as c_d1, gen_random_uuid() as c_d2 \gset
@@ -204,6 +205,9 @@ select extensions.dblink_disconnect('holder');
 select extensions.dblink_exec('setup', format($$
   begin;
   delete from public.workforce_requirements where organization_id = %2$L;
+  delete from private.rate_limit_hits where (action, bucket) in (
+    ('user:audited_write', (hashtextextended(%1$L, 0) & 2147483647)::integer),
+    ('org:audited_write', (hashtextextended(%2$L, 0) & 2147483647)::integer));
   delete from billing.subscriptions where organization_id = %2$L;
   delete from public.organizations where id = %2$L;
   delete from auth.users where id = %1$L;
