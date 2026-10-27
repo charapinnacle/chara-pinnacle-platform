@@ -1836,6 +1836,11 @@ isOneToOne: false
               "current_period_end": string,"past_due_since": string,"plan_name": string,"status": string,"subscription_ended": boolean,"trial_ends_at": string
             }[]
                            },
+"get_job_order":
+{ Args: { "p_org": string,"p_requirement": string }; Returns: {
+              "accommodation": boolean,"city_region": string,"closes_on": string,"countries": (string)[],"country_code": string,"duration_months": number,"eligible": boolean,"employer_company_slug": string,"employer_name": string,"employment_type": Database["public"]['Enums']["employment_type"],"experience_years": number,"id": string,"industry_code": string,"occupations": Json,"open": boolean,"partner_need": Database["public"]['Enums']["partner_need"],"published_on": string,"reasons": (string)[],"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"response_count": number,"responses_fewer_than": number,"salary_currency": string,"salary_max": number,"salary_min": number,"salary_period": Database["public"]['Enums']["salary_period"],"skills": string,"start_date": string,"title": string,"visa_support": boolean,"work_permit_support": boolean,"workers_needed": number
+            }[]
+                           },
 "get_my_application":
 { Args: { "p_id": string }; Returns: {
               "applied_at": string,"cover_note": string,"employer_display_name": string,"id": string,"job_id": string,"job_title": string,"status": Database["public"]['Enums']["application_status"],"vacancy_is_open": boolean
@@ -1897,6 +1902,11 @@ isOneToOne: false
 "list_followed_companies":
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "based_in_country": string,"based_in_country_name": string,"display_name": string,"followed_at": string,"next_cursor": string,"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"total": number
+            }[]
+                           },
+"list_job_orders":
+{ Args: { "p_cursor"?: string,"p_destination"?: string,"p_industry"?: string,"p_limit"?: number,"p_occupation"?: string,"p_org": string,"p_recruitment"?: Database["public"]['Enums']["recruitment_preference"],"p_source"?: string,"p_start_from"?: string,"p_start_to"?: string,"p_workers_max"?: number,"p_workers_min"?: number }; Returns: {
+              "city_region": string,"countries": (string)[],"country_code": string,"eligible": boolean,"employer_company_slug": string,"employer_name": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry_code": string,"next_cursor": string,"occupations": Json,"published_on": string,"reasons": (string)[],"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"response_count": number,"responses_fewer_than": number,"start_date": string,"title": string,"workers_needed": number
             }[]
                            },
 "list_my_appeals":
