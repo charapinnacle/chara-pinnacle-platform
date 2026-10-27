@@ -26,7 +26,7 @@ import {
   readRequirementDraft,
   requirementDraftKey,
   writeRequirementDraft,
-} from "@/lib/requirements/draft-storage";
+} from "@/lib/requirements/drafts";
 import { employmentTypeOptions, recruitmentPreferenceOptions, salaryPeriodOptions } from "@/lib/validation/job";
 import {
   emptyRequirementForm,

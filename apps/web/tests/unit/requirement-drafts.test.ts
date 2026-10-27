@@ -4,7 +4,7 @@ import {
   readRequirementDraft,
   requirementDraftKey,
   writeRequirementDraft,
-} from "@/lib/requirements/draft-storage";
+} from "@/lib/requirements/drafts";
 import { emptyRequirementForm } from "@/lib/validation/requirement";
 
 // A Storage in memory, as the browser's sessionStorage behaves for these calls.
