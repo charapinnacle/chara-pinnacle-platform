@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(57);
 
 \ir status_fixture.inc
 
@@ -60,9 +60,10 @@ select is(
     || ',direct_hiring_review_days:integer:30:1095:365',
   'NFR-O5: the general notice (20 to 1,000 characters) and the review period (365 days) are settings of the settings editor'
 );
-select matches(
+select is(
   (select value #>> '{}' from private.settings where key = 'direct_hiring_general_notice'),
-  '^Workers never pay\.', 'Default: the general notice is the worker statement of the Platform Rules'
+  (select array_to_string((string_to_array(body, E'\n\n'))[2:3], ' ') from public.legal_documents where slug = 'platform-rules' and version = 1),
+  'Default: the general notice is the worker statement of the Platform Rules (version 1, both paragraphs) word for word'
 );
 
 -- AC2: who may change and read rules ---------------------------------------------------------------------------------
@@ -216,9 +217,13 @@ select is(pg_temp.resolved('KE', 'DE'),
 select is(pg_temp.resolved(null, 'DE'), 'allowed|' || (select value #>> '{}' from private.settings where key = 'direct_hiring_general_notice') || '|true',
   'a worker without a current country gets the default');
 
--- AC11: public reads give the rule and notice only, behind release 2b ------------------------------------------------
+-- AC11: public reads give the rule and notice only, behind release 2b or 2c -----------------------------------------
 select is(pg_temp.call_as(null, 'anon', $$select * from public.hiring_rule_notice('PH', 'DE')$$),
-  '42501|CHARA_FORBIDDEN|release_off', 'release gate: hiring_rule_notice is refused while release_job_orders is off');
+  '42501|CHARA_FORBIDDEN|release_off', 'release gate: hiring_rule_notice is refused while release_job_orders and release_find_workers are off');
+update private.settings set value = 'true' where key = 'release_find_workers';
+select is(pg_temp.call_as(null, 'anon', $$select * from public.hiring_rule_notice('PH', 'DE')$$), 'ok',
+  'release gate: it answers while only release_find_workers (2c) is on');
+update private.settings set value = 'false' where key = 'release_find_workers';
 update private.settings set value = 'true' where key = 'release_job_orders';
 create temp table readers (label text primary key, uid uuid, db_role text);
 insert into readers values ('anonymous', null, 'anon'), ('worker', :'wa', 'authenticated'), ('employer member', :'mem', 'authenticated');
@@ -286,6 +291,48 @@ select is(
   'direct_hiring_rule.deleted:PH,direct_hiring_rule.updated:PH,direct_hiring_rule.created:NG',
   'the history lists the changes newest first, a deleted rule included, up to the limit'
 );
+
+-- Hiring within one country is not cross-border: the default applies even under a rule for all destinations ----------
+insert into public.direct_hiring_rules (source_country, rule, notice, legal_opinion_ref)
+values ('PH', 'blocked', 'Direct hiring from the Philippines is not available.', 'LO-2026-12 PH');
+select is(pg_temp.resolved('PH', 'PH') || ',' || split_part(pg_temp.resolved('PH', 'PL'), '|', 1),
+  'allowed|' || (select value #>> '{}' from private.settings where key = 'direct_hiring_general_notice') || '|true,blocked',
+  'PH -> PH gives the default although PH (all destinations) is blocked; PH -> PL stays blocked');
+update private.settings set value = 'true' where key = 'release_job_orders';
+select is(pg_temp.call_as(null, 'anon', $$do $b$ begin
+    if (select rule::text from public.hiring_rule_notice('PH', 'PH')) <> 'allowed' then raise exception 'wrong'; end if;
+  end $b$ $$), 'ok', 'hiring_rule_notice answers allowed for PH -> PH');
+update private.settings set value = 'false' where key = 'release_job_orders';
+
+-- Two administrators adding the same pair at once --------------------------------------------------------------------
+-- A second session adds GH (all destinations) and commits half a second later, while this one is adding the same pair:
+-- this insert waits, finds the committed row and edits it instead of failing on the unique key.
+create extension if not exists dblink schema extensions;
+select extensions.dblink_connect('holder',
+  format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
+select extensions.dblink_exec('holder', 'begin');
+select extensions.dblink_exec('holder', $$insert into public.direct_hiring_rules (source_country, rule, notice, legal_opinion_ref)
+  values ('GH', 'blocked', 'Direct hiring from Ghana is not available here.', 'LO-holder')$$);
+select extensions.dblink_send_query('holder', 'select pg_sleep(0.5); commit');
+set local lock_timeout = '10s';
+savepoint concurrent;
+select is(pg_temp.upsert('GH', null, 'licensed_partner_required', 'Hiring from Ghana needs a licensed recruitment partner.', 'LO-2026-12 GH'),
+  'ok', 'the second of two concurrent creations of GH succeeds');
+select is(
+  (select string_agg(rule || ':' || legal_opinion_ref, ',') from public.direct_hiring_rules where source_country = 'GH')
+  || '|' || (select string_agg(action || ':' || (metadata #>> '{before,legal_opinion_ref}'), ',') from audit.log
+             where action like 'direct\_hiring\_rule.%' and metadata #>> '{after,source_country}' = 'GH'),
+  'licensed_partner_required:LO-2026-12 GH|direct_hiring_rule.updated:LO-holder',
+  'it edits the row the other session committed, one row and one audit row direct_hiring_rule.updated'
+);
+rollback to savepoint concurrent;
+reset lock_timeout;
+-- One result for the sleep, one for the commit, then the end of the query.
+select * from extensions.dblink_get_result('holder') as t (r text);
+select * from extensions.dblink_get_result('holder') as t (r text);
+select * from extensions.dblink_get_result('holder') as t (r text);
+select extensions.dblink_exec('holder', $$delete from public.direct_hiring_rules where legal_opinion_ref = 'LO-holder'$$);
+select extensions.dblink_disconnect('holder');
 
 select * from finish();
 rollback;
