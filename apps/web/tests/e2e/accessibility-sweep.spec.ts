@@ -97,6 +97,7 @@ const adminPages = (userId: string, organizationId: string, reportId: number): P
   "/[lang]/admin/reports": "/en/admin/reports",
   "/[lang]/admin/reports/[id]": `/en/admin/reports/${reportId}`,
   "/[lang]/admin/retention": "/en/admin/retention",
+  "/[lang]/admin/direct-hiring-rules": "/en/admin/direct-hiring-rules",
 });
 
 const trustSafetyPages = (jobId: string): Pages => ({

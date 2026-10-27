@@ -16,6 +16,7 @@ export const ADMIN_ENTRIES = [
   "Plans and limits",
   "Platform settings",
   "Retention periods",
+  "Direct-hiring rules",
   "Legal documents",
   "Audit log",
   "Staff",
