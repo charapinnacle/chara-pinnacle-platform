@@ -36,7 +36,8 @@ export default async function RequirementsPage({ params, searchParams }: PagePro
   const cursor = parseJobCursor(after);
   const [{ requirements, nextCursor }, prompts] = await Promise.all([
     listRequirements(organization.id, cursor),
-    getUsagePrompts(organization.id, "employer", [ACTIVE_REQUIREMENTS]),
+    // The usage is a hint: a failed read leaves the list without it.
+    getUsagePrompts(organization.id, "employer", [ACTIVE_REQUIREMENTS]).catch(() => null),
   ]);
   const canCreate = organization.role !== "member";
   const newRequirement = canCreate ? (
@@ -57,7 +58,7 @@ export default async function RequirementsPage({ params, searchParams }: PagePro
 
       <RequirementUsage
         organizationId={organization.id}
-        prompt={prompts[ACTIVE_REQUIREMENTS]}
+        prompt={prompts?.[ACTIVE_REQUIREMENTS] ?? null}
         billingHref={billingPath(lang, slug)}
         canUpgrade={canCreate}
       />

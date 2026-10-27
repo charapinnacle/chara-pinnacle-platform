@@ -1,5 +1,6 @@
 "use client";
 
+import type { Database } from "@chara-pinnacle/db-types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -52,7 +53,8 @@ type RequirementFormProps = {
   multiCountry: MultiCountryPlan;
   billingHref: string;
   // expectedUpdatedAt is the version the page was loaded with; a save from an older one is refused.
-  edit?: { requirementId: string; values: RequirementFormInput; expectedUpdatedAt: string };
+  // status names the next step in the plan notice: a draft is published, a paused requirement reopened.
+  edit?: { requirementId: string; values: RequirementFormInput; expectedUpdatedAt: string; status: Database["public"]["Enums"]["requirement_status"] };
 };
 
 type Path = FieldPath<RequirementFormInput>;
@@ -292,7 +294,9 @@ export function RequirementForm({
         ) : (
           <Notice tone="info">
             {multiCountryText(multiCountry.planName)}{" "}
-            {destinationRows.fields.length > 0 ? "Remove the further destinations to reopen this requirement on your plan. " : null}
+            {destinationRows.fields.length > 0
+              ? `Remove the further destinations to ${!edit || edit.status === "draft" ? "publish" : "reopen"} this requirement on your plan. `
+              : null}
             <TextLink href={billingHref}>Upgrade</TextLink>
           </Notice>
         )}

@@ -65,7 +65,7 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
           currencies={currencies}
           multiCountry={multiCountry}
           billingHref={billingPath(lang, slug)}
-          edit={{ requirementId: requirement.id, values: toRequirementFormInput(requirement), expectedUpdatedAt: requirement.updatedAt }}
+          edit={{ requirementId: requirement.id, values: toRequirementFormInput(requirement), expectedUpdatedAt: requirement.updatedAt, status: requirement.status }}
         />
       ) : (
         <Notice tone="info" role="status">

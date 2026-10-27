@@ -190,12 +190,13 @@ export async function getRequirementDurations(): Promise<RequirementDurations> {
 export type MultiCountryPlan = { allowed: boolean; planName: string | null };
 
 // Whether the form offers further destination countries (the plan has multi_country_requirements, or the feature is not
-// enforced for the organisation), and the first public plan that has the feature, for the prompt (FR-M4 AC4, AC9).
+// enforced for the organisation), and the first public plan that has the feature, for the prompt (FR-M4 AC4, AC9); a
+// failed plan read names no plan.
 export async function getMultiCountryPlan(organizationId: string): Promise<MultiCountryPlan> {
   const supabase = await createClient();
   const [{ data, error }, plans] = await Promise.all([
     supabase.rpc("requirement_multi_country", { p_org: organizationId }),
-    listPublicPlans("employer"),
+    listPublicPlans("employer").catch(() => []),
   ]);
   if (error) throw new Error("The plan of the workforce requirements could not be loaded", { cause: error });
   return { allowed: data, planName: featurePlanName(plans, MULTI_COUNTRY_FEATURE) };
