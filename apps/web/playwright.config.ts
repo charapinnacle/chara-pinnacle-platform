@@ -116,6 +116,7 @@ export default defineConfig({
         "**/ranking-transparency.spec.ts",
         "**/release-2a-journey.spec.ts",
         "**/workforce-requirements.spec.ts",
+        "**/requirement-limits.spec.ts",
       ],
     },
     {
@@ -489,13 +490,21 @@ export default defineConfig({
       testMatch: "**/workforce-requirements.spec.ts",
       dependencies: ["release-2a-journey"],
     },
+    // The plan limits of workforce requirements (FR-M4) set release 2b and the entitlements for the whole database and
+    // change an employer plan row for a moment, so they follow the workforce requirements.
+    {
+      name: "requirement-limits-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/requirement-limits.spec.ts",
+      dependencies: ["workforce-requirements-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["workforce-requirements-release"],
+      dependencies: ["requirement-limits-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
