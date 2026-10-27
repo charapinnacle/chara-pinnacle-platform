@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
+import { logOut } from "./support/app-shell";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal, query } from "./support/db";
 import { waitForHydration } from "./support/hydration";
@@ -42,6 +43,10 @@ const FIELD_LABELS = [
   "Recruitment preference",
   "Need workforce partners?",
 ];
+
+function draftKeys(page: Page): Promise<string[]> {
+  return page.evaluate(() => Object.keys(window.sessionStorage).filter((key) => key.startsWith("chara:requirement-draft:")));
+}
 
 function setRelease(on: boolean): void {
   execute(`update private.settings set value = '${on}' where key = 'release_job_orders'`);
@@ -245,6 +250,8 @@ test.describe("Workforce requirements (FR-M1)", () => {
     await removeSecond.focus();
     await page.keyboard.press("Enter");
     await expect(removeSecond).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Occupation 1", exact: true })).toBeFocused();
+    await expect(page.getByText("Removed Structural-metal preparers and erectors", { exact: true })).toBeAttached();
     await expect(page.getByRole("combobox", { name: "Occupation 2", exact: true })).toHaveCount(0);
     await page.reload();
 
@@ -273,6 +280,13 @@ test.describe("Workforce requirements (FR-M1)", () => {
     await expect(page.getByLabel("Quantity of Structural-metal preparers and erectors", { exact: true })).toHaveValue("20");
     await expect(page.getByRole("button", { name: "Save draft" })).toBeEnabled();
     expect(requirementRows(team.id)).toHaveLength(1);
+
+    // The kept values belong to this user and organisation, and log out removes them from the tab.
+    await page.unroute(`**${newRequirementUrl(team.slug)}`);
+    expect(await draftKeys(page)).toEqual([`chara:requirement-draft:${team.owner.id}:${team.slug}`]);
+    await logOut(page);
+    await expect(page).not.toHaveURL(newRequirementUrl(team.slug));
+    expect(await draftKeys(page)).toEqual([]);
   });
 
   test("AC2, AC3: quantities that do not add up are named at the occupations before anything is sent", async ({ page }) => {
