@@ -118,6 +118,7 @@ export default defineConfig({
         "**/workforce-requirements.spec.ts",
         "**/requirement-limits.spec.ts",
         "**/requirement-vacancies.spec.ts",
+        "**/partner-suggestions.spec.ts",
       ],
     },
     {
@@ -507,13 +508,21 @@ export default defineConfig({
       testMatch: "**/requirement-vacancies.spec.ts",
       dependencies: ["requirement-limits-release"],
     },
+    // The partner suggestions (FR-M3) set releases 2a and 2b for the whole database and withdraw suggest_partners for a
+    // moment, so they follow the vacancies from a requirement.
+    {
+      name: "partner-suggestions-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-suggestions.spec.ts",
+      dependencies: ["requirement-vacancies-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["requirement-vacancies-release"],
+      dependencies: ["partner-suggestions-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

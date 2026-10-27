@@ -79,7 +79,9 @@ test.describe("Vacancies from a workforce requirement (FR-M1 AC9, AC10)", () => 
 
     await expect(section(page).getByRole("button", { name: CREATE })).toBeVisible();
     await expect(section(page)).toContainText("No vacancies have been created from this requirement yet.");
-    await expect(page.getByText("Find partners for this requirement")).toHaveCount(0);
+    // Partner need none: no suggestions (FR-M3, V36); partner-suggestions.spec.ts opens them for a requirement that needs partners.
+    await expect(page.getByRole("region", { name: "Partners for this requirement" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Find partners for this requirement" })).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
 
