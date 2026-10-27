@@ -38,6 +38,14 @@ describe("who may save and follow a company (FR-L4)", () => {
     expect(connectionAccess(company, [{ ...acme, suspended: true }, second], PARTNER)).toEqual({ kind: "signed_in", saveFor: "e-2", follow: true });
   });
 
+  it("saves for the employer a page names when the viewer is an active member of it (FR-M3 suggestions page)", () => {
+    const second = { id: "e-2", type: "employer", suspended: false } as const;
+    expect(connectionAccess(company, [acme, second], PARTNER, "e-2")).toEqual({ kind: "signed_in", saveFor: "e-2", follow: true });
+    expect(connectionAccess(company, [acme, second], PARTNER, "e-7")).toEqual({ kind: "signed_in", saveFor: "e-1", follow: true });
+    expect(connectionAccess(company, [acme, { ...second, suspended: true }], PARTNER, "e-2")).toEqual({ kind: "signed_in", saveFor: "e-1", follow: true });
+    expect(connectionAccess(company, [acme, second], EMPLOYER, "e-2")).toEqual({ kind: "signed_in", saveFor: null, follow: false });
+  });
+
   it("offers actions to a visitor and to a viewer who may save or follow, nothing otherwise", () => {
     expect(hasConnectionActions({ kind: "visitor" })).toBe(true);
     expect(hasConnectionActions({ kind: "none" })).toBe(false);

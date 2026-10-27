@@ -166,6 +166,28 @@ describe("the ranking page and the partner suggestions (FR-M3, NFR-C8)", () => {
     expect(suggestPartners).not.toMatch(/\b(billing|subscriptions?|plan_code|plans|has_feature)\b/i);
   });
 
+  it("discloses that two criteria use listings, which plans allow, without naming a plan (P2B article 5(3))", () => {
+    const plans = readFileSync(new URL("../../../../supabase/seeds/ref/plans.sql", import.meta.url), "utf8");
+    const planNames = [...plans.matchAll(/'((?:recruitment|staffing)_[a-z]+|free_[a-z_]+)'/g)].map((match) => match[1]);
+    expect(planNames.length).toBeGreaterThan(0);
+    for (const text of [suggestionCopy.disclosure, rankingCopy.listings, rankingCopy.payment]) {
+      for (const name of planNames) expect(text).not.toContain(name);
+      expect(text).not.toMatch(/\b(Basic|Professional|Enterprise|Free)\b/);
+    }
+    expect(suggestionCopy.disclosure).toContain("within the allowance of a partner's plan");
+    expect(rankingCopy.listings).toContain("within the allowance of the company's plan");
+    // The allowance is billing.plan_limits workforce_listings, and some partner plans allow none: the text must not say
+    // that plans play no part.
+    const migrations = new URL("../../../../supabase/migrations/", import.meta.url);
+    const limits = readdirSync(migrations)
+      .map((entry) => readFileSync(new URL(entry, migrations), "utf8"))
+      .join("\n");
+    expect(limits).toMatch(/'workforce_listings', 0\)/);
+    for (const text of [suggestionCopy.disclosure, suggestionCopy.explain, rankingCopy.payment]) {
+      expect(text).not.toMatch(/plan (does not|never) (matter|count)|no partner pays|regardless of plan/i);
+    }
+  });
+
   it("the page describes the suggestions only while release 2b is on", async () => {
     isReleased.mockImplementation((key: string) => Promise.resolve(key !== "release_job_orders"));
     expect(await renderPage()).not.toContain("Partner suggestions for a workforce requirement");
@@ -174,7 +196,8 @@ describe("the ranking page and the partner suggestions (FR-M3, NFR-C8)", () => {
     expect(text).toContain("Partner suggestions for a workforce requirement");
     for (const line of Object.values(suggestionCopy)) expect(text).toContain(squash(line));
     for (const rule of Object.values(suggestionCriterionTexts)) expect(text).toContain(rule);
-    expect(text).toContain("Available before start: such a listing");
+    expect(text).toContain("Available before start: for every occupation of the requirement");
+    expect(text).toContain(`Size: ${squash(rankingCopy.size)} ${suggestionCopy.size}`);
     expect(text).toContain("The number of criteria the company meets, most first.");
   });
 });
@@ -204,6 +227,9 @@ describe("the ranking page (NFR-C8)", () => {
     expect(text).toContain("Companies whose workers available today already cover the number of workers come first.");
     expect(text).toContain("whether a company pays, which plan it is on and how much it pays are not read by any of these searches");
     expect(text).toContain("never appears, whatever plan it has");
+    expect(text).toContain(squash(rankingCopy.payment));
+    expect(text).toContain(squash(rankingCopy.listings));
+    expect(text).not.toContain("No company can pay to appear higher");
     expect(text).not.toMatch(/verified/i);
   });
 
