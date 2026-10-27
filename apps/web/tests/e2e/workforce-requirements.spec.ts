@@ -10,7 +10,7 @@ import { logIn } from "./support/login-page";
 import { uniqueToken } from "./support/organizations";
 import { captureActionRequests } from "./support/server-action";
 import { summary } from "./support/signup-page";
-import { addMember, newTeam, signInAtAal1, signInAtAal2, type Team } from "./support/team";
+import { addMember, newTeam, newVisitor, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import { expect, test } from "./support/test";
 
 const requirementsUrl = (slug: string) => `/en/org/${slug}/requirements`;
@@ -106,14 +106,17 @@ async function fillRequirement(page: Page, { skills = "MIG/MAG welding, blueprin
   await page.getByLabel("Need workforce partners?").selectOption({ value: "both" });
 }
 
-// A draft written as the database owner, as save_requirement leaves it.
-function seedRequirement(team: Pick<Team, "id" | "owner">, title = "Seeded welders"): string {
+// A draft written as the database owner, as save_requirement leaves it; with closesInDays, an open private requirement
+// as publish_requirement leaves it, published today and closing that many days ahead.
+function seedRequirement(team: Pick<Team, "id" | "owner">, title = "Seeded welders", closesInDays?: number): string {
   const id = randomUUID();
+  const open = closesInDays !== undefined;
   execute(
     `insert into public.workforce_requirements (id, organization_id, title, workers_needed, country_code, city_region, industry_code,
-       start_date, employment_type, recruitment_preference, partner_need, created_by)
+       start_date, employment_type, recruitment_preference, partner_need, created_by, status, visibility, published_at, closes_on)
      values (${literal(id)}, ${literal(team.id)}, ${literal(title)}, 10, 'DE', 'Bremen', 'C', current_date + 60, 'full_time', 'local',
-       'none', ${literal(team.owner.id)});
+       'none', ${literal(team.owner.id)}, ${open ? "'open', 'private', now()" : "'draft', null, null"},
+       ${open ? `current_date + ${closesInDays}` : "null"});
      insert into public.requirement_occupations (requirement_id, occupation_id, quantity) values (${literal(id)}, '7212', 10);
      insert into public.requirement_countries (requirement_id, country_code) values (${literal(id)}, 'DE')`,
   );
@@ -121,11 +124,12 @@ function seedRequirement(team: Pick<Team, "id" | "owner">, title = "Seeded welde
 }
 
 // The release switch of 2b is set for the whole database, so this file is a project of its own after the release 2a
-// projects (playwright.config.ts), and its tests run one after the other.
+// projects (playwright.config.ts), and all its tests, the lifecycle ones too, run one after the other.
+test.describe.configure({ mode: "serial" });
+test.beforeAll(() => setRelease(true));
+test.afterAll(() => setRelease(false));
+
 test.describe("Workforce requirements (FR-M1)", () => {
-  test.describe.configure({ mode: "serial" });
-  test.beforeAll(() => setRelease(true));
-  test.afterAll(() => setRelease(false));
 
   test("AC1: an owner at aal2 posts a complete draft, lands on it with the draft banner and edits it", async ({ page }) => {
     test.setTimeout(120_000);
@@ -369,6 +373,168 @@ test.describe("Workforce requirements (FR-M1)", () => {
       await expect(page.getByRole("link", { name: "Workforce requirements" })).toHaveCount(0);
     } finally {
       setRelease(true);
+    }
+  });
+});
+
+const DAY_MS = 86_400_000;
+const longDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" });
+const daysAhead = (days: number) => new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
+const shownDate = (days: number) => longDate.format(new Date(`${daysAhead(days)}T00:00:00Z`));
+
+type LifecycleRow = { status: string; visibility: string | null; show_identity: boolean; closes_on: string | null; close_reason: string | null };
+
+function lifecycleRow(id: string): LifecycleRow {
+  return query<LifecycleRow>(
+    `select status, visibility, show_identity, closes_on::text, close_reason from public.workforce_requirements where id = ${literal(id)}`,
+  )[0];
+}
+
+function statusButtons(page: Page) {
+  return page.getByRole("region", { name: "Status actions" }).getByRole("button");
+}
+
+test.describe("Workforce requirement lifecycle (FR-M2)", () => {
+
+  test("AC12: Publish asks for the channel, Open and Paused offer their actions, Close asks for a reason by keyboard and the member only reads", async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(180_000);
+    const team = await newTeam();
+    const id = seedRequirement(team, "Lifecycle welders");
+    const member = await addMember(team, "member");
+    await signInAtAal2(page, team.owner, team.ownerSecret, requirementUrl(team.slug, id));
+    await expect(page.getByRole("status").filter({ hasText: "Draft - not visible to partners" })).toBeVisible();
+    await expect(statusButtons(page)).toHaveText(["Publish"]);
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await waitForHydration(statusButtons(page).first());
+    await statusButtons(page).first().click();
+    const publish = page.getByRole("dialog", { name: "Publish this requirement" });
+    await expect(publish.getByRole("radio")).toHaveCount(2);
+    await expect(publish.getByRole("radio", { name: "Only partners I invite", exact: true })).toBeVisible();
+    await expect(publish.getByRole("checkbox", { name: "Show our company name" })).toHaveCount(0);
+    await expect(publish.getByText(`Published today, it closes on ${shownDate(90)} unless you extend it by 30 days at a time.`)).toBeVisible();
+    await publish.getByRole("button", { name: "Publish requirement" }).click();
+    await expect(summary(page)).toContainText("Choose who can see this requirement.");
+    await publish.getByRole("radio", { name: "Job order marketplace", exact: true }).check();
+    await expect(publish.getByRole("checkbox", { name: "Show our company name" })).not.toBeChecked();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await publish.getByRole("button", { name: "Publish requirement" }).click();
+    await expect(publish).toBeHidden();
+    await expect(page.getByText("The requirement is published", { exact: true })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Open - partners can respond" })).toBeVisible();
+    await expect(page.getByText(`Closes on ${shownDate(90)}`, { exact: true })).toBeVisible();
+    await expect(page.getByText("Job order marketplace, without your company name", { exact: true })).toBeVisible();
+    expect(lifecycleRow(id)).toEqual({
+      status: "open",
+      visibility: "job_order_marketplace",
+      show_identity: false,
+      closes_on: daysAhead(90),
+      close_reason: null,
+    });
+    expect(audits(id, "requirement.status_changed")).toBe(1);
+    await expect(statusButtons(page)).toHaveText(["Pause", "Close", "Mark as filled", "Extend by 30 days"]);
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await statusButtons(page).filter({ hasText: "Extend by 30 days" }).click();
+    await expect(page.getByText(`Closes on ${shownDate(120)}`, { exact: true })).toBeVisible();
+    expect(audits(id, "requirement.extended")).toBe(1);
+
+    await statusButtons(page).filter({ hasText: "Pause" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Paused - partners cannot respond" })).toBeVisible();
+    await expect(statusButtons(page)).toHaveText(["Reopen", "Close", "Extend by 30 days"]);
+    await statusButtons(page).filter({ hasText: "Reopen" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Open - partners can respond" })).toBeVisible();
+
+    const memberView = await newVisitor(browser);
+    await signInAtAal1(memberView.page, member.user, requirementUrl(team.slug, id));
+    await expect(memberView.page.getByRole("status").filter({ hasText: "Open - partners can respond" })).toBeVisible();
+    await expect(memberView.page.getByText(`Closes on ${shownDate(120)}`, { exact: true })).toBeVisible();
+    await expect(memberView.page.getByRole("region", { name: "Status actions" })).toHaveCount(0);
+    await memberView.context.close();
+
+    await statusButtons(page).filter({ hasText: /^Close$/ }).focus();
+    await page.keyboard.press("Enter");
+    const close = page.getByRole("dialog", { name: "Close this requirement" });
+    await expect(close.getByRole("radio")).toHaveCount(2);
+    await expect(close.getByRole("radio", { name: "Filled", exact: true })).toBeVisible();
+    await expect(close.getByRole("radio", { name: "Cancelled", exact: true })).toBeVisible();
+    await close.getByRole("button", { name: "Close requirement" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(summary(page)).toContainText("Choose why you close this requirement.");
+    await close.getByRole("radio", { name: "Cancelled", exact: true }).focus();
+    await page.keyboard.press("Space");
+    await expect(close.getByRole("radio", { name: "Cancelled", exact: true })).toBeChecked();
+    await close.getByRole("button", { name: "Close requirement" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(close).toBeHidden();
+    await expect(page.getByRole("status").filter({ hasText: "Closed - final" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Closed by your company on" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Status actions" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Edit workforce requirement" })).toHaveCount(0);
+    expect(lifecycleRow(id)).toMatchObject({ status: "closed", close_reason: "cancelled" });
+    await expectAccessibleAtBothWidths(page);
+  });
+
+  test("AC12: Mark as filled says it is final; a second admin on a stale page is told to reload and it stays filled", async ({ page, browser }) => {
+    test.setTimeout(150_000);
+    const team = await newTeam();
+    const id = seedRequirement(team, "Stale welders", 80);
+    const admin = await addMember(team, "admin");
+    await signInAtAal2(page, team.owner, team.ownerSecret, requirementUrl(team.slug, id));
+    const second = await newVisitor(browser);
+    await signInAtAal2(second.page, admin.user, admin.secret!, requirementUrl(team.slug, id));
+    await expect(second.page.getByText(`Closes on ${shownDate(80)}`, { exact: true })).toBeVisible();
+    await waitForHydration(statusButtons(second.page).first());
+
+    await waitForHydration(statusButtons(page).first());
+    await statusButtons(page).filter({ hasText: "Mark as filled" }).click();
+    const fill = page.getByRole("dialog", { name: "Mark this requirement as filled?" });
+    await expect(fill.getByText(/^This is final\./)).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await fill.getByRole("button", { name: "Mark as filled" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Filled - final" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Marked as filled on" })).toBeVisible();
+
+    await statusButtons(second.page).filter({ hasText: "Pause" }).click();
+    await expect(second.page.getByText("This requirement was changed by someone else, reload.", { exact: true })).toBeVisible();
+    await expect(second.page.getByRole("status").filter({ hasText: "Filled - final" })).toBeVisible();
+    expect(lifecycleRow(id)).toMatchObject({ status: "filled", close_reason: "filled" });
+    expect(audits(id, "requirement.status_changed")).toBe(1);
+    await second.context.close();
+  });
+
+  test("AC6: a requirement closing soon warns on its page, and the reminder job puts it in the notifications with a link", async ({ page }) => {
+    test.setTimeout(120_000);
+    const team = await newTeam();
+    const id = seedRequirement(team, `Closing welders ${uniqueToken()}`, 5);
+    const title = query<{ title: string }>(`select title from public.workforce_requirements where id = ${literal(id)}`)[0].title;
+    execute(`update private.settings set value = 'true' where key = 'release_partner_directories'`);
+    try {
+      await signInAtAal2(page, team.owner, team.ownerSecret, requirementUrl(team.slug, id));
+      await expect(page.getByRole("status").filter({ hasText: "Extend it if you still need workers" })).toBeVisible();
+      await expectAccessibleAtBothWidths(page);
+      await page.setViewportSize({ width: 1280, height: 900 });
+
+      execute("select private.remind_closing_requirements()");
+      expect(
+        query<{ n: number }>(
+          `select count(*)::int as n from public.notifications where kind = 'requirement_closing_soon' and user_id = ${literal(team.owner.id)}`,
+        )[0].n,
+      ).toBe(1);
+      await page.goto("/en/notifications");
+      const item = page.getByRole("link", { name: `"${title}" closes on ${shownDate(5)}` });
+      await expect(item).toBeVisible();
+      await item.click();
+      await expect(page).toHaveURL(requirementUrl(team.slug, id));
+    } finally {
+      execute(`update private.settings set value = 'false' where key = 'release_partner_directories'`);
     }
   });
 });
