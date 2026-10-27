@@ -1,5 +1,5 @@
 begin;
-select plan(75);
+select plan(89);
 
 \ir apply_fixture.inc
 
@@ -57,16 +57,19 @@ $$;
 create function pg_temp.version(p_req uuid) returns timestamptz
 language sql as $$ select updated_at from public.workforce_requirements where id = p_req $$;
 
--- create_vacancies_from_requirement as p_user for p_org (Acme unless given) with the current version of p_req: 'ok'
+-- create_vacancies_from_requirement as p_user for p_org (Acme unless given) with the current version of p_req and its
+-- current number of linked vacancies (p_linked_offset added to it): 'ok'
 -- (the answer, as id:occupation pairs in order, lands in t.made) or 'sqlstate|message|detail'.
 create function pg_temp.make(
-  p_user uuid, p_req uuid, p_org uuid default null, p_aal text default 'aal2', p_role text default 'authenticated'
+  p_user uuid, p_req uuid, p_org uuid default null, p_aal text default 'aal2', p_role text default 'authenticated',
+  p_linked_offset integer default 0
 ) returns text
 language sql as $$
   select pg_temp.call_as(p_user, p_role, format(
     $f$select set_config('t.made', coalesce((select string_agg(v.occupation_id || '=' || v.title, ',' order by v.o)
-       from (select r.*, row_number() over () as o from public.create_vacancies_from_requirement(%L, %L, %L::timestamptz) r) v), ''), true)$f$,
-    coalesce(p_org, current_setting('t.a')::uuid), p_req, pg_temp.version(p_req)), p_aal)
+       from (select r.*, row_number() over () as o from public.create_vacancies_from_requirement(%L, %L, %L::timestamptz, %s) r) v), ''), true)$f$,
+    coalesce(p_org, current_setting('t.a')::uuid), p_req, pg_temp.version(p_req),
+    (select count(*)::integer from public.jobs j where j.requirement_id = p_req and j.deleted_at is null) + p_linked_offset), p_aal)
 $$;
 
 -- requirement_vacancies as p_user (null for anonymous): the titles in order, or 'sqlstate|message|detail'.
@@ -128,9 +131,9 @@ select ok(
   and not has_column_privilege('authenticated', 'public.jobs', 'requirement_id', 'update'),
   'no client writes jobs.requirement_id');
 select ok(
-  not has_function_privilege('anon', 'public.create_vacancies_from_requirement(uuid, uuid, timestamptz)', 'execute')
+  not has_function_privilege('anon', 'public.create_vacancies_from_requirement(uuid, uuid, timestamptz, integer)', 'execute')
   and not has_function_privilege('anon', 'public.requirement_vacancies(uuid, uuid)', 'execute')
-  and has_function_privilege('authenticated', 'public.create_vacancies_from_requirement(uuid, uuid, timestamptz)', 'execute')
+  and has_function_privilege('authenticated', 'public.create_vacancies_from_requirement(uuid, uuid, timestamptz, integer)', 'execute')
   and has_function_privilege('authenticated', 'public.requirement_vacancies(uuid, uuid)', 'execute')
   and not has_function_privilege('authenticated', 'private.requirement_vacancy_description(public.workforce_requirements, text, integer, text)', 'execute'),
   'the two functions are executable by authenticated only; the description helper by no API role');
@@ -208,13 +211,23 @@ select is(pg_temp.make(null, :'open_req', p_role => 'anon'), '42501|permission d
   'an anonymous caller has no execute grant');
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format(
-    'select * from public.create_vacancies_from_requirement(%L, %L, %L::timestamptz)', current_setting('t.a'), :'open_req',
-    pg_temp.version(:'open_req') - interval '1 second')),
+    'select * from public.create_vacancies_from_requirement(%L, %L, %L::timestamptz, %s)', current_setting('t.a'), :'open_req',
+    pg_temp.version(:'open_req') - interval '1 second', pg_temp.linked(:'open_req'))),
   'P0001|CHARA_CONFLICT|stale', 'a page drawn before the last change is refused as stale');
 select is(
   pg_temp.call_as(:'adm', 'authenticated', format(
-    'select * from public.create_vacancies_from_requirement(%L, %L, null)', current_setting('t.a'), :'open_req')),
+    'select * from public.create_vacancies_from_requirement(%L, %L, null, %s)', current_setting('t.a'), :'open_req',
+    pg_temp.linked(:'open_req'))),
   'P0001|CHARA_CONFLICT|stale', 'no version counts as stale');
+select is(pg_temp.make(:'adm', :'open_req', p_linked_offset => -2), 'P0001|CHARA_CONFLICT|stale',
+  'AC10: a confirmation given for fewer linked vacancies than there are now is refused as stale');
+select is(pg_temp.make(:'adm', :'open_req', p_linked_offset => 1), 'P0001|CHARA_CONFLICT|stale',
+  'and so is one given for more');
+select is(
+  pg_temp.call_as(:'adm', 'authenticated', format(
+    'select * from public.create_vacancies_from_requirement(%L, %L, %L::timestamptz, null)', current_setting('t.a'), :'open_req',
+    pg_temp.version(:'open_req'))),
+  'P0001|CHARA_CONFLICT|stale', 'no linked count counts as stale');
 select pg_temp.seed_req(:'zeta', 'open') as zeta_req \gset
 select is(pg_temp.make(:'zown', :'zeta_req', :'zeta'), 'P0001|CHARA_FORBIDDEN|organization_suspended', 'a suspended employer is refused');
 select is(pg_temp.linked(:'open_req') + pg_temp.linked(:'zeta_req'), 6, 'none of the refused calls wrote a vacancy');
@@ -312,13 +325,62 @@ select is(
 
 -- Retention of the requirement (V58) leaves the vacancies ----------------------------------------------------------------
 
+alter table public.jobs disable trigger jobs_touch_updated_at;
+update public.jobs set updated_at = now() - interval '2 days' where requirement_id = :'beta_req';
+alter table public.jobs enable always trigger jobs_touch_updated_at;
+select count(*)::integer as job_updates_before from audit.log where action = 'job.updated' \gset
 delete from public.workforce_requirements where id = :'beta_req';
+select is(
+  (select count(*)::integer from public.jobs where organization_id = current_setting('t.b')::uuid and requirement_id is null
+     and title in ('Welders and flame cutters', 'Structural-metal preparers and erectors') and updated_at = now() - interval '2 days'), 4,
+  'the set null of the link keeps each vacancy''s updated_at (the sitemap lastmod)');
+select is((select count(*)::integer from audit.log where action = 'job.updated'), :job_updates_before,
+  'and writes no job.updated row');
+update public.jobs set city = 'Bremen' where organization_id = current_setting('t.b')::uuid and title = 'Welders and flame cutters'
+  and status = 'draft';
+select is(
+  (select count(*)::integer from public.jobs where organization_id = current_setting('t.b')::uuid and city = 'Bremen'
+     and updated_at = now()), 1,
+  'any other change still moves updated_at');
+select is((select count(*)::integer from audit.log where action = 'job.updated'), :job_updates_before + 1,
+  'and still writes job.updated');
 select is(
   (select count(*)::integer from public.jobs where organization_id = current_setting('t.b')::uuid and title like '%Welders and flame cutters%'
      and requirement_id is null), 2,
   'removing a requirement keeps its vacancies, unlinked');
 
+-- NFR-S11: an anonymous job order leaves out what a partner could match ---------------------------------------------------
+
+select pg_temp.seed_req(current_setting('t.a')::uuid, 'open') as anon_req \gset
+update public.workforce_requirements set visibility = 'job_order_marketplace', show_identity = false where id = :'anon_req';
+select is(pg_temp.make(:'adm', :'anon_req'), 'ok', 'an anonymous marketplace requirement is copied');
+select is(
+  (select description from public.jobs where requirement_id = :'anon_req' and occupation_id = '7212'),
+  E'Welders and flame cutters: workers needed in Hamburg, Germany, from March 2027.\n\nProject duration: 12 months.\n\nExperience: 2 years.\n\nAccommodation is provided. Work permit support is provided. Visa support is provided.',
+  'NFR-S11: its description has neither the quantity, nor the exact start date, nor the skills');
+select ok(
+  not exists (select 1 from public.jobs where requirement_id = :'anon_req'
+    and (description like '%MIG/MAG%' or description ~ '\m(80|20)\M' or description like '%1 March 2027%')),
+  'NFR-S11: no copy of the anonymous job order names the skills phrase, a quantity or the day');
+select pg_temp.seed_req(current_setting('t.a')::uuid, 'open') as named_req \gset
+update public.workforce_requirements set visibility = 'job_order_marketplace', show_identity = true where id = :'named_req';
+select is(pg_temp.make(:'adm', :'named_req'), 'ok', 'a marketplace requirement with the company name is copied');
+select ok(
+  (select bool_and(description like '%Skills: MIG/MAG welding, blueprint reading%' and description like '%from 1 March 2027.%')
+   from public.jobs where requirement_id = :'named_req')
+  and exists (select 1 from public.jobs where requirement_id = :'named_req' and description like '%: 80 workers needed%'),
+  'with the company name shown the description keeps the quantity, the date and the skills');
+
 -- The description's variants ---------------------------------------------------------------------------------------------
+
+select ok(
+  length(private.requirement_vacancy_description(
+    jsonb_populate_record(null::public.workforce_requirements, jsonb_build_object(
+      'city_region', 'X', 'start_date', '2027-05-01', 'duration_months', 1, 'experience_years', null, 'skills', 'Secret skill',
+      'accommodation', false, 'work_permit_support', false, 'visa_support', false, 'visibility', 'job_order_marketplace',
+      'show_identity', false)),
+    'Cooks', 1, 'Chad')) >= 50,
+  'the shortest anonymous description has the 50 characters jobs asks for');
 
 select is(
   private.requirement_vacancy_description(
@@ -357,6 +419,11 @@ select ok(
       'accommodation', false, 'work_permit_support', false, 'visa_support', false)),
     'Cooks', 1, 'Chad')) >= 50,
   'the shortest description has the 50 characters jobs asks for');
+
+-- Every occupation label makes a valid vacancy title (jobs_title_check: 5 to 120 characters).
+select is(
+  (select count(*)::integer from public.occupations where char_length(label) not between 5 and 120), 0,
+  'every public.occupations label is 5 to 120 characters, so every copy has a valid title');
 
 update private.settings set value = 'false' where key = 'release_job_orders';
 
