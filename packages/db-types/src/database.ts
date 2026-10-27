@@ -2107,7 +2107,7 @@ isOneToOne: false
                            },
 "suggest_partners":
 { Args: { "p_org": string,"p_requirement": string }; Returns: {
-              "also_offers_staffing": boolean,"available": number,"available_from": string,"confirmed_at": string,"criteria_met": (string)[],"criteria_not_met": (string)[],"display_name": string,"listing_occupation": string,"listing_occupation_id": string,"matching_occupations": Json,"more_partners": boolean,"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"served_destinations": Json,"slug": string
+              "also_offers_staffing": boolean,"criteria_met": (string)[],"criteria_not_met": (string)[],"display_name": string,"matching_occupations": Json,"more_partners": boolean,"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"served_destinations": Json,"slug": string
             }[]
                            },
 "suspend_organization":
