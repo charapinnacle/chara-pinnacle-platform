@@ -46,6 +46,8 @@ export function RequirementVacancies({ lang, slug, target, vacancies, occupation
             <Notice tone="warning" role="status">
               Partners see this requirement as a job order without your company name. A published vacancy shows your company
               name, so edit each vacancy before you publish it and leave out anything partners could match to the job order.
+              The vacancies are created without the city and the salary: entering the same city and salary as the job order
+              lets partners link the vacancy to it.
             </Notice>
           ) : null}
           {vacancies.length > 0 ? (

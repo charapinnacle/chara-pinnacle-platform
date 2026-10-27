@@ -176,6 +176,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
             </li>
           </ol>
           <p>{jobOrderCopy.details}</p>
+          <p>{jobOrderCopy.filters}</p>
           <p>{jobOrderCopy.payment}</p>
           <p>{jobOrderCopy.paging}</p>
         </ContentSection>

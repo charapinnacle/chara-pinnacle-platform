@@ -164,6 +164,7 @@ export const jobOrderCopy = {
     "Listed recruitment and staffing companies see the job orders of the marketplace: the workforce requirements that employers published to it, while they are open (not paused, closed or filled) and the employer's account is active.",
   details:
     "Every listed company sees every job order, in the same order. It sees the full job order when it serves one of the job order's destination countries, lists one of its occupations and its plan includes job orders; otherwise it sees only the title, the destination and the number of workers, with what it is missing. This decides how much a company sees, never the order.",
+  filters: "With a filter on a detail a company cannot see, only the job orders it sees in full are listed.",
   payment: "No employer can pay to place a job order higher, and the plan of the company looking never changes the order.",
   paging:
     "Job orders come 20 per page by default, with a link to the next page, and the number of requests per person is limited to prevent scraping; neither changes the order.",
