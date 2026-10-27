@@ -3,6 +3,7 @@ import { formatCount } from "@/lib/i18n/format";
 import type { StatusTone } from "@/lib/status-tone";
 
 type RequirementStatus = Database["public"]["Enums"]["requirement_status"];
+type CloseReason = Database["public"]["Enums"]["requirement_close_reason"];
 
 export const requirementStatusLabels: Record<RequirementStatus, string> = {
   draft: "Draft",
@@ -20,14 +21,20 @@ export const requirementStatusTones: Record<RequirementStatus, StatusTone> = {
   filled: "info",
 };
 
-// The status of a requirement with what it means for partners and what comes next (NFR-U4). Publishing is V33; until
-// then a draft says only that partners do not see it.
+// The status of a requirement with what it means for partners (NFR-U4); the status notice adds the date that matters.
 export const requirementStatusNotices: Record<RequirementStatus, string> = {
   draft: "Draft - not visible to partners",
   open: "Open - partners can respond",
   paused: "Paused - partners cannot respond",
   closed: "Closed - final",
   filled: "Filled - final",
+};
+
+// How a closed or filled requirement ended, followed by its date.
+export const closeReasonTexts: Record<CloseReason, string> = {
+  filled: "Marked as filled",
+  cancelled: "Closed by your company",
+  expired: "Closed automatically when its closing date passed",
 };
 
 export function isRequirementEditable(status: RequirementStatus): boolean {

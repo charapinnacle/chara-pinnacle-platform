@@ -17,7 +17,7 @@ export const REQUIREMENT_MESSAGES = {
   notAllowed: "You are not allowed to create or edit workforce requirements for this company.",
   notFound: "This workforce requirement could not be found.",
   final: "This workforce requirement is closed or filled, so it can no longer be changed.",
-  stale: "Someone else changed this requirement, reload.",
+  stale: "This requirement was changed by someone else, reload.",
   tooManyChanges: "Too many changes were made today. Try again tomorrow.",
 } as const;
 
@@ -71,4 +71,32 @@ export function requirementRefusal(error: RefusalError): RequirementRefusal {
   if (error.message === "CHARA_CONFLICT" && error.details === "stale") return { kind: "message", message: REQUIREMENT_MESSAGES.stale };
   if (error.message === "CHARA_RATE_LIMITED") return { kind: "message", message: REQUIREMENT_MESSAGES.tooManyChanges };
   return { kind: "fault" };
+}
+
+export const LIFECYCLE_MESSAGES = {
+  notPossible: "This change is not possible in the current status of the requirement. Reload the page.",
+  closesOnPassed: "The closing date has passed. Extend the requirement before you reopen it.",
+  extensionLimit: "This requirement cannot be extended any further.",
+  startDatePassed: "The start date has passed. Edit the requirement and choose a new start date before you publish it.",
+  quantities: "The quantities no longer add up to the number of workers. Edit the requirement before you publish it.",
+} as const;
+
+// What the status actions show for a refusal of publish_requirement, set_requirement_status or extend_requirement: a
+// message for the toast or the dialog, or a fault the caller logs. The refusals they share with save_requirement (who
+// may act, a stale version, the quota) read as they do there.
+export function lifecycleRefusal(error: RefusalError): { kind: "message"; message: string } | { kind: "fault" } {
+  if (error.message === "CHARA_INVALID_TRANSITION") return { kind: "message", message: LIFECYCLE_MESSAGES.notPossible };
+  if (error.message === "CHARA_INVALID_STATE") {
+    if (error.details === "closes_on_passed") return { kind: "message", message: LIFECYCLE_MESSAGES.closesOnPassed };
+    if (error.details === "extension_limit") return { kind: "message", message: LIFECYCLE_MESSAGES.extensionLimit };
+    if (error.details === "draft") return { kind: "message", message: LIFECYCLE_MESSAGES.notPossible };
+    return { kind: "message", message: REQUIREMENT_MESSAGES.final };
+  }
+  if (error.message === "CHARA_INVALID_INPUT") {
+    if (error.details === "start_date") return { kind: "message", message: LIFECYCLE_MESSAGES.startDatePassed };
+    if (error.details === "occupation_quantities") return { kind: "message", message: LIFECYCLE_MESSAGES.quantities };
+    return { kind: "fault" };
+  }
+  const refusal = requirementRefusal(error);
+  return refusal.kind === "message" ? refusal : { kind: "fault" };
 }

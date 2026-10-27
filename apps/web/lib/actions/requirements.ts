@@ -8,7 +8,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { reportQuotaRefused } from "@/lib/quota-refused";
-import { REQUIREMENT_MESSAGES, requirementRefusal } from "@/lib/requirements/refusal";
+import { lifecycleRefusal, REQUIREMENT_MESSAGES, requirementRefusal } from "@/lib/requirements/refusal";
 import { requirementPath, requirementsPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -17,6 +17,14 @@ import {
   toRequirementArgs,
   type RequirementFormInput,
 } from "@/lib/validation/requirement";
+import {
+  publishFormSchema,
+  requirementTargetSchema,
+  statusChangeSchema,
+  type PublishFormInput,
+  type RequirementTarget as LifecycleTarget,
+  type StatusChange,
+} from "@/lib/validation/requirement-status";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -68,4 +76,69 @@ export async function saveRequirement(
   revalidatePath(requirementsPath(defaultLocale, organization.slug));
   revalidatePath(requirementPath(defaultLocale, organization.slug, data));
   return { savedHref: requirementPath(defaultLocale, organization.slug, data) };
+}
+
+export type RequirementStatusResult = { message?: string; errors?: FieldErrors; done?: boolean };
+
+type LifecycleCall = (organizationId: string, target: { id: string; expectedUpdatedAt: string }) => PromiseLike<{
+  error: { code?: string; message: string; details?: string | null } | null;
+}>;
+
+// The status actions of the requirement page (FR-M2 AC1, AC7, AC10, AC12): an owner or admin at aal2 of the organisation
+// of the address, while release 2b is on; the function checks all of it again, with the transition and the version the
+// page was drawn with (a page that is out of date gets the stale message and is drawn again).
+async function runLifecycle(slug: string, target: LifecycleTarget, what: string, call: LifecycleCall): Promise<RequirementStatusResult> {
+  const parsedSlug = slugSchema.safeParse(slug);
+  const parsedTarget = requirementTargetSchema.safeParse(target);
+  if (!parsedSlug.success || !parsedTarget.success) return { message: GENERIC_FAILURE };
+  if (!(await isReleased("release_job_orders"))) return { message: REQUIREMENT_MESSAGES.releaseOff };
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", { hideFromOutsiders: true });
+
+  const { error } = await call(organization.id, parsedTarget.data);
+  revalidatePath(requirementsPath(defaultLocale, organization.slug));
+  revalidatePath(requirementPath(defaultLocale, organization.slug, parsedTarget.data.id));
+  if (!error) return { done: true };
+  const refusal = lifecycleRefusal(error);
+  if (refusal.kind === "message") {
+    if (error.message === "CHARA_RATE_LIMITED") reportQuotaRefused("audited_write", "requirement");
+    return { message: refusal.message };
+  }
+  return { message: faultMessage(logFault(what, error)) };
+}
+
+export async function publishRequirement(slug: string, target: LifecycleTarget, input: PublishFormInput): Promise<RequirementStatusResult> {
+  const parsed = publishFormSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const supabase = await createClient();
+  return runLifecycle(slug, target, "Publishing the workforce requirement", (organizationId, { id, expectedUpdatedAt }) =>
+    supabase.rpc("publish_requirement", {
+      p_org: organizationId,
+      p_requirement: id,
+      p_visibility: parsed.data.visibility,
+      p_show_identity: parsed.data.visibility === "job_order_marketplace" && parsed.data.showIdentity,
+      p_expected_updated_at: expectedUpdatedAt,
+    }),
+  );
+}
+
+export async function changeRequirementStatus(slug: string, target: LifecycleTarget, change: StatusChange): Promise<RequirementStatusResult> {
+  const parsed = statusChangeSchema.safeParse(change);
+  if (!parsed.success) return { message: GENERIC_FAILURE };
+  const supabase = await createClient();
+  return runLifecycle(slug, target, "Changing the status of the workforce requirement", (organizationId, { id, expectedUpdatedAt }) =>
+    supabase.rpc("set_requirement_status", {
+      p_org: organizationId,
+      p_requirement: id,
+      p_status: parsed.data.to,
+      p_expected_updated_at: expectedUpdatedAt,
+      p_close_reason: parsed.data.to === "closed" ? parsed.data.reason : undefined,
+    }),
+  );
+}
+
+export async function extendRequirement(slug: string, target: LifecycleTarget): Promise<RequirementStatusResult> {
+  const supabase = await createClient();
+  return runLifecycle(slug, target, "Extending the workforce requirement", (organizationId, { id, expectedUpdatedAt }) =>
+    supabase.rpc("extend_requirement", { p_org: organizationId, p_requirement: id, p_expected_updated_at: expectedUpdatedAt }),
+  );
 }

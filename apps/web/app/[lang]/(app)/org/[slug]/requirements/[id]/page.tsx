@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Notice } from "@/components/forms/notice";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { RequirementStatusActions } from "@/components/requirements/requirement-status-actions";
+import { RequirementStatusNotice } from "@/components/requirements/requirement-status-notice";
 import { RequirementView } from "@/components/requirements/requirement-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { isReleased } from "@/lib/dal/release";
-import { getRequirement } from "@/lib/dal/requirements";
+import { getRequirement, getRequirementDurations } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
-import { isRequirementEditable, requirementStatusNotices } from "@/lib/requirements/presentation";
+import { isRequirementEditable } from "@/lib/requirements/presentation";
 import { requirementPath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Workforce requirement", robots: { index: false } };
 
-// One requirement as its organisation reads it, with its status and what it means for partners (FR-M1 AC1, NFR-U4).
-// Publishing and the next steps after it (suggested partners, invitations, linked vacancies) come with V33 to V36.
+// One requirement as its organisation reads it, with its status, the date that matters next and, for an owner or admin,
+// the status actions (FR-M1 AC1, FR-M2 AC12, NFR-U4). The next steps after publishing (suggested partners,
+// invitations, linked vacancies) come with V35, V36 and V41.
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -26,9 +28,10 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const requirement = await getRequirement(organization.id, parsedId.data);
+  const [requirement, durations] = await Promise.all([getRequirement(organization.id, parsedId.data), getRequirementDurations()]);
   if (!requirement) notFound();
   const manager = organization.role !== "member";
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -44,9 +47,18 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
           />
         }
       />
-      <Notice tone="info" role="status">
-        {requirementStatusNotices[requirement.status]}
-      </Notice>
+      <RequirementStatusNotice requirement={requirement} today={today} reminderDays={durations.reminderDays} />
+      {manager ? (
+        <RequirementStatusActions
+          slug={slug}
+          target={{ id: requirement.id, expectedUpdatedAt: requirement.updatedAt }}
+          status={requirement.status}
+          startDate={requirement.startDate}
+          today={today}
+          openDays={durations.openDays}
+          extensionDays={durations.extensionDays}
+        />
+      ) : null}
       <RequirementView requirement={requirement} />
       {manager && isRequirementEditable(requirement.status) ? (
         <div className="flex flex-wrap gap-3">

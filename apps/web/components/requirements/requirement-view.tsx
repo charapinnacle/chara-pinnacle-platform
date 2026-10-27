@@ -4,6 +4,7 @@ import { formatSalary } from "@/lib/jobs/presentation";
 import { monthsText, workersText, yearsText } from "@/lib/requirements/presentation";
 import { employmentTypeLabels, recruitmentPreferenceLabels } from "@/lib/validation/job";
 import { partnerNeedLabels } from "@/lib/validation/requirement";
+import { requirementVisibilityLabels } from "@/lib/validation/requirement-status";
 
 function yesNo(value: boolean): string {
   return value ? "Yes" : "No";
@@ -26,6 +27,17 @@ export function RequirementView({ requirement }: { requirement: Requirement }) {
     ["Recruitment", recruitmentPreferenceLabels[requirement.recruitmentPreference]],
     ["Workforce partners", partnerNeedLabels[requirement.partnerNeed]],
   ];
+  if (requirement.visibility) {
+    details.push([
+      "Who can see it",
+      requirement.visibility === "job_order_marketplace"
+        ? `${requirementVisibilityLabels.job_order_marketplace}, ${requirement.showIdentity ? "with your company name" : "without your company name"}`
+        : requirementVisibilityLabels.private,
+    ]);
+  }
+  if (requirement.publishedAt) {
+    details.push(["Published on", <time key="published" dateTime={requirement.publishedAt}>{formatDate(requirement.publishedAt)}</time>]);
+  }
 
   return (
     <div className="grid content-start gap-10">

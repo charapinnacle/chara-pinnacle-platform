@@ -1,6 +1,8 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { QueryData } from "@supabase/supabase-js";
+import { getPublicSettings } from "@/lib/dal/settings";
+import type { RequirementDurations } from "@/lib/requirements/lifecycle";
 import { createClient } from "@/lib/supabase/server";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
 import type { RequirementFormInput } from "@/lib/validation/requirement";
@@ -40,6 +42,11 @@ export type Requirement = RequirementSummary & {
   recruitmentPreference: Enums["recruitment_preference"];
   partnerNeed: Enums["partner_need"];
   visibility: Enums["requirement_visibility"] | null;
+  showIdentity: boolean;
+  publishedAt: string | null;
+  closesOn: string | null;
+  closeReason: Enums["requirement_close_reason"] | null;
+  statusChangedAt: string;
   updatedAt: string;
 };
 
@@ -82,7 +89,7 @@ const selectRequirement = (supabase: Client) =>
   supabase
     .from("workforce_requirements")
     .select(
-      "id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, created_at, updated_at, countries!workforce_requirements_country_code_fkey(name), industries(name), requirement_occupations(occupation_id, quantity, occupations(label))",
+      "id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, show_identity, published_at, closes_on, close_reason, status_changed_at, created_at, updated_at, countries!workforce_requirements_country_code_fkey(name), industries(name), requirement_occupations(occupation_id, quantity, occupations(label))",
     );
 
 type RequirementRow = QueryData<ReturnType<typeof selectRequirement>>[number];
@@ -116,6 +123,11 @@ function toRequirement(row: RequirementRow): Requirement {
     partnerNeed: row.partner_need,
     status: row.status,
     visibility: row.visibility,
+    showIdentity: row.show_identity,
+    publishedAt: row.published_at,
+    closesOn: row.closes_on,
+    closeReason: row.close_reason,
+    statusChangedAt: row.status_changed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -152,5 +164,15 @@ export function toRequirementFormInput(requirement: Requirement): RequirementFor
     visaSupport: requirement.visaSupport,
     recruitmentPreference: requirement.recruitmentPreference,
     partnerNeed: requirement.partnerNeed,
+  };
+}
+
+// The durations of the lifecycle (FR-M2, NFR-O5), from the public settings.
+export async function getRequirementDurations(): Promise<RequirementDurations> {
+  const settings = await getPublicSettings();
+  return {
+    openDays: Number(settings.requirement_open_days),
+    extensionDays: Number(settings.requirement_extension_days),
+    reminderDays: Number(settings.requirement_closing_reminder_days),
   };
 }
