@@ -193,6 +193,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"direct_hiring_rules": {
+                  Row: {
+                    "created_at": string,"destination_country": string | null,"id": string,"legal_opinion_ref": string,"notice": string,"rule": Database["public"]['Enums']["direct_hiring_rule_value"],"source_country": string,"updated_at": string,"updated_by": string | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"destination_country"?: string | null,"id"?: string,"legal_opinion_ref": string,"notice": string,"rule": Database["public"]['Enums']["direct_hiring_rule_value"],"source_country": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"destination_country"?: string | null,"id"?: string,"legal_opinion_ref"?: string,"notice"?: string,"rule"?: Database["public"]['Enums']["direct_hiring_rule_value"],"source_country"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "direct_hiring_rules_destination_country_fkey"
+      columns: ["destination_country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "direct_hiring_rules_source_country_fkey"
+      columns: ["source_country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "direct_hiring_rules_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"follows": {
                   Row: {
                     "created_at": string,"last_digest_at": string | null,"organization_id": string,"user_id": string
@@ -1425,6 +1456,9 @@ isOneToOne: false
 "admin_decide_partner":
 { Args: { "p_decision": string,"p_info_step"?: string,"p_org": string,"p_reason": string }; Returns: Json
                            },
+"admin_delete_direct_hiring_rule":
+{ Args: { "p_reason": string,"p_rule": string }; Returns: undefined
+                           },
 "admin_export_legal_documents":
 { Args: { "p_after_slug"?: string,"p_after_version"?: number,"p_limit"?: number }; Returns: {
               "body": string,"change_summary": string,"is_draft": boolean,"published_at": string,"slug": string,"title": string,"version": number
@@ -1478,6 +1512,16 @@ isOneToOne: false
 "admin_list_appeals":
 { Args: { "p_after_due_at"?: string,"p_after_id"?: number,"p_limit"?: number,"p_status"?: string }; Returns: {
               "decided_at": string,"due_at": string,"id": number,"lodged_at": string,"moderation_action_id": number,"organization_id": string,"organization_name": string,"overdue": boolean,"status": Database["public"]['Enums']["appeal_status"],"target_type": string,"title": string
+            }[]
+                           },
+"admin_list_direct_hiring_rule_history":
+{ Args: { "p_before_id"?: number,"p_limit"?: number }; Returns: {
+              "action": string,"actor_name": string,"after": Json,"before": Json,"created_at": string,"id": number,"reason": string,"rule_id": string
+            }[]
+                           },
+"admin_list_direct_hiring_rules":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "created_at": string,"destination_country": string,"destination_name": string,"id": string,"legal_opinion_ref": string,"notice": string,"review_due": boolean,"rule": Database["public"]['Enums']["direct_hiring_rule_value"],"source_country": string,"source_name": string,"updated_at": string,"updated_by_name": string
             }[]
                            },
 "admin_list_enterprise_organizations":
@@ -1610,6 +1654,9 @@ isOneToOne: false
                            },
 "admin_update_plan_bundle":
 { Args: { "p_changes": Json,"p_code": string,"p_reason": string }; Returns: number
+                           },
+"admin_upsert_direct_hiring_rule":
+{ Args: { "p_destination": string,"p_legal_opinion_ref": string,"p_notice": string,"p_reason": string,"p_rule": string,"p_source": string }; Returns: boolean
                            },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
@@ -1821,6 +1868,11 @@ isOneToOne: false
                            },
 "grant_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
+                           },
+"hiring_rule_notice":
+{ Args: { "p_destination"?: string,"p_source": string }; Returns: {
+              "notice": string,"rule": Database["public"]['Enums']["direct_hiring_rule_value"]
+            }[]
                            },
 "invitation_preview":
 { Args: { "p_token": string }; Returns: {
@@ -2150,7 +2202,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "account_kind": "worker"|"company","analytics_metric": "profile_views","appeal_status": "open"|"upheld"|"restored","application_status": "applied"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","data_export_status": "queued"|"ready","employment_type": "full_time"|"part_time"|"contract"|"temporary"|"seasonal","geography_scope": "sources_from"|"serves_market","job_moderation_state": "visible"|"hidden"|"org_suspended","job_status": "draft"|"open"|"paused"|"closed"|"filled","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","partner_need": "none"|"recruitment"|"staffing"|"both","partner_review_status": "onboarding"|"pending_review"|"info_requested"|"listed"|"re_review"|"declined","partner_service_type": "staffing"|"temporary"|"contract"|"project"|"permanent","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","recruitment_preference": "local"|"international"|"both","report_category": "illegal_content"|"misleading_or_fraud"|"discrimination"|"fee_demanded_from_worker"|"harassment"|"privacy_violation"|"other","report_status": "new"|"in_review"|"actioned"|"dismissed","report_target_type": "job"|"company"|"profile"|"content"|"partner_profile","requirement_close_reason": "filled"|"cancelled"|"expired","requirement_status": "draft"|"open"|"paused"|"closed"|"filled","requirement_visibility": "private"|"job_order_marketplace","salary_period": "hour"|"month"|"year","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate","workforce_size_band": "1_49"|"50_249"|"250_999"|"1000_plus"
+            "account_kind": "worker"|"company","analytics_metric": "profile_views","appeal_status": "open"|"upheld"|"restored","application_status": "applied"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","data_export_status": "queued"|"ready","direct_hiring_rule_value": "allowed"|"licensed_partner_required"|"blocked","employment_type": "full_time"|"part_time"|"contract"|"temporary"|"seasonal","geography_scope": "sources_from"|"serves_market","job_moderation_state": "visible"|"hidden"|"org_suspended","job_status": "draft"|"open"|"paused"|"closed"|"filled","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","partner_need": "none"|"recruitment"|"staffing"|"both","partner_review_status": "onboarding"|"pending_review"|"info_requested"|"listed"|"re_review"|"declined","partner_service_type": "staffing"|"temporary"|"contract"|"project"|"permanent","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","recruitment_preference": "local"|"international"|"both","report_category": "illegal_content"|"misleading_or_fraud"|"discrimination"|"fee_demanded_from_worker"|"harassment"|"privacy_violation"|"other","report_status": "new"|"in_review"|"actioned"|"dismissed","report_target_type": "job"|"company"|"profile"|"content"|"partner_profile","requirement_close_reason": "filled"|"cancelled"|"expired","requirement_status": "draft"|"open"|"paused"|"closed"|"filled","requirement_visibility": "private"|"job_order_marketplace","salary_period": "hour"|"month"|"year","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate","workforce_size_band": "1_49"|"50_249"|"250_999"|"1000_plus"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -2266,7 +2318,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "account_kind": ["worker", "company"],"analytics_metric": ["profile_views"],"appeal_status": ["open", "upheld", "restored"],"application_status": ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"data_export_status": ["queued", "ready"],"employment_type": ["full_time", "part_time", "contract", "temporary", "seasonal"],"geography_scope": ["sources_from", "serves_market"],"job_moderation_state": ["visible", "hidden", "org_suspended"],"job_status": ["draft", "open", "paused", "closed", "filled"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"partner_need": ["none", "recruitment", "staffing", "both"],"partner_review_status": ["onboarding", "pending_review", "info_requested", "listed", "re_review", "declined"],"partner_service_type": ["staffing", "temporary", "contract", "project", "permanent"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"recruitment_preference": ["local", "international", "both"],"report_category": ["illegal_content", "misleading_or_fraud", "discrimination", "fee_demanded_from_worker", "harassment", "privacy_violation", "other"],"report_status": ["new", "in_review", "actioned", "dismissed"],"report_target_type": ["job", "company", "profile", "content", "partner_profile"],"requirement_close_reason": ["filled", "cancelled", "expired"],"requirement_status": ["draft", "open", "paused", "closed", "filled"],"requirement_visibility": ["private", "job_order_marketplace"],"salary_period": ["hour", "month", "year"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"],"workforce_size_band": ["1_49", "50_249", "250_999", "1000_plus"]
+            "account_kind": ["worker", "company"],"analytics_metric": ["profile_views"],"appeal_status": ["open", "upheld", "restored"],"application_status": ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"data_export_status": ["queued", "ready"],"direct_hiring_rule_value": ["allowed", "licensed_partner_required", "blocked"],"employment_type": ["full_time", "part_time", "contract", "temporary", "seasonal"],"geography_scope": ["sources_from", "serves_market"],"job_moderation_state": ["visible", "hidden", "org_suspended"],"job_status": ["draft", "open", "paused", "closed", "filled"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"partner_need": ["none", "recruitment", "staffing", "both"],"partner_review_status": ["onboarding", "pending_review", "info_requested", "listed", "re_review", "declined"],"partner_service_type": ["staffing", "temporary", "contract", "project", "permanent"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"recruitment_preference": ["local", "international", "both"],"report_category": ["illegal_content", "misleading_or_fraud", "discrimination", "fee_demanded_from_worker", "harassment", "privacy_violation", "other"],"report_status": ["new", "in_review", "actioned", "dismissed"],"report_target_type": ["job", "company", "profile", "content", "partner_profile"],"requirement_close_reason": ["filled", "cancelled", "expired"],"requirement_status": ["draft", "open", "paused", "closed", "filled"],"requirement_visibility": ["private", "job_order_marketplace"],"salary_period": ["hour", "month", "year"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"],"workforce_size_band": ["1_49", "50_249", "250_999", "1000_plus"]
           }
         }
 } as const
