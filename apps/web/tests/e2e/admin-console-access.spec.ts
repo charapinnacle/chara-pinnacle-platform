@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { enrolledStaff, revokeRole, signInStaff } from "./support/admin";
+import { ADMIN_ENTRIES, enrolledStaff, revokeRole, signInStaff } from "./support/admin";
 import { execute, literal } from "./support/db";
 import { createCommittedUser, enrollTotp } from "./support/login";
 import { logIn } from "./support/login-page";
@@ -7,19 +7,6 @@ import { enterCode, newOwner, staffUser } from "./support/mfa";
 import { signInAtAal2 } from "./support/team";
 import { expect, test } from "./support/test";
 
-const ADMIN_ENTRIES = [
-  "Users",
-  "Organisations",
-  "Statistics",
-  "Plans and limits",
-  "Platform settings",
-  "Retention periods",
-  "Legal documents",
-  "Audit log",
-  "Staff",
-  "MFA reset",
-  "Reports",
-];
 const TRUST_ENTRIES = ["Users", "Organisations", "Reports", "Vacancy moderation", "Suspensions and reinstatements"];
 
 async function entries(page: Page): Promise<string[]> {
