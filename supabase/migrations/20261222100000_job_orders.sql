@@ -135,9 +135,9 @@ declare
   v_labels text[];
   v_n integer;
   v_at integer;
-  v_legal_forms text[] := '{gmbh,mbh,ltd,limited,ag,kg,kgaa,co,inc,incorporated,llc,llp,lp,sa,sas,sarl,bv,nv,oy,oyj,ab,as,asa,aps,sp,z,o,oo,srl,s,r,l,spa,sl,plc,ug,gbr,ohg,se,corp,corporation,pte,pty,pvt,haftungsbeschrankt,und,and,et,cie}';
-  v_hosts text[] := '{facebook.com,fb.com,linkedin.com,instagram.com,twitter.com,x.com,xing.com,youtube.com,tiktok.com,wixsite.com,wordpress.com,blogspot.com,github.io,google.com,business.site,jimdosite.com,jimdo.com,weebly.com,squarespace.com,webnode.page,linktr.ee,t.me,wa.me,site123.me,strikingly.com,carrd.co,notion.site}';
-  v_path_skip text[] := '{company,companies,pages,page,in,people,groups,group,channel,c,user,pg,p,profile,sites,site,view,home,www}';
+  v_legal_forms text[] := '{gmbh,mbh,ltd,limited,ag,kg,kgaa,co,inc,incorporated,llc,llp,lp,sa,sas,sarl,bv,nv,oy,oyj,ab,as,asa,aps,sp,z,o,oo,srl,s,r,l,spa,sl,plc,ug,gbr,ohg,se,corp,corporation,pte,pty,pvt,haftungsbeschrankt,und,and,et,cie}'::text[];
+  v_hosts text[] := '{facebook.com,fb.com,linkedin.com,instagram.com,twitter.com,x.com,xing.com,youtube.com,tiktok.com,wixsite.com,wordpress.com,blogspot.com,github.io,google.com,business.site,jimdosite.com,jimdo.com,weebly.com,squarespace.com,webnode.page,linktr.ee,t.me,wa.me,site123.me,strikingly.com,carrd.co,notion.site}'::text[];
+  v_path_skip text[] := '{company,companies,pages,page,in,people,groups,group,channel,c,user,pg,p,profile,sites,site,view,home,www}'::text[];
 begin
   select * into v_org from public.organizations o where o.id = p_org;
   v_names := array[v_org.display_name, v_org.legal_name, replace(v_org.slug, '-', ' ')];
@@ -193,7 +193,7 @@ declare
   v_joined text := replace(private.name_key(p_city), ' ', '');
   v_name text;
   v_word text;
-  v_generic text[] := '{jobs,karriere,career,careers,company,group,gruppe,holding,international,global,services,service,solutions,team,home,info,official,sites,site,view,personal,recruiting,recruitment,staffing,work,works,page,pages}';
+  v_generic text[] := '{jobs,karriere,career,careers,company,group,gruppe,holding,international,global,services,service,solutions,team,home,info,official,sites,site,view,personal,recruiting,recruitment,staffing,work,works,page,pages}'::text[];
 begin
   if p_city is null then
     return false;
