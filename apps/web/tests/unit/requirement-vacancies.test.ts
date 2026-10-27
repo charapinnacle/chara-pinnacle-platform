@@ -34,13 +34,14 @@ beforeEach(() => {
 });
 
 describe("createRequirementVacancies (FR-M1 AC10)", () => {
-  it("checks an owner or admin and copies the requirement of the organisation of the address, naming the page's version", async () => {
-    expect(await createRequirementVacancies("acme-bau", target)).toEqual({ created: 2 });
+  it("checks an owner or admin and copies the requirement of the organisation of the address, naming the page's version and list", async () => {
+    expect(await createRequirementVacancies("acme-bau", target, 2)).toEqual({ created: 2 });
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { hideFromOutsiders: true });
     expect(rpcMock).toHaveBeenCalledWith("create_vacancies_from_requirement", {
       p_org: "org-1",
       p_requirement: REQUIREMENT,
       p_expected_updated_at: VERSION,
+      p_expected_linked: 2,
     });
     expect(revalidateMock).toHaveBeenCalledWith(`/en/org/acme-bau/requirements/${REQUIREMENT}`);
     expect(revalidateMock).toHaveBeenCalledWith("/en/org/acme-bau/jobs");
@@ -48,31 +49,33 @@ describe("createRequirementVacancies (FR-M1 AC10)", () => {
 
   it("refuses the release switch off, a bad slug and a bad target before the database is asked", async () => {
     releasedMock.mockResolvedValueOnce(false);
-    expect(await createRequirementVacancies("acme-bau", target)).toEqual({ message: "Workforce requirements cannot be changed at the moment." });
-    expect((await createRequirementVacancies("Not a slug!", target)).message).toBeDefined();
-    expect((await createRequirementVacancies("acme-bau", { id: "nope", expectedUpdatedAt: VERSION })).message).toBeDefined();
-    expect((await createRequirementVacancies("acme-bau", { id: REQUIREMENT, expectedUpdatedAt: "yesterday" })).message).toBeDefined();
+    expect(await createRequirementVacancies("acme-bau", target, 0)).toEqual({ message: "Workforce requirements cannot be changed at the moment." });
+    expect((await createRequirementVacancies("Not a slug!", target, 0)).message).toBeDefined();
+    expect((await createRequirementVacancies("acme-bau", { id: "nope", expectedUpdatedAt: VERSION }, 0)).message).toBeDefined();
+    expect((await createRequirementVacancies("acme-bau", { id: REQUIREMENT, expectedUpdatedAt: "yesterday" }, 0)).message).toBeDefined();
+    expect((await createRequirementVacancies("acme-bau", target, -1)).message).toBeDefined();
+    expect((await createRequirementVacancies("acme-bau", target, 1.5)).message).toBeDefined();
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("says a requirement that is no longer open cannot be copied", async () => {
     for (const status of ["draft", "paused", "closed", "filled"]) {
       rpcMock.mockResolvedValueOnce(refusal("CHARA_INVALID_STATE", status));
-      expect(await createRequirementVacancies("acme-bau", target)).toEqual({ message: VACANCIES_MESSAGES.notOpen });
+      expect(await createRequirementVacancies("acme-bau", target, 0)).toEqual({ message: VACANCIES_MESSAGES.notOpen });
     }
   });
 
   it("maps the refusals it shares with the other actions", async () => {
     rpcMock.mockResolvedValueOnce(refusal("CHARA_CONFLICT", "stale"));
-    expect(await createRequirementVacancies("acme-bau", target)).toEqual({ message: "This requirement was changed by someone else, reload." });
+    expect(await createRequirementVacancies("acme-bau", target, 0)).toEqual({ message: "This requirement was changed by someone else, reload." });
     rpcMock.mockResolvedValueOnce(refusal("CHARA_FORBIDDEN", "aal2_required"));
-    expect(await createRequirementVacancies("acme-bau", target)).toEqual({
+    expect(await createRequirementVacancies("acme-bau", target, 0)).toEqual({
       message: "You are not allowed to create or edit workforce requirements for this company.",
     });
     rpcMock.mockResolvedValueOnce(refusal("CHARA_NOT_FOUND", null, "P0002"));
-    expect(await createRequirementVacancies("acme-bau", target)).toEqual({ message: "This workforce requirement could not be found." });
+    expect(await createRequirementVacancies("acme-bau", target, 0)).toEqual({ message: "This workforce requirement could not be found." });
     rpcMock.mockResolvedValueOnce(refusal("CHARA_RATE_LIMITED", null));
-    expect(await createRequirementVacancies("acme-bau", target)).toEqual({ message: "Too many changes were made today. Try again tomorrow." });
+    expect(await createRequirementVacancies("acme-bau", target, 0)).toEqual({ message: "Too many changes were made today. Try again tomorrow." });
   });
 
   it("an unexpected failure gives a reference and no database text", async () => {
@@ -80,7 +83,7 @@ describe("createRequirementVacancies (FR-M1 AC10)", () => {
     console.error = () => {};
     try {
       rpcMock.mockResolvedValueOnce(refusal("relation does not exist", "secret detail", "42P01"));
-      const result = await createRequirementVacancies("acme-bau", target);
+      const result = await createRequirementVacancies("acme-bau", target, 0);
       expect(result.message).toMatch(/^Something went wrong on our side and nothing was changed\. .*Reference: [0-9A-F]{8}\.$/);
       expect(result.message).not.toMatch(/relation|secret/);
     } finally {

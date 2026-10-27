@@ -141,17 +141,66 @@ test.describe("Vacancies from a workforce requirement (FR-M1 AC9, AC10)", () => 
     await section(page).getByRole("button", { name: CREATE }).click();
     await expect(section(page).getByRole("list", { name: "Linked vacancies" }).getByRole("listitem")).toHaveCount(2);
 
+    // Another admin's copy since the page was drawn: the confirmation names two linked vacancies, there are four.
+    execute(
+      `insert into public.jobs (organization_id, requirement_id, title, description, occupation_id, industry_code, country_code, city,
+         employment_type, recruitment_preference)
+       select organization_id, requirement_id, title, description, occupation_id, industry_code, country_code, city, employment_type,
+         recruitment_preference
+       from public.jobs where requirement_id = ${literal(id)}`,
+    );
+    await section(page).getByRole("button", { name: CREATE }).click();
+    const ask = page.getByRole("dialog", { name: "Create more vacancies?" });
+    await expect(ask).toContainText("This requirement already has 2 linked vacancies.");
+    await ask.getByRole("button", { name: "Create vacancies" }).click();
+    await expect(page.getByText("This requirement was changed by someone else, reload.", { exact: true })).toBeVisible();
+    expect(linked(id)).toHaveLength(4);
+    await page.reload();
+    await expect(section(page).getByRole("list", { name: "Linked vacancies" }).getByRole("listitem")).toHaveCount(4);
+
     const member = await addMember(team, "member");
     const memberContext = await browser.newContext();
     const memberPage = await memberContext.newPage();
     await signInAtAal1(memberPage, member.user, requirementUrl(team.slug, id));
-    await expect(section(memberPage).getByRole("list", { name: "Linked vacancies" }).getByRole("listitem")).toHaveCount(2);
+    await expect(section(memberPage).getByRole("list", { name: "Linked vacancies" }).getByRole("listitem")).toHaveCount(4);
     await expect(section(memberPage)).toContainText("These vacancies were created from it.");
     await expect(section(memberPage).getByRole("button", { name: CREATE })).toHaveCount(0);
     await expectAccessibleAtBothWidths(memberPage);
     await memberPage.goto(requirementUrl(team.slug, paused));
     await expect(section(memberPage)).toHaveCount(0);
     await memberContext.close();
+  });
+
+  test("NFR-S11: an anonymous job order warns that a published vacancy shows the company name and copies no identifying facts", async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+    const team = await newTeam();
+    const id = seedRequirement(team, "open");
+    execute(`update public.workforce_requirements set visibility = 'job_order_marketplace', show_identity = false where id = ${literal(id)}`);
+
+    await signInAtAal2(page, team.owner, team.ownerSecret, requirementUrl(team.slug, id));
+    const notice = section(page).getByRole("status").filter({ hasText: "without your company name" });
+    await expect(notice).toContainText("A published vacancy shows your company name, so edit each vacancy before you publish it");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await waitForHydration(section(page).getByRole("button", { name: CREATE }));
+    await section(page).getByRole("button", { name: CREATE }).click();
+    await expect(page.getByText("2 draft vacancies created. Check and publish each one.", { exact: true })).toBeVisible();
+    const descriptions = query<{ description: string }>(
+      `select description from public.jobs where requirement_id = ${literal(id)} order by title`,
+    ).map((row) => row.description);
+    expect(descriptions).toHaveLength(2);
+    for (const description of descriptions) {
+      expect(description).not.toContain("MIG/MAG");
+      expect(description).not.toMatch(/\b(80|20) workers\b/);
+      expect(description).toContain("workers needed in Hamburg, Germany, from");
+    }
+
+    execute(`update public.workforce_requirements set show_identity = true where id = ${literal(id)}`);
+    await page.reload();
+    await expect(section(page).getByRole("list", { name: "Linked vacancies" })).toBeVisible();
+    await expect(section(page).getByText("without your company name")).toHaveCount(0);
   });
 
   test("with the limits enforced, an employer at 3 of 3 open vacancies still gets the drafts and nothing opens", async ({
