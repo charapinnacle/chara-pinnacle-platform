@@ -2,12 +2,12 @@ import * as z from "zod";
 import { salaryPeriods } from "@/lib/validation/job";
 import { OCCUPATIONS_MAX, type RequirementFormInput } from "@/lib/validation/requirement";
 
+export { clearRequirementDrafts, requirementDraftKey } from "./draft-keys";
+
 // What a new requirement keeps in this tab until it is saved (FR-M1 AC12): a draft row needs every field, so a
 // half-filled form is kept in the browser, never on the server. Only the values of the form, keyed by the user and the
 // organisation, so another account in the same tab never sees them; log out removes them all. Unreadable or blocked
 // storage only costs the convenience of a restored draft.
-const PREFIX = "chara:requirement-draft:";
-
 const draftSchema = z.object({
   title: z.string(),
   workersNeeded: z.string(),
@@ -31,8 +31,6 @@ const draftSchema = z.object({
   partnerNeed: z.string(),
 });
 
-export const requirementDraftKey = (userId: string, slug: string) => `${PREFIX}${userId}:${slug}`;
-
 export function readRequirementDraft(key: string): RequirementFormInput | null {
   try {
     const stored = window.sessionStorage.getItem(key);
@@ -55,16 +53,6 @@ export function writeRequirementDraft(key: string, values: unknown): void {
 export function clearRequirementDraft(key: string): void {
   try {
     window.sessionStorage.removeItem(key);
-  } catch {
-    // As writeRequirementDraft.
-  }
-}
-
-// Every requirement draft of the tab, whoever wrote it: called before log out.
-export function clearRequirementDrafts(): void {
-  try {
-    const keys = Array.from({ length: window.sessionStorage.length }, (_, index) => window.sessionStorage.key(index));
-    for (const key of keys) if (key?.startsWith(PREFIX)) window.sessionStorage.removeItem(key);
   } catch {
     // As writeRequirementDraft.
   }
