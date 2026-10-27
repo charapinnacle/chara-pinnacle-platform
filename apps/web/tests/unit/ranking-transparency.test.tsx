@@ -9,6 +9,9 @@ import {
   availableWorkforceOrderBy,
   availableWorkforceSupply,
   freshListing,
+  jobOrderCopy,
+  jobOrderOrderBy,
+  jobOrderSelection,
   listedAndVisible,
   partnerProfileTime,
   partnerSearchExclusions,
@@ -65,6 +68,7 @@ const searchPartners = latestDefinition("search_partners");
 const clause = (body: string, pattern: RegExp) => pattern.exec(body)?.[1] ?? "";
 const availableWorkforce = latestDefinition("search_available_workforce");
 const suggestPartners = latestDefinition("suggest_partners");
+const listJobOrders = latestDefinition("list_job_orders");
 
 async function renderPage(): Promise<string> {
   const page = await RankingPage({ params: Promise.resolve({ lang: "en" }) } as Parameters<typeof RankingPage>[0]);
@@ -199,6 +203,34 @@ describe("the ranking page and the partner suggestions (FR-M3, NFR-C8)", () => {
     expect(text).toContain("Available before start: for every occupation of the requirement");
     expect(text).toContain(`Size: ${squash(rankingCopy.size)} ${suggestionCopy.size}`);
     expect(text).toContain("The number of criteria the company meets, most first.");
+  });
+});
+
+// FR-N1: the page says how the job orders are ordered; each test fails when list_job_orders changes alone.
+describe("the ranking page and the job orders (FR-N1, NFR-C8)", () => {
+  it("list_job_orders lists the open marketplace job orders of active employers, newest first, then by id", () => {
+    expect(listJobOrders).toContain(jobOrderSelection);
+    expect(listJobOrders).toContain(jobOrderOrderBy);
+  });
+
+  it("no order by of list_job_orders reads a plan", () => {
+    const orders = [...listJobOrders.matchAll(/order by [^;]*?(?=\)|;|limit|$)/g)].map((match) => match[0]);
+    expect(orders.length).toBeGreaterThan(0);
+    for (const order of orders) expect(order).not.toMatch(/\b(billing|subscriptions?|plan_code|plans|has_feature|paid)\b/i);
+  });
+
+  it("names no plan and does not say plans play no part in what a company sees", () => {
+    for (const text of Object.values(jobOrderCopy)) expect(text).not.toMatch(/\b(Basic|Professional|Enterprise|Free)\b/);
+    expect(jobOrderCopy.details).toContain("its plan includes job orders");
+  });
+
+  it("the page describes the job orders only while release 2b is on", async () => {
+    isReleased.mockImplementation((key: string) => Promise.resolve(key !== "release_job_orders"));
+    expect(await renderPage()).not.toContain("Job orders are sorted by these parameters");
+    isReleased.mockResolvedValue(true);
+    const text = await renderPage();
+    for (const line of Object.values(jobOrderCopy)) expect(text).toContain(squash(line));
+    expect(text).toContain("The time the employer published the job order, newest first.");
   });
 });
 
