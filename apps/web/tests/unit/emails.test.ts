@@ -2,7 +2,17 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isNotificationKind, renderEmail, type NotificationKind } from "@/emails/index";
 import { BRAND_NAME } from "@/lib/brand";
-import { appealPath, applicantPath, applicantsPath, applicationPath, billingPath, dataExportPath, jobPath, settingsPath } from "@/lib/routes";
+import {
+  appealPath,
+  applicantPath,
+  applicantsPath,
+  applicationPath,
+  billingPath,
+  dataExportPath,
+  jobPath,
+  requirementPath,
+  settingsPath,
+} from "@/lib/routes";
 
 const SITE = "https://chara.example";
 const APP = "11111111-1111-4111-8111-111111111111";
@@ -87,6 +97,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
     moderation_action_id: 42,
   },
   data_export_ready: { export_id: ACCOUNT, expires_at: "2026-12-17T08:00:00+00:00" },
+  requirement_closing_soon: { requirement_id: JOB, title: "Welders for Hamburg", closes_on: "2027-04-10", org_slug: "acme-bau" },
 };
 
 const LEAKS = {
@@ -189,12 +200,22 @@ describe("notification templates", () => {
       followed_company_activity: "/en/companies/acme-bau",
       moderation_decision: appealPath("en", 42),
       data_export_ready: dataExportPath("en"),
+      requirement_closing_soon: requirementPath("en", "acme-bau", JOB),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
       expect(email.html, kind).toContain(`href="${SITE}${path}"`);
       expect(email.text, kind).toContain(`${SITE}${path}`);
     }
+  });
+
+  it("requirement_closing_soon names the requirement and its closing date and offers the extension (FR-M2 AC6)", async () => {
+    const email = await renderEmail("requirement_closing_soon", SAMPLES.requirement_closing_soon, SITE);
+    expect(email.subject).toBe('"Welders for Hamburg" closes on 10 April 2027');
+    expect(email.text).toContain("partners can no longer respond to it");
+    expect(email.text).toContain("Extend the requirement https://chara.example/en/org/acme-bau/requirements/");
+    const foreign = await renderEmail("requirement_closing_soon", { ...SAMPLES.requirement_closing_soon, requirement_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
   });
 
   it("link without a double slash when the site address ends with one", async () => {

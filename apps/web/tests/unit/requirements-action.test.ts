@@ -82,7 +82,7 @@ describe("saveRequirement (FR-M1)", () => {
   it("tells the editor that someone else saved first", async () => {
     rpcMock.mockResolvedValueOnce(refusal("CHARA_CONFLICT", "stale"));
     expect(await saveRequirement("acme-bau", { id: REQUIREMENT, expectedUpdatedAt: VERSION }, input)).toEqual({
-      message: "Someone else changed this requirement, reload.",
+      message: "This requirement was changed by someone else, reload.",
     });
   });
 
@@ -134,7 +134,7 @@ describe("requirementRefusal (FR-M1 AC3, AC4, AC7)", () => {
     [refusal("CHARA_FORBIDDEN", "aal2_required").error, { kind: "message", message: "You are not allowed to create or edit workforce requirements for this company." }],
     [refusal("CHARA_FORBIDDEN", "organization_suspended").error, { kind: "message", message: "This organization is suspended, so its workforce requirements cannot be changed." }],
     [refusal("CHARA_NOT_FOUND", null, "P0002").error, { kind: "message", message: "This workforce requirement could not be found." }],
-    [refusal("CHARA_CONFLICT", "stale").error, { kind: "message", message: "Someone else changed this requirement, reload." }],
+    [refusal("CHARA_CONFLICT", "stale").error, { kind: "message", message: "This requirement was changed by someone else, reload." }],
     [refusal("CHARA_INVALID_STATE", "closed").error, { kind: "message", message: "This workforce requirement is closed or filled, so it can no longer be changed." }],
     [refusal("CHARA_RATE_LIMITED", null).error, { kind: "message", message: "Too many changes were made today. Try again tomorrow." }],
     [refusal("CHARA_INVALID_INPUT", "something_new").error, { kind: "fault" }],

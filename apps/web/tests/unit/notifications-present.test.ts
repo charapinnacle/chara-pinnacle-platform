@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, jobPath, mfaPath, myReportsPath, partnerStepPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -57,6 +57,8 @@ describe("in-app notification items (FR-T1)", () => {
     ["moderation_decision", { target_type: "job", appeal_id: 7, appeal_outcome: "upheld" }, company, "Your appeal was decided: the decision was upheld", null],
     ["data_export_ready", { export_id: APP, expires_at: "2026-12-17T08:00:00+00:00" }, worker, "Your data is ready to download until 17 December 2026", dataExportPath("en")],
     ["data_export_ready", {}, company, "Your data is ready to download", dataExportPath("en")],
+    ["requirement_closing_soon", { requirement_id: JOB, title: "Welders for Hamburg", closes_on: "2027-04-10", org_slug: "acme" }, company, '"Welders for Hamburg" closes on 10 April 2027', requirementPath("en", "acme", JOB)],
+    ["requirement_closing_soon", { requirement_id: "../x", org_slug: "acme" }, company, "A workforce requirement closes soon", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
