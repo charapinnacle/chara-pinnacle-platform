@@ -1708,7 +1708,7 @@ isOneToOne: false
 { Args: { "p_based_in_country": string,"p_description"?: string,"p_display_name": string,"p_identifier"?: string,"p_identifier_kind"?: string,"p_industry_code": string,"p_legal_name": string,"p_type": Database["public"]['Enums']["organization_type"],"p_website"?: string }; Returns: Json
                            },
 "create_vacancies_from_requirement":
-{ Args: { "p_expected_updated_at": string,"p_org": string,"p_requirement": string }; Returns: {
+{ Args: { "p_expected_linked": number,"p_expected_updated_at": string,"p_org": string,"p_requirement": string }; Returns: {
               "id": string,"occupation_id": string,"title": string
             }[]
                            },
