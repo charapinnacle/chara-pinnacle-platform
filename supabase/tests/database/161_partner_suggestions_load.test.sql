@@ -1,5 +1,5 @@
 begin;
-select plan(5);
+select plan(8);
 
 -- Partner suggestions at 5,000 partner organisations (V36, FR-M3; NFR-P3 applied to the suggestions as to Find Partners):
 -- the seeded network of 155_find_partners_load.test.sql, a requirement for DE with two common occupations and partner
@@ -101,9 +101,28 @@ select pg_temp.plan_of($$select o.id from public.organizations o
         where oo.organization_id = o.id and oo.occupation_id = any ('{7212,5322}'::text[]))$$) as selection_plan \gset
 select ok(
   :'selection_plan' !~ 'Seq Scan on organization_(geographies|occupations)'
-  and :'selection_plan' ~ 'Index[A-Za-z ]* Scan[A-Za-z ]* on organization_geographies'
-  and :'selection_plan' ~ 'Index[A-Za-z ]* Scan[A-Za-z ]* on organization_occupations',
+  and :'selection_plan' ~ 'Index[A-Za-z ]* Scan[^\n]* on organization_geographies'
+  and :'selection_plan' ~ 'Index[A-Za-z ]* Scan[^\n]* on organization_occupations',
   'NFR-P3: the destination and occupation lookups of suggest_partners read their tables through indexes at 5,000 partners'
+);
+
+-- The plan above is that of the function's own predicates: the function still contains them as written.
+select ok(
+  position($p$and exists ( select 1 from public.organization_geographies g where g.organization_id = o.id and g.scope = 'serves_market' and g.country_code = any (v_destinations) ) and exists ( select 1 from public.organization_occupations oo where oo.organization_id = o.id and oo.occupation_id = any (v_occupations) )$p$
+    in regexp_replace(pg_get_functiondef('public.suggest_partners(uuid, uuid)'::regprocedure), '\s+', ' ', 'g')) > 0,
+  'NFR-P3: the plan checked above uses the destination and occupation predicates of suggest_partners as defined'
+);
+select ok(
+  position($p$from public.workforce_availability a where a.organization_id = t.id and a.occupation_id = q.occupation_id and a.confirmed_at > v_fresh_since$p$
+    in regexp_replace(pg_get_functiondef('public.suggest_partners(uuid, uuid)'::regprocedure), '\s+', ' ', 'g')) > 0,
+  'NFR-P3: the availability lookup below is the one suggest_partners makes per partner and occupation'
+);
+select pg_temp.plan_of(format($$select sum(a.available), max(a.available_from), max(a.confirmed_at) from public.workforce_availability a
+    where a.organization_id = %L and a.occupation_id = '7212' and a.confirmed_at > now() - interval '60 days'$$,
+    (select organization_id from public.workforce_availability limit 1))) as availability_plan \gset
+select ok(
+  :'availability_plan' !~ 'Seq Scan on workforce_availability' and :'availability_plan' ~ 'Index[A-Za-z ]* Scan[^\n]* on workforce_availability',
+  'NFR-P3: the availability of a partner and an occupation is read through an index of workforce_availability at 5,000 partners'
 );
 
 select * from finish();

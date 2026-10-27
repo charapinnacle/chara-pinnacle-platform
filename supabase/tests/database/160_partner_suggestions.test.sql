@@ -1,5 +1,5 @@
 begin;
-select plan(73);
+select plan(84);
 
 \ir jobs_fixture.inc
 
@@ -100,9 +100,10 @@ end;
 $$;
 
 -- suggest_partners as p_user (anonymous when null) for p_org (Acme unless given): 'ok' with the rows in order as a JSON
--- array in t.result, or 'sqlstate|message|detail'.
+-- array in t.result, or 'sqlstate|message|detail'. Each call starts with a fresh rate-limit window.
 create function pg_temp.suggest(p_user uuid, p_req uuid, p_org uuid default null, p_aal text default 'aal1') returns text
 language sql as $$
+  delete from private.rate_limit_hits;
   select pg_temp.call_as(p_user, case when p_user is null then 'anon' else 'authenticated' end, format(
     $f$select set_config('t.result', coalesce((select jsonb_agg(to_jsonb(r) order by r.n)
        from (select s.*, row_number() over () as n from public.suggest_partners(%L, %L) s) r)::text, '[]'), true)$f$,
@@ -148,8 +149,7 @@ select is(
   (select array_agg(n order by o) from pg_proc p, unnest(p.proargnames, p.proargmodes::text[]) with ordinality a (n, m, o)
    where p.oid = 'public.suggest_partners(uuid, uuid)'::regprocedure and m = 't'),
   array['organization_id', 'slug', 'display_name', 'organization_type', 'also_offers_staffing', 'criteria_met',
-        'criteria_not_met', 'served_destinations', 'matching_occupations', 'listing_occupation_id', 'listing_occupation',
-        'available', 'available_from', 'confirmed_at', 'profile_updated_at', 'more_partners']::text[],
+        'criteria_not_met', 'served_destinations', 'matching_occupations', 'profile_updated_at', 'more_partners']::text[],
   'AC5: the columns are the partner, the criteria met and not met and the facts behind them');
 select is(
   (select count(*)::integer from pg_proc p, unnest(p.proargnames) n
@@ -191,7 +191,8 @@ select is(pg_temp.suggest(:'adm', :'r1'), 'ok', 'AC1: an admin of Acme gets sugg
 select is(pg_temp.sorted_slugs(), 'v36-p1,v36-p4',
   'AC1: exactly P1 and P4; no partner without the occupations, outside the destination, suspended, pending, declined, hidden or an employer');
 select is(pg_temp.slugs(), 'v36-p1,v36-p4', 'AC1: equal on criteria, the newer profile first');
-select is(pg_temp.row_of('v36-p4') -> 'matching_occupations', '[{"code": "7214", "name": "Structural-metal preparers and erectors"}]'::jsonb,
+select is(pg_temp.row_of('v36-p4') -> 'matching_occupations',
+  '[{"code": "7214", "name": "Structural-metal preparers and erectors", "quantity": 20, "available": null, "available_from": null, "confirmed_at": null}]'::jsonb,
   'AC5: the matching occupations are the requested ones the partner lists');
 select is(pg_temp.row_of('v36-p1') -> 'served_destinations', '[{"code": "DE", "name": "Germany"}]'::jsonb,
   'AC5: the served destination is named');
@@ -246,17 +247,18 @@ select is(pg_temp.row_of('v36-q4') -> 'criteria_met', '["capacity"]'::jsonb, 'AC
 select is(pg_temp.row_of('v36-q4') -> 'criteria_not_met', '["industry", "recruitment_type", "available_before_start"]'::jsonb,
   'AC4: Q4 misses industry, recruitment_type and available_before_start');
 select is(
-  (select jsonb_build_object('occ', e ->> 'listing_occupation_id', 'label', e ->> 'listing_occupation', 'available', e -> 'available',
-     'from', e ->> 'available_from', 'confirmed', (e ->> 'confirmed_at')::timestamptz > now() - interval '11 days')
-   from jsonb_array_elements(pg_temp.result()) e where e ->> 'slug' = 'v36-q1'),
-  '{"occ": "7212", "label": "Welders and flame cutters", "available": 120, "from": "2027-02-01", "confirmed": true}'::jsonb,
-  'AC5: Q1 carries the facts of its listing: occupation, 120 available from 1 February 2027 and the confirmation');
+  (select jsonb_build_object('occ', m ->> 'code', 'label', m ->> 'name', 'quantity', m -> 'quantity', 'available', m -> 'available',
+     'from', m ->> 'available_from', 'confirmed', (m ->> 'confirmed_at')::timestamptz > now() - interval '11 days')
+   from jsonb_array_elements(pg_temp.row_of('v36-q1') -> 'matching_occupations') m),
+  '{"occ": "7212", "label": "Welders and flame cutters", "quantity": 100, "available": 120, "from": "2027-02-01", "confirmed": true}'::jsonb,
+  'AC5: Q1 carries the facts of its listing: occupation, quantity, 120 available from 1 February 2027 and the confirmation');
 select is(
-  (select jsonb_build_object('occ', e -> 'listing_occupation_id', 'available', e -> 'available', 'confirmed', e -> 'confirmed_at')
-   from jsonb_array_elements(pg_temp.result()) e where e ->> 'slug' = 'v36-q3'),
-  '{"occ": null, "available": null, "confirmed": null}'::jsonb,
+  (select jsonb_build_object('available', m -> 'available', 'confirmed', m -> 'confirmed_at')
+   from jsonb_array_elements(pg_temp.row_of('v36-q3') -> 'matching_occupations') m),
+  '{"available": null, "confirmed": null}'::jsonb,
   'AC4, AC5: a stale listing is not shown');
-select is((pg_temp.row_of('v36-q2') ->> 'available')::integer, 80, 'AC5: a fresh listing below the quantity is still shown with its number');
+select is((pg_temp.row_of('v36-q2') -> 'matching_occupations' -> 0 ->> 'available')::integer, 80,
+  'AC5: a fresh listing below the quantity is still shown with its number');
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.result()) e where (e ->> 'more_partners')::boolean), 0,
   'AC11: with fewer partners than the list size, more_partners is false');
 select is(pg_temp.row_of('v36-q1') ->> 'profile_updated_at', '2026-10-05T08:00:00+00:00', 'AC5: the profile time is returned');
@@ -276,6 +278,56 @@ select pg_temp.suggest(:'adm', :'r4') as ignored \gset
 select is(pg_temp.row_of('v36-q3') -> 'criteria_met', '["industry", "capacity", "available_before_start"]'::jsonb,
   'NFR-O5: freshness follows workforce_listing_stale_days');
 update private.settings set value = '60' where key = 'workforce_listing_stale_days';
+
+-- Capacity sums the fresh listings of an occupation over the source countries, and needs every occupation covered
+-- (decided, user delegated).
+update public.organizations set moderation_state = 'hidden' where slug like 'v36-q%';
+select pg_temp.partner('v36-sum', 'recruitment_company', '{DE}', '{7212,7214}', '2026-10-06 08:00+00') as psum \gset
+insert into public.organization_geographies (organization_id, scope, country_code) values (:'psum', 'sources_from', 'IN');
+select pg_temp.listing(:'psum', '7212', 60, date '2027-01-01', now() - interval '2 days');
+insert into public.workforce_availability (organization_id, occupation_id, source_country, available, monthly_capacity, available_from, confirmed_at)
+values (:'psum', '7212', 'IN', 60, 10, date '2027-02-15', now() - interval '4 days');
+select pg_temp.touch(:'psum', '2026-10-06 08:00+00');
+select pg_temp.suggest(:'adm', :'r4') as ignored \gset
+select is(pg_temp.row_of('v36-sum') -> 'criteria_met', '["capacity", "available_before_start"]'::jsonb,
+  'capacity: 60 from PH and 60 from IN cover 100, both available before the start');
+select is(
+  (select jsonb_build_object('available', m -> 'available', 'from', m ->> 'available_from') from jsonb_array_elements(pg_temp.row_of('v36-sum') -> 'matching_occupations') m),
+  '{"available": 120, "from": "2027-02-15"}'::jsonb,
+  'capacity: the facts are the sum and the latest available-from of the listings');
+update public.workforce_availability set available_from = date '2027-03-05' where organization_id = :'psum' and source_country = 'IN';
+select pg_temp.suggest(:'adm', :'r4') as ignored \gset
+select is(pg_temp.row_of('v36-sum') -> 'criteria_met', '["capacity"]'::jsonb,
+  'available_before_start: only the listings available by the start count (60 of 100)');
+select pg_temp.req(current_setting('t.a')::uuid, 'open', 'recruitment', '{"7212": 50, "7214": 50}') as r2occ \gset
+select pg_temp.suggest(:'adm', :'r2occ') as ignored \gset
+select is(pg_temp.row_of('v36-sum') -> 'criteria_met', '[]'::jsonb, 'capacity: covering one of two occupations does not meet it');
+select is(
+  (select string_agg((m ->> 'code') || '=' || coalesce(m ->> 'available', 'none'), ',' order by m ->> 'code')
+   from jsonb_array_elements(pg_temp.row_of('v36-sum') -> 'matching_occupations') m),
+  '7212=120,7214=none',
+  'capacity: the facts name the coverage per occupation, none for an occupation without a listing');
+update public.organizations set moderation_state = 'hidden' where slug = 'v36-sum';
+
+-- Listings are part of partner plans (billing.plan_limits workforce_listings): with entitlements enforced a free partner
+-- cannot add one and so cannot meet capacity, while a paid partner can; disclosed on the pages (decided, user delegated).
+select pg_temp.partner('v36-free', 'recruitment_company', '{DE}', '{7212}', '2026-10-07 08:00+00') as pfree \gset
+select pg_temp.partner('v36-paid', 'recruitment_company', '{DE}', '{7212}', '2026-10-07 08:00+00') as ppaid \gset
+insert into billing.subscriptions (organization_id, plan_code, status, provider) values (:'ppaid', 'recruitment_partner', 'active', 'null');
+update private.settings set value = 'true' where key = 'entitlements_enforced';
+select is(
+  pg_temp.call_as(:'padm', 'authenticated', format('select public.add_workforce_availability(%L, ''7212'', ''PH'', 120, 10, null)', :'pfree')),
+  'P0001|CHARA_LIMIT_REACHED|workforce_listings',
+  'a free partner adds no availability listing while entitlements are enforced');
+select is(
+  pg_temp.call_as(:'padm', 'authenticated', format('select public.add_workforce_availability(%L, ''7212'', ''PH'', 120, 10, null)', :'ppaid')),
+  'ok', 'a paid partner adds one');
+select pg_temp.suggest(:'adm', :'r4') as ignored \gset
+select is(pg_temp.row_of('v36-free') -> 'criteria_met', '[]'::jsonb, 'the free partner cannot meet capacity');
+select is(pg_temp.row_of('v36-paid') -> 'criteria_met', '["capacity", "available_before_start"]'::jsonb, 'the paid partner meets capacity');
+update private.settings set value = 'false' where key = 'entitlements_enforced';
+update public.organizations set moderation_state = 'hidden' where slug in ('v36-free', 'v36-paid');
+update public.organizations set moderation_state = 'visible' where slug like 'v36-q%';
 
 -- AC3: order by criteria met, then profile time, never by plan ----------------------------------------------------------------
 
@@ -310,7 +362,8 @@ select is(pg_temp.slugs(),
 update public.organizations set workforce_profile_updated_at = null, listed_at = '2026-10-15 08:00+00' where id = :'s2old';
 select pg_temp.suggest(:'adm', :'r3') as ignored \gset
 select is(pg_temp.slugs(), 'v36-s4,v36-s2old,v36-s2new,v36-s0', 'AC3: before any change the listing time stands in for the profile time');
-select is(pg_temp.row_of('v36-s2old') -> 'profile_updated_at', 'null'::jsonb, 'AC3: profile_updated_at stays null before any change');
+select is(pg_temp.row_of('v36-s2old') ->> 'profile_updated_at', '2026-10-15T08:00:00+00:00',
+  'AC3: profile_updated_at is the sort key, the listing time before any change');
 
 -- AC11: list size and stable ties -----------------------------------------------------------------------------------------
 
@@ -361,6 +414,16 @@ select is(jsonb_array_length(pg_temp.result()), 50, 'AC6: the preview lists the 
 select is(pg_temp.suggest(:'adm', :'rpaused'), 'ok', 'a paused requirement returns the list');
 select is(pg_temp.suggest(:'adm', :'rclosed'), 'P0001|CHARA_INVALID_STATE|closed', 'AC6: a closed requirement is refused');
 select is(pg_temp.suggest(:'adm', :'rfilled'), 'P0001|CHARA_INVALID_STATE|filled', 'a filled requirement is refused');
+
+update private.settings set value = '2' where key = 'rate_limit_partner_search_max';
+delete from private.rate_limit_hits;
+select pg_temp.call_as(:'mem', 'authenticated', format('select count(*) from public.suggest_partners(%L, %L)', current_setting('t.a'), :'r11'), 'aal1') as rl1 \gset
+select pg_temp.call_as(:'mem', 'authenticated', format('select count(*) from public.suggest_partners(%L, %L)', current_setting('t.a'), :'r11'), 'aal1') as rl2 \gset
+select is(
+  pg_temp.call_as(:'mem', 'authenticated', format('select count(*) from public.suggest_partners(%L, %L)', current_setting('t.a'), :'r11'), 'aal1'),
+  'P0001|CHARA_RATE_LIMITED|', 'over the partner search allowance a caller is refused, CHARA_RATE_LIMITED');
+select is(:'rl1' || :'rl2', 'okok', 'within the allowance the calls answer');
+update private.settings set value = '60' where key = 'rate_limit_partner_search_max';
 
 update private.settings set value = 'false' where key = 'release_job_orders';
 select is(pg_temp.suggest(:'adm', :'r11'), '42501|CHARA_FORBIDDEN|release_off', 'release 2b off: refused');
