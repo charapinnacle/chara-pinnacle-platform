@@ -1,4 +1,4 @@
-import type { Page, Response } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { COMPANY_PAGE_DESCRIPTION } from "@/lib/companies/page";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, literal, query } from "./support/db";
@@ -38,10 +38,18 @@ function pageEnabled(company: Company): boolean {
   return query<{ on: boolean }>(`select public_page_enabled as on from public.organizations where id = ${literal(company.id)}`)[0].on;
 }
 
+// Only the responses whose body was received, and none after the read: a prefetch the browser cancels never finishes,
+// so a read of its body would wait for good.
 async function collectResponses(page: Page): Promise<() => Promise<string>> {
-  const responses: Response[] = [];
-  page.on("response", (response) => responses.push(response));
-  return async () => (await Promise.all(responses.map((response) => response.text().catch(() => "")))).join("\n");
+  const bodies: Promise<string>[] = [];
+  const collect = (request: Request) => {
+    bodies.push(request.response().then((response) => response?.text() ?? "").catch(() => ""));
+  };
+  page.on("requestfinished", collect);
+  return async () => {
+    page.off("requestfinished", collect);
+    return (await Promise.all(bodies)).join("\n");
+  };
 }
 
 // The release switch is set for the whole database and the switch function is withdrawn for a moment, so this file is a

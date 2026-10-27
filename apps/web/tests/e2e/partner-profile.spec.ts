@@ -1,4 +1,4 @@
-import type { Page, Response } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { displayName, expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
@@ -71,13 +71,17 @@ const profileUrl = (slug: string) => `/en/partners/${slug}`;
 const longDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(date);
 
 // NFR-S8/S9-style privacy check: neither the HTML nor any response the browser received holds the partner's legal name,
-// identifier or licence, or a member's email.
+// identifier or licence, or a member's email. Only the responses whose body was received are read, and none after the
+// read: a prefetch the browser cancels never finishes, so a read of its body would wait for good.
 async function collectResponses(page: Page): Promise<() => Promise<string>> {
-  const responses: Response[] = [];
-  page.on("response", (response) => responses.push(response));
+  const bodies: Promise<string>[] = [];
+  const collect = (request: Request) => {
+    bodies.push(request.response().then((response) => response?.text() ?? "").catch(() => ""));
+  };
+  page.on("requestfinished", collect);
   return async () => {
-    const bodies = await Promise.all(responses.map((response) => response.text().catch(() => "")));
-    return bodies.join("\n");
+    page.off("requestfinished", collect);
+    return (await Promise.all(bodies)).join("\n");
   };
 }
 
