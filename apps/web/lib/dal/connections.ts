@@ -14,25 +14,29 @@ export type ConnectionTarget = { id: string; type: OrganizationType };
 
 // What the viewer may do with each company and whether it already saved or follows it (FR-L4 AC9), for one profile,
 // page or page of cards. Row level security answers each question for the viewer only: the saves of their organisation
-// and their own follows.
-export async function getConnectionStates(targets: readonly ConnectionTarget[]): Promise<{
+// and their own follows. A page of one of the viewer's employers passes that employer as saveFor, so that it saves for
+// the organisation the page belongs to.
+export async function getConnectionStates(
+  targets: readonly ConnectionTarget[],
+  saveFor?: string,
+): Promise<{
   access: Map<string, ConnectionAccess>;
   saved: Set<string>;
   followed: Set<string>;
 }> {
   const user = await getCurrentUser();
   const organizations = user?.accountKind ? await getMyOrganizations(user.id) : [];
-  const access = new Map(targets.map((target) => [target.id, connectionAccess(user, organizations, target)]));
+  const access = new Map(targets.map((target) => [target.id, connectionAccess(user, organizations, target, saveFor)]));
   const signedIn = [...access.entries()].filter(([, entry]) => entry.kind === "signed_in");
   if (signedIn.length === 0) return { access, saved: new Set(), followed: new Set() };
 
   const supabase = await createClient();
   const ids = signedIn.map(([id]) => id);
-  const saveFor = signedIn.map(([, entry]) => (entry.kind === "signed_in" ? entry.saveFor : null)).find((id) => id !== null);
+  const saver = signedIn.map(([, entry]) => (entry.kind === "signed_in" ? entry.saveFor : null)).find((id) => id !== null);
   const [follows, saves] = await Promise.all([
     supabase.from("follows").select("organization_id").in("organization_id", ids),
-    saveFor
-      ? supabase.from("saved_items").select("target_organization_id").eq("organization_id", saveFor).in("target_organization_id", ids)
+    saver
+      ? supabase.from("saved_items").select("target_organization_id").eq("organization_id", saver).in("target_organization_id", ids)
       : null,
   ]);
   if (follows.error) throw new Error("The followed companies could not be loaded", { cause: follows.error });
