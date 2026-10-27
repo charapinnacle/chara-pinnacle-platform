@@ -16,12 +16,14 @@ type RequirementVacanciesProps = {
   vacancies: RequirementVacancy[] | null;
   occupations: number;
   canCreate: boolean;
+  // An anonymous job order (marketplace without the company name): a published vacancy shows the name (NFR-S11).
+  anonymous: boolean;
 };
 
 // The vacancies for direct applications of a requirement (FR-M1 step Next steps, AC9, AC10; decision 3.1): candidates do
 // not apply to a requirement, so an owner or admin copies an open one into draft vacancies, one per occupation, and
 // publishes each. Members see the linked vacancies.
-export function RequirementVacancies({ lang, slug, target, vacancies, occupations, canCreate }: RequirementVacanciesProps) {
+export function RequirementVacancies({ lang, slug, target, vacancies, occupations, canCreate, anonymous }: RequirementVacanciesProps) {
   if (!canCreate && vacancies !== null && vacancies.length === 0) return null;
   return (
     <section aria-labelledby="requirement-vacancies-heading" className="grid gap-3">
@@ -40,6 +42,12 @@ export function RequirementVacancies({ lang, slug, target, vacancies, occupation
               ? "Create one draft vacancy per occupation, check it and publish it to receive applications."
               : "These vacancies were created from it."}
           </p>
+          {anonymous ? (
+            <Notice tone="warning" role="status">
+              Partners see this requirement as a job order without your company name. A published vacancy shows your company
+              name, so edit each vacancy before you publish it and leave out anything partners could match to the job order.
+            </Notice>
+          ) : null}
           {vacancies.length > 0 ? (
             <ul className="grid gap-px overflow-hidden rounded-xl border bg-border" aria-label="Linked vacancies">
               {vacancies.map((vacancy) => (

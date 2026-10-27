@@ -173,13 +173,21 @@ export async function extendRequirement(slug: string, target: LifecycleTarget): 
 
 export type RequirementVacanciesResult = { message?: string; created?: number };
 
+const linkedCountSchema = z.number().int().min(0);
+
 // "Create vacancies for direct applications" (FR-M1 step Next steps, AC10): one draft vacancy per occupation of an open
 // requirement, for an owner or admin at aal2 while release 2b is on; the function checks all of it again, with the
-// status and the version the page was drawn with.
-export async function createRequirementVacancies(slug: string, target: LifecycleTarget): Promise<RequirementVacanciesResult> {
+// status, the version the page was drawn with and the number of linked vacancies it showed (expectedLinked), so a
+// confirmation given for an older list is refused as stale.
+export async function createRequirementVacancies(
+  slug: string,
+  target: LifecycleTarget,
+  expectedLinked: number,
+): Promise<RequirementVacanciesResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   const parsedTarget = requirementTargetSchema.safeParse(target);
-  if (!parsedSlug.success || !parsedTarget.success) return { message: GENERIC_FAILURE };
+  const parsedLinked = linkedCountSchema.safeParse(expectedLinked);
+  if (!parsedSlug.success || !parsedTarget.success || !parsedLinked.success) return { message: GENERIC_FAILURE };
   if (!(await isReleased("release_job_orders"))) return { message: REQUIREMENT_MESSAGES.releaseOff };
   const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", { hideFromOutsiders: true });
 
@@ -188,6 +196,7 @@ export async function createRequirementVacancies(slug: string, target: Lifecycle
     p_org: organization.id,
     p_requirement: parsedTarget.data.id,
     p_expected_updated_at: parsedTarget.data.expectedUpdatedAt,
+    p_expected_linked: parsedLinked.data,
   });
   revalidatePath(requirementPath(defaultLocale, organization.slug, parsedTarget.data.id));
   if (!error) {

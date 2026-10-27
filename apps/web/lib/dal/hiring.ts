@@ -96,6 +96,7 @@ export type JobSearchResult = {
   createdAt: string;
 };
 
+// requirement_id is not readable through the Data API (NFR-S11); members read the links through requirement_vacancies.
 const selectJob = (supabase: Client) =>
   supabase
     .from("jobs")

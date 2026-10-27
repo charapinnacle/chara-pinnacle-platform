@@ -74,6 +74,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
         vacancies={vacancies}
         occupations={requirement.occupations.length}
         canCreate={manager && canCreateVacancies(requirement.status)}
+        anonymous={requirement.visibility === "job_order_marketplace" && !requirement.showIdentity}
       />
       <RequirementView requirement={requirement} />
       {manager && isRequirementEditable(requirement.status) ? (
