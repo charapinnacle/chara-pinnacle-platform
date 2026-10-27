@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { signOut } from "@/lib/actions/login";
+import { clearRequirementDrafts } from "@/lib/requirements/draft-storage";
 import { isRedirectError } from "@/lib/redirect-error";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export function LogoutButton({ className }: { className?: string }) {
 
   function logOut() {
     startTransition(async () => {
+      clearRequirementDrafts();
       try {
         const result = await signOut();
         if (result) toastError("Could not log out", result.message);
