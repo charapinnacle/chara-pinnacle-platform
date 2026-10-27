@@ -1,9 +1,7 @@
-import type { Page } from "@playwright/test";
 import { displayTitle } from "@/lib/validation/consents";
 import { accountRows, confirmFromLink, userByEmail } from "./support/accounts";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
-import { choose } from "./support/combobox";
 import { literal, query } from "./support/db";
 import { createGoogleUser, GOOGLE_ON_URL, issueAuthCode, startGoogleFlow } from "./support/google";
 import { waitForHydration } from "./support/hydration";
@@ -16,6 +14,8 @@ import { organizationAudit, organizationCountByName, organizationRows, uniqueTok
 import {
   createCommittedPartner,
   DRAFT_NOTICE,
+  fillPartnerCompany,
+  fillPartnerSignup,
   openPartnerOnboarding,
   PARTNER_IDENTIFIER_LABEL,
   PARTNER_LABEL,
@@ -24,7 +24,7 @@ import {
   type PartnerType,
 } from "./support/partners";
 import { captureActionRequests } from "./support/server-action";
-import { documentBox, EMPLOYER_LABEL, newEmail, PASSWORD, summary, WORKER_LABEL } from "./support/signup-page";
+import { documentBox, EMPLOYER_LABEL, newEmail, summary, WORKER_LABEL } from "./support/signup-page";
 import { expect, test } from "./support/test";
 import { createTestUser, deleteTestUser } from "./support/test-user";
 
@@ -41,29 +41,6 @@ function partnerOrganization(userId: string) {
     `select o.type, o.review_status, o.description from public.organizations o
      join public.organization_members m on m.organization_id = o.id where m.user_id = ${literal(userId)}`,
   );
-}
-
-async function fillPartnerSignup(page: Page, type: PartnerType, email: string): Promise<void> {
-  await page.getByRole("radio", { name: PARTNER_LABEL[type] }).check();
-  await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  for (const { title } of await partnerDocuments(type)) await documentBox(page, title).check();
-}
-
-async function fillPartnerCompany(
-  page: Page,
-  details: { legalName: string; displayName?: string; identifier?: string; description?: string },
-): Promise<void> {
-  await page.getByLabel("Legal company name").fill(details.legalName);
-  if (details.displayName) await page.getByLabel("Display name (optional)").fill(details.displayName);
-  await choose(page, "Country where you are based", "Philippines");
-  await choose(page, "Industry", "Administrative and support service activities");
-  await page.getByLabel("Website (optional)").fill("https://manila-skills.example");
-  if (details.identifier) {
-    await page.getByLabel(PARTNER_IDENTIFIER_LABEL).fill(details.identifier);
-    await page.getByLabel("Type of identifier", { exact: true }).selectOption({ value: "registration_number" });
-  }
-  if (details.description) await page.getByLabel("About your company (optional)").fill(details.description);
 }
 
 // The release switch is set for the whole database while this file runs, so it is a project of its own that follows the
