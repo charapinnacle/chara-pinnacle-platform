@@ -170,6 +170,12 @@ describe("getMultiCountryPlan (FR-M4 AC4)", () => {
     expect(rpcMock).toHaveBeenCalledWith("requirement_multi_country", { p_org: "org-1" });
   });
 
+  it("names no plan when the plans cannot be read, and still offers what the database says", async () => {
+    rpcMock.mockResolvedValueOnce({ data: true, error: null });
+    plansMock.mockRejectedValueOnce(new Error("down"));
+    expect(await getMultiCountryPlan("org-1")).toEqual({ allowed: true, planName: null });
+  });
+
   it("fails loudly when the database refuses, so the page shows its error", async () => {
     rpcMock.mockResolvedValueOnce({ data: null, error: { message: "CHARA_FORBIDDEN", code: "42501" } });
     await expect(getMultiCountryPlan("org-1")).rejects.toThrow("The plan of the workforce requirements could not be loaded");

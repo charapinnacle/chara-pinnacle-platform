@@ -92,7 +92,7 @@ test.afterAll(() => {
 });
 
 test.describe("Workforce requirement plan limits (FR-M4)", () => {
-  test("AC9: at 3 of 3 the publish keeps the draft and shows the upgrade prompt, a pause makes room, and a member has no Publish", async ({
+  test("AC9: at 3 of 3 the publish keeps the draft and shows the upgrade prompt once, a pause makes room, and a member has no Publish", async ({
     page,
     browser,
   }) => {
@@ -122,9 +122,10 @@ test.describe("Workforce requirement plan limits (FR-M4)", () => {
     await expect(page.getByRole("status").filter({ hasText: "Draft - not visible to partners" })).toBeVisible();
     await expectNoAxeViolations(page);
     expect(statusOf(draft)).toBe("draft");
-    // One row per prompt shown to the owner, the list's and the refused publish's (the hourly ceilings of V13 apply).
-    const row = { actor_id: team.owner.id, metadata: { limit_key: "active_requirements", plan_code: "employer_starter", limit: 3, used: 3 } };
-    await expect.poll(() => promptRows(team.id)).toEqual([row, row]);
+    // The list and the refused publish both showed the prompt; it is recorded once per user and hour (AC9).
+    await expect.poll(() => promptRows(team.id)).toEqual([
+      { actor_id: team.owner.id, metadata: { limit_key: "active_requirements", plan_code: "employer_starter", limit: 3, used: 3 } },
+    ]);
 
     await page.goto(requirementUrl(team.slug, open[0]));
     await waitForHydration(statusButtons(page).first());
