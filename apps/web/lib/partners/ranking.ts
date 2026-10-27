@@ -1,4 +1,5 @@
 import { matchedFilterLabels, matchedFilterNames, type MatchedFilter } from "@/lib/partners/search-params";
+import { suggestionPlanDisclosure } from "@/lib/requirements/suggestions";
 
 // The ranking of Find Partners as public.search_partners and public.search_available_workforce build it (V21, V22). The
 // public page /[lang]/legal/ranking (NFR-C8) is written from these values, and tests/unit/ranking-transparency.test.tsx
@@ -107,6 +108,12 @@ export const rankingCopy = {
   advanced:
     "Capacity and timeframe (both directories) and more than one source country (Find Recruitment Partners only) are advanced filters, available to an organisation whose plan includes them.",
   size: "Company size (its workforce size band) counts only through the workforce size filter, when you choose it. The number of workers a company lists as available counts only in the capacity filter and in the available workforce search, as described above.",
+  payment:
+    "whether a company pays, which plan it is on and how much it pays are not read by any of these searches. Nobody can pay for a higher place.",
+  // Availability listings are added within the workforce_listings allowance of the partner's plan (billing.plan_limits);
+  // worded without plan names so that it stays true when the allowances change.
+  listings:
+    "Availability listings, which the capacity and timeframe filters and the available workforce search use, can be added only within the allowance of the company's plan, so the plan decides how many listings a company can have.",
 } as const;
 
 // The partner suggestions for a workforce requirement as public.suggest_partners builds them (FR-M3, V36). The page
@@ -127,9 +134,10 @@ export const suggestionCriterionTexts = {
   industry: "the company lists the industry of the requirement on its profile.",
   recruitment_type:
     "the company offers the type of recruitment the requirement asks for, local or international; a company or a requirement that names both counts for either.",
-  capacity: `the company has a current availability listing of one of the requirement's occupations with at least the number of workers the requirement needs for that occupation.`,
+  capacity:
+    "for every occupation of the requirement, the company's current availability listings of that occupation, added up over the countries it sources from, hold at least the number of workers the requirement needs for it.",
   available_before_start:
-    "such a listing (one that covers the number of workers) has its workers available on or before the start date of the requirement.",
+    "for every occupation of the requirement, the company's current listings whose workers are available on or before the start date hold at least the number of workers needed.",
 } as const;
 
 export const suggestionCopy = {
@@ -137,6 +145,9 @@ export const suggestionCopy = {
     "An employer who needs partners for a workforce requirement can see suggested partners. A company is suggested only when it would be shown in the directories (see Which companies are shown), is of a type the requirement asks for (recruitment companies for recruitment; staffing companies and recruitment companies that also offer staffing for staffing; all of them for both), serves at least one of the requirement's destination countries and lists at least one of its occupations.",
   explain:
     "Each suggestion names the criteria it meets and those it does not, and the facts behind them. Every criterion weighs the same. A suggestion is not a score and says nothing about the quality of a company; companies are not told that they were suggested.",
+  // P2B Regulation article 5(3) (decided, user delegated): the same sentence as the suggestions page, lib/requirements/suggestions.ts.
+  disclosure: suggestionPlanDisclosure,
+  size: "In the partner suggestions it counts only in the capacity and start date criteria, as described above.",
   limit:
     "A limited number of suggestions is shown, with links to the directories when more companies fit; the limit does not change the order.",
 } as const;

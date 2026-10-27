@@ -149,6 +149,7 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
             <li>The same fixed random number as above.</li>
           </ol>
           <p>{suggestionCopy.explain}</p>
+          <p>{suggestionCopy.disclosure}</p>
           <p>{suggestionCopy.limit}</p>
         </ContentSection>
       ) : null}
@@ -168,14 +169,16 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
       <ContentSection heading="What never changes the order">
         <ul className="grid list-disc gap-2 ps-5">
           <li>
-            Payment: whether a company pays, which plan it is on and how much it pays are not read by any of these
-            searches. No company can pay to appear higher.
+            Payment: {rankingCopy.payment} {rankingCopy.listings}
           </li>
           <li>
             The plan of the person searching: it decides only which filters and searches they can use, never the order of
             the results.
           </li>
-          <li>Size: {rankingCopy.size}</li>
+          <li>
+            Size: {rankingCopy.size}
+            {suggestions ? ` ${suggestionCopy.size}` : null}
+          </li>
           <li>Paging and limits: {rankingCopy.paging}</li>
         </ul>
       </ContentSection>
