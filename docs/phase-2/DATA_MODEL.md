@@ -146,9 +146,9 @@ Storage: private buckets `partner-documents` (licence evidence, PDF/JPEG/PNG, 15
 |---|---|---|
 | `public.workforce_requirements` | id; organization_id, title, workers_needed, country_code, city_region, industry_code, skills, experience_years, start_date, duration_months, employment_type, salary range, accommodation, work_permit_support, visa_support, recruitment_preference, partner_need, status, visibility, show_identity, moderation_state, published_at, closes_on, close_reason, max_capacity_over_percent | employer members; partners only through job order RPCs; never workers or anon [d3.1] |
 | `public.requirement_occupations` | (requirement_id, occupation_id), quantity | as the requirement |
-| `public.requirement_countries` | (requirement_id, country_code) (multi-country needs the feature) | as the requirement |
+| `public.requirement_countries` | (requirement_id, country_code), the main country (`workforce_requirements.country_code`) included and written with it (V32); further destinations need the feature (V34) | as the requirement |
 | `public.requirement_versions` | requirement_id, version, changed_fields, old_values | employer members; append-only |
-| `private.prohibited_terms` | pattern, label | none (discriminatory criteria check) |
+| `private.prohibited_terms` | pattern (POSIX, matched against `private.fold_text`), label | none (discriminatory criteria check of `save_requirement`, V32) |
 | `public.saved_searches` | organization_id, kind, filters | members |
 | `public.direct_hiring_rules` | source_country, destination_country (null = any), rule, notice, legal_opinion_ref; unique nulls not distinct | none (admin RPCs, `hiring_rule_notice`) |
 | `private.requirement_reveals` | (requirement_id, organization_id), cause, revealed_at | none (employer name shown to a partner after invitation, shortlist or selection [d3.2]) |
