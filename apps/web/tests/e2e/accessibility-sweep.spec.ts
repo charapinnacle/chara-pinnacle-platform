@@ -133,7 +133,8 @@ const accountStatePages = [
 // members, and its invitation and sign-up pages, are checked in partner-team.spec.ts (the employer's are swept here). The
 // ranking page /[lang]/legal/ranking is checked in ranking-transparency.spec.ts. The workforce requirements of an
 // employer (release 2b), the list empty and with a draft, the form new, refused and in edit and a requirement as its owner
-// and as a member, are checked in workforce-requirements.spec.ts.
+// and as a member, are checked in workforce-requirements.spec.ts; the partner suggestions of a requirement in
+// partner-suggestions.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -148,6 +149,7 @@ const releasedPages = [
   "/[lang]/org/[slug]/requirements",
   "/[lang]/org/[slug]/requirements/[id]",
   "/[lang]/org/[slug]/requirements/[id]/edit",
+  "/[lang]/org/[slug]/requirements/[id]/partners",
   "/[lang]/org/[slug]/requirements/new",
   "/[lang]/org/[slug]/saved-partners",
   "/[lang]/org/[slug]/workforce-profile",
