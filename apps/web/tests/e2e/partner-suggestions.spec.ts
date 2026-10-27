@@ -232,7 +232,7 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     const q1 = await listedPartner("DE", { industries: ["C"], recruitment: "both", listing: { available: 120, from: "2027-02-01" } });
     const id = seedRequirement(second);
 
-    await signInAtAal2(page, first.owner, first.ownerSecret, partnersUrl(second.slug, id));
+    await signInAtAal1(page, first.owner, partnersUrl(second.slug, id));
     const save = card(page, q1.displayName).getByRole("button", { name: `Save partner: ${q1.displayName}` });
     await waitForHydration(save);
     await save.click();
