@@ -15,9 +15,14 @@ import {
   partnerSearchOrderBy,
   rankingCopy,
   rankingFilters,
+  suggestionCopy,
+  suggestionCriterionTexts,
+  suggestionOrderBy,
+  suggestionSelection,
 } from "@/lib/partners/ranking";
 import { matchedFilterNames } from "@/lib/partners/search-params";
 import { RANKING_PATH, releasedPagePaths } from "@/lib/public/navigation";
+import { suggestionCriteria } from "@/lib/requirements/suggestions";
 import { sitemapEntries } from "@/lib/seo/sitemap";
 
 const isReleased = vi.hoisted(() => vi.fn());
@@ -59,6 +64,7 @@ function latestDefinition(name: string): string {
 const searchPartners = latestDefinition("search_partners");
 const clause = (body: string, pattern: RegExp) => pattern.exec(body)?.[1] ?? "";
 const availableWorkforce = latestDefinition("search_available_workforce");
+const suggestPartners = latestDefinition("suggest_partners");
 
 async function renderPage(): Promise<string> {
   const page = await RankingPage({ params: Promise.resolve({ lang: "en" }) } as Parameters<typeof RankingPage>[0]);
@@ -134,6 +140,42 @@ describe("the ranking page and the search functions (NFR-C8)", () => {
     for (const body of [searchPartners, availableWorkforce]) {
       expect(body).not.toMatch(/\b(billing|subscriptions?|plan_code|plans)\b/i);
     }
+  });
+});
+
+// FR-M3: the page says what the partner suggestions do; each test fails when suggest_partners changes alone.
+describe("the ranking page and the partner suggestions (FR-M3, NFR-C8)", () => {
+  it("suggest_partners orders by the criteria met, the profile time and the id", () => {
+    expect(suggestPartners).toContain(suggestionOrderBy);
+    expect(suggestPartners).toContain(partnerProfileTime);
+  });
+
+  it("suggest_partners names its criteria in the order and with the names the page lists", () => {
+    const met = /array_remove\(array\[(.*?)\], null\) as met/.exec(suggestPartners)?.[1] ?? "";
+    expect([...met.matchAll(/then '([a-z_]+)' end/g)].map((match) => match[1])).toEqual([...suggestionCriteria]);
+    expect(Object.keys(suggestionCriterionTexts)).toEqual([...suggestionCriteria]);
+  });
+
+  it("suggest_partners selects the listed, visible partners of the requested types, destinations and occupations, with fresh listings", () => {
+    for (const condition of listedAndVisible) expect(suggestPartners).toContain(condition);
+    for (const condition of suggestionSelection) expect(suggestPartners).toContain(condition);
+    expect(suggestPartners).toContain("a.confirmed_at > v_fresh_since");
+  });
+
+  it("suggest_partners reads no billing, subscription or plan", () => {
+    expect(suggestPartners).not.toMatch(/\b(billing|subscriptions?|plan_code|plans|has_feature)\b/i);
+  });
+
+  it("the page describes the suggestions only while release 2b is on", async () => {
+    isReleased.mockImplementation((key: string) => Promise.resolve(key !== "release_job_orders"));
+    expect(await renderPage()).not.toContain("Partner suggestions for a workforce requirement");
+    isReleased.mockResolvedValue(true);
+    const text = await renderPage();
+    expect(text).toContain("Partner suggestions for a workforce requirement");
+    for (const line of Object.values(suggestionCopy)) expect(text).toContain(squash(line));
+    for (const rule of Object.values(suggestionCriterionTexts)) expect(text).toContain(rule);
+    expect(text).toContain("Available before start: such a listing");
+    expect(text).toContain("The number of criteria the company meets, most first.");
   });
 });
 
