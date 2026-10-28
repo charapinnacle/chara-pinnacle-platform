@@ -121,6 +121,7 @@ export default defineConfig({
         "**/partner-suggestions.spec.ts",
         "**/job-orders.spec.ts",
         "**/invitations.spec.ts",
+        "**/requirement-changes.spec.ts",
       ],
     },
     {
@@ -534,13 +535,21 @@ export default defineConfig({
       testMatch: "**/invitations.spec.ts",
       dependencies: ["job-orders-release"],
     },
+    // The requirement versions and the notices to invited partners (FR-M2, V43) set releases 2a and 2b for the whole
+    // database and run the daily close and reminder jobs, so they follow the invitation pages.
+    {
+      name: "requirement-changes-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/requirement-changes.spec.ts",
+      dependencies: ["invitations-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["invitations-release"],
+      dependencies: ["requirement-changes-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
