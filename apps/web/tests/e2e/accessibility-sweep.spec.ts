@@ -135,7 +135,9 @@ const accountStatePages = [
 // employer (release 2b), the list empty and with a draft, the form new, refused and in edit and a requirement as its owner
 // and as a member, are checked in workforce-requirements.spec.ts; the partner suggestions of a requirement in
 // partner-suggestions.spec.ts. The job order marketplace and job order pages of a partner (eligible, titles only, closed,
-// empty and failed) and the public Job orders page are checked in job-orders.spec.ts.
+// empty and failed) and the public Job orders page are checked in job-orders.spec.ts. The invitations of a requirement
+// (statuses, empty and failed, as a member and an owner) and the inbox and invitation pages of a partner (pending, full,
+// accepted and declined) are checked in invitations.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -146,6 +148,8 @@ const releasedPages = [
   "/[lang]/job-orders",
   "/[lang]/legal/ranking",
   "/[lang]/notifications",
+  "/[lang]/org/[slug]/invitations",
+  "/[lang]/org/[slug]/invitations/[id]",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",
   "/[lang]/org/[slug]/job-orders",
@@ -153,6 +157,7 @@ const releasedPages = [
   "/[lang]/org/[slug]/requirements",
   "/[lang]/org/[slug]/requirements/[id]",
   "/[lang]/org/[slug]/requirements/[id]/edit",
+  "/[lang]/org/[slug]/requirements/[id]/invitations",
   "/[lang]/org/[slug]/requirements/[id]/partners",
   "/[lang]/org/[slug]/requirements/new",
   "/[lang]/org/[slug]/saved-partners",
