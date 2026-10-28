@@ -92,6 +92,12 @@ insert into catalogue values
   ('public.requirement_versions', 'cascade',
    'organisation data: a version lives with its requirement (closed requirements follow closed_requirements, 730 days, applied from V58); changed_by is cleared with the profile',
    'organisation data: the edit history of an employer''s workforce requirements; changed_by only names the member who saved an edit'),
+  ('public.partner_responses', 'cascade',
+   'organisation data: a response lives with its requirement (responses and closed requirements follow partner_responses and closed_requirements, 730 days, applied from V58); created_by and decided_by are cleared with the profile',
+   'organisation data: the proposals between a partner company and an employer; created_by and decided_by only name the members who sent or decided one'),
+  ('public.partner_response_versions', 'cascade',
+   'organisation data: a version lives with its response; created_by is cleared with the profile',
+   'organisation data: the version history of a partner company''s proposal; created_by only names the member who wrote a version'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -210,8 +216,8 @@ select is(
   (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
      'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages']) t
    where to_regclass(t) is null),
-  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages,public.partner_responses',
-  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41'
+  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages',
+  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44'
 );
 select is(
   (select string_agg(entity, ',' order by entity) from private.retention_policies
@@ -220,7 +226,9 @@ select is(
   'AC9: each of them already has its retention entity to apply'
 );
 select is(
-  (select count(*)::integer from catalogue where tbl like 'public.partner_%' or tbl like 'audit.partner_%' or tbl = 'public.workforce_availability'),
+  (select count(*)::integer from catalogue
+   where (tbl like 'public.partner_%' or tbl like 'audit.partner_%' or tbl = 'public.workforce_availability')
+     and tbl not in ('public.partner_responses', 'public.partner_response_versions')),
   4, 'the four Phase 2 tables of release 2a with a user column are catalogued: licences, review decisions, availability, evidence access log'
 );
 
