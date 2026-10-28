@@ -1,5 +1,5 @@
 begin;
-select plan(98);
+select plan(101);
 
 \ir apply_fixture.inc
 
@@ -401,6 +401,16 @@ select is(
 select throws_ok(
   pg_temp.insert_job(current_setting('t.a')::uuid, '{"city": "-", "status": "open"}'),
   'P0001', 'CHARA_INVALID_INPUT', 'not even the database owner inserts an open vacancy with the city ''-''');
+-- An open vacancy that kept '-' from before the check (written as the database owner with the trigger off) can still be
+-- corrected; reopening it with '-' is refused.
+alter table public.jobs disable trigger jobs_require_city;
+update public.jobs set city = '-' where id = :'anon_copy';
+alter table public.jobs enable always trigger jobs_require_city;
+select is(
+  pg_temp.call_as(:'adm', 'authenticated', format('update public.jobs set title = ''Welder MIG'' where id = %L', :'anon_copy')),
+  'ok', 'an open vacancy whose city is still ''-'' can still change its title');
+select is(pg_temp.set_status(:'adm', :'anon_copy', 'paused'), 'ok', 'and be paused');
+select is(pg_temp.set_status(:'adm', :'anon_copy', 'open'), 'P0001|CHARA_INVALID_INPUT|city', 'reopening it with the city ''-'' is refused');
 
 -- The description's variants ---------------------------------------------------------------------------------------------
 

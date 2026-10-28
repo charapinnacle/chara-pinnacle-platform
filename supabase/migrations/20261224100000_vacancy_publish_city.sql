@@ -3,7 +3,7 @@
 -- '-' is the nearest to empty its check accepts. Such a draft may be saved as it is, but it becomes Open (published,
 -- reopened, or edited while open) only with a real city, so no public vacancy shows '-' and the employer has to choose
 -- what the vacancy says instead of the job order's city. The refusal is CHARA_INVALID_INPUT with the detail city, which
--- the vacancy pages show as "Enter the city before publishing".
+-- the vacancy pages show as "Enter the city of the vacancy."
 --
 -- A trigger of its own beside private.jobs_guard_transition (20261017100000), which stays as it is: the guard decides
 -- which status change is allowed and who may make it, and fires first (triggers fire in name order), so a caller who
@@ -21,9 +21,18 @@ $$;
 
 revoke all on function private.jobs_require_city() from public, anon, authenticated, service_role;
 
-create trigger jobs_require_city
-  before insert or update of status, city on public.jobs
+-- An insert, and an update only when it changes the status or the city: an open vacancy that somehow kept '-' (written
+-- before this migration) can still have its title or text corrected.
+create trigger jobs_require_city_insert
+  before insert on public.jobs
   for each row when (new.status = 'open' and new.city = '-')
   execute function private.jobs_require_city();
 
+create trigger jobs_require_city
+  before update of status, city on public.jobs
+  for each row when (new.status = 'open' and new.city = '-'
+    and (old.city is distinct from new.city or old.status is distinct from new.status))
+  execute function private.jobs_require_city();
+
+alter table public.jobs enable always trigger jobs_require_city_insert;
 alter table public.jobs enable always trigger jobs_require_city;

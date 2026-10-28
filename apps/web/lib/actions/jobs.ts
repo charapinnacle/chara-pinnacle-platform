@@ -8,7 +8,7 @@ import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { getJobLimit } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { CITY_BEFORE_PUBLISHING, type LimitPrompt } from "@/lib/jobs/lifecycle";
+import { CITY_BEFORE_PUBLISHING, CITY_OF_VACANCY, type LimitPrompt } from "@/lib/jobs/lifecycle";
 import { statusLabels } from "@/lib/jobs/presentation";
 import { reportQuotaRefused } from "@/lib/quota-refused";
 import { jobPath, jobsPath } from "@/lib/routes";
@@ -52,7 +52,7 @@ function refusal(error: PostgrestError): JobActionResult {
   const constraint = /constraint "([^"]+)"/.exec(error.message)?.[1];
   const known = constraint ? fieldByConstraint[constraint] : undefined;
   if (known) return { errors: { [known[0]]: known[1] } };
-  if (error.message === "CHARA_INVALID_INPUT" && error.details === "city") return { errors: { city: CITY_BEFORE_PUBLISHING } };
+  if (error.message === "CHARA_INVALID_INPUT" && error.details === "city") return { errors: { city: CITY_OF_VACANCY } };
   if (error.code === "42501") return { message: NOT_ALLOWED };
   if (error.message === "CHARA_RATE_LIMITED") return quotaRefusal();
   console.error("Saving the vacancy failed", { code: error.code, message: error.message });

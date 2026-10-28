@@ -405,7 +405,7 @@ select is(
   (select array_agg(t.tgname::text order by t.tgname) from pg_trigger t
    where t.tgrelid = 'public.jobs'::regclass and not t.tgisinternal and t.tgtype & 2 = 2),
   array['jobs_employer_only', 'jobs_guard_filled', 'jobs_guard_transition', 'jobs_limit_check', 'jobs_quota', 'jobs_require_city',
-    'jobs_touch_updated_at'],
+    'jobs_require_city_insert', 'jobs_touch_updated_at'],
   'the limit trigger is a BEFORE trigger that sorts after the transition guard (and before the stamp of updated_at)'
 );
 select pg_temp.org_on('employer_starter') as order_org \gset

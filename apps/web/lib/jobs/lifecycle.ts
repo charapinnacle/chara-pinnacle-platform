@@ -68,3 +68,4 @@ export function inProgressText(count: number): string {
 // employer enters the city the vacancy shows before publishing it.
 export const CITY_PLACEHOLDER = "-";
 export const CITY_BEFORE_PUBLISHING = "Enter the city before publishing.";
+export const CITY_OF_VACANCY = "Enter the city of the vacancy.";
