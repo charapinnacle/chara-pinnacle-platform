@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -61,6 +61,10 @@ describe("in-app notification items (FR-T1)", () => {
     ["requirement_closing_soon", { requirement_id: "../x", org_slug: "acme" }, company, "A workforce requirement closes soon", null],
     ["job_order_match", { requirement_id: JOB, title: "Germany, 100 Welders and flame cutters", country_code: "DE", country_name: "Germany", org_slug: "manila" }, company, "New job order: Germany, 100 Welders and flame cutters", jobOrderPath("en", "manila", JOB)],
     ["job_order_match", { requirement_id: "../billing", org_slug: "manila" }, company, "A new job order fits your company", null],
+    ["invitation_received", { invitation_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila" }, company, 'An employer invited your company to "Germany, 10 Welders and flame cutters"', invitationPath("en", "manila", APP)],
+    ["invitation_received", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", org_slug: "manila" }, company, 'Acme Bau invited your company to "Hamburg welders"', invitationPath("en", "manila", APP)],
+    ["invitation_received", { invitation_id: "../billing", org_slug: "manila" }, company, "An employer invited your company to a workforce requirement", null],
+    ["invitation_withdrawn", { invitation_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila" }, company, 'The invitation to "Germany, 10 Welders and flame cutters" was withdrawn', invitationPath("en", "manila", APP)],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
@@ -100,7 +104,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "invitation_received", payload: { requirement_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "response_received", payload: { requirement_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,

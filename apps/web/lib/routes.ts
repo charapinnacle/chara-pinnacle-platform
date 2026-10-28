@@ -153,6 +153,15 @@ export function jobOrderPath(lang: string, slug: string, id: string): string {
   return `${jobOrdersPath(lang, slug)}/${id}`;
 }
 
+// The invitations a recruitment or staffing company received (FR-O1), and one of them.
+export function invitationsPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/invitations`;
+}
+
+export function invitationPath(lang: string, slug: string, id: string): string {
+  return `${invitationsPath(lang, slug)}/${id}`;
+}
+
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.
 export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
   const path = `/${lang}/org/${slug}/saved-partners`;

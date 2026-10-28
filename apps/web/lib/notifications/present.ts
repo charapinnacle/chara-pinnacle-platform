@@ -10,6 +10,7 @@ import {
   dataExportPath,
   employerDashboardPath,
   homePath,
+  invitationPath,
   jobOrderPath,
   jobPath,
   mfaPath,
@@ -77,6 +78,12 @@ function closingRequirementPath(lang: string, payload: Record<string, unknown>):
   const slug = text(payload, "org_slug");
   const id = text(payload, "requirement_id");
   return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementPath(lang, slug, id) : null;
+}
+
+function invitationHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "invitation_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? invitationPath(lang, slug, id) : null;
 }
 
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
@@ -324,6 +331,29 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: title ? `New job order: ${title}` : "A new job order fits your company",
         href: slug && id && /^[0-9a-f-]{36}$/.test(id) ? jobOrderPath(lang, slug, id) : null,
+      };
+    },
+  },
+  // NFR-S11: the title the payload holds (generated unless the employer shows its name) and the employer only when shown;
+  // the link is the recipient's own invitation page.
+  invitation_received: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name");
+      return {
+        title: `${employer ?? "An employer"} invited your company to ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: invitationHref(lang, payload),
+      };
+    },
+  },
+  invitation_withdrawn: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `The invitation to ${title ? `"${title}"` : "a workforce requirement"} was withdrawn`,
+        href: invitationHref(lang, payload),
       };
     },
   },

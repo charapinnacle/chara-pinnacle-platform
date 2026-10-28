@@ -9,6 +9,7 @@ import {
   applicationPath,
   billingPath,
   dataExportPath,
+  invitationPath,
   jobOrderPath,
   jobPath,
   requirementPath,
@@ -106,6 +107,16 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
     country_name: "Germany",
     org_slug: "manila-recruit",
   },
+  invitation_received: {
+    invitation_id: APP,
+    title: "Germany, 10 Welders and flame cutters",
+    country_code: "DE",
+    country_name: "Germany",
+    workers_needed: 10,
+    start_date: "2027-03-01",
+    org_slug: "manila-recruit",
+  },
+  invitation_withdrawn: { invitation_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila-recruit" },
 };
 
 const LEAKS = {
@@ -210,6 +221,8 @@ describe("notification templates", () => {
       data_export_ready: dataExportPath("en"),
       requirement_closing_soon: requirementPath("en", "acme-bau", JOB),
       job_order_match: jobOrderPath("en", "manila-recruit", JOB),
+      invitation_received: invitationPath("en", "manila-recruit", APP),
+      invitation_withdrawn: invitationPath("en", "manila-recruit", APP),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -236,6 +249,26 @@ describe("notification templates", () => {
     for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
     const foreign = await renderEmail("job_order_match", { ...SAMPLES.job_order_match, requirement_id: "../billing" }, SITE);
     expect(foreign.html).not.toContain("billing");
+  });
+
+  it("invitation_received names the requirement, destination, workers and start date and no anonymous employer (FR-O1 AC7, AC11, NFR-S11)", async () => {
+    const email = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, org_name: "Acme Bau" }, SITE);
+    expect(email.subject).toBe("Invitation to a workforce requirement: Germany, 10 Welders and flame cutters");
+    expect(email.text).toContain('An employer invited your company to "Germany, 10 Welders and flame cutters" in Germany.');
+    expect(email.text).toContain("Workers needed: 10. Start: 1 March 2027.");
+    expect(email.text).toContain(`See the invitation ${SITE}/en/org/manila-recruit/invitations/${APP}`);
+    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
+    const named = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, employer_name: "Acme Bau", title: "Hamburg yard welders" }, SITE);
+    expect(named.text).toContain('Acme Bau invited your company to "Hamburg yard welders" in Germany.');
+    const foreign = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, invitation_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("invitation_withdrawn names the requirement and links the recipient's invitation page (FR-O1 AC10)", async () => {
+    const email = await renderEmail("invitation_withdrawn", SAMPLES.invitation_withdrawn, SITE);
+    expect(email.subject).toBe("Invitation withdrawn: Germany, 10 Welders and flame cutters");
+    expect(email.text).toContain("You no longer need to answer it.");
+    expect(email.text).toContain(`${SITE}/en/org/manila-recruit/invitations/${APP}`);
   });
 
   it("link without a double slash when the site address ends with one", async () => {
