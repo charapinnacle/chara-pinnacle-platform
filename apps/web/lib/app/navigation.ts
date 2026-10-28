@@ -5,10 +5,12 @@ import {
   companyDashboardPath,
   employerDashboardPath,
   homePath,
+  invitationsPath,
   jobsPath,
   membersPath,
   myReportsPath,
   notificationSettingsPath,
+  requirementsPath,
   settingsPath,
   workforceProfilePath,
 } from "@/lib/routes";
@@ -25,6 +27,8 @@ export type NavIcon =
   | "applicants"
   | "team"
   | "workforce"
+  | "requirements"
+  | "invitations"
   | "billing"
   | "reports"
   | "settings";
@@ -43,6 +47,8 @@ export type NavOrganization = {
   suspended: boolean;
   // Set for a recruitment or staffing company: the segment of its dashboard (FR-R3, FR-R4).
   partnerSegment?: "recruitment" | "staffing";
+  // Set while release 2b is on: the workforce requirements of an employer, the invitations of a partner (FR-O1).
+  jobOrders?: true;
 };
 
 // The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered.
@@ -59,10 +65,12 @@ export function workerLinks(lang: string): NavLink[] {
 
 // The pages of one organisation. Billing is for owners and administrators, as the page itself requires, and a suspended
 // organisation has none of them: each answers with a notice that it is suspended. A recruitment or staffing company has
-// its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1).
+// its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1). While release 2b
+// is on, an employer has its workforce requirements, where it follows its invitations, and a partner the invitations it
+// received (FR-O1).
 export function organizationLinks(
   lang: string,
-  { slug, role, suspended, partnerSegment }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment">,
+  { slug, role, suspended, partnerSegment, jobOrders }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders">,
 ): NavLink[] {
   if (suspended) return [];
   const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
@@ -75,12 +83,18 @@ export function organizationLinks(
           icon: "organisation",
         },
         { label: "Workforce profile", href: workforceProfilePath(lang, slug), match: workforceProfilePath(lang, slug), icon: "workforce" },
+        ...(jobOrders
+          ? [{ label: "Invitations", href: invitationsPath(lang, slug), match: invitationsPath(lang, slug), icon: "invitations" } as const]
+          : []),
         team,
       ]
     : [
         { label: "Organisation", href: employerDashboardPath(lang, slug), match: `/${lang}/dashboard/employer`, icon: "organisation" },
         { label: "Vacancies", href: jobsPath(lang, slug), match: `/${lang}/org/${slug}/jobs`, icon: "vacancies" },
         { label: "Applicants", href: applicantsPath(lang, slug), match: `/${lang}/org/${slug}/applicants`, icon: "applicants" },
+        ...(jobOrders
+          ? [{ label: "Requirements", href: requirementsPath(lang, slug), match: requirementsPath(lang, slug), icon: "requirements" } as const]
+          : []),
         team,
       ];
   if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });

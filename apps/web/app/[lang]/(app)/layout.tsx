@@ -33,10 +33,11 @@ async function bellOrNone(userId: string): Promise<{ userId: string; initialUnre
   }
 }
 
-// The links of a partner organisation follow release 2a; a failed read counts it as off and keeps the header.
-async function partnersReleasedOrOff(): Promise<boolean> {
+// The links of a partner organisation follow release 2a, the requirement and invitation links release 2b; a failed read
+// counts the switch as off and keeps the header.
+async function releasedOrOff(key: "release_partner_directories" | "release_job_orders"): Promise<boolean> {
   try {
-    return await isReleased("release_partner_directories");
+    return await isReleased(key);
   } catch (error) {
     console.error("The release switch of the header could not be read", error);
     return false;
@@ -50,10 +51,11 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
   const { lang } = await params;
   const user = await getCurrentUser();
   const accountKind = user && !user.suspended ? user.accountKind : null;
-  const [organizations, notifications, partnersReleased] = await Promise.all([
+  const [organizations, notifications, partnersReleased, jobOrdersReleased] = await Promise.all([
     user && accountKind === "company" ? organizationsOrNone(user.id) : [],
     user && accountKind ? bellOrNone(user.id) : null,
-    user && accountKind === "company" ? partnersReleasedOrOff() : false,
+    user && accountKind === "company" ? releasedOrOff("release_partner_directories") : false,
+    user && accountKind === "company" ? releasedOrOff("release_job_orders") : false,
   ]);
   const navigation = user
     ? {
@@ -70,6 +72,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
             roleLabel: roleLabels[role],
             suspended,
             ...(type === "employer" ? {} : { partnerSegment: partnerSegments[type] }),
+            ...(jobOrdersReleased ? { jobOrders: true as const } : {}),
           })),
         notifications,
       }
