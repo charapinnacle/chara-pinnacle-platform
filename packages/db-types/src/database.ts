@@ -1014,6 +1014,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"requirement_versions": {
+                  Row: {
+                    "changed_by": string | null,"changed_fields": (string)[],"created_at": string,"new_values": NonNullable<Json>,"old_values": NonNullable<Json>,"organization_id": string,"requirement_id": string,"status": Database["public"]['Enums']["requirement_status"],"version": number
+                  }
+                  Insert: {
+                    "changed_by"?: string | null,"changed_fields": (string)[],"created_at"?: string,"new_values": NonNullable<Json>,"old_values": NonNullable<Json>,"organization_id": string,"requirement_id": string,"status": Database["public"]['Enums']["requirement_status"],"version": number
+                  }
+                  Update: {
+                    "changed_by"?: string | null,"changed_fields"?: (string)[],"created_at"?: string,"new_values"?: NonNullable<Json>,"old_values"?: NonNullable<Json>,"organization_id"?: string,"requirement_id"?: string,"status"?: Database["public"]['Enums']["requirement_status"],"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "requirement_versions_changed_by_fkey"
+      columns: ["changed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "requirement_versions_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "requirement_versions_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "requirement_versions_requirement_id_fkey"
+      columns: ["requirement_id"]
+isOneToOne: false
+      referencedRelation: "workforce_requirements"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"saved_items": {
                   Row: {
                     "created_at": string,"kind": string,"organization_id": string,"saved_by": string | null,"target_organization_id": string
@@ -1966,6 +2003,11 @@ isOneToOne: false
               "based_in_country": string,"based_in_country_name": string,"display_name": string,"followed_at": string,"next_cursor": string,"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"total": number
             }[]
                            },
+"list_invitation_changes":
+{ Args: { "p_invitation": string,"p_org": string }; Returns: {
+              "changed_fields": (string)[],"created_at": string,"new_values": Json,"old_values": Json,"version": number
+            }[]
+                           },
 "list_job_orders":
 { Args: { "p_cursor"?: string,"p_destination"?: string,"p_industry"?: string,"p_limit"?: number,"p_occupation"?: string,"p_org": string,"p_recruitment"?: Database["public"]['Enums']["recruitment_preference"],"p_source"?: string,"p_start_from"?: string,"p_start_to"?: string,"p_workers_max"?: number,"p_workers_min"?: number }; Returns: {
               "city_region": string,"countries": (string)[],"country_code": string,"eligible": boolean,"employer_company_slug": string,"employer_name": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry_code": string,"next_cursor": string,"occupations": Json,"published_on": string,"reasons": (string)[],"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"response_count": number,"responses_fewer_than": number,"start_date": string,"title": string,"workers_needed": number
@@ -2014,6 +2056,11 @@ isOneToOne: false
 "list_requirement_invitations":
 { Args: { "p_org": string,"p_requirement": string }; Returns: {
               "answered_at": string,"decline_reason": string,"expired_at": string,"id": string,"invited_at": string,"organization_id": string,"partner_name": string,"partner_slug": string,"partner_type": Database["public"]['Enums']["organization_type"],"responded_at": string,"source": string,"status": Database["public"]['Enums']["invitation_status"],"suggestion_criteria": (string)[],"viewed_at": string,"withdrawn_at": string
+            }[]
+                           },
+"list_requirement_versions":
+{ Args: { "p_org": string,"p_requirement": string }; Returns: {
+              "changed_by_member": boolean,"changed_by_name": string,"changed_fields": (string)[],"created_at": string,"new_values": Json,"old_values": Json,"status": Database["public"]['Enums']["requirement_status"],"version": number
             }[]
                            },
 "list_saved_jobs":
