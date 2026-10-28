@@ -3,11 +3,10 @@ import { Action, Layout, Paragraph } from "../layout.tsx";
 import { field, longDate, url } from "../payload.ts";
 import type { Template } from "../template.ts";
 
-// FR-O1 step Notify: an employer invited the recipient's company to a workforce requirement. The payload holds the
-// invitation id, the title, the destination, the number of workers, the start date, the employer's name only when its
-// requirement shows it on the marketplace (otherwise the title is the generated one) and the slug of the recipient's own
-// company. An email leaves the platform, so it never names an employer that is anonymous (NFR-S11); the invitation page
-// shows the name after sign-in.
+// FR-O1 step Notify (AC7, AC11): an employer invited the recipient's company to a workforce requirement. The payload holds
+// the invitation id, the requirement's title, the destination, the number of workers, the start date, the employer's
+// display name (an invitation reveals it to the invited partner, decision 3.2) and the slug of the recipient's own
+// company; never a member of the employer or an address.
 export const invitationReceived: Template = {
   subject: (payload) => {
     const title = field(payload, "title");

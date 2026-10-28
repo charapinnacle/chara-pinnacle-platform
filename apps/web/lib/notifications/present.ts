@@ -334,8 +334,8 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
-  // NFR-S11: the title the payload holds (generated unless the employer shows its name) and the employer only when shown;
-  // the link is the recipient's own invitation page.
+  // The invitation reveals the employer to the invited partner (decision 3.2), so the item names it with the requirement's
+  // title; the link is the recipient's own invitation page.
   invitation_received: {
     label: "Invitations",
     present: (payload, { lang }) => {
@@ -351,8 +351,9 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
     label: "Invitations",
     present: (payload, { lang }) => {
       const title = text(payload, "title");
+      const employer = text(payload, "employer_name");
       return {
-        title: `The invitation to ${title ? `"${title}"` : "a workforce requirement"} was withdrawn`,
+        title: `${employer ?? "The employer"} withdrew the invitation to ${title ? `"${title}"` : "a workforce requirement"}`,
         href: invitationHref(lang, payload),
       };
     },

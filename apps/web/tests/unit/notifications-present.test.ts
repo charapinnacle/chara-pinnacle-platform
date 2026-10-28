@@ -64,7 +64,8 @@ describe("in-app notification items (FR-T1)", () => {
     ["invitation_received", { invitation_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila" }, company, 'An employer invited your company to "Germany, 10 Welders and flame cutters"', invitationPath("en", "manila", APP)],
     ["invitation_received", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", org_slug: "manila" }, company, 'Acme Bau invited your company to "Hamburg welders"', invitationPath("en", "manila", APP)],
     ["invitation_received", { invitation_id: "../billing", org_slug: "manila" }, company, "An employer invited your company to a workforce requirement", null],
-    ["invitation_withdrawn", { invitation_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila" }, company, 'The invitation to "Germany, 10 Welders and flame cutters" was withdrawn', invitationPath("en", "manila", APP)],
+    ["invitation_withdrawn", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", org_slug: "manila" }, company, 'Acme Bau withdrew the invitation to "Hamburg welders"', invitationPath("en", "manila", APP)],
+    ["invitation_withdrawn", { invitation_id: "../x", org_slug: "manila" }, company, "The employer withdrew the invitation to a workforce requirement", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);

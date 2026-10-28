@@ -109,14 +109,15 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   },
   invitation_received: {
     invitation_id: APP,
-    title: "Germany, 10 Welders and flame cutters",
+    title: "Hamburg yard welders",
     country_code: "DE",
     country_name: "Germany",
     workers_needed: 10,
     start_date: "2027-03-01",
+    employer_name: "Acme Bau",
     org_slug: "manila-recruit",
   },
-  invitation_withdrawn: { invitation_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila-recruit" },
+  invitation_withdrawn: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", org_slug: "manila-recruit" },
 };
 
 const LEAKS = {
@@ -251,22 +252,26 @@ describe("notification templates", () => {
     expect(foreign.html).not.toContain("billing");
   });
 
-  it("invitation_received names the requirement, destination, workers and start date and no anonymous employer (FR-O1 AC7, AC11, NFR-S11)", async () => {
-    const email = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, org_name: "Acme Bau" }, SITE);
-    expect(email.subject).toBe("Invitation to a workforce requirement: Germany, 10 Welders and flame cutters");
-    expect(email.text).toContain('An employer invited your company to "Germany, 10 Welders and flame cutters" in Germany.');
+  it("invitation_received names the requirement, the employer the invitation reveals, destination, workers and start date (FR-O1 AC7, AC11)", async () => {
+    const email = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, member_name: "Jana Acme", member_email: "jana@acme.test" }, SITE);
+    expect(email.subject).toBe("Invitation to a workforce requirement: Hamburg yard welders");
+    expect(email.text).toContain('Acme Bau invited your company to "Hamburg yard welders" in Germany.');
     expect(email.text).toContain("Workers needed: 10. Start: 1 March 2027.");
     expect(email.text).toContain(`See the invitation ${SITE}/en/org/manila-recruit/invitations/${APP}`);
-    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
-    const named = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, employer_name: "Acme Bau", title: "Hamburg yard welders" }, SITE);
-    expect(named.text).toContain('Acme Bau invited your company to "Hamburg yard welders" in Germany.');
+    for (const part of [email.subject, email.text, email.html]) {
+      expect(part).not.toContain("Jana");
+      expect(part).not.toContain("jana@acme.test");
+    }
+    const unnamed = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, employer_name: undefined }, SITE);
+    expect(unnamed.text).toContain('An employer invited your company to "Hamburg yard welders" in Germany.');
     const foreign = await renderEmail("invitation_received", { ...SAMPLES.invitation_received, invitation_id: "../billing" }, SITE);
     expect(foreign.html).not.toContain("billing");
   });
 
-  it("invitation_withdrawn names the requirement and links the recipient's invitation page (FR-O1 AC10)", async () => {
+  it("invitation_withdrawn names the requirement and the employer and links the recipient's invitation page (FR-O1 AC10)", async () => {
     const email = await renderEmail("invitation_withdrawn", SAMPLES.invitation_withdrawn, SITE);
-    expect(email.subject).toBe("Invitation withdrawn: Germany, 10 Welders and flame cutters");
+    expect(email.subject).toBe("Invitation withdrawn: Hamburg yard welders");
+    expect(email.text).toContain('Acme Bau withdrew the invitation of your company to "Hamburg yard welders".');
     expect(email.text).toContain("You no longer need to answer it.");
     expect(email.text).toContain(`${SITE}/en/org/manila-recruit/invitations/${APP}`);
   });
