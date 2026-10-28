@@ -43,7 +43,13 @@ export default async function EditRequirementPage({ params }: PageProps<"/[lang]
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title="Edit workforce requirement"
-        description={editable ? `${requirement.title}. Saving keeps the status.` : requirement.title}
+        description={
+          !editable
+            ? requirement.title
+            : requirement.status === "draft"
+              ? `${requirement.title}. Saving keeps the status.`
+              : `${requirement.title}. Saving keeps the status, and the partners you invited are told which fields changed.`
+        }
         breadcrumb={
           <Breadcrumbs
             items={[
