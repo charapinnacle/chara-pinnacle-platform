@@ -745,7 +745,8 @@ select is(
   (select count(*)::integer from audit.log where action = 'requirement.invitation_expired'
      and entity_id in (:'t_inv', :'t_view', :'t_acc') and metadata ->> 'requirement_status' = 'closed'),
   3, 'one audit row requirement.invitation_expired each, with the requirement''s status');
-select is((select count(*) from public.notifications)::text, current_setting('t.notes'), 'AC10: no notification on expiry');
+select is((select count(*) from public.notifications where kind <> 'requirement_closed')::text, current_setting('t.notes'),
+  'AC10: no notification on expiry beyond the closing notice of V43');
 select pg_temp.req(:'acme', 'Acme filling') as tf \gset
 select pg_temp.seed_inv(:'tf', :'p1', 'accepted') as tf_acc \gset
 select is(

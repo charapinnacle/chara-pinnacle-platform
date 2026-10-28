@@ -89,6 +89,9 @@ insert into catalogue values
   ('public.requirement_invitations', 'cascade',
    'organisation data: an invitation lives with its requirement (closed requirements follow closed_requirements, 730 days, applied from V58); invited_by is cleared with the profile',
    'organisation data: the invitations between an employer and a partner company; invited_by only names the member who sent one'),
+  ('public.requirement_versions', 'cascade',
+   'organisation data: a version lives with its requirement (closed requirements follow closed_requirements, 730 days, applied from V58); changed_by is cleared with the profile',
+   'organisation data: the edit history of an employer''s workforce requirements; changed_by only names the member who saved an edit'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 

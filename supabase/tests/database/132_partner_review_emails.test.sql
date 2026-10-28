@@ -144,7 +144,7 @@ select is(
 select is(
   pg_temp.val_as(:'owb', 'aal1', $q$select count(*)::text from public.notification_kind_catalogue() where kind = 'requirement_closing_soon'$q$)
     || ',' || pg_temp.val_as(:'emp', 'aal1', $q$select count(*)::text from public.notification_kind_catalogue() where kind = 'requirement_closing_soon'$q$),
-  '0,1', 'the requirement closing reminder is offered to an employer only until V43 tells partners too (FR-M2)'
+  '1,1', 'the requirement closing reminder is offered to an employer and, since V43 tells the invited partners too, a partner (FR-M2)'
 );
 select is(
   pg_temp.call_as(:'emp', 'authenticated', $$select public.set_notification_preferences('{"licence_expiring": false}'::jsonb)$$)

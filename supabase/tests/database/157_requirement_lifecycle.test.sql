@@ -144,12 +144,12 @@ select is(
 select is(
   (select string_agg(r.key || '=' || (s.value #>> '{}') || ' ' || r.min || '..' || r.max, ',' order by r.key)
    from private.setting_rules r join private.settings s using (key) where r.key like 'requirement\_%'),
-  'requirement_closing_reminder_days=7 1..30,requirement_extension_days=30 7..90,requirement_extension_horizon_days=365 30..1095,requirement_open_days=90 30..365',
-  'NFR-O5: the durations are settings of the settings editor with their bounds');
+  'requirement_change_notice_minutes=15 0..1440,requirement_closing_reminder_days=7 1..30,requirement_extension_days=30 7..90,requirement_extension_horizon_days=365 30..1095,requirement_open_days=90 30..365',
+  'NFR-O5: the durations (and the V43 change notice delay) are settings of the settings editor with their bounds');
 select is((select count(*)::integer from private.missing_reference_data() where kind = 'setting'), 0,
   'the deployment check finds every setting the functions read');
-select is((select organization_types::text from private.notification_kinds where kind = 'requirement_closing_soon'), '{employer}',
-  'requirement_closing_soon is offered to employers until V43 widens it to partners');
+select is((select organization_types::text from private.notification_kinds where kind = 'requirement_closing_soon'),
+  '{employer,recruitment_company,staffing_company}', 'requirement_closing_soon is offered to employers and (V43) to partners');
 select is((select count(*)::integer from private.notification_kinds where kind = 'requirement_closing_soon' and not mandatory and default_email), 1,
   'requirement_closing_soon is optional and emailed by default');
 select alike(pg_temp.read_as(:'own1', 'select closing_reminder_for from public.workforce_requirements limit 1'), '42501|%',
