@@ -20,7 +20,7 @@ const ERROR_ID = "invite-selection-error";
 
 type Outcome =
   | { kind: "sent"; sent: string | null; already: string[]; usage: InvitationUsage | null }
-  | { kind: "limit"; prompt: UsagePrompt };
+  | { kind: "limit"; prompt: UsagePrompt; attempted: number };
 
 type InviteSelectionProps = {
   organizationId: string;
@@ -59,7 +59,7 @@ export function InviteSelection({ organizationId, slug, requirementId, billingHr
       return;
     }
     if (result.limitReached) {
-      setOutcome({ kind: "limit", prompt: result.limitReached });
+      setOutcome({ kind: "limit", prompt: result.limitReached, attempted: values.partners.length });
       return;
     }
     if (result.message || !result.outcomes) {
@@ -108,7 +108,7 @@ export function InviteSelection({ organizationId, slug, requirementId, billingHr
               prompt={outcome.prompt}
               billingHref={billingHref}
               canUpgrade
-              requirementId={requirementId}
+              requirement={{ id: requirementId, attempted: outcome.attempted }}
             />
             <p className="mt-1">Nobody was invited. Select fewer partners, or withdraw an invitation before a response to make room.</p>
           </Notice>

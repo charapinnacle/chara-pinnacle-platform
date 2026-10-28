@@ -38,7 +38,7 @@ export function InvitationUsage({ organizationId, requirementId, usage, billingH
         prompt={prompt}
         billingHref={billingHref}
         canUpgrade={canUpgrade}
-        requirementId={requirementId}
+        requirement={{ id: requirementId, attempted: 1 }}
       />
       {canUpgrade && prompt.limit > 0 ? <p className="mt-1">Withdrawing an invitation before a response makes room.</p> : null}
     </Notice>
