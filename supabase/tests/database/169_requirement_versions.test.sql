@@ -1,5 +1,5 @@
 begin;
-select plan(102);
+select plan(129);
 
 \ir jobs_fixture.inc
 
@@ -269,30 +269,57 @@ select is(
 select is(
   (select payload ->> 'to_version' from public.notifications where user_id = :'u1a' and kind = 'requirement_changed'), '3',
   'the others'' waiting notices widen to version 3');
-update private.settings set value = '0' where key = 'requirement_change_notice_minutes';
+-- A message the notify function may already hold is never widened: its visibility time has passed (or it was read).
+update pgmq.q_notifications set vt = clock_timestamp() - interval '1 minute' where message ->> 'kind' = 'requirement_changed';
 select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 3700, "salary_min": 2600, "title": "Acme welders 2027"}'),
-  'ok', 'with requirement_change_notice_minutes 0 a fourth edit ...');
-select is(pg_temp.kind_count('requirement_changed'), 11, '... is one new notice for each recipient (no window)');
+  'ok', 'a fourth edit once the waiting emails are visible to the notify function ...');
+select is(pg_temp.kind_count('requirement_changed'), 11, '... is a new notice for each recipient, none widened');
 select is(
   (select count(*)::integer from pgmq.q_notifications
-   where message ->> 'kind' = 'requirement_changed' and message ->> 'to_version' = '4' and vt <= clock_timestamp()),
-  5, 'and its email is not held back');
+   where message ->> 'kind' = 'requirement_changed' and message ->> 'to_version' = '4' and vt > now() + interval '14 minutes'),
+  5, 'and those emails are held back again');
+update private.settings set value = '0' where key = 'requirement_change_notice_minutes';
+update public.notifications set read_at = now() where kind = 'requirement_changed';
+select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 3800, "salary_min": 2600, "title": "Acme welders 2027"}'),
+  'ok', 'with requirement_change_notice_minutes 0 a fifth edit ...');
+select is(
+  (select count(*)::integer from pgmq.q_notifications
+   where message ->> 'kind' = 'requirement_changed' and message ->> 'to_version' = '5' and vt <= clock_timestamp()),
+  5, '... sends its emails without holding them back');
 update private.settings set value = '15' where key = 'requirement_change_notice_minutes';
 update public.notifications set read_at = now() where kind = 'requirement_changed';
 insert into public.notification_preferences (user_id, email_kinds) values (:'u2', '{"requirement_changed": false}')
 on conflict (user_id) do update set email_kinds = excluded.email_kinds;
-select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 3800, "salary_min": 2600, "title": "Acme welders 2027"}'),
-  'ok', 'a fifth edit ...');
+select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 3900, "salary_min": 2600, "title": "Acme welders 2027"}'),
+  'ok', 'a sixth edit ...');
 select is(
   (select string_agg(status || ':' || coalesce(email_status, '-'), ',') from public.notifications
-   where user_id = :'u2' and kind = 'requirement_changed' and payload ->> 'from_version' = '5'),
+   where user_id = :'u2' and kind = 'requirement_changed' and payload ->> 'from_version' = '6'),
   'suppressed:suppressed_by_preference', '... reaches P2''s owner, who turned the email off, in the app only');
+select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 4000, "salary_min": 2600, "title": "Acme welders 2027"}'),
+  'ok', 'a seventh edit within the window ...');
+select is(
+  (select string_agg(payload ->> 'from_version' || '-' || (payload ->> 'to_version'), ',') from public.notifications
+   where user_id = :'u2' and kind = 'requirement_changed' and read_at is null),
+  '6-7', '... widens P2''s in-app notice too');
+update public.notifications set created_at = now() - interval '16 minutes'
+where user_id = :'u2' and kind = 'requirement_changed' and read_at is null;
+select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 4100, "salary_min": 2600, "title": "Acme welders 2027"}'),
+  'ok', 'an eighth edit once that window has passed ...');
+select is(
+  (select string_agg(payload ->> 'from_version' || '-' || (payload ->> 'to_version'), ',' order by payload ->> 'from_version')
+   from public.notifications where user_id = :'u2' and kind = 'requirement_changed' and read_at is null),
+  '6-7,8-8', '... is a new notice for P2''s owner');
+select is(
+  (select payload ->> 'from_version' || '-' || (payload ->> 'to_version') from public.notifications
+   where user_id = :'u1' and kind = 'requirement_changed' and read_at is null),
+  '6-8', 'while the others'' emails still wait and carry versions 6 to 8');
 
 -- Edits that write no version ------------------------------------------------------------------------------------------------
 
-select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 3800, "salary_min": 2600, "title": "Acme welders 2027"}'),
+select is(pg_temp.save(:'adm', :'r', '{"workers": 120, "salary_max": 4100, "salary_min": 2600, "title": "Acme welders 2027"}'),
   'ok', 'a save that changes nothing ...');
-select is((select max(version) from public.requirement_versions where requirement_id = :'r'), 5, '... writes no version');
+select is((select max(version) from public.requirement_versions where requirement_id = :'r'), 8, '... writes no version');
 select pg_temp.req(:'acme', 'Acme draft', 'draft') as rd \gset
 select is(pg_temp.save(:'adm', :'rd', '{"workers": 120}'), 'ok', 'AC8: the admin edits a draft');
 select is((select count(*)::integer from public.requirement_versions where requirement_id = :'rd'), 0,
@@ -306,7 +333,7 @@ select is(pg_temp.save(:'adm', :'rc', '{"workers": 120}'), 'P0001|CHARA_INVALID_
 select is((select count(*)::integer from public.requirement_versions where requirement_id in (:'rf', :'rc')), 0, 'and writes nothing');
 select is(pg_temp.save(:'mem', :'r', '{"workers": 130}'), 'P0001|CHARA_FORBIDDEN|', 'a member cannot edit');
 select is(pg_temp.save(:'adm2', :'r', '{"workers": 130}'), 'P0001|CHARA_FORBIDDEN|', 'nor can an admin of Beta');
-select is((select max(version) from public.requirement_versions where requirement_id = :'r'), 5, 'no version from a refused edit');
+select is((select max(version) from public.requirement_versions where requirement_id = :'r'), 8, 'no version from a refused edit');
 select pg_temp.req(:'acme', 'Acme paused', 'paused') as rp \gset
 select pg_temp.seed_inv(:'rp', :'p1', 'accepted') as ip1 \gset
 select is(pg_temp.save(:'adm', :'rp', '{"workers": 110}'), 'ok', 'an edit of a paused requirement ...');
@@ -321,7 +348,7 @@ update private.settings set value = 'true' where key = 'release_job_orders';
 -- Who reads the versions (NFR-S8) ------------------------------------------------------------------------------------------
 
 select is(pg_temp.read_as(:'mem', format('select count(*)::text from public.requirement_versions where requirement_id = %L', :'r')),
-  '5', 'NFR-S8: a member of Acme reads the five versions');
+  '8', 'NFR-S8: a member of Acme reads the eight versions');
 select is(pg_temp.read_as(:'adm2', 'select count(*)::text from public.requirement_versions'), '0',
   'NFR-S8: an admin of Beta reads none of Acme''s versions');
 select is(pg_temp.read_as(:'u1', 'select count(*)::text from public.requirement_versions'), '0',
@@ -345,7 +372,7 @@ select is(
   'P0001|CHARA_INVALID_INPUT|append_only', 'append-only: even the table owner cannot change a version');
 select is(
   pg_temp.call_as(null, 'postgres', format(
-    'update public.requirement_versions set changed_by = null where requirement_id = %L and version = 5', :'r')),
+    'update public.requirement_versions set changed_by = null where requirement_id = %L and version = 8', :'r')),
   'ok', 'only changed_by may become null (the erasure of the member)');
 
 -- list_requirement_versions ---------------------------------------------------------------------------------------------------
@@ -354,7 +381,7 @@ select is(
   pg_temp.read_as(:'mem', format(
     $$select string_agg(version || ':' || changed_by_member || ':' || coalesce(changed_by_name, '-'), ',' order by n)
       from (select *, row_number() over () as n from public.list_requirement_versions(%L, %L)) s$$, :'acme', :'r')),
-  '5:false:-,4:true:Ada Admin,3:true:Ada Admin,2:true:Ada Admin,1:true:Ada Admin',
+  '8:false:-,7:true:Ada Admin,6:true:Ada Admin,5:true:Ada Admin,4:true:Ada Admin,3:true:Ada Admin,2:true:Ada Admin,1:true:Ada Admin',
   'a member of Acme reads every version, newest first, with the name of who saved it (none once erased)');
 select is(
   pg_temp.read_as(:'mem', format(
@@ -383,7 +410,7 @@ select is(
   pg_temp.read_as(:'u1m', format(
     $$select string_agg(version::text, ',' order by n) from (select *, row_number() over () as n
       from public.list_invitation_changes(%L, %L)) s$$, :'p1', :'i1')),
-  '5,4,3,2,1', 'a member of the invited P1 reads the changes since the invitation, newest first');
+  '8,7,6,5,4,3,2,1', 'a member of the invited P1 reads the changes since the invitation, newest first');
 select is(
   pg_temp.read_as(:'u1m', format(
     $$select new_values::text from public.list_invitation_changes(%L, %L) where version = 1$$, :'p1', :'i1')),
@@ -420,6 +447,20 @@ select is(
   'ok', 'the owner closes the requirement as cancelled');
 select is(pg_temp.told('requirement_closed', :'i1'), format('%s:queued,%s:queued', :'u1', :'u1a'),
   'AC10: requirement_closed for the owner and the admin of the invited P1');
+select is(
+  (select string_agg(status || ':' || coalesce(email_status, '-'), ',') from public.notifications
+   where user_id = :'u1' and kind = 'requirement_changed' and read_at is null and payload ->> 'invitation_id' = :'i1'),
+  'suppressed:suppressed_superseded', 'the change notice still waiting for its email is not emailed after the close (in the app it stays)');
+select is(
+  (select count(*)::integer from public.notifications where kind = 'requirement_changed' and status = 'queued'
+     and payload ->> 'invitation_id' in (:'i1', :'i2', :'i6')),
+  0, 'no change email is left to send for the invitations that expired with the close');
+select is(
+  (select count(*)::integer > 0 from public.notifications where kind = 'requirement_changed' and status = 'queued'
+     and payload ->> 'invitation_id' = :'i7'),
+  true, 'P7, which responded, keeps its change emails: its invitation does not expire');
+select ok(position('v_row.status <> ''queued''' in pg_get_functiondef('public.notify_dequeue(integer)'::regprocedure)) > 0,
+  'notify_dequeue sends only queued rows, so a suppressed one is dropped');
 select is(pg_temp.told('requirement_closed', :'i2') || '|' || pg_temp.told('requirement_closed', :'i7') || '|'
     || pg_temp.told('requirement_closed', :'i6'),
   format('%s:queued|%s:queued|%s:queued', :'u2', :'u7', :'u6'), 'for the accepted, the responded and the viewed partners');
@@ -435,8 +476,19 @@ select is((select status::text from public.requirement_invitations where id = :'
 select is(pg_temp.read_as(:'u1', format('select count(*)::text from public.list_invitation_changes(%L, %L)', :'p1', :'i1')),
   '0', 'an expired invitation shows no change any more');
 select is(pg_temp.read_as(:'mem', format('select count(*)::text from public.list_requirement_versions(%L, %L)', :'acme', :'r')),
-  '5', 'the employer still reads the history of a closed requirement');
+  '8', 'the employer still reads the history of a closed requirement');
 
+select pg_temp.req(:'acme', 'Acme withdrawing') as rw \gset
+select pg_temp.seed_inv(:'rw', :'p1', 'invited') as iw \gset
+select is(pg_temp.save(:'adm', :'rw', '{"workers": 90}'), 'ok', 'an edit of a requirement with an invitation to P1 ...');
+select is(pg_temp.told('requirement_changed', :'iw'), format('%s:queued,%s:queued', :'u1', :'u1a'), '... queues its change notice');
+select is(
+  pg_temp.call_as(:'own1', 'authenticated', format('select public.withdraw_invitation(%L, %L)', :'acme', :'iw')),
+  'ok', 'the owner withdraws the invitation within the window');
+select is(pg_temp.told('requirement_changed', :'iw'),
+  format('%s:suppressed,%s:suppressed', :'u1', :'u1a'), 'its waiting change notice is not emailed');
+select is(pg_temp.told('invitation_withdrawn', :'iw'), format('%s:queued,%s:queued', :'u1', :'u1a'),
+  'the withdrawal notice is queued instead');
 select pg_temp.req(:'acme', 'Acme filling') as rfi \gset
 select pg_temp.seed_inv(:'rfi', :'p1', 'accepted') as ifi \gset
 select is(
@@ -498,6 +550,42 @@ select is(
   'AC6: the partner''s payload holds the requirement id, its title, closes_on and the link to its invitation; no employer name');
 select is(private.remind_closing_requirements(), 0, 'AC6: a second run the same day queues nothing');
 select is(pg_temp.kind_count('requirement_closing_soon'), 8, 'AC6: no new row');
+
+-- Paused by a lapse: kept open by the daily job and not reminded; the backlog of employer pauses -----------------------------
+
+select pg_temp.req(:'beta', 'Beta lapse', 'open', (now() at time zone 'utc')::date - 1) as rlap \gset
+select pg_temp.seed_inv(:'rlap', :'p1', 'invited') as ilap \gset
+select pg_temp.req(:'beta', 'Beta lapse soon', 'open', (now() at time zone 'utc')::date + 3) as rlaps \gset
+select pg_temp.req(:'beta', 'Beta employer paused', 'paused', (now() at time zone 'utc')::date - 1) as remp \gset
+select pg_temp.req(:'beta', 'Beta employer paused soon', 'paused', (now() at time zone 'utc')::date + 3) as remps \gset
+select private.pause_requirements_on_lapse(:'beta');
+select is(
+  (select string_agg(title || ':' || status, ',' order by title) from public.workforce_requirements where id in (:'rlap', :'rlaps')),
+  'Beta lapse:paused,Beta lapse soon:paused', 'the lapse pauses Beta''s open requirements');
+select is(private.requirement_paused_by_lapse(:'rlap') || ',' || private.requirement_paused_by_lapse(:'remp'), 'true,false',
+  'the newest status change tells a lapse pause from the employer''s');
+select is(private.close_expired_requirements(), 1, 'the daily close closes the employer-paused requirement past its date ...');
+select is(
+  (select string_agg(title || ':' || status, ',' order by title) from public.workforce_requirements where id in (:'rlap', :'remp')),
+  'Beta employer paused:closed,Beta lapse:paused', '... and keeps the one paused by the lapse');
+select is((select status::text from public.requirement_invitations where id = :'ilap'), 'invited',
+  'the invitation of the lapse-paused requirement stays (the employer may extend and reopen after subscribing again)');
+select is(private.remind_closing_requirements(), 1, 'the reminder finds the employer-paused requirement closing in 3 days only');
+select is(
+  (select string_agg(payload ->> 'title', ',') from public.notifications where kind = 'requirement_closing_soon' and user_id = :'own2'),
+  'Beta employer paused soon', 'the lapse-paused one closing in 3 days is not reminded');
+select pg_temp.req(:'beta', 'Beta backlog', 'paused', (now() at time zone 'utc')::date - 5) as rbl \gset
+update public.workforce_requirements set closes_on = (now() at time zone 'utc')::date - 5 where id = :'rlap';
+select is(private.shift_paused_close_backlog(), 1, 'the backlog shift moves the employer-paused requirement past its date ...');
+select is(
+  (select string_agg(title || ':' || (closes_on - (now() at time zone 'utc')::date), ',' order by title)
+   from public.workforce_requirements where id in (:'rbl', :'rlap')),
+  'Beta backlog:7,Beta lapse:-5', '... to today plus requirement_closing_reminder_days, and leaves the lapse-paused one');
+select is(
+  (select format('%s|%s|%s', count(*), bool_and(actor_id is null), min(metadata ->> 'reason'))
+   from audit.log where action = 'requirement.extended' and entity_id = :'rbl'),
+  '1|t|paused_close_introduced', 'one audit row requirement.extended with the reason paused_close_introduced');
+select is(private.shift_paused_close_backlog(), 0, 'a second run moves nothing');
 
 select * from finish();
 rollback;
