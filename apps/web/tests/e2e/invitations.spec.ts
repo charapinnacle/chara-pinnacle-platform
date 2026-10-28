@@ -8,7 +8,7 @@ import { waitForMessage } from "./support/mailpit";
 import { runNotify } from "./support/notify";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { SITE } from "./support/seo";
-import { addMember, enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, subscribe, type Team } from "./support/team";
+import { addMember, enforceLimits, joinTeam, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, subscribe, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -221,9 +221,9 @@ test.describe("Inviting a saved partner (FR-O1 AC12, FR-L4)", () => {
     const dialog = page.getByRole("dialog", { name: `Invite ${saved.displayName} to a requirement` });
     await expect(dialog.getByRole("radio", { name: "Kyrenia welders" })).toBeChecked();
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${saved.displayName} is invited`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`${saved.displayName} is invited by ${displayName(team.id)}`, { exact: true })).toBeVisible();
     await expect(page.getByText("1 of 10 invitations used.", { exact: true })).toBeVisible();
-    expect(invitationRows(id)).toMatchObject([{ organization_id: saved.id, status: "invited", source: "directory" }]);
+    expect(invitationRows(id)).toMatchObject([{ organization_id: saved.id, status: "invited", source: "saved" }]);
 
     await page.reload();
     await page.getByRole("button", { name: `Invite ${saved.displayName}`, exact: true }).click();
@@ -231,6 +231,52 @@ test.describe("Inviting a saved partner (FR-O1 AC12, FR-L4)", () => {
     await expect(again.getByRole("list", { name: "Requirements this partner is invited to" })).toHaveText("Kyrenia welders: Invited");
     await expect(again).toContainText(`${saved.displayName} already has an invitation to each of your open requirements.`);
     await expect(again.getByRole("radio")).toHaveCount(0);
+  });
+});
+
+test.describe("Inviting for the right employer (FR-O1 AC12)", () => {
+  test("a user managing two employers invites for the one with an open requirement, and ?for= puts the page's employer first", async ({ page }) => {
+    test.setTimeout(240_000);
+    const first = await newTeam();
+    const second = await newTeam();
+    joinTeam(second, first.owner, "admin");
+    subscribe(second, "employer_professional");
+    subscribe(first, "employer_professional");
+    const secondName = displayName(second.id);
+    const p1 = await listedPartner();
+    const p2 = await listedPartner();
+    const secondRequirement = seedRequirement(second, "Famagusta welders");
+
+    // The first employer joined has no open requirement: Invite is still offered, for the second one.
+    await signInAtAal2(page, first.owner, first.ownerSecret, requirementUrl(second.slug, secondRequirement));
+    await page.goto(`/en/partners/${p1.slug}`);
+    const invite = page.getByRole("button", { name: `Invite ${p1.displayName}`, exact: true });
+    await waitForHydration(invite);
+    await invite.click();
+    const dialog = page.getByRole("dialog", { name: `Invite ${p1.displayName} to a requirement` });
+    const group = dialog.getByRole("radiogroup", { name: `Open requirements of ${secondName}` });
+    await expect(group.getByRole("radio", { name: "Famagusta welders" })).toBeChecked();
+    await expect(group).toContainText("0 of 10 invitations used");
+    await dialog.getByRole("button", { name: "Send invitation" }).click();
+    await expect(page.getByText(`${p1.displayName} is invited by ${secondName}`, { exact: true })).toBeVisible();
+    expect(
+      query<{ employer: string; source: string }>(
+        `select employer_organization_id as employer, source from public.requirement_invitations where organization_id = ${literal(p1.id)}`,
+      ),
+    ).toEqual([{ employer: second.id, source: "profile" }]);
+
+    // With open requirements at both, the employer named by ?for= comes first and its only requirement is chosen.
+    seedRequirement(first, "Kantara welders");
+    await page.goto(`/en/partners/${p2.slug}?for=${second.slug}`);
+    const again = page.getByRole("button", { name: `Invite ${p2.displayName}`, exact: true });
+    await waitForHydration(again);
+    await again.click();
+    const groups = page.getByRole("dialog", { name: `Invite ${p2.displayName} to a requirement` }).getByRole("radiogroup");
+    await expect(groups).toHaveCount(2);
+    await expect(groups.first()).toHaveAccessibleName(`Open requirements of ${secondName}`);
+    await expect(page.getByRole("radio", { name: "Famagusta welders" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Kantara welders" })).not.toBeChecked();
+    await expectNoAxeViolations(page);
   });
 });
 
@@ -267,7 +313,7 @@ test.describe("Following and withdrawing invitations (FR-O1 AC9, AC10)", () => {
     await expect(invitedPartner(page, declined.displayName)).toContainText(`Reason: ${REASON}`);
     await expect(invitedPartner(page, invited.displayName).getByRole("link", { name: invited.displayName })).toHaveAttribute(
       "href",
-      `/en/partners/${invited.slug}`,
+      `/en/partners/${invited.slug}?for=${team.slug}`,
     );
     await expect(page.getByRole("button", { name: /^Withdraw/ })).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
@@ -283,6 +329,7 @@ test.describe("Following and withdrawing invitations (FR-O1 AC9, AC10)", () => {
     await dialog.getByRole("button", { name: "Withdraw invitation" }).click();
     await expect(owner.page.getByText(`The invitation of ${invited.displayName} is withdrawn`, { exact: true })).toBeVisible();
     await expect(invitedPartner(owner.page, invited.displayName).getByText("Withdrawn", { exact: true })).toBeVisible();
+    await expect(owner.page.getByRole("heading", { name: "Invitations", level: 1 })).toBeFocused();
     await expect(owner.page.getByText("4 of 10 invitations used on your Professional plan.", { exact: true })).toBeVisible();
     await expect(owner.page.getByRole("button", { name: /^Withdraw the invitation of/ })).toHaveCount(2);
     expect(query<{ status: string }>(`select status from public.requirement_invitations where id = ${literal(invitedId)}`)[0].status).toBe("withdrawn");
@@ -334,13 +381,13 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     let dialog = page.getByRole("dialog", { name: `Invite ${p1.displayName} to a requirement` });
     await dialog.getByRole("radio", { name: "Private Larnaca welders" }).check();
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${p1.displayName} is invited`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`${p1.displayName} is invited by ${employer}`, { exact: true })).toBeVisible();
     await invite.click();
     dialog = page.getByRole("dialog", { name: `Invite ${p1.displayName} to a requirement` });
     await expect(dialog.getByRole("list", { name: "Requirements this partner is invited to" })).toHaveText("Private Larnaca welders: Invited");
     await expect(dialog.getByRole("radio")).toHaveCount(1);
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${p1.displayName} is invited`, { exact: true }).last()).toBeVisible();
+    await expect(page.getByText(`${p1.displayName} is invited by ${employer}`, { exact: true }).last()).toBeVisible();
     const [privateInvitation] = query<{ id: string; source: string }>(
       `select id, source from public.requirement_invitations where requirement_id = ${literal(privateId)} and organization_id = ${literal(p1.id)}`,
     );
@@ -408,6 +455,7 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     await pp.keyboard.press("Enter");
     await expect(pp.getByText("You accepted the invitation", { exact: true })).toBeVisible();
     await expect(pp.getByRole("region", { name: "Status" }).getByText("Accepted", { exact: true })).toBeVisible();
+    await expect(pp.getByRole("heading", { name: "Status", level: 2 })).toBeFocused();
     await expect(pp.getByRole("button", { name: "Accept", exact: true })).toHaveCount(0);
     expect(query<{ status: string }>(`select status from public.requirement_invitations where id = ${literal(privateInvitation.id)}`)[0].status).toBe("accepted");
     expect(audits("requirement.invitation_accepted", privateInvitation.id)).toBe(1);
@@ -424,6 +472,7 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     await expect(pp.getByText("You declined the invitation", { exact: true })).toBeVisible();
     const status = pp.getByRole("region", { name: "Status" });
     await expect(status.getByText("Declined", { exact: true })).toBeVisible();
+    await expect(pp.getByRole("heading", { name: "Status", level: 2 })).toBeFocused();
     await expect(status).toContainText(`Your reason: ${REASON}`);
     await expect(pp.getByText("This invitation is closed, so only its title and the employer are shown.", { exact: true })).toBeVisible();
     await pp.reload();
@@ -445,6 +494,8 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     await signInAtAal1(competitor.page, p2.owner, invitationUrl(p2.slug, privateInvitation.id));
     await expect(competitor.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await expect(competitor.page.getByRole("main")).not.toContainText("Larnaca");
+    await expect(competitor.page.getByRole("main")).not.toContainText(employer);
+    expect(await competitor.page.content()).not.toContain(employer);
     await competitor.page.goto(inboxUrl(p2.slug));
     await expect(competitor.page.getByRole("heading", { name: "No invitations yet" })).toBeVisible();
     await expect(competitor.page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Invitations" })).toHaveAttribute(

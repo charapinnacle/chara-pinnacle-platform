@@ -126,7 +126,8 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
       "Enough workers for every occupation are available by your start date",
     ]);
     await expect(first.getByRole("list", { name: `Criteria not met by ${q1.displayName}` })).toHaveCount(0);
-    await expect(first.getByRole("link", { name: q1.displayName })).toHaveAttribute("href", `/en/partners/${q1.slug}`);
+    // The profile link names the page's employer, so that Invite on the profile offers it first (V42).
+    await expect(first.getByRole("link", { name: q1.displayName })).toHaveAttribute("href", `/en/partners/${q1.slug}?for=${team.slug}`);
 
     const fourth = card(page, q4.displayName);
     await expect(fourth.getByRole("list", { name: `Criteria met by ${q4.displayName}` }).getByRole("listitem")).toHaveText([
