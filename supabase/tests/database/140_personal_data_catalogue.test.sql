@@ -86,6 +86,9 @@ insert into catalogue values
   ('public.workforce_requirements', 'cascade',
    'organisation data: a requirement belongs to its employer; closed requirements follow closed_requirements (730 days), applied from V58',
    'organisation data: the workforce requirements of an employer; created_by only names the member who wrote one'),
+  ('public.requirement_invitations', 'cascade',
+   'organisation data: an invitation lives with its requirement (closed requirements follow closed_requirements, 730 days, applied from V58); invited_by is cleared with the profile',
+   'organisation data: the invitations between an employer and a partner company; invited_by only names the member who sent one'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -202,10 +205,10 @@ select is(
 );
 select is(
   (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
-     'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages',
-     'public.requirement_invitations']) t where to_regclass(t) is null),
-  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages,public.partner_responses,public.requirement_invitations',
-  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32'
+     'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages']) t
+   where to_regclass(t) is null),
+  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages,public.partner_responses',
+  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41'
 );
 select is(
   (select string_agg(entity, ',' order by entity) from private.retention_policies
