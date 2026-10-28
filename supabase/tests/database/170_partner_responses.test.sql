@@ -1,5 +1,5 @@
 begin;
-select plan(160);
+select plan(196);
 
 \ir jobs_fixture.inc
 
@@ -29,6 +29,7 @@ select plan(160);
 \set c_p '00000000-0000-0000-0000-0000000f4494'
 \set c_q '00000000-0000-0000-0000-0000000f4495'
 \set pown '00000000-0000-0000-0000-0000000f4496'
+\set c_r3 '00000000-0000-0000-0000-0000000f4497'
 
 -- Concurrency (NFR-A4, FR-N2 AC5, AC12) first, before this transaction writes a settings row the committed setup changes --
 
@@ -37,9 +38,12 @@ select extensions.dblink_connect('setup',
   format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
 select extensions.dblink_connect('holder',
   format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
--- An employer with two job orders of the marketplace and two eligible partners whose owner pown accepted the commitment
--- (a consent row cannot be deleted, so that one row of the committed owner stays); the employer's owner has a suspended
--- account, so no notification of the committed responses is queued. P (Enterprise) has a monthly limit of 1 by an override.
+select extensions.dblink_connect('blocked',
+  format('host=%s port=5432 dbname=postgres user=postgres password=postgres', host(inet_server_addr())));
+-- An employer with two job orders of the marketplace and a private requirement R3, and two eligible partners whose owner
+-- pown accepted the commitment (a consent row cannot be deleted, so that one row of the committed owner stays); Q holds
+-- an invitation to R3 it has seen. The employer's owner has a suspended account, so no notification of the committed
+-- responses is queued. P (Enterprise) has a monthly limit of 1 by an override.
 select extensions.dblink_exec('setup', format($$
   begin;
   update private.settings set value = 'true' where key = 'release_job_orders';
@@ -72,26 +76,64 @@ select extensions.dblink_exec('setup', format($$
   insert into public.workforce_requirements (
     id, organization_id, title, workers_needed, country_code, city_region, industry_code, start_date, employment_type,
     recruitment_preference, partner_need, status, visibility, published_at, closes_on
-  ) select x, %2$L, 'Lock welders', 10, 'DE', 'Hamburg', 'C', current_date + 30, 'full_time', 'international', 'both',
-    'open', 'job_order_marketplace', now(), current_date + 80
-  from unnest(array[%3$L, %4$L]::uuid[]) x;
+  ) select x.id, %2$L, 'Lock welders', 10, 'DE', 'Hamburg', 'C', current_date + 30, 'full_time', 'international', 'both',
+    'open', x.v::public.requirement_visibility, now(), current_date + 80
+  from (values (%3$L::uuid, 'job_order_marketplace'), (%4$L::uuid, 'job_order_marketplace'), (%8$L::uuid, 'private')) x (id, v);
   insert into public.requirement_occupations (requirement_id, occupation_id, quantity)
-  select x, '7212', 10 from unnest(array[%3$L, %4$L]::uuid[]) x;
-  insert into public.requirement_countries (requirement_id, country_code) select x, 'DE' from unnest(array[%3$L, %4$L]::uuid[]) x;
+  select x, '7212', 10 from unnest(array[%3$L, %4$L, %8$L]::uuid[]) x;
+  insert into public.requirement_countries (requirement_id, country_code) select x, 'DE' from unnest(array[%3$L, %4$L, %8$L]::uuid[]) x;
+  insert into public.requirement_invitations (requirement_id, organization_id, employer_organization_id, source, status, viewed_at, answered_at)
+  values (%8$L, %6$L, %2$L, 'directory', 'viewed', now(), null);
   commit;
-$$, :'cown', :'org_c', :'c_r1', :'c_r2', :'c_p', :'c_q', :'pown'));
+$$, :'cown', :'org_c', :'c_r1', :'c_r2', :'c_p', :'c_q', :'pown', :'c_r3'));
 
--- respond_to_invitation in the holder session as pown for p_org to p_req, kept open: the id written.
-create function pg_temp.hold(p_org uuid, p_req uuid) returns text
+-- p_sql as pown in the holder session, its transaction kept open: the single value answered.
+create function pg_temp.hold(p_sql text) returns text
 language sql as $$
   select t from extensions.dblink('holder', format($f$
     begin;
     set local lock_timeout = '2s';
     select set_config('request.jwt.claims', json_build_object('sub', %L, 'role', 'authenticated', 'aal', 'aal1')::text, true);
     set local role authenticated;
-    select (public.respond_to_invitation(%L, %L, 5, current_date + 30, 'Twenty welders placed in Hamburg last year.',
-      'fee_per_hire', 1500, 'EUR') is not null)::text;
-  $f$, current_setting('t.pown'), p_org, p_req)) as r (t text)
+    %s;
+  $f$, current_setting('t.pown'), p_sql)) as r (t text)
+$$;
+
+create function pg_temp.respond_sql(p_org uuid, p_req uuid) returns text
+language sql as $$
+  select format($f$select (public.respond_to_invitation(%L, %L, 5, current_date + 30, 'Twenty welders placed in Hamburg last year.',
+    'fee_per_hire', 1500, 'EUR') is not null)::text$f$, p_org, p_req)
+$$;
+
+-- Sends respond_to_invitation as pown for p_org to p_req on a third connection with entitlements_enforced on in its own
+-- transaction, without waiting for the answer.
+create function pg_temp.send_blocked(p_org uuid, p_req uuid) returns integer
+language sql as $$
+  select extensions.dblink_exec('blocked', format($f$
+    begin;
+    update private.settings set value = 'true' where key = 'entitlements_enforced';
+    select set_config('request.jwt.claims', json_build_object('sub', %L, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+    set local role authenticated;
+  $f$, current_setting('t.pown'))) is not null;
+  select extensions.dblink_send_query('blocked', pg_temp.respond_sql(p_org, p_req));
+$$;
+
+-- The answer of the sent call: its value, or the error message; the third connection's transaction is rolled back.
+create function pg_temp.blocked_result() returns text
+language plpgsql as $$
+declare
+  v_result text;
+begin
+  -- The remote error comes back as a notice; its text is read from the connection instead.
+  perform set_config('client_min_messages', 'warning', true);
+  select r into v_result from extensions.dblink_get_result('blocked', false) as t (r text);
+  if v_result is null then
+    v_result := extensions.dblink_error_message('blocked');
+  end if;
+  perform r from extensions.dblink_get_result('blocked', false) as t (r text);
+  perform extensions.dblink_exec('blocked', 'rollback');
+  return v_result;
+end;
 $$;
 
 -- respond_to_invitation as p_user (anonymous when null) for p_org to p_req with the proposal p_over (named arguments that
@@ -114,31 +156,37 @@ create function pg_temp.result() returns text
 language sql as $$ select current_setting('t.result', true) $$;
 
 select set_config('t.pown', :'pown', false) as setup_pown \gset
-select is(pg_temp.hold(:'c_p', :'c_r1'), 'true',
+select is(pg_temp.hold(pg_temp.respond_sql(:'c_p', :'c_r1')), 'true',
   'a second session responds for P (limit 1 by override) and keeps its transaction open');
 select is(pg_try_advisory_xact_lock(hashtextextended('partner_responses:' || :'c_p', 0)), false,
   'NFR-A4: the response in progress holds the advisory lock of the partner''s responses');
-set local lock_timeout = '300ms';
-select is(split_part(pg_temp.resp(:'pown', :'c_p', :'c_r2'), '|', 1), '55P03',
-  'NFR-A4: a response of the same partner at the same time waits for it');
-reset lock_timeout;
-select extensions.dblink_exec('holder', 'commit');
-update private.settings set value = 'true' where key = 'entitlements_enforced';
-select is(pg_temp.resp(:'pown', :'c_p', :'c_r2'), 'P0001|CHARA_LIMIT_REACHED|job_order_responses_per_month',
-  'NFR-A4, FR-N2 AC6: once the other response is committed, this one counts it and is refused at the limit');
-select is(pg_temp.hold(:'c_q', :'c_r1'), 'true', 'FR-N2 AC5: a member of Q responds to R1 in a second session, kept open');
-set local lock_timeout = '300ms';
-select is(split_part(pg_temp.resp(:'pown', :'c_q', :'c_r1'), '|', 1), '55P03',
-  'FR-N2 AC5, AC12: the parallel response of Q to R1 waits');
-reset lock_timeout;
-select extensions.dblink_exec('holder', 'commit');
-select is(pg_temp.resp(:'pown', :'c_q', :'c_r1'), 'P0001|CHARA_CONFLICT|already_responded',
+select pg_temp.send_blocked(:'c_p', :'c_r2') as sent \gset
+select pg_sleep(0.3) as slept \gset
+select is(extensions.dblink_is_busy('blocked'), 1, 'NFR-A4: a third session''s response of the same partner at the same time waits');
+select extensions.dblink_exec('holder', 'commit') as committed \gset
+select matches(pg_temp.blocked_result(), 'CHARA_LIMIT_REACHED',
+  'NFR-A4, FR-N2 AC6: once the first response is committed, the waiting one counts it and is refused at the limit');
+select is(pg_temp.hold(pg_temp.respond_sql(:'c_q', :'c_r1')), 'true', 'FR-N2 AC5: Q responds to R1 in a second session, kept open');
+select pg_temp.send_blocked(:'c_q', :'c_r1') as sent \gset
+select pg_sleep(0.3) as slept \gset
+select is(extensions.dblink_is_busy('blocked'), 1, 'FR-N2 AC5, AC12: the parallel response of Q to R1 waits');
+select extensions.dblink_exec('holder', 'commit') as committed \gset
+select matches(pg_temp.blocked_result(), 'already_responded|CHARA_CONFLICT',
   'FR-N2 AC5, AC12: then it is refused as already responded and counts nothing');
+select is(pg_temp.hold(format($f$select public.answer_invitation(%L, (select id from public.requirement_invitations where requirement_id = %L), 'declined')::text$f$,
+    :'c_q', :'c_r3')), 'declined', 'Q declines its invitation to R3 in a second session, kept open');
+select pg_temp.send_blocked(:'c_q', :'c_r3') as sent \gset
+select pg_sleep(0.3) as slept \gset
+select is(extensions.dblink_is_busy('blocked'), 1, 'a response through that invitation at the same time waits for the invitation');
+select extensions.dblink_exec('holder', 'commit') as committed \gset
+select matches(pg_temp.blocked_result(), 'CHARA_NOT_FOUND',
+  'once the decline is committed the response sees it: the private requirement is no longer Q''s to answer');
 select is(
-  (select count(*)::integer from public.partner_responses where requirement_id in (:'c_r1', :'c_r2')) || ','
+  (select count(*)::integer from public.partner_responses where requirement_id in (:'c_r1', :'c_r2', :'c_r3')) || ','
     || (select count(*)::integer from public.partner_responses where organization_id = :'c_q'),
   '2,1', 'NFR-A4: one response of P and one of Q, never more');
 select extensions.dblink_disconnect('holder');
+select extensions.dblink_disconnect('blocked');
 select extensions.dblink_exec('setup', format($$
   begin;
   delete from public.workforce_requirements where organization_id = %2$L;
@@ -162,6 +210,8 @@ select is(
 
 update private.settings set value = 'true' where key = 'release_job_orders';
 update private.settings set value = 'false' where key = 'entitlements_enforced';
+-- The reads count against the job order allowance; it is raised for the many reads below and tested on its own at the end.
+update private.settings set value = '100000' where key = 'rate_limit_job_orders_max';
 select current_setting('t.a') as acme \gset
 select current_setting('t.b') as beta \gset
 update public.organizations set display_name = 'Acme Bau' where id = :'acme';
@@ -171,11 +221,11 @@ select pg_temp.new_user(:'padm') as seeded \gset
 update public.profiles set account_kind = intended_account_kind where id = :'padm';
 select set_config('t.padm', :'padm', false) as setup_padm \gset
 
--- A listed partner of p_type serving p_serves (sourcing from PH) and listing 7212, owned by p_owner (padm when null),
+-- A listed partner of p_type serving p_serves, sourcing from p_sources and listing 7212, owned by p_owner (padm when null),
 -- with an active subscription to p_plan (none when null); its owner accepted the commitment unless p_commit is false.
 create function pg_temp.partner(
   p_slug text, p_owner uuid default null, p_type text default 'recruitment_company', p_serves text[] default array['DE'],
-  p_plan text default 'recruitment_partner', p_commit boolean default true
+  p_plan text default 'recruitment_partner', p_commit boolean default true, p_sources text[] default array['PH']
 ) returns uuid
 language plpgsql as $$
 declare
@@ -191,7 +241,7 @@ begin
   insert into public.organization_members (organization_id, user_id, role, accepted_at) values (v_id, v_owner, 'owner', now());
   insert into public.organization_geographies (organization_id, scope, country_code)
   select v_id, 'serves_market'::public.geography_scope, c from unnest(p_serves) c
-  union all select v_id, 'sources_from'::public.geography_scope, 'PH';
+  union all select v_id, 'sources_from'::public.geography_scope, c from unnest(p_sources) c;
   insert into public.organization_occupations (organization_id, occupation_id) values (v_id, '7212');
   update public.organizations set review_status = 'listed', listed_at = now() - interval '30 days',
     submitted_at = now() - interval '31 days'
@@ -377,6 +427,12 @@ select ok(
     and not has_column_privilege('authenticated', 'public.partner_responses', 'decided_by', 'select')
     and not has_column_privilege('authenticated', 'public.partner_response_versions', 'created_by', 'select'),
   'the members who wrote or decided and the seen version are not readable through the Data API');
+select ok(
+  not has_column_privilege('authenticated', 'public.partner_responses', 'employer_organization_id', 'select')
+    and not has_column_privilege('authenticated', 'public.partner_response_versions', 'employer_organization_id', 'select'),
+  'NFR-S11: no party reads the employer''s organisation id from a response or a version (the policy uses it internally)');
+select is(pg_temp.read_as(:'u1', 'select count(employer_organization_id) from public.partner_responses'),
+  '42501|permission denied for table partner_responses|', 'NFR-S11: a partner selecting it is refused');
 select is(
   (select array_agg(proname::text order by proname) from pg_proc
    where pronamespace = 'public'::regnamespace and proname in ('respond_to_invitation', 'update_response',
@@ -505,6 +561,23 @@ select is(
   pg_temp.read_as(:'mem', format('select count(*) || '':'' || (select count(*) from public.list_requirement_responses(%L, %L)) from jsonb_object_keys((select to_jsonb(x) from public.list_requirement_responses(%L, %L) x limit 1)) k where k ilike ''%%licen%%''', :'acme', :'lr', :'acme', :'lr')),
   '0:1', 'FR-N2 AC3: no licence detail of any partner is returned to the employer');
 delete from public.direct_hiring_rules where destination_country = 'DE';
+-- The rule of each source the partner lists, as private.direct_hiring_rule resolves it (review decision 2).
+insert into public.direct_hiring_rules (source_country, destination_country, rule, notice, legal_opinion_ref)
+values ('KE', 'DE', 'licensed_partner_required', 'Workers from Kenya to Germany need a licensed partner here.', 'LO-2026-02');
+select pg_temp.req(:'acme', 'Acme Kenya rule') as kr \gset
+select pg_temp.partner('domestic-v44', null, p_sources => array['DE']) as sd \gset
+select pg_temp.partner('kenya-v44', null, p_sources => array['KE', 'PH']) as sk \gset
+select pg_temp.partner('no-sources-v44', null, p_sources => '{}') as sn \gset
+select is(pg_temp.resp(:'padm', :'sd', :'kr'), 'ok', 'licence rule: a partner recruiting in Germany only is not held to the KE -> DE rule (domestic hiring)');
+select is(pg_temp.resp(:'padm', :'sk', :'kr'), 'P0001|CHARA_LICENCE_REQUIRED|DE', 'licence rule: a partner sourcing from Kenya needs a German licence');
+select is(pg_temp.resp(:'padm', :'l3', :'kr'), 'ok', 'licence rule: a partner sourcing from the Philippines only is not held to the Kenyan rule');
+select is(pg_temp.resp(:'padm', :'sn', :'kr'), 'P0001|CHARA_LICENCE_REQUIRED|DE',
+  'licence rule: a partner listing no source country falls back to any rule naming the destination');
+update public.direct_hiring_rules set destination_country = null where source_country = 'KE';
+select pg_temp.req(:'acme', 'Acme Kenya any') as ka \gset
+select is(pg_temp.resp(:'padm', :'sk', :'ka') || ',' || pg_temp.resp(:'padm', :'sn', :'ka'), 'P0001|CHARA_LICENCE_REQUIRED|DE,ok',
+  'licence rule: a Kenyan rule for any destination holds the Kenya-sourcing partner; it names no destination for the fallback');
+delete from public.direct_hiring_rules where source_country = 'KE';
 
 -- FR-N2 AC5: one response per partner; a withdrawn one is not replaced ---------------------------------------------------
 
@@ -708,6 +781,14 @@ select is(pg_temp.upd(:'u1', :'p1', :'resp_8', '{"capacity": "9", "fee_amount": 
   || ':' || (select count(*) from public.partner_response_versions where response_id = :'resp_8')
   || ':' || pg_temp.audits('response.updated', :'resp_8'),
   'ok:2:2:1', 'FR-O2 AC8: a call with no change writes nothing');
+select pg_temp.req(:'acme', 'Acme shrinking R5') as r5 \gset
+select is(pg_temp.resp(:'u1', :'p1', :'r5', '{"capacity": "10"}'), 'ok', 'P1 offers all 10 workers of R5');
+select pg_temp.result() as resp_5 \gset
+update public.workforce_requirements set workers_needed = 5 where id = :'r5';
+select is(pg_temp.upd(:'u1', :'p1', :'resp_5', '{"capacity": "10", "fee_amount": "1400"}') || ':' || pg_temp.result(), 'ok:2',
+  'review decision 5: after the employer lowers the workers, an unchanged capacity is kept and the fee can still be edited');
+select is(pg_temp.upd(:'u1', :'p1', :'resp_5', '{"capacity": "9", "fee_amount": "1400"}'), 'P0001|CHARA_INVALID_INPUT|capacity_above_allowed:5',
+  'review decision 5: a changed capacity must fit the new maximum');
 select is(pg_temp.upd(:'u1', :'p1', :'resp_8', '{"capacity": "7", "expected": "1"}'), 'P0001|CHARA_CONFLICT|stale',
   'an edit from an old version is refused');
 select is(pg_temp.told('response_received', 'response_id', :'resp_8') || '|' ||
@@ -743,11 +824,11 @@ select is(
   pg_temp.read_as(:'u2', 'select string_agg(distinct organization_id::text, '','') from public.partner_responses'),
   :'p2', 'FR-O2 AC7: a member of P2 reads only P2''s responses');
 select is(
-  pg_temp.read_as(:'mem', format('select count(*) filter (where organization_id = %L) || '','' || count(*) filter (where organization_id = %L) || '','' || count(*) filter (where employer_organization_id <> %L) from public.partner_responses where requirement_id in (%L, %L)', :'p1', :'p2', :'acme', :'r', :'c0'))
+  pg_temp.read_as(:'mem', format('select count(*) filter (where organization_id = %L) || '','' || count(*) filter (where organization_id = %L) || '','' || (select count(*) from public.partner_responses where requirement_id = %L) from public.partner_responses where requirement_id in (%L, %L)', :'p1', :'p2', :'rb', :'r', :'c0'))
   || '|' || pg_temp.read_as(:'mem', format('select count(*) from public.partner_response_versions where response_id = %L', :'resp_8')),
   '1,1,0|2', 'FR-O2 AC7: an Acme member reads both partners'' responses and every version of its requirements, nothing of Beta''s');
 select is(
-  pg_temp.read_as(:'own2', format('select count(*) from public.partner_responses where employer_organization_id = %L', :'acme'))
+  pg_temp.read_as(:'own2', format('select count(*) from public.partner_responses where requirement_id in (%L, %L)', :'r', :'c0'))
   || ',' || pg_temp.read_as(:'own1', format('select count(*) from public.partner_responses where id = %L', :'resp_b'))
   || ',' || pg_temp.read_as(:'wkr', 'select count(*) from public.partner_responses')
   || ',' || pg_temp.read_as(:'wkr', 'select count(*) from public.partner_response_versions'),
@@ -798,6 +879,14 @@ select is(pg_temp.read_as(:'u1', format('select count(*) || '':'' || count(next_
   '2:1', 'list_my_responses pages with a cursor on the last row');
 select is(split_part(pg_temp.read_as(:'u1', format('select count(*) from public.list_my_responses(%L, %L)', :'p1', :'resp_b')), '|', 3),
   'p_cursor', 'a cursor of another partner is refused');
+select pg_temp.req(:'acme', 'Acme named SI', p_show => true) as si \gset
+select pg_temp.partner('named-v44') as pn \gset
+select is(pg_temp.resp(:'padm', :'pn', :'si'), 'ok', 'an eligible partner responds to a job order whose employer shows its name');
+select is(pg_temp.read_as(:'padm', format('select title || '':'' || coalesce(employer_name, ''-'') from public.list_my_responses(%L)', :'pn')),
+  'Acme named SI:Acme Bau', 'review item 11: while it is fully eligible, show_identity names the employer, as get_job_order does');
+delete from billing.subscriptions where organization_id = :'pn';
+select is(pg_temp.read_as(:'padm', format('select title || '':'' || coalesce(employer_name, ''-'') from public.list_my_responses(%L)', :'pn')),
+  'Germany, 10 Welders and flame cutters:-', 'review item 11: once it is no longer eligible (no paid plan) the employer is not named');
 
 -- Eligibility panel (FR-N2 AC1, AC4 data) and the refusal record (KPI) -------------------------------------------------------
 
@@ -815,11 +904,18 @@ select is(pg_temp.read_as(:'u1', format('select refusal || '':'' || detail || ''
   'CHARA_CONFLICT:already_responded:withdrawn', 'once it responded the panel names its response');
 select is(pg_temp.read_as(:'u2', format('select refusal from public.get_response_eligibility(%L, %L)', :'p2', :'v')),
   'P0002|CHARA_NOT_FOUND|', 'FR-N2 AC11: the private requirement is not found for an uninvited partner');
+select is(pg_temp.read_as(:'padm', format('select refusal || '':'' || detail from public.get_response_eligibility(%L, %L)', :'q4', :'e')),
+  'CHARA_FORBIDDEN:served_country_missing', 'Q4 reads its eligibility a second time');
+select is(pg_temp.read_as(:'padm', format('select refusal || '':'' || detail from public.get_response_eligibility(%L, %L)', :'pe', pg_temp.req(:'acme', 'Acme paused P', 'paused'))),
+  'CHARA_INVALID_STATE:requirement_not_open', 'a paused job order answers requirement_not_open');
 select is(
-  (select string_agg(organization_id::text || ':' || reason, ',' order by reason) from stats.job_order_response_refusals
+  (select count(*)::integer from stats.job_order_response_refusals where organization_id = :'pe'),
+  0, 'review decision 6: requirement_not_open is not recorded as a refusal');
+select is(
+  (select string_agg(organization_id::text || ':' || reason || ':' || (last_seen_at >= first_seen_at), ',' order by reason) from stats.job_order_response_refusals
    where requirement_id = :'e' and organization_id in (:'q1', :'q4')),
-  :'q1' || ':job_order_responses_per_month,' || :'q4' || ':served_country_missing',
-  'SOP P2-20 KPI responses refused by reason: each refusal shown is recorded once, no user');
+  :'q1' || ':job_order_responses_per_month:true,' || :'q4' || ':served_country_missing:true',
+  'SOP P2-20 KPI responses refused by reason: each refusal shown is recorded once (two reads, one row), no user');
 update private.settings set value = 'false' where key = 'entitlements_enforced';
 
 -- Carry-overs: the response count of the job orders (V39) and the KPIs (V36, V41) --------------------------------------------
@@ -836,6 +932,55 @@ select ok(
   (select p.created_at >= i.invited_at and i.source = 'directory' from public.partner_responses p
    join public.requirement_invitations i on i.id = p.invitation_id where p.id = :'resp_v'),
   'KPIs median time to first response, responses per (suggestion) invitation: the response names its invitation and its time');
+
+-- Review item 3: an invited responder that withdrew gets no further notice through its invitation ---------------------------
+
+insert into public.requirement_versions (requirement_id, version, organization_id, status, changed_fields, old_values, new_values)
+values (:'v', 1, :'acme', 'open', array['workers_needed'], '{"workers_needed": 12}', '{"workers_needed": 10}');
+select is(private.queue_requirement_change(:'v', 1), 2, 'P1''s owner and admin are told of a change through the responded invitation');
+select is(pg_temp.wd(:'u1', :'p1', :'resp_v'), 'ok', 'P1 withdraws its invited response');
+select is(
+  (select string_agg(distinct status || ':' || coalesce(email_status, '-'), ',') from public.notifications
+   where kind = 'requirement_changed' and payload ->> 'invitation_id' = :'inv_v'),
+  'suppressed:suppressed_superseded', 'review item 3: its waiting change emails through the invitation are dropped');
+insert into public.requirement_versions (requirement_id, version, organization_id, status, changed_fields, old_values, new_values)
+values (:'v', 2, :'acme', 'open', array['start_date'], '{"start_date": "2027-03-01"}', '{"start_date": "2027-04-01"}');
+select is(private.queue_requirement_change(:'v', 2), 0, 'review item 3: a later change is not sent to it');
+update public.workforce_requirements set closes_on = (now() at time zone 'utc')::date + 3, closing_reminder_for = null where id = :'v';
+select ok(private.remind_closing_requirements() >= 1, 'the daily reminder runs');
+select (select updated_at from public.workforce_requirements where id = :'v') as v_at \gset
+select is(pg_temp.call_as(:'own1', 'authenticated', format('select public.set_requirement_status(%L, %L, ''closed'', %L::timestamptz, ''cancelled'')',
+  :'acme', :'v', :'v_at')), 'ok', 'the owner closes V');
+select is(
+  (select count(*)::integer from public.notifications where kind in ('requirement_closing_soon', 'requirement_closed')
+   and payload ->> 'invitation_id' = :'inv_v'),
+  0, 'review item 3: no closing reminder and no closing notice through the invitation of a withdrawn response');
+
+-- Review item 9: inviting a partner that already responded links its response; one notice per event -------------------------
+
+select pg_temp.req(:'acme', 'Acme invite after response N9') as n9 \gset
+select is(pg_temp.resp(:'u2', :'p2', :'n9'), 'ok', 'P2 responds to N9 on the marketplace');
+select pg_temp.result() as resp_n9 \gset
+select is(pg_temp.call_as(:'own1', 'authenticated', format(
+    'select set_config(''t.result'', (select status::text from public.invite_partners(%L, %L, array[%L]::uuid[], ''directory'')), true)',
+    :'acme', :'n9', :'p2'), 'aal2') || ':' || pg_temp.result(), 'ok:responded',
+  'review item 9: the invitation of a partner that already responded is created as responded');
+select is(
+  (select (p.invitation_id = i.id)::text || ':' || (i.responded_at is not null) from public.partner_responses p
+   join public.requirement_invitations i on i.requirement_id = p.requirement_id and i.organization_id = p.organization_id
+   where p.id = :'resp_n9'),
+  'true:true', 'review item 9: the response is linked to the invitation');
+select is(pg_temp.told('invitation_received', 'invitation_id', (select invitation_id from public.partner_responses where id = :'resp_n9')),
+  :'u2' || ':queued', 'the invitation still reveals the employer and is announced once');
+insert into public.requirement_versions (requirement_id, version, organization_id, status, changed_fields, old_values, new_values)
+values (:'n9', 1, :'acme', 'open', array['workers_needed'], '{"workers_needed": 12}', '{"workers_needed": 10}');
+select is(private.queue_requirement_change(:'n9', 1), 1, 'review item 9: one change notice for P2''s owner');
+select is(
+  (select string_agg(coalesce(payload ->> 'invitation_id', '-') || ':' || coalesce(payload ->> 'response_id', '-'), ',')
+   from public.notifications where kind = 'requirement_changed' and user_id = :'u2'
+     and (payload ->> 'response_id' = :'resp_n9' or payload ->> 'invitation_id' = (select invitation_id::text from public.partner_responses where id = :'resp_n9'))),
+  (select invitation_id::text from public.partner_responses where id = :'resp_n9') || ':-',
+  'review item 9: through the invitation only, never twice');
 
 -- Carry-over V43: the marketplace responders get the change, closing-soon and closed notices ---------------------------------
 
@@ -899,6 +1044,27 @@ on conflict (user_id) do update set email_kinds = excluded.email_kinds;
 select is(pg_temp.resp(:'u2', :'p2', pg_temp.req(:'acme', 'Acme preference'), '{}'), 'ok', 'P2 responds once more');
 select is(pg_temp.told('response_received', 'response_id', pg_temp.result()::uuid),
   :'own1' || ':queued,' || :'adm' || ':suppressed', 'FR-T1 AC4: the admin who turned the email off keeps the in-app item only');
+-- Review item 7: versions are deleted only with their response -----------------------------------------------------------
+
+select throws_ok(format('delete from public.partner_response_versions where response_id = %L', :'resp_9'),
+  'P0001', 'CHARA_INVALID_INPUT', 'review item 7: a direct delete of a version is refused, even for the database owner');
+delete from public.partner_responses where id = :'resp_9';
+select is((select count(*)::integer from public.partner_response_versions where response_id = :'resp_9'), 0,
+  'review item 7: deleting the response (retention, V58) removes its versions by cascade');
+
+-- Review decision 6: the reads count against the job order allowance -------------------------------------------------------
+
+update private.settings set value = '2' where key = 'rate_limit_job_orders_max';
+delete from private.rate_limit_hits;
+select is(
+  pg_temp.read_as(:'u2', format('select count(*) from public.list_my_responses(%L)', :'p2')) ~ '^[0-9]+$'
+  and pg_temp.read_as(:'u2', format('select count(*) from public.get_response_eligibility(%L, %L)', :'p2', :'e')) = '1',
+  true, 'two reads within the allowance of 2 are answered');
+select is(pg_temp.read_as(:'u2', format('select count(*) from public.get_response(%L, %L)', :'p2', :'resp_n2')),
+  'P0001|CHARA_RATE_LIMITED|', 'review decision 6: the third read is refused');
+update private.settings set value = '100000' where key = 'rate_limit_job_orders_max';
+delete from private.rate_limit_hits;
+
 update private.settings set value = 'false' where key = 'release_job_orders';
 select is(
   pg_temp.resp(:'u2', :'p2', :'e') || ',' || pg_temp.wd(:'u2', :'p2', :'resp_n2')
