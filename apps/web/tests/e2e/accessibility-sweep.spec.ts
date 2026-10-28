@@ -134,7 +134,8 @@ const accountStatePages = [
 // ranking page /[lang]/legal/ranking is checked in ranking-transparency.spec.ts. The workforce requirements of an
 // employer (release 2b), the list empty and with a draft, the form new, refused and in edit and a requirement as its owner
 // and as a member, are checked in workforce-requirements.spec.ts; the partner suggestions of a requirement in
-// partner-suggestions.spec.ts.
+// partner-suggestions.spec.ts. The job order marketplace and job order pages of a partner (eligible, titles only, closed,
+// empty and failed) and the public Job orders page are checked in job-orders.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -142,10 +143,13 @@ const releasedPages = [
   "/[lang]/admin/appeals/[id]",
   "/[lang]/companies/[slug]",
   "/[lang]/following",
+  "/[lang]/job-orders",
   "/[lang]/legal/ranking",
   "/[lang]/notifications",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",
+  "/[lang]/org/[slug]/job-orders",
+  "/[lang]/org/[slug]/job-orders/[id]",
   "/[lang]/org/[slug]/requirements",
   "/[lang]/org/[slug]/requirements/[id]",
   "/[lang]/org/[slug]/requirements/[id]/edit",

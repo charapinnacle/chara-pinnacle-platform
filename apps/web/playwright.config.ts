@@ -119,6 +119,7 @@ export default defineConfig({
         "**/requirement-limits.spec.ts",
         "**/requirement-vacancies.spec.ts",
         "**/partner-suggestions.spec.ts",
+        "**/job-orders.spec.ts",
       ],
     },
     {
@@ -516,13 +517,21 @@ export default defineConfig({
       testMatch: "**/partner-suggestions.spec.ts",
       dependencies: ["requirement-vacancies-release"],
     },
+    // The job order marketplace, the new job order alert and the public Job orders page (FR-N1, FR-L5) set releases 2a
+    // and 2b for the whole database and withdraw list_job_orders for a moment, so they follow the partner suggestions.
+    {
+      name: "job-orders-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/job-orders.spec.ts",
+      dependencies: ["partner-suggestions-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-suggestions-release"],
+      dependencies: ["job-orders-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
