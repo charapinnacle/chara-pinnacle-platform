@@ -11,7 +11,7 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { vacancyDecisionId } from "@/lib/dal/appeals";
 import { countApplicationsInProgress, getJob } from "@/lib/dal/hiring";
 import { requireOrgRole } from "@/lib/dal/session";
-import { isEditable, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
+import { CITY_BEFORE_PUBLISHING, CITY_PLACEHOLDER, isEditable, STALE_OPEN_TEXT, statusActions } from "@/lib/jobs/lifecycle";
 import { appealPath, applicantsPath, billingPath, jobPath, jobsPath } from "@/lib/routes";
 import { jobDateText, jobStatusText } from "@/lib/jobs/presentation";
 import { jobIdSchema } from "@/lib/validation/job";
@@ -59,6 +59,12 @@ export default async function JobPage({ params }: PageProps<"/[lang]/org/[slug]/
           ) : (
             <TextLink href={appealPath(lang, decisionId)}>See the decision and appeal</TextLink>
           )}
+        </Notice>
+      ) : null}
+      {manager && job.status === "draft" && job.city === CITY_PLACEHOLDER ? (
+        <Notice tone="warning" role="status">
+          {CITY_BEFORE_PUBLISHING}{" "}
+          <TextLink href={`${jobPath(lang, slug, job.id)}/edit`}>Edit the vacancy</TextLink>
         </Notice>
       ) : null}
       {manager ? (

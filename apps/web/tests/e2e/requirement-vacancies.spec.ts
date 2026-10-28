@@ -209,6 +209,20 @@ test.describe("Vacancies from a workforce requirement (FR-M1 AC9, AC10)", () => 
       { city: "-", salary_min: null },
     ]);
 
+    // V40 carry-over: a copy is not published with the city '-'; the page says so, the refused publish too.
+    const [copy] = query<{ id: string }>(`select id from public.jobs where requirement_id = ${literal(id)} order by title limit 1`);
+    await page.goto(`/en/org/${team.slug}/jobs/${copy.id}`);
+    const cityNotice = page.getByRole("status").filter({ hasText: "Enter the city before publishing." });
+    await expect(cityNotice.getByRole("link", { name: "Edit the vacancy" })).toHaveAttribute("href", `/en/org/${team.slug}/jobs/${copy.id}/edit`);
+    const publish = page.getByRole("button", { name: "Publish", exact: true });
+    await waitForHydration(publish);
+    await publish.click();
+    await expect(page.getByText("The status was not changed", { exact: true })).toBeVisible();
+    await expect(page.getByText("Enter the city before publishing.", { exact: true })).toBeVisible();
+    expect(query<{ status: string }>(`select status from public.jobs where id = ${literal(copy.id)}`)[0].status).toBe("draft");
+    await expectNoAxeViolations(page);
+    await page.goto(requirementUrl(team.slug, id));
+
     execute(`update public.workforce_requirements set show_identity = true where id = ${literal(id)}`);
     await page.reload();
     await expect(section(page).getByRole("list", { name: "Linked vacancies" })).toBeVisible();

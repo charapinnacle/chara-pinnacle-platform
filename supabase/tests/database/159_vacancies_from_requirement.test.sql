@@ -1,5 +1,5 @@
 begin;
-select plan(91);
+select plan(98);
 
 \ir apply_fixture.inc
 
@@ -381,6 +381,26 @@ select ok(
    from public.jobs j join public.workforce_requirements r on r.id = j.requirement_id
    where j.requirement_id = :'named_req' and r.salary_min is not null),
   'with the company name shown the copies keep the city and the salary');
+
+-- V40 carry-over: a copy with the city '-' is not published until the city is entered (20261224100000).
+select id as anon_copy from public.jobs where requirement_id = :'anon_req' and occupation_id = '7212' \gset
+select is(pg_temp.set_status(:'adm', :'anon_copy', 'open'), 'P0001|CHARA_INVALID_INPUT|city',
+  'publishing a copy whose city is ''-'' is refused, naming the city');
+select is((select count(*)::integer from public.jobs where requirement_id = :'anon_req' and status = 'draft'), 2,
+  'the refused copy stays a draft');
+select is(pg_temp.set_status(:'adm', :'anon_copy', 'paused'), 'P0001|CHARA_INVALID_TRANSITION|draft to paused',
+  'the transition guard still answers first for a change it refuses');
+select is(
+  pg_temp.call_as(:'adm', 'authenticated', format('update public.jobs set city = ''Hamburg'' where id = %L', :'anon_copy'))
+    || pg_temp.set_status(:'adm', :'anon_copy', 'open'),
+  'okok', 'with the city entered the copy is published');
+select is((select status::text from public.jobs where id = :'anon_copy'), 'open', 'and it is open');
+select is(
+  pg_temp.call_as(:'adm', 'authenticated', format('update public.jobs set city = ''-'' where id = %L', :'anon_copy')),
+  'P0001|CHARA_INVALID_INPUT|city', 'an open vacancy cannot be given the city ''-''');
+select throws_ok(
+  pg_temp.insert_job(current_setting('t.a')::uuid, '{"city": "-", "status": "open"}'),
+  'P0001', 'CHARA_INVALID_INPUT', 'not even the database owner inserts an open vacancy with the city ''-''');
 
 -- The description's variants ---------------------------------------------------------------------------------------------
 
