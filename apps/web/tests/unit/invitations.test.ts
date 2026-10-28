@@ -30,6 +30,7 @@ vi.mock("@/lib/dal/pricing", () => ({ listPublicPlans: plansMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
 const { answerInvitation, invitePartners, withdrawInvitation } = await import("@/lib/actions/invitations");
+const { recordLimitPrompt } = await import("@/lib/actions/limits");
 
 const REQUIREMENT = "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a90";
 const P1 = "8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
@@ -223,9 +224,17 @@ describe("the invitation actions (FR-O1 AC8, AC10, AC12)", () => {
     expect(await invitePartners("acme-bau", { requirementId: REQUIREMENT, partnerIds: [P1, P1], source: "profile" })).toEqual({
       message: "We could not complete this request. Try again.",
     });
-    expect(await invitePartners("acme-bau", { requirementId: REQUIREMENT, partnerIds: Array.from({ length: 26 }, () => P1), source: "profile" })).toEqual({
+    const distinct = Array.from({ length: 26 }, (_, index) => `${String(index).padStart(8, "0")}-4e5f-4a6b-8c7d-9e0f1a2b3c4d`);
+    expect(new Set(distinct).size).toBe(26);
+    expect(await invitePartners("acme-bau", { requirementId: REQUIREMENT, partnerIds: distinct, source: "profile" })).toEqual({
       message: "We could not complete this request. Try again.",
     });
+    rpcMock.mockResolvedValueOnce(refusal("CHARA_INVALID_INPUT", "partner_unavailable"));
+    expect(await invitePartners("acme-bau", { requirementId: REQUIREMENT, partnerIds: distinct.slice(0, 25), source: "saved" })).toEqual({
+      message: INVITATION_MESSAGES.unavailable,
+    });
+    expect(rpcMock).toHaveBeenCalledWith("invite_partners", expect.objectContaining({ p_source: "saved", p_partners: distinct.slice(0, 25) }));
+    rpcMock.mockClear();
     releasedMock.mockResolvedValue(false);
     expect(await withdrawInvitation("acme-bau", { requirementId: REQUIREMENT, invitationId: INVITATION })).toEqual({
       message: INVITATION_MESSAGES.releaseOff,
@@ -266,5 +275,28 @@ describe("the invitation actions (FR-O1 AC8, AC10, AC12)", () => {
     expect(await answerInvitation("manila", { invitationId: INVITATION, answer: "declined", reason: "ok" })).toEqual({
       errors: { reason: INVITATION_MESSAGES.reason },
     });
+  });
+});
+
+describe("the report of an invitation upgrade prompt (FR-O1 AC12, FR-R1)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    rpcMock.mockResolvedValue({ data: null, error: null });
+  });
+
+  it("names the requirement and the partners attempted, and other limits keep record_limit_prompt", async () => {
+    await recordLimitPrompt("3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a91", "partner_invitations_per_requirement", { id: REQUIREMENT, attempted: 2 });
+    expect(rpcMock).toHaveBeenLastCalledWith("record_invitation_limit_prompt", {
+      p_org: "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a91",
+      p_requirement: REQUIREMENT,
+      p_attempted: 2,
+    });
+    await recordLimitPrompt("3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a91", "active_requirements");
+    expect(rpcMock).toHaveBeenLastCalledWith("record_limit_prompt", {
+      p_org: "3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a91",
+      p_limit_key: "active_requirements",
+    });
+    await recordLimitPrompt("3f0c2a8e-7b1d-4c5e-9a2f-6d8b1e4c7a91", "partner_invitations_per_requirement", { id: REQUIREMENT, attempted: 26 });
+    expect(rpcMock).toHaveBeenCalledTimes(2);
   });
 });
