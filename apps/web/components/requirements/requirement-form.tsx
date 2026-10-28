@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useFieldArray, useForm, useWatch, type FieldErrors, type FieldPath, type FieldValues } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors, type FieldPath, type FieldValues } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { ComboboxField } from "@/components/forms/combobox-field";
@@ -85,6 +85,14 @@ const destinationId = (index: number) => `requirement-destination-${index}`;
 const occupationId = (index: number) => `requirement-occupation-${index}`;
 const quantityId = (index: number) => `requirement-quantity-${index}`;
 
+// The list rows keep their own React keys instead of React Hook Form's useFieldArray: Turbopack keeps one react-hook-form
+// module for all forms, so useFieldArray would also load with the log-in and sign-up forms, whose chunks the home page
+// prefetches (the transferred JavaScript budget of /[lang]).
+let lastRowKey = 0;
+function rowKeys(count: number): string[] {
+  return Array.from({ length: count }, () => `row-${++lastRowKey}`);
+}
+
 export function RequirementForm({
   slug,
   userId,
@@ -101,8 +109,6 @@ export function RequirementForm({
     defaultValues: edit?.values ?? emptyRequirementForm,
   });
   const { control, formState, handleSubmit } = form;
-  const { fields, append, remove } = useFieldArray({ control, name: "occupations" });
-  const destinationRows = useFieldArray({ control, name: "destinations" });
   const { submit } = useServerFormSubmit(form, { failureTitle: "Could not save the workforce requirement" });
   const router = useRouter();
   const [removed, setRemoved] = useState("");
@@ -121,6 +127,11 @@ export function RequirementForm({
   const destinations = useWatch({ control, name: "destinations" });
   const destinationName = (index: number) =>
     countryName.get(destinations[index]?.country ?? "") ?? `destination country ${index + 1}`;
+  const [occupationKeys, setOccupationKeys] = useState(() => rowKeys(rows.length));
+  const [destinationKeys, setDestinationKeys] = useState(() => rowKeys(destinations.length));
+  // Adding or removing a row changes the keys with the rows; a reset (a restored draft, Clear the form) gives new keys.
+  if (occupationKeys.length !== rows.length) setOccupationKeys(rowKeys(rows.length));
+  if (destinationKeys.length !== destinations.length) setDestinationKeys(rowKeys(destinations.length));
 
   const draftKey = requirementDraftKey(userId, slug);
 
@@ -136,17 +147,36 @@ export function RequirementForm({
     form.reset(emptyRequirementForm);
   }
 
+  // After a submit, a changed list is checked again, as React Hook Form does when a field changes.
+  const listChange = () => ({ shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+
+  function addRow() {
+    const next = [...form.getValues("occupations"), { occupation: "", quantity: "" }];
+    form.setValue("occupations", next, listChange());
+    setOccupationKeys((keys) => [...keys, ...rowKeys(1)]);
+    requestAnimationFrame(() => form.setFocus(`occupations.${next.length - 1}.occupation`));
+  }
+
+  function addDestination() {
+    const next = [...form.getValues("destinations"), { country: "" }];
+    form.setValue("destinations", next, listChange());
+    setDestinationKeys((keys) => [...keys, ...rowKeys(1)]);
+    requestAnimationFrame(() => form.setFocus(`destinations.${next.length - 1}.country`));
+  }
+
   // The row before the removed one (or the new first row) takes the focus, and the removal is announced.
   function removeRow(index: number) {
     const label = rowName(index);
-    remove(index);
+    form.setValue("occupations", form.getValues("occupations").filter((_, i) => i !== index), listChange());
+    setOccupationKeys((keys) => keys.filter((_, i) => i !== index));
     setRemoved(`Removed ${label}`);
     requestAnimationFrame(() => form.setFocus(`occupations.${Math.max(index - 1, 0)}.occupation`));
   }
 
   function removeDestination(index: number) {
     const label = destinationName(index);
-    destinationRows.remove(index);
+    form.setValue("destinations", form.getValues("destinations").filter((_, i) => i !== index), listChange());
+    setDestinationKeys((keys) => keys.filter((_, i) => i !== index));
     setRemoved(`Removed ${label}`);
     requestAnimationFrame(() =>
       index > 0 ? form.setFocus(`destinations.${index - 1}.country`) : document.getElementById("requirement-add-destination")?.focus(),
@@ -155,7 +185,7 @@ export function RequirementForm({
 
   function focusField(key: string) {
     if (key === "destinations.root" || key === "destinations") {
-      document.getElementById(destinationRows.fields.length > 0 ? destinationId(0) : "requirement-destinations-heading")?.focus();
+      document.getElementById(destinationKeys.length > 0 ? destinationId(0) : "requirement-destinations-heading")?.focus();
       return;
     }
     form.setFocus((key.startsWith("occupations") && !/\.\d+\./.test(key) ? "occupations.0.occupation" : key) as Path);
@@ -185,10 +215,10 @@ export function RequirementForm({
     country: ids.country,
     cityRegion: ids.cityRegion,
     industry: ids.industry,
-    ...Object.fromEntries(destinationRows.fields.map((field, index) => [`destinations.${index}.country`, destinationId(index)])),
-    "destinations.root": destinationRows.fields.length > 0 ? destinationId(0) : "requirement-destinations-heading",
+    ...Object.fromEntries(destinationKeys.map((key, index) => [`destinations.${index}.country`, destinationId(index)])),
+    "destinations.root": destinationKeys.length > 0 ? destinationId(0) : "requirement-destinations-heading",
     ...Object.fromEntries(
-      fields.flatMap((field, index) => [
+      occupationKeys.flatMap((key, index) => [
         [`occupations.${index}.occupation`, occupationId(index)],
         [`occupations.${index}.quantity`, quantityId(index)],
       ]),
@@ -246,10 +276,10 @@ export function RequirementForm({
           The country above is the main destination.
           {multiCountry.allowed ? ` If the workers are needed in several countries, add up to ${ADDITIONAL_COUNTRIES_MAX} more.` : null}
         </p>
-        {destinationRows.fields.length > 0 ? (
+        {destinationKeys.length > 0 ? (
           <ul className="grid gap-4">
-            {destinationRows.fields.map((field, index) => (
-              <li key={field.id} className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+            {destinationKeys.map((key, index) => (
+              <li key={key} className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                 <ComboboxField
                   control={control}
                   name={`destinations.${index}.country`}
@@ -284,8 +314,8 @@ export function RequirementForm({
               variant="secondary"
               id="requirement-add-destination"
               className="gap-2"
-              disabled={destinationRows.fields.length >= ADDITIONAL_COUNTRIES_MAX}
-              onClick={() => destinationRows.append({ country: "" })}
+              disabled={destinationKeys.length >= ADDITIONAL_COUNTRIES_MAX}
+              onClick={addDestination}
             >
               <Plus aria-hidden className="size-4" />
               Add destination country
@@ -294,7 +324,7 @@ export function RequirementForm({
         ) : (
           <Notice tone="info">
             {multiCountryText(multiCountry.planName)}{" "}
-            {destinationRows.fields.length > 0
+            {destinationKeys.length > 0
               ? `Remove the further destinations to ${!edit || edit.status === "draft" ? "publish" : "reopen"} this requirement on your plan. `
               : null}
             <TextLink href={billingHref}>Upgrade</TextLink>
@@ -311,8 +341,8 @@ export function RequirementForm({
           One to {OCCUPATIONS_MAX} occupations from the ISCO-08 list. The quantities add up to the number of workers.
         </p>
         <ul className="grid gap-4">
-          {fields.map((field, index) => (
-            <li key={field.id} className="grid gap-4 rounded-xl border p-card sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-start">
+          {occupationKeys.map((key, index) => (
+            <li key={key} className="grid gap-4 rounded-xl border p-card sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-start">
               <ComboboxField
                 control={control}
                 name={`occupations.${index}.occupation`}
@@ -329,7 +359,7 @@ export function RequirementForm({
                 label={`Quantity of ${rowName(index)}`}
                 inputMode="numeric"
               />
-              {fields.length > 1 ? (
+              {occupationKeys.length > 1 ? (
                 <FormButton
                   type="button"
                   variant="secondary"
@@ -362,8 +392,8 @@ export function RequirementForm({
             type="button"
             variant="secondary"
             className="gap-2"
-            disabled={fields.length >= OCCUPATIONS_MAX}
-            onClick={() => append({ occupation: "", quantity: "" })}
+            disabled={occupationKeys.length >= OCCUPATIONS_MAX}
+            onClick={addRow}
           >
             <Plus aria-hidden className="size-4" />
             Add occupation
