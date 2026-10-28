@@ -9,6 +9,7 @@ import {
   applicationPath,
   billingPath,
   dataExportPath,
+  jobOrderPath,
   jobPath,
   requirementPath,
   settingsPath,
@@ -98,6 +99,13 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   },
   data_export_ready: { export_id: ACCOUNT, expires_at: "2026-12-17T08:00:00+00:00" },
   requirement_closing_soon: { requirement_id: JOB, title: "Welders for Hamburg", closes_on: "2027-04-10", org_slug: "acme-bau" },
+  job_order_match: {
+    requirement_id: JOB,
+    title: "Germany, 100 Welders and flame cutters",
+    country_code: "DE",
+    country_name: "Germany",
+    org_slug: "manila-recruit",
+  },
 };
 
 const LEAKS = {
@@ -201,6 +209,7 @@ describe("notification templates", () => {
       moderation_decision: appealPath("en", 42),
       data_export_ready: dataExportPath("en"),
       requirement_closing_soon: requirementPath("en", "acme-bau", JOB),
+      job_order_match: jobOrderPath("en", "manila-recruit", JOB),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -215,6 +224,17 @@ describe("notification templates", () => {
     expect(email.text).toContain("partners can no longer respond to it");
     expect(email.text).toContain("Extend the requirement https://chara.example/en/org/acme-bau/requirements/");
     const foreign = await renderEmail("requirement_closing_soon", { ...SAMPLES.requirement_closing_soon, requirement_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("job_order_match names the generated title and the destination, links the recipient's own job order page and names no employer (FR-N1 AC10, NFR-S11)", async () => {
+    const email = await renderEmail("job_order_match", { ...SAMPLES.job_order_match, employer_name: "Acme Bau", org_name: "Acme Bau" }, SITE);
+    expect(email.subject).toBe("New job order: Germany, 100 Welders and flame cutters");
+    expect(email.text).toContain('"Germany, 100 Welders and flame cutters" was published for Germany.');
+    expect(email.text).toContain(`See the job order ${SITE}/en/org/manila-recruit/job-orders/${JOB}`);
+    expect(email.text).toContain("notification settings");
+    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
+    const foreign = await renderEmail("job_order_match", { ...SAMPLES.job_order_match, requirement_id: "../billing" }, SITE);
     expect(foreign.html).not.toContain("billing");
   });
 

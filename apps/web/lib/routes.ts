@@ -143,6 +143,16 @@ export function requirementPartnersPath(lang: string, slug: string, id: string):
   return `${requirementPath(lang, slug, id)}/partners`;
 }
 
+// The job order marketplace of a recruitment or staffing company (FR-N1), with the query of its filters and page.
+export function jobOrdersPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/job-orders`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
+export function jobOrderPath(lang: string, slug: string, id: string): string {
+  return `${jobOrdersPath(lang, slug)}/${id}`;
+}
+
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.
 export function savedPartnersPath(lang: string, slug: string, cursor?: string): string {
   const path = `/${lang}/org/${slug}/saved-partners`;

@@ -10,6 +10,7 @@ import {
   dataExportPath,
   employerDashboardPath,
   homePath,
+  jobOrderPath,
   jobPath,
   mfaPath,
   myReportsPath,
@@ -310,6 +311,19 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: `${title ? `"${title}"` : "A workforce requirement"} closes ${closes ? `on ${closes}` : "soon"}`,
         href: closingRequirementPath(lang, payload),
+      };
+    },
+  },
+  // NFR-S11: the generated title and the destination, never the employer; the link is the recipient's own company page.
+  job_order_match: {
+    label: "Job orders",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const slug = text(payload, "org_slug");
+      const id = text(payload, "requirement_id");
+      return {
+        title: title ? `New job order: ${title}` : "A new job order fits your company",
+        href: slug && id && /^[0-9a-f-]{36}$/.test(id) ? jobOrderPath(lang, slug, id) : null,
       };
     },
   },

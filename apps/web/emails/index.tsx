@@ -10,6 +10,7 @@ import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
 import { erasurePaused } from "./templates/erasure-paused.tsx";
 import { followedCompanyActivity } from "./templates/followed-company-activity.tsx";
+import { jobOrderMatch } from "./templates/job-order-match.tsx";
 import { legalVersion } from "./templates/legal-version.tsx";
 import { licenceExpiring } from "./templates/licence-expiring.tsx";
 import { listingConfirmationDue } from "./templates/listing-confirmation-due.tsx";
@@ -51,6 +52,7 @@ const TEMPLATES = {
   moderation_decision: moderationDecision,
   data_export_ready: dataExportReady,
   requirement_closing_soon: requirementClosingSoon,
+  job_order_match: jobOrderMatch,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

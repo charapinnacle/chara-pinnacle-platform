@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -59,6 +59,8 @@ describe("in-app notification items (FR-T1)", () => {
     ["data_export_ready", {}, company, "Your data is ready to download", dataExportPath("en")],
     ["requirement_closing_soon", { requirement_id: JOB, title: "Welders for Hamburg", closes_on: "2027-04-10", org_slug: "acme" }, company, '"Welders for Hamburg" closes on 10 April 2027', requirementPath("en", "acme", JOB)],
     ["requirement_closing_soon", { requirement_id: "../x", org_slug: "acme" }, company, "A workforce requirement closes soon", null],
+    ["job_order_match", { requirement_id: JOB, title: "Germany, 100 Welders and flame cutters", country_code: "DE", country_name: "Germany", org_slug: "manila" }, company, "New job order: Germany, 100 Welders and flame cutters", jobOrderPath("en", "manila", JOB)],
+    ["job_order_match", { requirement_id: "../billing", org_slug: "manila" }, company, "A new job order fits your company", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
