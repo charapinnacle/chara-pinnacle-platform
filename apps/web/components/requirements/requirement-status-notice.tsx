@@ -11,7 +11,7 @@ type RequirementStatusNoticeProps = {
 };
 
 // The status of a requirement, what it means for partners and the date that matters next (FR-M2 AC12, NFR-U4): the
-// closing date of an open or paused requirement (both close on it), a warning once it closes within the reminder period,
+// closing date of an open or paused requirement (both close on it, except a pause from a lapse), a warning once it closes within the reminder period,
 // and when and why a closed or filled one ended.
 export function RequirementStatusNotice({ requirement, today, reminderDays }: RequirementStatusNoticeProps) {
   const { status, closesOn, closeReason, statusChangedAt } = requirement;
@@ -29,7 +29,10 @@ export function RequirementStatusNotice({ requirement, today, reminderDays }: Re
       {status === "paused" ? (
         <>
           {closes}
-          <p>A paused requirement also closes on that date unless you extend it.</p>
+          <p>
+            A requirement you paused also closes on that date unless you extend it. One paused because your subscription ended stays
+            paused until you reopen it.
+          </p>
         </>
       ) : null}
       {(status === "closed" || status === "filled") && closeReason ? (
