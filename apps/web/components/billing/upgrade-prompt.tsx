@@ -12,17 +12,19 @@ type UpgradePromptProps = {
   billingHref: string;
   // Owners and admins can change the plan; a member reads the usage only.
   canUpgrade: boolean;
+  // The requirement of a per-requirement limit (the invitations of FR-O1), which the report of the prompt names.
+  requirementId?: string;
 };
 
 // Shown where a plan limit stops a change (FR-R1): the usage and the plan, when a monthly count starts again, and the way
 // to a higher plan: how the higher plans of the type compare and the billing page that sells them (V15). Each prompt an
 // owner or admin sees is reported once per display for the upgrade KPI.
-export function UpgradePrompt({ organizationId, organizationType, prompt, billingHref, canUpgrade }: UpgradePromptProps) {
+export function UpgradePrompt({ organizationId, organizationType, prompt, billingHref, canUpgrade, requirementId }: UpgradePromptProps) {
   const { limitKey, used, limit, resetsAt, planName, comparison } = prompt;
 
   useEffect(() => {
-    if (canUpgrade) void recordLimitPrompt(organizationId, limitKey);
-  }, [canUpgrade, organizationId, limitKey]);
+    if (canUpgrade) void recordLimitPrompt(organizationId, limitKey, requirementId);
+  }, [canUpgrade, organizationId, limitKey, requirementId]);
 
   return (
     <div className="grid gap-1 text-small">

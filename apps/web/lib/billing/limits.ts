@@ -32,6 +32,7 @@ const nouns: Record<string, Noun> = {
   candidate_submissions_per_month: { one: "candidate submission this month", other: "candidate submissions this month" },
   messages_per_month: { one: "message this month", other: "messages this month" },
   active_requirements: { one: "open workforce requirement", other: "open workforce requirements" },
+  partner_invitations_per_requirement: { one: "invitation", other: "invitations" },
 };
 
 const responseNouns: Record<OrganizationType, Noun> = {

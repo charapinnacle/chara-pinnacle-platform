@@ -138,6 +138,11 @@ export function requirementPath(lang: string, slug: string, id: string): string 
   return `${requirementsPath(lang, slug)}/${id}`;
 }
 
+// The invitations of one requirement, as its employer follows them (FR-O1).
+export function requirementInvitationsPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/invitations`;
+}
+
 // The partners suggested for one requirement (FR-M3).
 export function requirementPartnersPath(lang: string, slug: string, id: string): string {
   return `${requirementPath(lang, slug, id)}/partners`;
@@ -153,9 +158,11 @@ export function jobOrderPath(lang: string, slug: string, id: string): string {
   return `${jobOrdersPath(lang, slug)}/${id}`;
 }
 
-// The invitations a recruitment or staffing company received (FR-O1), and one of them.
-export function invitationsPath(lang: string, slug: string): string {
-  return `/${lang}/org/${slug}/invitations`;
+// The invitations a recruitment or staffing company received (FR-O1), with the query of the status filter and the page,
+// and one of them.
+export function invitationsPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/invitations`;
+  return query === "" ? path : `${path}?${query}`;
 }
 
 export function invitationPath(lang: string, slug: string, id: string): string {
