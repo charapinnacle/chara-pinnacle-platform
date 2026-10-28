@@ -157,7 +157,7 @@ test.describe("Partner suggestions for a workforce requirement (FR-M3)", () => {
     expect(notifications(q4.ownerId)).toBe(0);
 
     await first.getByRole("link", { name: q1.displayName }).click();
-    await expect(page).toHaveURL(`/en/partners/${q1.slug}`);
+    await expect(page).toHaveURL(`/en/partners/${q1.slug}?for=${team.slug}`);
     await expect(page.getByRole("heading", { name: q1.displayName, level: 1 })).toBeVisible();
   });
 
