@@ -28,6 +28,7 @@ import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getPartnerFigures } from "@/lib/dal/partner-dashboard";
 import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
 import { getCountries, getOccupations } from "@/lib/dal/reference";
+import { isReleased } from "@/lib/dal/release";
 import { getOrgUsage } from "@/lib/dal/usage";
 import { getAvailabilityRules, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { formatCount, formatDate } from "@/lib/i18n/format";
@@ -35,6 +36,7 @@ import {
   billingPath,
   companyDashboardPath,
   followingPath,
+  jobOrdersPath,
   membersPath,
   mfaPath,
   onboardingPath,
@@ -278,9 +280,10 @@ function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
 // The dashboard of a recruitment or staffing company (FR-R3, FR-R4), release 2a blocks: the next actions, the review
 // and listing state, the workforce profile, profile views, followers, licences, the team, the available workforce and
 // the plan with its usage. Every figure is read from the database on each request and each part loads, fails and
-// retries on its own. The blocks of job orders, invitations, submissions, projects, partner requests, matching
-// employers and unread messages, and the actions Find job orders, Find employers, Submit candidates, Find companies and
-// Respond to request, come with their releases (V55, V75); until then they are absent, not shown as zero. A member sees
+// retries on its own. While release 2b is on the header links the job order marketplace (V40). The blocks of job
+// orders, invitations, submissions, projects, partner requests, matching employers and unread messages, and the actions
+// Find employers, Submit candidates, Find companies and Respond to request, come with their releases (V55, V75); until
+// then they are absent, not shown as zero. A member sees
 // every block but none of the actions of the owner and admins. Owners and admins see the plan once at aal2, as on the
 // billing page (FR-A4).
 export async function PartnerDashboard({ lang, user, organization }: PartnerDashboardProps) {
@@ -309,7 +312,10 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
   );
   const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules(), getOccupations(), getCountries()]);
   const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, planUsageKeys)]);
-  const twoStepDone = planLocked ? await hasVerifiedTotpFactor(lang) : false;
+  const [twoStepDone, jobOrders] = await Promise.all([
+    planLocked ? hasVerifiedTotpFactor(lang) : false,
+    isReleased("release_job_orders"),
+  ]);
   const now = new Date().toISOString();
 
   return (
@@ -317,7 +323,18 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
       <PageHeader
         title={dashboardQuestions[type]}
         description={organization.displayName}
-        actions={canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
+        actions={
+          jobOrders || canManage ? (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {jobOrders ? (
+                <TextLink standalone href={jobOrdersPath(lang, slug)}>
+                  Job orders
+                </TextLink>
+              ) : null}
+              {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
+            </div>
+          ) : null
+        }
       />
 
       <Panel promise={review} errorTitle="The review state could not be loaded">
