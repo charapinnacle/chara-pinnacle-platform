@@ -36,8 +36,8 @@ function asDate(value: unknown): string {
 }
 
 function occupationsText(value: unknown): string {
-  if (!Array.isArray(value) || value.length === 0) return NOT_STATED;
-  return value
+  if (!Array.isArray(value)) return NOT_STATED;
+  const lines = value
     .map((item: unknown) => {
       if (typeof item !== "object" || item === null) return null;
       const { code, name, quantity } = item as Record<string, unknown>;
@@ -45,8 +45,8 @@ function occupationsText(value: unknown): string {
       const title = [code, name].filter((part): part is string => typeof part === "string" && part !== "").join(" · ");
       return title ? `${title}: ${count === null ? NOT_STATED : workersText(count)}` : null;
     })
-    .filter((line): line is string => line !== null)
-    .join("; ");
+    .filter((line): line is string => line !== null);
+  return lines.length > 0 ? lines.join("; ") : NOT_STATED;
 }
 
 // A stored value of one field in words, as the requirement page writes it; a missing or unknown value is "Not stated".
