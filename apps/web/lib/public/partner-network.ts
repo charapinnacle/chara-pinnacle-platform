@@ -13,6 +13,8 @@ export const partnerNetworkCopy = {
   howItWorksHeading: "For recruitment and staffing companies",
   howItWorksDirectories: "Employers find listed companies in the partner directories:",
   laterPhase: "Workforce requirements and job orders come in a later phase.",
+  howItWorksJobOrders: "Employers publish workforce requirements, and listed companies find them as",
+  jobOrdersLink: "job orders",
   recruitmentSignUp: "Sign up as a recruitment company",
   staffingSignUp: "Sign up as a staffing company",
   recruitmentDirectory: "Recruitment partners",

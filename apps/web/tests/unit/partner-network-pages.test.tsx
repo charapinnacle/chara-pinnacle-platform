@@ -91,9 +91,14 @@ describe("How Chara Pinnacle works (FR-L5 AC9)", () => {
     expect(await renderHowItWorks()).toContain('href="/en/partners/staffing"');
   });
 
-  it("no longer calls job orders a later phase once their release is on", async () => {
+  it("links the job orders page instead of calling it a later phase once their release is on (AC9)", async () => {
+    releasedSwitches.mockResolvedValue(["release_partner_directories"]);
+    expect(await renderHowItWorks()).not.toContain('href="/en/job-orders"');
     releasedSwitches.mockResolvedValue(["release_partner_directories", "release_job_orders"]);
-    expect(textOf(await renderHowItWorks())).not.toContain("later phase");
+    const html = await renderHowItWorks();
+    expect(textOf(html)).not.toContain("later phase");
+    expect(html).toContain('href="/en/job-orders"');
+    expect(textOf(html)).toContain("Employers publish workforce requirements, and listed companies find them as job orders");
   });
 });
 

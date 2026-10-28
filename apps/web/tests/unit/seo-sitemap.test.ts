@@ -62,13 +62,16 @@ describe("the pages of the network in the sitemap (FR-L5 AC3)", () => {
     }
   });
 
-  it("lists the two partner directories after the static pages, without a date, once release 2a is on, and no page of 2b or 2c", () => {
+  it("lists the two partner directories after the static pages, without a date, once release 2a is on, the job orders page with release 2b, and no page of 2c", () => {
     const entriesOn = sitemapEntries({ siteUrl: SITE, lang: "en", legalSlugs: [], networkPaths: networkPaths(["release_partner_directories"]), vacancies });
     expect(entriesOn.map((entry) => new URL(entry.url).pathname).slice(9, 11)).toEqual(["/en/partners/recruitment", "/en/partners/staffing"]);
     expect(entriesOn.slice(9, 11).every((entry) => entry.lastModified === undefined)).toBe(true);
     const every = pathsOf(["release_partner_directories", "release_job_orders", "release_find_workers", "release_candidate_submissions", "release_messaging"]);
-    expect(every).toHaveLength(11);
-    for (const path of ["/en/job-orders", "/en/companies", "/en/find-workers", "/en/request-workers"]) expect(every).not.toContain(path);
+    expect(every).toHaveLength(12);
+    expect(every.slice(9, 12)).toEqual(["/en/partners/recruitment", "/en/partners/staffing", "/en/job-orders"]);
+    for (const path of ["/en/companies", "/en/find-workers", "/en/request-workers"]) expect(every).not.toContain(path);
+    expect(pathsOf(["release_job_orders"]).slice(9)).toEqual(["/en/job-orders"]);
+    expect(pathsOf(["release_partner_directories"])).not.toContain("/en/job-orders");
   });
 
   it("keeps the vacancies, profiles and company pages within the file after the network pages", () => {
