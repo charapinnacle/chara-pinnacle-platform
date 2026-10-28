@@ -202,8 +202,8 @@ $$;
 
 
 -- The partners eligible for the open marketplace requirement p_requirement, as list_job_orders judges them, and the
--- accepted owners and admins of each who switched the alert on, are below their daily cap and were not alerted for it
--- yet: one message each (a person in two such partners gets one, for the first). Answers the number queued; nothing
+-- accepted owners and admins of each whose account is active (not suspended or awaiting deletion, as the follower
+-- digest), who switched the alert on, are below their daily cap and were not alerted for it yet: one message each (a person in two such partners gets one, for the first). Answers the number queued; nothing
 -- while release 2b is off, for a requirement that is not an open job order of an active employer.
 create function private.queue_job_order_matches(p_requirement uuid) returns integer
 language plpgsql
@@ -252,6 +252,7 @@ begin
       'dedupe_key', v_key, 'requirement_id', p_requirement) as message
     from eligible e
     join public.organization_members m on m.organization_id = e.id and m.role in ('owner', 'admin') and m.accepted_at is not null
+    join public.profiles u on u.id = m.user_id and u.status = 'active'
     join public.notification_preferences p on p.user_id = m.user_id and p.email_kinds -> 'job_order_match' = 'true'::jsonb
     where not exists (
         select 1 from public.notifications n where n.user_id = m.user_id and n.kind = 'job_order_match' and n.dedupe_key = v_key)

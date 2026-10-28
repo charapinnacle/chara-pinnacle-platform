@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(35);
 
 \ir jobs_fixture.inc
 
@@ -20,6 +20,8 @@ select plan(33);
 \set u6 '00000000-0000-0000-0000-0000000f4010'
 \set u7 '00000000-0000-0000-0000-0000000f4011'
 \set u8 '00000000-0000-0000-0000-0000000f4012'
+\set u1s '00000000-0000-0000-0000-0000000f4013'
+\set u1d '00000000-0000-0000-0000-0000000f4014'
 
 update private.settings set value = 'true' where key in ('release_job_orders', 'release_partner_directories');
 select set_config('t.own1', :'own1', false) as setup_own1 \gset
@@ -114,6 +116,10 @@ select pg_temp.partner('p1-alert', :'u1', array['DE'], array['7212']) as p1 \gse
 select pg_temp.member(:'p1', :'u1a', 'admin');
 select pg_temp.member(:'p1', :'u1m', 'member');
 select pg_temp.member(:'p1', :'u1p', 'admin', true);
+select pg_temp.member(:'p1', :'u1s', 'admin');
+select pg_temp.member(:'p1', :'u1d', 'admin');
+update public.profiles set status = 'suspended' where id = :'u1s';
+update public.profiles set status = 'deletion_pending' where id = :'u1d';
 select pg_temp.partner('p2-alert', :'u2', array['PL'], array['7212']) as p2 \gset
 select pg_temp.partner('p3-alert', :'u3', array['DE'], array['7212']) as p3 \gset
 select pg_temp.member(:'p3', :'u3b', 'admin');
@@ -126,7 +132,7 @@ update public.organizations set status = 'suspended' where id = :'p6';
 select pg_temp.partner('p7-alert', :'u7', array['DE'], array['7212']) as p7 \gset
 update public.organizations set moderation_state = 'hidden' where id = :'p7';
 select pg_temp.partner('p8-alert', :'u8', array['DE', 'NL'], array['7214'], 'staffing_partner', 'staffing_company') as p8 \gset
-select pg_temp.alert(u, true) from unnest(array[:'u1', :'u1a', :'u1m', :'u1p', :'u2', :'u4', :'u5', :'u6', :'u7', :'u8']::uuid[]) u;
+select pg_temp.alert(u, true) from unnest(array[:'u1', :'u1a', :'u1m', :'u1p', :'u1s', :'u1d', :'u2', :'u4', :'u5', :'u6', :'u7', :'u8']::uuid[]) u;
 select pg_temp.alert(:'u3', false);
 
 -- Catalogue and settings -------------------------------------------------------------------------------------------------
@@ -159,6 +165,8 @@ select is(
      and message ->> 'requirement_id' = :'r'), 3,
   'NFR-A3: one queue message each, in the publishing transaction');
 select is(pg_temp.alert_count(:'u1m') + pg_temp.alert_count(:'u1p'), 0, 'AC10: none for the member or the pending admin of P1');
+select is(pg_temp.alert_count(:'u1s') + pg_temp.alert_count(:'u1d'), 0,
+  'none for an admin of P1 whose account is suspended or awaiting deletion, though the alert is on');
 select is(pg_temp.alert_count(:'u2'), 0, 'AC10: none for P2, which serves only Poland');
 select is(pg_temp.alert_count(:'u3') + pg_temp.alert_count(:'u3b'), 0,
   'AC10: none for P3, eligible with the alert off (and its admin who never chose: the alert is off by default), not even an in-app row');
@@ -206,8 +214,16 @@ language sql as $$
     'select public.set_requirement_status(%L, %L, %L::public.requirement_status, %L::timestamptz)',
     current_setting('t.a'), p_req, p_status, (select updated_at from public.workforce_requirements where id = p_req)))
 $$;
+-- P3's owner switches the alert on in between, so an alert on reopening would reach a recipient the dedupe key does not
+-- cover.
+select pg_temp.alert(:'u3', true);
 select is(pg_temp.st(:'r', 'paused'), 'ok', 'the owner pauses the first job order');
 select is(pg_temp.st(:'r', 'open'), 'ok', 'and reopens it');
+select is(
+  (select count(*)::integer from pgmq.q_notifications where message ->> 'kind' = 'job_order_match' and message ->> 'requirement_id' = :'r')
+    + (select count(*)::integer from public.notifications where kind = 'job_order_match' and payload ->> 'requirement_id' = :'r'),
+  6, 'reopening queues no further message nor row, not even for P3''s owner who switched the alert on since: still the 3 messages and 3 rows of the publication');
+select pg_temp.alert(:'u3', false);
 select is(private.queue_job_order_matches(:'r'), 0, 'a second run for the same job order queues nothing (dedupe key per job order)');
 select is(pg_temp.alert_count(:'u1'), 2, 'P1''s owner still has one alert per job order');
 
