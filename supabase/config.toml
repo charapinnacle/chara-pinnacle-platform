@@ -130,6 +130,11 @@ public = false
 file_size_limit = "15MiB"
 allowed_mime_types = ["application/pdf", "image/jpeg", "image/png"]
 
+[storage.buckets.partner-response-documents]
+public = false
+file_size_limit = "15MiB"
+allowed_mime_types = ["application/pdf"]
+
 [storage.buckets.dsar-exports]
 public = false
 file_size_limit = "50MiB"
