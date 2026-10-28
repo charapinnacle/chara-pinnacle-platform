@@ -193,7 +193,7 @@ describe("the layout of the signed-in area", () => {
   });
 
   it("FR-J1: gives a recruitment or staffing company its own links once release 2a is on, and the switch is read once", async () => {
-    releasedMock.mockResolvedValue(true);
+    releasedMock.mockImplementation(async (key: string) => key === "release_partner_directories");
     unreadMock.mockResolvedValue(0);
     userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
     organizationsMock.mockResolvedValue([
@@ -212,6 +212,24 @@ describe("the layout of the signed-in area", () => {
     expect(html).not.toContain(">Vacancies<");
     navigation.pathname = "/en/org/staff/members";
     expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Workforce profile", "Team"]);
+  });
+
+  it("FR-O1: adds Invitations for a partner and Requirements for an employer while release 2b is on", async () => {
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockResolvedValue(0);
+    userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "o3", slug: "manila", displayName: "Manila Skills", type: "recruitment_company", role: "member", suspended: false },
+      { id: "o1", slug: "acme", displayName: "Acme Bau", type: "employer", role: "member", suspended: false },
+    ]);
+    const props = await shell();
+    expect(releasedMock).toHaveBeenCalledWith("release_job_orders");
+    navigation.pathname = "/en/org/manila/invitations";
+    const html = renderToStaticMarkup(props.headerActions);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Team"]);
+    expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Invitations<\/a>/);
+    navigation.pathname = "/en/org/acme/requirements";
+    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Team"]);
   });
 
   it("FR-J1: gives a member of a recruitment or staffing company no organisation links while release 2a is off", async () => {
