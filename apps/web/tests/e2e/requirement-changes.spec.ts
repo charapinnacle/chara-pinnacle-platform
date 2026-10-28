@@ -157,7 +157,7 @@ test.describe("Changes to a published requirement (FR-M2 step Edit, AC8)", () =>
     expect(email.Text).toContain(`${employer} changed "Valletta welders", which your company is invited to.`);
     expect(email.Text).toContain("Changed: Number of workers, Occupations and Salary maximum.");
     expect(email.Text).toContain(`${SITE}/en/org/${p1.slug}/invitations/${invitation}#changes`);
-    expect(`${email.Subject}\n${email.Text}\n${email.HTML}`).not.toContain("3600");
+    for (const value of ["3600", "3,600"]) expect(`${email.Subject}\n${email.Text}\n${email.HTML}`).not.toContain(value);
     expect(`${email.Subject}\n${email.Text}\n${email.HTML}`).not.toContain(team.owner.email);
 
     const partner = await newVisitor(browser);
@@ -169,6 +169,7 @@ test.describe("Changes to a published requirement (FR-M2 step Edit, AC8)", () =>
     await item.click();
     await expect(partner.page).toHaveURL(`${invitationUrl(p1.slug, invitation)}#changes`);
     const changes = partner.page.getByRole("region", { name: "Changes since you were invited" });
+    await expect(changes).toBeFocused();
     await expect(changes.getByRole("listitem")).toHaveCount(1);
     await expect(changes).toContainText("Before: 100 workers");
     await expect(changes).toContainText("After: 120 workers");
