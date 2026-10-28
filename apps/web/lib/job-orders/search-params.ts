@@ -10,8 +10,9 @@ const MAX_WORKERS = 100_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+// The years 0001 to 9999, as the database's date type reads them (no year 0).
 function isDate(value: string): boolean {
-  if (!ISO_DATE.test(value)) return false;
+  if (!ISO_DATE.test(value) || Number(value.slice(0, 4)) < 1) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
 }

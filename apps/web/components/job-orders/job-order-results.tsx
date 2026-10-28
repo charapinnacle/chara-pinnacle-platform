@@ -5,7 +5,7 @@ import { JobOrderRefusalNotice } from "@/components/job-orders/job-order-refusal
 import { listJobOrders, type JobOrderSummary } from "@/lib/dal/job-orders";
 import { formatDate } from "@/lib/i18n/format";
 import { employerLabel, jobOrderCountText, reasonOf, responsesText } from "@/lib/job-orders/presentation";
-import { hasJobOrderFilters, jobOrderQuery, type JobOrderFilters } from "@/lib/job-orders/search-params";
+import { hasJobOrderFilters, jobOrderFilterErrors, jobOrderQuery, type JobOrderFilters } from "@/lib/job-orders/search-params";
 import { workersText } from "@/lib/requirements/presentation";
 import { jobOrderPath, jobOrdersPath } from "@/lib/routes";
 
@@ -93,27 +93,36 @@ export async function JobOrderResults({ lang, slug, organizationId, filters, nam
   }
   if (result.state === "refused") return <JobOrderRefusalNotice lang={lang} slug={slug} reason={result.reason} />;
 
-  const { orders, nextCursor } = result;
+  const { orders, nextCursor, cursorIgnored } = result;
   const filtered = hasJobOrderFilters(filters);
+  const ignoredCursor = cursorIgnored ? (
+    <Notice tone="warning" role="alert">
+      {jobOrderFilterErrors.cursor}
+    </Notice>
+  ) : null;
   if (orders.length === 0) {
     return (
-      <div role="status">
-        <EmptyState
-          title={filtered ? "No job orders match your filters" : "There are no open job orders yet"}
-          description={filtered ? "Try fewer filters or another destination." : "New job orders appear here as employers publish them."}
-        >
-          {filtered ? (
-            <TextLink standalone href={jobOrdersPath(lang, slug)}>
-              Clear filters
-            </TextLink>
-          ) : null}
-        </EmptyState>
+      <div className="grid gap-4">
+        {ignoredCursor}
+        <div role="status">
+          <EmptyState
+            title={filtered ? "No job orders match your filters" : "There are no open job orders yet"}
+            description={filtered ? "Try fewer filters or another destination." : "New job orders appear here as employers publish them."}
+          >
+            {filtered ? (
+              <TextLink standalone href={jobOrdersPath(lang, slug)}>
+                Clear filters
+              </TextLink>
+            ) : null}
+          </EmptyState>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="grid gap-4">
+      {ignoredCursor}
       <p role="status" aria-live="polite" className="text-body text-muted-foreground">
         {jobOrderCountText(orders.length, nextCursor !== null)}
       </p>
@@ -128,7 +137,7 @@ export async function JobOrderResults({ lang, slug, organizationId, filters, nam
             Show more job orders
           </TextLink>
         ) : null}
-        {filters.cursor ? (
+        {filters.cursor && !cursorIgnored ? (
           <TextLink standalone href={jobOrdersPath(lang, slug, jobOrderQuery({ ...filters, cursor: undefined }))}>
             Back to the first page
           </TextLink>

@@ -58,7 +58,11 @@ export type JobOrder = JobOrderSummary & {
 
 type Refused = { state: "refused"; reason: JobOrderRefusal } | { state: "rate_limited" };
 
-export type JobOrderList = { state: "found"; orders: JobOrderSummary[]; nextCursor: string | null } | Refused;
+// cursorIgnored: the page link named no job order (one that left the marketplace, or a made-up id), so the first page
+// is shown instead.
+export type JobOrderList =
+  | { state: "found"; orders: JobOrderSummary[]; nextCursor: string | null; cursorIgnored: boolean }
+  | Refused;
 export type JobOrderRead = { state: "found"; order: JobOrder } | { state: "closed" } | { state: "not_found" } | Refused;
 
 type Failure = { message: string; details?: string | null };
@@ -113,11 +117,15 @@ export async function listJobOrders(organizationId: string, filters: JobOrderFil
     p_limit: filters.limit,
   });
   if (error) {
+    if (error.message === "CHARA_INVALID_INPUT" && error.details === "p_cursor" && filters.cursor !== undefined) {
+      const first = await listJobOrders(organizationId, { ...filters, cursor: undefined });
+      return first.state === "found" ? { ...first, cursorIgnored: true } : first;
+    }
     const refused = refusal(error);
     if (refused) return refused;
     throw new Error("The job orders could not be loaded", { cause: error });
   }
-  return { state: "found", orders: data.map(summary), nextCursor: data.at(-1)?.next_cursor ?? null };
+  return { state: "found", orders: data.map(summary), nextCursor: data.at(-1)?.next_cursor ?? null, cursorIgnored: false };
 }
 
 // One job order for the partner organisationId: the full or reduced job order, closed (no longer open, with nothing of

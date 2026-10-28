@@ -42,6 +42,9 @@ describe("the job order filters in the address (FR-N1 AC7)", () => {
   it("refuses a date that does not exist", () => {
     expect(parseJobOrderParams({ start_from: "2027-13-01" }).errors).toEqual({ start_from: "Enter a date as YYYY-MM-DD." });
     expect(parseJobOrderParams({ start_to: "2027-02-30" }).errors).toEqual({ start_to: "Enter a date as YYYY-MM-DD." });
+    expect(parseJobOrderParams({ start_from: "0000-01-01" }).errors).toEqual({ start_from: "Enter a date as YYYY-MM-DD." });
+    expect(parseJobOrderParams({ start_from: "0001-01-01", start_to: "9999-12-31" }).errors).toEqual({});
+    expect(parseJobOrderParams({ start_to: "10000-01-01" }).errors).toEqual({ start_to: "Enter a date as YYYY-MM-DD." });
   });
 
   it("offers local and international recruitment only", () => {
