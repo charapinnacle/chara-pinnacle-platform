@@ -21,13 +21,10 @@ import {
   toRequirementArgs,
   type RequirementFormInput,
 } from "@/lib/validation/requirement";
+import { requirementTargetSchema, statusChangeSchema, type RequirementTarget as LifecycleTarget, type StatusChange } from "@/lib/validation/requirement-status-input";
 import {
   publishFormSchema,
-  requirementTargetSchema,
-  statusChangeSchema,
   type PublishFormInput,
-  type RequirementTarget as LifecycleTarget,
-  type StatusChange,
 } from "@/lib/validation/requirement-status";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";

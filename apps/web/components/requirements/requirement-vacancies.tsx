@@ -6,7 +6,7 @@ import type { RequirementVacancy } from "@/lib/dal/requirements";
 import { formatDate } from "@/lib/i18n/format";
 import { jobStatusText, jobStatusTone } from "@/lib/jobs/presentation";
 import { jobPath } from "@/lib/routes";
-import type { RequirementTarget } from "@/lib/validation/requirement-status";
+import type { RequirementTarget } from "@/lib/validation/requirement-status-input";
 
 type RequirementVacanciesProps = {
   lang: string;

@@ -26,8 +26,8 @@ import {
   requirementVisibilityLabels,
   type CloseFormInput,
   type PublishFormInput,
-  type RequirementTarget,
 } from "@/lib/validation/requirement-status";
+import type { RequirementTarget } from "@/lib/validation/requirement-status-input";
 import type { Database } from "@chara-pinnacle/db-types";
 
 type RequirementStatusActionsProps = {

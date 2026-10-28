@@ -7,7 +7,7 @@ import { useActionCall } from "@/components/feedback/use-action-call";
 import { FormButton } from "@/components/forms/form-button";
 import { createRequirementVacancies } from "@/lib/actions/requirements";
 import { draftVacanciesText, moreVacanciesText } from "@/lib/requirements/vacancies";
-import type { RequirementTarget } from "@/lib/validation/requirement-status";
+import type { RequirementTarget } from "@/lib/validation/requirement-status-input";
 
 type CreateVacanciesButtonProps = { slug: string; target: RequirementTarget; linked: number; occupations: number };
 

@@ -7,7 +7,8 @@ import {
   requirementClosesOn,
 } from "@/lib/requirements/lifecycle";
 import { LIFECYCLE_MESSAGES, lifecycleRefusal } from "@/lib/requirements/refusal";
-import { closeFormSchema, publishFormSchema, statusChangeSchema } from "@/lib/validation/requirement-status";
+import { closeFormSchema, publishFormSchema } from "@/lib/validation/requirement-status";
+import { statusChangeSchema } from "@/lib/validation/requirement-status-input";
 
 const rpcMock = vi.fn();
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
