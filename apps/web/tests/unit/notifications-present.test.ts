@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, requirementResponsesPath, responsePath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -74,6 +74,14 @@ describe("in-app notification items (FR-T1)", () => {
     ["requirement_closed", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila" }, company, '"Hamburg welders" is filled', invitationPath("en", "manila", APP)],
     ["requirement_closed", { invitation_id: APP, title: "Hamburg welders", close_reason: "expired", org_slug: "manila" }, company, '"Hamburg welders" is closed', invitationPath("en", "manila", APP)],
     ["requirement_closed", {}, company, "A workforce requirement you are invited to is closed", null],
+    ["requirement_changed", { response_id: APP, title: "Germany, 10 Welders and flame cutters", changed_fields: ["start_date"], org_slug: "manila" }, company, 'The employer changed "Germany, 10 Welders and flame cutters": Start date', `${responsePath("en", "manila", APP)}#changes`],
+    ["requirement_closed", { response_id: APP, close_reason: "filled", org_slug: "manila" }, company, "A workforce requirement you responded to is filled", responsePath("en", "manila", APP)],
+    ["requirement_closing_soon", { requirement_id: JOB, response_id: APP, title: "Germany, 10 Welders", closes_on: "2027-04-10", org_slug: "manila" }, company, '"Germany, 10 Welders" closes on 10 April 2027', responsePath("en", "manila", APP)],
+    ["requirement_closing_soon", { requirement_id: JOB, response_id: "../x", org_slug: "manila" }, company, "A workforce requirement closes soon", null],
+    ["response_received", { response_id: APP, requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'Manila Recruit responded to "Hamburg welders"', requirementResponsesPath("en", "acme", JOB)],
+    ["response_received", { requirement_id: "../billing", org_slug: "acme" }, company, "A partner responded to your workforce requirement", null],
+    ["response_withdrawn", { response_id: APP, requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'Manila Recruit withdrew its response to "Hamburg welders"', requirementResponsesPath("en", "acme", JOB)],
+    ["response_withdrawn", {}, company, "A partner withdrew its response to your workforce requirement", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
@@ -113,7 +121,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "response_received", payload: { requirement_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "submission_approved", payload: { submission_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,

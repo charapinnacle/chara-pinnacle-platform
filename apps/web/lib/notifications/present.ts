@@ -18,6 +18,8 @@ import {
   myReportsPath,
   partnerStepPath,
   requirementPath,
+  requirementResponsesPath,
+  responsePath,
   settingsPath,
   whereYouServePath,
   workforceProfilePath,
@@ -85,6 +87,20 @@ function invitationHref(lang: string, payload: Record<string, unknown>): string 
   const slug = text(payload, "org_slug");
   const id = text(payload, "invitation_id");
   return slug && id && /^[0-9a-f-]{36}$/.test(id) ? invitationPath(lang, slug, id) : null;
+}
+
+// A partner's notice about a requirement it responded to on the marketplace names its response (V44), not an invitation.
+function responseHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "response_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? responsePath(lang, slug, id) : null;
+}
+
+// The responses of the requirement a response notice names, on the employer's page (FR-T1 AC8).
+function requirementResponsesHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "requirement_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementResponsesPath(lang, slug, id) : null;
 }
 
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
@@ -319,18 +335,22 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       const closes = value && !Number.isNaN(Date.parse(value)) ? formatDate(value) : undefined;
       return {
         title: `${title ? `"${title}"` : "A workforce requirement"} closes ${closes ? `on ${closes}` : "soon"}`,
-        href: text(payload, "invitation_id") ? invitationHref(lang, payload) : closingRequirementPath(lang, payload),
+        href: text(payload, "invitation_id")
+          ? invitationHref(lang, payload)
+          : text(payload, "response_id")
+            ? responseHref(lang, payload)
+            : closingRequirementPath(lang, payload),
       };
     },
   },
-  // FR-M2 step Edit: the fields, never their values; the link lands on the changes of the invitation page.
+  // FR-M2 step Edit: the fields, never their values; the link lands on the changes of the invitation or response page.
   requirement_changed: {
     label: "Invitations",
     present: (payload, { lang }) => {
       const title = text(payload, "title");
       const employer = text(payload, "employer_name");
       const fields = changedFieldsText(payload.changed_fields);
-      const href = invitationHref(lang, payload);
+      const href = text(payload, "response_id") ? responseHref(lang, payload) : invitationHref(lang, payload);
       return {
         title: `${employer ?? "The employer"} changed ${title ? `"${title}"` : "a workforce requirement"}${fields ? `: ${fields}` : ""}`,
         href: href ? `${href}#changes` : null,
@@ -341,10 +361,11 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
     label: "Invitations",
     present: (payload, { lang }) => {
       const title = text(payload, "title");
-      const subject = title ? `"${title}"` : "A workforce requirement you are invited to";
+      const responded = text(payload, "response_id") !== undefined;
+      const subject = title ? `"${title}"` : `A workforce requirement you ${responded ? "responded to" : "are invited to"}`;
       return {
         title: `${subject} ${text(payload, "close_reason") === "filled" ? "is filled" : "is closed"}`,
-        href: invitationHref(lang, payload),
+        href: responded ? responseHref(lang, payload) : invitationHref(lang, payload),
       };
     },
   },
@@ -382,6 +403,27 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: `${employer ?? "The employer"} withdrew the invitation to ${title ? `"${title}"` : "a workforce requirement"}`,
         href: invitationHref(lang, payload),
+      };
+    },
+  },
+  // FR-O2 step Submit and FR-N2 step Withdraw, to the employer: the partner's name and the requirement's own title.
+  response_received: {
+    label: "Responses",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `${text(payload, "partner_name") ?? "A partner"} responded to ${title ? `"${title}"` : "your workforce requirement"}`,
+        href: requirementResponsesHref(lang, payload),
+      };
+    },
+  },
+  response_withdrawn: {
+    label: "Responses",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `${text(payload, "partner_name") ?? "A partner"} withdrew its response to ${title ? `"${title}"` : "your workforce requirement"}`,
+        href: requirementResponsesHref(lang, payload),
       };
     },
   },

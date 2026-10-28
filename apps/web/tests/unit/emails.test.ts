@@ -13,6 +13,8 @@ import {
   jobOrderPath,
   jobPath,
   requirementPath,
+  requirementResponsesPath,
+  responsePath,
   settingsPath,
 } from "@/lib/routes";
 
@@ -128,6 +130,8 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
     org_slug: "manila-recruit",
   },
   requirement_closed: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila-recruit" },
+  response_received: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  response_withdrawn: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
 };
 
 const LEAKS = {
@@ -138,6 +142,9 @@ const LEAKS = {
   password: "SECRET-PASSWORD",
   token: "SECRET-TOKEN",
   email: "secret@example.test",
+  fee_amount: "SECRET-FEE-1500",
+  withdrawal_reason: "SECRET-WITHDRAWAL",
+  experience_note: "SECRET-EXPERIENCE",
 };
 
 const KINDS = Object.keys(SAMPLES) as NotificationKind[];
@@ -236,6 +243,8 @@ describe("notification templates", () => {
       invitation_withdrawn: invitationPath("en", "manila-recruit", APP),
       requirement_changed: `${invitationPath("en", "manila-recruit", APP)}#changes`,
       requirement_closed: invitationPath("en", "manila-recruit", APP),
+      response_received: requirementResponsesPath("en", "acme-bau", JOB),
+      response_withdrawn: requirementResponsesPath("en", "acme-bau", JOB),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -330,6 +339,39 @@ describe("notification templates", () => {
     expect(cancelled.text).toContain("The employer closed it.");
     const odd = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "constructor" }, SITE);
     expect(odd.text).not.toContain("function");
+  });
+
+  it("response_received and response_withdrawn name the partner and the requirement, never the proposal (FR-O2 AC1, FR-N2 AC8, FR-T1 AC2)", async () => {
+    const received = await renderEmail("response_received", SAMPLES.response_received, SITE);
+    expect(received.subject).toBe("New response to Hamburg yard welders");
+    expect(received.text).toContain('Manila Recruit responded to "Hamburg yard welders".');
+    expect(received.text).toContain("Chara Pinnacle is not a party to any agreement or payment between you and the partner.");
+    const withdrawn = await renderEmail("response_withdrawn", SAMPLES.response_withdrawn, SITE);
+    expect(withdrawn.subject).toBe("Response withdrawn: Hamburg yard welders");
+    expect(withdrawn.text).toContain('Manila Recruit withdrew its response to "Hamburg yard welders".');
+    const foreign = await renderEmail("response_received", { ...SAMPLES.response_received, requirement_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+    const untitled = await renderEmail("response_withdrawn", {}, SITE);
+    expect(untitled.subject).toBe("A partner withdrew its response to your workforce requirement");
+  });
+
+  it("the notices of V43 to a company that responded on the marketplace link its response and name no employer (FR-M2 AC6 P5, V44)", async () => {
+    const base = { response_id: APP, title: "Germany, 10 Welders and flame cutters", org_slug: "manila-recruit" };
+    const changed = await renderEmail("requirement_changed", { ...base, changed_fields: ["workers_needed"] }, SITE);
+    expect(changed.text).toContain('The employer changed "Germany, 10 Welders and flame cutters", which your company responded to.');
+    expect(changed.text).toContain(`See what changed ${SITE}${responsePath("en", "manila-recruit", APP)}#changes`);
+    expect(changed.text).toContain("Your response shows the old and the new values.");
+    const closed = await renderEmail("requirement_closed", { ...base, close_reason: "filled" }, SITE);
+    expect(closed.text).toContain("which your company responded to, no longer takes responses. The employer has filled it.");
+    expect(closed.text).toContain(`See your response ${SITE}${responsePath("en", "manila-recruit", APP)}`);
+    expect(closed.text).not.toContain("invitation");
+    const soon = await renderEmail("requirement_closing_soon", { ...base, requirement_id: JOB, closes_on: "2027-04-10" }, SITE);
+    expect(soon.text).toContain(`See your response ${SITE}${responsePath("en", "manila-recruit", APP)}`);
+    expect(soon.text).not.toContain("Extend the requirement");
+    for (const kind of ["requirement_changed", "requirement_closed", "requirement_closing_soon"] as const) {
+      const untitled = await renderEmail(kind, { response_id: APP }, SITE);
+      expect(untitled.subject, kind).toContain("you responded to");
+    }
   });
 
   it("link without a double slash when the site address ends with one", async () => {

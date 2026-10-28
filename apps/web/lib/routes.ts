@@ -148,6 +148,11 @@ export function requirementInvitationsPath(lang: string, slug: string, id: strin
   return `${requirementPath(lang, slug, id)}/invitations`;
 }
 
+// The responses of partners to one requirement, as its employer reads them (FR-O2; the page arrives with V46).
+export function requirementResponsesPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/responses`;
+}
+
 // The partners suggested for one requirement (FR-M3).
 export function requirementPartnersPath(lang: string, slug: string, id: string): string {
   return `${requirementPath(lang, slug, id)}/partners`;
@@ -172,6 +177,15 @@ export function invitationsPath(lang: string, slug: string, query = ""): string 
 
 export function invitationPath(lang: string, slug: string, id: string): string {
   return `${invitationsPath(lang, slug)}/${id}`;
+}
+
+// The responses a recruitment or staffing company sent (FR-O2; the pages arrive with V46), and one of them.
+export function responsesPath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/responses`;
+}
+
+export function responsePath(lang: string, slug: string, id: string): string {
+  return `${responsesPath(lang, slug)}/${id}`;
 }
 
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.
