@@ -315,18 +315,20 @@ select extensions.dblink_exec('holder', $$insert into public.direct_hiring_rules
   values ('GH', 'blocked', 'Direct hiring from Ghana is not available here.', 'LO-holder')$$);
 select extensions.dblink_send_query('holder', 'select pg_sleep(0.5); commit');
 set local lock_timeout = '10s';
+-- The edit of the committed row is rolled back so that the other session can delete it again; the results are kept in
+-- psql variables, which the rollback does not touch, and asserted after it, so pgTAP counts both checks.
 savepoint concurrent;
-select is(pg_temp.upsert('GH', null, 'licensed_partner_required', 'Hiring from Ghana needs a licensed recruitment partner.', 'LO-2026-12 GH'),
-  'ok', 'the second of two concurrent creations of GH succeeds');
-select is(
-  (select string_agg(rule || ':' || legal_opinion_ref, ',') from public.direct_hiring_rules where source_country = 'GH')
+select pg_temp.upsert('GH', null, 'licensed_partner_required', 'Hiring from Ghana needs a licensed recruitment partner.', 'LO-2026-12 GH')
+  as concurrent_upsert \gset
+select (select string_agg(rule || ':' || legal_opinion_ref, ',') from public.direct_hiring_rules where source_country = 'GH')
   || '|' || (select string_agg(action || ':' || (metadata #>> '{before,legal_opinion_ref}'), ',') from audit.log
-             where action like 'direct\_hiring\_rule.%' and metadata #>> '{after,source_country}' = 'GH'),
-  'licensed_partner_required:LO-2026-12 GH|direct_hiring_rule.updated:LO-holder',
-  'it edits the row the other session committed, one row and one audit row direct_hiring_rule.updated'
-);
+             where action like 'direct\_hiring\_rule.%' and metadata #>> '{after,source_country}' = 'GH')
+  as concurrent_state \gset
 rollback to savepoint concurrent;
 reset lock_timeout;
+select is(:'concurrent_upsert'::text, 'ok', 'the second of two concurrent creations of GH succeeds');
+select is(:'concurrent_state'::text, 'licensed_partner_required:LO-2026-12 GH|direct_hiring_rule.updated:LO-holder',
+  'it edits the row the other session committed, one row and one audit row direct_hiring_rule.updated');
 -- One result for the sleep, one for the commit, then the end of the query.
 select * from extensions.dblink_get_result('holder') as t (r text);
 select * from extensions.dblink_get_result('holder') as t (r text);
