@@ -766,6 +766,61 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"partner_response_documents": {
+                  Row: {
+                    "created_at": string,"employer_organization_id": string,"file_name": string,"id": string,"organization_id": string,"requirement_id": string,"response_id": string | null,"scan_status": string,"scanned_at": string | null,"size_bytes": number,"storage_path": string,"uploaded_by": string | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"employer_organization_id": string,"file_name": string,"id"?: string,"organization_id": string,"requirement_id": string,"response_id"?: string | null,"scan_status"?: string,"scanned_at"?: string | null,"size_bytes": number,"storage_path": string,"uploaded_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"employer_organization_id"?: string,"file_name"?: string,"id"?: string,"organization_id"?: string,"requirement_id"?: string,"response_id"?: string | null,"scan_status"?: string,"scanned_at"?: string | null,"size_bytes"?: number,"storage_path"?: string,"uploaded_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "partner_response_documents_employer_organization_id_fkey"
+      columns: ["employer_organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_response_documents_employer_organization_id_fkey"
+      columns: ["employer_organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "partner_response_documents_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_response_documents_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "partner_response_documents_requirement_id_fkey"
+      columns: ["requirement_id"]
+isOneToOne: false
+      referencedRelation: "workforce_requirements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_response_documents_response_id_fkey"
+      columns: ["response_id"]
+isOneToOne: false
+      referencedRelation: "partner_responses"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_response_documents_uploaded_by_fkey"
+      columns: ["uploaded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"partner_response_versions": {
                   Row: {
                     "changed_fields": (string)[],"created_at": string,"created_by": string | null,"employer_organization_id": string,"organization_id": string,"payload": NonNullable<Json>,"response_id": string,"version": number
@@ -2339,6 +2394,11 @@ isOneToOne: false
 "recovery_link_is_fresh":
 { Args: { "p_token_hash": string }; Returns: boolean
                            },
+"register_response_document":
+{ Args: { "p_file_name": string,"p_mime": string,"p_org": string,"p_requirement": string,"p_size": number }; Returns: {
+              "bucket_id": string,"document_id": string,"file_name": string,"object_path": string
+            }[]
+                           },
 "reinstate_organization":
 { Args: { "p_org": string,"p_reason": string }; Returns: undefined
                            },
@@ -2347,6 +2407,9 @@ isOneToOne: false
                            },
 "remove_member":
 { Args: { "p_org": string,"p_user": string }; Returns: undefined
+                           },
+"remove_response_document":
+{ Args: { "p_document": string,"p_org": string }; Returns: undefined
                            },
 "request_account_deletion":
 { Args: Record<PropertyKey, never>; Returns: undefined
@@ -2374,6 +2437,14 @@ isOneToOne: false
                            },
 "respond_to_invitation":
 { Args: { "p_available_from": string,"p_capacity": number,"p_experience_note": string,"p_fee_amount"?: number,"p_fee_currency"?: string,"p_fee_model": Database["public"]['Enums']["fee_model"],"p_notes"?: string,"p_org": string,"p_requirement": string,"p_timeline_note"?: string }; Returns: string
+                           },
+"response_document_access_grant":
+{ Args: { "p_document": string }; Returns: {
+              "bucket_id": string,"file_name": string,"object_path": string
+            }[]
+                           },
+"response_document_set_scan_status":
+{ Args: { "p_document": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
                            },
 "revoke_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
