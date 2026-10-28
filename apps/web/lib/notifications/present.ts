@@ -1,6 +1,7 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import { formatDate } from "@/lib/i18n/format";
+import { changedFieldsText } from "@/lib/requirements/change-fields";
 import {
   appealPath,
   applicantPath,
@@ -309,6 +310,7 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
+  // A partner's reminder names its invitation (V43) and links there; the employer's links to the requirement to extend it.
   requirement_closing_soon: {
     label: "Workforce requirements",
     present: (payload, { lang }) => {
@@ -317,7 +319,32 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       const closes = value && !Number.isNaN(Date.parse(value)) ? formatDate(value) : undefined;
       return {
         title: `${title ? `"${title}"` : "A workforce requirement"} closes ${closes ? `on ${closes}` : "soon"}`,
-        href: closingRequirementPath(lang, payload),
+        href: text(payload, "invitation_id") ? invitationHref(lang, payload) : closingRequirementPath(lang, payload),
+      };
+    },
+  },
+  // FR-M2 step Edit: the fields, never their values; the link lands on the changes of the invitation page.
+  requirement_changed: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name");
+      const fields = changedFieldsText(payload.changed_fields);
+      const href = invitationHref(lang, payload);
+      return {
+        title: `${employer ?? "The employer"} changed ${title ? `"${title}"` : "a workforce requirement"}${fields ? `: ${fields}` : ""}`,
+        href: href ? `${href}#changes` : null,
+      };
+    },
+  },
+  requirement_closed: {
+    label: "Invitations",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const subject = title ? `"${title}"` : "A workforce requirement you are invited to";
+      return {
+        title: `${subject} ${text(payload, "close_reason") === "filled" ? "is filled" : "is closed"}`,
+        href: invitationHref(lang, payload),
       };
     },
   },

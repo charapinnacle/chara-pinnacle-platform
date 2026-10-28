@@ -118,6 +118,16 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
     org_slug: "manila-recruit",
   },
   invitation_withdrawn: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", org_slug: "manila-recruit" },
+  requirement_changed: {
+    invitation_id: APP,
+    title: "Hamburg yard welders",
+    employer_name: "Acme Bau",
+    changed_fields: ["workers_needed", "occupations", "salary_max"],
+    from_version: 1,
+    to_version: 2,
+    org_slug: "manila-recruit",
+  },
+  requirement_closed: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila-recruit" },
 };
 
 const LEAKS = {
