@@ -1,5 +1,5 @@
 begin;
-select plan(155);
+select plan(160);
 
 \ir apply_fixture.inc
 \ir billing_events_fixture.inc
@@ -427,21 +427,34 @@ select pg_temp.seed_req(current_setting('t.b')::uuid, 'open', jsonb_build_object
 select pg_temp.seed_req(current_setting('t.b')::uuid, 'open', jsonb_build_object('closes_on', pg_temp.today())) as r_t \gset
 select pg_temp.seed_req(current_setting('t.b')::uuid, 'open', jsonb_build_object('closes_on', pg_temp.today() + 1)) as r_tm \gset
 select pg_temp.seed_req(current_setting('t.b')::uuid, 'paused', jsonb_build_object('closes_on', pg_temp.today() - 1)) as r_py \gset
-select is(private.close_expired_requirements(), 1, 'AC5: the daily job closes one requirement');
+select is(private.close_expired_requirements(), 2, 'AC5 (V43): the daily job closes two requirements');
 select is(
   pg_temp.state(:'r_y') || ',' || pg_temp.state(:'r_t') || ',' || pg_temp.state(:'r_tm') || ',' || pg_temp.state(:'r_py'),
-  'closed:expired,open,open,paused',
-  'AC5: only the open requirement whose closing date was yesterday is closed, with the reason expired');
+  'closed:expired,open,open,closed:expired',
+  'AC5 (V43): the open and the paused requirement whose closing date was yesterday close with the reason expired');
+select is(
+  (select format('%s|%s|%s|%s', count(*), bool_and(actor_id is null), min(metadata ->> 'from'), min(metadata ->> 'actor_fn'))
+   from audit.log where action = 'requirement.status_changed' and entity_id = :'r_py'),
+  '1|t|paused|close_expired_requirements', 'AC5 (V43): the paused one gets one audit row from paused, made by the job');
 select is(
   (select format('%s|%s|%s|%s', count(*), bool_and(actor_id is null), min(metadata ->> 'actor_fn'), min(metadata ->> 'close_reason'))
    from audit.log where action = 'requirement.status_changed' and entity_id = :'r_y'),
   '1|t|close_expired_requirements|expired', 'AC5: one audit row without an actor, made by close_expired_requirements');
 select is(private.close_expired_requirements(), 0, 'AC5: a second run the same day changes nothing');
+select pg_temp.seed_req(current_setting('t.b')::uuid, 'paused', jsonb_build_object('closes_on', pg_temp.today() - 1)) as r_pinv \gset
+insert into public.requirement_invitations (requirement_id, organization_id, employer_organization_id, source, status, viewed_at)
+values (:'r_pinv', :'delta', current_setting('t.b')::uuid, 'profile', 'viewed', now());
+select is(private.close_expired_requirements(), 1, 'V43 carry-over: a paused requirement past its date with an invitation is closed');
+select is(
+  (select format('%s|%s', i.status, i.expired_at is not null) from public.requirement_invitations i where i.requirement_id = :'r_pinv'),
+  'expired|t', 'V43 carry-over: and its pending invitation expires with it (the V41 trigger)');
 select is(pg_temp.audits(:'r_y'), 1, 'AC5: and writes no audit row');
 select is((select current_setting('chara.actor_fn', true)), '', 'the job clears chara.actor_fn behind it');
 select set_config('chara.actor_fn', 'close_expired_requirements', true) as actor \gset
-select throws_ok(format($$update public.workforce_requirements set status = 'closed', close_reason = 'cancelled' where id = %L$$, :'r_py'),
-  'P0001', 'CHARA_INVALID_TRANSITION', 'AC5: with chara.actor_fn close_expired_requirements paused -> closed is refused');
+select pg_temp.seed_req(current_setting('t.b')::uuid, 'paused') as r_p2 \gset
+select lives_ok(format($$update public.workforce_requirements set status = 'closed' where id = %L$$, :'r_p2'),
+  'AC5 (V43): with chara.actor_fn close_expired_requirements paused -> closed is accepted');
+select is(pg_temp.state(:'r_p2'), 'closed:expired', 'with the reason expired');
 select throws_ok(format($$update public.workforce_requirements set status = 'paused' where id = %L$$, :'r_t'),
   'P0001', 'CHARA_INVALID_TRANSITION', 'AC5: and so is open -> paused');
 select lives_ok(format($$update public.workforce_requirements set status = 'closed' where id = %L$$, :'r_t'),
@@ -463,25 +476,28 @@ delete from public.notifications where kind = 'requirement_closing_soon';
 update private.settings set value = 'false' where key = 'release_job_orders';
 select is(private.remind_closing_requirements(), 0, 'release 2b off: the reminder job queues nothing');
 update private.settings set value = 'true' where key = 'release_job_orders';
-select is(private.remind_closing_requirements(), 1, 'AC6: the reminder job finds the requirement closing in 7 days');
-select is(pg_temp.reminders(array[:'own1', :'adm', :'mem']::uuid[]), '1:queued,2:queued',
+select is(private.remind_closing_requirements(), 2, 'AC6: the reminder job finds the requirements closing in 7 and (paused, V43) 3 days');
+select is(pg_temp.reminders(array[:'own1', :'adm', :'mem']::uuid[]), '1:queued,1:queued,2:queued,2:queued',
   'AC6: requirement_closing_soon is queued for the owner and the admin of Acme, not the member');
 select is((select count(*)::integer from pgmq.q_notifications where message ->> 'kind' = 'requirement_closing_soon'
              and message ->> 'requirement_id' = :'r_rem'), 2,
   'NFR-A3: one message each in the notifications queue, in the transaction of the job');
 select is(
-  (select payload from public.notifications where kind = 'requirement_closing_soon' and user_id = :'own1'),
+  (select payload from public.notifications where kind = 'requirement_closing_soon' and user_id = :'own1' and payload ->> 'requirement_id' = :'r_rem'),
   jsonb_build_object('requirement_id', :'r_rem', 'title', 'Closing soon', 'closes_on', pg_temp.today() + 7,
     'org_slug', (select slug from public.organizations where id = current_setting('t.a')::uuid)),
   'AC6: the payload holds the requirement id, its title, the closing date and the slug of the link to Extend');
-select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon'), 2,
-  'the requirement closing in 8 days, the paused one and the one of a suspended employer get nothing');
+select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon'
+             and payload ->> 'requirement_id' = :'r_remp'), 2,
+  'V43: the paused requirement, which now closes at its date too, is reminded to the owner and the admin');
+select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon'), 4,
+  'the requirement closing in 8 days and the one of a suspended employer get nothing');
 select is(private.remind_closing_requirements(), 0, 'AC6: a second run the same day queues nothing');
-select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon'), 2, 'AC6: no new row');
+select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon'), 4, 'AC6: no new row');
 select is(pg_temp.ext(:'adm', :'r_rem'), 'ok', 'the admin extends after the reminder');
 update public.workforce_requirements set closes_on = pg_temp.today() + 6 where id = :'r_rem';
 select is(private.remind_closing_requirements(), 1, 'a new closing date is reminded again');
-select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon' and user_id = :'own1'), 2,
+select is((select count(*)::integer from public.notifications where kind = 'requirement_closing_soon' and user_id = :'own1'), 3,
   'once more for each recipient');
 update private.settings set value = '8' where key = 'requirement_closing_reminder_days';
 select is(private.remind_closing_requirements(), 1, 'NFR-O5: requirement_closing_reminder_days 8 reaches the requirement closing in 8 days');
