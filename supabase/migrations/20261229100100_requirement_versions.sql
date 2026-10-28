@@ -124,6 +124,16 @@ alter table public.notifications add constraint notifications_kind_check check (
 )) not valid;
 alter table public.notifications validate constraint notifications_kind_check;
 
+-- A change notice whose invitation ended before its email left (declined, withdrawn, expired with the requirement) is not
+-- emailed: the closing or withdrawal notice says what matters. Its in-app item stays, recorded with this reason.
+alter table public.notifications drop constraint notifications_email_status_check;
+alter table public.notifications add constraint notifications_email_status_check
+  check (email_status in ('suppressed_by_preference', 'suppressed_undeliverable', 'suppressed_superseded'));
+
+-- The waiting change notices of an invitation, found by the widening and by the suppression below.
+create index notifications_requirement_changed_idx on public.notifications ((payload ->> 'invitation_id'))
+  where kind = 'requirement_changed';
+
 -- Queueing to the partners -------------------------------------------------------------------------------------------------
 
 -- The body of private.queue_invitation_event of 20261226100000_requirement_invitations.sql with the dedupe key given by
@@ -176,11 +186,13 @@ $$;
 -- The change notice of version p_version of the requirement p_requirement (FR-M2 step Edit), while release 2b is on, to
 -- the owners and admins with an active account of every active partner whose invitation is invited, viewed, accepted or
 -- responded; nothing to declined, withdrawn or expired invitations, members, other partners or the employer. A recipient
--- who still has an unread notice of the same invitation that is waiting for its email (queued; or suppressed, when the
--- recipient turned the email off) and is younger than requirement_change_notice_minutes gets that notice widened to
--- this version instead of a new one, so a burst of edits is one notice naming every field. Any other recipient gets a new
--- message that the notify function sends only after that many minutes (pgmq delay); its in-app item shows at once.
--- Answers the number of new messages, in the caller's transaction (NFR-A3).
+-- whose unread notice of the same invitation is still waiting gets that notice widened to this version instead of a new
+-- one, so a burst of edits is one notice naming every field: waiting means its message has never been read by the notify
+-- function and is still invisible (pgmq delay not over, the queue row locked here so a read cannot take it meanwhile), or,
+-- for a recipient who turned the email off (no message), that the notice is younger than
+-- requirement_change_notice_minutes. Any other recipient gets a new message that the notify function sends only after
+-- that many minutes (pgmq delay); its in-app item shows at once. Answers the number of new messages, in the caller's
+-- transaction (NFR-A3).
 create function private.queue_requirement_change(p_requirement uuid, p_version integer) returns integer
 language plpgsql
 security definer
@@ -205,15 +217,28 @@ begin
     join public.profiles u on u.id = m.user_id and u.status = 'active'
     join private.notification_kinds k on k.kind = 'requirement_changed'
     where i.requirement_id = p_requirement and i.status in ('invited', 'viewed', 'accepted', 'responded')
+  ), waiting as (
+    select n.id, r.organization_id, r.invitation_id
+    from public.notifications n
+    join recipients r on r.user_id = n.user_id and n.payload ->> 'invitation_id' = r.invitation_id::text
+    left join pgmq.q_notifications q on q.msg_id = n.msg_id
+    where n.kind = 'requirement_changed' and n.read_at is null
+      and ((n.status = 'queued' and q.read_ct = 0 and q.vt > clock_timestamp())
+        or (n.status = 'suppressed' and n.email_status = 'suppressed_by_preference'
+          and n.created_at > now() - make_interval(secs => v_window)))
+    for update of n
+  ), locked as (
+    select q.msg_id from pgmq.q_notifications q
+    where q.msg_id in (select n.msg_id from public.notifications n where n.id in (select w.id from waiting w))
+      and q.read_ct = 0 and q.vt > clock_timestamp()
+    for update of q
   ), widened as (
     update public.notifications n
     set payload = private.notification_payload('requirement_changed', jsonb_build_object(
-      'organization_id', r.organization_id, 'requirement_invitation_id', r.invitation_id,
+      'organization_id', w.organization_id, 'requirement_invitation_id', w.invitation_id,
       'from_version', n.payload -> 'from_version', 'to_version', p_version))
-    from recipients r
-    where n.user_id = r.user_id and n.kind = 'requirement_changed' and n.payload ->> 'invitation_id' = r.invitation_id::text
-      and n.read_at is null and n.status in ('queued', 'suppressed')
-      and n.created_at > now() - make_interval(secs => v_window)
+    from waiting w
+    where n.id = w.id and (n.msg_id is null or n.msg_id in (select l.msg_id from locked l))
     returning n.user_id, n.payload ->> 'invitation_id' as invitation_id
   )
   select array_agg(jsonb_build_object(
@@ -714,12 +739,37 @@ begin
 end;
 $$;
 
+-- An invitation that ends (declined, withdrawn, expired with the requirement) drops its change notices whose email has
+-- not left, read in the app or not: they become suppressed (suppressed_superseded), which notify_dequeue skips (it sends only queued rows), and
+-- the in-app item stays. Whatever function ends the invitation.
+create function private.requirement_invitations_drop_change_notices() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.notifications n set status = 'suppressed', email_status = 'suppressed_superseded'
+  where n.kind = 'requirement_changed' and n.payload ->> 'invitation_id' = new.id::text and n.status = 'queued';
+  return null;
+end;
+$$;
+
+revoke all on function private.requirement_invitations_drop_change_notices() from public, anon, authenticated, service_role;
+
+create trigger requirement_invitations_drop_change_notices
+  after update of status on public.requirement_invitations
+  for each row when (new.status in ('declined', 'withdrawn', 'expired') and old.status is distinct from new.status)
+  execute function private.requirement_invitations_drop_change_notices();
+
+alter table public.requirement_invitations enable always trigger requirement_invitations_drop_change_notices;
+
 -- Closing notices to the partners -------------------------------------------------------------------------------------------
 
 -- private.remind_closing_requirements of 20261229100000_close_paused_requirements.sql with one addition (FR-M2 AC6, FR-T1
--- AC6): every partner whose invitation to the reminded requirement is invited, viewed, accepted or responded is told too,
--- its owners and admins with an active account, once per closing date (an extension reminds again); declined, withdrawn
--- and expired invitations get nothing. The employer's part is unchanged. Returns the number of requirements reminded.
+-- AC6): every partner whose invitation to the reminded requirement (open, or paused by the employer; not paused by a
+-- lapse) is invited, viewed, accepted or responded is told too, its owners and admins with an active account, once per
+-- closing date (an extension reminds again); declined, withdrawn and expired invitations get nothing. The employer's part
+-- is unchanged. Returns the number of requirements reminded.
 create or replace function private.remind_closing_requirements() returns integer
 language plpgsql
 security definer
@@ -740,7 +790,8 @@ begin
   for v_row in
     update public.workforce_requirements r
     set closing_reminder_for = r.closes_on
-    where r.status in ('open', 'paused') and r.closes_on between v_today and v_today + v_days
+    where r.closes_on between v_today and v_today + v_days
+      and (r.status = 'open' or (r.status = 'paused' and not private.requirement_paused_by_lapse(r.id)))
       and r.closing_reminder_for is distinct from r.closes_on
       and exists (select 1 from public.organizations o where o.id = r.organization_id and o.status = 'active')
     returning r.id, r.organization_id, r.closes_on
