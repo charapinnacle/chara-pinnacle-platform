@@ -4,6 +4,7 @@ import * as z from "zod";
 import type { JobOrder } from "@/lib/dal/job-orders";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
+import { logFault } from "@/lib/fault";
 import { isFullInvitation, type InvitationStatus, type InvitationUsage } from "@/lib/invitations/presentation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -152,7 +153,7 @@ export async function getInvitation(organizationId: string, id: string): Promise
 }
 
 const criteriaSchema = z.array(z.enum(["industry", "recruitment_type", "capacity", "available_before_start"])).nullable();
-const sourceSchema = z.enum(["suggestions", "directory", "profile"]);
+const sourceSchema = z.enum(["suggestions", "directory", "profile", "saved"]);
 
 // One partner invited to a requirement, as the employer follows it (FR-O1 AC9): the profile slug only while the
 // partner is still listed, never who invited.
@@ -208,34 +209,83 @@ export async function getInvitationUsage(organizationId: string, requirementId: 
   return { used: row?.used ?? 0, limit: row?.limit_value ?? null, applies: row?.applies ?? false, planName: row?.plan_name ?? null };
 }
 
-export type InviteRequirement = { id: string; title: string };
+type Failure = { code?: string; message: string; details?: string | null };
 
-// What Invite offers a viewer on a partner profile or the saved partners (FR-O1 AC12): the employer that invites (an
-// owner or admin of an employer that is not suspended: the page's own employer when it names one, otherwise the first
-// one joined), its open requirements, newest first, and per partner the requirements it already has an invitation to,
-// with the status. Null when the viewer invites for no employer or the employer has no open requirement.
-export type InviteChoices = {
+// The database error behind a failed read, for the log (logFault keeps the detail of CHARA_* refusals only).
+function failureOf(error: unknown): Failure {
+  const cause = error instanceof Error ? error.cause : undefined;
+  if (cause && typeof cause === "object" && "message" in cause && typeof cause.message === "string") return cause as Failure;
+  return { message: error instanceof Error ? error.message : "unknown" };
+}
+
+// The invitations of a requirement by partner and its allowance, for the suggestions page; null when either read fails,
+// so the page shows the suggestions without the invite controls instead of an error.
+export async function getSuggestionInvitations(
+  organizationId: string,
+  requirementId: string,
+): Promise<{ invitations: Record<string, InvitationStatus>; usage: InvitationUsage } | null> {
+  try {
+    const [invitations, usage] = await Promise.all([
+      listRequirementInvitations(organizationId, requirementId),
+      getInvitationUsage(organizationId, requirementId),
+    ]);
+    return { invitations: Object.fromEntries(invitations.map((invitation) => [invitation.partnerId, invitation.status])), usage };
+  } catch (error) {
+    logFault("Reading the invitations of the suggestions", failureOf(error));
+    return null;
+  }
+}
+
+// One open requirement an employer may invite to, with the invitations it already uses.
+export type InviteRequirement = { id: string; title: string; used: number };
+
+// One employer the viewer manages (owner or admin, not suspended) with its open requirements, newest first, and its
+// plan's allowance per requirement (the same for each of its requirements).
+export type InviteEmployer = {
   organizationId: string;
   slug: string;
+  name: string;
   requirements: InviteRequirement[];
+  limit: number | null;
+  applies: boolean;
+  planName: string | null;
+};
+
+// What Invite offers a viewer on a partner profile or the saved partners (FR-O1 AC12): every employer the viewer manages
+// that has an open requirement, the preferred one first (the page's own employer, or the one named by ?for=), and per
+// partner the requirements it already has an invitation to, with the status. Null when no managed employer has an open
+// requirement, and when a read fails, so the page shows no Invite instead of an error.
+export type InviteChoices = {
+  employers: InviteEmployer[];
   invited: Record<string, Record<string, InvitationStatus>>;
 };
 
-const INVITE_REQUIREMENTS_MAX = 50;
+const INVITE_REQUIREMENTS_MAX = 200;
 
-export async function getInviteChoices(partnerIds: readonly string[], forOrganization?: string): Promise<InviteChoices | null> {
+export async function getInviteChoices(partnerIds: readonly string[], preferredSlug?: string): Promise<InviteChoices | null> {
+  try {
+    return await readInviteChoices(partnerIds, preferredSlug);
+  } catch (error) {
+    logFault("Reading the invite choices", failureOf(error));
+    return null;
+  }
+}
+
+async function readInviteChoices(partnerIds: readonly string[], preferredSlug?: string): Promise<InviteChoices | null> {
   const user = await getCurrentUser();
   if (!user || user.suspended || user.accountKind !== "company" || partnerIds.length === 0) return null;
-  const managers = (await getMyOrganizations(user.id)).filter(
+  const managed = (await getMyOrganizations(user.id)).filter(
     ({ type, role, suspended }) => type === "employer" && role !== "member" && !suspended,
   );
-  const employer = managers.find(({ id }) => id === forOrganization) ?? managers[0];
-  if (!employer) return null;
+  if (managed.length === 0) return null;
   const supabase = await createClient();
   const { data: requirements, error } = await supabase
     .from("workforce_requirements")
-    .select("id, title")
-    .eq("organization_id", employer.id)
+    .select("id, title, organization_id")
+    .in(
+      "organization_id",
+      managed.map(({ id }) => id),
+    )
     .eq("status", "open")
     .order("published_at", { ascending: false })
     .order("id")
@@ -245,16 +295,36 @@ export async function getInviteChoices(partnerIds: readonly string[], forOrganiz
   const { data: rows, error: invitationsError } = await supabase
     .from("requirement_invitations")
     .select("requirement_id, organization_id, status")
-    .eq("employer_organization_id", employer.id)
-    .in("organization_id", [...partnerIds])
     .in(
       "requirement_id",
       requirements.map(({ id }) => id),
     );
   if (invitationsError) throw new Error("The invitations could not be loaded", { cause: invitationsError });
+
+  const used = new Map<string, number>();
   const invited: InviteChoices["invited"] = {};
   for (const row of rows) {
-    invited[row.organization_id] = { ...invited[row.organization_id], [row.requirement_id]: row.status };
+    if (row.status !== "withdrawn") used.set(row.requirement_id, (used.get(row.requirement_id) ?? 0) + 1);
+    if (partnerIds.includes(row.organization_id)) {
+      invited[row.organization_id] = { ...invited[row.organization_id], [row.requirement_id]: row.status };
+    }
   }
-  return { organizationId: employer.id, slug: employer.slug, requirements, invited };
+  const withRequirements = managed.filter(({ id }) => requirements.some((requirement) => requirement.organization_id === id));
+  const employers = await Promise.all(
+    withRequirements.map(async ({ id, slug, displayName }) => {
+      const own = requirements.filter((requirement) => requirement.organization_id === id);
+      const allowance = await getInvitationUsage(id, own[0].id);
+      return {
+        organizationId: id,
+        slug,
+        name: displayName,
+        requirements: own.map((requirement) => ({ id: requirement.id, title: requirement.title, used: used.get(requirement.id) ?? 0 })),
+        limit: allowance.limit,
+        applies: allowance.applies,
+        planName: allowance.planName,
+      };
+    }),
+  );
+  employers.sort((a, b) => Number(b.slug === preferredSlug) - Number(a.slug === preferredSlug));
+  return { employers, invited };
 }

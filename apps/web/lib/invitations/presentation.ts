@@ -70,10 +70,11 @@ export const partnerNextSteps: Record<InvitationStatus, string> = {
   expired: "The requirement closed before the invitation was answered, so it expired.",
 };
 
-export const invitationSourceLabels: Record<"suggestions" | "directory" | "profile", string> = {
+export const invitationSourceLabels: Record<"suggestions" | "directory" | "profile" | "saved", string> = {
   suggestions: "Invited from the suggestions",
   directory: "Invited from the directory",
   profile: "Invited from the partner profile",
+  saved: "Invited from your saved partners",
 };
 
 // The allowance of one requirement (requirement_invitation_usage): limit is null when the plan has none, applies whether

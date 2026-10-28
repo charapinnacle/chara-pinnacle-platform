@@ -18,7 +18,7 @@ import {
   suggestionSentence,
   type Suggestion,
 } from "@/lib/requirements/suggestions";
-import { partnerProfilePath } from "@/lib/routes";
+import { partnerProfileForPath, partnerProfilePath } from "@/lib/routes";
 
 const directoryLabels: Record<PartnerDirectoryKind, string> = {
   recruitment: "Find Recruitment Partners",
@@ -63,12 +63,14 @@ type CardProps = {
   // The partner's invitation to this requirement in any status, which replaces the checkbox (FR-O1 AC12).
   invitation: InvitationStatus | undefined;
   selectable: boolean;
+  // The employer of the page, named in the profile link so that Invite on the profile offers it first.
+  forSlug: string | undefined;
 };
 
 // One suggestion with its reasons (FR-M3 step Explain, AC7): the facts, the criteria met and not met in words, the
 // profile and Save partner, and for an owner or admin of an open requirement the checkbox to invite it (step Act), or
 // the status of the invitation it already has. No score, rank, plan or word of verification [d1.1].
-function SuggestionCard({ lang, suggestion, connection, saved, following, invitation, selectable }: CardProps) {
+function SuggestionCard({ lang, suggestion, connection, saved, following, invitation, selectable, forSlug }: CardProps) {
   const profilePath = partnerProfilePath(lang, suggestion.slug);
   const { met, notMet } = criteriaLists(suggestion);
   const confirmedAt = latestConfirmation(suggestion);
@@ -77,7 +79,7 @@ function SuggestionCard({ lang, suggestion, connection, saved, following, invita
       <div className="grid min-w-0 gap-2">
         <div className="grid gap-1">
           <h2 className="text-h2">
-            <TextLink href={profilePath} className="break-words">
+            <TextLink href={forSlug ? partnerProfileForPath(lang, suggestion.slug, forSlug) : profilePath} className="break-words">
               {suggestion.displayName}
             </TextLink>
           </h2>
@@ -172,6 +174,7 @@ export async function PartnerSuggestions({ lang, organizationId, requirement, su
           following={connections.followed.has(suggestion.organizationId)}
           invitation={invitations[suggestion.organizationId]}
           selectable={invite !== null}
+          forSlug={invite?.slug}
         />
       ))}
     </ul>

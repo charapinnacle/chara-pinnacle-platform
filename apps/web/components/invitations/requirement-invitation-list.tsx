@@ -8,7 +8,7 @@ import type { RequirementInvitation } from "@/lib/dal/invitations";
 import { formatDate } from "@/lib/i18n/format";
 import { canWithdraw, invitationSourceLabels } from "@/lib/invitations/presentation";
 import { criterionTexts } from "@/lib/requirements/suggestions";
-import { partnerProfilePath } from "@/lib/routes";
+import { partnerProfileForPath } from "@/lib/routes";
 
 const typeLabels = { employer: "Employer", recruitment_company: "Recruitment company", staffing_company: "Staffing company" } as const;
 
@@ -70,7 +70,7 @@ export function RequirementInvitationList({
             <div className="grid min-w-0 gap-1">
               <h2 className="text-h3 break-words">
                 {invitation.partnerSlug ? (
-                  <TextLink href={partnerProfilePath(lang, invitation.partnerSlug)}>{invitation.partnerName}</TextLink>
+                  <TextLink href={partnerProfileForPath(lang, invitation.partnerSlug, slug)}>{invitation.partnerName}</TextLink>
                 ) : (
                   invitation.partnerName
                 )}

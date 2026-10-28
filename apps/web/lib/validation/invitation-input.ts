@@ -3,7 +3,7 @@ import { declineFormSchema, INVITE_BATCH_MAX } from "@/lib/validation/invitation
 
 // Kept apart from invitation.ts, which the invitation forms load in the browser: only the server actions parse these.
 
-export const invitationSources = ["suggestions", "directory", "profile"] as const;
+export const invitationSources = ["suggestions", "directory", "profile", "saved"] as const;
 export type InvitationSource = (typeof invitationSources)[number];
 
 export const invitePartnersInputSchema = z.object({

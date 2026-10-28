@@ -123,6 +123,11 @@ export function partnerProfilePath(lang: string, slug: string): string {
   return `/${lang}/partners/${slug}`;
 }
 
+// The profile opened from a page of one of the viewer's employers: Invite offers that employer first (FR-O1).
+export function partnerProfileForPath(lang: string, slug: string, forSlug: string): string {
+  return `${partnerProfilePath(lang, slug)}?for=${encodeURIComponent(forSlug)}`;
+}
+
 // The public company page of an employer (FR-K5).
 export function companyPagePath(lang: string, slug: string): string {
   return `/${lang}/companies/${slug}`;

@@ -15,8 +15,8 @@ import { formatDate } from "@/lib/i18n/format";
 
 type Mode = { kind: "saved"; organizationId: string } | { kind: "following" };
 
-// Invite to a requirement on each saved partner (FR-O1 AC12), for an owner or admin whose employer has an open requirement.
-type Invite = InviteChoices & { billingHref: string };
+// Invite to a requirement on each saved partner (FR-O1 AC12), for an owner or admin of employers with an open requirement.
+type Invite = InviteChoices & { lang: string };
 
 type ConnectionListProps = {
   mode: Mode;
@@ -71,13 +71,11 @@ function ConnectionRow({ mode, item, headingId, onRemove, invite }: RowProps) {
       <CardFooter>
         {invite ? (
           <InviteToRequirement
-            slug={invite.slug}
-            organizationId={invite.organizationId}
+            lang={invite.lang}
             partner={{ id: item.id, name: item.name }}
-            requirements={invite.requirements}
+            employers={invite.employers}
             invited={invite.invited[item.id] ?? {}}
-            billingHref={invite.billingHref}
-            source="directory"
+            source="saved"
           />
         ) : null}
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={remove}>

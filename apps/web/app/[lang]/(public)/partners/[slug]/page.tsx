@@ -13,7 +13,7 @@ import { getInviteChoices } from "@/lib/dal/invitations";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { billingPath, partnerProfilePath, reportPath, signUpPath, workforceProfilePath } from "@/lib/routes";
+import { partnerProfilePath, reportPath, signUpPath, workforceProfilePath } from "@/lib/routes";
 import { partnerProfileMetadata } from "@/lib/seo/metadata";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -36,8 +36,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/partners/[
 // The public profile of a listed recruitment or staffing company (FR-K4), rendered per request so that a change, a
 // suspension or a decline shows at once. An unknown slug, a partner that is not public and a switched-off release end in
 // the same notFound() (AC2). Over the visitor limit the page says so instead of the profile (AC9).
-export default async function PartnerProfilePage({ params }: PageProps<"/[lang]/partners/[slug]">) {
-  const { lang, slug } = await params;
+export default async function PartnerProfilePage({ params, searchParams }: PageProps<"/[lang]/partners/[slug]">) {
+  const [{ lang, slug }, { for: forParam }] = await Promise.all([params, searchParams]);
   const [result, user] = await Promise.all([loadProfile(slug), getCurrentUser()]);
   if (!result || result.state === "not_found") notFound();
   if (result.state === "rate_limited") {
@@ -73,19 +73,18 @@ export default async function PartnerProfilePage({ params }: PageProps<"/[lang]/
         next={path}
       />
     ) : null;
-  // Invite to a requirement (FR-O1 AC12) for an owner or admin of an employer with an open requirement, while release 2b
-  // is on; Send inquiry comes with V71.
+  // Invite to a requirement (FR-O1 AC12) for an owner or admin of employers with an open requirement, while release 2b
+  // is on; the employer named by ?for= (a link from one of its pages) comes first. Send inquiry comes with V71.
+  const preferred = typeof forParam === "string" && slugSchema.safeParse(forParam).success ? forParam : undefined;
   const choices =
-    connection?.id && (await isReleased("release_job_orders")) ? await getInviteChoices([connection.id]) : null;
+    connection?.id && (await isReleased("release_job_orders")) ? await getInviteChoices([connection.id], preferred) : null;
   const invite =
     choices && connection?.id ? (
       <InviteToRequirement
-        slug={choices.slug}
-        organizationId={choices.organizationId}
+        lang={lang}
         partner={{ id: connection.id, name: profile.displayName }}
-        requirements={choices.requirements}
+        employers={choices.employers}
         invited={choices.invited[connection.id] ?? {}}
-        billingHref={billingPath(lang, choices.slug)}
         source="profile"
       />
     ) : null;

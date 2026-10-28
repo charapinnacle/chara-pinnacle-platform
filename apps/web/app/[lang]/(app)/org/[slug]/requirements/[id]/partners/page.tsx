@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { PartnerSuggestions } from "@/components/requirements/partner-suggestions";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getInvitationUsage, listRequirementInvitations } from "@/lib/dal/invitations";
+import { getSuggestionInvitations } from "@/lib/dal/invitations";
 import { isReleased } from "@/lib/dal/release";
 import { getRequirement, suggestPartners } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -38,11 +38,12 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
     : ({ state: "unavailable" } as const);
   const countries = destinationsText([{ code: requirement.countryCode, name: requirement.country }, ...requirement.destinations]);
   const published = result.state === "found" && requirement.status !== "draft";
-  const [invitations, usage] = published
-    ? await Promise.all([listRequirementInvitations(organization.id, requirement.id), getInvitationUsage(organization.id, requirement.id)])
-    : [[], null];
+  // A failed read of the invitations leaves the suggestions without the invite controls rather than failing the page.
+  const invitationState = published ? await getSuggestionInvitations(organization.id, requirement.id) : null;
   const invite =
-    usage && requirement.status === "open" && organization.role !== "member" ? { slug, billingHref: billingPath(lang, slug), usage } : null;
+    invitationState && requirement.status === "open" && organization.role !== "member"
+      ? { slug, billingHref: billingPath(lang, slug), usage: invitationState.usage }
+      : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -88,7 +89,7 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
             requirement={requirement}
             suggestions={result.suggestions}
             more={result.more}
-            invitations={Object.fromEntries(invitations.map((invitation) => [invitation.partnerId, invitation.status]))}
+            invitations={invitationState?.invitations ?? {}}
             invite={invite}
           />
         </>
