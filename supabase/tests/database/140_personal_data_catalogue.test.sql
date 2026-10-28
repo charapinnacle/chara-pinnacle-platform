@@ -98,6 +98,9 @@ insert into catalogue values
   ('public.partner_response_versions', 'cascade',
    'organisation data: a version lives with its response; created_by is cleared with the profile',
    'organisation data: the version history of a partner company''s proposal; created_by only names the member who wrote a version'),
+  ('public.partner_response_documents', 'cascade',
+   'organisation data: a supporting document lives with its response (partner_responses, 730 days, applied from V58); staged files that never reach a response are dropped by the daily clean-up; uploaded_by is cleared with the profile',
+   'organisation data: the supporting documents of a partner company''s proposal; uploaded_by only names the member who added one'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -228,7 +231,7 @@ select is(
 select is(
   (select count(*)::integer from catalogue
    where (tbl like 'public.partner_%' or tbl like 'audit.partner_%' or tbl = 'public.workforce_availability')
-     and tbl not in ('public.partner_responses', 'public.partner_response_versions')),
+     and tbl not in ('public.partner_responses', 'public.partner_response_versions', 'public.partner_response_documents')),
   4, 'the four Phase 2 tables of release 2a with a user column are catalogued: licences, review decisions, availability, evidence access log'
 );
 

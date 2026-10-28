@@ -224,8 +224,9 @@ select set_eq(
     where p.pronamespace in ('public'::regnamespace, 'private'::regnamespace, 'audit'::regnamespace)
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))
       and (p.prosrc ~* '(passport-documents|storage_path|object_path|createSignedUrl|storage\.objects)')$$,
-  $$values ('document_access_grant'), ('delete_worker_document'), ('data_export_access_grant')$$,
-  'AC11: of the functions open to anon or authenticated, only the grant, the owner delete and the export broker mention the bucket or a storage path'
+  $$values ('document_access_grant'), ('delete_worker_document'), ('data_export_access_grant'), ('register_response_document'),
+    ('response_document_access_grant')$$,
+  'AC11: of the functions open to anon or authenticated, only the grant, the owner delete, the export broker and the response document brokers (FR-O2, their own bucket) mention the bucket or a storage path'
 );
 select is(
   (select count(*) from pg_proc p
@@ -233,7 +234,7 @@ select is(
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
           or has_function_privilege('service_role', p.oid, 'execute'))
      and pg_get_function_result(p.oid) ~* '(object_path|storage_path|bucket_id|url)'),
-  3::bigint, 'AC11: exactly three functions open to an API role return a path, a bucket or a link'
+  5::bigint, 'AC11: exactly five functions open to an API role return a path, a bucket or a link'
 );
 select is(
   (select array_agg(p.proname::text order by p.proname) from pg_proc p
@@ -241,14 +242,16 @@ select is(
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
           or has_function_privilege('service_role', p.oid, 'execute'))
      and pg_get_function_result(p.oid) ~* '(object_path|storage_path|bucket_id|url)'),
-  array['data_export_access_grant', 'document_access_grant', 'partner_document_access_grant'],
-  'AC11: they are document_access_grant and the brokers of partner licence evidence (FR-J2) and of the own data export (FR-S3), which serve other buckets'
+  array['data_export_access_grant', 'document_access_grant', 'partner_document_access_grant', 'register_response_document',
+    'response_document_access_grant'],
+  'AC11: they are document_access_grant and the brokers of partner licence evidence (FR-J2), of the own data export (FR-S3) and of response documents (FR-O2), which serve other buckets'
 );
 select is(
   (select count(*) from pg_proc p
    where p.pronamespace in ('public'::regnamespace, 'private'::regnamespace, 'audit'::regnamespace)
      and p.prosrc ~* '(passport-documents|storage_path|object_path|createSignedUrl|storage\.objects)'
-     and p.proname not in ('document_access_grant', 'delete_worker_document', 'data_export_access_grant')
+     and p.proname not in ('document_access_grant', 'delete_worker_document', 'data_export_access_grant',
+       'register_response_document', 'response_document_access_grant')
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   0::bigint, 'AC11: every other function that mentions the bucket is closed to anon and authenticated'
 );
