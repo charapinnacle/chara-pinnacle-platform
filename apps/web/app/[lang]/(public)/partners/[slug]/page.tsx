@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ConnectionActions } from "@/components/connections/connection-actions";
+import { InviteToRequirement } from "@/components/invitations/invite-to-requirement";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { LinkButton } from "@/components/layout/link-button";
@@ -8,10 +9,11 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PartnerProfileView } from "@/components/partners/partner-profile-view";
 import { hasConnectionActions } from "@/lib/connections/access";
 import { getProfileConnection } from "@/lib/dal/connections";
+import { getInviteChoices } from "@/lib/dal/invitations";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { partnerProfilePath, reportPath, signUpPath, workforceProfilePath } from "@/lib/routes";
+import { billingPath, partnerProfilePath, reportPath, signUpPath, workforceProfilePath } from "@/lib/routes";
 import { partnerProfileMetadata } from "@/lib/seo/metadata";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -71,11 +73,27 @@ export default async function PartnerProfilePage({ params }: PageProps<"/[lang]/
         next={path}
       />
     ) : null;
-  // Send inquiry and Invite to a requirement come with V71 and V41.
+  // Invite to a requirement (FR-O1 AC12) for an owner or admin of an employer with an open requirement, while release 2b
+  // is on; Send inquiry comes with V71.
+  const choices =
+    connection?.id && (await isReleased("release_job_orders")) ? await getInviteChoices([connection.id]) : null;
+  const invite =
+    choices && connection?.id ? (
+      <InviteToRequirement
+        slug={choices.slug}
+        organizationId={choices.organizationId}
+        partner={{ id: connection.id, name: profile.displayName }}
+        requirements={choices.requirements}
+        invited={choices.invited[connection.id] ?? {}}
+        billingHref={billingPath(lang, choices.slug)}
+        source="profile"
+      />
+    ) : null;
   const actions = viewerIsMember ? (
     <LinkButton href={workforceProfilePath(lang, profile.slug)}>Edit profile</LinkButton>
   ) : user ? (
     <div className="grid gap-3">
+      {invite}
       {connect}
       <div className={connect ? "border-t pt-2" : undefined}>{report}</div>
     </div>

@@ -7,19 +7,21 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { PartnerSuggestions } from "@/components/requirements/partner-suggestions";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { getInvitationUsage, listRequirementInvitations } from "@/lib/dal/invitations";
 import { isReleased } from "@/lib/dal/release";
 import { getRequirement, suggestPartners } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
 import { RANKING_PATH } from "@/lib/public/navigation";
 import { canSuggestPartners, destinationsText, suggestionPlanDisclosure } from "@/lib/requirements/suggestions";
-import { requirementPath, requirementsPath } from "@/lib/routes";
+import { billingPath, requirementPath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Find partners for this requirement", robots: { index: false } };
 
 // The partners suggested for one requirement (FR-M3, SOP P2-17), for the members of the employer while releases 2a and 2b
 // are on: rule-based, with the reasons on every card and the order published on the ranking page [d1.1, NFR-C8]. Nothing
-// here tells a partner that it was suggested; inviting the selected partners arrives with V42.
+// here tells a partner that it was suggested. An owner or admin of an open requirement selects partners and invites
+// them (step Act, AC7; FR-O1 AC12); every member sees which partners already have an invitation.
 export default async function RequirementPartnersPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/partners">) {
   const { lang, slug, id } = await params;
   const [jobOrders, directories] = await Promise.all([isReleased("release_job_orders"), isReleased("release_partner_directories")]);
@@ -35,6 +37,12 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
     ? await suggestPartners(organization.id, requirement.id)
     : ({ state: "unavailable" } as const);
   const countries = destinationsText([{ code: requirement.countryCode, name: requirement.country }, ...requirement.destinations]);
+  const published = result.state === "found" && requirement.status !== "draft";
+  const [invitations, usage] = published
+    ? await Promise.all([listRequirementInvitations(organization.id, requirement.id), getInvitationUsage(organization.id, requirement.id)])
+    : [[], null];
+  const invite =
+    usage && requirement.status === "open" && organization.role !== "member" ? { slug, billingHref: billingPath(lang, slug), usage } : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -74,7 +82,15 @@ export default async function RequirementPartnersPage({ params }: PageProps<"/[l
               This requirement is a draft. These suggestions are a preview; publish the requirement to work with partners.
             </Notice>
           ) : null}
-          <PartnerSuggestions lang={lang} organizationId={organization.id} requirement={requirement} suggestions={result.suggestions} more={result.more} />
+          <PartnerSuggestions
+            lang={lang}
+            organizationId={organization.id}
+            requirement={requirement}
+            suggestions={result.suggestions}
+            more={result.more}
+            invitations={Object.fromEntries(invitations.map((invitation) => [invitation.partnerId, invitation.status]))}
+            invite={invite}
+          />
         </>
       )}
     </div>

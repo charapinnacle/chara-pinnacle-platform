@@ -7,16 +7,18 @@ import { SuspendedOrganization } from "@/components/layout/suspended-organizatio
 import { organizationCrumb } from "@/lib/app/navigation";
 import { SAVED_PARTNERS_HEADING_ID, savedPartnerItem } from "@/lib/connections/list";
 import { listSavedPartners } from "@/lib/dal/connections";
+import { getInviteChoices } from "@/lib/dal/invitations";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { partnerDirectoryPath } from "@/lib/partners/search-params";
-import { savedPartnersPath } from "@/lib/routes";
+import { billingPath, savedPartnersPath } from "@/lib/routes";
 import { parseListCursor } from "@/lib/validation/job";
 
 export const metadata: Metadata = { title: "Saved partners", robots: { index: false } };
 
 // The partners an employer saved (FR-L4 AC10), shared by its members, newest first. A partner that left the directory
-// is not listed while its row is kept. Nothing is shown while release 2a is off.
+// is not listed while its row is kept. Nothing is shown while release 2a is off. While release 2b is on, an owner or admin
+// invites a saved partner to one of the open requirements of this employer (FR-O1 AC12).
 export default async function SavedPartnersPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/saved-partners">) {
   const [{ lang, slug }, { cursor: rawCursor }] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
@@ -27,6 +29,13 @@ export default async function SavedPartnersPage({ params, searchParams }: PagePr
 
   const cursor = parseListCursor(rawCursor);
   const { partners, nextCursor } = await listSavedPartners(organization.id, cursor);
+  const choices =
+    organization.role !== "member" && partners.length > 0 && (await isReleased("release_job_orders"))
+      ? await getInviteChoices(
+          partners.map((partner) => partner.id),
+          organization.id,
+        )
+      : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -48,6 +57,7 @@ export default async function SavedPartnersPage({ params, searchParams }: PagePr
         }}
         nextHref={nextCursor ? savedPartnersPath(lang, slug, nextCursor) : null}
         firstHref={cursor ? savedPartnersPath(lang, slug) : null}
+        invite={choices?.organizationId === organization.id ? { ...choices, billingHref: billingPath(lang, slug) } : null}
       />
     </div>
   );

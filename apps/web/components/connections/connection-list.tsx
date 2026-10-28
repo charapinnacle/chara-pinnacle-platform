@@ -6,12 +6,17 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
+import { InviteToRequirement } from "@/components/invitations/invite-to-requirement";
 import { Card, CardFooter } from "@/components/layout/card";
 import { setFollowing, setSavedPartner } from "@/lib/actions/connections";
 import type { ConnectionItem } from "@/lib/connections/list";
+import type { InviteChoices } from "@/lib/dal/invitations";
 import { formatDate } from "@/lib/i18n/format";
 
 type Mode = { kind: "saved"; organizationId: string } | { kind: "following" };
+
+// Invite to a requirement on each saved partner (FR-O1 AC12), for an owner or admin whose employer has an open requirement.
+type Invite = InviteChoices & { billingHref: string };
 
 type ConnectionListProps = {
   mode: Mode;
@@ -21,6 +26,7 @@ type ConnectionListProps = {
   empty: { title: string; description: string; href: string; label: string };
   nextHref: string | null;
   firstHref: string | null;
+  invite?: Invite | null;
 };
 
 const TEXT = {
@@ -28,7 +34,9 @@ const TEXT = {
   following: { remove: "Unfollow", at: "Followed", failure: "The company was not unfollowed", removed: "is no longer followed" },
 } as const;
 
-function ConnectionRow({ mode, item, headingId, onRemove }: { mode: Mode; item: ConnectionItem; headingId: string; onRemove: (item: ConnectionItem) => void }) {
+type RowProps = { mode: Mode; item: ConnectionItem; headingId: string; onRemove: (item: ConnectionItem) => void; invite: Invite | null };
+
+function ConnectionRow({ mode, item, headingId, onRemove, invite }: RowProps) {
   const text = TEXT[mode.kind];
   const { pending, run } = useActionCall(text.failure);
 
@@ -61,6 +69,17 @@ function ConnectionRow({ mode, item, headingId, onRemove }: { mode: Mode; item: 
         {text.at} <time dateTime={item.at}>{formatDate(item.at)}</time>
       </p>
       <CardFooter>
+        {invite ? (
+          <InviteToRequirement
+            slug={invite.slug}
+            organizationId={invite.organizationId}
+            partner={{ id: item.id, name: item.name }}
+            requirements={invite.requirements}
+            invited={invite.invited[item.id] ?? {}}
+            billingHref={invite.billingHref}
+            source="directory"
+          />
+        ) : null}
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={remove}>
           {text.remove}
           <span className="sr-only"> {item.name}</span>
@@ -72,7 +91,7 @@ function ConnectionRow({ mode, item, headingId, onRemove }: { mode: Mode; item: 
 
 // The saved partners of an employer or the companies a user follows (FR-L4 AC10): each row links to the profile or page
 // and has Remove (Unfollow), which takes the row away once the database confirms and says so in a polite live region.
-export function ConnectionList({ mode, items, headingId, empty, nextHref, firstHref }: ConnectionListProps) {
+export function ConnectionList({ mode, items, headingId, empty, nextHref, firstHref, invite = null }: ConnectionListProps) {
   const [removed, setRemoved] = useState<string[]>([]);
   const visible = items.filter((item) => !removed.includes(item.id));
   const [announcement, setAnnouncement] = useState("");
@@ -105,7 +124,7 @@ export function ConnectionList({ mode, items, headingId, empty, nextHref, firstH
       ) : (
         <ul className="grid gap-3">
           {visible.map((item) => (
-            <ConnectionRow key={item.id} mode={mode} item={item} headingId={headingId} onRemove={onRemove} />
+            <ConnectionRow key={item.id} mode={mode} item={item} headingId={headingId} onRemove={onRemove} invite={invite} />
           ))}
         </ul>
       )}
