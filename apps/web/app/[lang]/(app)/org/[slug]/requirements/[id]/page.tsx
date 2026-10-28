@@ -5,6 +5,7 @@ import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementInvitations } from "@/components/requirements/requirement-invitations";
+import { RequirementHistory } from "@/components/requirements/requirement-history";
 import { RequirementPartners } from "@/components/requirements/requirement-partners";
 import { RequirementStatusActions } from "@/components/requirements/requirement-status-actions";
 import { RequirementStatusNotice } from "@/components/requirements/requirement-status-notice";
@@ -12,8 +13,9 @@ import { RequirementVacancies } from "@/components/requirements/requirement-vaca
 import { RequirementView } from "@/components/requirements/requirement-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getInvitationUsage } from "@/lib/dal/invitations";
+import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
-import { getRequirement, getRequirementDurations, listRequirementVacancies } from "@/lib/dal/requirements";
+import { getRequirement, getRequirementDurations, listRequirementVacancies, listRequirementVersions } from "@/lib/dal/requirements";
 import { requireOrgRole } from "@/lib/dal/session";
 import { isRequirementEditable } from "@/lib/requirements/presentation";
 import { canSuggestPartners } from "@/lib/requirements/suggestions";
@@ -26,7 +28,7 @@ export const metadata: Metadata = { title: "Workforce requirement", robots: { in
 // One requirement as its organisation reads it, with its status, the date that matters next and, for an owner or admin,
 // the status actions (FR-M1 AC1, FR-M2 AC12, NFR-U4), and the vacancies for direct applications copied from it (FR-M1
 // AC10), the way to the suggested partners when it needs partners (FR-M3, V36) and, once published, to its invitations
-// (FR-O1, V42).
+// (FR-O1, V42), and the change history of a published requirement (FR-M2 step Edit, V43).
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -35,14 +37,21 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, durations, vacancies, directories, usage] = await Promise.all([
+  const [requirement, durations, vacancies, directories, usage, versions, countries, industries] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getRequirementDurations(),
     listRequirementVacancies(organization.id, parsedId.data).catch(() => null),
     isReleased("release_partner_directories"),
     getInvitationUsage(organization.id, parsedId.data).catch(() => null),
+    listRequirementVersions(organization.id, parsedId.data).catch(() => null),
+    getCountries(),
+    getIndustries(),
   ]);
   if (!requirement) notFound();
+  const names = {
+    countries: new Map(countries.map(({ code, name }) => [code, name])),
+    industries: new Map(industries.map(({ code, name }) => [code, name])),
+  };
   const manager = organization.role !== "member";
   const today = new Date().toISOString().slice(0, 10);
 
@@ -90,6 +99,16 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
         anonymous={requirement.visibility === "job_order_marketplace" && !requirement.showIdentity}
       />
       <RequirementView requirement={requirement} />
+      {requirement.status !== "draft" ? (
+        <RequirementHistory
+          id="changes"
+          title="Change history"
+          intro="Each saved change since publication, with the values before and after. The partners you invited are told what changed."
+          empty="No changes since publication."
+          versions={versions}
+          names={names}
+        />
+      ) : null}
       {manager && isRequirementEditable(requirement.status) ? (
         <div className="flex flex-wrap gap-3">
           <LinkButton href={`${requirementPath(lang, slug, requirement.id)}/edit`} variant="secondary" size="default">

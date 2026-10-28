@@ -6,6 +6,7 @@ import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser } from "@/lib/dal/session";
 import { logFault } from "@/lib/fault";
 import { isFullInvitation, type InvitationStatus, type InvitationUsage } from "@/lib/invitations/presentation";
+import { toRequirementVersion, type RequirementVersion } from "@/lib/requirements/versions";
 import { createClient } from "@/lib/supabase/server";
 
 type Enums = Database["public"]["Enums"];
@@ -150,6 +151,15 @@ export async function getInvitation(organizationId: string, id: string): Promise
         }
       : null,
   };
+}
+
+// The changes of the invited requirement since the partner was invited, newest first, without who made them (FR-M2 step
+// Edit); none once the invitation is declined, withdrawn or expired.
+export async function listInvitationChanges(organizationId: string, invitationId: string): Promise<RequirementVersion[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_invitation_changes", { p_org: organizationId, p_invitation: invitationId });
+  if (error) throw new Error("The changes of the invitation could not be loaded", { cause: error });
+  return data.map(toRequirementVersion);
 }
 
 const criteriaSchema = z.array(z.enum(["industry", "recruitment_type", "capacity", "available_before_start"])).nullable();

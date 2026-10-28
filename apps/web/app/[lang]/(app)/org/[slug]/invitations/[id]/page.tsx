@@ -9,8 +9,9 @@ import { JobOrderView } from "@/components/job-orders/job-order-view";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { RequirementHistory } from "@/components/requirements/requirement-history";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { getInvitation } from "@/lib/dal/invitations";
+import { getInvitation, listInvitationChanges } from "@/lib/dal/invitations";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
@@ -26,7 +27,8 @@ export const metadata: Metadata = { title: "Invitation", robots: { index: false 
 
 // One invitation of a recruitment or staffing company (FR-O1 AC8), for every member while release 2b is on: the
 // requirement in full, even private, and the employer's name (the invitation reveals it) while it is pending, accepted
-// or responded; only the title and the employer once it is declined, withdrawn or expired. The first open marks it seen.
+// or responded, with the changes since the invitation (FR-M2 step Edit, V43); only the title and the employer once it is
+// declined, withdrawn or expired. The first open marks it seen.
 // An invitation of another company and an unknown id end in the same notFound(), so a competing partner learns nothing.
 export default async function InvitationPage({ params }: PageProps<"/[lang]/org/[slug]/invitations/[id]">) {
   const { lang, slug, id } = await params;
@@ -38,7 +40,9 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
   const invitation = await getInvitation(organization.id, parsedId.data);
   if (!invitation) notFound();
   const { requirement } = invitation;
-  const [countries, industries] = requirement ? await Promise.all([getCountries(), getIndustries()]) : [[], []];
+  const [countries, industries, changes] = requirement
+    ? await Promise.all([getCountries(), getIndustries(), listInvitationChanges(organization.id, invitation.id).catch(() => null)])
+    : [[], [], []];
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
@@ -90,6 +94,17 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
       </section>
 
       {canAnswer(invitation.status) ? <InvitationAnswer slug={slug} invitationId={invitation.id} employerName={invitation.employerName} /> : null}
+
+      {requirement ? (
+        <RequirementHistory
+          id="changes"
+          title="Changes since you were invited"
+          intro="The employer's saved changes to this requirement since your company was invited, with the values before and after."
+          empty="The employer has not changed the requirement since your company was invited."
+          versions={changes}
+          names={names}
+        />
+      ) : null}
 
       {requirement ? (
         <section aria-labelledby="invitation-requirement-heading" className="grid gap-4">

@@ -8,6 +8,7 @@ import { getPublicSettings } from "@/lib/dal/settings";
 import { MULTI_COUNTRY_FEATURE } from "@/lib/requirements/limits";
 import type { RequirementDurations } from "@/lib/requirements/lifecycle";
 import { suggestionCriteria, type Suggestion } from "@/lib/requirements/suggestions";
+import { toRequirementVersion, type RequirementVersion } from "@/lib/requirements/versions";
 import { createClient } from "@/lib/supabase/server";
 import { formatJobCursor, type JobCursor } from "@/lib/validation/job";
 import type { RequirementFormInput } from "@/lib/validation/requirement";
@@ -210,6 +211,15 @@ export async function listRequirementVacancies(organizationId: string, requireme
     moderationState: row.moderation_state,
     createdAt: row.created_at,
   }));
+}
+
+// The saved edits of a published requirement, newest first, with who saved each (FR-M2 step Edit), for the members of its
+// organisation.
+export async function listRequirementVersions(organizationId: string, requirementId: string): Promise<RequirementVersion[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_requirement_versions", { p_org: organizationId, p_requirement: requirementId });
+  if (error) throw new Error("The change history of the workforce requirement could not be loaded", { cause: error });
+  return data.map(toRequirementVersion);
 }
 
 export type MultiCountryPlan = { allowed: boolean; planName: string | null };
