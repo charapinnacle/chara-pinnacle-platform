@@ -97,7 +97,8 @@ create policy requirement_invitations_select_member on public.requirement_invita
 -- The moves of DATA_MODEL.md section 5: invited -> viewed; invited or viewed -> accepted, declined or responded (a
 -- response that accepts, V44); accepted -> responded; invited, viewed or accepted -> withdrawn (employer) or expired
 -- (requirement closed or filled). Declined, responded, withdrawn and expired are final. No API role writes the table, so
--- this holds the functions of this and later units to the table of states.
+-- this holds the functions of this and later units to the table of states. What an invitation is about is held by the
+-- next trigger, whatever the status does.
 create function private.requirement_invitations_guard() returns trigger
 language plpgsql
 security definer
@@ -112,11 +113,6 @@ begin
   ) then
     raise exception 'CHARA_INVALID_TRANSITION' using detail = old.status || ' to ' || new.status;
   end if;
-  if (new.requirement_id, new.organization_id, new.employer_organization_id, new.source, new.invited_at)
-     is distinct from (old.requirement_id, old.organization_id, old.employer_organization_id, old.source, old.invited_at)
-     or new.suggestion_criteria is distinct from old.suggestion_criteria then
-    raise exception 'CHARA_INVALID_INPUT' using detail = 'immutable';
-  end if;
   return new;
 end;
 $$;
@@ -129,6 +125,32 @@ create trigger requirement_invitations_guard
   execute function private.requirement_invitations_guard();
 
 alter table public.requirement_invitations enable always trigger requirement_invitations_guard;
+
+-- The requirement, the partner, the employer, the source with its criteria and the time of the invitation never change,
+-- on any update; invited_by only becomes null (the erasure of the member, on delete set null).
+create function private.requirement_invitations_immutable() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (new.requirement_id, new.organization_id, new.employer_organization_id, new.source, new.invited_at)
+     is distinct from (old.requirement_id, old.organization_id, old.employer_organization_id, old.source, old.invited_at)
+     or new.suggestion_criteria is distinct from old.suggestion_criteria
+     or (new.invited_by is distinct from old.invited_by and new.invited_by is not null) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'immutable';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.requirement_invitations_immutable() from public, anon, authenticated, service_role;
+
+create trigger requirement_invitations_immutable
+  before update on public.requirement_invitations
+  for each row execute function private.requirement_invitations_immutable();
+
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
 
 -- Notifications ---------------------------------------------------------------------------------------------------------
 
@@ -363,7 +385,9 @@ begin
   end if;
 
   -- One lock per employer before both counts: a second call of the same employer waits for this one to commit and then
-  -- counts its rows; nothing of another employer waits.
+  -- counts its rows; nothing of another employer waits. private.assert_org_manager already holds the employer's row (for
+  -- no key update), which serialises the calls of one employer first; this lock states the rule here, so it does not
+  -- rest on a side effect of the role check.
   perform pg_advisory_xact_lock(hashtextextended('partner_invitations:' || p_org::text, 0));
 
   v_new := array(
@@ -629,8 +653,9 @@ grant execute on function public.get_invitation(uuid, uuid) to authenticated;
 -- The invitations of the partner p_org, newest first (invited_at descending, then id), optionally of one status, pages
 -- of 20 by default and at most 50 with the id of the last row as cursor (next_cursor on the last row of a page that has a
 -- next one; a cursor that is not an invitation of p_org is CHARA_INVALID_INPUT p_cursor). For any accepted member of the
--- active partner. Each row names the requirement as the invitation reveals it (the employer's title and name), its
--- destination, workers, start date and status. Reading the list marks nothing viewed.
+-- active partner. Each row names the requirement as the invitation reveals it (the employer's title and name); its
+-- destination, workers, start date and live status only while the invitation is invited, viewed, accepted or responded,
+-- as get_invitation. Reading the list marks nothing viewed.
 create function public.list_my_invitations(
   p_org uuid,
   p_status public.invitation_status default null,
@@ -670,7 +695,8 @@ begin
 
   return query
   with page as (
-    select i.*, row_number() over (order by i.invited_at desc, i.id) as n
+    select i.*, row_number() over (order by i.invited_at desc, i.id) as n,
+      i.status in ('invited', 'viewed', 'accepted', 'responded') as full
     from public.requirement_invitations i
     where i.organization_id = p_org
       and (p_status is null or i.status = p_status)
@@ -678,8 +704,9 @@ begin
     order by i.invited_at desc, i.id
     limit v_limit + 1
   )
-  select p.id, p.requirement_id, p.status, p.invited_at, p.answered_at, r.title, r.country_code, r.workers_needed,
-    r.start_date, r.status, e.display_name,
+  select p.id, p.requirement_id, p.status, p.invited_at, p.answered_at, r.title,
+    case when p.full then r.country_code end, case when p.full then r.workers_needed end,
+    case when p.full then r.start_date end, case when p.full then r.status end, e.display_name,
     case when p.n = v_limit and exists (select 1 from page x where x.n > v_limit) then p.id end
   from page p
   join public.workforce_requirements r on r.id = p.requirement_id
@@ -694,7 +721,8 @@ grant execute on function public.list_my_invitations(uuid, public.invitation_sta
 
 -- Every invitation of the requirement p_requirement of the employer p_org, newest first (FR-O1 step Track, AC9), for any
 -- accepted member of the employer (private.assert_invitation_employer); no such requirement of p_org, CHARA_NOT_FOUND.
--- Each row names the partner as its public profile does (display name, slug, type), the status with its times, the
+-- Each row names the partner as its public profile does (display name, type, and the slug of its profile only while the
+-- partner is still listed and visible, so no link leads to a profile that is gone), the status with its times, the
 -- decline reason, the source and the criteria recorded from the suggestions. Never who invited.
 create function public.list_requirement_invitations(p_org uuid, p_requirement uuid)
 returns table (
@@ -725,7 +753,7 @@ begin
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
   return query
-  select i.id, i.organization_id, o.display_name, o.slug, o.type, i.status, i.source, i.suggestion_criteria, i.invited_at,
+  select i.id, i.organization_id, o.display_name, case when private.invitable_partner(o.id) then o.slug end, o.type, i.status, i.source, i.suggestion_criteria, i.invited_at,
     i.viewed_at, i.answered_at, i.decline_reason, i.responded_at, i.withdrawn_at, i.expired_at
   from public.requirement_invitations i
   join public.organizations o on o.id = i.organization_id
@@ -957,29 +985,23 @@ begin
         'country_code', r.country_code, 'country_name', c.name, 'org_slug', v_slug)
       from public.workforce_requirements r join public.countries c on c.code = r.country_code
       where r.id = (p_message ->> 'requirement_id')::uuid), '{}'::jsonb)
-    -- NFR-S11, DATA_MODEL.md section 9: the employer's own title and name only when it shows them on the marketplace;
-    -- otherwise the generated title and no name, since an email leaves the platform. The partner reads the name in
-    -- the app, where the invitation reveals it. The slug is the recipient partner's own, for the link.
+    -- An invitation reveals the employer to the invited partner (decision 3.2; NFR-S11 protects the partners that are
+    -- not invited or selected), so the item and the email name the requirement's own title and the employer (FR-O1
+    -- AC7, AC11), and nothing else of the employer: no member, no address. The slug is the recipient partner's own.
     when 'invitation_received' then coalesce((
-      select jsonb_build_object('invitation_id', i.id,
-        'title', case when r.show_identity and r.visibility = 'job_order_marketplace' then r.title
-          else private.job_order_neutral_title(r.id) end,
+      select jsonb_build_object('invitation_id', i.id, 'title', r.title,
         'country_code', r.country_code, 'country_name', c.name, 'workers_needed', r.workers_needed,
-        'start_date', r.start_date,
-        'employer_name', case when r.show_identity and r.visibility = 'job_order_marketplace' then e.display_name end,
-        'org_slug', v_slug)
+        'start_date', r.start_date, 'employer_name', e.display_name, 'org_slug', v_slug)
       from public.requirement_invitations i
       join public.workforce_requirements r on r.id = i.requirement_id
       join public.countries c on c.code = r.country_code
       join public.organizations e on e.id = r.organization_id
       where i.id = (p_message ->> 'requirement_invitation_id')::uuid), '{}'::jsonb)
     when 'invitation_withdrawn' then coalesce((
-      select jsonb_build_object('invitation_id', i.id,
-        'title', case when r.show_identity and r.visibility = 'job_order_marketplace' then r.title
-          else private.job_order_neutral_title(r.id) end,
-        'org_slug', v_slug)
+      select jsonb_build_object('invitation_id', i.id, 'title', r.title, 'employer_name', e.display_name, 'org_slug', v_slug)
       from public.requirement_invitations i
       join public.workforce_requirements r on r.id = i.requirement_id
+      join public.organizations e on e.id = r.organization_id
       where i.id = (p_message ->> 'requirement_invitation_id')::uuid), '{}'::jsonb)
     else '{}'::jsonb
   end);

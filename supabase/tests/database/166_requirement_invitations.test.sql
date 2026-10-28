@@ -1,5 +1,5 @@
 begin;
-select plan(204);
+select plan(216);
 
 \ir jobs_fixture.inc
 
@@ -104,6 +104,12 @@ $$;
 create function pg_temp.result() returns jsonb
 language sql as $$ select current_setting('t.result')::jsonb $$;
 
+-- The waiting call queues first on the employer's row, which private.assert_org_manager takes for no key update for
+-- every manager action; the advisory lock of invite_partners states the same rule explicitly for both counts.
+select is(
+  split_part(pg_temp.call_as(null, 'postgres', format(
+    'select 1 from public.organizations where id = %L for no key update nowait', :'org_c')), '|', 1),
+  '55P03', 'the invitation in progress holds the employer''s row through the role check (for no key update)');
 set local lock_timeout = '300ms';
 select is(split_part(pg_temp.inv(:'cown', :'org_c', :'c_req', array[:'c_p4']::uuid[]), '|', 1), '55P03',
   'NFR-A4: an invitation of the same employer at the same time waits for it');
@@ -379,13 +385,15 @@ select ok(
   (select bool_and(not has_function_privilege(r, f, 'execute'))
    from unnest(array['private.queue_invitation_event(uuid, text)', 'private.invitable_partner(uuid)',
      'private.suggestion_criteria(uuid, uuid)', 'private.assert_invitation_partner(uuid)', 'private.assert_invitation_employer(uuid)',
-     'private.requirements_expire_invitations()', 'private.requirement_invitations_guard()']) f,
+     'private.requirements_expire_invitations()', 'private.requirement_invitations_guard()',
+     'private.requirement_invitations_immutable()']) f,
    unnest(array['anon', 'authenticated', 'service_role']) r),
   'no API role runs the private helpers or the trigger functions');
 select is(
   (select string_agg(tgname || ':' || tgenabled::text, ',' order by tgname) from pg_trigger
-   where tgname in ('requirement_invitations_guard', 'workforce_requirements_expire_invitations')),
-  'requirement_invitations_guard:A,workforce_requirements_expire_invitations:A', 'the guard and the expiry fire always');
+   where tgname in ('requirement_invitations_guard', 'requirement_invitations_immutable', 'workforce_requirements_expire_invitations')),
+  'requirement_invitations_guard:A,requirement_invitations_immutable:A,workforce_requirements_expire_invitations:A',
+  'the guard, the immutable columns and the expiry fire always');
 select is((select value #>> '{}' from private.settings where key = 'partner_invitations_per_day_max'), '50',
   'AC4: at most 50 invitations per employer in 24 hours by default');
 select ok(exists (select 1 from private.setting_rules where key = 'partner_invitations_per_day_max' and editable and min = 1 and max = 1000),
@@ -459,28 +467,33 @@ select ok(
 select is(
   (select string_agg(k, ',' order by k) from public.notifications n, jsonb_object_keys(n.payload) k
    where n.user_id = :'u1' and n.kind = 'invitation_received' and n.payload ->> 'invitation_id' = :'i_p1'),
-  'country_code,country_name,invitation_id,org_slug,start_date,title,workers_needed',
-  'AC7, FR-T1 AC2: the invitation id, the title, the destination, workers and start date and the recipient''s own slug only');
+  'country_code,country_name,employer_name,invitation_id,org_slug,start_date,title,workers_needed',
+  'AC7, AC11, FR-T1 AC2: the invitation id, the title, the destination, workers, start date, the employer and the recipient''s own slug only');
 select is(
-  (select format('%s|%s|%s', payload ->> 'title', payload ->> 'org_slug', payload ->> 'workers_needed')
+  (select format('%s|%s|%s|%s', payload ->> 'title', payload ->> 'employer_name', payload ->> 'org_slug', payload ->> 'workers_needed')
    from public.notifications where user_id = :'u1' and kind = 'invitation_received' and payload ->> 'invitation_id' = :'i_p1'),
-  'Germany, 10 Welders and flame cutters|p1-v41|10',
-  'NFR-S11: a private requirement shows no name, so the title is the generated one');
+  'Acme private welders|Acme Bau|p1-v41|10',
+  'AC7, AC11, decision 3.2: the invitation reveals the employer, so the item names the requirement''s own title and the employer');
 select ok(
   not exists (select 1 from public.notifications n where n.kind = 'invitation_received'
-    and (n.payload::text ilike '%acme%' or n.payload::text like '%' || :'acme' || '%' or n.payload::text like '%Hamburg%'
-      or n.payload::text like '%' || :'own1' || '%')),
-  'NFR-S11, AC11: no item names the employer, its id, the city or the inviting member');
+    and (n.payload::text like '%' || :'acme' || '%' or n.payload::text like '%' || :'own1' || '%'
+      or n.payload::text like '%@%' or n.payload::text like '%acme-bau%')),
+  'AC11: no item carries the employer''s id or slug, the inviting member or an email address');
 select is(pg_temp.inv(:'own1', :'acme', :'rm', array[:'p1']::uuid[]), 'ok', 'Acme invites P1 to its anonymous job order');
 select is(
-  (select format('%s|%s', payload ->> 'title', payload ? 'employer_name') from public.notifications
+  (select format('%s|%s', payload ->> 'title', payload ->> 'employer_name') from public.notifications
    where user_id = :'u1' and payload ->> 'invitation_id' = pg_temp.inv_of(:'rm', :'p1')::text),
-  'Germany, 10 Welders and flame cutters|f', 'AC7: an anonymous job order: the generated title and no name in the item');
+  'Acme Bau anonymous welders|Acme Bau', 'AC11, NFR-S11: an anonymous job order is revealed to the invited partner, in the item too');
+select ok(
+  not exists (select 1 from public.notifications n where n.kind = 'invitation_received' and n.payload::text ilike '%acme%'
+    and n.user_id not in (select m.user_id from public.organization_members m join public.requirement_invitations i
+      on i.organization_id = m.organization_id where i.id = (n.payload ->> 'invitation_id')::uuid)),
+  'NFR-S11: the name reaches only members of the invited partner');
 select is(pg_temp.inv(:'own1', :'acme', :'rs', array[:'p1']::uuid[]), 'ok', 'Acme invites P1 to the job order that shows its name');
 select is(
   (select format('%s|%s', payload ->> 'title', payload ->> 'employer_name') from public.notifications
    where user_id = :'u1' and payload ->> 'invitation_id' = pg_temp.inv_of(:'rs', :'p1')::text),
-  'Acme Bau named welders|Acme Bau', 'AC7: the employer display name and its own title only when the requirement shows them');
+  'Acme Bau named welders|Acme Bau', 'AC7: the same for a job order that shows the name');
 
 -- AC4: a repeated invitation -------------------------------------------------------------------------------------------------
 
@@ -633,8 +646,11 @@ select is(pg_temp.inv(:'ud', :'delta', :'lx', array[:'p1']::uuid[]), 'P0001|CHAR
 
 -- AC4: the daily cap per employer ------------------------------------------------------------------------------------------
 
--- Acme's earlier invitations are moved out of the last 24 hours, so the cap set for Beta below leaves Acme room.
+-- Acme's earlier invitations are moved out of the last 24 hours, so the cap set for Beta below leaves Acme room (the
+-- time of an invitation is immutable, so the test owner lifts that trigger for its own back-dating).
+alter table public.requirement_invitations disable trigger requirement_invitations_immutable;
 update public.requirement_invitations set invited_at = invited_at - interval '2 days' where employer_organization_id = :'acme';
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
 select pg_temp.req(:'beta', 'Beta cap one') as c1 \gset
 select pg_temp.req(:'beta', 'Beta cap two') as c2 \gset
 select set_config('t.beta_day', (select count(*) from public.requirement_invitations
@@ -652,8 +668,10 @@ select is(pg_temp.inv(:'own1', :'acme', :'c2', array[(select id from bulk where 
   'the cap of Beta is not Acme''s business: Acme reaches no requirement of Beta');
 select is(pg_temp.inv(:'own1', :'acme', :'r3', array[(select id from bulk where n = 2)]), 'ok',
   'AC4: the cap counts per employer: Acme still invites');
+alter table public.requirement_invitations disable trigger requirement_invitations_immutable;
 update public.requirement_invitations set invited_at = now() - interval '25 hours'
 where employer_organization_id = :'beta' and requirement_id in (:'c1');
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
 select is(pg_temp.inv(:'own2', :'beta', :'c2', array[(select id from bulk where n = 2)]), 'ok',
   'AC4: invitations older than 24 hours no longer count');
 update private.settings set value = '50' where key = 'partner_invitations_per_day_max';
@@ -695,7 +713,7 @@ select is(pg_temp.told('invitation_withdrawn', :'w_view'), :'us1' || ':queued', 
 select is(
   (select string_agg(k, ',' order by k) from public.notifications n, jsonb_object_keys(n.payload) k
    where n.user_id = :'u1' and n.kind = 'invitation_withdrawn' and n.payload ->> 'invitation_id' = :'w_inv'),
-  'invitation_id,org_slug,title', 'the withdrawal names the invitation, the generated title and the recipient''s slug only');
+  'employer_name,invitation_id,org_slug,title', 'the withdrawal names the invitation, the title, the employer and the recipient''s slug only');
 select is(pg_temp.wd(:'own1', :'acme', :'w_resp'), 'P0001|CHARA_INVALID_STATE|responded', 'AC10: a responded invitation stays');
 select is(pg_temp.wd(:'own1', :'acme', :'w_decl'), 'P0001|CHARA_INVALID_STATE|declined', 'AC10: a declined invitation stays');
 select is(pg_temp.wd(:'own1', :'acme', :'w_inv'), 'P0001|CHARA_INVALID_STATE|withdrawn', 'a withdrawn invitation cannot be withdrawn again');
@@ -844,10 +862,18 @@ update private.settings set value = 'true' where key = 'release_job_orders';
 select is(pg_temp.answer(:'us1', :'s1', :'i_s1', 'accepted'), 'ok', 'the staffing company accepts');
 
 -- Distinct times, so the order of the list is the order of the invitations.
+alter table public.requirement_invitations disable trigger requirement_invitations_immutable;
 update public.requirement_invitations set invited_at = now() - interval '4 hours' where id = :'i_p1';
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
+alter table public.requirement_invitations disable trigger requirement_invitations_immutable;
 update public.requirement_invitations set invited_at = now() - interval '3 hours' where id = :'i_rm';
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
+alter table public.requirement_invitations disable trigger requirement_invitations_immutable;
 update public.requirement_invitations set invited_at = now() - interval '2 hours' where id = :'i_rs';
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
+alter table public.requirement_invitations disable trigger requirement_invitations_immutable;
 update public.requirement_invitations set invited_at = now() - interval '1 hour' where id = pg_temp.inv_of(:'r3', :'p1');
+alter table public.requirement_invitations enable always trigger requirement_invitations_immutable;
 
 -- The lists ---------------------------------------------------------------------------------------------------------------------
 
@@ -897,6 +923,46 @@ select is(
 select is(
   pg_temp.read_as(:'u1', format('select count(*)::text from public.list_requirement_invitations(%L, %L)', :'p1', :'r')),
   '42501|CHARA_FORBIDDEN|employer_only', 'nor through its own organisation');
+
+select is(
+  pg_temp.read_as(:'u1m', format($f$select format('%%s|%%s|%%s|%%s|%%s|%%s', title, status, country_code is null, workers_needed is null,
+    start_date is null, requirement_status is null) from public.list_my_invitations(%L, p_limit => 50) where id = %L$f$, :'p1', :'w_inv')),
+  'Acme withdrawals|withdrawn|t|t|t|t',
+  'a withdrawn invitation in the list keeps its title and status, without destination, workers, start date or the requirement''s status');
+select is(
+  pg_temp.read_as(:'u1m', format($f$select (country_code is not null and requirement_status is not null)::text
+    from public.list_my_invitations(%L, p_limit => 50) where id = %L$f$, :'p1', :'i_p1')),
+  'true', 'an accepted invitation keeps them');
+update public.organizations set moderation_state = 'hidden' where id = :'p2';
+select is(
+  pg_temp.read_as(:'mem', format($f$select string_agg(partner_name || ':' || coalesce(partner_slug, 'none'), ',' order by partner_name)
+    from public.list_requirement_invitations(%L, %L) where partner_name in ('P1 V41', 'P2 V41')$f$, :'acme', :'rw')),
+  'P1 V41:p1-v41,P2 V41:none', 'a partner hidden since the invitation is listed by name without the slug of a profile that is gone');
+update public.organizations set moderation_state = 'visible' where id = :'p2';
+
+-- The columns that never change ---------------------------------------------------------------------------------------------
+
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set organization_id = %L where id = %L', :'p2', :'i_p1')),
+  'P0001|CHARA_INVALID_INPUT|immutable', 'the partner of an invitation never changes, whatever the status does');
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set requirement_id = %L where id = %L', :'r2', :'i_p1')),
+  'P0001|CHARA_INVALID_INPUT|immutable', 'nor its requirement');
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set employer_organization_id = %L where id = %L', :'beta', :'i_p1')),
+  'P0001|CHARA_INVALID_INPUT|immutable', 'nor its employer');
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set source = ''profile'' where id = %L', :'i_p1')),
+  'P0001|CHARA_INVALID_INPUT|immutable', 'nor its source');
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set invited_at = now() - interval ''1 day'', status = ''responded'', responded_at = now() where id = %L', :'i_p1')),
+  'P0001|CHARA_INVALID_INPUT|immutable', 'nor the time of the invitation, also with a status change');
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set invited_by = %L where id = %L', :'adm', :'i_p1')),
+  'P0001|CHARA_INVALID_INPUT|immutable', 'who invited is not rewritten');
+select is(
+  pg_temp.call_as(null, 'postgres', format('update public.requirement_invitations set invited_by = null where id = %L', :'i_p1')),
+  'ok', 'who invited is cleared (the erasure of the member, on delete set null)');
 
 -- NFR-S8: reads of the table from both sides -------------------------------------------------------------------------------
 
