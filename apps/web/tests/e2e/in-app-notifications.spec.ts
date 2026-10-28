@@ -179,11 +179,13 @@ test.describe("in-app notifications (FR-T1)", () => {
     const section = page.locator("#email-notifications");
     const applications = section.getByRole("switch", { name: "New applications" });
     await expect(applications).toBeChecked();
-    // New applications, the follower digest that every account may receive (FR-L4, V24) and the closing reminder of
-    // workforce requirements, an employer kind until V43 offers it to partners (FR-M2, V33).
-    await expect(section.getByRole("switch")).toHaveCount(3);
+    // New applications, the follower digest that every account may receive (FR-L4, V24), the closing reminder of
+    // workforce requirements (FR-M2, V33) and the new and withdrawn partner responses (FR-O2, FR-N2, V44).
+    await expect(section.getByRole("switch")).toHaveCount(5);
     await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
     await expect(section.getByRole("switch", { name: "Workforce requirement closing reminders" })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Responses to your workforce requirements", exact: true })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Withdrawn responses to your workforce requirements" })).toBeChecked();
     for (const label of ["Vacancy hidden by moderation", "Failed payments", "Team invitations", "New versions of legal documents"]) {
       const row = section.getByRole("listitem").filter({ hasText: label });
       await expect(row).toContainText("Always sent");
@@ -206,10 +208,10 @@ test.describe("in-app notifications (FR-T1)", () => {
     await applications.focus();
     await page.keyboard.press("Space");
     await expect(applications).not.toBeChecked();
-    // Past the two other switches to the save button.
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    // Past the four other switches to the save button.
+    for (let presses = 0; presses < 5; presses += 1) {
+      await page.keyboard.press("Tab");
+    }
     await expect(section.getByRole("button", { name: "Save email choices" })).toBeFocused();
     await page.keyboard.press("Enter");
     release();
@@ -220,7 +222,13 @@ test.describe("in-app notifications (FR-T1)", () => {
     await page.unroute(`**${SETTINGS}`);
     await section.getByRole("button", { name: "Save email choices" }).click();
     await expect(page.getByText("Email choices saved", { exact: true })).toBeVisible();
-    expect(emailKinds(admin.id)).toEqual({ application_received: false, followed_company_activity: true, requirement_closing_soon: true });
+    expect(emailKinds(admin.id)).toEqual({
+      application_received: false,
+      followed_company_activity: true,
+      requirement_closing_soon: true,
+      response_received: true,
+      response_withdrawn: true,
+    });
 
     await page.reload();
     await expect(page.locator("#email-notifications").getByRole("switch", { name: "New applications" })).not.toBeChecked();
