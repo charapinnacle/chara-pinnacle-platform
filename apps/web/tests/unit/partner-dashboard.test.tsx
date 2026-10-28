@@ -13,6 +13,7 @@ const planMock = vi.hoisted(() => vi.fn());
 const usageMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn<() => Promise<WorkforceListing[]>>(async () => []));
 const twoStepMock = vi.hoisted(() => vi.fn(async () => true));
+const releasedMock = vi.hoisted(() => vi.fn<(name: string) => Promise<boolean>>(async () => false));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -27,6 +28,7 @@ vi.mock("@/lib/dal/connections", () => ({ getFollowerCount: followersMock }));
 vi.mock("@/lib/dal/dashboard", () => ({ getDashboardPlan: planMock }));
 vi.mock("@/lib/dal/usage", () => ({ getOrgUsage: usageMock }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/workforce-availability", () => ({
   getWorkforceListings: listingsMock,
   getAvailabilityRules: async () => ({ staleDays: 60, reminderDays: 30, maxDays: 730 }),
@@ -119,6 +121,17 @@ describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)
     const html = await render();
     for (const absent of [/job order/i, /invitation/i, /submission/i, /unread/i, /Find employers/i, /Respond to request/i, /Find companies/i]) {
       expect(html).not.toMatch(absent);
+    }
+  });
+
+  it("links the job order marketplace to every member while release 2b is on (V40)", async () => {
+    releasedMock.mockImplementation(async (name: string) => name === "release_job_orders");
+    try {
+      for (const role of ["owner", "member"] as const) {
+        expect(await render({ role })).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>Job orders<\/a>/);
+      }
+    } finally {
+      releasedMock.mockImplementation(async () => false);
     }
   });
 });
