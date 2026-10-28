@@ -234,6 +234,8 @@ describe("notification templates", () => {
       job_order_match: jobOrderPath("en", "manila-recruit", JOB),
       invitation_received: invitationPath("en", "manila-recruit", APP),
       invitation_withdrawn: invitationPath("en", "manila-recruit", APP),
+      requirement_changed: `${invitationPath("en", "manila-recruit", APP)}#changes`,
+      requirement_closed: invitationPath("en", "manila-recruit", APP),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -284,6 +286,50 @@ describe("notification templates", () => {
     expect(email.text).toContain('Acme Bau withdrew the invitation of your company to "Hamburg yard welders".');
     expect(email.text).toContain("You no longer need to answer it.");
     expect(email.text).toContain(`${SITE}/en/org/manila-recruit/invitations/${APP}`);
+  });
+
+  it("requirement_closing_soon to a partner links its invitation, names no employer and offers no extension (FR-M2 AC6, V43)", async () => {
+    const payload = { ...SAMPLES.requirement_closing_soon, invitation_id: APP, org_slug: "manila-recruit", employer_name: "Acme Bau" };
+    const email = await renderEmail("requirement_closing_soon", payload, SITE);
+    expect(email.subject).toBe('"Welders for Hamburg" closes on 10 April 2027');
+    expect(email.text).toContain("unless the employer extends it");
+    expect(email.text).toContain(`See the invitation ${SITE}/en/org/manila-recruit/invitations/${APP}`);
+    expect(email.text).not.toContain("Extend the requirement");
+    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("Acme");
+    const untitled = await renderEmail("requirement_closing_soon", { invitation_id: APP }, SITE);
+    expect(untitled.subject).toBe("A workforce requirement you are invited to closes soon");
+    const foreign = await renderEmail("requirement_closing_soon", { ...payload, invitation_id: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("billing");
+  });
+
+  it("requirement_changed names the fields that changed, never their values, and links the changes (FR-M2 AC8, V43)", async () => {
+    const email = await renderEmail("requirement_changed", { ...SAMPLES.requirement_changed, salary_max: 3600, changed_by: "Jana Acme" }, SITE);
+    expect(email.subject).toBe("Workforce requirement changed: Hamburg yard welders");
+    expect(email.text).toContain('Acme Bau changed "Hamburg yard welders", which your company is invited to.');
+    expect(email.text).toContain("Changed: Number of workers, Occupations and Salary maximum.");
+    expect(email.text).toContain(`See what changed ${SITE}/en/org/manila-recruit/invitations/${APP}#changes`);
+    for (const part of [email.subject, email.text, email.html]) {
+      expect(part).not.toContain("3600");
+      expect(part).not.toContain("Jana");
+    }
+    const unknown = await renderEmail("requirement_changed", { ...SAMPLES.requirement_changed, changed_fields: ["<b>x</b>"] }, SITE);
+    expect(unknown.text).not.toContain("Changed:");
+    expect(unknown.html).not.toContain("<b>x</b>");
+  });
+
+  it("requirement_closed says why the requirement ended and that the invitation can no longer be answered (FR-M2 AC10, V43)", async () => {
+    const filled = await renderEmail("requirement_closed", SAMPLES.requirement_closed, SITE);
+    expect(filled.subject).toBe("Workforce requirement filled: Hamburg yard welders");
+    expect(filled.text).toContain('"Hamburg yard welders" of Acme Bau, which your company was invited to, no longer takes responses.');
+    expect(filled.text).toContain("The employer has filled it.");
+    expect(filled.text).toContain("can no longer answer or respond to the invitation");
+    const expired = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "expired" }, SITE);
+    expect(expired.subject).toBe("Workforce requirement closed: Hamburg yard welders");
+    expect(expired.text).toContain("Its closing date has passed.");
+    const cancelled = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "cancelled" }, SITE);
+    expect(cancelled.text).toContain("The employer closed it.");
+    const odd = await renderEmail("requirement_closed", { ...SAMPLES.requirement_closed, close_reason: "constructor" }, SITE);
+    expect(odd.text).not.toContain("function");
   });
 
   it("link without a double slash when the site address ends with one", async () => {

@@ -66,6 +66,14 @@ describe("in-app notification items (FR-T1)", () => {
     ["invitation_received", { invitation_id: "../billing", org_slug: "manila" }, company, "An employer invited your company to a workforce requirement", null],
     ["invitation_withdrawn", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", org_slug: "manila" }, company, 'Acme Bau withdrew the invitation to "Hamburg welders"', invitationPath("en", "manila", APP)],
     ["invitation_withdrawn", { invitation_id: "../x", org_slug: "manila" }, company, "The employer withdrew the invitation to a workforce requirement", null],
+    ["requirement_closing_soon", { requirement_id: JOB, invitation_id: APP, title: "Hamburg welders", closes_on: "2027-04-10", org_slug: "manila" }, company, '"Hamburg welders" closes on 10 April 2027', invitationPath("en", "manila", APP)],
+    ["requirement_closing_soon", { requirement_id: JOB, invitation_id: "../x", org_slug: "manila" }, company, "A workforce requirement closes soon", null],
+    ["requirement_changed", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", changed_fields: ["workers_needed", "occupations", "salary_max"], org_slug: "manila" }, company, 'Acme Bau changed "Hamburg welders": Number of workers, Occupations and Salary maximum', `${invitationPath("en", "manila", APP)}#changes`],
+    ["requirement_changed", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", changed_fields: ["title", "<script>", 3], org_slug: "manila" }, company, 'Acme Bau changed "Hamburg welders": Title', `${invitationPath("en", "manila", APP)}#changes`],
+    ["requirement_changed", { invitation_id: "../x", changed_fields: "workers_needed", org_slug: "manila" }, company, "The employer changed a workforce requirement", null],
+    ["requirement_closed", { invitation_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila" }, company, '"Hamburg welders" is filled', invitationPath("en", "manila", APP)],
+    ["requirement_closed", { invitation_id: APP, title: "Hamburg welders", close_reason: "expired", org_slug: "manila" }, company, '"Hamburg welders" is closed', invitationPath("en", "manila", APP)],
+    ["requirement_closed", {}, company, "A workforce requirement you are invited to is closed", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
