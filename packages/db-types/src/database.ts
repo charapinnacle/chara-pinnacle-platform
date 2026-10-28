@@ -2128,6 +2128,9 @@ isOneToOne: false
               "allowed": boolean,"retry_after_seconds": number
             }[]
                            },
+"record_invitation_limit_prompt":
+{ Args: { "p_org": string,"p_requirement": string }; Returns: undefined
+                           },
 "record_job_form_invalid":
 { Args: { "p_fields": (string)[],"p_org": string }; Returns: undefined
                            },
