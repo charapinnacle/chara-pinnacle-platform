@@ -398,6 +398,8 @@ test.describe("The public Job orders page (FR-L5)", () => {
     await expect(link).toHaveAttribute("href", `/en/org/${p1.slug}/job-orders`);
     await link.click();
     await expect(page.getByRole("heading", { name: "Job orders", level: 1 })).toBeVisible();
+    // The results stream in after the heading; axe measures them once they are there.
+    await expect(page.getByRole("status").filter({ hasText: /job orders? shown|There are no open job orders yet/ })).toBeVisible();
     await expectNoAxeViolations(page);
 
     // The marketplace and the job order pages do not exist while release 2b is off (the app's not-found page; the
