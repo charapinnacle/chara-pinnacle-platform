@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { FocusOnChange } from "@/components/invitations/focus-on-change";
+import { FocusOnHash } from "@/components/invitations/focus-on-hash";
 import { InvitationAnswer } from "@/components/invitations/invitation-answer";
 import { InvitationStatusBadge } from "@/components/invitations/invitation-status";
 import { JobOrderView } from "@/components/job-orders/job-order-view";
@@ -95,6 +96,7 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
 
       {canAnswer(invitation.status) ? <InvitationAnswer slug={slug} invitationId={invitation.id} employerName={invitation.employerName} /> : null}
 
+      {requirement ? <FocusOnHash targetId="changes" /> : null}
       {requirement ? (
         <RequirementHistory
           id="changes"

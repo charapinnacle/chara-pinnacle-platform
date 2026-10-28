@@ -3,7 +3,7 @@ import { formatDateTime } from "@/lib/i18n/format";
 import { changedByText, changeLines, type ChangeNames, type RequirementVersion } from "@/lib/requirements/versions";
 
 type RequirementHistoryProps = {
-  // The id of the section, which the change notices link to on the invitation page.
+  // The id of the section, which the change notices link to on the invitation page; it takes the focus from there.
   id: string;
   title: string;
   intro: string;
@@ -19,7 +19,7 @@ type RequirementHistoryProps = {
 export function RequirementHistory({ id, title, intro, empty, versions, names }: RequirementHistoryProps) {
   const headingId = `${id}-heading`;
   return (
-    <section id={id} aria-labelledby={headingId} className="grid scroll-mt-24 gap-3">
+    <section id={id} aria-labelledby={headingId} tabIndex={-1} className="grid scroll-mt-24 gap-3 outline-none">
       <h2 id={headingId} className="text-h2">
         {title}
       </h2>
@@ -33,7 +33,7 @@ export function RequirementHistory({ id, title, intro, empty, versions, names }:
           {versions.length === 0 ? (
             <p className="text-small text-muted-foreground">{empty}</p>
           ) : (
-            <ol className="grid gap-4" aria-label={title}>
+            <ol className="grid gap-4">
               {versions.map((version) => {
                 const who = changedByText(version.changedBy);
                 return (
