@@ -6,7 +6,8 @@ const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 // The buckets whose new objects are scanned, the shape of an object name (the second folder is the id of the row the file
 // belongs to) and the service RPC that records the verdict on that row. Candidate documents are named
 // {user_id}/{document_id}/{file_name} by the storage policy; licence evidence {organization_id}/{licence_id}/{uuid} by
-// partner_document_access_grant (FR-J2).
+// partner_document_access_grant (FR-J2); response documents {organization_id}/{document_id}/{uuid} by
+// register_response_document (FR-O2).
 const TARGETS: Readonly<Record<string, { name: RegExp; rpc: string; idParam: string }>> = {
   "passport-documents": {
     name: new RegExp(`^${UUID}/(${UUID})/[A-Za-z0-9._-]{1,100}$`, "i"),
@@ -17,6 +18,11 @@ const TARGETS: Readonly<Record<string, { name: RegExp; rpc: string; idParam: str
     name: new RegExp(`^${UUID}/(${UUID})/${UUID}$`, "i"),
     rpc: "partner_document_set_scan_status",
     idParam: "p_licence",
+  },
+  "partner-response-documents": {
+    name: new RegExp(`^${UUID}/(${UUID})/${UUID}$`, "i"),
+    rpc: "response_document_set_scan_status",
+    idParam: "p_document",
   },
 };
 const HEAD_BYTES = 8;

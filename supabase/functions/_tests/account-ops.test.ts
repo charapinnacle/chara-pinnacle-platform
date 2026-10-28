@@ -877,6 +877,23 @@ Deno.test("a delete_organization_object job removes licence evidence through the
   assert.deepEqual(acks(calls), [{ p_msg_id: 90, p_result: { objects_removed: 1 } }]);
 });
 
+Deno.test("a delete_organization_object job removes a response document from its own bucket (FR-O2)", async () => {
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs({
+      msg_id: 97,
+      message: { ...evidenceRemoval(EVIDENCE), bucket_id: "partner-response-documents" },
+    }),
+    "DELETE /storage/v1/object/partner-response-documents": reply(200, [{ name: EVIDENCE }]),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  assert.deepEqual(await response.json(), { processed: 1, failed: 0 });
+  assert.deepEqual(calls.filter((c) => c.method === "DELETE").map((c) => [c.path, c.body]), [
+    ["/storage/v1/object/partner-response-documents", { prefixes: [EVIDENCE] }],
+  ]);
+  assert.deepEqual(acks(calls), [{ p_msg_id: 97, p_result: { objects_removed: 1 } }]);
+});
+
 Deno.test("a delete_organization_object job outside the evidence bucket or the folder of its organisation is never executed", async () => {
   const { calls, client } = harness({
     "POST /rest/v1/rpc/account_ops_dequeue": jobs(
@@ -886,9 +903,10 @@ Deno.test("a delete_organization_object job outside the evidence bucket or the f
       { msg_id: 94, message: { ...evidenceRemoval(EVIDENCE), bucket_id: "Partner Documents" } },
       { msg_id: 95, message: { ...evidenceRemoval(EVIDENCE), path: undefined } },
       { msg_id: 96, message: { ...evidenceRemoval(EVIDENCE), bucket_id: "passport-documents" } },
+      { msg_id: 98, message: { ...evidenceRemoval(EVIDENCE), bucket_id: "dsar-exports" } },
     ),
   });
   const response = await handleAccountOps(request(), { client, sharedSecret: SECRET });
-  assert.deepEqual(await response.json(), { processed: 0, failed: 6 });
+  assert.deepEqual(await response.json(), { processed: 0, failed: 7 });
   assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
 });

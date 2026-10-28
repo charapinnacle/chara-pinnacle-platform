@@ -321,3 +321,128 @@ Deno.test("an export request with another purpose, a bad id or a second id is re
     assert.deepEqual([user.calls.length, signer.calls.length], [0, 0], JSON.stringify(body));
   }
 });
+
+// Response documents (FR-O2 AC5, AC6): uploads by a partner member through register_response_document, openings by the
+// two parties through response_document_access_grant.
+const PARTNER = "00000000-0000-0000-0000-0000000b0002";
+const REQUIREMENT = "00000000-0000-0000-0000-0000000a0002";
+const RESPONSE_DOCUMENT = "00000000-0000-0000-0000-0000000c0002";
+const RESPONSE_PATH = `${PARTNER}/${RESPONSE_DOCUMENT}/00000000-0000-0000-0000-0000000f0002`;
+const REGISTER = "POST /rest/v1/rpc/register_response_document";
+const RESPONSE_GRANT = "POST /rest/v1/rpc/response_document_access_grant";
+const RESPONSE_SIGN = "POST /storage/v1/object/sign/partner-response-documents/{id}/{id}/{id}";
+const RESPONSE_UPLOAD_SIGN = "POST /storage/v1/object/upload/sign/partner-response-documents/{id}/{id}/{id}";
+const upload = { organizationId: PARTNER, requirementId: REQUIREMENT, purpose: "response_document_upload" };
+
+function runResponseDocument(req: Request, grant: Response) {
+  const user = harness({ [REGISTER]: grant, [RESPONSE_GRANT]: grant });
+  const signer = harness({
+    [RESPONSE_SIGN]: reply(200, { signedURL: `/object/sign/partner-response-documents/${RESPONSE_PATH}?token=r34d` }),
+    [RESPONSE_UPLOAD_SIGN]: reply(200, {
+      url: `/object/upload/sign/partner-response-documents/${RESPONSE_PATH}?token=upl0ad`,
+    }),
+  });
+  return {
+    user,
+    signer,
+    response: handleDocumentUrl(req, { userClient: () => user.client, signer: signer.client }),
+  };
+}
+
+Deno.test("AC5: a response document upload gives an upload URL for the reserved name and the document id, never a link", async () => {
+  const { user, signer, response } = runResponseDocument(
+    request({ ...upload, fileName: "Company profile.pdf", mime: "application/pdf", size: 15728640 }),
+    reply(200, [{
+      bucket_id: "partner-response-documents",
+      object_path: RESPONSE_PATH,
+      file_name: "Company profile.pdf",
+      document_id: RESPONSE_DOCUMENT,
+    }]),
+  );
+  const result = await response;
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), { path: RESPONSE_PATH, token: "upl0ad", documentId: RESPONSE_DOCUMENT });
+  assert.deepEqual(user.calls.map((c) => [c.path, c.body]), [[
+    "/rest/v1/rpc/register_response_document",
+    {
+      p_org: PARTNER,
+      p_requirement: REQUIREMENT,
+      p_file_name: "Company profile.pdf",
+      p_mime: "application/pdf",
+      p_size: 15728640,
+    },
+  ]]);
+  assert.deepEqual(signer.calls.map((c) => [c.method, c.path]), [
+    ["POST", `/storage/v1/object/upload/sign/partner-response-documents/${RESPONSE_PATH}`],
+  ]);
+});
+
+Deno.test("AC6: a party opening a scanned response document gets a 60-second download link with its file name", async () => {
+  const { user, signer, response } = runResponseDocument(
+    request({ responseDocumentId: RESPONSE_DOCUMENT, purpose: "response_document" }),
+    reply(200, [{ bucket_id: "partner-response-documents", object_path: RESPONSE_PATH, file_name: "Profile.pdf" }]),
+  );
+  const result = await response;
+  assert.equal(result.status, 200);
+  const body = await result.json();
+  assert.deepEqual(Object.keys(body), ["url"]);
+  assert.ok(body.url.includes("token=r34d") && body.url.includes("download=Profile.pdf"), body.url);
+  assert.deepEqual(user.calls.map((c) => [c.path, c.body]), [[
+    "/rest/v1/rpc/response_document_access_grant",
+    { p_document: RESPONSE_DOCUMENT },
+  ]]);
+  assert.deepEqual(signer.calls.map((c) => [c.path, c.body]), [
+    [`/storage/v1/object/sign/partner-response-documents/${RESPONSE_PATH}`, { expiresIn: 60 }],
+  ]);
+});
+
+Deno.test("a response document request with a bad id, a second id, or an upload without its fields is refused first", async () => {
+  for (
+    const body of [
+      { responseDocumentId: "not-a-uuid", purpose: "response_document" },
+      { responseDocumentId: RESPONSE_DOCUMENT, documentId: DOCUMENT, purpose: "response_document" },
+      { responseDocumentId: RESPONSE_DOCUMENT, licenceId: LICENCE, purpose: "response_document" },
+      { responseDocumentId: RESPONSE_DOCUMENT, organizationId: PARTNER, purpose: "response_document" },
+      { documentId: DOCUMENT, purpose: "response_document" },
+      { ...upload, mime: "application/pdf", size: 10 },
+      { ...upload, fileName: "a.pdf", size: 10 },
+      { ...upload, fileName: "a.pdf", mime: "application/pdf" },
+      { ...upload, fileName: "a.pdf", mime: "application/pdf", size: 1.5 },
+      { ...upload, fileName: "a".repeat(201), mime: "application/pdf", size: 10 },
+      { ...upload, requirementId: "../x", fileName: "a.pdf", mime: "application/pdf", size: 10 },
+      { ...upload, organizationId: undefined, fileName: "a.pdf", mime: "application/pdf", size: 10 },
+      { ...upload, responseDocumentId: RESPONSE_DOCUMENT, fileName: "a.pdf", mime: "application/pdf", size: 10 },
+    ]
+  ) {
+    const { user, signer, response } = runResponseDocument(request(body), reply(200, []));
+    assert.equal((await response).status, 400, JSON.stringify(body));
+    assert.deepEqual([user.calls.length, signer.calls.length], [0, 0], JSON.stringify(body));
+  }
+});
+
+Deno.test("response document refusals are told apart without detail and sign nothing", async () => {
+  const refused = (message: string, details: string | null = null) =>
+    reply(400, { code: "P0001", message, details, hint: null });
+  const cases: [Response, number, string][] = [
+    [refused("CHARA_INVALID_INPUT", "file"), 400, "invalid_file"],
+    [refused("CHARA_LIMIT_REACHED", "response_documents_max"), 409, "limit_reached"],
+    [refused("CHARA_INVALID_STATE", "requirement_closed"), 409, "invalid_state"],
+    [refused("CHARA_INVALID_STATE", "requirement_not_open"), 409, "invalid_state"],
+    [refused("CHARA_CONSENT_REQUIRED", "employer-pays-commitment"), 403, "cannot_respond"],
+    [refused("CHARA_LICENCE_REQUIRED", "DE"), 403, "cannot_respond"],
+    [refused("CHARA_FEATURE_NOT_IN_PLAN", "job_order_access"), 403, "cannot_respond"],
+    [database("CHARA_DOCUMENT_NOT_SCANNED", "P0001"), 409, "not_scanned"],
+    [database("CHARA_FORBIDDEN", "42501"), 403, "forbidden"],
+    [database("CHARA_NOT_FOUND", "P0002"), 404, "not_found"],
+  ];
+  for (const [grant, status, word] of cases) {
+    const { signer, response } = runResponseDocument(
+      request({ ...upload, fileName: "a.pdf", mime: "application/pdf", size: 10 }),
+      grant,
+    );
+    const result = await response;
+    assert.equal(result.status, status, word);
+    assert.deepEqual(await result.json(), { error: word });
+    assert.equal(signer.calls.length, 0);
+  }
+});
