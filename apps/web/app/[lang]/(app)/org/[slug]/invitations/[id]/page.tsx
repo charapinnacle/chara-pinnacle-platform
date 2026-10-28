@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { FocusOnChange } from "@/components/invitations/focus-on-change";
 import { InvitationAnswer } from "@/components/invitations/invitation-answer";
 import { InvitationStatusBadge } from "@/components/invitations/invitation-status";
 import { JobOrderView } from "@/components/job-orders/job-order-view";
@@ -64,9 +65,10 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
       </PageHeader>
 
       <section aria-labelledby="invitation-status-heading" className="grid gap-3">
-        <h2 id="invitation-status-heading" className="text-h2">
+        <h2 id="invitation-status-heading" tabIndex={-1} className="text-h2">
           Status
         </h2>
+        <FocusOnChange targetId="invitation-status-heading" value={invitation.status} />
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <InvitationStatusBadge status={invitation.status} view="partner" />
           {invitation.answeredAt ? (

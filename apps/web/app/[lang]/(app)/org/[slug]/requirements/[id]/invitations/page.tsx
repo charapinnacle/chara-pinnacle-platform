@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { FocusOnChange } from "@/components/invitations/focus-on-change";
 import { InvitationUsage } from "@/components/invitations/invitation-usage";
 import { RequirementInvitationList } from "@/components/invitations/requirement-invitation-list";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -16,6 +17,8 @@ import { billingPath, requirementPartnersPath, requirementPath, requirementsPath
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Invitations", robots: { index: false } };
+
+const HEADING_ID = "requirement-invitations-heading";
 
 // The partners invited to one requirement and the status of each (FR-O1 step Track, AC9), for every member of the
 // employer while release 2b is on; owners and admins withdraw an invitation before a response (AC10) and get the
@@ -41,6 +44,7 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title="Invitations"
+        titleProps={{ id: HEADING_ID, tabIndex: -1 }}
         breadcrumb={
           <Breadcrumbs
             items={[
@@ -58,6 +62,7 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
           {requirement.status === "open" ? null : " Partners can be invited while the requirement is open."}
         </p>
       </PageHeader>
+      <FocusOnChange targetId={HEADING_ID} value={invitations.map((invitation) => invitation.status).join()} />
       <InvitationUsage organizationId={organization.id} requirementId={requirement.id} usage={usage} billingHref={billingPath(lang, slug)} canUpgrade={manager} />
       <RequirementInvitationList
         lang={lang}
