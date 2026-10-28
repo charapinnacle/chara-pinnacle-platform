@@ -4,7 +4,7 @@ import type { Database } from "@chara-pinnacle/db-types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch, type FieldErrors, type FieldPath, type FieldValues } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
@@ -129,11 +129,26 @@ export function RequirementForm({
     countryName.get(destinations[index]?.country ?? "") ?? `destination country ${index + 1}`;
   const [occupationKeys, setOccupationKeys] = useState(() => rowKeys(rows.length));
   const [destinationKeys, setDestinationKeys] = useState(() => rowKeys(destinations.length));
-  // Adding or removing a row changes the keys with the rows; a reset (a restored draft, Clear the form) gives new keys.
-  if (occupationKeys.length !== rows.length) setOccupationKeys(rowKeys(rows.length));
-  if (destinationKeys.length !== destinations.length) setDestinationKeys(rowKeys(destinations.length));
 
   const draftKey = requirementDraftKey(userId, slug);
+
+  // The row keys follow the lists of the form store, which a restored draft or Clear the form replaces; adding or
+  // removing a row changes them in its handler first, so the other rows keep theirs. They are not compared with the
+  // watched lists while rendering: useWatch can lag a render behind setValue, and a row remounted in that render
+  // registers its fields again, which put a removed occupation back.
+  useEffect(
+    () =>
+      form.subscribe({
+        formState: { values: true },
+        callback: ({ values }) => {
+          const occupations = values.occupations?.length ?? 0;
+          const countries = values.destinations?.length ?? 0;
+          setOccupationKeys((keys) => (keys.length === occupations ? keys : rowKeys(occupations)));
+          setDestinationKeys((keys) => (keys.length === countries ? keys : rowKeys(countries)));
+        },
+      }),
+    [form],
+  );
 
   useEffect(() => {
     if (edit) return;
@@ -147,36 +162,46 @@ export function RequirementForm({
     form.reset(emptyRequirementForm);
   }
 
+  // A row just added takes the focus once it is rendered, as useFieldArray's append did. Not in a requestAnimationFrame:
+  // a frame can come late, after the person (or a test) has moved on, and pull the focus back into the new row, where the
+  // next Enter submits the form.
+  const focusAfterRender = useRef<Path | null>(null);
+  useEffect(() => {
+    if (focusAfterRender.current === null) return;
+    form.setFocus(focusAfterRender.current);
+    focusAfterRender.current = null;
+  });
+
   // After a submit, a changed list is checked again, as React Hook Form does when a field changes.
   const listChange = () => ({ shouldDirty: true, shouldValidate: form.formState.isSubmitted });
 
   function addRow() {
     const next = [...form.getValues("occupations"), { occupation: "", quantity: "" }];
-    form.setValue("occupations", next, listChange());
     setOccupationKeys((keys) => [...keys, ...rowKeys(1)]);
-    requestAnimationFrame(() => form.setFocus(`occupations.${next.length - 1}.occupation`));
+    form.setValue("occupations", next, listChange());
+    focusAfterRender.current = `occupations.${next.length - 1}.occupation`;
   }
 
   function addDestination() {
     const next = [...form.getValues("destinations"), { country: "" }];
-    form.setValue("destinations", next, listChange());
     setDestinationKeys((keys) => [...keys, ...rowKeys(1)]);
-    requestAnimationFrame(() => form.setFocus(`destinations.${next.length - 1}.country`));
+    form.setValue("destinations", next, listChange());
+    focusAfterRender.current = `destinations.${next.length - 1}.country`;
   }
 
   // The row before the removed one (or the new first row) takes the focus, and the removal is announced.
   function removeRow(index: number) {
     const label = rowName(index);
-    form.setValue("occupations", form.getValues("occupations").filter((_, i) => i !== index), listChange());
     setOccupationKeys((keys) => keys.filter((_, i) => i !== index));
+    form.setValue("occupations", form.getValues("occupations").filter((_, i) => i !== index), listChange());
     setRemoved(`Removed ${label}`);
     requestAnimationFrame(() => form.setFocus(`occupations.${Math.max(index - 1, 0)}.occupation`));
   }
 
   function removeDestination(index: number) {
     const label = destinationName(index);
-    form.setValue("destinations", form.getValues("destinations").filter((_, i) => i !== index), listChange());
     setDestinationKeys((keys) => keys.filter((_, i) => i !== index));
+    form.setValue("destinations", form.getValues("destinations").filter((_, i) => i !== index), listChange());
     setRemoved(`Removed ${label}`);
     requestAnimationFrame(() =>
       index > 0 ? form.setFocus(`destinations.${index - 1}.country`) : document.getElementById("requirement-add-destination")?.focus(),
