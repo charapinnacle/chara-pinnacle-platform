@@ -17,7 +17,9 @@
 -- Every submitted or changed proposal is kept as a version (partner_response_versions, append-only); an edit that changes
 -- nothing writes nothing. The employer's members read every response and version of their requirements
 -- (list_requirement_responses, get_response, list_response_versions); a partner reads only its own and never learns of
--- another partner's response (NFR-S8). Responding through an invitation moves it to responded. The employer's owners and
+-- another partner's response (NFR-S8), nor the employer's organisation id (NFR-S11); the reads count against
+-- rate_limit_job_orders_max. Responding through an invitation moves it to responded; inviting a partner that already
+-- responded links its response to the new, responded invitation. The employer's owners and
 -- admins are told of a new and a withdrawn response (response_received, response_withdrawn), never of an edit; the
 -- partners with a live marketplace response now get the change, closing-soon and closed notices of V43 too. No reveal of
 -- the employer is written here: shortlisting and selection are V47's. Documents are V45, pages V46, decisions V47.
@@ -114,8 +116,10 @@ create index partner_responses_decided_by_idx on public.partner_responses (decid
 alter table public.partner_responses enable row level security;
 alter table public.partner_responses force row level security;
 revoke all on table public.partner_responses from public, anon, authenticated, service_role;
+-- employer_organization_id stays out of the grant (NFR-S11): a marketplace responder must not learn the employer from its
+-- own row; the policy reads it as the table owner.
 grant select (
-  id, requirement_id, organization_id, employer_organization_id, invitation_id, status, version, capacity, available_from,
+  id, requirement_id, organization_id, invitation_id, status, version, capacity, available_from,
   timeline_note, experience_note, fee_model, fee_amount, fee_currency, notes, created_at, updated_at, decided_at,
   decision_note, submissions_allowed, withdrawn_at, withdrawal_reason
 ) on public.partner_responses to authenticated;
@@ -158,7 +162,8 @@ create trigger partner_responses_guard
 alter table public.partner_responses enable always trigger partner_responses_guard;
 
 -- What a response is about never changes: the requirement, the partner, the employer and the time it was sent; the
--- version only grows; the invitation and the members only become null (on delete set null).
+-- version only grows; the members only become null (on delete set null); the invitation is set once (a response that an
+-- invitation later finds, invite_partners) and otherwise only becomes null.
 create function private.partner_responses_immutable() returns trigger
 language plpgsql
 security definer
@@ -168,7 +173,7 @@ begin
   if (new.requirement_id, new.organization_id, new.employer_organization_id, new.created_at)
      is distinct from (old.requirement_id, old.organization_id, old.employer_organization_id, old.created_at)
      or new.version < old.version
-     or (new.invitation_id is distinct from old.invitation_id and new.invitation_id is not null)
+     or (new.invitation_id is distinct from old.invitation_id and new.invitation_id is not null and old.invitation_id is not null)
      or (new.created_by is distinct from old.created_by and new.created_by is not null) then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'immutable';
   end if;
@@ -224,7 +229,7 @@ create index partner_response_versions_created_by_idx on public.partner_response
 alter table public.partner_response_versions enable row level security;
 alter table public.partner_response_versions force row level security;
 revoke all on table public.partner_response_versions from public, anon, authenticated, service_role;
-grant select (response_id, version, organization_id, employer_organization_id, payload, changed_fields, created_at)
+grant select (response_id, version, organization_id, payload, changed_fields, created_at)
   on public.partner_response_versions to authenticated;
 
 create policy partner_response_versions_select_member on public.partner_response_versions
@@ -261,6 +266,29 @@ create trigger partner_response_versions_append_only
 
 alter table public.partner_response_versions enable always trigger partner_response_versions_append_only;
 
+-- A version is deleted only with its response (the cascade of the foreign key runs inside a trigger); a direct delete,
+-- even by the database owner, is refused.
+create function private.partner_response_versions_no_delete() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if pg_trigger_depth() <= 1 then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'append_only';
+  end if;
+  return old;
+end;
+$$;
+
+revoke all on function private.partner_response_versions_no_delete() from public, anon, authenticated, service_role;
+
+create trigger partner_response_versions_no_delete
+  before delete on public.partner_response_versions
+  for each row execute function private.partner_response_versions_no_delete();
+
+alter table public.partner_response_versions enable always trigger partner_response_versions_no_delete;
+
 -- The eligibility decisions shown (SOP P2-20 output "response eligibility decisions", KPI "responses refused by reason") --
 
 -- A refused call writes nothing (its transaction rolls back), so the refusals are recorded where the partner is told:
@@ -269,7 +297,7 @@ create table stats.job_order_response_refusals (
   requirement_id uuid not null references public.workforce_requirements (id) on delete cascade,
   organization_id uuid not null references public.organizations (id) on delete cascade,
   reason text not null check (reason in (
-    'requirement_not_open', 'job_order_access', 'served_country_missing', 'occupation_missing', 'employer_pays_commitment',
+    'job_order_access', 'served_country_missing', 'occupation_missing', 'employer_pays_commitment',
     'licence_required', 'job_order_responses_per_month'
   )),
   first_seen_at timestamptz not null default now(),
@@ -426,8 +454,9 @@ revoke all on function private.queue_response_employer_event(uuid, text) from pu
 
 -- Helpers ---------------------------------------------------------------------------------------------------------------
 
--- Whether the employer of p_requirement is named to the partner p_org: a reveal (invitation, shortlist, selection) or the
--- employer chose to show its name (decision 3.2, NFR-S11).
+-- Whether the employer of p_requirement is named to the partner p_org, by the rule of get_job_order: a reveal (invitation,
+-- shortlist, selection), or the employer shows its name and the partner is eligible for the full job order now (decision
+-- 3.2, NFR-S11).
 create function private.requirement_named_to(p_requirement uuid, p_org uuid) returns boolean
 language sql
 stable
@@ -437,30 +466,43 @@ as $$
   select exists (
     select 1 from private.requirement_reveals rv where rv.requirement_id = p_requirement and rv.organization_id = p_org
   ) or exists (
-    select 1 from public.workforce_requirements r where r.id = p_requirement and r.show_identity
+    select 1 from public.workforce_requirements r
+    cross join lateral private.job_order_partner_facts(p_org) f
+    where r.id = p_requirement and r.show_identity
+      and cardinality(private.job_order_reasons(r.id, f.paid, f.served, f.occupations)) = 0
   )
 $$;
 
 revoke all on function private.requirement_named_to(uuid, uuid) from public, anon, authenticated, service_role;
 
 -- The destinations of p_requirement that need a licensed partner (FR-J2 AC9, decision 2.6, DATA_MODEL.md section 11 item
--- 6) and for which p_org holds no current licence: a direct-hiring rule licensed_partner_required names the destination
--- (destination_country, from any source country), and no licence entry of the partner for that country is valid until
--- today (UTC) or later. A rule for a source country with any destination names no destination and needs no licence here.
--- The main destination first, then by code.
+-- 6) and for which p_org holds no current licence (an entry for the country valid until today (UTC) or later). A
+-- destination needs one when the direct-hiring rule of one of the partner's source countries to it, as
+-- private.direct_hiring_rule resolves it (the pair, else the source with any destination), is licensed_partner_required;
+-- hiring within one country (source equal to destination) never does. A partner that lists no source country is held to
+-- any licensed_partner_required rule naming the destination. The main destination first, then by code.
 create function private.response_licence_missing(p_requirement uuid, p_org uuid) returns text[]
 language sql
 stable
 security definer
 set search_path = ''
 as $$
+  with sources as (
+    select g.country_code from public.organization_geographies g
+    where g.organization_id = p_org and g.scope = 'sources_from'
+  )
   select coalesce(array_agg(rc.country_code order by rc.country_code <> r.country_code, rc.country_code), '{}')
   from public.requirement_countries rc
   join public.workforce_requirements r on r.id = rc.requirement_id
   where rc.requirement_id = p_requirement
-    and exists (
-      select 1 from public.direct_hiring_rules d
-      where d.destination_country = rc.country_code and d.rule = 'licensed_partner_required')
+    and case
+      when exists (select 1 from sources) then exists (
+        select 1 from sources s cross join lateral private.direct_hiring_rule(s.country_code, rc.country_code) d
+        where s.country_code <> rc.country_code and d.rule = 'licensed_partner_required')
+      else exists (
+        select 1 from public.direct_hiring_rules d
+        where d.destination_country = rc.country_code and d.rule = 'licensed_partner_required')
+    end
     and not exists (
       select 1 from public.partner_licences l
       where l.organization_id = p_org and l.country_code = rc.country_code
@@ -620,7 +662,8 @@ revoke all on function private.response_payload(public.partner_responses) from p
 
 -- The proposal of a response checked and normalised (FR-O2 data and validation). Texts are trimmed, an empty optional
 -- text is none, the currency is upper case. Refusals, CHARA_INVALID_INPUT: capacity missing or below 1 (capacity), above
--- the allowed maximum (capacity_above_allowed:<maximum>); available_from missing, before today (UTC) or more than three
+-- the allowed maximum (capacity_above_allowed:<maximum>; an unchanged capacity p_kept_capacity of an existing response is
+-- kept, so an employer lowering the workers or the tolerance does not freeze the other fields); available_from missing, before today (UTC) or more than three
 -- years ahead (available_from; an unchanged date p_kept_from of an existing response is kept); experience missing or
 -- outside 20 to 4,000 characters (experience_note); timeline over 1,000 (timeline_note); notes over 2,000 (notes); a
 -- control character other than tab and line breaks in a text (the field); no fee model (fee_model). The fee rules and the
@@ -635,7 +678,8 @@ create function private.response_proposal(
   p_fee_currency text,
   p_timeline_note text,
   p_notes text,
-  p_kept_from date default null
+  p_kept_from date default null,
+  p_kept_capacity integer default null
 ) returns jsonb
 language plpgsql
 stable
@@ -652,7 +696,7 @@ begin
   if p_capacity is null or p_capacity < 1 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'capacity';
   end if;
-  if p_capacity > v_max then
+  if p_capacity > v_max and p_capacity is distinct from p_kept_capacity then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'capacity_above_allowed:' || v_max;
   end if;
   if p_available_from is null
@@ -680,7 +724,7 @@ end;
 $$;
 
 revoke all on function private.response_proposal(
-  public.workforce_requirements, integer, date, text, public.fee_model, numeric, text, text, text, date
+  public.workforce_requirements, integer, date, text, public.fee_model, numeric, text, text, text, date, integer
 ) from public, anon, authenticated, service_role;
 
 -- Responding ------------------------------------------------------------------------------------------------------------
@@ -688,7 +732,8 @@ revoke all on function private.response_proposal(
 -- The response of the partner p_org to the requirement p_requirement (FR-N2 step Respond, FR-O2 step Submit; AC1 to AC7 and
 -- AC10 of FR-N2, AC1, AC3, AC4 of FR-O2, FR-J2 AC9). For an accepted member of an active, listed, visible partner
 -- (private.assert_responding_partner); the conditions and their refusals of private.response_refusal, each writing
--- nothing and counting nothing; then the proposal (private.response_proposal; the fee rules 23514, an unknown currency
+-- nothing and counting nothing (the partner's invitation is locked first, so a concurrent decline or withdrawal is
+-- seen); then the proposal (private.response_proposal; the fee rules 23514, an unknown currency
 -- 23503); the daily quota of audited writes. The requirement is held against a close until the transaction ends, and one
 -- advisory lock per partner holds the one-response rule and the monthly count, so a second call at the same time waits
 -- and is then refused (already_responded, or the limit).
@@ -726,6 +771,10 @@ begin
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended('partner_responses:' || p_org::text, 0));
+  -- The invitation is held too, so a decline or withdrawal at the same time is either seen here or waits for this call.
+  perform 1 from public.requirement_invitations i
+  where i.requirement_id = v_row.id and i.organization_id = p_org
+  for update;
 
   select * into v_check from private.response_refusal(p_org, v_row);
   if v_check.message is not null then
@@ -780,7 +829,8 @@ grant execute on function public.respond_to_invitation(
 -- accepted member of an active, listed, visible partner. Refusals, each writing nothing: no such response of p_org,
 -- CHARA_NOT_FOUND; a status other than submitted or updated, CHARA_INVALID_STATE with it; a closed or filled requirement,
 -- CHARA_INVALID_STATE requirement_closed (a paused one keeps its responses and their edits); p_expected_version given and
--- not the current version, CHARA_CONFLICT stale; the proposal as when responding (an unchanged available_from is kept).
+-- not the current version, CHARA_CONFLICT stale; the proposal as when responding (an unchanged available_from or capacity
+-- is kept).
 -- A call that changes no field writes nothing and answers the current version. Otherwise the response takes the new
 -- values, the next version and the status updated, the version is kept with the fields changed, one audit row
 -- response.updated names them; counts against the daily quota of audited writes. No notification: the employer sees
@@ -827,7 +877,7 @@ begin
   end if;
 
   v_proposal := private.response_proposal(v_row, p_capacity, p_available_from, p_experience_note, p_fee_model, p_fee_amount,
-    p_fee_currency, p_timeline_note, p_notes, v_old.available_from);
+    p_fee_currency, p_timeline_note, p_notes, v_old.available_from, v_old.capacity);
   v_before := private.response_payload(v_old);
   select coalesce(array_agg(f.name order by f.position), '{}') into v_changed
   from unnest(private.partner_response_fields()) with ordinality f(name, position)
@@ -959,7 +1009,8 @@ grant execute on function public.set_requirement_capacity_tolerance(uuid, uuid, 
 -- response would raise now (null when it may respond); the partner's own response (id and status) once it responded;
 -- the month's use, the limit (null is unlimited) and whether it applies, with the start of the next month; the most
 -- workers it may offer when it may respond; the destinations missing a licence when that is the refusal. A refusal other
--- than already_responded is recorded once per job order, partner and reason (stats.job_order_response_refusals, KPI).
+-- than already_responded and requirement_not_open is recorded once per job order, partner and reason
+-- (stats.job_order_response_refusals, KPI). Counted against rate_limit_job_orders_max like the job order reads.
 create function public.get_response_eligibility(p_org uuid, p_requirement uuid)
 returns table (
   requirement_id uuid,
@@ -986,6 +1037,7 @@ declare
   v_response public.partner_responses;
 begin
   perform private.assert_responding_partner(p_org);
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
   select * into v_row from public.workforce_requirements r where r.id = p_requirement;
   if not found then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
@@ -995,7 +1047,7 @@ begin
   if v_check.message = 'CHARA_NOT_FOUND' then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
-  if v_check.message is not null and v_check.message <> 'CHARA_CONFLICT' then
+  if v_check.message is not null and v_check.detail is distinct from 'requirement_not_open' and v_check.message <> 'CHARA_CONFLICT' then
     insert into stats.job_order_response_refusals as s (requirement_id, organization_id, reason)
     values (v_row.id, p_org, case when v_check.message = 'CHARA_LICENCE_REQUIRED' then 'licence_required'
       else replace(v_check.detail, '-', '_') end)
@@ -1052,7 +1104,6 @@ returns table (
   next_cursor uuid
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -1061,6 +1112,7 @@ declare
   v_cursor public.partner_responses;
 begin
   perform private.assert_invitation_partner(p_org);
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
   if p_cursor is not null then
     select * into v_cursor from public.partner_responses p where p.id = p_cursor and p.organization_id = p_org;
     if not found then
@@ -1150,6 +1202,7 @@ begin
     perform private.assert_invitation_partner(p_org);
     v_employer := false;
   end if;
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
   select * into v_resp from public.partner_responses p
   where p.id = p_response and (case when v_employer then p.employer_organization_id else p.organization_id end) = p_org;
   if not found then
@@ -1208,12 +1261,12 @@ returns table (
   withdrawal_reason text
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
 begin
   perform private.assert_invitation_employer(p_org);
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
   if not exists (select 1 from public.workforce_requirements r where r.id = p_requirement and r.organization_id = p_org) then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
@@ -1237,7 +1290,6 @@ grant execute on function public.list_requirement_responses(uuid, uuid) to authe
 create function public.list_response_versions(p_org uuid, p_response uuid)
 returns table (version integer, created_at timestamptz, changed_fields text[], payload jsonb)
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -1247,6 +1299,7 @@ begin
   else
     perform private.assert_invitation_partner(p_org);
   end if;
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
   if not exists (
     select 1 from public.partner_responses p
     where p.id = p_response and (p.organization_id = p_org or p.employer_organization_id = p_org)
@@ -1272,7 +1325,6 @@ grant execute on function public.list_response_versions(uuid, uuid) to authentic
 create function public.list_response_changes(p_org uuid, p_response uuid)
 returns table (version integer, created_at timestamptz, changed_fields text[], old_values jsonb, new_values jsonb)
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -1281,6 +1333,7 @@ declare
   v_hidden text[];
 begin
   perform private.assert_invitation_partner(p_org);
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
   select * into v_resp from public.partner_responses p where p.id = p_response and p.organization_id = p_org;
   if not found then
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
@@ -1304,7 +1357,8 @@ grant execute on function public.list_response_changes(uuid, uuid) to authentica
 -- Notices to the partners that responded on the marketplace (V43 carry-over, FR-M2 AC6 P5, FR-T1 AC6) ----------------------
 
 -- A response that ends (withdrawn, declined) drops its change notices whose email has not left, as an invitation that ends
--- does (V43): they become suppressed (suppressed_superseded) and the in-app item stays.
+-- does (V43), those keyed by the response and, for an invited responder, by its invitation: they become suppressed
+-- (suppressed_superseded) and the in-app item stays.
 create function private.partner_responses_drop_change_notices() returns trigger
 language plpgsql
 security definer
@@ -1312,7 +1366,8 @@ set search_path = ''
 as $$
 begin
   update public.notifications n set status = 'suppressed', email_status = 'suppressed_superseded'
-  where n.kind = 'requirement_changed' and n.payload ->> 'response_id' = new.id::text and n.status = 'queued';
+  where n.kind = 'requirement_changed' and n.status = 'queued'
+    and (n.payload ->> 'response_id' = new.id::text or n.payload ->> 'invitation_id' = new.invitation_id::text);
   return null;
 end;
 $$;
@@ -1326,8 +1381,8 @@ create trigger partner_responses_drop_change_notices
 
 alter table public.partner_responses enable always trigger partner_responses_drop_change_notices;
 
--- private.queue_requirement_change of 20261229100100_requirement_versions.sql with one addition: the partners with a live
--- marketplace response (submitted, updated, shortlisted or selected, not through an invitation, whose partners the
+-- private.queue_requirement_change of 20261229100100_requirement_versions.sql with two changes: an invitation whose
+-- response was withdrawn or declined is no recipient any more; and the partners with a live marketplace response (submitted, updated, shortlisted or selected, not through an invitation, whose partners the
 -- invitation branch tells already) are recipients too, each response its own context like an invitation: its waiting
 -- notice is widened, otherwise a new message keyed by the response and the version. Everything else is unchanged.
 create or replace function private.queue_requirement_change(p_requirement uuid, p_version integer) returns integer
@@ -1354,6 +1409,8 @@ begin
     join public.profiles u on u.id = m.user_id and u.status = 'active'
     join private.notification_kinds k on k.kind = 'requirement_changed'
     where i.requirement_id = p_requirement and i.status in ('invited', 'viewed', 'accepted', 'responded')
+      and not exists (
+        select 1 from public.partner_responses p where p.invitation_id = i.id and p.status in ('withdrawn', 'declined'))
     union all
     select 'response_id'::text, p.id, p.organization_id, m.user_id, k.mandatory
     from public.partner_responses p
@@ -1407,8 +1464,9 @@ begin
 end;
 $$;
 
--- private.remind_closing_requirements of 20261229100100_requirement_versions.sql with one addition: the partners with a
--- live marketplace response to the reminded requirement are told too, its owners and admins with an active account, once
+-- private.remind_closing_requirements of 20261229100100_requirement_versions.sql with two changes: an invitation whose
+-- response was withdrawn or declined is skipped; the partners with a live marketplace response to the reminded
+-- requirement are told too, its owners and admins with an active account, once
 -- per closing date. The employer's and the invited partners' parts are unchanged.
 create or replace function private.remind_closing_requirements() returns integer
 language plpgsql
@@ -1442,6 +1500,8 @@ begin
     for v_invitation in
       select i.id from public.requirement_invitations i
       where i.requirement_id = v_row.id and i.status in ('invited', 'viewed', 'accepted', 'responded')
+        and not exists (
+          select 1 from public.partner_responses p where p.invitation_id = i.id and p.status in ('withdrawn', 'declined'))
       order by i.id
     loop
       perform private.queue_invitation_message(v_invitation, 'requirement_closing_soon',
@@ -1462,8 +1522,8 @@ begin
 end;
 $$;
 
--- private.requirements_expire_invitations of 20261229100100_requirement_versions.sql with one addition: the partners with
--- a live marketplace response when the requirement closed or was filled get requirement_closed with the reason, once per
+-- private.requirements_expire_invitations of 20261229100100_requirement_versions.sql with two changes: an invitation whose
+-- response was withdrawn or declined gets no closing notice; the partners with a live marketplace response when the requirement closed or was filled get requirement_closed with the reason, once per
 -- response, while release 2b is on. The expiry, its audit rows and the invited partners' notices are unchanged.
 create or replace function private.requirements_expire_invitations() returns trigger
 language plpgsql
@@ -1476,7 +1536,9 @@ declare
 begin
   select array_agg(i.id order by i.id) into v_live
   from public.requirement_invitations i
-  where i.requirement_id = new.id and i.status in ('invited', 'viewed', 'accepted', 'responded');
+  where i.requirement_id = new.id and i.status in ('invited', 'viewed', 'accepted', 'responded')
+    and not exists (
+      select 1 from public.partner_responses p where p.invitation_id = i.id and p.status in ('withdrawn', 'declined'));
 
   for v_inv in
     update public.requirement_invitations i set status = 'expired', expired_at = now()
@@ -1770,3 +1832,113 @@ begin
   end);
 end;
 $$;
+
+-- public.invite_partners of 20261228100000_saved_invitation_source.sql with one change: a partner that already responded
+-- to the requirement on the marketplace gets its invitation as responded (viewed, answered and responded now) and its
+-- response is linked to it, under the partner's response lock. The response then reaches the change, closing-soon and
+-- closed notices through the invitation only (one notice per event), and the partner keeps the one response it may
+-- send. The reveal and invitation_received are sent as for any invitation; everything else is unchanged.
+create or replace function public.invite_partners(p_org uuid, p_requirement uuid, p_partners uuid[], p_source text)
+returns table (invitation_id uuid, organization_id uuid, status public.invitation_status, already_invited boolean)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_row public.workforce_requirements;
+  v_new uuid[];
+  v_used integer;
+  v_day_max integer := coalesce(
+    (select case when s.value #>> '{}' ~ '^[0-9]{1,6}$' then (s.value #>> '{}')::integer end
+     from private.settings s where s.key = 'partner_invitations_per_day_max'), 50);
+  v_partner uuid;
+  v_id uuid;
+  v_response uuid;
+begin
+  perform private.assert_requirement_manager(p_org);
+
+  if p_partners is null or cardinality(p_partners) not between 1 and 25 or array_position(p_partners, null) is not null
+     or (select count(distinct x) from unnest(p_partners) x) <> cardinality(p_partners) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_partners';
+  end if;
+  if p_source is null or p_source not in ('suggestions', 'directory', 'profile', 'saved') then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'p_source';
+  end if;
+
+  -- The requirement is held against a close, fill or pause until this transaction ends, so no invitation is written
+  -- after the expiry of a close has run.
+  select * into v_row from public.workforce_requirements r
+  where r.id = p_requirement and r.organization_id = p_org
+  for share;
+  if not found then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if v_row.status <> 'open' then
+    raise exception 'CHARA_INVALID_STATE' using detail = 'requirement_not_open';
+  end if;
+
+  if exists (select 1 from unnest(p_partners) x where not private.invitable_partner(x)) then
+    raise exception 'CHARA_INVALID_INPUT' using detail = 'partner_unavailable';
+  end if;
+
+  -- One lock per employer before both counts: a second call of the same employer waits for this one to commit and then
+  -- counts its rows; nothing of another employer waits. private.assert_org_manager already holds the employer's row (for
+  -- no key update), which serialises the calls of one employer first; this lock states the rule here, so it does not
+  -- rest on a side effect of the role check.
+  perform pg_advisory_xact_lock(hashtextextended('partner_invitations:' || p_org::text, 0));
+
+  v_new := array(
+    select x from unnest(p_partners) with ordinality u (x, n)
+    where not exists (
+      select 1 from public.requirement_invitations i where i.requirement_id = v_row.id and i.organization_id = u.x)
+    order by u.n);
+
+  if cardinality(v_new) > 0 then
+    select count(*)::integer into v_used from public.requirement_invitations i
+    where i.requirement_id = v_row.id and i.status <> 'withdrawn';
+    perform private.assert_within_limit(p_org, 'partner_invitations_per_requirement', v_used + cardinality(v_new) - 1);
+    if (select count(*) from public.requirement_invitations i
+        where i.employer_organization_id = p_org and i.invited_at > now() - interval '24 hours') + cardinality(v_new) > v_day_max then
+      raise exception 'CHARA_RATE_LIMITED' using detail = 'partner_invitations_per_day';
+    end if;
+    perform private.count_audited_write(p_org);
+
+    foreach v_partner in array v_new loop
+      -- The partner's response lock: a response being written now is seen, or waits for this invitation.
+      perform pg_advisory_xact_lock(hashtextextended('partner_responses:' || v_partner::text, 0));
+      select p.id into v_response from public.partner_responses p
+      where p.requirement_id = v_row.id and p.organization_id = v_partner;
+      insert into public.requirement_invitations (
+        requirement_id, organization_id, employer_organization_id, source, suggestion_criteria, invited_by, status,
+        viewed_at, answered_at, responded_at
+      ) values (
+        v_row.id, v_partner, p_org, p_source,
+        case when p_source = 'suggestions' then coalesce(private.suggestion_criteria(v_row.id, v_partner), '{}') end,
+        v_uid,
+        case when v_response is null then 'invited' else 'responded' end::public.invitation_status,
+        case when v_response is not null then now() end, case when v_response is not null then now() end,
+        case when v_response is not null then now() end
+      )
+      returning id into v_id;
+      if v_response is not null then
+        update public.partner_responses p set invitation_id = v_id where p.id = v_response;
+      end if;
+      perform audit.record('requirement.invitation_sent', 'requirement_invitation', v_id::text,
+        jsonb_build_object('requirement_id', v_row.id, 'organization_id', v_partner, 'employer_organization_id', p_org,
+          'source', p_source));
+      perform private.record_requirement_reveal(v_row.id, v_partner, 'invitation');
+      perform private.queue_invitation_event(v_id, 'invitation_received');
+    end loop;
+  end if;
+
+  return query
+  select i.id, i.organization_id, i.status, not (i.organization_id = any (v_new))
+  from unnest(p_partners) with ordinality u (x, n)
+  join public.requirement_invitations i on i.requirement_id = v_row.id and i.organization_id = u.x
+  order by u.n;
+end;
+$$;
+
+revoke all on function public.invite_partners(uuid, uuid, uuid[], text) from public, anon, authenticated, service_role;
+grant execute on function public.invite_partners(uuid, uuid, uuid[], text) to authenticated;
