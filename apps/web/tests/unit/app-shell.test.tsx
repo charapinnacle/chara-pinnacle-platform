@@ -226,7 +226,7 @@ describe("the layout of the signed-in area", () => {
     expect(releasedMock).toHaveBeenCalledWith("release_job_orders");
     navigation.pathname = "/en/org/manila/invitations";
     const html = renderToStaticMarkup(props.headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Team"]);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Responses", "Team"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Invitations<\/a>/);
     navigation.pathname = "/en/org/acme/requirements";
     expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Team"]);

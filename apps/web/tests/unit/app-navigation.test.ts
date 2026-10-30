@@ -77,7 +77,7 @@ describe("the header links of an organisation", () => {
     expect(organizationLinks("en", { slug: "staff", role: "owner", suspended: true, partnerSegment: "staffing" })).toEqual([]);
   });
 
-  it("FR-O1: add Requirements for an employer and Invitations for a partner while release 2b is on", () => {
+  it("FR-O1, FR-O2: add Requirements for an employer, and Invitations and Responses for a partner while release 2b is on", () => {
     expect(
       organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true }).map(({ label, href }) => [label, href]),
     ).toEqual([
@@ -95,6 +95,7 @@ describe("the header links of an organisation", () => {
       ["Organisation", "/en/dashboard/recruitment?org=manila"],
       ["Workforce profile", "/en/org/manila/workforce-profile"],
       ["Invitations", "/en/org/manila/invitations"],
+      ["Responses", "/en/org/manila/responses"],
       ["Team", "/en/org/manila/members"],
     ]);
     expect(labels(organizationLinks("en", { slug: "acme", role: "owner", suspended: false }))).not.toContain("Requirements");

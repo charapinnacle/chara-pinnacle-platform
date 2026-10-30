@@ -11,6 +11,7 @@ import {
   myReportsPath,
   notificationSettingsPath,
   requirementsPath,
+  responsesPath,
   settingsPath,
   workforceProfilePath,
 } from "@/lib/routes";
@@ -29,6 +30,7 @@ export type NavIcon =
   | "workforce"
   | "requirements"
   | "invitations"
+  | "responses"
   | "billing"
   | "reports"
   | "settings";
@@ -47,7 +49,8 @@ export type NavOrganization = {
   suspended: boolean;
   // Set for a recruitment or staffing company: the segment of its dashboard (FR-R3, FR-R4).
   partnerSegment?: "recruitment" | "staffing";
-  // Set while release 2b is on: the workforce requirements of an employer, the invitations of a partner (FR-O1).
+  // Set while release 2b is on: the workforce requirements of an employer, the invitations and responses of a partner
+  // (FR-O1, FR-O2).
   jobOrders?: true;
 };
 
@@ -66,8 +69,8 @@ export function workerLinks(lang: string): NavLink[] {
 // The pages of one organisation. Billing is for owners and administrators, as the page itself requires, and a suspended
 // organisation has none of them: each answers with a notice that it is suspended. A recruitment or staffing company has
 // its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1). While release 2b
-// is on, an employer has its workforce requirements, where it follows its invitations, and a partner the invitations it
-// received (FR-O1).
+// is on, an employer has its workforce requirements, where it follows its invitations and the responses, and a partner the
+// invitations it received and the responses it sent (FR-O1, FR-O2).
 export function organizationLinks(
   lang: string,
   { slug, role, suspended, partnerSegment, jobOrders }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders">,
@@ -84,7 +87,10 @@ export function organizationLinks(
         },
         { label: "Workforce profile", href: workforceProfilePath(lang, slug), match: workforceProfilePath(lang, slug), icon: "workforce" },
         ...(jobOrders
-          ? [{ label: "Invitations", href: invitationsPath(lang, slug), match: invitationsPath(lang, slug), icon: "invitations" } as const]
+          ? ([
+              { label: "Invitations", href: invitationsPath(lang, slug), match: invitationsPath(lang, slug), icon: "invitations" },
+              { label: "Responses", href: responsesPath(lang, slug), match: responsesPath(lang, slug), icon: "responses" },
+            ] as const)
           : []),
         team,
       ]

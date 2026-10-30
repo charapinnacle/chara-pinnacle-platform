@@ -10,6 +10,7 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { getInvitationUsage, listRequirementInvitations } from "@/lib/dal/invitations";
 import { isReleased } from "@/lib/dal/release";
 import { getRequirement } from "@/lib/dal/requirements";
+import { listRequirementResponses } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { partnerDirectoryPath } from "@/lib/partners/search-params";
 import { canSuggestPartners } from "@/lib/requirements/suggestions";
@@ -33,10 +34,14 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
   if (!parsedId.success) notFound();
   const [requirement, directories] = await Promise.all([getRequirement(organization.id, parsedId.data), isReleased("release_partner_directories")]);
   if (!requirement) notFound();
-  const [invitations, usage] = await Promise.all([
+  const [invitations, usage, responses] = await Promise.all([
     listRequirementInvitations(organization.id, requirement.id),
     getInvitationUsage(organization.id, requirement.id),
+    listRequirementResponses(organization.id, requirement.id).catch(() => []),
   ]);
+  const responseOf = Object.fromEntries(
+    responses.flatMap((response) => (response.invitationId ? [[response.invitationId, response.id] as const] : [])),
+  );
   const manager = organization.role !== "member";
   const kind = requirement.partnerNeed === "staffing" ? "staffing" : "recruitment";
 
@@ -69,6 +74,7 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
         slug={slug}
         requirementId={requirement.id}
         invitations={invitations}
+        responseOf={responseOf}
         canManage={manager}
         findPartnersHref={partnerDirectoryPath(lang, kind)}
         suggestionsHref={

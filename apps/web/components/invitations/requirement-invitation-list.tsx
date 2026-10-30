@@ -8,7 +8,7 @@ import type { RequirementInvitation } from "@/lib/dal/invitations";
 import { formatDate } from "@/lib/i18n/format";
 import { canWithdraw, invitationSourceLabels } from "@/lib/invitations/presentation";
 import { criterionTexts } from "@/lib/requirements/suggestions";
-import { partnerProfileForPath } from "@/lib/routes";
+import { partnerProfileForPath, requirementResponsePath } from "@/lib/routes";
 
 const typeLabels = { employer: "Employer", recruitment_company: "Recruitment company", staffing_company: "Staffing company" } as const;
 
@@ -26,6 +26,8 @@ type RequirementInvitationListProps = {
   slug: string;
   requirementId: string;
   invitations: RequirementInvitation[];
+  // The response of each responded invitation, by invitation id (FR-O1 AC9: Responded links to it).
+  responseOf: Readonly<Record<string, string>>;
   canManage: boolean;
   // Where an empty list leads: the directory, and the suggestions when the requirement has them.
   findPartnersHref: string;
@@ -35,12 +37,13 @@ type RequirementInvitationListProps = {
 // The partners invited to one requirement with the status of each (FR-O1 step Track, AC9): the name (a link to the
 // profile while the partner is listed), the status in words with its dates, the decline reason, where the employer
 // chose the partner and the criteria it met then (FR-M3 AC9), and Withdraw before a response for an owner or admin.
-// Never who invited. A response is linked once responses exist (V46).
+// Never who invited. A responded invitation links its response.
 export function RequirementInvitationList({
   lang,
   slug,
   requirementId,
   invitations,
+  responseOf,
   canManage,
   findPartnersHref,
   suggestionsHref,
@@ -87,6 +90,13 @@ export function RequirementInvitationList({
             <DateLine label="Withdrawn" value={invitation.withdrawnAt} />
             <DateLine label="Expired" value={invitation.expiredAt} />
           </p>
+          {invitation.status === "responded" && responseOf[invitation.id] ? (
+            <p>
+              <TextLink href={requirementResponsePath(lang, slug, requirementId, responseOf[invitation.id])}>
+                See the response<span className="sr-only"> of {invitation.partnerName}</span>
+              </TextLink>
+            </p>
+          ) : null}
           {invitation.status === "declined" ? (
             <p className="text-body break-words whitespace-pre-line">
               {invitation.declineReason ? `Reason: ${invitation.declineReason}` : "No reason given."}
