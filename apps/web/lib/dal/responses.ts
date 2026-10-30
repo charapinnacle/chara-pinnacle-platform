@@ -4,6 +4,7 @@ import * as z from "zod";
 import { getPublicSettings } from "@/lib/dal/settings";
 import { env } from "@/lib/env";
 import { serverEnv } from "@/lib/env.server";
+import { logFault } from "@/lib/fault";
 import { toRequirementVersion, type RequirementVersion } from "@/lib/requirements/versions";
 import { documentRefusals, type DocumentRefusal } from "@/lib/responses/refusal";
 import {
@@ -380,16 +381,25 @@ async function callDocumentUrl<T>(body: Record<string, unknown>, schema: z.ZodTy
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
-  } catch {
+  } catch (error) {
+    logFault("Calling document-url", { message: error instanceof Error ? error.name : "network" });
     return { refusal: "unavailable" };
   }
-  const json: unknown = await response.json().catch(() => null);
+  const json: unknown = await response.json().catch(() => undefined);
+  if (json === undefined) {
+    logFault("Calling document-url", { code: String(response.status), message: "not_json" });
+    return { refusal: "unavailable" };
+  }
   if (!response.ok) {
     const refusal = refusalSchema.safeParse(json);
-    return { refusal: refusal.success ? refusal.data.error : "unavailable" };
+    if (refusal.success) return { refusal: refusal.data.error };
+    logFault("Calling document-url", { code: String(response.status), message: "unknown_refusal" });
+    return { refusal: "unavailable" };
   }
   const parsed = schema.safeParse(json);
-  return parsed.success ? parsed.data : { refusal: "unavailable" };
+  if (parsed.success) return parsed.data;
+  logFault("Calling document-url", { code: String(response.status), message: "unexpected_answer" });
+  return { refusal: "unavailable" };
 }
 
 // An upload URL for one PDF on the requirement: staged until the partner responds, or on its live response at once.
