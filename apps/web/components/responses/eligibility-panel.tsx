@@ -9,14 +9,15 @@ import type { ResponseEligibility } from "@/lib/dal/responses";
 import { formatCount, formatDate } from "@/lib/i18n/format";
 import { reasonOf } from "@/lib/job-orders/presentation";
 import { workersOfferedText } from "@/lib/responses/presentation";
-import { billingPath, partnerStepPath, responsePath, workforceProfilePath } from "@/lib/routes";
+import { billingPath, responsePath, workforceProfilePath } from "@/lib/routes";
 
 export const ELIGIBILITY_HEADING = "Your eligibility to respond";
 
 type EligibilityPanelProps = {
   lang: string;
   slug: string;
-  organization: { id: string; type: OrganizationType; canManage: boolean };
+  // canManage: an owner or admin (plan, licences); owner: the one who accepts the commitment.
+  organization: { id: string; type: OrganizationType; canManage: boolean; owner: boolean };
   eligibility: ResponseEligibility;
   countryName: (code: string) => string;
   // The requirement's main destination by name, for a served country the partner misses.
@@ -110,16 +111,20 @@ function PanelBody({
           ) : null}
         </Notice>
       );
+    // Only the owner accepts the commitment (FR-J3), on the workforce profile of this company, whose notice leads to the
+    // acceptance (the pattern of that page); everyone else is told who acts.
     case "CHARA_CONSENT_REQUIRED":
       return (
         <Notice tone="warning" role="status">
-          <p className="font-medium">Accept the current employer-pays commitment to respond.</p>
-          {organization.canManage ? (
-            <p className="mt-1">
-              <TextLink href={partnerStepPath(lang, "commitments")}>Review the commitment</TextLink>
-            </p>
+          {organization.owner ? (
+            <>
+              <p className="font-medium">Accept the current employer-pays commitment to respond.</p>
+              <p className="mt-1">
+                <TextLink href={workforceProfilePath(lang, slug)}>Review the commitment</TextLink>
+              </p>
+            </>
           ) : (
-            <p className="mt-1">Your company&apos;s owner accepts it for the company.</p>
+            <p className="font-medium">Your owner needs to accept the employer-pays commitment before you can respond to job orders.</p>
           )}
         </Notice>
       );

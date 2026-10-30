@@ -108,7 +108,7 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
         <EligibilityPanel
           lang={lang}
           slug={slug}
-          organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member" }}
+          organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member", owner: organization.role === "owner" }}
           eligibility={eligibility}
           countryName={(code) => names.countries.get(code) ?? code}
           destinationName={names.countries.get(requirement.countryCode) ?? requirement.countryCode}

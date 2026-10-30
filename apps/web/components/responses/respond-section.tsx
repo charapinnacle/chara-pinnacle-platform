@@ -41,7 +41,7 @@ export async function RespondSection({ lang, slug, organization, requirement, el
       <EligibilityPanel
         lang={lang}
         slug={slug}
-        organization={{ id: organization.id, type: organization.type, canManage }}
+        organization={{ id: organization.id, type: organization.type, canManage, owner: organization.role === "owner" }}
         eligibility={eligibility}
         countryName={countryName}
         destinationName={countryName(requirement.countryCode)}

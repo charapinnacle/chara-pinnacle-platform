@@ -94,7 +94,7 @@ export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[s
         <EligibilityPanel
           lang={lang}
           slug={slug}
-          organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member" }}
+          organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member", owner: organization.role === "owner" }}
           eligibility={eligibility}
           countryName={(code) => names.countries.get(code) ?? code}
           destinationName={names.countries.get(order.countryCode) ?? order.countryCode}

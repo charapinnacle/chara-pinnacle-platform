@@ -435,7 +435,7 @@ test.describe("The eligibility panel (FR-N2 AC4, AC12, FR-J2 AC10)", () => {
     const second = await newVisitor(browser);
     await signInAtAal1(second.page, q2.owner, orderUrl(q2.slug, id));
     await expect(panel(second.page)).toContainText("Accept the current employer-pays commitment to respond.");
-    await expect(panel(second.page).getByRole("link", { name: "Review the commitment" })).toHaveAttribute("href", "/en/onboarding?step=commitments");
+    await expect(panel(second.page).getByRole("link", { name: "Review the commitment" })).toHaveAttribute("href", `/en/org/${q2.slug}/workforce-profile`);
     await second.context.close();
 
     const q4 = await eligiblePartner({ serves: false });
