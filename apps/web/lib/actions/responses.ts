@@ -7,6 +7,7 @@ import type { UsagePrompt } from "@/lib/billing/limits";
 import { getCountries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import {
+  getResponse,
   getResponseDocumentsMax,
   listResponseDocuments,
   requestResponseDocumentLink,
@@ -44,6 +45,7 @@ import {
   toResponseArgs,
   withdrawFormSchema,
   type DocumentFile,
+  type KeptValues,
   type ResponseFormInput,
   type ToleranceFormInput,
   type WithdrawFormInput,
@@ -56,8 +58,12 @@ const editTargetSchema = z.object({ responseId: z.uuid(), expectedVersion: z.num
 const fileSchema = z.object({ name: z.string().max(200), size: z.number().int().min(0), type: z.string().max(100) });
 
 // The server parses the form with no capacity bound: the most the partner may offer is the database's to check at the
-// moment of the write (capacity_above_allowed names it), so a tolerance the employer changed meanwhile is honoured.
-const serverSchema = responseFormSchema({ maxCapacity: Number.MAX_SAFE_INTEGER });
+// moment of the write (capacity_above_allowed names it), so a tolerance the employer changed meanwhile is honoured. The
+// schema is built per call, so "today" is the day of the request; an edit keeps the stored capacity and date as
+// update_response does.
+function serverSchema(kept?: KeptValues) {
+  return responseFormSchema({ maxCapacity: Number.MAX_SAFE_INTEGER, kept });
+}
 
 export type ResponseResult = {
   errors?: FieldErrors;
@@ -122,7 +128,7 @@ export async function respondToRequirement(slug: string, requirementId: string, 
   const organization = await respondingPartner(slug);
   if (organization === null) return { message: GENERIC_FAILURE };
   if (organization === "release_off") return { message: RESPONSE_MESSAGES.releaseOff };
-  const parsed = serverSchema.safeParse(input);
+  const parsed = serverSchema().safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
   const supabase = await createClient();
@@ -148,10 +154,12 @@ export async function updateMyResponse(
   const organization = await respondingPartner(slug);
   if (organization === null) return { message: GENERIC_FAILURE };
   if (organization === "release_off") return { message: RESPONSE_MESSAGES.releaseOff };
-  const parsed = serverSchema.safeParse(input);
+  const { responseId, expectedVersion } = parsedTarget.data;
+  const current = await getResponse(organization.id, responseId);
+  if (!current) return { message: RESPONSE_MESSAGES.responseNotFound };
+  const parsed = serverSchema({ capacity: current.capacity, availableFrom: current.availableFrom }).safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
-  const { responseId, expectedVersion } = parsedTarget.data;
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_response", {
     p_org: organization.id,
