@@ -104,6 +104,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
           count={responses?.length ?? null}
           updated={responses?.filter((response) => response.updatedUnseen).length ?? 0}
           selected={responses?.filter((response) => response.status === "selected").map((response) => response.partnerName) ?? []}
+          comparable={responses?.some((response) => response.status !== "withdrawn") ?? false}
         />
       ) : null}
       {manager && isRequirementEditable(requirement.status) && tolerance !== null ? (

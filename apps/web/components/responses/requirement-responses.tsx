@@ -9,12 +9,13 @@ type RequirementResponsesProps = {
   count: number | null;
   updated: number;
   selected: string[];
+  comparable: boolean;
 };
 
 // The way from a published requirement to the partners' responses (FR-O2), with how many there are and how many changed
 // since they were opened, and the partners selected for it (FR-O3 step Record); a failed read leaves the count out, not
-// the links.
-export function RequirementResponses({ lang, slug, requirementId, count, updated, selected }: RequirementResponsesProps) {
+// the links. Compare responses is offered while a response is not withdrawn.
+export function RequirementResponses({ lang, slug, requirementId, count, updated, selected, comparable }: RequirementResponsesProps) {
   return (
     <section aria-labelledby="requirement-responses-heading" className="grid gap-3">
       <h2 id="requirement-responses-heading" className="text-h2">
@@ -34,7 +35,7 @@ export function RequirementResponses({ lang, slug, requirementId, count, updated
         <LinkButton href={requirementResponsesPath(lang, slug, requirementId)} variant="secondary" size="default">
           See responses
         </LinkButton>
-        {count !== null && count > 0 ? (
+        {comparable ? (
           <LinkButton href={requirementResponsesComparePath(lang, slug, requirementId)} variant="secondary" size="default">
             Compare responses
           </LinkButton>
