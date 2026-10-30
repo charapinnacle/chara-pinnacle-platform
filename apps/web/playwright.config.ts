@@ -123,6 +123,7 @@ export default defineConfig({
         "**/invitations.spec.ts",
         "**/requirement-changes.spec.ts",
         "**/partner-responses.spec.ts",
+        "**/response-decisions.spec.ts",
       ],
     },
     {
@@ -552,13 +553,21 @@ export default defineConfig({
       testMatch: "**/partner-responses.spec.ts",
       dependencies: ["requirement-changes-release"],
     },
+    // The comparison and the decisions (FR-O3, V47) set releases 2a and 2b and the plan limits for the whole database and
+    // withdraw compare_responses for a moment, so they follow the response pages.
+    {
+      name: "decisions-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/response-decisions.spec.ts",
+      dependencies: ["responses-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["responses-release"],
+      dependencies: ["decisions-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

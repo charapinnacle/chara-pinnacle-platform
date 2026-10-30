@@ -137,7 +137,9 @@ const accountStatePages = [
 // partner-suggestions.spec.ts. The job order marketplace and job order pages of a partner (eligible, titles only, closed,
 // empty and failed) and the public Job orders page are checked in job-orders.spec.ts. The invitations of a requirement
 // (statuses, empty and failed, as a member and an owner) and the inbox and invitation pages of a partner (pending, full,
-// accepted and declined) are checked in invitations.spec.ts.
+// accepted and declined) are checked in invitations.spec.ts. The comparison of the responses to a requirement (with
+// decisions as an owner, as a member, with one column, empty and failed) and the decided responses of the employer and
+// the partners are checked in response-decisions.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -163,6 +165,7 @@ const releasedPages = [
   "/[lang]/org/[slug]/requirements/[id]/partners",
   "/[lang]/org/[slug]/requirements/[id]/responses",
   "/[lang]/org/[slug]/requirements/[id]/responses/[responseId]",
+  "/[lang]/org/[slug]/requirements/[id]/responses/compare",
   "/[lang]/org/[slug]/responses",
   "/[lang]/org/[slug]/responses/[id]",
   "/[lang]/org/[slug]/responses/[id]/edit",
