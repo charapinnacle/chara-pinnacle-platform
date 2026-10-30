@@ -2003,6 +2003,11 @@ isOneToOne: false
 "confirm_workforce_availability":
 { Args: { "p_listing": string }; Returns: string
                            },
+"compare_responses":
+{ Args: { "p_org": string,"p_requirement": string }; Returns: {
+              "available_from": string,"capacity": number,"created_at": string,"decided_at": string,"decision_note": string,"experience_note": string,"fee_amount": number,"fee_currency": string,"fee_model": Database["public"]['Enums']["fee_model"],"id": string,"invitation_id": string,"organization_id": string,"partner_name": string,"partner_slug": string,"partner_type": Database["public"]['Enums']["organization_type"],"served_countries": (string)[],"status": Database["public"]['Enums']["response_status"],"submissions_allowed": boolean,"timeline_note": string,"updated_at": string,"updated_unseen": boolean,"version": number,"withdrawn_at": string
+            }[]
+                           },
 "connection_target":
 { Args: { "p_slug": string }; Returns: {
               "organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"]
@@ -2031,6 +2036,9 @@ isOneToOne: false
 { Args: { "p_appeal": number,"p_outcome": string,"p_reasons": string }; Returns: {
               "reversal_action_id": number,"status": Database["public"]['Enums']["appeal_status"]
             }[]
+                           },
+"decide_response":
+{ Args: { "p_decision": Database["public"]['Enums']["response_status"],"p_note"?: string,"p_org": string,"p_response": string }; Returns: Database["public"]['Enums']["response_status"]
                            },
 "delete_partner_licence":
 { Args: { "p_licence": string }; Returns: undefined
@@ -2495,6 +2503,9 @@ isOneToOne: false
                            },
 "set_requirement_status":
 { Args: { "p_close_reason"?: Database["public"]['Enums']["requirement_close_reason"],"p_expected_updated_at": string,"p_org": string,"p_requirement": string,"p_status": Database["public"]['Enums']["requirement_status"] }; Returns: Json
+                           },
+"set_submissions_allowed":
+{ Args: { "p_allowed": boolean,"p_org": string,"p_response": string }; Returns: boolean
                            },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: {
