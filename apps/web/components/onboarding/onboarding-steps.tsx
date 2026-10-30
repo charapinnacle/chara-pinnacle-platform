@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
 // page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Below
 // 640 px only the current step is named beside the circles, under "Step 2 of 3"; the other names stay for screen readers.
-// A recruitment or staffing company (FR-J1) has the five steps of its own journey: too many for a name beside the circles
-// at 360 px, so there the current name joins the "Step 2 of 5" line instead. A step that staff reopened with a request
-// for information (FR-J4) is shown as not done again, and says so to screen readers.
+// A recruitment or staffing company (FR-J1) has the five steps of its own journey: too many names to fit the panel, so
+// only the current one is named beside the circles (below 640 px it joins the "Step 2 of 5" line instead). A step that
+// staff reopened with a request for information (FR-J4) is shown as not done again, and says so to screen readers.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
   partner: ["Company", "Where you serve", "Commitments", "Security", "Ready"],
@@ -48,7 +48,7 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
                 className={cn(
                   "text-small whitespace-nowrap",
                   state === "current" ? "font-semibold text-foreground" : "text-muted-foreground max-sm:sr-only",
-                  long && "max-sm:sr-only",
+                  long && (state === "current" ? "max-sm:sr-only" : "sr-only"),
                 )}
               >
                 <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>
