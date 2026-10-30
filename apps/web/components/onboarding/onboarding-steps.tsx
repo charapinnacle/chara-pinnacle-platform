@@ -2,11 +2,11 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
-// page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Below
-// 640 px only the current step is named beside the circles, under "Step 2 of 3"; the other names stay for screen readers.
-// A recruitment or staffing company (FR-J1) has the five steps of its own journey: too many names to fit the panel, so
-// only the current one is named beside the circles (below 640 px it joins the "Step 2 of 5" line instead). A step that
-// staff reopened with a request for information (FR-J4) is shown as not done again, and says so to screen readers.
+// page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Each step
+// is a column with its name under the circle, so the five steps of a recruitment or staffing company (FR-J1) fit the panel
+// as well as three; below 640 px the names give way to a "Step 2 of 5: Where you serve" line and stay for screen readers.
+// A step that staff reopened with a request for information (FR-J4) is shown as not done again, and says so to screen
+// readers.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
   partner: ["Company", "Where you serve", "Commitments", "Security", "Ready"],
@@ -17,13 +17,16 @@ type OnboardingStepsProps = { kind: keyof typeof onboardingJourneys; current: nu
 
 export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProps) {
   const steps = onboardingJourneys[kind];
-  const long = steps.length > 3;
   return (
     <div className="grid gap-3">
       <p aria-hidden className="text-small text-muted-foreground tabular-nums sm:hidden">
-        {long ? `Step ${current + 1} of ${steps.length}: ${steps[current]}` : `Step ${current + 1} of ${steps.length}`}
+        {`Step ${current + 1} of ${steps.length}: ${steps[current]}`}
       </p>
-      <ol aria-label="Setting up your account" className="flex items-center gap-2 sm:gap-3">
+      <ol
+        aria-label="Setting up your account"
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+      >
         {steps.map((label, index) => {
           const state =
             index === current ? "current" : index === reopened ? "reopened" : index < current ? "done" : "upcoming";
@@ -31,8 +34,17 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
             <li
               key={label}
               aria-current={state === "current" ? "step" : undefined}
-              className="flex min-w-0 flex-1 items-center gap-2 last:flex-none sm:gap-3"
+              className="relative flex flex-col items-center gap-2 text-center"
             >
+              {index < steps.length - 1 ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute top-3.5 start-[calc(50%+1.25rem)] h-px w-[calc(100%-2.5rem)]",
+                    state === "done" ? "bg-brand" : "bg-border",
+                  )}
+                />
+              ) : null}
               <span
                 aria-hidden
                 className={cn(
@@ -46,9 +58,8 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
               </span>
               <span
                 className={cn(
-                  "text-small whitespace-nowrap",
-                  state === "current" ? "font-semibold text-foreground" : "text-muted-foreground max-sm:sr-only",
-                  long && (state === "current" ? "max-sm:sr-only" : "sr-only"),
+                  "max-w-full px-1 text-caption leading-snug text-balance max-sm:sr-only",
+                  state === "current" ? "font-semibold text-foreground" : "text-muted-foreground",
                 )}
               >
                 <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>
@@ -56,9 +67,6 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
                 {state === "done" ? <span className="sr-only"> (done)</span> : null}
                 {state === "reopened" ? <span className="sr-only"> (more information requested)</span> : null}
               </span>
-              {index < steps.length - 1 ? (
-                <span aria-hidden className={cn("h-px min-w-4 flex-1", state === "done" ? "bg-brand" : "bg-border")} />
-              ) : null}
             </li>
           );
         })}

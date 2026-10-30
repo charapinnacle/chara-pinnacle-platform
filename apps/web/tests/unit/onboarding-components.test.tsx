@@ -46,7 +46,7 @@ describe("OnboardingSteps", () => {
   });
 
   it("says which step it is in words for phones, hidden from screen readers that read the list", () => {
-    expect(html(<OnboardingSteps kind="company" current={0} />)).toMatch(/<p aria-hidden="true" class="[^"]*sm:hidden[^"]*">Step 1 of 3<\/p>/);
+    expect(html(<OnboardingSteps kind="company" current={0} />)).toMatch(/<p aria-hidden="true" class="[^"]*sm:hidden[^"]*">Step 1 of 3: Company<\/p>/);
   });
 
   it("shows a worker Your profile and Ready, and no step for the account or the account type", () => {
