@@ -2000,13 +2000,13 @@ isOneToOne: false
 "choose_account_kind":
 { Args: { "p_consents"?: Json,"p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: Database["public"]['Enums']["account_kind"]
                            },
-"confirm_workforce_availability":
-{ Args: { "p_listing": string }; Returns: string
-                           },
 "compare_responses":
 { Args: { "p_org": string,"p_requirement": string }; Returns: {
               "available_from": string,"capacity": number,"created_at": string,"decided_at": string,"decision_note": string,"experience_note": string,"fee_amount": number,"fee_currency": string,"fee_model": Database["public"]['Enums']["fee_model"],"id": string,"invitation_id": string,"organization_id": string,"partner_name": string,"partner_slug": string,"partner_type": Database["public"]['Enums']["organization_type"],"served_countries": (string)[],"status": Database["public"]['Enums']["response_status"],"submissions_allowed": boolean,"timeline_note": string,"updated_at": string,"updated_unseen": boolean,"version": number,"withdrawn_at": string
             }[]
+                           },
+"confirm_workforce_availability":
+{ Args: { "p_listing": string }; Returns: string
                            },
 "connection_target":
 { Args: { "p_slug": string }; Returns: {
