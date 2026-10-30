@@ -157,6 +157,11 @@ export function requirementResponsePath(lang: string, slug: string, id: string, 
   return `${requirementResponsesPath(lang, slug, id)}/${responseId}`;
 }
 
+// The responses to one requirement side by side, with the decisions (FR-O3).
+export function requirementResponsesComparePath(lang: string, slug: string, id: string): string {
+  return `${requirementResponsesPath(lang, slug, id)}/compare`;
+}
+
 // The partners suggested for one requirement (FR-M3).
 export function requirementPartnersPath(lang: string, slug: string, id: string): string {
   return `${requirementPath(lang, slug, id)}/partners`;

@@ -171,3 +171,30 @@ export function documentRefusalMessage(refusal: DocumentRefusal, limitText: stri
       return "The document service did not answer. Try again in a moment.";
   }
 }
+
+export const DECISION_MESSAGES = {
+  note: "Write at most 1,000 characters, without special characters.",
+  decided: "This response was decided or withdrawn meanwhile. Reload the page to see its status.",
+  notOpen: "The requirement is closed or filled, so its responses can no longer be decided.",
+  notShortlisted: "Only a shortlisted response can be opened to candidate submissions. Reload the page to see its status.",
+  notAllowed: "Only the owner and admins of the company can decide responses.",
+} as const;
+
+// A refusal of decide_response or set_submissions_allowed (FR-O3 AC3 to AC5, AC8, AC9): the note (a field of the
+// dialog), a move the response no longer allows, a requirement that is no longer open or paused, or a shared refusal.
+export function decisionRefusal(
+  error: RefusalError,
+): { kind: "field"; message: string } | { kind: "message"; message: string } | { kind: "fault" } {
+  if (error.message === "CHARA_INVALID_INPUT" && error.details === "p_note") return { kind: "field", message: DECISION_MESSAGES.note };
+  if (error.message === "CHARA_INVALID_TRANSITION") return { kind: "message", message: DECISION_MESSAGES.decided };
+  if (error.message === "CHARA_INVALID_STATE") {
+    return {
+      kind: "message",
+      message: error.details === "requirement_not_open" ? DECISION_MESSAGES.notOpen : DECISION_MESSAGES.notShortlisted,
+    };
+  }
+  if (error.message === "CHARA_FORBIDDEN" && error.details !== "release_off") {
+    return { kind: "message", message: DECISION_MESSAGES.notAllowed };
+  }
+  return sharedRefusal(error, RESPONSE_MESSAGES.responseNotFound) ?? { kind: "fault" };
+}

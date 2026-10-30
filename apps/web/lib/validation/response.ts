@@ -183,3 +183,13 @@ export function documentFileIssue(file: DocumentFile, attached: number, max: num
   }
   return null;
 }
+
+// The note of a decision (FR-O3 AC5): optional, trimmed, up to 1,000 characters; the partner of that response reads it.
+export const DECISION_NOTE_MAX = 1_000;
+
+export const decisionFormSchema = z.object({
+  note: optionalText(DECISION_NOTE_MAX, "note"),
+});
+
+export type DecisionFormInput = z.input<typeof decisionFormSchema>;
+export type DecisionFormOutput = z.output<typeof decisionFormSchema>;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementResponseList } from "@/components/responses/requirement-response-list";
@@ -9,14 +10,14 @@ import { isReleased } from "@/lib/dal/release";
 import { getRequirement } from "@/lib/dal/requirements";
 import { listRequirementResponses } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
-import { requirementPath, requirementsPath } from "@/lib/routes";
+import { requirementPath, requirementResponsesComparePath, requirementsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Responses", robots: { index: false } };
 
 // The responses of partners to one requirement (FR-O2 steps Submit and Edit, AC9; FR-N2 AC9), for every member of the
 // employer while release 2b is on: Updated until a changed response is opened, Withdrawn with the date and the reason.
-// Comparing and deciding are FR-O3.
+// Compare responses opens the comparison with the decisions (FR-O3), also for a single response (AC11).
 export default async function RequirementResponsesPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/responses">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -48,6 +49,13 @@ export default async function RequirementResponsesPage({ params }: PageProps<"/[
           The responses of recruitment and staffing companies to {requirement.title}, oldest first. Open one to read the
           proposal, its documents and what changed.
         </p>
+        {responses.some((response) => response.status !== "withdrawn") ? (
+          <div className="flex flex-wrap gap-3">
+            <LinkButton href={requirementResponsesComparePath(lang, slug, requirement.id)} size="default">
+              Compare responses
+            </LinkButton>
+          </div>
+        ) : null}
       </PageHeader>
       <RequirementResponseList lang={lang} slug={slug} requirementId={requirement.id} responses={responses} />
     </div>

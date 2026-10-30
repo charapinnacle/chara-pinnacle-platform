@@ -111,9 +111,9 @@ export const partnerNextSteps: Record<ResponseStatus, string> = {
   submitted: "The employer has your response. You can change or withdraw it until the employer decides.",
   updated: "The employer has your response and sees that you changed it. You can change or withdraw it until the employer decides.",
   withdrawn: "You withdrew this response. It still counts against this month's responses and cannot be sent again.",
-  shortlisted: "The employer shortlisted your response, so it can no longer be changed or withdrawn.",
+  shortlisted: "The employer shortlisted your response, so it can no longer be changed or withdrawn. The employer may still select or decline it.",
   selected: "The employer selected your company for this requirement, so the response can no longer be changed or withdrawn.",
-  declined: "The employer declined your response.",
+  declined: "The employer declined your response. This decision is final.",
 };
 
 // The employer's view of one response (NFR-U4).
@@ -121,10 +121,43 @@ export const employerNextSteps: Record<ResponseStatus, string> = {
   submitted: "Read the proposal and its documents.",
   updated: "Read the proposal and its documents. The history shows what the partner changed.",
   withdrawn: "The partner withdrew this response.",
-  shortlisted: "You shortlisted this response.",
-  selected: "You selected this partner.",
+  shortlisted: "You shortlisted this response. Select or decline it when you have decided.",
+  selected: "You selected this partner. It can submit candidates for this requirement.",
   declined: "You declined this response.",
 };
+
+// The decisions of FR-O3 and the moves of decide_response (private.response_decision_allowed): submitted or updated to
+// any of the three, shortlisted to selected or declined; selected, declined and withdrawn are final.
+export const responseDecisions = ["shortlisted", "selected", "declined"] as const satisfies readonly ResponseStatus[];
+export type ResponseDecision = (typeof responseDecisions)[number];
+
+export function decisionsFor(status: ResponseStatus): ResponseDecision[] {
+  if (isLive(status)) return [...responseDecisions];
+  if (status === "shortlisted") return ["selected", "declined"];
+  return [];
+}
+
+// The verb of each decision control; the accessible name adds the partner, "Shortlist Manila Recruit" (FR-O3 AC2).
+export const decisionVerbs: Record<ResponseDecision, string> = {
+  shortlisted: "Shortlist",
+  selected: "Select",
+  declined: "Decline",
+};
+
+export const decisionDone: Record<ResponseDecision, string> = {
+  shortlisted: "Response shortlisted",
+  selected: "Partner selected",
+  declined: "Response declined",
+};
+
+// Decision 3.4, FR-O3 AC10: in the confirmation of a selection.
+export const NOT_A_PARTY_AGREEMENT = "Chara Pinnacle is not a party to your agreement or any payment with this partner";
+
+// Whether a partner may submit candidates by its response (FR-O3 step Open submissions): a selection opens them, a
+// shortlist only when the employer allows it.
+export function submissionsOpen(status: ResponseStatus, allowed: boolean): boolean {
+  return status === "selected" || (status === "shortlisted" && allowed);
+}
 
 export function responseCountText(count: number): string {
   return `${formatCount(count)} ${count === 1 ? "response" : "responses"}`;

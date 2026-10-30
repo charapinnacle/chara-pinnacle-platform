@@ -103,6 +103,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
           requirementId={requirement.id}
           count={responses?.length ?? null}
           updated={responses?.filter((response) => response.updatedUnseen).length ?? 0}
+          selected={responses?.filter((response) => response.status === "selected").map((response) => response.partnerName) ?? []}
         />
       ) : null}
       {manager && isRequirementEditable(requirement.status) && tolerance !== null ? (

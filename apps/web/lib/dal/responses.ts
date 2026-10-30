@@ -155,6 +155,8 @@ export type ResponseDetail = {
   createdAt: string;
   updatedAt: string;
   decidedAt: string | null;
+  decisionNote: string | null;
+  submissionsAllowed: boolean;
   withdrawnAt: string | null;
   withdrawalReason: string | null;
   updatedUnseen: boolean;
@@ -195,6 +197,8 @@ export async function getResponse(organizationId: string, id: string): Promise<R
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     decidedAt: row.decided_at ?? null,
+    decisionNote: row.decision_note ?? null,
+    submissionsAllowed: row.submissions_allowed,
     withdrawnAt: row.withdrawn_at ?? null,
     withdrawalReason: row.withdrawal_reason ?? null,
     updatedUnseen: row.updated_unseen ?? false,
@@ -256,6 +260,66 @@ export async function listRequirementResponses(organizationId: string, requireme
     decidedAt: row.decided_at ?? null,
     withdrawnAt: row.withdrawn_at ?? null,
     withdrawalReason: row.withdrawal_reason ?? null,
+  }));
+}
+
+// One response in the comparison of a requirement (compare_responses, FR-O3 AC1): the same fields for every partner, with
+// the countries it serves and the decision. The page shows the responses that are not withdrawn as columns.
+export type ComparedResponse = {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  partnerSlug: string | null;
+  partnerType: Enums["organization_type"];
+  invitationId: string | null;
+  status: ResponseStatus;
+  version: number;
+  updatedUnseen: boolean;
+  capacity: number;
+  availableFrom: string;
+  timelineNote: string | null;
+  experienceNote: string;
+  feeModel: FeeModel;
+  feeAmount: number | null;
+  feeCurrency: string | null;
+  servedCountries: string[];
+  createdAt: string;
+  updatedAt: string;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  submissionsAllowed: boolean;
+  withdrawnAt: string | null;
+};
+
+// The page reads the requirement first, so any refusal here is an error for the route's boundary.
+export async function compareResponses(organizationId: string, requirementId: string): Promise<ComparedResponse[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("compare_responses", { p_org: organizationId, p_requirement: requirementId });
+  if (error) throw new Error("The responses to compare could not be loaded", { cause: error });
+  return data.map((row) => ({
+    id: row.id,
+    partnerId: row.organization_id,
+    partnerName: row.partner_name,
+    partnerSlug: row.partner_slug ?? null,
+    partnerType: row.partner_type,
+    invitationId: row.invitation_id ?? null,
+    status: row.status,
+    version: row.version,
+    updatedUnseen: row.updated_unseen,
+    capacity: row.capacity,
+    availableFrom: row.available_from,
+    timelineNote: row.timeline_note ?? null,
+    experienceNote: row.experience_note,
+    feeModel: row.fee_model,
+    feeAmount: row.fee_amount ?? null,
+    feeCurrency: row.fee_currency ?? null,
+    servedCountries: row.served_countries ?? [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    decidedAt: row.decided_at ?? null,
+    decisionNote: row.decision_note ?? null,
+    submissionsAllowed: row.submissions_allowed,
+    withdrawnAt: row.withdrawn_at ?? null,
   }));
 }
 
@@ -325,9 +389,10 @@ export type ResponseDocument = {
 
 const scanStatusSchema = z.enum(documentScanStatuses);
 
-// The files of one response, or the partner's files for a requirement it has not responded to yet (staged), oldest first.
+// The files of one response or of several (the comparison, FR-O3), or the partner's files for a requirement it has not
+// responded to yet (staged), oldest first.
 export async function listResponseDocuments(
-  target: { responseId: string } | { organizationId: string; requirementId: string },
+  target: { responseId: string } | { responseIds: string[] } | { organizationId: string; requirementId: string },
 ): Promise<ResponseDocument[]> {
   const supabase = await createClient();
   let query = supabase
@@ -335,10 +400,9 @@ export async function listResponseDocuments(
     .select("id, response_id, file_name, size_bytes, scan_status, created_at")
     .order("created_at")
     .order("id");
-  query =
-    "responseId" in target
-      ? query.eq("response_id", target.responseId)
-      : query.eq("organization_id", target.organizationId).eq("requirement_id", target.requirementId);
+  if ("responseId" in target) query = query.eq("response_id", target.responseId);
+  else if ("responseIds" in target) query = query.in("response_id", target.responseIds);
+  else query = query.eq("organization_id", target.organizationId).eq("requirement_id", target.requirementId);
   const { data, error } = await query;
   if (error) throw new Error("The documents of the response could not be loaded", { cause: error });
   return data.map((row) => ({
