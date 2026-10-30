@@ -193,7 +193,8 @@ export function decisionRefusal(
       message: error.details === "requirement_not_open" ? DECISION_MESSAGES.notOpen : DECISION_MESSAGES.notShortlisted,
     };
   }
-  if (error.message === "CHARA_FORBIDDEN" && error.details !== "release_off") {
+  // The role check of private.assert_org_manager: no member of the employer, below admin, or not at aal2.
+  if (error.message === "CHARA_FORBIDDEN" && (!error.details || error.details === "aal2_required")) {
     return { kind: "message", message: DECISION_MESSAGES.notAllowed };
   }
   return sharedRefusal(error, RESPONSE_MESSAGES.responseNotFound) ?? { kind: "fault" };

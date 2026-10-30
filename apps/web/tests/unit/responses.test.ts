@@ -462,6 +462,13 @@ describe("the decisions on a response (FR-O3)", () => {
 
   it("maps the refusals of the decision functions", () => {
     expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "aal2_required" })).toEqual({ kind: "message", message: DECISION_MESSAGES.notAllowed });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: null })).toEqual({ kind: "message", message: DECISION_MESSAGES.notAllowed });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "organization_suspended" })).toEqual({
+      kind: "message",
+      message: RESPONSE_MESSAGES.suspended,
+    });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "release_off" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.releaseOff });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "employer_only" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.notAllowed });
     expect(decisionRefusal({ message: "CHARA_NOT_FOUND", code: "P0002" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.responseNotFound });
     expect(decisionRefusal({ message: "CHARA_RATE_LIMITED" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.tooManyChanges });
     expect(decisionRefusal({ message: "boom" })).toEqual({ kind: "fault" });
