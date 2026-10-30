@@ -21,7 +21,7 @@ type CapacityToleranceFormProps = { slug: string; requirementId: string; percent
 export function CapacityToleranceForm({ slug, requirementId, percent, workersNeeded }: CapacityToleranceFormProps) {
   const form = useForm<ToleranceFormInput>({ resolver: zodResolver(toleranceFormSchema), defaultValues: { percent: String(percent) } });
   const { control, formState, handleSubmit } = form;
-  const { submit } = useServerFormSubmit(form, { failureTitle: "The tolerance was not saved" });
+  const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: "The tolerance was not saved" });
   const maximum = Math.floor((workersNeeded * (100 + percent)) / 100);
 
   function onSubmit(values: ToleranceFormInput) {
@@ -43,7 +43,7 @@ export function CapacityToleranceForm({ slug, requirementId, percent, workersNee
         offer extra workers to cover drop-outs.
       </p>
       <form noValidate className="grid max-w-sm gap-4" onSubmit={handleSubmit(onSubmit)}>
-        <FormErrorSummary form={form} ids={{ percent: PERCENT_ID }} />
+        <FormErrorSummary form={form} summaryRef={summaryRef} ids={{ percent: PERCENT_ID }} />
         <InputField
           control={control}
           name="percent"
