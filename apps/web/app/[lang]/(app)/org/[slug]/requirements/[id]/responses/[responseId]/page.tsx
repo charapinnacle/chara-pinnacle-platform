@@ -77,7 +77,7 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
       </PageHeader>
 
       <section aria-labelledby="response-status-heading" className="grid gap-3">
-        <h2 id="response-status-heading" className="text-h2">
+        <h2 id="response-status-heading" tabIndex={-1} className="text-h2">
           Status
         </h2>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -121,6 +121,7 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
             partnerName={partnerName}
             status={response.status}
             submissionsAllowed={response.submissionsAllowed}
+            focusTargetId="response-status-heading"
           />
         ) : null}
         {response.status !== "withdrawn" ? (

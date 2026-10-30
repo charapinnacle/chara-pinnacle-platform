@@ -17,6 +17,8 @@ type ResponseComparisonProps = {
   canDecide: boolean;
 };
 
+const columnId = (id: string) => `response-column-${id}`;
+
 type Row = { label: string; cell: (response: ComparedResponse) => React.ReactNode };
 
 // The responses that are not withdrawn side by side (FR-O3 step Compare, AC1, AC2): one column per partner, headed by its
@@ -72,6 +74,7 @@ export function ResponseComparison({ lang, slug, requirementId, responses, docum
             partnerName={response.partnerName}
             status={response.status}
             submissionsAllowed={response.submissionsAllowed}
+            focusTargetId={columnId(response.id)}
           />
         ),
     });
@@ -87,7 +90,7 @@ export function ResponseComparison({ lang, slug, requirementId, responses, docum
           <tr>
             <td className="sticky start-0 z-10 min-w-36 border-b bg-card p-3" />
             {responses.map((response) => (
-              <th key={response.id} scope="col" className="min-w-60 border-b border-s bg-card p-3 align-top">
+              <th key={response.id} id={columnId(response.id)} tabIndex={-1} scope="col" className="min-w-60 border-b border-s bg-card p-3 align-top">
                 <span className="grid gap-1">
                   {response.partnerSlug ? (
                     <TextLink href={partnerProfileForPath(lang, response.partnerSlug, slug)}>{response.partnerName}</TextLink>

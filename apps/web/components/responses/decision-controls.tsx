@@ -22,7 +22,9 @@ import {
 import { DECISION_NOTE_MAX, decisionFormSchema, type DecisionFormInput, type DecisionFormOutput } from "@/lib/validation/response";
 
 type Target = { slug: string; requirementId: string; responseId: string; partnerName: string };
-type DecisionControlsProps = Target & { status: ResponseStatus; submissionsAllowed: boolean };
+// focusTargetId names an element that stays when the controls go (the response's column header, the status heading): a
+// confirmed decision removes the control that opened the dialog, so the focus moves there instead of to the page start.
+type DecisionControlsProps = Target & { status: ResponseStatus; submissionsAllowed: boolean; focusTargetId: string };
 
 const ids = ({ requirementId, responseId }: Target) => ({ requirementId, responseId });
 
@@ -36,11 +38,18 @@ const titles: Record<ResponseDecision, (partner: string) => string> = {
 // control is named with the partner ("Select Manila Recruit") and opens a confirmation with an optional note to the
 // partner; a shortlisted partner may also be allowed to submit candidates. Selected, declined and withdrawn responses
 // offer nothing.
-export function DecisionControls({ status, submissionsAllowed, ...target }: DecisionControlsProps) {
+export function DecisionControls({ status, submissionsAllowed, focusTargetId, ...target }: DecisionControlsProps) {
   const [decision, setDecision] = useState<ResponseDecision | null>(null);
   const permission = useActionCall("The candidate submissions were not changed");
   const decisions = decisionsFor(status);
   const close = () => setDecision(null);
+  // The timer runs after the dialog has closed and handed the focus back to its trigger, and also when the refreshed page
+  // has already replaced these controls (a selected or declined response offers none).
+  const decided = () => {
+    setDecision(null);
+    window.setTimeout(() => document.getElementById(focusTargetId)?.focus(), 0);
+  };
+
   if (decisions.length === 0) return null;
   return (
     <div className="grid gap-2">
@@ -77,13 +86,18 @@ export function DecisionControls({ status, submissionsAllowed, ...target }: Deci
         </FormButton>
       ) : null}
       <ModalDialog open={decision !== null} onClose={close} title={decision ? titles[decision](target.partnerName) : ""}>
-        {decision ? <DecisionForm {...target} decision={decision} onClose={close} /> : null}
+        {decision ? <DecisionForm {...target} decision={decision} onClose={close} onDecided={decided} /> : null}
       </ModalDialog>
     </div>
   );
 }
 
-function DecisionForm({ decision, onClose, ...target }: Target & { decision: ResponseDecision; onClose: () => void }) {
+function DecisionForm({
+  decision,
+  onClose,
+  onDecided,
+  ...target
+}: Target & { decision: ResponseDecision; onClose: () => void; onDecided: () => void }) {
   const form = useForm<DecisionFormInput, undefined, DecisionFormOutput>({
     resolver: zodResolver(decisionFormSchema),
     defaultValues: { note: "" },
@@ -99,7 +113,7 @@ function DecisionForm({ decision, onClose, ...target }: Target & { decision: Res
       () => decideResponse(target.slug, ids(target), decision, values),
       (result) => {
         if (!result.done) return;
-        onClose();
+        onDecided();
         toast({ title: decisionDone[decision] });
       },
     );
