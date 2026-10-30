@@ -1,5 +1,5 @@
 begin;
-select plan(77);
+select plan(82);
 
 \ir jobs_fixture.inc
 
@@ -332,6 +332,31 @@ select is(
   replace(replace(:'p2_list_before', '"status":"submitted"', '"status":"declined"'), '"decided_at":null',
     '"decided_at":"' || (select to_json(decided_at) #>> '{}' from public.partner_responses where id = :'ra_p2') || '"'),
   'NFR-S11: P2''s own list shows only its own decision, the generated title and no employer');
+
+-- The reveal is audited the first time the name is shown anywhere, not only on the job order page -------------------------
+
+select pg_temp.req(:'acme', 'Acme shown G') as g \gset
+select pg_temp.seed_resp(:'g', :'p3') as g_p3 \gset
+select pg_temp.seed_resp(:'g', :'s1') as g_s1 \gset
+select is(pg_temp.dec(:'own1', :'acme', :'g_p3', 'selected') || pg_temp.dec(:'own1', :'acme', :'g_s1', 'shortlisted'), 'okok',
+  'the owner selects P3 and shortlists S1');
+select is(
+  pg_temp.read_as(:'padm', format('select employer_name from public.get_response(%L, %L)', :'p3', :'g_p3')) || ':'
+    || pg_temp.read_as(:'padm', format('select employer_name from public.get_response(%L, %L)', :'p3', :'g_p3')),
+  'Acme Bau:Acme Bau', 'a partner that only opens its response after the selection reads the employer''s name');
+select is(
+  (select count(*)::integer || ':' || min(metadata ->> 'cause') || ':' || min(metadata ->> 'organization_id') from audit.log
+   where action = 'requirement.employer_revealed' and entity_id = :'g'),
+  '1:selection:' || :'p3', 'exactly one requirement.employer_revealed row (cause selection), though the job order was never opened');
+select is(
+  pg_temp.read_as(:'us1', format('select count(*) from public.list_my_responses(%L) where requirement_id = %L and employer_name = %L', :'s1', :'g', 'Acme Bau'))
+    || ':' || (select count(*) from audit.log where action = 'requirement.employer_revealed' and entity_id = :'g'
+               and metadata ->> 'organization_id' = :'s1'),
+  '1:1', 'the shortlisted S1 sees the name in its response list, and that first showing is audited once');
+select is(
+  pg_temp.read_as(:'us1', format('select employer_name from public.get_response(%L, %L)', :'s1', :'g_s1')) || ':'
+    || (select count(*) from audit.log where action = 'requirement.employer_revealed' and entity_id = :'g'),
+  'Acme Bau:2', 'a later read writes no second row for S1');
 
 -- AC7: the partners are told -------------------------------------------------------------------------------------------------
 

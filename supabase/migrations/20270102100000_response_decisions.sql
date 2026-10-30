@@ -7,8 +7,9 @@
 -- are final, as withdrawn is. Only an owner or admin at aal2 of the requirement's employer decides, while the requirement
 -- is open or paused, with an optional note (1 to 1,000 characters) that the partner of that response reads and no one
 -- else. Shortlisting and selecting reveal the employer's name to that partner (private.record_requirement_reveal, the
--- first cause kept; the audit row requirement.employer_revealed is written the first time the job order functions show
--- the name, V39). A selected response opens candidate submissions for its partner (submissions_allowed, V48 reads
+-- first cause kept; the audit row requirement.employer_revealed is written once, the first time a read shows the partner
+-- the name: the job order pages (V39), the invitation page (V41), and now list_my_responses and get_response, recreated
+-- here to mark the reveal seen). A selected response opens candidate submissions for its partner (submissions_allowed, V48 reads
 -- private.submissions_allowed_for); the employer may open them for a shortlisted partner too (set_submissions_allowed).
 -- Every decision and permission is audited and tells the partner's owners and admins (response_decided, optional, email
 -- on), naming only the partner's own result. No competing partner learns of another's decision or of a selection. The
@@ -584,6 +585,198 @@ begin
         and p_message ->> 'decision' in ('shortlisted', 'selected', 'declined', 'submissions_allowed')), '{}'::jsonb)
     else '{}'::jsonb
   end);
+end;
+$$;
+
+
+-- Reveals shown anywhere -----------------------------------------------------------------------------------------------------
+
+-- Marks as seen the reveals of the partner p_org on the requirements p_requirements whose employer name a read has just
+-- shown to it, so the first showing is audited once (requirement.employer_revealed, V39) wherever it happens: the job order
+-- pages (V39), the invitation page (V41), and since V47 the partner's response list and response page. As get_job_order
+-- does, a requirement whose employer shows its name to the partner anyway (show_identity on the marketplace while the
+-- partner is eligible for the full job order) is left out: the reveal did not cause that showing.
+create function private.mark_reveals_shown(p_org uuid, p_requirements uuid[]) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_facts record;
+begin
+  if p_requirements is null or cardinality(p_requirements) = 0
+     or not exists (select 1 from private.requirement_reveals rv
+                    where rv.organization_id = p_org and rv.requirement_id = any (p_requirements) and rv.seen_at is null) then
+    return;
+  end if;
+  select * into v_facts from private.job_order_partner_facts(p_org);
+  perform private.mark_reveals_seen(p_org, array(
+    select r.id from public.workforce_requirements r
+    where r.id = any (p_requirements)
+      and not (r.show_identity and r.visibility = 'job_order_marketplace'
+        and cardinality(private.job_order_reasons(r.id, v_facts.paid, v_facts.served, v_facts.occupations)) = 0)));
+end;
+$$;
+
+revoke all on function private.mark_reveals_shown(uuid, uuid[]) from public, anon, authenticated, service_role;
+
+-- public.list_my_responses of 20261230100000_partner_responses.sql with one change: the reveals the page shows are marked
+-- seen (private.mark_reveals_shown), so the first showing of the employer's name is audited. Everything else is unchanged.
+create or replace function public.list_my_responses(p_org uuid, p_cursor uuid default null, p_limit integer default null)
+returns table (
+  id uuid,
+  requirement_id uuid,
+  invitation_id uuid,
+  status public.response_status,
+  version integer,
+  capacity integer,
+  available_from date,
+  fee_model public.fee_model,
+  fee_amount numeric,
+  fee_currency text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  withdrawn_at timestamptz,
+  decided_at timestamptz,
+  requirement_status public.requirement_status,
+  title text,
+  country_code text,
+  workers_needed integer,
+  employer_name text,
+  next_cursor uuid
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit integer := least(greatest(coalesce(p_limit, 20), 1), 50);
+  v_cursor public.partner_responses;
+begin
+  perform private.assert_invitation_partner(p_org);
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
+  if p_cursor is not null then
+    select * into v_cursor from public.partner_responses p where p.id = p_cursor and p.organization_id = p_org;
+    if not found then
+      raise exception 'CHARA_INVALID_INPUT' using detail = 'p_cursor';
+    end if;
+  end if;
+  return query
+  with page as (
+    select p.*, row_number() over (order by p.created_at desc, p.id) as n
+    from public.partner_responses p
+    where p.organization_id = p_org
+      and (p_cursor is null or p.created_at < v_cursor.created_at or (p.created_at = v_cursor.created_at and p.id > p_cursor))
+    order by p.created_at desc, p.id
+    limit v_limit + 1
+  )
+  select p.id, p.requirement_id, p.invitation_id, p.status, p.version, p.capacity, p.available_from, p.fee_model,
+    p.fee_amount, p.fee_currency, p.created_at, p.updated_at, p.withdrawn_at, p.decided_at, r.status,
+    case when nm.named then r.title else private.job_order_neutral_title(r.id) end,
+    r.country_code, r.workers_needed,
+    case when nm.named then e.display_name end,
+    case when p.n = v_limit and exists (select 1 from page x where x.n = v_limit + 1) then p.id end
+  from page p
+  join public.workforce_requirements r on r.id = p.requirement_id
+  join public.organizations e on e.id = r.organization_id
+  cross join lateral (select private.requirement_named_to(r.id, p_org) as named) nm
+  where p.n <= v_limit
+  order by p.n;
+
+  -- V47: the page names the employer of each requirement revealed to the partner; the first showing is audited.
+  perform private.mark_reveals_shown(p_org, array(
+    select p.requirement_id from public.partner_responses p
+    where p.organization_id = p_org
+      and (p_cursor is null or p.created_at < v_cursor.created_at or (p.created_at = v_cursor.created_at and p.id > p_cursor))
+    order by p.created_at desc, p.id
+    limit v_limit));
+end;
+$$;
+
+
+-- public.get_response of 20261230100000_partner_responses.sql with one change: a partner reading its response with the
+-- employer named through a reveal has the reveal marked seen (private.mark_reveals_shown). Everything else is unchanged.
+create or replace function public.get_response(p_org uuid, p_response uuid)
+returns table (
+  id uuid,
+  requirement_id uuid,
+  invitation_id uuid,
+  status public.response_status,
+  version integer,
+  capacity integer,
+  available_from date,
+  timeline_note text,
+  experience_note text,
+  fee_model public.fee_model,
+  fee_amount numeric,
+  fee_currency text,
+  notes text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  decided_at timestamptz,
+  decision_note text,
+  submissions_allowed boolean,
+  withdrawn_at timestamptz,
+  withdrawal_reason text,
+  updated_unseen boolean,
+  requirement_status public.requirement_status,
+  title text,
+  country_code text,
+  workers_needed integer,
+  max_capacity integer,
+  employer_name text,
+  partner_name text,
+  partner_slug text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_resp public.partner_responses;
+  v_row public.workforce_requirements;
+  v_employer boolean;
+  v_named boolean;
+  v_unseen boolean;
+begin
+  if private.org_type(p_org) = 'employer' then
+    perform private.assert_invitation_employer(p_org);
+    v_employer := true;
+  else
+    perform private.assert_invitation_partner(p_org);
+    v_employer := false;
+  end if;
+  perform private.check_rate_limit('job_orders', (select auth.uid()));
+  select * into v_resp from public.partner_responses p
+  where p.id = p_response and (case when v_employer then p.employer_organization_id else p.organization_id end) = p_org;
+  if not found then
+    raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  select * into v_row from public.workforce_requirements r where r.id = v_resp.requirement_id;
+  v_named := v_employer or private.requirement_named_to(v_row.id, v_resp.organization_id);
+  v_unseen := v_resp.status = 'updated' and v_resp.employer_seen_version < v_resp.version;
+  -- V47: a partner shown the employer's name through a reveal has the first showing audited, as on the job order page.
+  if not v_employer and v_named then
+    perform private.mark_reveals_shown(p_org, array[v_row.id]);
+  end if;
+  if v_employer and v_resp.employer_seen_version < v_resp.version then
+    update public.partner_responses p set employer_seen_version = p.version where p.id = v_resp.id;
+  end if;
+
+  return query select
+    v_resp.id, v_resp.requirement_id, v_resp.invitation_id, v_resp.status, v_resp.version, v_resp.capacity,
+    v_resp.available_from, v_resp.timeline_note, v_resp.experience_note, v_resp.fee_model, v_resp.fee_amount,
+    v_resp.fee_currency, v_resp.notes, v_resp.created_at, v_resp.updated_at, v_resp.decided_at, v_resp.decision_note,
+    v_resp.submissions_allowed, v_resp.withdrawn_at, v_resp.withdrawal_reason,
+    case when v_employer then v_unseen end,
+    v_row.status,
+    case when v_named then v_row.title else private.job_order_neutral_title(v_row.id) end,
+    v_row.country_code,
+    v_row.workers_needed,
+    private.response_capacity_max(v_row),
+    case when v_named and not v_employer then (select e.display_name from public.organizations e where e.id = v_row.organization_id) end,
+    case when v_employer then (select o.display_name from public.organizations o where o.id = v_resp.organization_id) end,
+    case when v_employer then (select o.slug from public.organizations o where o.id = v_resp.organization_id) end;
 end;
 $$;
 
