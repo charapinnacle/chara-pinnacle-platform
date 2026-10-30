@@ -194,6 +194,7 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expectNoAxeViolations(page);
     await selectDialog.getByRole("button", { name: "Select", exact: true }).click();
     await expect(page.getByText("Partner selected", { exact: true })).toBeVisible();
+    await expect(headers.nth(1)).toBeFocused();
     await expect(cell(page, "Status", 1)).toContainText("Selected");
     await expect(cell(page, "Decision", 1)).toHaveText("Decided");
 
@@ -223,9 +224,24 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expectNoAxeViolations(page);
     await declineDialog.getByRole("button", { name: "Decline", exact: true }).click();
     await expect(page.getByText("Response declined", { exact: true })).toBeVisible();
+    await expect(headers.nth(2)).toBeFocused();
     await expect(cell(page, "Status", 2)).toContainText("Declined");
     await expect(cell(page, "Note to the partner", 2)).toHaveText("Fee above budget");
     await expectAccessibleAtBothWidths(page);
+
+    // A selected and a declined response offer no decision, on the comparison and on their own pages.
+    for (const partner of [s1, p2]) {
+      for (const verb of ["Shortlist", "Select", "Decline"]) {
+        await expect(page.getByRole("button", { name: `${verb} ${partner.displayName}`, exact: true })).toHaveCount(0);
+      }
+    }
+    await expect(cell(page, "Decision", 2)).toHaveText("Decided");
+    for (const decided of [rs, r2]) {
+      await page.goto(`${responsesUrl(team.slug, id)}/${decided}`);
+      await expect(page.getByRole("heading", { name: "Status", level: 2 })).toBeVisible();
+      await expect(page.getByRole("button", { name: /^(Shortlist|Select|Decline) / })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /candidate submissions/ })).toHaveCount(0);
+    }
 
     expect(responseRow(rs)).toEqual({ status: "selected", decision_note: null, submissions_allowed: true });
     expect(responseRow(r1)).toEqual({ status: "shortlisted", decision_note: null, submissions_allowed: true });
