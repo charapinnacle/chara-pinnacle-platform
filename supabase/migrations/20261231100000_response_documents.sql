@@ -132,14 +132,20 @@ $$;
 revoke all on function private.queue_response_document_removal(uuid, text) from public, anon, authenticated, service_role;
 
 -- Whatever deletes a row (the partner, the clean-up, the cascade of a response, requirement or organisation, the retention
--- of the responses from V58) queues the removal of its file; a rejected file was queued when it was rejected.
+-- of the responses from V58) queues the removal of its file; a rejected file was queued when it was rejected, and a
+-- reservation whose file never arrived has nothing to remove (the reservation trigger holds the row while a file arrives,
+-- so none can arrive once the row is gone).
 create function private.partner_response_documents_removed() returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
 begin
-  perform private.queue_response_document_removal(old.organization_id, old.storage_path);
+  if old.scan_status <> 'pending' or exists (
+    select 1 from storage.objects o where o.bucket_id = 'partner-response-documents' and o.name = old.storage_path
+  ) then
+    perform private.queue_response_document_removal(old.organization_id, old.storage_path);
+  end if;
   return null;
 end;
 $$;
@@ -159,9 +165,12 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not exists (
-    select 1 from public.partner_response_documents d where d.storage_path = new.name and d.scan_status = 'pending'
-  ) then
+  -- Held until the object is committed, so a delete of the row (removal, clean-up, a stranded reservation dropped by
+  -- respond_to_invitation) waits and then sees the object.
+  perform 1 from public.partner_response_documents d
+  where d.storage_path = new.name and d.scan_status = 'pending'
+  for share;
+  if not found then
     raise exception 'CHARA_NOT_FOUND' using errcode = '42501';
   end if;
   return new;
@@ -182,7 +191,8 @@ create trigger partner_response_documents_scan
   execute function private.scan_document_webhook();
 
 -- private.rescan_pending_documents of 20261122100000 with the response documents added: a file still pending two minutes
--- after it arrived (and for one day) is announced again. At most 100 per run.
+-- after it arrived is announced again, for one day, and a response document for 30 days (the clean-up's limit for staged
+-- files), because a pending file holds up its partner's response. At most 100 per run.
 create or replace function private.rescan_pending_documents() returns integer
 language plpgsql
 security definer
@@ -194,21 +204,21 @@ declare
 begin
   for v_object in
     select o.* from (
-      select d.bucket_id, d.storage_path as name, d.created_at as since
+      select d.bucket_id, d.storage_path as name, d.created_at as since, interval '1 day' as horizon
       from public.worker_documents d
       where d.scan_status = 'pending' and d.deleted_at is null
       union all
-      select 'partner-documents', l.evidence_path, null
+      select 'partner-documents', l.evidence_path, null, interval '1 day'
       from public.partner_licences l
       where l.evidence_scan_status = 'pending'
       union all
-      select 'partner-response-documents', r.storage_path, null
+      select 'partner-response-documents', r.storage_path, null, interval '30 days'
       from public.partner_response_documents r
       where r.scan_status = 'pending'
     ) p
     join storage.objects o on o.bucket_id = p.bucket_id and o.name = p.name
     where coalesce(p.since, o.created_at) < now() - interval '2 minutes'
-      and coalesce(p.since, o.created_at) > now() - interval '1 day'
+      and coalesce(p.since, o.created_at) > now() - p.horizon
     order by coalesce(p.since, o.created_at)
     limit 100
   loop
@@ -221,6 +231,31 @@ $$;
 
 revoke all on function private.rescan_pending_documents() from public, anon, authenticated, service_role;
 
+-- Whether the file of the document p has arrived in the bucket.
+create function private.response_document_uploaded(p public.partner_response_documents) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (select 1 from storage.objects o where o.bucket_id = 'partner-response-documents' and o.name = p.storage_path)
+$$;
+
+revoke all on function private.response_document_uploaded(public.partner_response_documents) from public, anon, authenticated, service_role;
+
+-- Whether the document p is a stranded reservation: pending, reserved more than 10 minutes ago and still without its
+-- file. It neither counts against the limit nor holds up a response, which drops it.
+create function private.response_document_stranded(p public.partner_response_documents) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.scan_status = 'pending' and p.created_at < now() - interval '10 minutes' and not private.response_document_uploaded(p)
+$$;
+
+revoke all on function private.response_document_stranded(public.partner_response_documents) from public, anon, authenticated, service_role;
+
 -- Adding a file ----------------------------------------------------------------------------------------------------------------
 
 -- Reserves the name of a new supporting document of the partner p_org for the requirement p_requirement (FR-O2 step
@@ -232,7 +267,7 @@ revoke all on function private.rescan_pending_documents() from public, anon, aut
 -- would raise now (private.response_refusal: the partner must be able to respond); with a response, CHARA_INVALID_STATE
 -- with its status unless it is submitted or updated, and requirement_closed on a closed or filled requirement (a paused
 -- one keeps its responses and their edits); CHARA_LIMIT_REACHED response_documents_max when the partner already has that
--- many files for the requirement that are not rejected. The count runs under the advisory lock of the partner's
+-- many files for the requirement that are neither rejected nor stranded reservations. The count runs under the advisory lock of the partner's
 -- responses, so two uploads, or an upload and the response, never pass the limit together (NFR-A4).
 -- Writes the row (pending; staged when there is no response yet, else on the response) and one audit row
 -- response_document.added; answers the bucket, the object name, the file name and the id.
@@ -268,7 +303,8 @@ begin
   perform pg_advisory_xact_lock(hashtextextended('partner_responses:' || p_org::text, 0));
 
   select * into v_response from public.partner_responses p
-  where p.requirement_id = v_row.id and p.organization_id = p_org;
+  where p.requirement_id = v_row.id and p.organization_id = p_org
+  for share;
   if v_response.id is null then
     select * into v_check from private.response_refusal(p_org, v_row);
     if v_check.message is not null then
@@ -284,7 +320,8 @@ begin
   end if;
 
   if (select count(*) from public.partner_response_documents d
-      where d.organization_id = p_org and d.requirement_id = v_row.id and d.scan_status <> 'rejected') >= v_max then
+      where d.organization_id = p_org and d.requirement_id = v_row.id and d.scan_status <> 'rejected'
+        and not private.response_document_stranded(d)) >= v_max then
     raise exception 'CHARA_LIMIT_REACHED' using detail = 'response_documents_max';
   end if;
   perform private.count_audited_write(p_org);
@@ -426,7 +463,7 @@ begin
     raise exception 'CHARA_NOT_FOUND' using errcode = 'P0002';
   end if;
   if v_doc.response_id is not null then
-    select * into v_response from public.partner_responses p where p.id = v_doc.response_id;
+    select * into v_response from public.partner_responses p where p.id = v_doc.response_id for share;
     if v_response.status not in ('submitted', 'updated') then
       raise exception 'CHARA_INVALID_STATE' using detail = v_response.status::text;
     end if;
@@ -449,7 +486,8 @@ grant execute on function public.remove_response_document(uuid, uuid) to authent
 
 -- Drops the reservations whose file never arrived (pending two hours after the reservation without an object: an upload
 -- URL lives two hours, as for licence evidence) and the staged files that will never belong to a response (their
--- requirement is closed or filled, or they waited 30 days). Their files are queued for removal by the delete trigger;
+-- requirement is closed or filled, or they waited 30 days). A partner whose response lock is held (it is responding,
+-- adding or removing a file) is skipped until the next run. Their files are queued for removal by the delete trigger;
 -- one audit row response_document.dropped each. Returns the number dropped.
 create function private.drop_stale_response_documents() returns integer
 language plpgsql
@@ -458,23 +496,31 @@ set search_path = ''
 as $$
 declare
   v_doc record;
+  v_dropped public.partner_response_documents;
   v_count integer := 0;
 begin
   for v_doc in
-    delete from public.partner_response_documents d
-    where (d.scan_status = 'pending' and d.created_at < now() - interval '2 hours'
-           and not exists (select 1 from storage.objects o
-                           where o.bucket_id = 'partner-response-documents' and o.name = d.storage_path))
-       or (d.response_id is null and (
-             d.created_at < now() - interval '30 days'
-             or exists (select 1 from public.workforce_requirements r
-                        where r.id = d.requirement_id and r.status in ('closed', 'filled'))))
-    returning d.id, d.organization_id, d.requirement_id, d.scan_status
+    select d.id, d.organization_id from public.partner_response_documents d
+    where (d.scan_status = 'pending' and d.created_at < now() - interval '2 hours') or d.response_id is null
   loop
-    perform audit.record('response_document.dropped', 'partner_response_document', v_doc.id::text,
-      jsonb_build_object('organization_id', v_doc.organization_id, 'requirement_id', v_doc.requirement_id,
-        'scan_status', v_doc.scan_status));
+    -- A partner responding, adding or removing a file holds this lock; its files wait for the next run.
+    continue when not pg_try_advisory_xact_lock(hashtextextended('partner_responses:' || v_doc.organization_id::text, 0));
+    delete from public.partner_response_documents d
+    where d.id = v_doc.id
+      and ((d.scan_status = 'pending' and d.created_at < now() - interval '2 hours'
+            and not exists (select 1 from storage.objects o
+                            where o.bucket_id = 'partner-response-documents' and o.name = d.storage_path))
+        or (d.response_id is null and (
+              d.created_at < now() - interval '30 days'
+              or exists (select 1 from public.workforce_requirements r
+                         where r.id = d.requirement_id and r.status in ('closed', 'filled')))))
+    returning * into v_dropped;
+    continue when v_dropped.id is null;
+    perform audit.record('response_document.dropped', 'partner_response_document', v_dropped.id::text,
+      jsonb_build_object('organization_id', v_dropped.organization_id, 'requirement_id', v_dropped.requirement_id,
+        'scan_status', v_dropped.scan_status));
     v_count := v_count + 1;
+    v_dropped := null;
   end loop;
   return v_count;
 end;
@@ -487,8 +533,10 @@ select cron.schedule('response-documents-clean-up', '25 0 * * *', 'select privat
 -- Responding with the staged files -----------------------------------------------------------------------------------------------
 
 -- public.respond_to_invitation of 20261230100000_partner_responses.sql with the staged documents (FR-O2 AC5): after the
--- conditions and the proposal, a staged file of the partner for the requirement that is still pending refuses the
--- response with CHARA_DOCUMENT_NOT_SCANNED, writing nothing; the staged files scanned skipped or clean become the
+-- conditions and the proposal, the stranded reservations of the partner for the requirement (no file 10 minutes after
+-- the reservation, private.response_document_stranded) are dropped; a staged file still being scanned refuses the
+-- response with CHARA_DOCUMENT_NOT_SCANNED detail scanning, a younger reservation whose file has not arrived with detail
+-- upload_missing, either writing nothing; the staged files scanned skipped or clean become the
 -- response's, the rejected ones are deleted, and the audit row response.created counts the files attached. Everything else
 -- unchanged.
 create or replace function public.respond_to_invitation(
@@ -534,10 +582,18 @@ begin
 
   v_proposal := private.response_proposal(v_row, p_capacity, p_available_from, p_experience_note, p_fee_model, p_fee_amount,
     p_fee_currency, p_timeline_note, p_notes);
+  delete from public.partner_response_documents d
+  where d.organization_id = p_org and d.requirement_id = v_row.id and d.response_id is null
+    and private.response_document_stranded(d);
+  if exists (select 1 from public.partner_response_documents d
+             where d.organization_id = p_org and d.requirement_id = v_row.id and d.response_id is null
+               and d.scan_status = 'pending' and private.response_document_uploaded(d)) then
+    raise exception 'CHARA_DOCUMENT_NOT_SCANNED' using detail = 'scanning';
+  end if;
   if exists (select 1 from public.partner_response_documents d
              where d.organization_id = p_org and d.requirement_id = v_row.id and d.response_id is null
                and d.scan_status = 'pending') then
-    raise exception 'CHARA_DOCUMENT_NOT_SCANNED';
+    raise exception 'CHARA_DOCUMENT_NOT_SCANNED' using detail = 'upload_missing';
   end if;
   perform private.count_audited_write(p_org);
 

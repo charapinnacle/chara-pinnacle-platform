@@ -1,5 +1,5 @@
 begin;
-select plan(134);
+select plan(145);
 
 \ir jobs_fixture.inc
 
@@ -371,7 +371,7 @@ select throws_ok(format('insert into storage.objects (bucket_id, name) values ('
 select lives_ok(format('insert into storage.objects (bucket_id, name, metadata) values (''partner-response-documents'', %L, ''{"mimetype": "application/pdf", "size": 2000000}'')', :'d1_path'),
   'the reserved name accepts the file');
 select is(pg_temp.open(:'p1m', :'d1'), 'P0001|CHARA_DOCUMENT_NOT_SCANNED|', 'AC5: a file not yet scanned is never opened, even by its partner');
-select is(pg_temp.respond(:'p1m', :'p1', :'r'), 'P0001|CHARA_DOCUMENT_NOT_SCANNED|',
+select is(pg_temp.respond(:'p1m', :'p1', :'r'), 'P0001|CHARA_DOCUMENT_NOT_SCANNED|scanning',
   'AC5: responding while a file is still being checked is refused with CHARA_DOCUMENT_NOT_SCANNED');
 select is((select count(*)::integer from public.partner_responses where organization_id = :'p1'), 0, 'and writes no response');
 
@@ -558,6 +558,45 @@ select is(pg_temp.call_as(:'p1m', 'authenticated', format('select public.remove_
   'P0001|CHARA_INVALID_STATE|requirement_closed', 'a file of a response to a closed requirement stays');
 select is(pg_temp.reg(:'p1m', :'p1', :'r2', 'Closed.pdf'), 'P0001|CHARA_INVALID_STATE|requirement_closed',
   'and no file is added to it');
+
+-- Stranded reservations (review M1) -----------------------------------------------------------------------------------------------
+
+select pg_temp.req(:'acme') as r5 \gset
+select is(pg_temp.reg(:'p2o', :'p2', :'r5', 'Stranded.pdf'), 'ok', 'a reservation whose upload never happens');
+select pg_temp.result() as d_str \gset
+select current_setting('t.path') as d_str_path \gset
+alter table public.partner_response_documents disable trigger partner_response_documents_immutable;
+update public.partner_response_documents set created_at = now() - interval '11 minutes' where id = :'d_str';
+alter table public.partner_response_documents enable always trigger partner_response_documents_immutable;
+update private.settings set value = '1' where key = 'response_documents_max';
+select is(pg_temp.reg(:'p2o', :'p2', :'r5', 'Real.pdf'), 'ok',
+  'a reservation without its file for more than 10 minutes does not count against the limit');
+select pg_temp.result() as d_real \gset
+select current_setting('t.path') as d_real_path \gset
+select is(pg_temp.reg(:'p2o', :'p2', :'r5', 'Third.pdf'), 'P0001|CHARA_LIMIT_REACHED|response_documents_max',
+  'a reservation younger than 10 minutes counts');
+update private.settings set value = '5' where key = 'response_documents_max';
+select is(pg_temp.respond(:'p2o', :'p2', :'r5'), 'P0001|CHARA_DOCUMENT_NOT_SCANNED|upload_missing',
+  'a reservation younger than 10 minutes whose file has not arrived holds up the response, naming nothing');
+insert into storage.objects (bucket_id, name, metadata)
+values ('partner-response-documents', :'d_real_path', '{"mimetype": "application/pdf", "size": 2000000}');
+select is(pg_temp.respond(:'p2o', :'p2', :'r5'), 'P0001|CHARA_DOCUMENT_NOT_SCANNED|scanning',
+  'a file that arrived and is being scanned holds up the response with detail scanning');
+select is(pg_temp.scan(:'d_real', 'skipped'), 'skipped', 'it is scanned');
+select is(pg_temp.respond(:'p2o', :'p2', :'r5'), 'ok', 'the stranded reservation does not hold up the response');
+select is(
+  (select count(*)::integer from public.partner_response_documents where id = :'d_str') || ':' || pg_temp.removals(:'d_str_path')
+    || ':' || (select (response_id is not null)::text from public.partner_response_documents where id = :'d_real'),
+  '0:0:true', 'responding drops the stranded reservation without queueing a removal (there is no file) and attaches the scanned one');
+select ok(pg_get_functiondef('private.rescan_pending_documents()'::regprocedure) ~ '30 days',
+  'a pending response document with its file is announced again for 30 days, as long as it can hold up a response');
+select ok(
+  pg_get_functiondef('public.register_response_document(uuid, uuid, text, text, bigint)'::regprocedure) ~ 'p\.organization_id = p_org\s+for share'
+  and pg_get_functiondef('public.remove_response_document(uuid, uuid)'::regprocedure) ~ 'p\.id = v_doc\.response_id for share'
+  and pg_get_functiondef('private.partner_response_documents_reserved()'::regprocedure) ~ 'for share',
+  'registration and removal hold the response row, the reservation trigger holds the pending row');
+select ok(pg_get_functiondef('private.drop_stale_response_documents()'::regprocedure) ~ 'pg_try_advisory_xact_lock',
+  'the clean-up skips a partner whose response lock is held');
 
 -- Deletion and clean-up ------------------------------------------------------------------------------------------------------------------
 
