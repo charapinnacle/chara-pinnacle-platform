@@ -118,10 +118,13 @@ export function ResponseForm({
   });
   const { control, formState, handleSubmit } = form;
   const failureTitle = edit ? "Your changes were not saved" : "Your response was not sent";
-  const { submit } = useServerFormSubmit(form, { failureTitle });
+  const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle });
   const router = useRouter();
   const [limitReached, setLimitReached] = useState<UsagePrompt | null>(null);
   const [stale, setStale] = useState(false);
+  const [pollKey, setPollKey] = useState(0);
+  // The summary takes the focus after a refusal of the server; after a check of the form the first invalid field does.
+  const [refused, setRefused] = useState(false);
   const feeModel = useWatch({ control, name: "feeModel" }) as FeeModel | "";
   const experience = useWatch({ control, name: "experienceNote" });
   const currencyOptions = useMemo(() => toOptions(currencies), [currencies]);
@@ -129,12 +132,14 @@ export function ResponseForm({
   function onSubmit(values: ResponseFormValues) {
     setLimitReached(null);
     setStale(false);
+    setRefused(false);
     return submit(
       (): Promise<ResponseResult> =>
         edit
           ? updateMyResponse(slug, { responseId: edit.responseId, expectedVersion: edit.version }, values)
           : respondToRequirement(slug, requirementId, values),
       (result) => {
+        setRefused(Boolean(result.errors || result.message || result.limitReached));
         if (result.limitReached) {
           setLimitReached(result.limitReached);
           toastError(failureTitle, "Your plan's limit of responses this month is reached.");
@@ -142,6 +147,7 @@ export function ResponseForm({
         }
         if (result.message) {
           setStale(result.message === RESPONSE_MESSAGES.stale);
+          if (result.message === RESPONSE_MESSAGES.scanning || result.message === RESPONSE_MESSAGES.uploadMissing) setPollKey((key) => key + 1);
           toastError(failureTitle, result.message);
           return;
         }
@@ -154,10 +160,11 @@ export function ResponseForm({
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
+    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit, () => setRefused(false))}>
       <FormErrorSummary
         form={form}
         ids={ids}
+        summaryRef={refused ? summaryRef : undefined}
         action={
           stale ? (
             <FormButton type="button" variant="secondary" className="mt-2 w-auto" onClick={() => window.location.reload()}>
@@ -225,7 +232,7 @@ export function ResponseForm({
           description={`Anything else the employer should know about your proposal. Up to ${formatCount(NOTES_MAX)} characters.`}
         />
       </fieldset>
-      <ResponseDocuments slug={slug} requirementId={requirementId} initial={documents} max={documentsMax} />
+      <ResponseDocuments slug={slug} requirementId={requirementId} initial={documents} max={documentsMax} pollKey={pollKey} />
       {limitReached ? (
         <Notice tone="warning" role="status">
           <UpgradePrompt
