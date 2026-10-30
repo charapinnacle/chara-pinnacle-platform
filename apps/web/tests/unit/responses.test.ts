@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { addDocument, countedDocuments, mergePolled, STRANDED_AFTER_MS } from "@/lib/responses/documents";
 import {
   documentsLimitText,
   feeText,
@@ -271,8 +272,29 @@ describe("the response in words", () => {
   });
 });
 
+// The current response of the edits below: sent on 1 October 2026 with an available date that is now in the past.
+const stored = {
+  id: RESPONSE, requirement_id: REQUIREMENT, invitation_id: null, status: "submitted", version: 1, capacity: 80,
+  available_from: "2026-10-01", timeline_note: null, experience_note: "x".repeat(300), fee_model: "fee_per_hire",
+  fee_amount: 1500, fee_currency: "EUR", notes: null, created_at: "2026-10-01T10:00:00Z", updated_at: "2026-10-01T10:00:00Z",
+  decided_at: null, decision_note: null, submissions_allowed: false, withdrawn_at: null, withdrawal_reason: null, updated_unseen: null,
+  requirement_status: "open", title: "Iceland, 100 Welders", country_code: "IS", workers_needed: 100, max_capacity: 90,
+  employer_name: null, partner_name: null, partner_slug: null,
+};
+
+// The answer of each function by name, the current response for get_response.
+function answers(byName: Record<string, unknown>) {
+  rpcMock.mockImplementation(async (name: string) => (name === "get_response" ? { data: [stored], error: null } : byName[name]));
+}
+
 describe("the response actions", () => {
+  // The day of the requests is fixed, so the dates of the form stay ahead of it whenever the tests run.
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(`${TODAY}T12:00:00Z`));
     rpcMock.mockReset();
     promptsMock.mockReset();
     releasedMock.mockResolvedValue(true);
@@ -308,9 +330,28 @@ describe("the response actions", () => {
   });
 
   it("sends the expected version with an edit and says when it is stale", async () => {
-    rpcMock.mockResolvedValue(refusal("CHARA_CONFLICT", "stale"));
+    answers({ update_response: refusal("CHARA_CONFLICT", "stale") });
     expect(await updateMyResponse("p1", { responseId: RESPONSE, expectedVersion: 1 }, valid)).toEqual({ message: RESPONSE_MESSAGES.stale });
     expect(rpcMock).toHaveBeenCalledWith("update_response", expect.objectContaining({ p_response: RESPONSE, p_expected_version: 1 }));
+  });
+
+  it("keeps the stored date that is now in the past when only the notes change", async () => {
+    answers({ update_response: { data: 2, error: null } });
+    const edit = { ...valid, capacity: "80", availableFrom: "2026-10-01", notes: "Only the notes change." };
+    expect(await updateMyResponse("p1", { responseId: RESPONSE, expectedVersion: 1 }, edit)).toEqual({ responseId: RESPONSE });
+    expect(rpcMock).toHaveBeenCalledWith("update_response", expect.objectContaining({ p_available_from: "2026-10-01", p_notes: "Only the notes change." }));
+    rpcMock.mockClear();
+    expect((await updateMyResponse("p1", { responseId: RESPONSE, expectedVersion: 1 }, { ...edit, availableFrom: "2026-10-02" })).errors).toEqual({
+      availableFrom: AVAILABLE_FROM_PAST,
+    });
+    expect(rpcMock).not.toHaveBeenCalledWith("update_response", expect.anything());
+  });
+
+  it("checks the date against the day of the request, not the day the module was loaded", async () => {
+    rpcMock.mockResolvedValue({ data: RESPONSE, error: null });
+    expect((await respondToRequirement("p1", REQUIREMENT, { ...valid, availableFrom: TODAY })).responseId).toBe(RESPONSE);
+    vi.setSystemTime(new Date("2026-10-18T12:00:00Z"));
+    expect((await respondToRequirement("p1", REQUIREMENT, { ...valid, availableFrom: TODAY })).errors).toEqual({ availableFrom: AVAILABLE_FROM_PAST });
   });
 
   it("withdraws with the reason, or without one when it is empty", async () => {
@@ -327,5 +368,27 @@ describe("the response actions", () => {
     expect(await setCapacityTolerance("acme", REQUIREMENT, { percent: "10" })).toEqual({ changed: true });
     expect(rpcMock).toHaveBeenCalledWith("set_requirement_capacity_tolerance", { p_org: PARTNER.id, p_requirement: REQUIREMENT, p_percent: 10 });
     expect(await setCapacityTolerance("acme", REQUIREMENT, { percent: "101" })).toMatchObject({ errors: { percent: expect.any(String) } });
+  });
+});
+
+describe("the documents while files are sent and scanned (FR-O2 AC5)", () => {
+  const row = (id: string, scanStatus = "pending", createdAt = "2026-10-17T12:00:00Z") => ({ id, scanStatus, createdAt });
+  const now = Date.parse("2026-10-17T12:05:00Z");
+
+  it("leaves out of a poll the rows whose upload is still running, and each row once", () => {
+    expect(mergePolled([row("a"), row("b"), row("a")], new Set(["b"]))).toEqual([row("a")]);
+  });
+
+  it("adds a settled upload once, whether the poll brought its row or not", () => {
+    const scanned = row("a", "skipped");
+    expect(addDocument([scanned], row("a"))).toEqual([scanned]);
+    expect(addDocument([scanned], row("b"))).toEqual([scanned, row("b")]);
+  });
+
+  it("counts each file once, without rejected or stranded ones", () => {
+    const old = new Date(now - STRANDED_AFTER_MS - 1).toISOString();
+    const documents = [row("a"), row("b", "rejected"), row("c", "pending", old), row("d", "clean", old)];
+    expect(countedDocuments(documents, [], now)).toBe(2);
+    expect(countedDocuments(documents, [{ documentId: "a" }, { documentId: "e" }, { documentId: null }], now)).toBe(4);
   });
 });
