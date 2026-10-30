@@ -13,7 +13,10 @@ const onboardingJourneys = {
   worker: ["Your profile", "Ready"],
 } as const;
 
-type OnboardingStepsProps = { kind: keyof typeof onboardingJourneys; current: number; reopened?: number };
+// Classes, not an inline style: the content security policy refuses style attributes in the served page.
+const columns: Record<number, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 5: "grid-cols-5" };
+
+type OnboardingStepsProps ={ kind: keyof typeof onboardingJourneys; current: number; reopened?: number };
 
 export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProps) {
   const steps = onboardingJourneys[kind];
@@ -22,11 +25,7 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
       <p aria-hidden className="text-small text-muted-foreground tabular-nums sm:hidden">
         {`Step ${current + 1} of ${steps.length}: ${steps[current]}`}
       </p>
-      <ol
-        aria-label="Setting up your account"
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
-      >
+      <ol aria-label="Setting up your account" className={cn("grid", columns[steps.length])}>
         {steps.map((label, index) => {
           const state =
             index === current ? "current" : index === reopened ? "reopened" : index < current ? "done" : "upcoming";
