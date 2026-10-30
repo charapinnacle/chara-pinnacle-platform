@@ -82,6 +82,11 @@ describe("in-app notification items (FR-T1)", () => {
     ["response_received", { requirement_id: "../billing", org_slug: "acme" }, company, "A partner responded to your workforce requirement", null],
     ["response_withdrawn", { response_id: APP, requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'Manila Recruit withdrew its response to "Hamburg welders"', requirementResponsesPath("en", "acme", JOB)],
     ["response_withdrawn", {}, company, "A partner withdrew its response to your workforce requirement", null],
+    ["response_decided", { response_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", decision: "shortlisted", org_slug: "manila" }, company, 'Acme Bau shortlisted your response to "Hamburg welders"', responsePath("en", "manila", APP)],
+    ["response_decided", { response_id: APP, title: "Germany, 10 Welders", decision: "declined", org_slug: "manila" }, company, 'The employer declined your response to "Germany, 10 Welders"', responsePath("en", "manila", APP)],
+    ["response_decided", { response_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", decision: "selected", org_slug: "manila" }, company, 'Acme Bau selected your company for "Hamburg welders"', responsePath("en", "manila", APP)],
+    ["response_decided", { response_id: APP, decision: "submissions_allowed", org_slug: "manila" }, company, "The employer allows your company to submit candidates for a workforce requirement", responsePath("en", "manila", APP)],
+    ["response_decided", { response_id: "../x", decision: "constructor", org_slug: "manila" }, company, "The employer decided your response to a workforce requirement", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);

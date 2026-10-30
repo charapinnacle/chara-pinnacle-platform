@@ -427,6 +427,26 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
+  // FR-O3 step Inform, to the partner: its own decision only, the requirement as the partner knows it.
+  response_decided: {
+    label: "Responses",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name") ?? "The employer";
+      const requirement = title ? `"${title}"` : "a workforce requirement";
+      const sentences: Record<string, string> = {
+        shortlisted: `${employer} shortlisted your response to ${requirement}`,
+        selected: `${employer} selected your company for ${requirement}`,
+        declined: `${employer} declined your response to ${requirement}`,
+        submissions_allowed: `${employer} allows your company to submit candidates for ${requirement}`,
+      };
+      const decision = text(payload, "decision");
+      return {
+        title: decision && Object.hasOwn(sentences, decision) ? sentences[decision] : `${employer} decided your response to ${requirement}`,
+        href: responseHref(lang, payload),
+      };
+    },
+  },
   data_export_ready: {
     label: "Account",
     present: (payload, { lang }) => {

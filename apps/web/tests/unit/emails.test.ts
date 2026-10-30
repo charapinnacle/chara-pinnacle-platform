@@ -132,6 +132,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   requirement_closed: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila-recruit" },
   response_received: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   response_withdrawn: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  response_decided: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", employer_name: "Acme Bau", decision: "selected", org_slug: "manila-recruit" },
 };
 
 const LEAKS = {
@@ -145,6 +146,7 @@ const LEAKS = {
   fee_amount: "SECRET-FEE-1500",
   withdrawal_reason: "SECRET-WITHDRAWAL",
   experience_note: "SECRET-EXPERIENCE",
+  decision_note: "SECRET-DECISION-NOTE",
 };
 
 const KINDS = Object.keys(SAMPLES) as NotificationKind[];
@@ -245,6 +247,7 @@ describe("notification templates", () => {
       requirement_closed: invitationPath("en", "manila-recruit", APP),
       response_received: requirementResponsesPath("en", "acme-bau", JOB),
       response_withdrawn: requirementResponsesPath("en", "acme-bau", JOB),
+      response_decided: responsePath("en", "manila-recruit", APP),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -353,6 +356,30 @@ describe("notification templates", () => {
     expect(foreign.html).not.toContain("billing");
     const untitled = await renderEmail("response_withdrawn", {}, SITE);
     expect(untitled.subject).toBe("A partner withdrew its response to your workforce requirement");
+  });
+
+  it("response_decided tells the partner its own decision, never the note, and names the employer only when the payload does (FR-O3 AC7, NFR-S11)", async () => {
+    const selected = await renderEmail("response_decided", SAMPLES.response_decided, SITE);
+    expect(selected.subject).toBe("Your company is selected: Hamburg yard welders");
+    expect(selected.text).toContain('Acme Bau selected your company for "Hamburg yard welders". Your company can now submit candidates for it.');
+    expect(selected.text).toContain("Chara Pinnacle is not a party to any agreement or payment between you and the employer.");
+    expect(selected.text).toContain(`See your response ${SITE}${responsePath("en", "manila-recruit", APP)}`);
+    const declined = await renderEmail(
+      "response_decided",
+      { response_id: APP, title: "Germany, 10 Welders", decision: "declined", org_slug: "manila-recruit", decision_note: "Fee above budget" },
+      SITE,
+    );
+    expect(declined.subject).toBe("Your response is declined: Germany, 10 Welders");
+    expect(declined.text).toContain('The employer declined your company\'s response to "Germany, 10 Welders".');
+    expect(declined.text).not.toContain("Fee above budget");
+    expect(declined.text).not.toContain("not a party");
+    const shortlisted = await renderEmail("response_decided", { ...SAMPLES.response_decided, decision: "shortlisted" }, SITE);
+    expect(shortlisted.text).toContain('Acme Bau shortlisted your company\'s response to "Hamburg yard welders".');
+    const allowed = await renderEmail("response_decided", { ...SAMPLES.response_decided, decision: "submissions_allowed" }, SITE);
+    expect(allowed.subject).toBe("You can submit candidates: Hamburg yard welders");
+    const odd = await renderEmail("response_decided", { decision: "constructor", response_id: "../billing" }, SITE);
+    expect(odd.subject).toBe("The employer decided your response");
+    expect(odd.html).not.toContain("billing");
   });
 
   it("the notices of V43 to a company that responded on the marketplace link its response and name no employer (FR-M2 AC6 P5, V44)", async () => {
