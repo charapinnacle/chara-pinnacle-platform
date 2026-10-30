@@ -425,7 +425,8 @@ Deno.test("response document refusals are told apart without detail and sign not
     reply(400, { code: "P0001", message, details, hint: null });
   const cases: [Response, number, string][] = [
     [refused("CHARA_INVALID_INPUT", "file"), 400, "invalid_file"],
-    [refused("CHARA_LIMIT_REACHED", "response_documents_max"), 409, "limit_reached"],
+    [refused("CHARA_LIMIT_REACHED", "response_documents_max"), 409, "documents_limit"],
+    [refused("CHARA_LIMIT_REACHED", "job_order_responses_per_month"), 403, "response_limit"],
     [refused("CHARA_INVALID_STATE", "requirement_closed"), 409, "invalid_state"],
     [refused("CHARA_INVALID_STATE", "requirement_not_open"), 409, "invalid_state"],
     [refused("CHARA_CONSENT_REQUIRED", "employer-pays-commitment"), 403, "cannot_respond"],
@@ -445,4 +446,62 @@ Deno.test("response document refusals are told apart without detail and sign not
     assert.deepEqual(await result.json(), { error: word });
     assert.equal(signer.calls.length, 0);
   }
+});
+
+Deno.test("an upload URL that cannot be signed releases the reservation through remove_response_document: 502", async () => {
+  const user = harness({
+    [REGISTER]: reply(200, [{
+      bucket_id: "partner-response-documents",
+      object_path: RESPONSE_PATH,
+      file_name: "a.pdf",
+      document_id: RESPONSE_DOCUMENT,
+    }]),
+    "POST /rest/v1/rpc/remove_response_document": reply(200, null),
+  });
+  const signer = harness({ [RESPONSE_UPLOAD_SIGN]: reply(500, { message: "storage down" }) });
+  const original = console.error;
+  const logged: unknown[][] = [];
+  console.error = (...args: unknown[]) => logged.push(args);
+  let result: Response;
+  try {
+    result = await handleDocumentUrl(
+      request({ ...upload, fileName: "a.pdf", mime: "application/pdf", size: 10 }),
+      { userClient: () => user.client, signer: signer.client },
+    );
+  } finally {
+    console.error = original;
+  }
+  assert.equal(result.status, 502);
+  assert.deepEqual(await result.json(), { error: "unavailable" });
+  assert.deepEqual(user.calls.map((c) => [c.path, c.body]), [
+    ["/rest/v1/rpc/register_response_document", {
+      p_org: PARTNER,
+      p_requirement: REQUIREMENT,
+      p_file_name: "a.pdf",
+      p_mime: "application/pdf",
+      p_size: 10,
+    }],
+    ["/rest/v1/rpc/remove_response_document", { p_org: PARTNER, p_document: RESPONSE_DOCUMENT }],
+  ]);
+  assert.deepEqual(logged, [["document-url signing failed"]]);
+});
+
+Deno.test("a licence evidence upload that cannot be signed calls nothing more: 502", async () => {
+  const user = harness({
+    [EVIDENCE_GRANT]: reply(200, [{ bucket_id: "partner-documents", object_path: EVIDENCE, file_name: null }]),
+  });
+  const signer = harness({ [EVIDENCE_UPLOAD_SIGN]: reply(500, { message: "storage down" }) });
+  const original = console.error;
+  console.error = () => {};
+  let result: Response;
+  try {
+    result = await handleDocumentUrl(
+      request({ licenceId: LICENCE, purpose: "evidence_upload", mime: "application/pdf", size: 10 }),
+      { userClient: () => user.client, signer: signer.client },
+    );
+  } finally {
+    console.error = original;
+  }
+  assert.equal(result.status, 502);
+  assert.equal(user.calls.length, 1);
 });

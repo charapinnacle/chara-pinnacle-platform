@@ -134,8 +134,11 @@ function refusal(error: { code?: string; message?: string; details?: string | nu
   ) {
     return json(403, { error: "cannot_respond" });
   }
+  // The documents of one response and the monthly response allowance of the plan are different limits.
   if (message === "CHARA_LIMIT_REACHED") {
-    return json(409, { error: "limit_reached" });
+    return details === "response_documents_max"
+      ? json(409, { error: "documents_limit" })
+      : json(403, { error: "response_limit" });
   }
   if (message === "CHARA_INVALID_STATE" || message === "CHARA_CONFLICT") {
     return json(409, { error: "invalid_state" });
@@ -175,7 +178,8 @@ export async function handleDocumentUrl(req: Request, deps: DocumentUrlDeps): Pr
     return json(400, { error: "bad_request" });
   }
 
-  const { data, error } = await deps.userClient(authorization).rpc(ask.rpc, ask.args);
+  const caller = deps.userClient(authorization);
+  const { data, error } = await caller.rpc(ask.rpc, ask.args);
   if (error) {
     return refusal(error);
   }
@@ -189,6 +193,16 @@ export async function handleDocumentUrl(req: Request, deps: DocumentUrlDeps): Pr
     const { data: upload, error: uploadError } = await bucket.createSignedUploadUrl(grant.object_path);
     if (uploadError) {
       console.error("document-url signing failed");
+      // A response document reserved without an upload URL would hold a place of the partner's five until the clean-up.
+      if (ask.rpc === "register_response_document" && grant.document_id) {
+        const { error: removeError } = await caller.rpc("remove_response_document", {
+          p_org: ask.args.p_org,
+          p_document: grant.document_id,
+        });
+        if (removeError) {
+          console.error("document-url reservation release failed");
+        }
+      }
       return json(502, { error: "unavailable" });
     }
     return json(
