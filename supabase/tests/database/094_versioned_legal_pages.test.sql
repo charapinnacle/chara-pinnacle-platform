@@ -269,10 +269,10 @@ select is(pg_temp.fan_out('privacy-policy'), 0, 'a job that runs again queues no
 -- FR-H3 AC9 (database part): the re-consent is pending for the version, and only the current version can be accepted
 select is(
   pg_temp.call_as('00000000-0000-0000-0000-0000000f0101', 'authenticated',
-    $$select set_config('t.pending', (select string_agg(slug || ':' || version || ':' || change_summary, ',') from public.pending_reconsents() where slug = 'privacy-policy'), true)$$, 'aal1'),
+    $$select set_config('t.pending', coalesce((select string_agg(slug, ',') from public.pending_reconsents() where slug = 'privacy-policy'), 'none'), true)$$, 'aal1'),
   'ok', 'the pending list can be read'
 );
-select is(current_setting('t.pending'), 'privacy-policy:2:' || :'summary', 'AC9: the user whose latest consent is version 1 is asked for version 2 with its change summary');
+select is(current_setting('t.pending'), 'none', 'GDPR: a user who read version 1 is told of version 2 (above) and is not held to accept it');
 select is(
   pg_temp.call_as('00000000-0000-0000-0000-0000000f0101', 'authenticated', $$select public.accept_consents('[{"purpose": "privacy-policy", "version": 1}]')$$, 'aal1'),
   'P0001|CHARA_CONSENT_REQUIRED|privacy-policy', 'AC9: accepting a version that is not the current one is refused'

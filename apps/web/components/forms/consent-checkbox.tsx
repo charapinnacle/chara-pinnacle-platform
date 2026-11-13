@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/i18n/format";
 import {
   AGE_ATTESTATION_SLUG,
   ageConfirmationLabel,
+  consentVerb,
   displayTitle,
   isDraftDocument,
   type LegalDocumentSummary,
@@ -54,7 +55,7 @@ export function ConsentCheckbox<T extends FieldValues>({
       }
     >
       <span>
-        I accept the{" "}
+        {consentVerb(document.slug)}{" "}
         <LegalLink slug={document.slug} newTabLabel="(opens in a new tab)" tone="plain" className="relative z-10">
           {displayTitle(document.title)}
         </LegalLink>

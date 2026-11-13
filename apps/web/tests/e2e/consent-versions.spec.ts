@@ -36,13 +36,13 @@ test("FR-A8 AC5: a version superseded before confirmation is accepted first and 
   await expect(page.getByText("Adds the new retention periods.")).toBeVisible();
   await expectAccessibleAtBothWidths(page);
   await page.setViewportSize({ width: 1280, height: 720 });
-  const box = page.getByRole("checkbox", { name: /I accept the .*Privacy Policy/ });
+  const box = page.getByRole("checkbox", { name: /I have read the .*Privacy Policy/ });
   await expect(box).not.toBeChecked();
   await expect(page.getByRole("checkbox")).toHaveCount(1);
   expect(accountRows(user.id).account.account_kind).toBeNull();
 
   await page.getByRole("button", { name: "Accept and continue" }).click();
-  await expect(page.getByText(/^Accept the .*Privacy Policy to continue$/)).toBeVisible();
+  await expect(page.getByText(/^Confirm that you have read the .*Privacy Policy to continue$/)).toBeVisible();
   await expect(box).toBeFocused();
   await expect(page.getByText("There is a problem")).toHaveCount(0);
   expect(accountRows(user.id).account.account_kind).toBeNull();
@@ -154,6 +154,26 @@ test("FR-A8 AC10 (web part): a withdrawal holds the next sign-in on the consent 
       purpose: "worker-terms",
       action: "granted",
     });
+  } finally {
+    await deleteTestUser(user.id);
+  }
+});
+
+test("GDPR: a new Privacy Policy is told to a user who read an older one, and does not hold them on the re-consent page", async ({
+  browser,
+}) => {
+  const user = await createCommittedUser("worker");
+  try {
+    const version = publishNewVersion("privacy-policy", "Adds the retention periods of the documents.");
+    const context = await browser.newContext();
+    await signInBrowser(context, user);
+    const page = await context.newPage();
+    await page.goto("/en/dashboard/worker");
+    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+    await page.goto("/en/consent");
+    await expect(page).not.toHaveURL(/\/en\/consent/);
+    expect(accountRows(user.id).consents.filter((c) => c.purpose === "privacy-policy").at(-1)?.version).toBeLessThan(version);
+    await context.close();
   } finally {
     await deleteTestUser(user.id);
   }

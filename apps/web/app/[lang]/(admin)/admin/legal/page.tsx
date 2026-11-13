@@ -45,7 +45,7 @@ export default async function LegalPage({ params, searchParams }: PageProps<"/[l
       <Section
         id="publish"
         title="Publish a new version"
-        description="The new version is public at once. Everyone who accepted the document gets an email and is asked to accept the new version at the next sign-in."
+        description="The new version is public at once. Everyone who accepted the document gets an email; a new version of a contract is also accepted again at the next sign-in, the Privacy Policy is only notified."
       >
         <LegalForm key={chosen?.slug ?? "new"} slug={chosen?.slug ?? ""} title={chosen?.title ?? ""} />
       </Section>

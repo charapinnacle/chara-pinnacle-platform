@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/feedback/status-badge";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { LegalLink } from "@/components/forms/text-link";
 import { formatDate } from "@/lib/i18n/format";
-import { displayTitle, isDraftDocument, type LegalDocumentSummary } from "@/lib/validation/consents";
+import { consentVerb, displayTitle, isDraftDocument, type LegalDocumentSummary } from "@/lib/validation/consents";
 
 type ConsentSectionProps<T extends FieldValues> = {
   control: Control<T>;
@@ -36,7 +36,7 @@ export function ConsentSection<T extends FieldValues>({ control, name, id, docum
       </div>
       {document.changeSummary ? <p className="text-small text-pretty text-muted-foreground">{document.changeSummary}</p> : null}
       <CheckboxField control={control} name={name} id={id}>
-        I accept the {title}
+        {consentVerb(document.slug)} {title}
       </CheckboxField>
     </section>
   );
