@@ -73,9 +73,9 @@ export function ConsentForm({
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
+    <form noValidate className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <ConsentList>
+      <ConsentList className="gap-3">
         {documents.map((document) =>
           document.slug === AGE_ATTESTATION_SLUG ? (
             <ConsentCheckbox
