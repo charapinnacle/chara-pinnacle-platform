@@ -97,9 +97,9 @@ test.describe("the home page (U73)", () => {
       if (javaScriptEnabled) await search(page).getByRole("button", { name: "Search jobs" }).click();
       else await search(page).getByLabel("City: Any city").press("Enter");
       await expect(page).toHaveURL(javaScriptEnabled ? `/en/jobs?q=${marker}&city=Hamburg` : `/en/jobs?q=${marker}&country=&city=Hamburg`);
-      await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
       if (javaScriptEnabled) {
-        await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText([`Hero welder ${marker}`]);
+        await expect(page.getByRole("list", { name: "Vacancies" }).getByRole("heading", { level: 2 })).toHaveText([`Hero welder ${marker}`]);
         await expect(page.getByRole("link", { name: `Hero welder ${marker}` })).toHaveAttribute("href", `/en/jobs/${inHamburg}`);
       }
       await context.close();
@@ -155,7 +155,7 @@ test.describe("the home page (U73)", () => {
     await page.goto("/en");
     await search(page).getByRole("button", { name: "Search jobs" }).click();
     await expect(page).toHaveURL("/en/jobs");
-    await expect(page.getByRole("heading", { level: 1, name: "Find Your Next Opportunity" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: /vacanc/ })).toBeVisible();
     await expect(page.getByText("Some search options were ignored")).toHaveCount(0);
     await expect(page.getByText("No vacancies match your search")).toHaveCount(0);

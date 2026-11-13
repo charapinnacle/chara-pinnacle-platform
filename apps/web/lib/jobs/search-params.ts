@@ -71,9 +71,14 @@ function salaryIssues({ salary_min, salary_currency, salary_period }: SalaryTerm
   return issues;
 }
 
+const where = optional(
+  z.string().refine((value) => characters(value) <= MAX_TEXT, { error: "Use 100 characters or fewer in the place." }),
+);
+
 // The form checks the same fields as the address, so a value the form accepts is one the address can carry. Its values
-// stay text (an empty one is "not set") so that what it validates is what it edits.
-export const searchFormSchema = z.object({ ...filterFields, accommodation: z.boolean(), visa_support: z.boolean() }).check(
+// stay text (an empty one is "not set") so that what it validates is what it edits. The place is one field, where, as on
+// the home search: the page turns it into the country and city filters (resolvePlace).
+export const searchFormSchema = z.object({ ...filterFields, where, accommodation: z.boolean(), visa_support: z.boolean() }).check(
   (context) => {
     for (const [path, message] of salaryIssues(context.value)) {
       context.issues.push({ code: "custom", input: context.value, path: [path], message });
@@ -228,11 +233,26 @@ export function searchPath(lang: string, filters: JobSearchFilters): string {
   return query === "" ? `/${lang}/jobs` : `/${lang}/jobs?${query}`;
 }
 
+// The place of a search as the Where field shows it, in the form resolvePlace reads back: "City, Country", the country or
+// the city.
+export function placeText(filters: Pick<JobSearchFilters, "city" | "country">, countryNames: ReadonlyMap<string, string>): string {
+  const country = filters.country ? (countryNames.get(filters.country) ?? filters.country) : "";
+  return [filters.city, country].filter(Boolean).join(", ");
+}
+
+// The address of a form search: the filters with the place left to the page, which resolves where and replaces the address.
+export function formSearchPath(lang: string, values: SearchFormValues): string {
+  const path = searchPath(lang, { ...formFilters(values), country: undefined, city: undefined });
+  if (!values.where) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}${new URLSearchParams({ where: values.where })}`;
+}
+
 // The values the form shows for the filters in an address (without the page cursor).
-export function formDefaults(query: string): SearchFormInput {
+export function formDefaults(query: string, countryNames: ReadonlyMap<string, string>): SearchFormInput {
   const { filters } = parseSearchParams(Object.fromEntries(new URLSearchParams(query)));
   return {
     q: filters.q ?? "",
+    where: placeText(filters, countryNames),
     country: filters.country ?? "",
     city: filters.city ?? "",
     employer: filters.employer ?? "",

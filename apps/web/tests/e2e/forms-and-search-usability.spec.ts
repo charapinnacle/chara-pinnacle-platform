@@ -5,7 +5,7 @@ import { newApplicant, seedApplication } from "./support/applications";
 import { seedListApplicant, subscribe } from "./support/applicant-list";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
-import { addCompanyUser, newCompany, newJobUrl, seedJob } from "./support/jobs";
+import { addCompanyUser, filterMenu, newCompany, newJobUrl, openMoreFilters, seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { expect, test } from "./support/test";
 
@@ -15,59 +15,61 @@ const announcement = (page: Page): Locator => page.locator("[aria-live=polite]")
 const filtersRow = (page: Page): Locator => page.getByRole("group", { name: "Filters", exact: true });
 const moreFilters = (page: Page): Locator => page.locator("details").filter({ hasText: "More filters" });
 
+// The lists of a combobox are tried on the Currency of Find Jobs (in More filters, 157 options, and a choice there does not
+// search at once).
 async function openJobs(page: Page): Promise<void> {
   await page.goto("/en/jobs");
-  await waitForHydration(page.getByLabel("Keyword", { exact: true }));
+  await openMoreFilters(page);
 }
 
 test.describe("UX-02, PERF-01: the list of a combobox", () => {
   test("PERF-01: no option is in the page while the list is closed, and an open list holds at most 50", async ({ page }) => {
     await openJobs(page);
     await expect(optionNodes(page)).toHaveCount(0);
-    await expect(combobox(page, "Country")).toHaveAttribute("aria-expanded", "false");
+    await expect(combobox(page, "Currency")).toHaveAttribute("aria-expanded", "false");
 
-    await combobox(page, "Country").click();
-    await expect(combobox(page, "Country")).toHaveAttribute("aria-expanded", "true");
+    await combobox(page, "Currency").click();
+    await expect(combobox(page, "Currency")).toHaveAttribute("aria-expanded", "true");
     await expect(optionNodes(page)).toHaveCount(50);
     await expect(page.getByText(/^Showing 50 of \d+\. Type to narrow the list\.$/)).toBeVisible();
     await expect(announcement(page)).toHaveText(/^\d+ results available, 50 are listed\. Type to narrow the list\.$/);
 
     await page.keyboard.press("Escape");
     await expect(optionNodes(page)).toHaveCount(0);
-    await expect(combobox(page, "Country")).toHaveAttribute("aria-expanded", "false");
+    await expect(combobox(page, "Currency")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("UX-02: a click opens the list, typing narrows the whole list and a click on an option chooses it", async ({ page }) => {
     await openJobs(page);
-    await combobox(page, "Country").click();
-    await expect(page.getByRole("listbox", { name: "Country" })).toBeVisible();
+    await combobox(page, "Currency").click();
+    await expect(page.getByRole("listbox", { name: "Currency" })).toBeVisible();
 
-    await combobox(page, "Country").fill("germ");
-    await expect(optionNodes(page)).toHaveText(["Germany"]);
+    await combobox(page, "Currency").fill("hungarian");
+    await expect(optionNodes(page)).toHaveText(["HUF · Hungarian Forint"]);
     await expect(announcement(page)).toHaveText("1 result available");
     await expect(page.getByText(/^Showing \d+ of/)).toHaveCount(0);
 
-    await page.getByRole("option", { name: "Germany" }).click();
-    await expect(combobox(page, "Country")).toHaveValue("Germany");
+    await page.getByRole("option", { name: "HUF · Hungarian Forint" }).click();
+    await expect(combobox(page, "Currency")).toHaveValue("HUF · Hungarian Forint");
     await expect(optionNodes(page)).toHaveCount(0);
 
-    await combobox(page, "Country").click();
-    await expect(optionNodes(page).first()).toHaveText("Germany");
+    await combobox(page, "Currency").click();
+    await expect(optionNodes(page).first()).toHaveText("HUF · Hungarian Forint");
     await expect(optionNodes(page).first()).toHaveAttribute("aria-selected", "true");
-    await combobox(page, "Country").fill("zzzz");
+    await combobox(page, "Currency").fill("zzzz");
     await expect(optionNodes(page)).toHaveText(["No match"]);
     await expect(announcement(page)).toHaveText("No match");
   });
 
   test("UX-02: the chevron opens and closes the list, keeps the focus in the field and is at least 44 px", async ({ page }) => {
     await openJobs(page);
-    const chevron = page.getByRole("button", { name: "Show Country options" });
+    const chevron = page.getByRole("button", { name: "Show Currency options" });
     const box = await chevron.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(44);
     expect(box?.height).toBeGreaterThanOrEqual(44);
 
     await chevron.click();
-    await expect(combobox(page, "Country")).toBeFocused();
+    await expect(combobox(page, "Currency")).toBeFocused();
     await expect(optionNodes(page)).toHaveCount(50);
     const option = await optionNodes(page).first().boundingBox();
     expect(option?.height).toBeGreaterThanOrEqual(44);
@@ -79,85 +81,85 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await openJobs(page);
     const next = page.getByRole("button", { name: "Search jobs" });
     const before = await next.boundingBox();
-    await combobox(page, "Country").click();
+    await combobox(page, "Currency").click();
     await expect(optionNodes(page)).toHaveCount(50);
     expect(await next.boundingBox()).toEqual(before);
   });
 
   test("UX-02: the keyboard opens the list, moves through it, chooses with Enter and leaves with Escape and Tab", async ({ page }) => {
     await openJobs(page);
-    const country = combobox(page, "Country");
-    await country.focus();
+    const currency = combobox(page, "Currency");
+    await currency.focus();
     await expect(optionNodes(page)).toHaveCount(0);
 
     await page.keyboard.press("ArrowDown");
-    await expect(country).toHaveAttribute("aria-expanded", "true");
+    await expect(currency).toHaveAttribute("aria-expanded", "true");
     const activeText = () =>
-      country.evaluate((input) => document.getElementById(input.getAttribute("aria-activedescendant") ?? "")?.textContent ?? null);
-    expect(await activeText()).toBe("Afghanistan");
+      currency.evaluate((input) => document.getElementById(input.getAttribute("aria-activedescendant") ?? "")?.textContent ?? null);
+    expect(await activeText()).toBe("AFN · Afghan Afghani");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
-    expect(await activeText()).toBe("Albania");
+    expect(await activeText()).toBe("DZD · Algerian Dinar");
     await page.keyboard.press("ArrowUp");
-    expect(await activeText()).toBe("Åland Islands");
+    expect(await activeText()).toBe("ALL · Albanian Lek");
     await page.keyboard.press("End");
     await expect(optionNodes(page).last()).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Home");
-    expect(await activeText()).toBe("Afghanistan");
+    expect(await activeText()).toBe("AFN · Afghan Afghani");
 
     await page.keyboard.press("Escape");
-    await expect(country).toHaveAttribute("aria-expanded", "false");
-    await expect(country).toHaveValue("");
+    await expect(currency).toHaveAttribute("aria-expanded", "false");
+    await expect(currency).toHaveValue("");
 
-    await page.keyboard.type("fran");
-    await expect(optionNodes(page)).toHaveText(["France"]);
+    await page.keyboard.type("hungarian");
+    await expect(optionNodes(page)).toHaveText(["HUF · Hungarian Forint"]);
     await page.keyboard.press("Enter");
-    await expect(country).toHaveValue("France");
+    await expect(currency).toHaveValue("HUF · Hungarian Forint");
     await expect(optionNodes(page)).toHaveCount(0);
 
     await page.keyboard.press("ArrowDown");
     await page.keyboard.type("x");
     await page.keyboard.press("Tab");
-    await expect(country).toHaveAttribute("aria-expanded", "false");
-    await expect(country).toHaveValue("France");
+    await expect(currency).toHaveAttribute("aria-expanded", "false");
+    await expect(currency).toHaveValue("HUF · Hungarian Forint");
   });
 
   test("UX-02: Home and End move the text cursor until an arrow key is used, and ArrowUp opens the list", async ({ page }) => {
     await openJobs(page);
-    const country = combobox(page, "Country");
-    await country.click();
+    const currency = combobox(page, "Currency");
+    await currency.click();
     await page.keyboard.type("germany");
     await page.keyboard.press("Home");
     await page.keyboard.type("x");
-    await expect(country).toHaveValue("xgermany");
-    await expect(country).not.toHaveAttribute("aria-activedescendant");
+    await expect(currency).toHaveValue("xgermany");
+    await expect(currency).not.toHaveAttribute("aria-activedescendant");
     await page.keyboard.press("End");
-    await expect(country).not.toHaveAttribute("aria-activedescendant");
+    await expect(currency).not.toHaveAttribute("aria-activedescendant");
     await page.keyboard.press("Escape");
 
-    await country.focus();
+    await currency.focus();
     await page.keyboard.press("ArrowUp");
-    await expect(country).toHaveAttribute("aria-expanded", "true");
+    await expect(currency).toHaveAttribute("aria-expanded", "true");
     await expect(optionNodes(page)).toHaveCount(50);
   });
 
   test("UX-02: a chosen option beyond the first 50 is listed and highlighted when the list opens again", async ({ page }) => {
     await openJobs(page);
-    const country = combobox(page, "Country");
-    await country.fill("zimbabwe");
-    await page.getByRole("option", { name: "Zimbabwe" }).click();
-    await expect(country).toHaveValue("Zimbabwe");
+    const currency = combobox(page, "Currency");
+    await currency.fill("zimbabwe");
+    await page.getByRole("option", { name: "ZWG · Zimbabwean Gold" }).click();
+    await expect(currency).toHaveValue("ZWG · Zimbabwean Gold");
 
-    await country.click();
+    await currency.click();
     await expect(optionNodes(page)).toHaveCount(50);
-    await expect(optionNodes(page).last()).toHaveText("Zimbabwe");
+    await expect(optionNodes(page).last()).toHaveText("ZWG · Zimbabwean Gold");
     await expect(optionNodes(page).last()).toHaveAttribute("aria-selected", "true");
-    await expect(country).toHaveAttribute("aria-activedescendant", /-option-49$/);
+    await expect(currency).toHaveAttribute("aria-activedescendant", /-option-49$/);
   });
 
   test("UX-02: the list has no accessibility violation when it is open, on a wide screen and on a phone", async ({ page, browser }) => {
     await openJobs(page);
-    await combobox(page, "Country").click();
+    await combobox(page, "Currency").click();
     await expect(optionNodes(page)).toHaveCount(50);
     await page.keyboard.press("ArrowDown");
     await expectNoAxeViolations(page);
@@ -165,7 +167,7 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     const context = await browser.newContext(PHONE);
     const phone = await context.newPage();
     await openJobs(phone);
-    await combobox(phone, "Country").click();
+    await combobox(phone, "Currency").click();
     await phone.keyboard.press("ArrowDown");
     await expect(optionNodes(phone)).toHaveCount(50);
     await expectNoAxeViolations(phone);
@@ -195,13 +197,13 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     const context = await browser.newContext({ ...PHONE, hasTouch: true, isMobile: true });
     const page = await context.newPage();
     await openJobs(page);
-    await combobox(page, "Country").tap();
+    await combobox(page, "Currency").tap();
     await expect(optionNodes(page)).toHaveCount(50);
-    await combobox(page, "Country").fill("germany");
-    await page.getByRole("option", { name: "Germany" }).tap();
-    await expect(combobox(page, "Country")).toHaveValue("Germany");
+    await combobox(page, "Currency").fill("hungarian");
+    await page.getByRole("option", { name: "HUF · Hungarian Forint" }).tap();
+    await expect(combobox(page, "Currency")).toHaveValue("HUF · Hungarian Forint");
     await expect(optionNodes(page)).toHaveCount(0);
-    await page.getByRole("button", { name: "Show Country options" }).tap();
+    await page.getByRole("button", { name: "Show Currency options" }).tap();
     await expect(optionNodes(page)).toHaveCount(50);
     await context.close();
   });
@@ -270,23 +272,29 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
   });
 });
 
-test.describe("UX-02: the country of the vacancy search without JavaScript", () => {
+test.describe("UX-02: the filters of the vacancy search without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("a native select takes the place of the combobox and the form searches by the country code", async ({ page }) => {
+  test("a filter menu opens, a native select takes the place of the combobox, and the place becomes the country", async ({ page }) => {
     await page.goto("/en/jobs");
-    await expect(page.locator("#search-country")).toBeHidden();
-    await page.locator("select[name=country]").selectOption({ label: "Germany" });
+    await filterMenu(page, "Industry").locator("summary").click();
+    await expect(filterMenu(page, "Industry")).toHaveAttribute("open", "");
+    await expect(page.locator("#search-industry")).toBeHidden();
+    await page.locator("select[name=industry]").selectOption({ label: "Manufacturing" });
     await page.getByLabel("Keyword", { exact: true }).fill("welder");
+    await page.getByLabel("Where", { exact: true }).fill("Germany");
     await page.getByRole("button", { name: "Search jobs" }).click();
     await expect(page).toHaveURL(/[?&]country=DE(&|$)/);
+    await expect(page).toHaveURL(/[?&]industry=C(&|$)/);
     await expect(page).toHaveURL(/[?&]q=welder(&|$)/);
     await expect(page.getByRole("link", { name: "Remove filter Country: Germany" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Remove filter Industry: Manufacturing" })).toBeVisible();
+    await expect(page.getByLabel("Where", { exact: true })).toHaveValue("Germany");
   });
 });
 
 test.describe("UX-06: the vacancy search puts the results first", () => {
-  test("a phone sees the keyword, the city, the country, the row of filters and the results, and opens More filters with a disclosure", async ({ browser }) => {
+  test("a phone sees the keyword, the place, the row of filters and the results, and opens More filters with a disclosure", async ({ browser }) => {
     const company = await newCompany();
     const marker = `zq${Date.now().toString(36)}`;
     seedJob(company, { title: `Welder ${marker}`, status: "open" });
@@ -297,8 +305,7 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
 
     await expect(moreFilters(page)).not.toHaveAttribute("open", "");
     await expect(page.getByLabel("Keyword", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("City", { exact: true })).toBeVisible();
-    await expect(combobox(page, "Country")).toBeVisible();
+    await expect(page.getByLabel("Where", { exact: true })).toBeVisible();
     await expect(filtersRow(page)).toBeVisible();
     await expect(page.getByLabel("Salary at least")).toBeHidden();
     const card = page.getByRole("heading", { name: `Welder ${marker}` });
@@ -311,19 +318,19 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
       await expect(page.getByLabel(label, { exact: true }).first(), label).toBeVisible();
     }
     await expectNoAxeViolations(page);
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    // On a phone the menu is a sheet over a dimmed page, which covers the chip: Escape or a press on the page closes it.
+    await page.keyboard.press("Escape");
     await expect(page.getByLabel("Salary at least")).toBeHidden();
     await context.close();
   });
 
-  test("a wide screen shows the four dropdowns in one row under the search bar and the results below them", async ({ page }) => {
-    await openJobs(page);
+  test("a wide screen shows the five filter chips in one row under the search bar and the results below them", async ({ page }) => {
+    await page.goto("/en/jobs");
+    await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await expect(filtersRow(page)).toBeVisible();
-    const boxes = await Promise.all(
-      ["Occupation", "Industry"].map((name) => combobox(page, name).boundingBox()),
-    );
-    const selects = await Promise.all(["Employment type", "Recruitment"].map((name) => page.getByLabel(name, { exact: true }).boundingBox()));
-    const tops = [...boxes, ...selects].map((box) => Math.round(box?.y ?? -1));
+    const chips = filtersRow(page).locator("summary");
+    await expect(chips).toHaveText(["Occupation", "Industry", "Employment type", "Open to", "More filters"]);
+    const tops = (await Promise.all((await chips.all()).map((chip) => chip.boundingBox()))).map((box) => Math.round(box?.y ?? -1));
     expect(new Set(tops).size).toBe(1);
     const keyword = await page.getByLabel("Keyword", { exact: true }).boundingBox();
     const results = await page.getByRole("status").filter({ hasText: /vacanc/ }).boundingBox();
@@ -336,10 +343,11 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
   test("a filter that the form refuses opens the closed More filters and names the problem", async ({ browser }) => {
     const context = await browser.newContext(PHONE);
     const page = await context.newPage();
-    await openJobs(page);
+    await page.goto("/en/jobs");
+    await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await moreFilters(page).getByText("More filters", { exact: true }).click();
     await page.getByLabel("Salary at least").fill("2800");
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await page.keyboard.press("Escape");
     await expect(page.getByLabel("Salary at least")).toBeHidden();
     await page.getByRole("button", { name: "Search jobs" }).click();
     await expect(moreFilters(page)).toHaveAttribute("open", "");
@@ -367,7 +375,7 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     await expect(page).toHaveURL(
       /\/en\/jobs\?q=welder&employment_type=full_time&salary_min=2800&salary_currency=EUR&salary_period=month&accommodation=true$/,
     );
-    await expect(combobox(page, "Country")).toHaveValue("");
+    await expect(page.getByLabel("Where", { exact: true })).toHaveValue("");
     await expect(chips).toHaveCount(4);
 
     await page.getByRole("link", { name: /^Remove filter Minimum salary/ }).click();
@@ -388,7 +396,6 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     const context = await browser.newContext(PHONE);
     const page = await context.newPage();
     await openJobs(page);
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
     for (const name of ["Accommodation provided", "Visa support offered"]) {
       const row = page.getByRole("checkbox", { name }).locator("xpath=ancestor::*[@data-slot='field'][1]");
       expect((await row.boundingBox())?.height, name).toBeGreaterThanOrEqual(44);

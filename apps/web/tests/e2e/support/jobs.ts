@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { waitForHydration } from "./hydration";
 import { createCommittedUser } from "./login";
 import { execute, literal, query } from "./db";
@@ -65,6 +65,18 @@ export async function openMoreFilters(page: Page): Promise<void> {
   const details = page.locator("details").filter({ hasText: "More filters" });
   if ((await details.getAttribute("open")) === null) await details.getByText("More filters", { exact: true }).click();
   await expect(details).toHaveAttribute("open", "");
+}
+
+// A filter menu of Find Jobs (Occupation, Industry, Employment type, Open to): a chip that opens its field. With JavaScript
+// a choice in it searches at once.
+export function filterMenu(page: Page, chip: string): Locator {
+  return page.getByRole("group", { name: "Filters", exact: true }).locator("details").filter({ has: page.locator("summary", { hasText: chip }) });
+}
+
+export async function openFilter(page: Page, chip: string): Promise<void> {
+  const menu = filterMenu(page, chip);
+  if ((await menu.getAttribute("open")) === null) await menu.locator("summary").click();
+  await expect(menu).toHaveAttribute("open", "");
 }
 
 export interface JobDetails {

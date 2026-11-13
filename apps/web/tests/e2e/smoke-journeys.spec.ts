@@ -71,7 +71,9 @@ test.describe("smoke: the five main journeys end to end", () => {
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
     await page.getByRole("button", { name: "Search jobs" }).click();
+    // The title opens the vacancy in a dialog over the list, which links to its page.
     await page.getByRole("link", { name: title, exact: true }).click();
+    await page.getByRole("dialog", { name: title }).getByRole("link", { name: "Open the vacancy page" }).click();
     await expect(page).toHaveURL(`/en/jobs/${jobId}`);
     await page.getByRole("link", { name: /^Apply now/ }).click();
     await waitForHydration(page.getByLabel("Cover note (optional)"));
