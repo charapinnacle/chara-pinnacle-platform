@@ -38,27 +38,32 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
 
   return (
     <PageContainer layout="page" className="grid gap-8">
-      <PageHeader title="Find Your Next Opportunity" className="animate-rise" />
+      <div className="grid gap-6 rounded-3xl bg-accent p-4 sm:gap-8 sm:p-10">
+        <PageHeader title="Find Your Next Opportunity" className="animate-rise">
+          <span aria-hidden className="order-first mb-2 h-1 w-12 rounded-full bg-brand" />
+        </PageHeader>
 
-      {ignored.length > 0 ? (
-        <Notice tone="warning" role="alert">
-          <p className="font-semibold">Some search options were ignored</p>
-          <ul className="list-disc ps-5">
-            {ignored.map((message) => (
-              <li key={message}>{message}</li>
-            ))}
-          </ul>
-        </Notice>
-      ) : null}
+        {ignored.length > 0 ? (
+          <Notice tone="warning" role="alert">
+            <p className="font-semibold">Some search options were ignored</p>
+            <ul className="list-disc ps-5">
+              {ignored.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </Notice>
+        ) : null}
 
-      <JobSearchForm
-        lang={lang}
-        query={searchQuery({ ...filters, cursor: undefined })}
-        occupations={occupations}
-        industries={industries}
-        countries={countries}
-        currencies={currencies}
-      />
+        <JobSearchForm
+          lang={lang}
+          query={searchQuery({ ...filters, cursor: undefined })}
+          occupations={occupations}
+          industries={industries}
+          countries={countries}
+          currencies={currencies}
+        />
+      </div>
+
       <div className="grid gap-4">
         <ActiveFilters chips={chips} />
         <Suspense key={searchQuery(filters)} fallback={<LoadingSkeleton rows={5} />}>

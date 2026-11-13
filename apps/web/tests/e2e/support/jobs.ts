@@ -59,11 +59,11 @@ export async function chooseFromList(page: Page, label: string, search: string, 
   await page.getByRole("option", { name: option }).first().click();
 }
 
-// The More filters disclosure of Find Jobs (salary, accommodation and visa support): closed until it is opened.
+// The Filters disclosure of Find Jobs (every filter but the keyword and the place): closed until it is opened.
 export async function openMoreFilters(page: Page): Promise<void> {
   await waitForHydration(page.getByLabel("Keyword", { exact: true }));
-  const details = page.locator("details").filter({ hasText: "More filters" });
-  if ((await details.getAttribute("open")) === null) await details.getByText("More filters", { exact: true }).click();
+  const details = page.getByRole("search", { name: "Search jobs" }).locator("details");
+  if ((await details.getAttribute("open")) === null) await details.locator("summary").click();
   await expect(details).toHaveAttribute("open", "");
 }
 

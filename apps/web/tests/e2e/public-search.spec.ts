@@ -37,8 +37,8 @@ test.describe("public vacancy search", () => {
     await waitForHydration(page.getByLabel("Keyword", { exact: true }));
     await page.getByLabel("Keyword", { exact: true }).fill(marker);
     await chooseFromList(page, "Country", "Germany", /^Germany$/);
-    await page.getByLabel("Employment type").selectOption("full_time");
     await openMoreFilters(page);
+    await page.getByLabel("Employment type").selectOption("full_time");
     await page.getByLabel("Salary at least").fill("3000");
     await chooseFromList(page, "Currency", "EUR", /^EUR /);
     await page.getByLabel("Pay period").selectOption("month");
@@ -131,13 +131,13 @@ test.describe("public vacancy search", () => {
     expect(text).not.toContain(organization.legal_name);
     expect(text).not.toContain(company.owner.email);
 
+    await openMoreFilters(page);
     for (const label of ["Country", "Occupation", "Industry"]) {
       await expect(page.getByRole("combobox", { name: label, exact: true }), label).toBeVisible();
     }
     for (const label of ["Keyword", "City", "Employment type", "Recruitment"]) {
       await expect(page.getByLabel(label, { exact: true }), label).toBeVisible();
     }
-    await openMoreFilters(page);
     await expect(page.getByRole("combobox", { name: "Currency", exact: true })).toBeVisible();
     for (const label of ["Salary at least", "Pay period", "Accommodation provided", "Visa support offered"]) {
       await expect(page.getByLabel(label, { exact: true }), label).toBeVisible();

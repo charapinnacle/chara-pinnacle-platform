@@ -36,6 +36,8 @@ const recruitmentOptions = [
   { value: "international", label: recruitmentPreferenceLabels.international },
 ];
 
+const FILTER_FIELDS = ["occupation", "industry", "employment_type", "recruitment", "employer", "salary_min", "accommodation", "visa_support"] as const;
+
 // The address is the state of the search: the form only edits it. Submitting writes the filters to the address, which
 // shows the first page of the new search; going back to an earlier address puts its filters back into the form.
 export function JobSearchForm({ lang, query, occupations, industries, countries, currencies }: JobSearchFormProps) {
@@ -49,6 +51,8 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
   const { control, handleSubmit, reset } = form;
   const [country, city] = useWatch({ control, name: ["country", "city"] });
   const cities = useCitySuggestions(country ?? "", city ?? "");
+  const applied = formDefaults(query);
+  const activeFilters = FILTER_FIELDS.filter((name) => applied[name]).length;
 
   useEffect(() => {
     reset(formDefaults(query));
@@ -63,7 +67,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
       noValidate
       role="search"
       aria-label="Search jobs"
-      className="grid gap-4"
+      className="grid gap-4 rounded-2xl border bg-card p-3 shadow-card sm:p-5"
       onSubmit={handleSubmit(search, () => setMoreOpen(true))}
     >
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
@@ -98,56 +102,61 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         </FormButton>
       </div>
 
-      <div role="group" aria-label="Filters" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <ComboboxField
-          control={control}
-          name="occupation"
-          id="search-occupation"
-          label="Occupation"
-          hideLabel
-          placeholder="Any occupation"
-          emptyText="No matching occupation"
-          options={occupations.map(({ code, label, synonyms }) => ({
-            value: code,
-            label,
-            keywords: [code, ...synonyms].join(" "),
-          }))}
-        />
-        <ComboboxField
-          control={control}
-          name="industry"
-          id="search-industry"
-          label="Industry"
-          hideLabel
-          placeholder="Any industry"
-          options={toOptions(industries)}
-        />
-        <SelectField
-          control={control}
-          name="employment_type"
-          id="search-employment-type"
-          label="Employment type"
-          hideLabel
-          placeholder="Any employment type"
-          options={employmentTypeOptions}
-        />
-        <SelectField
-          control={control}
-          name="recruitment"
-          id="search-recruitment"
-          label="Recruitment"
-          hideLabel
-          placeholder="Local and international"
-          options={recruitmentOptions}
-        />
-      </div>
-
       <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 text-body font-medium">
-          More filters
+        <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 text-body font-medium text-muted-foreground transition-colors hover:text-foreground group-open:text-foreground">
+          Filters
+          {activeFilters > 0 ? (
+            <span className="rounded-full bg-primary px-2 text-xs leading-5 font-semibold text-primary-foreground tabular-nums">
+              {activeFilters}
+              <span className="sr-only"> active</span>
+            </span>
+          ) : null}
           <ChevronDown aria-hidden className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
         </summary>
         <div className="grid gap-5 pt-3">
+          <div role="group" aria-label="Filters" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ComboboxField
+              control={control}
+              name="occupation"
+              id="search-occupation"
+              label="Occupation"
+              hideLabel
+              placeholder="Any occupation"
+              emptyText="No matching occupation"
+              options={occupations.map(({ code, label, synonyms }) => ({
+                value: code,
+                label,
+                keywords: [code, ...synonyms].join(" "),
+              }))}
+            />
+            <ComboboxField
+              control={control}
+              name="industry"
+              id="search-industry"
+              label="Industry"
+              hideLabel
+              placeholder="Any industry"
+              options={toOptions(industries)}
+            />
+            <SelectField
+              control={control}
+              name="employment_type"
+              id="search-employment-type"
+              label="Employment type"
+              hideLabel
+              placeholder="Any employment type"
+              options={employmentTypeOptions}
+            />
+            <SelectField
+              control={control}
+              name="recruitment"
+              id="search-recruitment"
+              label="Recruitment"
+              hideLabel
+              placeholder="Local and international"
+              options={recruitmentOptions}
+            />
+          </div>
           <div className="sm:max-w-sm">
             <InputField
               control={control}
