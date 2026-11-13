@@ -5,7 +5,7 @@ import { newApplicant, seedApplication } from "./support/applications";
 import { seedListApplicant, subscribe } from "./support/applicant-list";
 import { expectNoAxeViolations } from "./support/axe";
 import { waitForHydration } from "./support/hydration";
-import { addCompanyUser, newCompany, newJobUrl, seedJob } from "./support/jobs";
+import { addCompanyUser, newCompany, newJobUrl, openMoreFilters, seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { expect, test } from "./support/test";
 
@@ -13,7 +13,7 @@ const combobox = (page: Page, name: string): Locator => page.getByRole("combobox
 const optionNodes = (page: Page): Locator => page.locator("[role=option]");
 const announcement = (page: Page): Locator => page.locator("[aria-live=polite]").filter({ hasText: /result|match/i });
 const filtersRow = (page: Page): Locator => page.getByRole("group", { name: "Filters", exact: true });
-const moreFilters = (page: Page): Locator => page.locator("details").filter({ hasText: "More filters" });
+const moreFilters = (page: Page): Locator => page.getByRole("search", { name: "Search jobs" }).locator("details");
 
 async function openJobs(page: Page): Promise<void> {
   await page.goto("/en/jobs");
@@ -286,7 +286,7 @@ test.describe("UX-02: the country of the vacancy search without JavaScript", () 
 });
 
 test.describe("UX-06: the vacancy search puts the results first", () => {
-  test("a phone sees the keyword, the city, the country, the row of filters and the results, and opens More filters with a disclosure", async ({ browser }) => {
+  test("a phone sees the keyword, the city, the country and the results, and opens the filters with a disclosure", async ({ browser }) => {
     const company = await newCompany();
     const marker = `zq${Date.now().toString(36)}`;
     seedJob(company, { title: `Welder ${marker}`, status: "open" });
@@ -299,25 +299,27 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     await expect(page.getByLabel("Keyword", { exact: true })).toBeVisible();
     await expect(page.getByLabel("City", { exact: true })).toBeVisible();
     await expect(combobox(page, "Country")).toBeVisible();
-    await expect(filtersRow(page)).toBeVisible();
+    await expect(filtersRow(page)).toBeHidden();
     await expect(page.getByLabel("Salary at least")).toBeHidden();
     const card = page.getByRole("heading", { name: `Welder ${marker}` });
     await expect(card).toBeVisible();
     expect((await card.boundingBox())?.y).toBeLessThan(900);
 
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await moreFilters(page).locator("summary").click();
     await expect(moreFilters(page)).toHaveAttribute("open", "");
+    await expect(filtersRow(page)).toBeVisible();
     for (const label of ["Salary at least", "Currency", "Pay period"]) {
       await expect(page.getByLabel(label, { exact: true }).first(), label).toBeVisible();
     }
     await expectNoAxeViolations(page);
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await moreFilters(page).locator("summary").click();
     await expect(page.getByLabel("Salary at least")).toBeHidden();
     await context.close();
   });
 
-  test("a wide screen shows the four dropdowns in one row under the search bar and the results below them", async ({ page }) => {
+  test("a wide screen opens the filters to the four dropdowns in one row under the search bar, with the results below them", async ({ page }) => {
     await openJobs(page);
+    await openMoreFilters(page);
     await expect(filtersRow(page)).toBeVisible();
     const boxes = await Promise.all(
       ["Occupation", "Industry"].map((name) => combobox(page, name).boundingBox()),
@@ -333,13 +335,13 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     await expectNoAxeViolations(page);
   });
 
-  test("a filter that the form refuses opens the closed More filters and names the problem", async ({ browser }) => {
+  test("a filter that the form refuses opens the closed filters and names the problem", async ({ browser }) => {
     const context = await browser.newContext(PHONE);
     const page = await context.newPage();
     await openJobs(page);
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await moreFilters(page).locator("summary").click();
     await page.getByLabel("Salary at least").fill("2800");
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await moreFilters(page).locator("summary").click();
     await expect(page.getByLabel("Salary at least")).toBeHidden();
     await page.getByRole("button", { name: "Search jobs" }).click();
     await expect(moreFilters(page)).toHaveAttribute("open", "");
@@ -388,7 +390,7 @@ test.describe("UX-06: the vacancy search puts the results first", () => {
     const context = await browser.newContext(PHONE);
     const page = await context.newPage();
     await openJobs(page);
-    await moreFilters(page).getByText("More filters", { exact: true }).click();
+    await moreFilters(page).locator("summary").click();
     for (const name of ["Accommodation provided", "Visa support offered"]) {
       const row = page.getByRole("checkbox", { name }).locator("xpath=ancestor::*[@data-slot='field'][1]");
       expect((await row.boundingBox())?.height, name).toBeGreaterThanOrEqual(44);

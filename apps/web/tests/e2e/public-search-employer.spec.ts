@@ -14,7 +14,7 @@ function rename(organizationId: string, displayName: string): void {
 }
 
 test.describe("the Employer filter of Find Jobs", () => {
-  test("FR-C3: the Employer field is in More filters, narrows the results by part of the name, is in the address and has a chip", async ({ page }) => {
+  test("FR-C3: the Employer field is in the filters, narrows the results by part of the name, is in the address and has a chip", async ({ page }) => {
     const marker = `zq${uniqueToken()}`;
     const first = await newCompany();
     const second = await newCompany();
