@@ -245,9 +245,9 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await expect(optionNodes(page)).toHaveCount(50);
     await expect(page.getByText(/^Showing 50 of \d+\./)).toBeVisible();
     await page.keyboard.type("7212");
-    await expect(optionNodes(page)).toHaveText([/^7212 · Welders and flame cutters$/]);
+    await expect(optionNodes(page)).toHaveText([/^Welders and flame cutters$/]);
     await page.keyboard.press("Enter");
-    await expect(occupation).toHaveValue(/^7212 · Welders and flame cutters$/);
+    await expect(occupation).toHaveValue(/^Welders and flame cutters$/);
     await expect(optionNodes(page)).toHaveCount(0);
 
     await combobox(page, "Country").click();
@@ -264,8 +264,8 @@ test.describe("UX-02, PERF-01: the list of a combobox", () => {
     await combobox(page, "Occupation").tap();
     await expect(optionNodes(page)).toHaveCount(50);
     await combobox(page, "Occupation").fill("7212");
-    await page.getByRole("option", { name: /^7212 · / }).tap();
-    await expect(combobox(page, "Occupation")).toHaveValue(/^7212 · Welders and flame cutters$/);
+    await page.getByRole("option", { name: /^Welders and flame cutters$/ }).tap();
+    await expect(combobox(page, "Occupation")).toHaveValue(/^Welders and flame cutters$/);
     await context.close();
   });
 });

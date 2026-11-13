@@ -11,7 +11,7 @@ test.describe("candidate passport: sections", () => {
 
     const occupation = page.getByRole("combobox", { name: "Occupation", exact: true });
     await occupation.fill("electrician");
-    const electricians = page.getByRole("option", { name: /^7411 · Building and related electricians$/ });
+    const electricians = page.getByRole("option", { name: /^Building and related electricians$/ });
     await expect(electricians).toBeVisible();
     await expect(page.getByRole("listbox", { name: "Occupation" }).getByRole("option")).toHaveCount(2);
     await occupation.press("ArrowDown");
@@ -58,7 +58,7 @@ test.describe("candidate passport: sections", () => {
 
     await page.reload();
     await expect(page.getByRole("combobox", { name: "Occupation", exact: true })).toHaveValue(
-      "7411 · Building and related electricians",
+      "Building and related electricians",
     );
     await expect(page.getByRole("button", { name: "Remove Welding" })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "English (B2)" })).toBeVisible();
@@ -84,7 +84,7 @@ test.describe("candidate passport: sections", () => {
     await occupation.fill("xyzzy");
     await expect(page.getByRole("option", { name: "No matching occupation" })).toBeVisible();
     await page.getByRole("heading", { name: "Skills" }).click();
-    await expect(occupation).toHaveValue("7411 · Building and related electricians");
+    await expect(occupation).toHaveValue("Building and related electricians");
     expect(profileRows(user.id)[0].occupation_id).toBe("7411");
 
     await page.goto("/en/dashboard/worker");

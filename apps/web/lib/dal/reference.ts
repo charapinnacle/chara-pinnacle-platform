@@ -51,7 +51,7 @@ export const getLanguages = cached("languages", () => readNamed("languages"));
 export const getOccupations = cached("occupations", async (): Promise<OccupationItem[]> => {
   const supabase = anonymousClient();
   return readAll("occupations", (from) =>
-    supabase.from("occupations").select("code, label, synonyms", { count: "exact" }).order("code").range(from, from + PAGE_SIZE - 1),
+    supabase.from("occupations").select("code, label, synonyms", { count: "exact" }).order("label").order("code").range(from, from + PAGE_SIZE - 1),
   );
 });
 
