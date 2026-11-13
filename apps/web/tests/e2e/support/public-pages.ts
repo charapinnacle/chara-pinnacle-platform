@@ -20,7 +20,8 @@ export const LEGAL_SLUGS = [
 // about Chara Pinnacle are in the footer (P18).
 export const HEADER_LABELS = ["Find jobs", "For employers", "How it works", "Post a Job", "Sign in"];
 // What innerText reads: buttons and header links are drawn in Title Case (text-transform), their text stays as written.
-export const titleCase = (label: string) => label.replace(/(^|\s)\S/g, (start) => start.toUpperCase());
+// The article of Post a Job is kept lowercase by its own normal-case span.
+export const titleCase = (label: string) => label.replace(/(^|\s)(?!a\s)\S/g, (start) => start.toUpperCase());
 export const HEADER_SHOWN = HEADER_LABELS.map(titleCase);
 export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a Job", "Sign in"];
 
