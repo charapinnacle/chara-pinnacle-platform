@@ -115,10 +115,10 @@ test.describe("create vacancy", () => {
     await occupation.fill("weld");
     await expect(options.filter({ hasText: "Welders and flame cutters" })).toHaveCount(1);
     await occupation.fill("welding");
-    await expect(options).toHaveText(["7212 · Welders and flame cutters"]);
+    await expect(options).toHaveText(["Welders and flame cutters"]);
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
-    await expect(occupation).toHaveValue("7212 · Welders and flame cutters");
+    await expect(occupation).toHaveValue("Welders and flame cutters");
 
     await page.getByLabel("Title", { exact: true }).fill("Welder");
     await page.getByLabel("Description", { exact: true }).fill(DESCRIPTION);
@@ -258,7 +258,7 @@ test.describe("create vacancy", () => {
     await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Failing welder");
     await expect(page.getByLabel("City", { exact: true })).toHaveValue("Hamburg");
     await expect(page.getByLabel("Description", { exact: true })).toHaveValue(DESCRIPTION);
-    await expect(page.getByRole("combobox", { name: "Occupation", exact: true })).toHaveValue("7212 · Welders and flame cutters");
+    await expect(page.getByRole("combobox", { name: "Occupation", exact: true })).toHaveValue("Welders and flame cutters");
     await expect(page.getByRole("button", { name: "Save vacancy" })).toBeEnabled();
     expect(jobRows(company.id)).toEqual([]);
 

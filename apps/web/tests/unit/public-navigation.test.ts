@@ -55,7 +55,7 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
   it("sets the public footer in three columns, Platform, Company and Legal, and ends it with the index of all legal documents (every document is two clicks away)", () => {
     expect(publicFooterColumns.map(({ title }) => title)).toEqual(["Platform", "Company", "Legal"]);
     expect(publicFooterColumns.map(({ links }) => links.map(({ label }) => label))).toEqual([
-      ["Find jobs", "For employers", "How Chara Pinnacle works", "Pricing"],
+      ["Find jobs", "For employers", "How Chara Pinnacle works"],
       ["About", "Trust & Safety", "Contact"],
       ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"],
     ]);
@@ -63,7 +63,6 @@ describe("the navigation of the public pages (FR-H1 AC3, D90)", () => {
       "jobs",
       "employers",
       "how-it-works",
-      "pricing",
       "about",
       "trust-safety",
       "contact",

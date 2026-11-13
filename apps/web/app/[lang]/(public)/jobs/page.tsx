@@ -32,7 +32,7 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
   if (rawParams.where !== undefined && ignored.length === 0) redirect(searchPath(lang, filters));
   const chips = filterChips(lang, filters, {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
-    occupations: new Map(occupations.map(({ code, label }) => [code, `${code} · ${label}`])),
+    occupations: new Map(occupations.map(({ code, label }) => [code, label])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
   });
 

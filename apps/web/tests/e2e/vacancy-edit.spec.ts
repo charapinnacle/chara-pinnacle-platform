@@ -33,7 +33,7 @@ test.describe("vacancy edit", () => {
     await expect(page.getByRole("heading", { name: "Edit vacancy", level: 1 })).toBeVisible();
     await expect(page.getByText("Status: Open. Saving keeps the status, and the public page shows the changes at once.")).toBeVisible();
     await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Welder MIG/MAG");
-    await expect(page.getByRole("combobox", { name: "Occupation", exact: true })).toHaveValue("7212 · Welders and flame cutters");
+    await expect(page.getByRole("combobox", { name: "Occupation", exact: true })).toHaveValue("Welders and flame cutters");
     await expect(page.getByLabel("Salary minimum")).toHaveValue("2800");
     await expect(page.getByLabel("Pay period")).toHaveValue("month");
     await expectNoAxeViolations(page);

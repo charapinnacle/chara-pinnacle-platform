@@ -56,8 +56,8 @@ describe("the hero", () => {
     expect(markup).toMatch(/<h1 id="home-heading" class="[^"]*text-hero[^"]*">The Global Workforce Network<\/h1>/);
     expect(textOf(markup)).toContain("Connect with the people and companies that can build your workforce.");
     expect(markup).toContain('role="search"');
-    expect(textOf(markup)).toContain("Hiring? Post a job");
-    const employers = /<a [^>]*href="\/en\/employers"[^>]*>Post a job<\/a>/.exec(markup)?.[0] ?? "";
+    expect(textOf(markup)).toContain("Hiring? Post a Job");
+    const employers = /<a [^>]*href="\/en\/employers"[^>]*>Post a Job<\/a>/.exec(markup)?.[0] ?? "";
     expect(employers).toContain("underline");
     expect(employers).not.toContain("bg-primary");
     // The search is the one primary action of the hero.
@@ -113,11 +113,11 @@ describe("the employer band", () => {
     const markup = html(<EmployerBand lang="en" postJobHref={COMPANY_SIGN_UP} />);
     expect(markup).toMatch(/^<section class="border-t" aria-label="For employers">/);
     expect(textOf(markup)).toContain("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
-    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*>Post a job<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/en\/signup\?kind=company"[^>]*><span>Post <span class="normal-case">a<\/span> Job<\/span><\/a>/);
     expect(markup).toMatch(/<a [^>]*href="\/en\/employers"[^>]*>For employers<\/a>/);
-    expect(html(<EmployerBand lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*>Post a job<\/a>/);
+    expect(html(<EmployerBand lang="en" postJobHref="/en/post-job" />)).toMatch(/<a [^>]*href="\/en\/post-job"[^>]*><span>Post <span class="normal-case">a<\/span> Job<\/span><\/a>/);
     const none = html(<EmployerBand lang="en" postJobHref={null} />);
-    expect(none).not.toContain("Post a job");
+    expect(none).not.toContain("Post a Job");
     expect(none).toContain('href="/en/employers"');
   });
 });
@@ -140,7 +140,7 @@ describe("the closing call", () => {
   });
 
   it("leaves out an action that is not offered, and the buttons altogether when there is none", () => {
-    const one = html(<ClosingCall id="x" title="Ready to hire?" primary={{ href: "/en/post-job", label: "Post a job" }} secondary={null} />);
+    const one = html(<ClosingCall id="x" title="Ready to hire?" primary={{ href: "/en/post-job", label: "Post a Job" }} secondary={null} />);
     expect(one.match(/<a /g)).toHaveLength(1);
     const none = html(<ClosingCall id="x" title="Ready to hire?" primary={null} />);
     expect(none).not.toContain("<a ");
@@ -182,7 +182,7 @@ describe("the footer", () => {
       "footer-legal",
     ]);
     const platform = /<ul aria-labelledby="footer-platform">(.*?)<\/ul>/.exec(markup)?.[1] ?? "";
-    expect([...platform.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map(([, label]) => label)).toEqual(["Find jobs", "For employers", "How Chara Pinnacle works", "Pricing"]);
+    expect([...platform.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map(([, label]) => label)).toEqual(["Find jobs", "For employers", "How Chara Pinnacle works"]);
     expect(markup).toContain('href="/en/employers"');
     expect(markup).toContain('href="/en/legal"');
   });
