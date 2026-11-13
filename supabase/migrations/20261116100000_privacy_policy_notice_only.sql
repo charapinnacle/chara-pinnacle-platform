@@ -47,7 +47,7 @@ begin
     select case latest.action when 'withdrawn' then latest.created_at else d.published_at end as changed_at
   ) change
   where r.slug <> 'age-18-plus'
-    and not (r.slug = 'privacy-policy' and latest.action = 'granted')
+    and not (r.slug = 'privacy-policy' and latest.action is not distinct from 'granted')
     and (latest.action is distinct from 'granted' or latest.version is distinct from d.version)
     and (
       v_session_started is null
