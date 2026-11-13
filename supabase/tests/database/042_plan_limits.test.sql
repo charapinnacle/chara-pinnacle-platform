@@ -103,7 +103,8 @@ select set_config('t.owner', :'own1', true) as owner_set \gset
 
 -- AC1: seeded limits and the setting; a change of the limit applies with no code change.
 select results_eq(
-  $$select plan_code, limit_value from billing.plan_limits where limit_key = 'active_jobs' order by plan_code$$,
+  $$select plan_code, limit_value from billing.plan_limits where limit_key = 'active_jobs' and plan_code like '%employer%'
+    order by plan_code$$,
   $$values ('employer_enterprise', 50), ('employer_professional', 15), ('employer_starter', 3), ('free_employer', 0)$$,
   'active_jobs is 50, 15 and 3 for the paid plans and 0, not null, for free_employer'
 );
@@ -357,6 +358,8 @@ select is(pg_temp.set_status(:'own1', :'down_draft', 'open'), 'ok', 'at 2 open, 
 
 -- AC8: an unknown plan denies, a null limit means unlimited.
 select pg_temp.set_enforced('false');
+-- The fallback plan of the staffing type is a seeded row since FR-R1; without it this organisation's plan code has no row.
+delete from billing.plans where code = 'free_staffing_company';
 select pg_temp.new_org(:'own1', 'staffing_company') as unknown_org \gset
 select (pg_temp.seed(:'unknown_org', 'draft'))[1] as unknown_job \gset
 select pg_temp.set_enforced('true');

@@ -70,7 +70,8 @@ create temp table t_audit_baseline as select coalesce(max(id), 0) as id from aud
 -- AC1: the seeded plans (the second load of the seed file is checked in the browser project, plans-seed.spec.ts: the
 -- test container sees this directory only)
 select results_eq(
-  $$select code, org_type::text, name, price_minor, currency, interval, trial_days, is_public from billing.plans order by sort$$,
+  $$select code, org_type::text, name, price_minor, currency, interval, trial_days, is_public from billing.plans
+    where org_type = 'employer' order by sort$$,
   $$values
     ('free_employer', 'employer', 'Free', 0, 'EUR', 'month', 0, false),
     ('employer_starter', 'employer', 'Basic', 3900, 'EUR', 'month', 30, true),
@@ -82,11 +83,13 @@ select is(
   (select code from billing.plans where is_default_trial), 'employer_starter', 'Basic is the plan a trial starts on by default'
 );
 select is((select contact_sales from billing.plans where code = 'employer_enterprise'), true, 'Enterprise is sold by quote');
-select is((select count(*) from billing.plans), 4::bigint, 'there are exactly four plans');
+select is((select count(*) from billing.plans where org_type = 'employer'), 4::bigint, 'there are exactly four employer plans');
 
--- AC2: Phase 1 limits and features only
+-- AC2: the Phase 1 limits and features of the employer plans (the partner plans and the Phase 2 keys of FR-R1 are
+-- tested in 113_partner_plans)
 select results_eq(
-  $$select plan_code, limit_key, limit_value from billing.plan_limits order by plan_code, limit_key$$,
+  $$select plan_code, limit_key, limit_value from billing.plan_limits
+    where plan_code like '%employer%' and limit_key in ('active_jobs', 'members') order by plan_code, limit_key$$,
   $$values
     ('employer_enterprise', 'active_jobs', 50), ('employer_enterprise', 'members', 15),
     ('employer_professional', 'active_jobs', 15), ('employer_professional', 'members', 5),
@@ -95,7 +98,9 @@ select results_eq(
   'the seeded limits are the owner''s numbers and every plan has both limits defined'
 );
 select results_eq(
-  $$select plan_code, feature_key from billing.plan_features order by plan_code, feature_key$$,
+  $$select plan_code, feature_key from billing.plan_features
+    where plan_code like '%employer%' and feature_key in ('shortlisting', 'csv_export', 'analytics_advanced')
+    order by plan_code, feature_key$$,
   $$values
     ('employer_enterprise', 'analytics_advanced'), ('employer_enterprise', 'csv_export'), ('employer_enterprise', 'shortlisting'),
     ('employer_professional', 'analytics_advanced'), ('employer_professional', 'csv_export'), ('employer_professional', 'shortlisting'),
@@ -103,13 +108,9 @@ select results_eq(
   'shortlisting and csv_export are on every paid plan, analytics_advanced on Professional and Enterprise, and the free plan has no feature'
 );
 select is_empty(
-  $$select 1 from billing.plan_limits where limit_key = any (array['active_requirements', 'messages_per_month',
-      'candidate_submissions_per_month', 'partner_invitations_per_requirement'])
-    union all
-    select 1 from billing.plan_features where feature_key = any (array['advanced_worker_search', 'advanced_partner_search',
-      'chara_match', 'corridors', 'available_workforce_search', 'job_order_access', 'multi_partner_invitation',
-      'analytics_enterprise', 'multi_country_requirements', 'priority_visibility'])$$,
-  'no later-phase limit or feature key is seeded'
+  $$select 1 from billing.plan_features where feature_key = any (array['chara_match', 'corridors', 'multi_partner_invitation',
+      'priority_visibility'])$$,
+  'no feature key of a phase after Phase 2 is seeded'
 );
 select is(
   (select count(*) from billing.plans p
@@ -142,7 +143,7 @@ select is(
 select is(
   (select format('%s|%s|%s', count(*), sum(price_minor), (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features))
    from billing.plans),
-  '4|11800|16', 'no plan, limit or feature row changed'
+  '12|90200|142', 'no plan, limit or feature row changed'
 );
 select is(
   (select count(*) from (values ('anon'), ('authenticated')) r (rol)
@@ -172,21 +173,21 @@ select results_eq(
 );
 drop function public.plan_writer_probe();
 
--- AC5: visibility through public.v_plans and billing.plans
+-- AC5: visibility through public.v_plans and billing.plans, read for the employer plans as the pricing page does
 select pg_temp.subscribe(:'o', 'employer_starter', 'active');
 select pg_temp.subscribe(:'l', 'employer_starter', 'canceled', now() - interval '40 days', now() - interval '10 days');
 select pg_temp.subscribe(:'e', 'employer_enterprise', 'active');
 select is(
-  pg_temp.read_as(null, 'anon', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans$$),
+  pg_temp.read_as(null, 'anon', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'employer'$$),
   'employer_starter,employer_professional', 'a visitor sees the two public plans in display order'
 );
 select is(
-  pg_temp.read_as(null, 'anon', 'aal1', $$select string_agg(code, ',' order by sort) from billing.plans$$),
+  pg_temp.read_as(null, 'anon', 'aal1', $$select string_agg(code, ',' order by sort) from billing.plans where org_type = 'employer'$$),
   'employer_starter,employer_professional', 'a visitor reading billing.plans directly gets the same rows'
 );
 select is(
   pg_temp.read_as(null, 'anon', 'aal1', $$select format('%s|%s|%s|%s|%s|%s|%s|%s|%s', code, name, price_minor, currency, interval, trial_days, limits ->> 'active_jobs', limits ->> 'members', features) from public.v_plans where code = 'employer_professional'$$),
-  'employer_professional|Professional|7900|EUR|month|30|15|5|["analytics_advanced", "csv_export", "shortlisting"]',
+  'employer_professional|Professional|7900|EUR|month|30|15|5|["advanced_partner_search", "advanced_worker_search", "analytics_advanced", "available_workforce_search", "csv_export", "multi_country_requirements", "shortlisting", "worker_search"]',
   'a plan row carries code, name, price, currency, interval, trial days, limits and features'
 );
 select is(
@@ -194,11 +195,11 @@ select is(
   '0', 'the limits of a plan that is not visible are not visible'
 );
 select is(
-  pg_temp.read_as(:'late', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans$$),
+  pg_temp.read_as(:'late', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'employer'$$),
   'free_employer,employer_starter,employer_professional', 'a member of a lapsed organization also sees the free plan'
 );
 select is(
-  pg_temp.read_as(:'adm2', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans$$),
+  pg_temp.read_as(:'adm2', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'employer'$$),
   'employer_starter,employer_professional,employer_enterprise', 'an Enterprise member also sees Enterprise'
 );
 select is(
@@ -210,11 +211,11 @@ select is(
   '0', 'the lapsed member does not see the Enterprise plan'
 );
 select is(
-  pg_temp.read_as(:'slg', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans$$),
+  pg_temp.read_as(:'slg', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'employer'$$),
   'free_employer,employer_starter,employer_professional', 'an organization that never subscribed is on the free plan and sees it'
 );
 select is(
-  pg_temp.read_as(:'wkr', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans$$),
+  pg_temp.read_as(:'wkr', 'authenticated', 'aal1', $$select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'employer'$$),
   'employer_starter,employer_professional', 'a candidate sees the public plans only'
 );
 select is(
@@ -257,7 +258,7 @@ select throws_ok($$insert into billing.plan_limits values ('employer_starter', '
 select throws_ok($$insert into billing.plan_limits values ('no_such_plan', 'probe_limit', 1)$$, '23503', null, 'a limit of a plan that does not exist is refused');
 select throws_ok($$insert into billing.plan_features values ('no_such_plan', 'probe_feature')$$, '23503', null, 'a feature of a plan that does not exist is refused');
 select throws_ok($$insert into billing.plan_features values ('employer_starter', 'Bad Key')$$, '23514', null, 'a feature key that is not snake_case is refused');
-select is((select count(*) from billing.plans) + (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features), 20::bigint,
+select is((select count(*) from billing.plans) + (select count(*) from billing.plan_limits) + (select count(*) from billing.plan_features), 154::bigint,
   'the refused statements wrote no row');
 select lives_ok(
   $$insert into billing.plans (code, org_type, name, price_minor, currency, interval, trial_days, is_public, sort) values ('probe_zero', 'employer', 'Zero', 0, 'EUR', 'month', 0, false, 90),
@@ -288,6 +289,9 @@ select is(private.org_plan_code(:'o'), 'employer_starter', 'an active subscripti
 select is(private.org_plan_code(:'l'), 'free_employer', 'an organization whose subscriptions are all canceled is on free_employer');
 select is(private.org_plan_code(:'e'), 'employer_enterprise', 'an Enterprise subscription gives Enterprise');
 select is(private.org_plan_code(gen_random_uuid()), null, 'an organization that does not exist has no plan');
+-- The fallback plan of the recruitment type is a seeded row since FR-R1; without it the recruitment organisation below
+-- has a plan code with no row.
+delete from billing.plans where code = 'free_recruitment_company';
 create temp table t_plan_org as
 select pg_temp.new_org(:'own1') as trialing, pg_temp.new_org(:'own1') as past_due, pg_temp.new_org(:'own1') as paused,
        pg_temp.new_org(:'own1', 'recruitment_company') as recruitment;
@@ -596,8 +600,8 @@ select is(
 -- AC8: a plan of another organization type needs no change to the schema, the helpers or the employer plans
 select lives_ok(
   $$insert into billing.plans (code, org_type, name, price_minor, currency, interval, trial_days, is_public, sort)
-      values ('recruitment_partner', 'recruitment_company', 'Partner', 4900, 'EUR', 'month', 30, false, 10);
-    insert into billing.plan_limits values ('recruitment_partner', 'active_jobs', 10), ('recruitment_partner', 'members', 3)$$,
+      values ('recruitment_probe', 'recruitment_company', 'Probe', 4900, 'EUR', 'month', 30, false, 140);
+    insert into billing.plan_limits values ('recruitment_probe', 'active_jobs', 10), ('recruitment_probe', 'members', 3)$$,
   'a plan of the recruitment_company type with its limits is added by plain inserts'
 );
 select is(
@@ -609,14 +613,15 @@ select is(
   'employer_starter,employer_professional', 'a visitor asking for employer plans gets the public employer plans only'
 );
 select is(
-  (select code from public.v_plans where org_type = 'recruitment_company'), 'recruitment_partner',
-  'filtering by organization type returns the plan of that type'
+  (select string_agg(code, ',' order by sort) from public.v_plans where org_type = 'recruitment_company'),
+  'recruitment_partner,recruitment_professional,recruitment_enterprise,recruitment_probe',
+  'filtering by organization type returns the plans of that type'
 );
 select pg_temp.new_org(:'own1', 'recruitment_company') as rc \gset
-select pg_temp.subscribe(:'rc', 'recruitment_partner', 'active');
+select pg_temp.subscribe(:'rc', 'recruitment_probe', 'active');
 select is(
   private.org_plan_code(:'rc') || '/' || private.org_limit(:'rc', 'active_jobs') || '/' || private.org_limit(:'rc', 'members'),
-  'recruitment_partner/10/3', 'an organization of that type resolves its plan and limits through the same helpers'
+  'recruitment_probe/10/3', 'an organization of that type resolves its plan and limits through the same helpers'
 );
 select is(private.org_limit(:'o', 'active_jobs'), 4, 'the employer limits are unaffected');
 

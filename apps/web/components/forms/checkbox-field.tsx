@@ -46,6 +46,10 @@ type CheckboxRowProps = {
   error?: { message?: string };
   // A quiet line under the label (a version and a date); it is part of the description of the checkbox, not of its name.
   meta?: React.ReactNode;
+  // Consents use the small type size, as sign-up forms commonly do, so a list of documents stays compact.
+  compact?: boolean;
+  // An on/off setting that takes effect when saved is announced as a switch.
+  asSwitch?: boolean;
   className?: string;
   children: React.ReactNode;
 };
@@ -63,6 +67,8 @@ export function CheckboxRow({
   errorId,
   error,
   meta,
+  compact = false,
+  asSwitch = false,
   className,
   children,
 }: CheckboxRowProps) {
@@ -79,6 +85,7 @@ export function CheckboxRow({
           id={id}
           ref={inputRef}
           name={name}
+          role={asSwitch ? "switch" : undefined}
           checked={checked}
           onChange={(event) => onChange(event.target.checked)}
           onBlur={onBlur}
@@ -86,15 +93,21 @@ export function CheckboxRow({
           aria-describedby={describedBy}
         />
       </span>
-      <FieldContent className="gap-1">
+      <FieldContent className={compact ? "gap-0.5" : "gap-1"}>
         <FieldLabel
           htmlFor={id}
-          className="cursor-pointer text-body font-normal leading-snug text-pretty text-foreground wrap-anywhere before:absolute before:inset-0"
+          className={cn(
+            "cursor-pointer font-normal leading-snug text-pretty text-foreground wrap-anywhere before:absolute before:inset-0",
+            compact ? "text-small" : "text-body",
+          )}
         >
           {children}
         </FieldLabel>
         {meta ? (
-          <p id={metaId} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-muted-foreground">
+          <p
+            id={metaId}
+            className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground", compact ? "text-caption" : "text-small")}
+          >
             {meta}
           </p>
         ) : null}
@@ -109,6 +122,7 @@ type CheckboxFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   name: N;
   id?: string;
   meta?: React.ReactNode;
+  compact?: boolean;
   className?: string;
   children: React.ReactNode;
 };
@@ -118,6 +132,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
   name,
   id: idProp,
   meta,
+  compact,
   className,
   children,
 }: CheckboxFieldProps<T, N>) {
@@ -141,6 +156,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
           errorId={errorId}
           error={fieldState.error}
           meta={meta}
+          compact={compact}
           className={className}
         >
           {children}

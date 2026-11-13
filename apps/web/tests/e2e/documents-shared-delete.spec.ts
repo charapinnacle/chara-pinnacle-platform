@@ -27,7 +27,7 @@ test.describe("candidate documents: deleting a shared document", () => {
       await route.continue();
     });
     await page.getByRole("button", { name: "Delete Amina Okafor CV 2026" }).click();
-    await expect(dialog.getByRole("status")).toContainText("Loading");
+    await expect(dialog.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Delete document" })).toBeDisabled();
     await expect(dialog.getByText("This document is shared with 2 applications.", { exact: false })).toBeVisible();
     await expect(dialog.getByRole("status")).toHaveCount(0);

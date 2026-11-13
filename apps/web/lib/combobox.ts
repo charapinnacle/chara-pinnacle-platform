@@ -11,10 +11,24 @@ export function listStart(total: number, chosenIndex: number): number {
   return chosenIndex < COMBOBOX_LIMIT ? 0 : Math.min(chosenIndex, total - COMBOBOX_LIMIT);
 }
 
+// How well an option fits typed text: 0 when its name starts with it ("pl" for Plumber, or for "7126 · Plumbers" after the
+// code), 1 when one of its words does, 2 when it only appears inside a word or in the keywords.
+function rank(option: ComboboxOption, needle: string): number {
+  const label = option.label.toLowerCase();
+  const code = label.indexOf(" · ");
+  const name = code < 0 ? label : label.slice(code + 3);
+  if (label.startsWith(needle) || name.startsWith(needle)) return 0;
+  return label.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(needle)) ? 1 : 2;
+}
+
 export function matchOptions(options: readonly ComboboxOption[], query: string, chosenIndex = -1): ComboboxMatches {
   const needle = query.trim().toLowerCase();
   const found = needle
-    ? options.filter((option) => `${option.label} ${option.keywords ?? ""}`.toLowerCase().includes(needle))
+    ? options
+        .filter((option) => `${option.label} ${option.keywords ?? ""}`.toLowerCase().includes(needle))
+        .map((option, index) => ({ option, index, rank: rank(option, needle) }))
+        .sort((a, b) => a.rank - b.rank || a.index - b.index)
+        .map(({ option }) => option)
     : options;
   const start = needle ? 0 : listStart(found.length, chosenIndex);
   return { shown: found.slice(start, start + COMBOBOX_LIMIT), total: found.length };

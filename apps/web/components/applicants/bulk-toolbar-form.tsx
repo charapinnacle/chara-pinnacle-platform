@@ -2,10 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, type FieldPath } from "react-hook-form";
 import { BulkResultSummary, BulkReviewBody, type BulkResult, type BulkReview } from "@/components/applicants/bulk-review";
-import { useBulkSelection } from "@/components/applicants/bulk-selection";
+import { useBulkSelection, type SelectableRow } from "@/components/applicants/bulk-selection";
 import { toastError } from "@/components/feedback/toast-store";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/forms/error-summary";
 import { FormButton } from "@/components/forms/form-button";
@@ -16,6 +16,7 @@ import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { Card } from "@/components/layout/card";
 import { bulkChangeApplicantStage } from "@/lib/actions/applicants";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
+import { allowedTargets } from "@/lib/applications/stage-machine";
 import {
   bulkSelectionSchema,
   declineReasonOptions,
@@ -33,6 +34,14 @@ const targets = employerStages.map((value) => ({
   value,
   label: value === "rejected" ? `Decline (${applicationStatusLabels[value]})` : `Move to ${applicationStatusLabels[value]}`,
 }));
+
+// The actions offered are the moves every ticked applicant may make, the same ones "Change stage" offers on a single
+// applicant, so that the list never offers a stage the database would refuse for all of them.
+function sharedTargets(statuses: SelectableRow["status"][], shortlisting: boolean) {
+  if (statuses.length === 0) return [];
+  const allowed = statuses.map((status) => new Set<string>(allowedTargets(status, "employer", { shortlisting })));
+  return targets.filter((target) => allowed.every((set) => set.has(target.value)));
+}
 
 // Bulk change of stage or decline for the applicants ticked in the list or on the board. Review checks the form and opens
 // the confirmation; only Confirm sends anything. The database judges every applicant on its own, so the summary reports
@@ -56,6 +65,14 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
   const reason = useWatch({ control, name: "reason" });
   const noteLength = useWatch({ control, name: "note" }).length;
   const declining = status === "rejected";
+  const statusKey = [...new Set(selected.map((row) => row.status))].sort().join(",");
+  const options = useMemo(
+    () => sharedTargets(statusKey ? (statusKey.split(",") as SelectableRow["status"][]) : [], shortlisting),
+    [statusKey, shortlisting],
+  );
+  useEffect(() => {
+    if (status && !options.some((option) => option.value === status)) form.setValue("status", "");
+  }, [options, status, form]);
 
   const items: ErrorSummaryItem[] = [
     ...(["status", "reason", "note"] as const).flatMap((name) => {
@@ -117,8 +134,14 @@ export function BulkToolbarForm({ slug, shortlisting, noteMaxChars }: BulkToolba
             name="status"
             id={ids.status}
             label="Action"
-            placeholder="Choose an action"
-            options={targets.filter((target) => target.value !== "shortlisted" || shortlisting)}
+            placeholder={
+              selected.length === 0
+                ? "Select applicants first"
+                : options.length === 0
+                  ? "No action fits all the selected applicants"
+                  : "Choose an action"
+            }
+            options={options}
           />
           {declining ? (
             <SelectField

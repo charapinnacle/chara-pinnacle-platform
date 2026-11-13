@@ -87,6 +87,7 @@ export default defineConfig({
         "**/pricing.spec.ts",
         "**/search-engine-sitemap.spec.ts",
         "**/perf-smoke.spec.ts",
+        "**/in-app-notifications.spec.ts",
       ],
     },
     {
@@ -249,13 +250,21 @@ export default defineConfig({
       testMatch: "**/billing-page-failure.spec.ts",
       dependencies: ["statistics"],
     },
+    // The release switch of the in-app notifications is on for the whole database while this spec runs, which adds the
+    // bell to every signed-in header, so it follows every other project.
+    {
+      name: "notifications-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/in-app-notifications.spec.ts",
+      dependencies: ["billing-failure"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["billing-failure"],
+      dependencies: ["notifications-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

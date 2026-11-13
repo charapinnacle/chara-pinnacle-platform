@@ -85,16 +85,16 @@ update public.profiles set status = 'suspended' where id = :'s';
 select pg_temp.new_user(:'e', 'worker', '[{"purpose":"terms-of-service","version":0}]');
 select pg_temp.new_oauth_user(:'x');
 
-select is_definer('public', 'choose_account_kind', array['account_kind', 'jsonb'], 'choose_account_kind is SECURITY DEFINER');
+select is_definer('public', 'choose_account_kind', array['account_kind', 'jsonb', 'organization_type'], 'choose_account_kind is SECURITY DEFINER');
 select is(
-  (select proconfig from pg_proc where oid = 'public.choose_account_kind(public.account_kind, jsonb)'::regprocedure),
+  (select proconfig from pg_proc where oid = 'public.choose_account_kind(public.account_kind, jsonb, public.organization_type)'::regprocedure),
   array['search_path=""'],
   'choose_account_kind sets search_path to empty'
 );
 select ok(
-  not has_function_privilege('anon', 'public.choose_account_kind(public.account_kind, jsonb)', 'execute')
-  and not has_function_privilege('service_role', 'public.choose_account_kind(public.account_kind, jsonb)', 'execute')
-  and has_function_privilege('authenticated', 'public.choose_account_kind(public.account_kind, jsonb)', 'execute'),
+  not has_function_privilege('anon', 'public.choose_account_kind(public.account_kind, jsonb, public.organization_type)', 'execute')
+  and not has_function_privilege('service_role', 'public.choose_account_kind(public.account_kind, jsonb, public.organization_type)', 'execute')
+  and has_function_privilege('authenticated', 'public.choose_account_kind(public.account_kind, jsonb, public.organization_type)', 'execute'),
   'only authenticated may execute choose_account_kind'
 );
 

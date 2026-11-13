@@ -12,7 +12,7 @@ export function EmployerBand({ lang, postJobHref }: { lang: string; postJobHref:
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {postJobHref ? (
           <LinkButton href={postJobHref} prefetch={false}>
-            Post a Job
+            Post a job
           </LinkButton>
         ) : null}
         <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>

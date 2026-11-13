@@ -54,3 +54,11 @@ export const getOccupations = cached("occupations", async (): Promise<Occupation
     supabase.from("occupations").select("code, label, synonyms", { count: "exact" }).order("code").range(from, from + PAGE_SIZE - 1),
   );
 });
+
+// The City suggestions of the home search, asked for as the visitor types. Not cached here: the route that calls this
+// sets the HTTP cache, and the answer changes when a vacancy opens in a new city.
+export async function suggestCities(country: string, query: string): Promise<string[]> {
+  const { data, error } = await anonymousClient().rpc("suggest_cities", { p_country: country, p_query: query });
+  if (error) throw new Error("The city suggestions could not be loaded", { cause: error });
+  return data;
+}

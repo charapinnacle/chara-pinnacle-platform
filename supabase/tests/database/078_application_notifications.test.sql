@@ -311,7 +311,7 @@ select is(
   (select count(*) from public.notification_preferences where user_id = :'own1'), 0::bigint, 'AC12: and creates no row and no audit entry'
 );
 select is(
-  pg_temp.call_as(:'adm', 'authenticated', 'select public.set_notification_preferences(null)', 'aal1'), 'P0001|CHARA_INVALID_INPUT|p_digest',
+  pg_temp.call_as(:'adm', 'authenticated', 'select public.set_notification_preferences(p_digest => null)', 'aal1'), 'P0001|CHARA_INVALID_INPUT|p_digest',
   'AC12: a missing value is refused'
 );
 select is(

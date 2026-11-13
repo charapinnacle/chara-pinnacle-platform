@@ -183,7 +183,7 @@ test.describe("team membership: page guard and status", () => {
       },
     );
     await mainNavigation(page).getByRole("link", { name: "Team" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Team", level: 1 })).toBeVisible();
 
     await expect(row(page, team.owner.email)).toContainText("Two-step verification: Enrolled");

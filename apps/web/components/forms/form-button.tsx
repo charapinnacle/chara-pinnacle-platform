@@ -3,8 +3,10 @@ import { Spinner } from "@/components/feedback/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// Labels are written in sentence case and shown in Title Case (the client's choice, 21 Oct 2026); screen readers and tests
+// read the written text.
 export const formButtonVariants = cva(
-  "font-semibold shadow-xs transition-[background-color,box-shadow] hover:shadow-sm focus-visible:ring-0",
+  "capitalize font-semibold shadow-xs transition-[background-color,box-shadow] hover:shadow-sm focus-visible:ring-0",
   {
     variants: {
       variant: {

@@ -104,7 +104,7 @@ test.describe("document access log", () => {
     await signIn(page, worker);
     await page.goto("/en/passport");
     const section = page.locator("#access-log");
-    await expect(section.getByRole("status")).toHaveText("Loading");
+    await expect(section.getByRole("status")).toHaveAttribute("aria-label", "Loading");
     release();
     await expect(section.getByRole("heading", { name: "No organisation has opened your documents yet" })).toBeVisible();
     await expect(section.getByRole("status")).toHaveCount(0);

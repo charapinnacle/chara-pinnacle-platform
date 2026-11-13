@@ -93,7 +93,7 @@ describe("SavedList", () => {
     const html = render([]);
     expect(html).toContain("No saved vacancies yet");
     expect(html).toContain('href="/en/jobs"');
-    expect(html).toContain("Find Jobs");
+    expect(html).toContain("Find jobs");
     expect(html).not.toContain("<ul");
   });
 

@@ -32,7 +32,9 @@ describe("loading skeleton", () => {
   it("announces loading once and hides the placeholder blocks", () => {
     const html = renderToStaticMarkup(<LoadingSkeleton rows={4} />);
     expect(html).toContain('role="status"');
-    expect(html).toContain("Loading</span>");
+    // The name is an attribute, not text, so a reader mode or a translation tool never shows "Loading" on the page.
+    expect(html).toContain('aria-label="Loading"');
+    expect(html).not.toContain(">Loading<");
     expect(html.match(/data-slot="skeleton"/g)).toHaveLength(4);
     expect(html.match(/aria-hidden="true"/g)).toHaveLength(4);
   });

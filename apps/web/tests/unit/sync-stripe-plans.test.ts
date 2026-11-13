@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { stripeApi, syncPlans } from "../../../../scripts/sync-stripe-plans.mjs";
 
 const PLANS = [
-  { code: "free_employer", name: "Free", price_minor: 0, currency: "EUR", interval: "month", is_public: false, contact_sales: false, sort: 0 },
-  { code: "employer_starter", name: "Basic", price_minor: 3900, currency: "EUR", interval: "month", is_public: true, contact_sales: false, sort: 1 },
-  { code: "employer_professional", name: "Professional", price_minor: 7900, currency: "EUR", interval: "month", is_public: true, contact_sales: false, sort: 2 },
-  { code: "employer_enterprise", name: "Enterprise", price_minor: 0, currency: "EUR", interval: "month", is_public: false, contact_sales: true, sort: 3 },
+  { code: "free_employer", org_type: "employer", name: "Free", price_minor: 0, currency: "EUR", interval: "month", is_public: false, contact_sales: false, sort: 0 },
+  { code: "employer_starter", org_type: "employer", name: "Basic", price_minor: 3900, currency: "EUR", interval: "month", is_public: true, contact_sales: false, sort: 1 },
+  { code: "employer_professional", org_type: "employer", name: "Professional", price_minor: 7900, currency: "EUR", interval: "month", is_public: true, contact_sales: false, sort: 2 },
+  { code: "employer_enterprise", org_type: "employer", name: "Enterprise", price_minor: 0, currency: "EUR", interval: "month", is_public: false, contact_sales: true, sort: 3 },
+  { code: "recruitment_partner", org_type: "recruitment_company", name: "Basic", price_minor: 4900, currency: "EUR", interval: "month", is_public: true, contact_sales: false, sort: 110 },
+  { code: "staffing_partner", org_type: "staffing_company", name: "Basic", price_minor: 5900, currency: "EUR", interval: "month", is_public: true, contact_sales: false, sort: 210 },
 ];
 
 type Product = { id: string; name: string; metadata: Record<string, string> };
@@ -89,7 +91,7 @@ function stubStore() {
 }
 
 describe("the Stripe mirror of the plans (FR-G1 AC10)", () => {
-  it("creates one product and one monthly EUR price per sold plan, and stores their identifiers", async () => {
+  it("creates one product and one monthly EUR price per sold employer plan, never for a partner plan (FR-R1), and stores their identifiers", async () => {
     const stripe = stubStripe();
     const database = stubStore();
     const changes = await syncPlans({ plans: PLANS, refs: database.refs, stripe: stripe.stripe, store: database.store });

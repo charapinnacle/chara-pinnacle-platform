@@ -13,8 +13,9 @@ import { pathToFileURL } from "node:url";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
+// Partner plans (FR-R1) are seeded before partner checkout exists, so only employer plans are sold for now.
 export function isSold(plan) {
-  return plan.is_public && !plan.contact_sales && plan.price_minor > 0;
+  return plan.org_type === "employer" && plan.is_public && !plan.contact_sales && plan.price_minor > 0;
 }
 
 function priceMatches(price, plan) {
@@ -28,7 +29,7 @@ function priceMatches(price, plan) {
 
 /**
  * @param {{
- *   plans: { code: string, name: string, price_minor: number, currency: string, interval: string, is_public: boolean, contact_sales: boolean, sort: number }[],
+ *   plans: { code: string, org_type: string, name: string, price_minor: number, currency: string, interval: string, is_public: boolean, contact_sales: boolean, sort: number }[],
  *   refs: Record<string, { product?: string | null, price?: string | null }>,
  *   stripe: {
  *     listProducts(): Promise<{ id: string, name: string, metadata?: Record<string, string> }[]>,
@@ -173,7 +174,7 @@ function loadState(databaseUrl) {
     databaseUrl,
     `select json_build_object(
        'plans', (select coalesce(json_agg(json_build_object(
-          'code', p.code, 'name', p.name, 'price_minor', p.price_minor, 'currency', p.currency, 'interval', p.interval,
+          'code', p.code, 'org_type', p.org_type, 'name', p.name, 'price_minor', p.price_minor, 'currency', p.currency, 'interval', p.interval,
           'is_public', p.is_public, 'contact_sales', p.contact_sales, 'sort', p.sort,
           'limits', (select coalesce(json_object_agg(l.limit_key, l.limit_value), '{}') from billing.plan_limits l where l.plan_code = p.code)
         ) order by p.sort), '[]') from billing.plans p),
@@ -195,6 +196,7 @@ async function exportPlans(state, stripe) {
     }
     plans.push({
       code: plan.code,
+      org_type: plan.org_type,
       is_public: plan.is_public,
       contact_sales: plan.contact_sales,
       price_minor: plan.price_minor,

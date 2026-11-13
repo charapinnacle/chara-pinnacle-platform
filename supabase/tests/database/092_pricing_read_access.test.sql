@@ -5,7 +5,8 @@ select plan(6);
 
 -- FR-H2 AC9: the pricing page reads public.v_plans. What 023_plans_as_data already proves (the public plans in order,
 -- security_invoker, select-only grants, no provider columns) is not repeated here: this file covers a plan changing
--- visibility, the plan of the own organisation and the rest of billing staying closed to a visitor.
+-- visibility, the plan of the own organisation and the rest of billing staying closed to a visitor. The page reads the
+-- employer plans only (the partner plans of FR-R1 are rows of the same view), so this file does too.
 
 create function pg_temp.new_org(p_owner uuid) returns uuid
 language plpgsql as $$
@@ -30,7 +31,7 @@ begin
     true
   );
   execute format('set local role %I', p_role);
-  select string_agg(code, ',' order by sort) into v_result from public.v_plans;
+  select string_agg(code, ',' order by sort) into v_result from public.v_plans where org_type = 'employer';
   reset role;
   perform set_config('request.jwt.claims', '', true);
   return v_result;

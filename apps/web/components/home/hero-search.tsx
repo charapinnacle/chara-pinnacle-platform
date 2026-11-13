@@ -1,39 +1,136 @@
+"use client";
+
+import { useState } from "react";
+import { Combobox } from "@/components/forms/combobox";
 import { FormButton } from "@/components/forms/form-button";
-import { Input } from "@/components/ui/input";
+import { useCitySuggestions } from "@/components/forms/use-city-suggestions";
+import type { ComboboxOption } from "@/lib/combobox";
 
-const fields = [
-  { name: "q", id: "hero-what", label: "What", hint: "Job title, skill or occupation" },
-  { name: "where", id: "hero-where", label: "Where", hint: "City or country" },
-] as const;
+export type HeroSearchProps = {
+  lang: string;
+  // Titles of open vacancies first, then the occupations; in free-text mode the label of a suggestion is what is sent.
+  what: readonly ComboboxOption[];
+  countries: readonly ComboboxOption[];
+};
 
-// A plain GET form to Find Jobs: it works without JavaScript and loads none. Find Jobs validates the address it receives as
-// it does every other (100 characters is its limit too) and turns the place into a country or a city filter. The short
-// visible label starts the accessible name and the hint completes it, so a screen reader hears what the placeholder shows.
-export function HeroSearch({ lang }: { lang: string }) {
+// The field cell, not the input, shows focus, as marketplace searches do: the whole cell takes a soft rounded highlight
+// and the 2 px focus outline of the site, and the input inside it has no border or outline of its own. The outline of
+// the input is set by an unlayered rule of globals.css, which only an important utility overrides.
+const fieldClassName =
+  "grid rounded-xl px-4 py-2 transition-colors duration-150 hover:bg-muted/70 focus-within:bg-muted/70 focus-within:outline-2 focus-within:outline-ring max-md:not-first:border-t md:not-first:border-s";
+const inputClassName =
+  "rounded-none border-transparent bg-transparent ps-0 text-base shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none! md:text-base";
+// The popup is wider than a narrow field and floats as a rounded card; the highlighted row has a brand bar at its start.
+const listClassName = "mt-2 min-w-64 rounded-xl border-border p-1.5 shadow-lg";
+const optionClassName =
+  "min-h-10 rounded-lg px-3 py-2 hover:bg-muted aria-selected:bg-accent aria-selected:shadow-[inset_3px_0_0_var(--color-brand)]";
+const popup = { listClassName, optionClassName, checkChosen: true } as const;
+const aria = { "aria-invalid": false, "aria-describedby": undefined } as const;
+const ignore = () => {};
+
+// A GET form to Find Jobs, which validates the address it receives as it does every other. What suggests vacancy titles
+// and occupations as the visitor types, names that start with the text first; Country is chosen from the list; once a
+// country is chosen, City suggests its cities from /api/cities as the visitor types, the cities with a vacancy first,
+// and still takes any city typed. Without a country City is plain text. Without JavaScript the What and City inputs are
+// sent as typed and Country is a native select.
+export function HeroSearch({ lang, what, countries }: HeroSearchProps) {
+  const [q, setQ] = useState("");
+  const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
+  const cities = useCitySuggestions(country, city);
+
+  // An empty field is left out of the address, so an empty search opens Find Jobs at /en/jobs. The browser reads the form
+  // when it is submitted, so the fields are enabled again straight after, for a visitor who comes back with Back.
+  function leaveOutEmptyFields(event: React.FormEvent<HTMLFormElement>) {
+    const empty = [...event.currentTarget.querySelectorAll<HTMLInputElement>('input[name]:not([type="hidden"])')].filter(
+      (field) => field.value === "",
+    );
+    for (const field of empty) field.disabled = true;
+    setTimeout(() => empty.forEach((field) => (field.disabled = false)));
+  }
+
   return (
     <form
       action={`/${lang}/jobs`}
       method="get"
       role="search"
       aria-label="Search jobs"
-      className="grid rounded-2xl border bg-card p-2 text-start shadow-card md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
+      onSubmit={leaveOutEmptyFields}
+      className="grid rounded-2xl border bg-card p-2 text-start shadow-card md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
     >
-      {fields.map(({ name, id, label, hint }) => (
-        <div key={name} className="grid px-4 py-2 max-md:not-first:border-t md:not-first:border-s">
-          <label htmlFor={id} className="text-caption font-semibold">
-            {label}
-            <span className="sr-only">: {hint}</span>
-          </label>
-          <Input
-            id={id}
-            name={name}
-            maxLength={100}
-            autoComplete="off"
-            placeholder={hint}
-            className="h-11 rounded-none border-transparent bg-transparent px-0 md:h-8 text-base shadow-none hover:border-transparent focus-visible:ring-0 md:text-base"
-          />
-        </div>
-      ))}
+      <div className={fieldClassName}>
+        <label htmlFor="hero-what" className="text-caption font-semibold">
+          What<span className="sr-only">: Job title, skill or occupation</span>
+        </label>
+        <Combobox
+          {...aria}
+          id="hero-what"
+          name="q"
+          inputName="q"
+          maxLength={100}
+          inputClassName={inputClassName}
+          {...popup}
+          label="What"
+          placeholder="Job title, skill or occupation"
+          value={q}
+          options={what}
+          emptyText="No suggestion"
+          freeText
+          noScriptSelect={false}
+          inputRef={null}
+          onChange={setQ}
+          onBlur={ignore}
+        />
+      </div>
+      <div className={fieldClassName}>
+        <label htmlFor="hero-country" className="text-caption font-semibold">
+          Country<span className="sr-only">: Any country</span>
+        </label>
+        <Combobox
+          {...aria}
+          id="hero-country"
+          name="country"
+          inputClassName={inputClassName}
+          {...popup}
+          label="Country"
+          placeholder="Any country"
+          value={country}
+          options={countries}
+          emptyText="No country matches"
+          freeText={false}
+          noScriptSelect
+          inputRef={null}
+          onChange={setCountry}
+          onBlur={ignore}
+        />
+        {/* Disabled while empty, so that without JavaScript only the noscript select sends a country. */}
+        <input type="hidden" name="country" value={country} disabled={!country} />
+      </div>
+      <div className={fieldClassName}>
+        <label htmlFor="hero-city" className="text-caption font-semibold">
+          City<span className="sr-only">: Any city</span>
+        </label>
+        <Combobox
+          {...aria}
+          id="hero-city"
+          name="city"
+          inputName="city"
+          maxLength={100}
+          inputClassName={inputClassName}
+          {...popup}
+          label="City"
+          placeholder="Any city"
+          value={city}
+          options={cities}
+          emptyText="No suggestion"
+          prefiltered
+          freeText
+          noScriptSelect={false}
+          inputRef={null}
+          onChange={setCity}
+          onBlur={ignore}
+        />
+      </div>
       <FormButton type="submit" className="min-h-14 text-base max-md:mt-1.5 md:w-auto md:px-7">
         Search jobs
       </FormButton>

@@ -27,6 +27,18 @@ describe("matchOptions", () => {
     expect(matchOptions(occupations, "mag").total).toBe(1);
   });
 
+  it("lists the options whose name starts with the text first, then those with a word that does, then the rest", () => {
+    const jobs = [
+      { value: "a", label: "Electrician (Plumbing support)" },
+      { value: "b", label: "Apple picker" },
+      { value: "c", label: "Plumber" },
+      { value: "d", label: "7126 · Plumbers and pipe fitters" },
+    ];
+    expect(matchOptions(jobs, "pl").shown.map(({ value }) => value)).toEqual(["c", "d", "a", "b"]);
+    expect(matchOptions(jobs, "p").shown.map(({ value }) => value)).toEqual(["c", "d", "a", "b"]);
+    expect(matchOptions(jobs, "plum").shown.map(({ value }) => value)).toEqual(["c", "d", "a"]);
+  });
+
   it("finds nothing for text that matches no option", () => {
     expect(matchOptions(occupations, "astronaut")).toEqual({ shown: [], total: 0 });
   });

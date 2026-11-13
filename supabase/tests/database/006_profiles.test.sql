@@ -15,7 +15,7 @@ $$;
 select has_table('public', 'profiles', 'profiles exists');
 select columns_are(
   'public', 'profiles',
-  array['id', 'account_kind', 'intended_account_kind', 'pending_consents', 'display_name', 'preferred_lang', 'status', 'deleted_at', 'created_at', 'legal_hold'],
+  array['id', 'account_kind', 'intended_account_kind', 'pending_consents', 'display_name', 'preferred_lang', 'status', 'deleted_at', 'created_at', 'legal_hold', 'intended_organization_type'],
   'profiles has the identity columns, the legal hold flag and no email or password'
 );
 select enum_has_labels('public', 'account_kind', array['worker', 'company'], 'account_kind is worker or company');

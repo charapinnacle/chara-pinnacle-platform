@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { newCompany, seedJob } from "./support/jobs";
 import { uniqueToken } from "./support/organizations";
-import { FOOTER_LABELS, HEADER_LABELS, HOME_SECTION_HEADINGS } from "./support/public-pages";
+import { FOOTER_ALL_LABELS, HEADER_SHOWN, HOME_SECTION_HEADINGS } from "./support/public-pages";
+import { waitForHydration } from "./support/hydration";
 import { expect, test } from "./support/test";
 
 // The content and the links of the home page (U73, OPEN_QUESTIONS.md D90); its layout, type, motion and accessibility are
@@ -17,8 +18,8 @@ const NEVER_SAID = [
   "CHARA Match",
   "corridor",
   "verified",
-  "Find Workers",
-  "Request Workers",
+  "Find workers",
+  "Request workers",
   "Popular searches",
   "Data stored in the EU",
   "moderated",
@@ -38,7 +39,7 @@ test.describe("the home page (U73)", () => {
     const hero = region(page, "The Global Workforce Network");
     await expect(main.getByRole("heading", { level: 1 })).toHaveText("The Global Workforce Network");
     await expect(hero.getByText("Connect with the people and companies that can build your workforce.")).toBeVisible();
-    await expect(search(page).getByRole("textbox")).toHaveCount(2);
+    await expect(search(page).getByRole("combobox")).toHaveCount(3);
     await expect(search(page).getByRole("button", { name: "Search jobs" })).toBeVisible();
     await expect(hero.getByRole("link")).toHaveCount(1);
     await expect(hero.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/employers");
@@ -67,7 +68,7 @@ test.describe("the home page (U73)", () => {
     expect(vacancyLinks).toBe(0);
   });
 
-  test("the What and Where fields open Find Jobs: a country name becomes the country filter, any other place the city, with and without JavaScript", async ({ browser }) => {
+  test("What, Country and City open Find Jobs with the keyword, the country code and the city, with and without JavaScript", async ({ browser }) => {
     const company = await newCompany();
     const marker = `zq${uniqueToken()}`;
     const inHamburg = seedJob(company, { title: `Hero welder ${marker}`, status: "open", city: "Hamburg" });
@@ -77,18 +78,25 @@ test.describe("the home page (U73)", () => {
       const context = await browser.newContext({ javaScriptEnabled });
       const page = await context.newPage();
       await page.goto("/en");
+      if (javaScriptEnabled) await waitForHydration(search(page).getByLabel("What: Job title, skill or occupation"));
       await search(page).getByLabel("What: Job title, skill or occupation").fill(marker);
-      await search(page).getByLabel("Where: City or country").fill("netherlands");
-      await search(page).getByLabel("Where: City or country").press("Enter");
-      await expect(page).toHaveURL(`/en/jobs?q=${marker}&country=NL`);
+      if (javaScriptEnabled) {
+        await search(page).getByLabel("Country: Any country").fill("nether");
+        await search(page).getByRole("option", { name: "Netherlands", exact: true }).click();
+      } else {
+        await search(page).getByRole("combobox", { name: "Country" }).selectOption("NL");
+      }
+      await search(page).getByRole("button", { name: "Search jobs" }).click();
+      // With JavaScript an empty field is left out; without it the browser sends every field, and Find Jobs ignores the empty one.
+      await expect(page).toHaveURL(javaScriptEnabled ? `/en/jobs?q=${marker}&country=NL` : `/en/jobs?q=${marker}&country=NL&city=`);
       await expect(page.getByRole("list", { name: "Active filters" })).toContainText("Netherlands");
 
       await page.goto("/en");
       await search(page).getByLabel("What: Job title, skill or occupation").fill(marker);
-      await search(page).getByLabel("Where: City or country").fill("Hamburg");
+      await search(page).getByLabel("City: Any city").fill("Hamburg");
       if (javaScriptEnabled) await search(page).getByRole("button", { name: "Search jobs" }).click();
-      else await search(page).getByLabel("Where: City or country").press("Enter");
-      await expect(page).toHaveURL(`/en/jobs?q=${marker}&city=Hamburg`);
+      else await search(page).getByLabel("City: Any city").press("Enter");
+      await expect(page).toHaveURL(javaScriptEnabled ? `/en/jobs?q=${marker}&city=Hamburg` : `/en/jobs?q=${marker}&country=&city=Hamburg`);
       await expect(page.getByRole("heading", { level: 1, name: "Find jobs" })).toBeVisible();
       if (javaScriptEnabled) {
         await expect(page.getByRole("list", { name: "Vacancies" }).getByRole("heading", { level: 2 })).toHaveText([`Hero welder ${marker}`]);
@@ -96,6 +104,51 @@ test.describe("the home page (U73)", () => {
       }
       await context.close();
     }
+  });
+
+  test("What suggests vacancy titles and occupations, names that start with the typed letters first; City lists the cities of the chosen country", async ({ page }) => {
+    const company = await newCompany();
+    const marker = uniqueToken().slice(0, 6);
+    seedJob(company, { title: `Plumber ${marker}`, status: "open", city: "Hamburg" });
+    seedJob(company, { title: `Pipe layer ${marker}`, status: "open", city: "Rotterdam", country: "NL" });
+
+    await page.goto("/en");
+    const what = search(page).getByLabel("What: Job title, skill or occupation");
+    await waitForHydration(what);
+    await what.fill("pl");
+    const options = search(page).getByRole("listbox", { name: "What" }).getByRole("option");
+    await expect(options.first()).toHaveText(/^Pl/i);
+    await expect(search(page).getByRole("option", { name: `Plumber ${marker}` })).toBeVisible();
+    await expect(search(page).getByRole("option", { name: "Plumbers and pipe fitters" })).toBeVisible();
+    await search(page).getByRole("option", { name: `Plumber ${marker}` }).click();
+    await expect(what).toHaveValue(`Plumber ${marker}`);
+
+    await search(page).getByLabel("Country: Any country").fill("German");
+    await search(page).getByRole("option", { name: "Germany", exact: true }).click();
+    const city = search(page).getByLabel("City: Any city");
+    await city.click();
+    const cities = search(page).getByRole("listbox", { name: "City" }).getByRole("option");
+    await expect(cities.filter({ hasText: "Hamburg" })).toHaveCount(1);
+    await expect(cities.filter({ hasText: "Rotterdam" })).toHaveCount(0);
+
+    // Typing asks for the cities of the country that match, from the GeoNames list as well as the vacancies.
+    await city.fill("Berl");
+    await expect(search(page).getByRole("option", { name: "Berlin", exact: true })).toBeVisible();
+    await expect(cities.filter({ hasText: "Hamburg" })).toHaveCount(0);
+    await search(page).getByRole("option", { name: "Berlin", exact: true }).click();
+    await expect(city).toHaveValue("Berlin");
+  });
+
+  test("without a country City suggests nothing and takes any text", async ({ page }) => {
+    await page.goto("/en");
+    const city = search(page).getByLabel("City: Any city");
+    await waitForHydration(city);
+    await city.fill("Ber");
+    // Longer than the pause before a request, so a list that a request opened would be shown by now.
+    await page.waitForTimeout(500);
+    await expect(city).toHaveAttribute("aria-expanded", "false");
+    await expect(search(page).getByRole("listbox", { name: "City" })).toHaveCount(0);
+    await expect(city).toHaveValue("Ber");
   });
 
   test("the search with both fields empty opens the whole list without a warning or filter chips", async ({ page }) => {
@@ -133,7 +186,7 @@ test.describe("the home page (U73)", () => {
 
     const band = region(page, "For employers");
     await expect(band).toContainText("Hiring? Publish a vacancy and manage every applicant in one pipeline.");
-    await expect(band.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await expect(band.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
     await band.getByRole("link", { name: "For employers" }).click();
     await expect(page).toHaveURL("/en/employers");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hire from the Global Workforce Network.");
@@ -142,7 +195,7 @@ test.describe("the home page (U73)", () => {
   test("the closing call offers Join Chara Pinnacle and Start hiring, each to its sign-up", async ({ page }) => {
     await page.goto("/en");
     const closing = region(page, "Your Workforce. Your Network. One Platform.");
-    await expect(closing.getByRole("link", { name: "Start hiring" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await expect(closing.getByRole("link", { name: "Start hiring" })).toHaveAttribute("href", "/en/post-job");
     await closing.getByRole("link", { name: "Join Chara Pinnacle" }).click();
     await expect(page).toHaveURL("/en/signup");
     await expectNoAxeViolations(page);
@@ -153,13 +206,13 @@ test.describe("the home page (U73)", () => {
     await page.goto("/en");
     const footer = page.getByRole("contentinfo");
     for (const [title, links] of [
-      ["Platform", ["Find Jobs", "For employers", "How Chara Pinnacle works", "Pricing"]],
+      ["Platform", ["Find jobs", "For employers", "How Chara Pinnacle works", "Pricing"]],
       ["Company", ["About", "Trust & Safety", "Contact"]],
       ["Legal", ["Imprint", "Privacy Policy", "Terms of Service", "Cookie Policy", "All legal documents"]],
     ] as const) {
       await expect(footer.getByRole("list", { name: title }).getByRole("link")).toHaveText([...links]);
     }
-    await expect(footer.getByRole("link")).toHaveText(FOOTER_LABELS);
+    await expect(footer.getByRole("link")).toHaveText(FOOTER_ALL_LABELS);
     const lefts = await footer.getByRole("list").evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().left)));
     expect(new Set(lefts).size).toBe(3);
     await expect(footer.getByText(`© ${new Date().getFullYear()} Chara Pinnacle`)).toBeVisible();
@@ -171,7 +224,7 @@ test.describe("the home page (U73)", () => {
     // The Menu is a phone's and not displayed here; its button replaces the no-JavaScript link once the page is hydrated.
     await page.locator('button[aria-controls="site-menu"]').waitFor({ state: "attached" });
     const stops: string[] = [];
-    for (let press = 0; press < 12; press++) {
+    for (let press = 0; press < 13; press++) {
       await page.keyboard.press("Tab");
       const stop = await page.evaluate(() => {
         const element = document.activeElement as HTMLElement;
@@ -183,15 +236,19 @@ test.describe("the home page (U73)", () => {
     expect(stops).toEqual([
       "other:Skip to main content",
       "header:Chara Pinnacle\nCHARA",
-      ...HEADER_LABELS.map((label) => `header:${label}`),
+      ...HEADER_SHOWN.map((label) => `header:${label}`),
       "main:Job title, skill or occupation",
-      "main:City or country",
-      "main:Search jobs",
+      "main:Any country",
+      "main:Any city",
+      "main:Search Jobs",
       "main:Post a job",
     ]);
+    // Back to Country: typing narrows the list, Enter picks the first match, and Enter again sends the search.
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.type("Germany");
+    await page.keyboard.press("Enter");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL("/en/jobs?country=DE");
   });

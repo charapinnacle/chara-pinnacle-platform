@@ -100,7 +100,7 @@ export function SavedList({ lang, jobs, applications, nextHref, firstHref }: Sav
     ) : (
       <EmptyState icon={Bookmark} title="No saved vacancies yet" description="Save a vacancy to keep it here.">
         <TextLink standalone href={`/${lang}/jobs`}>
-          Find Jobs
+          Find jobs
         </TextLink>
       </EmptyState>
     );

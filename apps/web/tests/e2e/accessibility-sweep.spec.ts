@@ -112,6 +112,10 @@ const accountStatePages = [
   "/[lang]/post-job",
 ];
 
+// The pages of a release that is switched off while this sweep runs; their own spec switches it on and checks them at
+// both widths (in-app-notifications.spec.ts).
+const releasedPages = ["/[lang]/notifications"];
+
 async function expectPage(page: Page, address: string): Promise<void> {
   const response = await page.goto(address);
   const { pathname } = new URL(address, "http://localhost");
@@ -146,6 +150,7 @@ test.describe("accessibility and header sweep of every page (NFR-U1, NFR-U2, NFR
       ...Object.keys(adminPages("", "", 0)),
       ...Object.keys(trustSafetyPages("")),
       ...accountStatePages,
+      ...releasedPages,
     ]);
     expect([...swept].sort()).toEqual(routesOnDisk(path.join(__dirname, "../../app/[lang]")).sort());
   });

@@ -44,8 +44,10 @@ export async function proxy(request: NextRequest) {
 
 // Server Functions are POSTs to the page route: excluding a path here would
 // also remove the CSP and session refresh for its actions (ADR-0004).
+// api/health and api/cities answer the same JSON to everyone: they need no session, and a refreshed session cookie on
+// the city suggestions would keep the CDN from caching them.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|opengraph-image|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|opengraph-image|api/health|api/cities|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt)$).*)",
   ],
 };

@@ -19,7 +19,7 @@ test.describe("the For employers page (U73)", () => {
     await expect(main.getByRole("heading", { level: 1 })).toHaveText("Hire from the Global Workforce Network.");
     await expect(main.getByRole("heading", { level: 2 })).toHaveText(EMPLOYERS_SECTION_HEADINGS);
     const hero = region(page, "Hire from the Global Workforce Network.");
-    await expect(hero.getByRole("link")).toHaveText(["Post a Job", "See pricing"]);
+    await expect(hero.getByRole("link")).toHaveText(["Post a job", "See pricing"]);
 
     await expect(region(page, "From vacancy to hire in three steps.").getByRole("heading", { level: 3 })).toHaveText([
       "Publish a vacancy",
@@ -35,8 +35,9 @@ test.describe("the For employers page (U73)", () => {
     await expect(page).toHaveURL("/en/employers#pricing");
     await expect(region(page, "Pricing")).toBeInViewport();
 
-    await hero.getByRole("link", { name: "Post a Job" }).click();
-    await expect(page).toHaveURL("/en/signup?kind=company");
+    await hero.getByRole("link", { name: "Post a job" }).click();
+    await expect(page).toHaveURL("/en/login?next=%2Fen%2Fpost-job");
+    await page.getByRole("link", { name: "Create an account" }).click();
     await expect(page.getByRole("radio", { name: "I'm an employer" })).toBeChecked();
   });
 
@@ -56,8 +57,8 @@ test.describe("the For employers page (U73)", () => {
   test("the last call offers Post a Job to the employer sign-up, and the page passes axe at 1280 and 360 px", async ({ page }) => {
     await page.goto("/en/employers");
     const closing = region(page, "Ready to hire?");
-    await expect(closing.getByRole("link")).toHaveText(["Post a Job"]);
-    await expect(closing.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/signup?kind=company");
+    await expect(closing.getByRole("link")).toHaveText(["Post a job"]);
+    await expect(closing.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
     for (const width of [1280, 360]) {
       await page.setViewportSize({ width, height: 800 });
       await expectNoAxeViolations(page);
@@ -77,22 +78,25 @@ test.describe("the For employers page (U73)", () => {
     await context.close();
   });
 
-  test("a signed-in owner is sent by Post a Job to the new-vacancy page, and a candidate is offered none", async ({ browser }) => {
+  test("a signed-in owner is sent by Post a Job to the new-vacancy page, and a candidate is sent home with no employer line", async ({ browser }) => {
     const company = await newCompany();
     const owner = await signedInPage(browser, company.owner);
     await owner.page.goto("/en/employers");
     const hero = region(owner.page, "Hire from the Global Workforce Network.");
-    await expect(hero.getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
-    await expect(region(owner.page, "Ready to hire?").getByRole("link", { name: "Post a Job" })).toHaveAttribute("href", "/en/post-job");
-    await hero.getByRole("link", { name: "Post a Job" }).click();
+    await expect(hero.getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
+    await expect(region(owner.page, "Ready to hire?").getByRole("link", { name: "Post a job" })).toHaveAttribute("href", "/en/post-job");
+    await hero.getByRole("link", { name: "Post a job" }).click();
     await expect(owner.page).toHaveURL(`/en/org/${company.slug}/jobs/new`);
     await owner.context.close();
 
     const worker = await createCommittedUser("worker");
     const candidate = await signedInPage(browser, worker);
     await candidate.page.goto("/en/employers");
-    await expect(candidate.page.getByRole("main").getByRole("link", { name: "Post a Job" })).toHaveCount(0);
-    await expect(candidate.page.getByRole("heading", { level: 2, name: "Ready to hire?" })).toBeVisible();
+    await expect(candidate.page).toHaveURL("/en");
+    await expect(candidate.page.getByRole("search", { name: "Search jobs" })).toBeVisible();
+    await expect(candidate.page.getByRole("main").getByRole("link", { name: "Post a job" })).toHaveCount(0);
+    await expect(candidate.page.getByRole("region", { name: "For employers" })).toHaveCount(0);
+    await expect(candidate.page.getByText("Hiring?")).toHaveCount(0);
     await candidate.context.close();
   });
 });

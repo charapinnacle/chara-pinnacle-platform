@@ -251,7 +251,9 @@ export async function getEmployer(organizationId: string): Promise<Employer | nu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("display_name, website, description, countries(name), industries(name)")
+    .select(
+      "display_name, website, description, countries!organizations_based_in_country_fkey(name), industries!organizations_industry_code_fkey(name)",
+    )
     .eq("id", organizationId)
     .maybeSingle();
   if (error) throw new Error("The employer could not be loaded", { cause: error });
@@ -337,4 +339,19 @@ export async function searchJobs(
     })),
     nextCursor: data.at(-1)?.next_cursor ?? null,
   };
+}
+
+export type SearchSuggestions = { titles: string[] };
+
+// What the What field of the home search suggests while a visitor types: the titles of open vacancies (City asks
+// /api/cities). A failure leaves the search without suggestions instead of breaking the home page.
+// ponytail: reads one page (50) of the public search; a distinct-values function when the board outgrows it.
+export async function getSearchSuggestions(): Promise<SearchSuggestions> {
+  try {
+    const { results } = await searchJobs({ limit: 50 });
+    return { titles: [...new Set(results.map(({ title }) => title))] };
+  } catch (error) {
+    console.error("The search suggestions could not be loaded", error);
+    return { titles: [] };
+  }
 }

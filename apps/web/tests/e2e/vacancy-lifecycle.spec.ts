@@ -338,7 +338,7 @@ test.describe("vacancy lifecycle", () => {
     await prefetched;
     await memberPage.waitForLoadState("networkidle");
     await mainNavigation(memberPage).getByRole("link", { name: "Vacancies" }).click();
-    await expect(memberPage.getByRole("status").filter({ hasText: "Loading" })).toBeVisible();
+    await expect(memberPage.getByRole("status", { name: "Loading" })).toBeVisible();
     release();
     await expect(memberPage.getByRole("listitem").filter({ hasText: "Stale welder" })).toBeVisible();
     await other.close();

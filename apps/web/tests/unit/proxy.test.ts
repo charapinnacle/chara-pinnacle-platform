@@ -28,6 +28,7 @@ describe("proxy matcher", () => {
     "/sitemap.xml",
     "/opengraph-image",
     "/api/health",
+    "/api/cities?country=DE&q=Be",
     "/logo.svg",
   ])("skips %s", (url) => {
     expect(matches(url)).toBe(false);

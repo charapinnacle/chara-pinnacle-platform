@@ -7,8 +7,7 @@ export const shimmerClassName =
 
 export function LoadingSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div role="status" aria-busy="true" className="grid gap-3">
-      <span className="sr-only">Loading</span>
+    <div role="status" aria-busy="true" aria-label="Loading" className="grid gap-3">
       {Array.from({ length: rows }, (_, index) => (
         <Skeleton key={index} aria-hidden className={cn("h-16 w-full rounded-xl", shimmerClassName)} />
       ))}

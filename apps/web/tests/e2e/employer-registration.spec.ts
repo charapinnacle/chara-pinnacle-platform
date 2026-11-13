@@ -236,8 +236,10 @@ test.describe("employer registration", () => {
       await expect(country).toBeFocused();
       await page.keyboard.type("ger");
       const countries = page.getByRole("listbox", { name: "Country" });
-      await expect(countries.getByRole("option")).toHaveText(["Algeria", "Germany", "Niger", "Nigeria"]);
+      // A name that starts with the typed letters comes first, then the others in alphabetical order.
+      await expect(countries.getByRole("option")).toHaveText(["Germany", "Algeria", "Niger", "Nigeria"]);
       await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowUp");
       await expect(country).toHaveAttribute("aria-activedescendant", /.+/);
       await expect(countries.getByRole("option", { name: "Germany" })).toHaveAttribute("aria-selected", "true");
       await page.keyboard.press("Enter");

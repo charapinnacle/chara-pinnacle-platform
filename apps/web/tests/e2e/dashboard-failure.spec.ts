@@ -43,13 +43,13 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     await page.goto(dashboardUrl(company.slug), { waitUntil: "commit" });
     await expect(card(page, "Active jobs: 1")).toBeVisible();
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(2);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(2);
     await expect(page.getByRole("table")).toHaveCount(0);
     await expect(card(page, /^New applications/)).toHaveCount(0);
 
     await expect(card(page, "New applications in the last 7 days: 2")).toBeVisible({ timeout: 15_000 });
     expect((await stageRows(page))[0]).toEqual(["Applied", "1"]);
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
     await context.close();
   });
@@ -84,11 +84,11 @@ test.describe("the employer dashboard when the database is slow or fails", () =>
     await expect(card(page, "New applications in the last 7 days: 2")).toBeVisible();
     expect((await stageRows(page))[0]).toEqual(["Applied", "1"]);
     await expect(page.getByRole("region", { name: "Plan" })).toContainText("Free plan");
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(1);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(1);
     await expect(card(page, /^Active jobs/)).toHaveCount(0);
 
     await expect(card(page, "Active jobs: 1")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
     await context.close();
   });
@@ -131,11 +131,11 @@ test.describe("the candidate dashboard and the console when the database is slow
 
     await page.goto("/en/dashboard/worker", { waitUntil: "commit" });
     await expect(page.getByRole("region", { name: "Applications", exact: true })).toContainText("Failing fitter");
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(1);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(1);
     await expect(card(page, /^Saved jobs/)).toHaveCount(0);
 
     await expect(card(page, "Saved jobs: 1")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
     await held;
     await context.close();
   });

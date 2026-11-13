@@ -58,6 +58,17 @@ describe("notification templates", () => {
     expect(isNotificationKind(undefined)).toBe(false);
   });
 
+  it("cover every kind of the notification catalogue (FR-T1), which holds every kind the database accepts", () => {
+    const migrations = new URL("../../../../supabase/migrations/", import.meta.url);
+    const catalogue = readdirSync(migrations)
+      .sort()
+      .map((file) => readFileSync(new URL(file, migrations), "utf8"))
+      .flatMap((sql) => [...sql.matchAll(/insert into private\.notification_kinds \([^)]*\) values([\s\S]*?);/g)])
+      .flatMap((match) => [...match[1].matchAll(/\(\s*'([a-z_]+)'/g)].map((row) => row[1]));
+    expect(new Set(catalogue).size).toBe(catalogue.length);
+    expect([...catalogue].sort()).toEqual([...KINDS].sort());
+  });
+
   it.each(KINDS)("%s renders an English page, a plain text version and a one-line subject", async (kind) => {
     const email = await renderEmail(kind, SAMPLES[kind], SITE);
     expect(email.html).toContain('lang="en"');

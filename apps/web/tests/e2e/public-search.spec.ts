@@ -177,13 +177,38 @@ test.describe("public vacancy search", () => {
     await expect(cards(page, marker)).toContainText("Hamburg, Germany");
   });
 
+  test("Country comes before City, and once a country is chosen City suggests its cities and still takes any text", async ({ page }) => {
+    await page.goto("/en/jobs");
+    const country = page.getByRole("combobox", { name: "Country", exact: true });
+    const city = page.getByRole("combobox", { name: "City", exact: true });
+    await waitForHydration(city);
+    expect((await country.boundingBox())!.x).toBeLessThan((await city.boundingBox())!.x);
+
+    await city.fill("Ber");
+    await page.waitForTimeout(500);
+    await expect(page.getByRole("listbox", { name: "City" })).toHaveCount(0);
+
+    await city.fill("");
+    await chooseFromList(page, "Country", "German", /^Germany$/);
+    await city.fill("Berl");
+    await expect(page.getByRole("option", { name: "Berlin", exact: true })).toBeVisible();
+    await page.getByRole("option", { name: "Berlin", exact: true }).click();
+    await expect(city).toHaveValue("Berlin");
+    await page.getByRole("button", { name: "Search jobs" }).click();
+    await expect.poll(() => params(page)).toEqual({ country: "DE", city: "Berlin" });
+
+    await city.fill("Neustadt-Ost Sued");
+    await page.getByRole("button", { name: "Search jobs" }).click();
+    await expect.poll(() => params(page).city).toBe("Neustadt-Ost Sued");
+  });
+
   test("FR-C3 AC9: the results stream behind a skeleton that the server sends before them", async ({ page }) => {
     const company = await newCompany();
     const marker = newMarker();
     seedJob(company, { title: `Welder ${marker}`, status: "open" });
 
     const html = await (await page.request.get(`/en/jobs?q=${marker}`)).text();
-    const skeleton = html.indexOf('<span class="sr-only">Loading</span>');
+    const skeleton = html.indexOf('aria-label="Loading"');
     expect(skeleton).toBeGreaterThan(-1);
     expect(html.indexOf(`Welder ${marker}`)).toBeGreaterThan(skeleton);
   });

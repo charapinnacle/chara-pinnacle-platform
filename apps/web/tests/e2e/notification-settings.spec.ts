@@ -154,9 +154,9 @@ test.describe("notification settings", () => {
     });
 
     await link.click();
-    await expect(page.getByRole("status").getByText("Loading")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
-    await expect(page.getByRole("status").getByText("Loading")).toHaveCount(0);
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
   });
 
   test("FR-I3 AC13: a save that fails shows a toast, keeps the last saved choice and saves nothing; while it runs the button is busy", async ({

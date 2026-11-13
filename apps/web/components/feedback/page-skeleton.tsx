@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 export function PageSkeleton() {
   const block = (className: string) => <Skeleton aria-hidden className={cn("rounded-xl", shimmerClassName, className)} />;
   return (
-    <div role="status" aria-busy="true" className="grid gap-section">
-      <span className="sr-only">Loading</span>
+    <div role="status" aria-busy="true" aria-label="Loading" className="grid gap-section">
       <div className="grid gap-3">
         {block("h-9 w-56")}
         {block("h-5 w-80 max-w-full")}

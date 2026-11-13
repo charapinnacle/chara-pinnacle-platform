@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GoogleSignIn } from "@/components/auth/google-sign-in";
 import { SignupForm } from "@/components/auth/signup-form";
+import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
 import { getSignUpForm } from "@/lib/dal/legal";
 import { getInvitationPreview } from "@/lib/dal/team";
@@ -14,8 +15,9 @@ export const metadata: Metadata = { title: "Create your account" };
 // A link to /signup?invitation=<token> comes from a team invitation: the address and the account type are fixed, and
 // Continue with Google is not offered, since its sign-up cannot carry the invitation. /signup?kind=worker or
 // /signup?kind=company only preselects the account type, which the person can still change.
-export default async function SignupPage({ searchParams }: PageProps<"/[lang]/signup">) {
-  const [{ documents, attestationWording }, { invitation: token, kind }, defaultEmail] = await Promise.all([
+export default async function SignupPage({ params, searchParams }: PageProps<"/[lang]/signup">) {
+  const [{ lang }, { documents, attestationWording }, { invitation: token, kind }, defaultEmail] = await Promise.all([
+    params,
     getSignUpForm(),
     searchParams,
     prefilledEmail("signup"),
@@ -28,7 +30,17 @@ export default async function SignupPage({ searchParams }: PageProps<"/[lang]/si
       : undefined;
   const preselected = accountKindSchema.safeParse(kind);
   return (
-    <AuthCard title="Create your account">
+    <AuthCard
+      title="Create your account"
+      footer={
+        <p className="flex flex-wrap items-center gap-x-1.5">
+          Already have an account?
+          <TextLink standalone="flush" href={`/${lang}/login`}>
+            Log in
+          </TextLink>
+        </p>
+      }
+    >
       {googleSignInEnabled() && !invitation ? (
         <GoogleSignIn note="You choose worker or employer and accept the legal documents in the next step." />
       ) : null}
