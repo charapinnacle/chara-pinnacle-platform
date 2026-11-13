@@ -38,7 +38,7 @@ export default async function FindJobsPage({ params, searchParams }: PageProps<"
 
   return (
     <PageContainer layout="page" className="grid gap-8">
-      <div className="grid gap-6 rounded-3xl bg-accent p-4 sm:gap-8 sm:p-10">
+      <div className="grid gap-6 rounded-3xl border bg-accent/40 p-4 sm:gap-8 sm:p-10">
         <PageHeader title="Find Your Next Opportunity" className="animate-rise">
           <span aria-hidden className="order-first mb-2 h-1 w-12 rounded-full bg-brand" />
         </PageHeader>
