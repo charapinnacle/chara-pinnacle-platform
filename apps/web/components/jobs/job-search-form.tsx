@@ -63,7 +63,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
       noValidate
       role="search"
       aria-label="Search jobs"
-      className="grid gap-4"
+      className="grid gap-4 rounded-2xl border bg-card p-3 shadow-card sm:p-5"
       onSubmit={handleSubmit(search, () => setMoreOpen(true))}
     >
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
@@ -98,7 +98,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
         </FormButton>
       </div>
 
-      <div role="group" aria-label="Filters" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div role="group" aria-label="Filters" className="grid gap-3 rounded-xl bg-muted/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
         <ComboboxField
           control={control}
           name="occupation"
@@ -143,7 +143,7 @@ export function JobSearchForm({ lang, query, occupations, industries, countries,
       </div>
 
       <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 text-body font-medium">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 text-body font-medium text-muted-foreground transition-colors hover:text-foreground group-open:text-foreground">
           More filters
           <ChevronDown aria-hidden className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
         </summary>
