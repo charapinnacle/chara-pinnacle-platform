@@ -22,7 +22,7 @@ function escapeRegExp(value: string): string {
 // The stored title keeps its DRAFT: prefix; the form shows the plain title.
 export function documentBox(page: Page, title: string) {
   return page.getByRole("checkbox", {
-    name: new RegExp(`^I accept the ${escapeRegExp(displayTitle(title))}`),
+    name: new RegExp(`^I (accept|have read) the ${escapeRegExp(displayTitle(title))}`),
   });
 }
 

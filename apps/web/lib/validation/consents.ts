@@ -1,6 +1,8 @@
 import * as z from "zod";
 
 export const AGE_ATTESTATION_SLUG = "age-18-plus";
+// GDPR: a privacy notice is read, not agreed to; the other documents are contracts the user accepts.
+const NOTICE_SLUG = "privacy-policy";
 
 const consentEntrySchema = z.object({
   purpose: z.string().min(1).max(80),
@@ -43,12 +45,16 @@ export function ageConfirmationLabel(
 export const DOCUMENT_CHANGED =
   "A legal document has changed. Reload the page to see the current version.";
 
+export function consentVerb(slug: string): string {
+  return slug === NOTICE_SLUG ? "I have read the" : "I accept the";
+}
+
 export function consentMessage(
   document: Pick<LegalDocumentSummary, "slug" | "title">,
 ): string {
-  return document.slug === AGE_ATTESTATION_SLUG
-    ? "Confirm that you are 18 or older to create an account"
-    : `Accept the ${displayTitle(document.title)} to continue`;
+  if (document.slug === AGE_ATTESTATION_SLUG) return "Confirm that you are 18 or older to create an account";
+  const title = displayTitle(document.title);
+  return document.slug === NOTICE_SLUG ? `Confirm that you have read the ${title} to continue` : `Accept the ${title} to continue`;
 }
 
 export function unacceptedDocuments(

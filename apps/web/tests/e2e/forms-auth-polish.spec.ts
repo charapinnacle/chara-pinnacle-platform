@@ -45,7 +45,7 @@ test.describe("U67: the sign-up form", () => {
       }
       const box = documentBox(page, title);
       const plain = displayTitle(title);
-      await expect(box).toHaveAccessibleName(new RegExp(`^I accept the ${plain}`));
+      await expect(box).toHaveAccessibleName(new RegExp(`^I (accept|have read) the ${plain}`));
       await expect(box).not.toHaveAccessibleName(/DRAFT/);
       await expect(box).toHaveAccessibleDescription(/^Version \d+ · \d{1,2} \w+ \d{4}/);
       names.add(plain);
