@@ -42,9 +42,9 @@ test("FR-A8 AC5: a version superseded before confirmation is accepted first and 
   expect(accountRows(user.id).account.account_kind).toBeNull();
 
   await page.getByRole("button", { name: "Accept and continue" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(
-    "Accept the",
-  );
+  await expect(page.getByText(/^Accept the .*Privacy Policy to continue$/)).toBeVisible();
+  await expect(box).toBeFocused();
+  await expect(page.getByText("There is a problem")).toHaveCount(0);
   expect(accountRows(user.id).account.account_kind).toBeNull();
 
   await box.check();
@@ -94,7 +94,8 @@ test("FR-A8 AC9: a changed document gates the next sign-in, not the open session
     expect(legal.status()).toBe(200);
 
     await next.getByRole("button", { name: "Accept and continue" }).click();
-    await expect(next.getByRole("alert").filter({ hasText: "There is a problem" })).toBeVisible();
+    await expect(next.getByText(/^Accept the .*Employer Terms to continue$/)).toBeVisible();
+    await expect(next.getByText("There is a problem")).toHaveCount(0);
     await expectNoAxeViolations(next);
     expect(accountRows(user.id).consents.at(-1)?.version).toBeLessThan(version);
 

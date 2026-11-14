@@ -47,16 +47,13 @@ export function ConsentForm({
     defaultValues: {
       accepted: Object.fromEntries(documents.map((document) => [document.slug, false])),
     },
-    shouldFocusError: false,
   });
   const { control, formState, handleSubmit, setError } = form;
   const summaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (formState.submitCount > 0 && summaryRef.current) summaryRef.current.focus();
-  }, [formState.submitCount]);
-
-  const ids = Object.fromEntries(documents.map((document) => [`accepted.${document.slug}`, checkboxId(document.slug)]));
+    if (formState.errors.root?.server && summaryRef.current) summaryRef.current.focus();
+  }, [formState.errors.root?.server]);
 
   async function onSubmit(values: { accepted: Record<string, boolean> }) {
     try {
@@ -73,9 +70,10 @@ export function ConsentForm({
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
-      <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
-      <ConsentList>
+    <form noValidate className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
+      {/* An unticked box says so under itself and gets the focus; the summary only carries a refusal of the server. */}
+      <FormErrorSummary form={form} summaryRef={summaryRef} ids={{}} />
+      <ConsentList className="gap-3">
         {documents.map((document) =>
           document.slug === AGE_ATTESTATION_SLUG ? (
             <ConsentCheckbox
