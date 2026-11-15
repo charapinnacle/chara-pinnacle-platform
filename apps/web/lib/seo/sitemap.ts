@@ -10,7 +10,8 @@ export type SitemapVacancy = { id: string; updatedAt: string };
 export type SitemapPartner = { slug: string; updatedAt: string };
 export type SitemapCompany = { slug: string; updatedAt: string };
 
-const staticCount = Object.keys(staticPages).length;
+const shownStaticPages = Object.values(staticPages).filter(({ path }) => SHOW_PRICING || path !== "pricing");
+const staticCount = shownStaticPages.length;
 
 // The room left for vacancies, partner profiles and company pages together, after the static pages and the given number of
 // other pages (the legal pages and the released pages of the network).
@@ -37,7 +38,7 @@ export function sitemapEntries(input: {
   const room = Math.max(vacancyCapacity(legalSlugs.length + networkPaths.length) - vacancies.length, 0);
   const listedPartners = partners.slice(0, room);
   return [
-    ...Object.values(staticPages).filter(({ path }) => SHOW_PRICING || path !== "pricing").map(({ path }) => ({ url: at(path ? `/${path}` : "") })),
+    ...shownStaticPages.map(({ path }) => ({ url: at(path ? `/${path}` : "") })),
     ...networkPaths.map((path) => ({ url: at(`/${path}`) })),
     ...legalSlugs.map((slug) => ({ url: at(`/legal/${slug}`) })),
     ...vacancies.map(({ id, updatedAt }) => ({ url: at(`/jobs/${id}`), lastModified: formatIsoDate(updatedAt) })),
