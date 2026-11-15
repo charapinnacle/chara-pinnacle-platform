@@ -26,8 +26,8 @@ export function OccupationForm({ occupationId, occupations }: OccupationFormProp
         emptyText="No matching occupation"
         options={occupations.map(({ code, label, synonyms }) => ({
           value: code,
-          label: `${code} · ${label}`,
-          keywords: synonyms.join(" "),
+          label,
+          keywords: [code, ...synonyms].join(" "),
         }))}
       />
       <FormButton type="submit" busy={form.formState.isSubmitting}>
