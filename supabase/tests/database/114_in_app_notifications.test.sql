@@ -71,7 +71,7 @@ select set_eq(
   $$values ('application_received'), ('licence_expiring'), ('partner_licence_expired'), ('listing_confirmation_due'),
     ('followed_company_activity'), ('requirement_closing_soon'), ('job_order_match'), ('invitation_received'),
     ('invitation_withdrawn'), ('requirement_changed'), ('requirement_closed'), ('response_received'), ('response_withdrawn'),
-    ('response_decided')$$,
+    ('response_decided'), ('submission_approved'), ('submission_withdrawn')$$,
   'catalogue: of the Phase 1 kinds only application_received is optional, as Phase 1 treats it; the other optional kinds are those of Phase 2 (DATA_MODEL.md section 9)'
 );
 select is(
