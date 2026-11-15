@@ -91,8 +91,8 @@ describe("the home page (U73)", () => {
     getPostJobHref.mockResolvedValue(null);
     const candidate = await renderHome();
     // Only the hero's quiet line remains, and it leads to For employers, not to posting.
-    expect(candidate.match(/>Post a job</g)).toHaveLength(1);
-    expect(candidate).toContain('href="/en/employers">Post a job</a>');
+    expect(candidate.match(/>Post a Job</g)).toHaveLength(1);
+    expect(candidate).toContain('href="/en/employers">Post a Job</a>');
     expect(candidate).not.toContain("Start hiring");
     expect(candidate).toContain('role="search"');
   });
@@ -123,6 +123,6 @@ describe("the home page (U73)", () => {
     expect(html).not.toContain("home-how-heading");
     expect(html).not.toContain("home-passport-heading");
     expect(html).not.toContain("home-start-heading");
-    expect(html).not.toContain("Hiring? Post a job");
+    expect(html).not.toContain("Hiring? Post a Job");
   });
 });
