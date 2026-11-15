@@ -1,3 +1,4 @@
+import { SHOW_PRICING } from "@/lib/public/navigation";
 import { expectNoAxeViolations } from "./support/axe";
 import { billingPath, checkoutPath } from "./support/billing";
 import { execute, literal } from "./support/db";
@@ -259,6 +260,7 @@ test.describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
 });
 
 test.describe("the pricing teaser of the For employers page (U73, FR-H2 AC4, KPI pricing mismatches)", () => {
+  test.skip(!SHOW_PRICING, "pricing is hidden from the public site");
   test("shows the lowest public price of the records and follows a change of price, name, visibility and trial on the next request", async ({ page }) => {
     const pricing = page.getByRole("region", { name: "Pricing", exact: true });
     const [first, second] = publicPlanRecords();
