@@ -233,7 +233,7 @@ test.describe("Responding to a job order (FR-N2, FR-O2)", () => {
     await expect(page.getByText("EUR 1,500.00 per hire")).toBeVisible();
     await expect(page.getByText(NOT_A_PARTY)).toBeVisible();
     await expect(page.getByRole("list", { name: "Supporting documents" }).getByRole("listitem")).toHaveCount(2);
-    await expect(page.getByRole("list", { name: "Versions" }).getByRole("listitem")).toHaveCount(1);
+    await expect(page.getByRole("list", { name: "Versions" }).locator("> li")).toHaveCount(1);
     await expect(page.getByText(displayName(team.id))).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -335,7 +335,7 @@ test.describe("Responding to a job order (FR-N2, FR-O2)", () => {
     await owner.page.setViewportSize({ width: 1280, height: 900 });
     await item.getByRole("link", { name: p1.displayName }).click();
     await expect(owner.page.getByRole("heading", { name: p1.displayName, level: 1 })).toBeVisible();
-    const versions = owner.page.getByRole("list", { name: "Versions" }).getByRole("listitem");
+    const versions = owner.page.getByRole("list", { name: "Versions" }).locator("> li");
     await expect(versions).toHaveCount(2);
     await expect(versions.first()).toContainText("Version 2");
     await expect(versions.first()).toContainText("EUR 1,500.00 per hire");
