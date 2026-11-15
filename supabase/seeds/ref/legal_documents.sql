@@ -42,7 +42,7 @@ on conflict (slug, version) do nothing;
 
 -- The partner legal documents of Phase 2 (FR-S4): version 0 is a DRAFT placeholder that says only what the document will
 -- cover, until counsel's approved text is published as the next version. The same rows are inserted by the migration
--- 20261116100000_partner_legal_documents.sql for the hosted project; keep both lists equal.
+-- 20261116100050_partner_legal_documents.sql for the hosted project; keep both lists equal.
 insert into public.legal_documents (slug, version, title, body, change_summary, published_at, is_draft)
 select
   d.slug,
