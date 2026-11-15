@@ -42,7 +42,7 @@ test.describe("the public pages without JavaScript", () => {
     await page.getByRole("link", { name: "Menu", exact: true }).click();
     await expect(page).toHaveURL("/en#site-menu");
     await expect(menu.getByRole("navigation", { name: "Explore" }).getByRole("link")).toHaveText(MENU_LINKS);
-    await expect(menu.getByRole("link", { name: "Post a job" })).toBeVisible();
+    await expect(menu.getByRole("link", { name: "Post a Job" })).toBeVisible();
     await expect(menu.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/en/signup");
     await menu.getByRole("link", { name: "Find jobs" }).click();
     await expect(page).toHaveURL("/en/jobs");
