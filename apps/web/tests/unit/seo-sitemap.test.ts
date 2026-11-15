@@ -43,7 +43,7 @@ describe("the sitemap entries (FR-H5 AC3)", () => {
   });
 
   it("leaves room for the vacancies under the limit of the protocol", () => {
-    expect(vacancyCapacity(10) + 9 + 10).toBe(50_000);
+    expect(vacancyCapacity(10) + 8 + 10).toBe(50_000);
   });
 });
 
@@ -55,7 +55,7 @@ describe("the pages of the network in the sitemap (FR-L5 AC3)", () => {
     );
 
   it("lists none of them while every release is off", () => {
-    expect(pathsOf([])).toHaveLength(9);
+    expect(pathsOf([])).toHaveLength(8);
     for (const path of ["/en/partners/recruitment", "/en/partners/staffing", "/en/job-orders", "/en/companies", "/en/find-workers", "/en/request-workers"]) {
       expect(pathsOf([])).not.toContain(path);
     }
@@ -63,13 +63,13 @@ describe("the pages of the network in the sitemap (FR-L5 AC3)", () => {
 
   it("lists the two partner directories after the static pages, without a date, once release 2a is on, the job orders page with release 2b, and no page of 2c", () => {
     const entriesOn = sitemapEntries({ siteUrl: SITE, lang: "en", legalSlugs: [], networkPaths: networkPaths(["release_partner_directories"]), vacancies });
-    expect(entriesOn.map((entry) => new URL(entry.url).pathname).slice(9, 11)).toEqual(["/en/partners/recruitment", "/en/partners/staffing"]);
-    expect(entriesOn.slice(9, 11).every((entry) => entry.lastModified === undefined)).toBe(true);
+    expect(entriesOn.map((entry) => new URL(entry.url).pathname).slice(8, 10)).toEqual(["/en/partners/recruitment", "/en/partners/staffing"]);
+    expect(entriesOn.slice(8, 10).every((entry) => entry.lastModified === undefined)).toBe(true);
     const every = pathsOf(["release_partner_directories", "release_job_orders", "release_find_workers", "release_candidate_submissions", "release_messaging"]);
-    expect(every).toHaveLength(12);
-    expect(every.slice(9, 12)).toEqual(["/en/partners/recruitment", "/en/partners/staffing", "/en/job-orders"]);
+    expect(every).toHaveLength(11);
+    expect(every.slice(8, 11)).toEqual(["/en/partners/recruitment", "/en/partners/staffing", "/en/job-orders"]);
     for (const path of ["/en/companies", "/en/find-workers", "/en/request-workers"]) expect(every).not.toContain(path);
-    expect(pathsOf(["release_job_orders"]).slice(9)).toEqual(["/en/job-orders"]);
+    expect(pathsOf(["release_job_orders"]).slice(8)).toEqual(["/en/job-orders"]);
     expect(pathsOf(["release_partner_directories"])).not.toContain("/en/job-orders");
   });
 
