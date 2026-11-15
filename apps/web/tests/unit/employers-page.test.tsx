@@ -4,6 +4,7 @@ import type { PublicPlan } from "@/lib/billing/pricing";
 
 let plans: PublicPlan[] = [];
 let failure: Error | null = null;
+let showPricing = false;
 const getPostJobHref = vi.hoisted(() => vi.fn());
 const getCurrentUser = vi.hoisted(() => vi.fn());
 const logged = vi.hoisted(() => vi.fn());
@@ -50,6 +51,7 @@ beforeEach(() => {
     plan({ code: "employer_enterprise", name: "Enterprise", priceMinor: 100, contactSales: true }),
   ];
   failure = null;
+  showPricing = true;
   getPostJobHref.mockResolvedValue("/en/signup?kind=company");
   getCurrentUser.mockResolvedValue(null);
   releasedSwitches.mockResolvedValue([]);
@@ -82,12 +84,20 @@ describe("the For employers page (U73, FR-H1, FR-H2)", () => {
     expect(html).not.toContain("<details");
   });
 
+  it("leaves out the pricing section and See pricing while pricing is hidden", async () => {
+    showPricing = false;
+    const html = await render();
+    expect(html).not.toContain('id="pricing"');
+    expect(html).not.toContain("See pricing");
+    expect(html).not.toContain('href="/en/pricing"');
+  });
+
   it("leads both Post a Job buttons where the header does, and offers none to whom the header offers none", async () => {
     getPostJobHref.mockResolvedValue("/en/post-job");
-    expect((await render()).match(/<a [^>]*href="\/en\/post-job"[^>]*>Post a job<\/a>/g)).toHaveLength(2);
+    expect((await render()).match(/<a [^>]*href="\/en\/post-job"[^>]*><span>Post <span class="normal-case">a<\/span> Job<\/span><\/a>/g)).toHaveLength(2);
     getPostJobHref.mockResolvedValue(null);
     const candidate = await render();
-    expect(candidate).not.toContain("Post a job");
+    expect(candidate).not.toContain("Post a Job");
     expect(candidate).toContain("Ready to hire?");
   });
 
