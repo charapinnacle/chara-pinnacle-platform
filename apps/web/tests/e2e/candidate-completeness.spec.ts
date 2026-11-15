@@ -58,7 +58,7 @@ test.describe("candidate passport: completeness", () => {
     });
 
     await page.getByRole("combobox", { name: "Occupation", exact: true }).fill("electrician");
-    await page.getByRole("option", { name: /^7411 · Building and related electricians$/ }).click();
+    await page.getByRole("option", { name: /^Building and related electricians$/ }).click();
     await page.getByRole("button", { name: "Save occupation" }).click();
     await expectMeter(page, 25, "Skills");
     expect(await page.evaluate(() => (window as unknown as { loadMarker?: boolean }).loadMarker)).toBe(true);
