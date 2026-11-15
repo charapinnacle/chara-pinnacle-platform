@@ -38,7 +38,7 @@ describe("the partner legal documents (FR-S4)", () => {
 
   it("are seeded locally and inserted on the hosted project with the same draft rows", () => {
     const seed = partnerRows(repoFile("supabase/seeds/ref/legal_documents.sql"));
-    const migration = partnerRows(repoFile("supabase/migrations/20261116100000_partner_legal_documents.sql"));
+    const migration = partnerRows(repoFile("supabase/migrations/20261116100050_partner_legal_documents.sql"));
     expect(migration).toBe(seed);
     for (const slug of PARTNER_SLUGS) expect(seed).toContain(`('${slug}'`);
     expect(seed).toContain("'DRAFT: ' || d.title");
