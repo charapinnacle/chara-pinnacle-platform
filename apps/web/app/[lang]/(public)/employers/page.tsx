@@ -15,7 +15,7 @@ import { getPostJobHref } from "@/lib/dal/organizations";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { releasedSwitches } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { RECRUITMENT_DIRECTORY_PATH, STAFFING_DIRECTORY_PATH } from "@/lib/public/navigation";
+import { RECRUITMENT_DIRECTORY_PATH, SHOW_PRICING, STAFFING_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { partnerNetworkCopy as copy } from "@/lib/public/partner-network";
 import { staticPageMetadata } from "@/lib/seo/metadata";
 
@@ -168,8 +168,8 @@ export default async function EmployersPage({ params }: PageProps<"/[lang]/emplo
         </div>
       </Band>
       {released.includes("release_partner_directories") ? <PartnersSection lang={lang} /> : null}
-      <PricingTeaser lang={lang} plan={plan} />
-      <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: "Post a job" } : null} />
+      {SHOW_PRICING ? <PricingTeaser lang={lang} plan={plan} /> : null}
+      <ClosingCall id="employers-start-heading" title="Ready to hire?" primary={postJobHref ? { href: postJobHref, label: <PostJobLabel /> } : null} />
     </>
   );
 }
