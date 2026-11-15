@@ -216,7 +216,7 @@ test.describe("Continue with Google switched on", () => {
     await chooseAndAccept(page, "worker", ["age-18-plus"]);
     await expect(ageBox(page)).toBeVisible();
     await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(alertText(page)).toContainText("Confirm that you are 18 or older to create an account");
+    await expect(page.getByText("Confirm that you are 18 or older to create an account")).toBeVisible();
     expect(accountRows(user.id).account.account_kind).toBeNull();
     expect(accountRows(user.id).consents).toEqual([]);
 
@@ -239,7 +239,7 @@ test.describe("Continue with Google switched on", () => {
     const [first] = await currentDocuments("company");
     await expect(documentBox(page, first.title)).not.toBeChecked();
     await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(alertText(page)).toContainText("Accept the");
+    await expect(page.getByText(/^Accept the .* to continue$/).first()).toBeVisible();
     expect(accountRows(user.id).account.account_kind).toBeNull();
   });
 
