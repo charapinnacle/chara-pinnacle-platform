@@ -138,8 +138,8 @@ export function JobForm({ slug, occupations, industries, countries, currencies, 
         emptyText="No matching occupation"
         options={occupations.map(({ code, label, synonyms }) => ({
           value: code,
-          label: `${code} · ${label}`,
-          keywords: synonyms.join(" "),
+          label,
+          keywords: [code, ...synonyms].join(" "),
         }))}
       />
       <ComboboxField
