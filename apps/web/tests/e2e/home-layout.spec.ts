@@ -201,10 +201,10 @@ test.describe("the layout of the home page (U73)", () => {
     for (const [target, ringed] of [
       [what, what.locator("xpath=../..")],
       ...[
-        page.getByRole("region", { name: "For employers" }).getByRole("link", { name: "Post a job", exact: true }),
+        page.getByRole("region", { name: "For employers" }).getByRole("link", { name: "Post a Job", exact: true }),
         page.getByRole("link", { name: "Create your CHARA Passport" }),
         page.getByRole("link", { name: "Join Chara Pinnacle" }),
-        page.getByRole("contentinfo").getByRole("link", { name: "Pricing" }),
+        page.getByRole("contentinfo").getByRole("link", { name: "Find jobs" }),
       ].map((link) => [link, link]),
     ] as [Locator, Locator][]) {
       await target.focus();
