@@ -58,7 +58,7 @@ export function LegalForm({ slug, title }: { slug: string; title: string }) {
         name="changeSummary"
         id={ids.changeSummary}
         label="Change summary"
-        description="Required, 10 to 1000 characters. Everyone who accepted the document is emailed this and must accept the new version at the next sign-in."
+        description="Required, 10 to 1000 characters. Everyone who accepted the document is emailed this. Contracts must be accepted again at the next sign-in; the Privacy Policy is only notified."
       />
       <CheckboxField control={control} name="isDraft" id={ids.isDraft}>
         This text is a draft: legal counsel has not approved it yet. The page shows a draft banner. A draft becomes the current version at once and asks everyone who accepted the document to accept it again, so publish drafts only for documents nobody has accepted yet.
