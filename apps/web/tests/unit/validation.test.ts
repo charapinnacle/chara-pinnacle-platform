@@ -123,7 +123,8 @@ describe("how a form names a legal document (U67)", () => {
   });
 
   it("names a missing consent by the plain title", () => {
-    expect(consentMessage({ slug: "privacy-policy", title: "DRAFT: Privacy Policy" })).toBe("Accept the Privacy Policy to continue");
+    expect(consentMessage({ slug: "privacy-policy", title: "DRAFT: Privacy Policy" })).toBe("Confirm that you have read the Privacy Policy to continue");
+    expect(consentMessage({ slug: "terms-of-service", title: "Terms of Service" })).toBe("Accept the Terms of Service to continue");
   });
 
   it("reads the age confirmation as the plain sentence for a draft or a missing wording, and as the published wording otherwise", () => {
