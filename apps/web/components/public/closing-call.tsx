@@ -1,7 +1,7 @@
 import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
 
-type ClosingAction = { href: string; label: string };
+type ClosingAction = { href: string; label: React.ReactNode };
 
 export function ClosingCall({ id, title, primary, secondary }: { id: string; title: string; primary: ClosingAction | null; secondary?: ClosingAction | null }) {
   return (
