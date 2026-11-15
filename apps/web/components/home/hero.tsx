@@ -23,7 +23,7 @@ export function Hero({ showHiringLine, ...search }: HeroSearchProps & { showHiri
           <p className="mt-4 flex items-center gap-1.5 text-body text-muted-foreground">
             Hiring?
             <TextLink href={`/${lang}/${EMPLOYERS_PATH}`} prefetch={false} standalone>
-              Post a job
+              Post a Job
             </TextLink>
           </p>
         ) : null}
