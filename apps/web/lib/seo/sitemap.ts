@@ -37,7 +37,7 @@ export function sitemapEntries(input: {
   const room = Math.max(vacancyCapacity(legalSlugs.length + networkPaths.length) - vacancies.length, 0);
   const listedPartners = partners.slice(0, room);
   return [
-    ...Object.values(staticPages).map(({ path }) => ({ url: at(path ? `/${path}` : "") })),
+    ...Object.values(staticPages).filter(({ path }) => SHOW_PRICING || path !== "pricing").map(({ path }) => ({ url: at(path ? `/${path}` : "") })),
     ...networkPaths.map((path) => ({ url: at(`/${path}`) })),
     ...legalSlugs.map((slug) => ({ url: at(`/legal/${slug}`) })),
     ...vacancies.map(({ id, updatedAt }) => ({ url: at(`/jobs/${id}`), lastModified: formatIsoDate(updatedAt) })),
