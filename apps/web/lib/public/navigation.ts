@@ -55,6 +55,9 @@ export const LEGAL_INDEX_PATH = "legal";
 // The billing terms are not shown to a signed-in person who is not an employer: a candidate's pages hold no billing link (FR-G6 AC5).
 export const BILLING_TERMS_PATH = "legal/subscription-and-billing-terms";
 
+// Pricing is hidden from the public site until the client shows it again; /pricing itself is still served.
+export const SHOW_PRICING = false;
+
 // The public footer: three quiet columns under the logo. Every legal document is two clicks away from every page (the last
 // link leads to the index).
 export const publicFooterColumns = [
@@ -64,7 +67,7 @@ export const publicFooterColumns = [
       { path: "jobs", label: "Find jobs" },
       { path: EMPLOYERS_PATH, label: "For employers" },
       { path: "how-it-works", label: `How ${BRAND_NAME} works` },
-      { path: "pricing", label: "Pricing" },
+      ...(SHOW_PRICING ? [{ path: "pricing", label: "Pricing" }] : []),
     ],
   },
   {
