@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FormButton } from "@/components/forms/form-button";
 import { AudienceLinks } from "@/components/layout/audience-links";
 import { LinkButton } from "@/components/layout/link-button";
+import { PostJobLabel } from "@/components/layout/post-job-label";
 import { SiteMenu } from "@/components/layout/site-menu";
 import { signOut } from "@/lib/actions/login";
 import { getPostJobHref } from "@/lib/dal/organizations";
