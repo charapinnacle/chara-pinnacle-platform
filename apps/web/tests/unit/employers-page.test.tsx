@@ -14,6 +14,12 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/organizations", () => ({ getPostJobHref }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser }));
 vi.mock("@/lib/dal/release", () => ({ releasedSwitches }));
+vi.mock("@/lib/public/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/public/navigation")>()),
+  get SHOW_PRICING() {
+    return showPricing;
+  },
+}));
 vi.mock("@/lib/dal/pricing", () => ({
   listPublicPlans: async () => {
     if (failure) throw failure;
