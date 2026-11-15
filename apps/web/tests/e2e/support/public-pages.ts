@@ -1,3 +1,4 @@
+import { SHOW_PRICING } from "@/lib/public/navigation";
 import { execute, literal } from "./db";
 import { newCompany, seedJob } from "./jobs";
 
@@ -17,11 +18,12 @@ export const LEGAL_SLUGS = [
 // The links of the header of a visitor on a desktop (OPEN_QUESTIONS.md D90): three links, Post a Job and Sign in, and no
 // Menu button (a phone's); on the For employers page For job seekers replaces Find Jobs and For employers. The other pages
 // about Chara Pinnacle are in the footer (P18).
-export const HEADER_LABELS = ["Find jobs", "For employers", "How it works", "Post a job", "Sign in"];
+export const HEADER_LABELS = ["Find jobs", "For employers", "How it works", "Post a Job", "Sign in"];
 // What innerText reads: buttons and header links are drawn in Title Case (text-transform), their text stays as written.
-export const titleCase = (label: string) => label.replace(/(^|\s)\S/g, (start) => start.toUpperCase());
+// The article of Post a Job is kept lowercase by its own normal-case span.
+export const titleCase = (label: string) => label.replace(/(^|\s)(?!a\s)\S/g, (start) => start.toUpperCase());
 export const HEADER_SHOWN = HEADER_LABELS.map(titleCase);
-export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a job", "Sign in"];
+export const EMPLOYERS_HEADER_LABELS = ["For job seekers", "How it works", "Post a Job", "Sign in"];
 
 // The menu panel: the Explore links, the client's later-phase navigation as text, and the account actions.
 export const MENU_LINKS = ["Find jobs", "For employers", "For job seekers", "How Chara Pinnacle works"];
@@ -32,7 +34,7 @@ export const FOOTER_LABELS = [
   "Find jobs",
   "For employers",
   "How Chara Pinnacle works",
-  "Pricing",
+  ...(SHOW_PRICING ? ["Pricing"] : []),
   "About",
   "Trust & Safety",
   "Contact",
@@ -58,7 +60,7 @@ export const HOME_SECTION_HEADINGS = [
 export const EMPLOYERS_SECTION_HEADINGS = [
   "From vacancy to hire in three steps.",
   "Built for teams that hire together.",
-  "Pricing",
+  ...(SHOW_PRICING ? ["Pricing"] : []),
   "Ready to hire?",
 ];
 
