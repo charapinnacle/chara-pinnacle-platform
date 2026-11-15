@@ -146,10 +146,15 @@ describe("the consent rows (U67, FR-A8, FR-A9)", () => {
     expect(consent(document("privacy-policy", "Privacy Policy", 3))).not.toContain(">Draft<");
   });
 
+  it("asks to have read the Privacy Policy and to accept the contracts", () => {
+    expect(consent(document("privacy-policy", "Privacy Policy", 1))).toMatch(/I have read the(?: |&#x27;| )*<a[^>]*>Privacy Policy</);
+    expect(consent(document("terms-of-service", "Terms of Service", 1))).toMatch(/I accept the(?: |&#x27;| )*<a[^>]*>Terms of Service</);
+  });
+
   it("gives every document its own checkbox with a name of its own", () => {
     const names = ["Terms of Service", "Privacy Policy", "Worker Terms"].map((title) => {
       const html = consent(document(title.toLowerCase().replaceAll(" ", "-"), `DRAFT: ${title}`, 0));
-      return /I accept the(?: |&#x27;| )*<a[^>]*>([^<]*)</.exec(html)![1];
+      return /I (?:accept|have read) the(?: |&#x27;| )*<a[^>]*>([^<]*)</.exec(html)![1];
     });
     expect(new Set(names).size).toBe(3);
   });
