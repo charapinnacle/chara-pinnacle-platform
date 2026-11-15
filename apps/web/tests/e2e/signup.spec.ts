@@ -25,7 +25,7 @@ import { captureActionRequests } from "./support/server-action";
 import { createTestUser, deleteTestUser } from "./support/test-user";
 import { checkEmailText } from "./support/login";
 import { notificationsOf } from "./support/notify";
-import { displayTitle } from "@/lib/validation/consents";
+import { consentVerb, displayTitle } from "@/lib/validation/consents";
 
 const authUrl = `${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`;
 const apikey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -191,7 +191,7 @@ test.describe("sign-up form", () => {
       const box = documentBox(page, title);
       await expect(box).not.toBeChecked();
       const label = page.locator("label", { has: page.locator(`a[href="/en/legal/${slug}"]`) });
-      await expect(label).toContainText(`I accept the ${displayTitle(title)}`);
+      await expect(label).toContainText(`${consentVerb(slug)} ${displayTitle(title)}`);
       await expect(label).not.toContainText("DRAFT");
       await expect(label.getByRole("link")).toHaveAttribute("href", `/en/legal/${slug}`);
       await expect(box).toHaveAccessibleDescription(new RegExp(`^Version ${version} · \\d{1,2} \\w+ \\d{4}`));
@@ -276,7 +276,7 @@ test.describe("sign-up form", () => {
     const calls = captureActionRequests(page);
 
     for (const [skipped, message] of [
-      ["privacy-policy", new RegExp(`Accept the ${displayTitle(privacy.title)} to continue`)],
+      ["privacy-policy", new RegExp(`Confirm that you have read the ${displayTitle(privacy.title)} to continue`)],
       ["age-18-plus", /Confirm that you are 18 or older to create an account/],
     ] as const) {
       const email = newEmail();
