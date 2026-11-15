@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { formatIsoDate } from "@/lib/i18n/format";
+import { SHOW_PRICING } from "@/lib/public/navigation";
 import { staticPages } from "./pages";
 
 // The protocol allows 50,000 URLs in one file; the capacity target is far below it (NFR-P1), so there is one file.
