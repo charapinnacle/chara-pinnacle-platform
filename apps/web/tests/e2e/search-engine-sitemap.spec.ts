@@ -1,4 +1,5 @@
 import type { APIRequestContext, Page } from "@playwright/test";
+import { SHOW_PRICING } from "@/lib/public/navigation";
 import { execute, literal, query } from "./support/db";
 import { addCompanyUser, jobUrl, newCompany, seedJob } from "./support/jobs";
 import { logIn } from "./support/login-page";
@@ -10,7 +11,7 @@ import { expect, test } from "./support/test";
 // of their own that follows the others (playwright.config.ts), and run one after the other.
 test.describe.configure({ mode: "serial" });
 
-const STATIC_PATHS = ["/en", "/en/jobs", "/en/pricing", "/en/how-it-works", "/en/trust-safety", "/en/about", "/en/contact", "/en/imprint", "/en/employers"];
+const STATIC_PATHS = ["/en", "/en/jobs", ...(SHOW_PRICING ? ["/en/pricing"] : []), "/en/how-it-works", "/en/trust-safety", "/en/about", "/en/contact", "/en/imprint", "/en/employers"];
 
 interface Entry {
   loc: string;
