@@ -34,7 +34,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   ]);
   // Vacancy titles come before the occupations, and an occupation is offered by its name without the ISCO code.
   const what = [
-    ...suggestions.titles.map((title) => ({ value: `title:${title}`, label: title })),
+    ...suggestions.titles.toSorted((a, b) => a.localeCompare(b)).map((title) => ({ value: `title:${title}`, label: title })),
     ...occupations.map((occupation) => ({ value: `isco:${occupation.code}`, label: occupation.label, keywords: occupation.synonyms.join(" ") })),
   ];
   const kind = user?.accountKind;
