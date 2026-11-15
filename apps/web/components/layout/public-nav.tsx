@@ -71,7 +71,7 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
     <div className="sticky bottom-0 -mx-5 mt-auto grid grid-cols-2 gap-2.5 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {postJobHref ? (
         <LinkButton href={postJobHref} prefetch={false} className="col-span-2 xs:hidden">
-          Post a job
+          <PostJobLabel />
         </LinkButton>
       ) : null}
       {area ? (
@@ -115,7 +115,7 @@ export async function PublicNav({ lang }: { lang: string }) {
           {postJobHref ? (
             <li className="max-xs:hidden">
               <LinkButton href={postJobHref} prefetch={false} size="default" className="min-h-11 px-4 md:mx-1">
-                Post a job
+                <PostJobLabel />
               </LinkButton>
             </li>
           ) : null}
