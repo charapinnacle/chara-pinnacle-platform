@@ -29,13 +29,16 @@ type SubmitCandidateFormProps = {
   requirementId: string;
   organization: { id: string; type: OrganizationType; canManage: boolean };
   billingHref: string;
+  // The id of the reason the request cannot be sent now (an outdated commitment): Send request is disabled and described
+  // by it.
+  blockedBy?: string;
 };
 
 // The partner's request to a candidate (FR-O4 step Request, AC12): the address and an optional note the candidate reads
 // (and the employer after the approval). The answer is "Request sent" whatever the address is (AC2); the form is then
 // emptied for the next candidate. A double press sends one request: the second waits for the first, and the database
 // answers the same address with the request already sent.
-export function SubmitCandidateForm({ slug, requirementId, organization, billingHref }: SubmitCandidateFormProps) {
+export function SubmitCandidateForm({ slug, requirementId, organization, billingHref, blockedBy }: SubmitCandidateFormProps) {
   const form = useForm<SubmitCandidateFormInput, undefined, SubmitCandidateFormOutput>({
     resolver: zodResolver(submitCandidateFormSchema),
     defaultValues: { email: "", note: "" },
@@ -94,7 +97,13 @@ export function SubmitCandidateForm({ slug, requirementId, organization, billing
           />
         </Notice>
       ) : null}
-      <FormButton type="submit" className="w-auto justify-self-start" busy={formState.isSubmitting}>
+      <FormButton
+        type="submit"
+        className="w-auto justify-self-start"
+        busy={formState.isSubmitting}
+        disabled={blockedBy !== undefined}
+        aria-describedby={blockedBy}
+      >
         {formState.isSubmitting ? "Sending" : "Send request"}
       </FormButton>
     </form>

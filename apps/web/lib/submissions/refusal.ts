@@ -11,7 +11,7 @@ export const SUBMISSION_MESSAGES = {
   notOpenToYou: "The employer has not opened candidate submissions to your company for this requirement.",
   requirementNotOpen: "The requirement is not open at the moment, so no candidate can be submitted.",
   plan: "Submitting candidates needs a paid partner plan.",
-  commitment: "Accept the current employer-pays commitment to submit candidates.",
+  commitment: "Your company's owner must accept the current employer-pays commitment before your company can submit candidates.",
   requirementNotFound: "This requirement is not available. Reload the page.",
   tooManyChanges: "Too many changes were made today. Try again tomorrow.",
   limit: "Your plan's limit of candidate submissions this month is reached.",

@@ -82,6 +82,9 @@ type ResponseFormProps = {
   // For the upgrade prompt when the monthly limit is reached on submit.
   organization: { id: string; type: OrganizationType; canManage: boolean };
   billingHref: string;
+  // The id of the reason the response cannot be saved now (an outdated commitment): the button is disabled and described
+  // by it.
+  blockedBy?: string;
 };
 
 // The response form (FR-O2 step Write, AC1 to AC5, AC10, AC11; FR-N2 step Respond): the workers offered within the
@@ -101,6 +104,7 @@ export function ResponseForm({
   documentsMax,
   organization,
   billingHref,
+  blockedBy,
 }: ResponseFormProps) {
   const schema = useMemo(() => responseFormSchema({ maxCapacity, kept: edit?.kept }), [maxCapacity, edit?.kept]);
   const form = useForm<ResponseFormInput, unknown, ResponseFormValues>({
@@ -246,7 +250,13 @@ export function ResponseForm({
         </Notice>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <FormButton type="submit" className="w-auto" busy={formState.isSubmitting}>
+        <FormButton
+          type="submit"
+          className="w-auto"
+          busy={formState.isSubmitting}
+          disabled={blockedBy !== undefined}
+          aria-describedby={blockedBy}
+        >
           {edit ? "Save changes" : "Send response"}
         </FormButton>
       </div>

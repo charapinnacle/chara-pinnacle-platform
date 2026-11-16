@@ -83,7 +83,7 @@ describe("nextActions (SOP P2-37 purpose, NFR-U4)", () => {
     );
     expect(actions.map(({ text, target }) => `${target}: ${text}`)).toEqual([
       "onboarding: Answer the request of our team and submit your company again",
-      "onboarding: Add the employer-pays commitment to complete your workforce profile",
+      "commitment: Add the employer-pays commitment to complete your workforce profile",
       "availability: Confirm 1 listing hidden from search",
       "availability: Confirm 2 listings due for confirmation",
       "licences: Renew 1 expired licence",

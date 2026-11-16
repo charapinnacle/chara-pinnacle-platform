@@ -25,7 +25,7 @@ export const RESPONSE_MESSAGES = {
   alreadyResponded: "Your company has already responded to this job order. Open its response from Responses.",
   stale: "Someone changed this response since you opened it. Reload the page to see the current version, then make your changes again.",
   plan: "Responding to job orders needs a paid partner plan.",
-  commitment: "Accept the current employer-pays commitment to respond.",
+  commitment: "Your company's owner must accept the current employer-pays commitment before your company can respond.",
   conditions: "Your company no longer meets the conditions of this job order. Reload the page.",
   scanning: "A document is still being checked, try again in a minute.",
   uploadMissing: "A document is still being uploaded. Wait until it is sent or remove it, then try again.",

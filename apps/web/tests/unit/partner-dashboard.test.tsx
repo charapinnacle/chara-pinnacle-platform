@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PartnerFigures } from "@/lib/dashboard/partner-dashboard";
 import type { ReviewOutcome } from "@/lib/dal/partner-review";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
+import type { CommitmentBlock } from "@/lib/validation/commitment";
 import type { MemberRole } from "@/lib/validation/team";
 
 const figuresMock = vi.hoisted(() => vi.fn());
@@ -13,6 +14,7 @@ const planMock = vi.hoisted(() => vi.fn());
 const usageMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn<() => Promise<WorkforceListing[]>>(async () => []));
 const twoStepMock = vi.hoisted(() => vi.fn(async () => true));
+const commitmentMock = vi.hoisted(() => vi.fn<() => Promise<CommitmentBlock | null>>(async () => null));
 const releasedMock = vi.hoisted(() => vi.fn<(name: string) => Promise<boolean>>(async () => false));
 
 vi.mock("server-only", () => ({}));
@@ -29,6 +31,8 @@ vi.mock("@/lib/dal/dashboard", () => ({ getDashboardPlan: planMock }));
 vi.mock("@/lib/dal/usage", () => ({ getOrgUsage: usageMock }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/commitment", () => ({ getCommitmentBlock: commitmentMock }));
+vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn(), acceptUpdatedCommitment: vi.fn() }));
 vi.mock("@/lib/dal/workforce-availability", () => ({
   getWorkforceListings: listingsMock,
   getAvailabilityRules: async () => ({ staleDays: 60, reminderDays: 30, maxDays: 730 }),
@@ -103,6 +107,7 @@ beforeEach(() => {
     },
   });
   listingsMock.mockResolvedValue([listing("l1", 2)]);
+  commitmentMock.mockResolvedValue(null);
 });
 
 describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)", () => {
@@ -315,5 +320,47 @@ describe("loading and partial failure (FR-R3 AC11, FR-R4 AC10)", () => {
     expect(html.match(/could not be loaded/g), "a failed review read is reported once").toHaveLength(1);
     expect(html).toContain("The review state could not be loaded");
     expect(followersMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("an employer-pays commitment not accepted in its current version (FR-J3 AC4, FR-S4 AC7, V52)", () => {
+  const block = (outdated: boolean): CommitmentBlock => ({
+    outdated,
+    title: "Employer-pays commitment",
+    version: 2,
+    changeSummary: "Fees for travel are named.",
+    publishedAt: "2026-11-10T00:00:00Z",
+    isDraft: false,
+  });
+
+  it("gives the owner the dialog with what changed, and tells an admin and a member that the owner must accept", async () => {
+    releasedMock.mockImplementation(async (name) => name === "release_job_orders");
+    commitmentMock.mockResolvedValue(block(true));
+    let html = await render();
+    expect(commitmentMock).toHaveBeenCalledWith("org-9");
+    expect(html).toMatch(/role="status"[^>]*><[^>]*>.*<p id="commitment-reason"[^>]*>The employer-pays commitment has changed\. Accept the updated version/);
+    expect(html).toMatch(/<dialog[^>]*>.*The employer-pays commitment has changed.*What changed:.*Fees for travel are named\./);
+    for (const role of ["admin", "member"] as const) {
+      html = await render({ role });
+      expect(html).toContain("Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates.");
+      expect(html).not.toContain("What changed:");
+      expect(html).not.toContain("Review and accept");
+    }
+  });
+
+  it("says nothing while the commitment is current, and nothing about job orders while release 2b is off", async () => {
+    releasedMock.mockImplementation(async (name) => name === "release_job_orders");
+    expect(await render()).not.toContain("commitment");
+    releasedMock.mockResolvedValue(false);
+    commitmentMock.mockResolvedValue(block(true));
+    expect(await render()).not.toContain("updated commitment");
+    expect(commitmentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("leads the next action of a missing commitment to the reason on the workforce profile", async () => {
+    figuresMock.mockResolvedValue(figures({ profileMissing: "employer_pays_commitment" }));
+    expect(await render()).toMatch(
+      /<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#commitment-reason"[^>]*>Add the employer-pays commitment to complete your workforce profile/,
+    );
   });
 });

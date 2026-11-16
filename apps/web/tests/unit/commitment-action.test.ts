@@ -15,7 +15,7 @@ vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { acceptCommitment } = await import("@/lib/actions/commitment");
+const { acceptCommitment, acceptUpdatedCommitment } = await import("@/lib/actions/commitment");
 
 const refusal = (message: string, details: string) => ({ data: null, error: { message, details, code: "P0001" } });
 
@@ -73,5 +73,29 @@ describe("acceptCommitment (FR-J3)", () => {
     await expect(acceptCommitment("manila-skills", 1, { confirmed: true })).resolves.toEqual({ message: expect.any(String) });
     expect(redirectMock).not.toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+});
+
+describe("acceptUpdatedCommitment (FR-J3 AC4, FR-S4 AC7)", () => {
+  it("accepts the version the dialog showed for the owner and stays on the page", async () => {
+    await expect(acceptUpdatedCommitment("manila-skills", 2, { confirmed: true })).resolves.toEqual({ accepted: true });
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "manila-skills", "owner", {
+      mfa: false,
+      hideFromOutsiders: true,
+      partner: true,
+    });
+    expect(rpcMock).toHaveBeenCalledWith("accept_employer_pays_commitment", { p_org: "org-1", p_version: 2 });
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an unticked box and a newer version like the onboarding step", async () => {
+    await expect(acceptUpdatedCommitment("manila-skills", 2, { confirmed: false })).resolves.toEqual({
+      errors: { confirmed: "Please confirm the commitment to continue" },
+    });
+    rpcMock.mockResolvedValue(refusal("CHARA_INVALID_INPUT", "version"));
+    await expect(acceptUpdatedCommitment("manila-skills", 2, { confirmed: true })).resolves.toEqual({
+      message: "The commitment has changed since this page was opened. Reload the page to read the current version.",
+    });
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 });

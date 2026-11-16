@@ -8,6 +8,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { CommitmentGate } from "@/components/organization/commitment-gate";
 import type { OrgUsage } from "@/lib/billing/limits";
 import { followerCountText, type FollowerCount } from "@/lib/connections/access";
 import {
@@ -22,6 +23,7 @@ import {
   type PartnerFigures,
 } from "@/lib/dashboard/partner-dashboard";
 import { planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
+import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getFollowerCount } from "@/lib/dal/connections";
 import { getDashboardPlan, type DashboardPlan } from "@/lib/dal/dashboard";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
@@ -81,6 +83,9 @@ function BlockCard({ id, title, children }: { id: string; title: string; childre
 }
 
 type Links = Record<NextActionTarget, string>;
+
+// The workforce profile names the reason with the same id, so the next action leads to it.
+const COMMITMENT_REASON_ID = "commitment-reason";
 
 function NextActionsCard({ figures, canManage, links }: { figures: PartnerFigures; canManage: boolean; links: Links }) {
   const actions = nextActions(figures, canManage);
@@ -277,7 +282,10 @@ function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
   );
 }
 
-// The dashboard of a recruitment or staffing company (FR-R3, FR-R4), release 2a blocks: the next actions, the review
+// The dashboard of a recruitment or staffing company (FR-R3, FR-R4), release 2a blocks: while release 2b is on, an
+// employer-pays commitment not accepted in its current version, with the owner's dialog or who acts (FR-J3 AC4, FR-S4 AC7,
+// V52; read quietly, without a skeleton, because most partners hold a current acceptance and the next actions name a
+// missing one too); the next actions, the review
 // and listing state, the workforce profile, profile views, followers, licences, the team, the available workforce and
 // the plan with its usage. Every figure is read from the database on each request and each part loads, fails and
 // retries on its own. While release 2b is on the header links the job order marketplace (V40). The blocks of job
@@ -299,10 +307,13 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
     licences: licencesHref,
     onboarding: onboardingPath(lang),
     company: partnerStepPath(lang, "company"),
+    commitment: `${workforceProfilePath(lang, slug)}#${COMMITMENT_REASON_ID}`,
   };
   const action = { label: capacityAction[type], href: availabilityHref };
 
   const figures = getPartnerFigures(id);
+  const jobOrdersReleased = isReleased("release_job_orders");
+  const commitment = jobOrdersReleased.then((released) => (released ? getCommitmentBlock(id) : null));
   const review = Promise.all([getPartnerReview(id), getReviewOutcome(id), getReviewTargetDays()]);
   // The follower count of a listed company (FR-L4 AC11), never who follows; nothing while it is not listed.
   // A failed review read is reported once, by the review card; the followers then show nothing.
@@ -314,7 +325,7 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
   const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, planUsageKeys)]);
   const [twoStepDone, jobOrders] = await Promise.all([
     planLocked ? hasVerifiedTotpFactor(lang) : false,
-    isReleased("release_job_orders"),
+    jobOrdersReleased,
   ]);
   const now = new Date().toISOString();
 
@@ -336,6 +347,12 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
           ) : null
         }
       />
+
+      <Panel promise={commitment} errorTitle="The employer-pays commitment could not be loaded" quiet>
+        {(value) =>
+          value ? <CommitmentGate slug={slug} owner={role === "owner"} commitment={value} reasonId={COMMITMENT_REASON_ID} /> : null
+        }
+      </Panel>
 
       <Panel promise={review} errorTitle="The review state could not be loaded">
         {([state, outcome, targetDays]) =>
