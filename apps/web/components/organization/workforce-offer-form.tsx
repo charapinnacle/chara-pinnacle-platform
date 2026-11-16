@@ -5,6 +5,7 @@ import { Earth, MapPin, Plane } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
 import { CheckboxGroupField } from "@/components/forms/checkbox-group-field";
@@ -14,10 +15,10 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
 import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { SelectField } from "@/components/forms/select-field";
-import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ListingRemovalNotice } from "@/components/organization/listing-removal-notice";
 import { saveWorkforceOffer } from "@/lib/actions/workforce-offer";
+import type { UsagePrompt } from "@/lib/billing/limits";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import type { PartnerType } from "@/lib/validation/sign-up";
@@ -25,7 +26,6 @@ import {
   industryNoun,
   languageNoun,
   occupationNoun,
-  occupationsLimitMessage,
   recruitmentTypeLabels,
   sizeBandLabels,
   sizeBands,
@@ -37,13 +37,15 @@ import {
 
 type WorkforceOfferFormProps = {
   slug: string;
+  organizationId: string;
   partnerType: PartnerType;
   occupations: OccupationItem[];
   industries: ReferenceItem[];
   languages: ReferenceItem[];
   defaults: WorkforceOfferInput;
-  occupationsLimit: number | null;
-  billingHref: string;
+  // The listed-occupations limit when it applies.
+  occupationsPrompt: UsagePrompt | null;
+  billingHref: string | null;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
   // The availability listings per occupation (FR-K3), on the workforce profile page only.
@@ -78,12 +80,13 @@ const sizeBandOptions = sizeBands.map((value) => ({ value, label: sizeBandLabels
 // selection.
 export function WorkforceOfferForm({
   slug,
+  organizationId,
   partnerType,
   occupations,
   industries,
   languages,
   defaults,
-  occupationsLimit,
+  occupationsPrompt,
   billingHref,
   onboarding,
   listingCounts,
@@ -134,12 +137,16 @@ export function WorkforceOfferForm({
         emptyText="No matching occupation"
         noneChosen="No occupations chosen yet."
         noun={occupationNoun}
-        limit={occupationsLimit}
+        limit={occupationsPrompt?.limit ?? null}
         limitNotice={
-          occupationsLimit === null ? null : (
-            <p className="text-small">
-              {occupationsLimitMessage(occupationsLimit)} <TextLink href={billingHref}>Upgrade to add more.</TextLink>
-            </p>
+          occupationsPrompt === null ? null : (
+            <UpgradePrompt
+              organizationId={organizationId}
+              organizationType={partnerType}
+              prompt={{ ...occupationsPrompt, used: occupationsPrompt.limit }}
+              billingHref={billingHref}
+              canUpgrade
+            />
           )
         }
       />

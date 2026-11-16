@@ -256,7 +256,7 @@ test.describe("Workforce availability (FR-K3)", () => {
     ).toEqual(["source_country_removed", "source_country_removed", "occupation_removed"]);
   });
 
-  test("the owner is told to fill the profile first, and a plan without listings shows the upgrade link", async ({ page }) => {
+  test("the owner is told to fill the profile first, and a plan without listings shows the upgrade prompt", async ({ page }) => {
     test.setTimeout(90_000);
     const { user, id, slug } = await partnerWithCompany("recruitment_company");
     const secret = await enrollTotp(user);
@@ -272,8 +272,10 @@ test.describe("Workforce availability (FR-K3)", () => {
        values (${literal(id)}, 'recruitment_partner', 'canceled', 'null')`,
     );
     await page.reload();
-    await expect(section).toContainText("0 of 0 listings. Your plan does not include availability listings.");
-    await expect(section.getByRole("link", { name: "Upgrade to add more." })).toBeVisible();
+    await expect(section).toContainText("0 of 0 workforce listings on your Free plan.");
+    await expect(section).toContainText(
+      "Basic includes 10 workforce listings; Professional includes 50 workforce listings; Enterprise has no limit.",
+    );
     await expect(section.getByRole("button", { name: "Add a listing" })).toHaveCount(0);
   });
 });

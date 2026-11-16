@@ -84,11 +84,10 @@ describe("saveWorkforceOffer (FR-K2)", () => {
   });
 
   it("names the plan limit next to the occupations when the database refuses one more (AC4, AC10)", async () => {
-    rpcMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "listed_occupations")).mockResolvedValueOnce({ data: 10, error: null });
+    rpcMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "listed_occupations"));
     await expect(saveWorkforceOffer("manila-skills", input, { onboarding: true })).resolves.toEqual({
-      errors: { occupations: "Your plan includes 10 occupations." },
+      errors: { occupations: "Your plan's limit of occupations listed is reached." },
     });
-    expect(rpcMock).toHaveBeenLastCalledWith("organization_occupations_limit", { p_org: "org-1" });
   });
 
   it.each([

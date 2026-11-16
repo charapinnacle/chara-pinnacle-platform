@@ -176,12 +176,12 @@ select ok(
                  'public.update_workforce_availability(uuid, integer, integer, date)'::regprocedure,
                  'public.confirm_workforce_availability(uuid)'::regprocedure,
                  'public.delete_workforce_availability(uuid)'::regprocedure,
-                 'public.workforce_listings_limit(uuid)'::regprocedure))
+                 'public.org_usage(uuid, text[])'::regprocedure))
   and (select bool_and(has_function_privilege('authenticated', f, 'execute') and not has_function_privilege('anon', f, 'execute')
          and not has_function_privilege('service_role', f, 'execute'))
        from unnest(array['public.add_workforce_availability(uuid, text, text, integer, integer, date)',
          'public.update_workforce_availability(uuid, integer, integer, date)', 'public.confirm_workforce_availability(uuid)',
-         'public.delete_workforce_availability(uuid)', 'public.workforce_listings_limit(uuid)']) f),
+         'public.delete_workforce_availability(uuid)', 'public.org_usage(uuid, text[])']) f),
   'the functions are security definer with an empty search_path and run for authenticated only'
 );
 select is(
@@ -220,7 +220,7 @@ select pg_temp.new_org(:'own2', 'employer') as emp2 \gset
 update private.settings set value = 'false' where key = 'release_partner_directories';
 select is(
   pg_temp.add(:'ow', :'manila', '7212', 'PH', 120, 40, current_date)
-    || ',' || pg_temp.run(:'ow', format('public.workforce_listings_limit(%L)', :'manila')),
+    || ',' || pg_temp.run(:'ow', format('(select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'manila')),
   'P0001|CHARA_FORBIDDEN|release_off,42501|CHARA_FORBIDDEN|release_off',
   'while release 2a is off adding a listing and reading the limit are refused'
 );
@@ -569,15 +569,15 @@ select is(
 );
 select is(
   format('%s,%s,%s,%s',
-    pg_temp.val_as(:'pp', 'aal1', format('select public.workforce_listings_limit(%L)', :'org_partner')),
-    pg_temp.val_as(:'pr', 'aal1', format('select public.workforce_listings_limit(%L)', :'org_pro')),
-    coalesce(pg_temp.val_as(:'pe', 'aal1', format('select public.workforce_listings_limit(%L)', :'org_ent')), 'null'),
-    pg_temp.val_as(:'pf', 'aal1', format('select public.workforce_listings_limit(%L)', :'org_free'))),
+    pg_temp.val_as(:'pp', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'org_partner')),
+    pg_temp.val_as(:'pr', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'org_pro')),
+    coalesce(pg_temp.val_as(:'pe', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'org_ent')), 'null'),
+    pg_temp.val_as(:'pf', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'org_free'))),
   '10,50,null,0',
   'the section reads the limit that applies: 10, 50, unlimited and 0'
 );
 select is(
-  pg_temp.run(:'ow2', format('public.workforce_listings_limit(%L)', :'org_partner'), 'aal1'),
+  pg_temp.run(:'ow2', format('(select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'org_partner'), 'aal1'),
   '42501|CHARA_FORBIDDEN|',
   'the limit is read by members only'
 );
@@ -593,7 +593,7 @@ select is(
 );
 update private.settings set value = 'false' where key = 'entitlements_enforced';
 select is(
-  coalesce(pg_temp.val_as(:'pp', 'aal1', format('select public.workforce_listings_limit(%L)', :'org_partner')), 'null')
+  coalesce(pg_temp.val_as(:'pp', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''workforce_listings'']) u)', :'org_partner')), 'null')
     || ',' || pg_temp.fill(:'pp', :'org_partner', 11, 11),
   'null,ok',
   'while entitlements are not enforced no limit is shown or applied'

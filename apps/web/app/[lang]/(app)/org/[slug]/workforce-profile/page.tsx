@@ -11,26 +11,23 @@ import { AvailabilitySection } from "@/components/organization/availability-sect
 import { LicencesSection } from "@/components/organization/licences-section";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
+import { upgradeHref } from "@/lib/billing/limits";
 import { getCommitmentStatus } from "@/lib/dal/commitment";
-import { getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
+import { getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
 import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import {
-  getAvailabilityRules,
-  getListingCounts,
-  getListingsLimit,
-  getWorkforceListings,
-} from "@/lib/dal/workforce-availability";
-import { getOccupationsLimit, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { billingPath, onboardingPath } from "@/lib/routes";
+import { getUsagePrompts } from "@/lib/dal/usage";
+import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
+import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
+import { onboardingPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
-import { partnerTypeSchema } from "@/lib/validation/sign-up";
+import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
 import type { AvailabilityRules } from "@/lib/validation/workforce-availability";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
@@ -89,6 +86,7 @@ async function Licences({
 // source countries of the profile above.
 async function Availability({
   organizationId,
+  partnerType,
   slug,
   canManage,
   occupations,
@@ -97,23 +95,29 @@ async function Availability({
   billingHref,
 }: {
   organizationId: string;
+  partnerType: PartnerType;
   slug: string;
   canManage: boolean;
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
   rules: AvailabilityRules;
-  billingHref: string;
+  billingHref: string | null;
 }) {
-  const [listings, limit] = await Promise.all([getWorkforceListings(organizationId), getListingsLimit(organizationId)]);
+  const [listings, prompts] = await Promise.all([
+    getWorkforceListings(organizationId),
+    getUsagePrompts(organizationId, partnerType, ["workforce_listings"]),
+  ]);
   return (
     <AvailabilitySection
       slug={slug}
+      organizationId={organizationId}
+      partnerType={partnerType}
       canManage={canManage}
       listings={listings}
       occupations={occupations}
       countries={countries}
       rules={rules}
-      limit={limit}
+      prompt={prompts.workforce_listings}
       billingHref={billingHref}
       now={new Date().toISOString()}
     />
@@ -132,11 +136,10 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
   const partnerType = partnerTypeSchema.parse(organization.type);
   const [
     geographies,
-    marketsLimit,
+    prompts,
     profile,
     countries,
     offer,
-    occupationsLimit,
     occupations,
     industries,
     languages,
@@ -145,17 +148,17 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
   ] =
     await Promise.all([
       getOrganizationGeographies(organization.id),
-      getMarketsLimit(organization.id),
+      getUsagePrompts(organization.id, partnerType, ["markets", "listed_occupations"]),
       getOrganizationProfile(organization.id),
       getCountries(),
       getWorkforceOffer(organization.id),
-      getOccupationsLimit(organization.id),
       getOccupations(),
       getIndustries(),
       getLanguages(),
       getCommitmentStatus(organization.id),
       getAvailabilityRules(),
     ]);
+  const billingHref = upgradeHref(lang, slug, partnerType);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
   // Not awaited: the profile forms show the warning about listings once the counts arrive.
   const listingCounts = organization.role === "member" ? null : getListingCounts(organization.id);
@@ -208,12 +211,13 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         ) : (
           <WhereYouServeForm
             slug={slug}
+            organizationId={organization.id}
             partnerType={partnerType}
             basedIn={basedIn}
             countries={countries}
             defaults={geographies}
-            marketsLimit={marketsLimit}
-            billingHref={billingPath(lang, slug)}
+            marketsPrompt={prompts.markets}
+            billingHref={billingHref}
             onboarding={false}
             listingCounts={listingCounts?.then((counts) => counts.countries)}
           />
@@ -235,13 +239,14 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         ) : (
           <WorkforceOfferForm
             slug={slug}
+            organizationId={organization.id}
             partnerType={partnerType}
             occupations={occupations}
             industries={industries}
             languages={languages}
             defaults={workforceOfferDefaults(offer)}
-            occupationsLimit={occupationsLimit}
-            billingHref={billingPath(lang, slug)}
+            occupationsPrompt={prompts.listed_occupations}
+            billingHref={billingHref}
             onboarding={false}
             listingCounts={listingCounts?.then((counts) => counts.occupations)}
           />
@@ -260,6 +265,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         <Suspense fallback={<LoadingSkeleton rows={2} />}>
           <Availability
             organizationId={organization.id}
+            partnerType={partnerType}
             slug={slug}
             canManage={organization.role !== "member"}
             occupations={offer.occupations.map((code) => ({
@@ -268,7 +274,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             }))}
             countries={geographies.sourcesFrom.map((code) => ({ code, name: nameOf(code) }))}
             rules={availabilityRules}
-            billingHref={billingPath(lang, slug)}
+            billingHref={billingHref}
           />
         </Suspense>
       </section>

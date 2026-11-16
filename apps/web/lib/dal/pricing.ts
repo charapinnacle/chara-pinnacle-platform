@@ -1,5 +1,6 @@
 import "server-only";
 import * as z from "zod";
+import type { OrganizationType } from "@/lib/billing/limits";
 import { publicPlanSchema, type PricingViewer, type PublicPlan } from "@/lib/billing/pricing";
 import { getMyOrganizations } from "@/lib/dal/organizations";
 import { getCurrentUser, roleRank } from "@/lib/dal/session";
@@ -7,15 +8,16 @@ import { createClient } from "@/lib/supabase/server";
 
 const MAX_PLANS = 20;
 
-// The one reader of the public employer plans: the pricing page shows them all, the billing pages those that can be
-// bought. A member also reads the plan its own organisation is on, even when it is not public (the fallback plan,
-// Enterprise before its price is stated), so the filter on is_public is not left to the row policy.
-export async function listPublicPlans(): Promise<PublicPlan[]> {
+// The one reader of the public plans of an organisation type (employer unless named): the pricing page shows them all,
+// the billing pages those that can be bought, a partner's upgrade prompt compares them. A member also reads the plan its
+// own organisation is on, even when it is not public (the fallback plan, Enterprise before its price is stated), so the
+// filter on is_public is not left to the row policy.
+export async function listPublicPlans(orgType: OrganizationType = "employer"): Promise<PublicPlan[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("v_plans")
     .select("code, name, price_minor, currency, interval, trial_days, contact_sales, limits, features")
-    .eq("org_type", "employer")
+    .eq("org_type", orgType)
     .eq("is_public", true)
     .order("sort")
     .limit(MAX_PLANS);

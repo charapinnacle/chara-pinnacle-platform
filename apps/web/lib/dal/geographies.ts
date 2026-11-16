@@ -18,14 +18,6 @@ export async function getOrganizationGeographies(organizationId: string): Promis
   };
 }
 
-// The plan limit of served countries when it applies; null when the plan has none or limits are not enforced.
-export async function getMarketsLimit(organizationId: string): Promise<number | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("organization_markets_limit", { p_org: organizationId });
-  if (error) throw new Error("The plan limit of served countries could not be loaded", { cause: error });
-  return data;
-}
-
 // Where you serve is done once both lists hold a country (submission for review needs both, FR-J1 AC10).
 export function geographiesComplete({ sourcesFrom, servesMarket }: OrganizationGeographies): boolean {
   return sourcesFrom.length > 0 && servesMarket.length > 0;

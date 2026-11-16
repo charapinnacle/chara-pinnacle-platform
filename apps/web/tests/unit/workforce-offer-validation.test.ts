@@ -3,7 +3,6 @@ import { chosenCount } from "@/lib/chips";
 import {
   fromServiceTypes,
   occupationNoun,
-  occupationsLimitMessage,
   toServiceTypes,
   workforceOfferSchema,
   type WorkforceOfferInput,
@@ -86,9 +85,7 @@ describe("What you offer (FR-K2)", () => {
     expect(issues({ ...offer, sizeBand: "huge" })).toEqual([["sizeBand", "Choose from the list."]]);
   });
 
-  it("states and counts the occupation limit of the plan (AC10)", () => {
-    expect(occupationsLimitMessage(10)).toBe("Your plan includes 10 occupations.");
-    expect(occupationsLimitMessage(1)).toBe("Your plan includes 1 occupation.");
+  it("counts the occupation limit of the plan (AC10)", () => {
     expect(chosenCount(10, 10, occupationNoun)).toBe("10 of 10 occupations");
   });
 

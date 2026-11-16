@@ -18,7 +18,8 @@ import { expect, test } from "./support/test";
 const SOURCES = "Where do you source workers from?";
 const RECRUITS_FOR = "Where do you recruit for?";
 const SUPPLIES_FOR = "Where do you supply workers for?";
-const LIMIT_MESSAGE = "Your plan includes 3 countries served. Upgrade to add more.";
+const LIMIT_MESSAGE = "3 of 3 countries served on your Free plan.";
+const COMPARISON = "Professional includes 10 countries served; Enterprise has no limit.";
 const SET_GEOGRAPHIES = "public.set_organization_geographies(uuid, text[], text[])";
 
 function geographies(organizationId: string): string {
@@ -39,7 +40,7 @@ test.describe("Where you serve (FR-K1)", () => {
 
   test("AC1, AC2, AC5, AC10: the owner chooses the countries with the keyboard, meets the limit and continues", async ({ page }) => {
     test.setTimeout(120_000);
-    const { user, id, slug } = await partnerWithCompany("recruitment_company");
+    const { user, id } = await partnerWithCompany("recruitment_company");
     lapseToFreePlan(id);
     await openPartnerOnboarding(page, user);
 
@@ -72,7 +73,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await pickWithKeys(page, RECRUITS_FOR, "united arab", "United Arab Emirates");
     await pickWithKeys(page, RECRUITS_FOR, "saudi", "Saudi Arabia");
     await expect(chips(page, RECRUITS_FOR)).toHaveText(["Germany", "United Arab Emirates", "Saudi Arabia"]);
-    await expect(page.getByText("3 of 3 countries")).toBeVisible();
+    await expect(page.getByText("3 of 3 countries", { exact: true })).toBeVisible();
     await expect(page.getByText("Choose at least one country you recruit for")).toHaveCount(0);
 
     // AC5: a fourth country is not added; the limit is announced with the way to upgrade.
@@ -80,8 +81,10 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, RECRUITS_FOR)).toHaveCount(3);
     const notice = page.getByRole("status").filter({ hasText: LIMIT_MESSAGE });
     await expect(notice).toBeVisible();
-    await expect(notice.getByRole("link", { name: "Upgrade to add more." })).toHaveAttribute("href", `/en/org/${slug}/billing`);
-    await expect(page.getByText("3 of 3 countries")).toBeVisible();
+    // The billing page does not sell partner plans yet (V15): the prompt compares them instead of linking there.
+    await expect(notice).toContainText(COMPARISON);
+    await expect(notice.getByRole("link")).toHaveCount(0);
+    await expect(page.getByText("3 of 3 countries", { exact: true })).toBeVisible();
     // A second blocked add replaces the notice in the live region, so it is announced again.
     await notice.locator(":scope > div").evaluate((element) => element.setAttribute("data-first", "true"));
     await pickWithKeys(page, RECRUITS_FOR, "ital", "Italy");

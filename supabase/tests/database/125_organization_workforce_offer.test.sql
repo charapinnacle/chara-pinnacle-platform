@@ -5,7 +5,7 @@ select plan(66);
 
 -- What you offer (V07, FR-K2 AC1, AC3, AC4, AC5, AC8; NFR-S8, NFR-A4, NFR-M3): the tables organization_occupations,
 -- organization_industries, organization_languages and organization_service_types, their read policies,
--- set_organization_workforce_offer with the listed_occupations limit and organization_occupations_limit.
+-- set_organization_workforce_offer with the listed_occupations limit, read through org_usage.
 
 create function pg_temp.new_partner(p_id uuid, p_type text) returns void
 language sql as $$
@@ -160,12 +160,12 @@ select ok(
 select ok(
   (select bool_and(prosecdef and proconfig = array['search_path=""']) from pg_proc
    where oid in ('public.set_organization_workforce_offer(uuid, text[], text[], text[], public.recruitment_preference, public.partner_service_type[], public.workforce_size_band, smallint)'::regprocedure,
-                 'public.organization_occupations_limit(uuid)'::regprocedure))
+                 'public.org_usage(uuid, text[])'::regprocedure))
   and has_function_privilege('authenticated', 'public.set_organization_workforce_offer(uuid, text[], text[], text[], public.recruitment_preference, public.partner_service_type[], public.workforce_size_band, smallint)', 'execute')
   and not has_function_privilege('anon', 'public.set_organization_workforce_offer(uuid, text[], text[], text[], public.recruitment_preference, public.partner_service_type[], public.workforce_size_band, smallint)', 'execute')
   and not has_function_privilege('service_role', 'public.set_organization_workforce_offer(uuid, text[], text[], text[], public.recruitment_preference, public.partner_service_type[], public.workforce_size_band, smallint)', 'execute')
-  and has_function_privilege('authenticated', 'public.organization_occupations_limit(uuid)', 'execute')
-  and not has_function_privilege('anon', 'public.organization_occupations_limit(uuid)', 'execute'),
+  and has_function_privilege('authenticated', 'public.org_usage(uuid, text[])', 'execute')
+  and not has_function_privilege('anon', 'public.org_usage(uuid, text[])', 'execute'),
   'both functions are security definer with an empty search_path and run for authenticated only'
 );
 
@@ -192,7 +192,7 @@ select pg_temp.new_org(:'own2', 'employer') as emp2 \gset
 update private.settings set value = 'false' where key = 'release_partner_directories';
 select is(
   pg_temp.set_offer(:'ow', :'manila', array['7212'], array['C'], array['en'])
-    || ',' || pg_temp.call_as(:'ow', 'authenticated', format('select public.organization_occupations_limit(%L)', :'manila'), 'aal1'),
+    || ',' || pg_temp.call_as(:'ow', 'authenticated', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'manila'), 'aal1'),
   'P0001|CHARA_FORBIDDEN|release_off,42501|CHARA_FORBIDDEN|release_off',
   'while release 2a is off both functions refuse'
 );
@@ -505,22 +505,22 @@ select is(
 );
 select is(
   format('%s,%s,%s,%s',
-    pg_temp.val_as(:'pp', 'aal1', format('select public.organization_occupations_limit(%L)', :'org_partner')),
-    pg_temp.val_as(:'pr', 'aal1', format('select public.organization_occupations_limit(%L)', :'org_pro')),
-    coalesce(pg_temp.val_as(:'pe', 'aal1', format('select public.organization_occupations_limit(%L)', :'org_ent')), 'null'),
-    pg_temp.val_as(:'mb', 'aal1', format('select public.organization_occupations_limit(%L)', :'manila'))),
+    pg_temp.val_as(:'pp', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'org_partner')),
+    pg_temp.val_as(:'pr', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'org_pro')),
+    coalesce(pg_temp.val_as(:'pe', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'org_ent')), 'null'),
+    pg_temp.val_as(:'mb', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'manila'))),
   '10,30,null,10',
   'AC10: the form reads the limit that applies: 10, 30, unlimited, and 10 for a member of a company on the free plan'
 );
 select is(
-  pg_temp.call_as(:'ow2', 'authenticated', format('select public.organization_occupations_limit(%L)', :'manila'), 'aal1')
-    || ',' || pg_temp.call_as(null, 'anon', format('select public.organization_occupations_limit(%L)', :'manila')),
-  '42501|CHARA_FORBIDDEN|,42501|permission denied for function organization_occupations_limit|',
+  pg_temp.call_as(:'ow2', 'authenticated', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'manila'), 'aal1')
+    || ',' || pg_temp.call_as(null, 'anon', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'manila')),
+  '42501|CHARA_FORBIDDEN|,42501|permission denied for function org_usage|',
   'the limit is read by members only'
 );
 update private.settings set value = 'false' where key = 'entitlements_enforced';
 select is(
-  coalesce(pg_temp.val_as(:'pp', 'aal1', format('select public.organization_occupations_limit(%L)', :'org_partner')), 'null')
+  coalesce(pg_temp.val_as(:'pp', 'aal1', format('select (select case when u.applies then u.limit_value end from public.org_usage(%L, array[''listed_occupations'']) u)', :'org_partner')), 'null')
     || ',' || pg_temp.set_offer(:'pp', :'org_partner', pg_temp.occupations(11), null, null),
   'null,ok',
   'while entitlements are not enforced no limit is shown or applied'

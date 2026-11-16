@@ -53,14 +53,6 @@ export async function getListingCounts(organizationId: string): Promise<ListingC
   return counts;
 }
 
-// The plan limit of listings when it applies; null when the plan has none or limits are not enforced.
-export async function getListingsLimit(organizationId: string): Promise<number | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("workforce_listings_limit", { p_org: organizationId });
-  if (error) throw new Error("The plan limit of listings could not be loaded", { cause: error });
-  return data;
-}
-
 // The staleness, reminder and date periods of the listings, from the public settings.
 export async function getAvailabilityRules(): Promise<AvailabilityRules> {
   const settings = await getPublicSettings();

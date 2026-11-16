@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { StatusBadge } from "@/components/feedback/status-badge";
@@ -13,19 +14,19 @@ import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { InputField } from "@/components/forms/form-field";
-import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { confirmListing, deleteListing, saveListing } from "@/lib/actions/workforce-availability";
+import type { UsagePrompt } from "@/lib/billing/limits";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
 import { formatCount, formatDate } from "@/lib/i18n/format";
 import { toOptions } from "@/lib/reference-options";
 import { todayUtc } from "@/lib/validation/passport";
+import type { PartnerType } from "@/lib/validation/sign-up";
 import {
   freshnessLabel,
   listingFormSchema,
   listingFreshness,
-  listingsLimitMessage,
   type AvailabilityRules,
   type ListingInput,
 } from "@/lib/validation/workforce-availability";
@@ -42,14 +43,17 @@ const ids = {
 
 type AvailabilitySectionProps = {
   slug: string;
+  organizationId: string;
+  partnerType: PartnerType;
   canManage: boolean;
   listings: WorkforceListing[];
   // The occupations and source countries of the partner's own profile: a listing names one of each.
   occupations: ReferenceItem[];
   countries: ReferenceItem[];
   rules: AvailabilityRules;
-  limit: number | null;
-  billingHref: string;
+  // The listings limit when it applies.
+  prompt: UsagePrompt | null;
+  billingHref: string | null;
   now: string;
 };
 
@@ -59,12 +63,14 @@ type AvailabilitySectionProps = {
 // within the staleness period is hidden outside the company until it is confirmed again.
 export function AvailabilitySection({
   slug,
+  organizationId,
+  partnerType,
   canManage,
   listings,
   occupations,
   countries,
   rules,
-  limit,
+  prompt,
   billingHref,
   now,
 }: AvailabilitySectionProps) {
@@ -76,6 +82,7 @@ export function AvailabilitySection({
   const nameOf = (listing: WorkforceListing) => `${occupationOf(listing.occupation)} from ${countryOf(listing.country)}`;
   const close = () => setEditing(null);
   const profileReady = occupations.length > 0 && countries.length > 0;
+  const limit = prompt?.limit ?? null;
   const atLimit = limit !== null && listings.length >= limit;
   const addButton =
     canManage && profileReady && !atLimit ? (
@@ -84,15 +91,20 @@ export function AvailabilitySection({
       </FormButton>
     ) : null;
   const limitNotice =
-    canManage && limit !== null ? (
-      <p className="text-small">
-        {formatCount(listings.length)} of {formatCount(limit)} {limit === 1 ? "listing" : "listings"}.{" "}
-        {atLimit ? (
-          <>
-            {listingsLimitMessage(limit)} <TextLink href={billingHref}>Upgrade to add more.</TextLink>
-          </>
-        ) : null}
-      </p>
+    canManage && prompt ? (
+      atLimit ? (
+        <UpgradePrompt
+          organizationId={organizationId}
+          organizationType={partnerType}
+          prompt={{ ...prompt, used: listings.length }}
+          billingHref={billingHref}
+          canUpgrade
+        />
+      ) : (
+        <p className="text-small">
+          {formatCount(listings.length)} of {formatCount(prompt.limit)} {prompt.limit === 1 ? "listing" : "listings"}.
+        </p>
+      )
     ) : null;
 
   return (

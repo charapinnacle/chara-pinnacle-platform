@@ -17,13 +17,14 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcM
 
 const { saveOrganizationGeographies } = await import("@/lib/actions/geographies");
 
+const ORG_ID = "00000000-0000-4000-8000-000000000001";
 const input = { sourcesFrom: ["ph", "NP", "PH"], servesMarket: ["DE", "ae"] };
 const refusal = (message: string, details: string) => ({ data: null, error: { message, details, code: "P0001" } });
 
 beforeEach(() => {
   vi.clearAllMocks();
   releasedMock.mockResolvedValue(true);
-  requireOrgRoleMock.mockResolvedValue({ organization: { id: "org-1", type: "recruitment_company", role: "owner" } });
+  requireOrgRoleMock.mockResolvedValue({ organization: { id: ORG_ID, type: "recruitment_company", role: "owner" } });
   rpcMock.mockResolvedValue({ data: { changed: true }, error: null });
 });
 
@@ -38,7 +39,7 @@ describe("saveOrganizationGeographies (FR-K1)", () => {
       partner: true,
     });
     expect(rpcMock).toHaveBeenCalledWith("set_organization_geographies", {
-      p_org: "org-1",
+      p_org: ORG_ID,
       p_sources_from: ["PH", "NP"],
       p_serves_market: ["DE", "AE"],
     });
@@ -62,12 +63,12 @@ describe("saveOrganizationGeographies (FR-K1)", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("names the plan limit next to the served countries when the database refuses one more (AC5)", async () => {
-    rpcMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "markets")).mockResolvedValueOnce({ data: 3, error: null });
+  it("names the plan limit next to the served countries when the database refuses one more and reports the prompt (AC5)", async () => {
+    rpcMock.mockResolvedValueOnce(refusal("CHARA_LIMIT_REACHED", "markets")).mockResolvedValueOnce({ data: null, error: null });
     await expect(saveOrganizationGeographies("manila-skills", input, { onboarding: true })).resolves.toEqual({
-      errors: { servesMarket: "Your plan includes 3 countries served." },
+      errors: { servesMarket: "Your plan's limit of countries served is reached." },
     });
-    expect(rpcMock).toHaveBeenLastCalledWith("organization_markets_limit", { p_org: "org-1" });
+    expect(rpcMock).toHaveBeenLastCalledWith("record_limit_prompt", { p_org: ORG_ID, p_limit_key: "markets" });
   });
 
   it.each([

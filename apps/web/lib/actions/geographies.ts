@@ -2,12 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { recordLimitPrompt } from "@/lib/actions/limits";
+import { limitRefusalMessage } from "@/lib/billing/limits";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { onboardingPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { geographiesSchema, marketsLimitMessage, type GeographiesInput } from "@/lib/validation/geographies";
+import { geographiesSchema, type GeographiesInput } from "@/lib/validation/geographies";
 import { fieldErrors, partnerTypeSchema, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -44,9 +46,9 @@ export async function saveOrganizationGeographies(
     p_serves_market: parsed.data.servesMarket,
   });
   if (error) {
-    if (error.message === "CHARA_LIMIT_REACHED" && error.details === "markets") {
-      const { data: limit } = await supabase.rpc("organization_markets_limit", { p_org: organization.id });
-      return { errors: { servesMarket: limit === null ? GENERIC_FAILURE : marketsLimitMessage(limit) } };
+    if (error.message === "CHARA_LIMIT_REACHED") {
+      await recordLimitPrompt(organization.id, error.details);
+      return { errors: { servesMarket: limitRefusalMessage(error.details, type) } };
     }
     if (error.message === "CHARA_INVALID_INPUT" && error.details === "country_code") return { message: UNKNOWN_COUNTRY };
     if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_suspended") return { message: SUSPENDED };
