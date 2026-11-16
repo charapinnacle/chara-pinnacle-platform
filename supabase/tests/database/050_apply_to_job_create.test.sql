@@ -3,6 +3,9 @@ select plan(48);
 
 \ir apply_fixture.inc
 
+-- The completeness of the snapshot uses the Phase 1 weights while release 2c is off (V61).
+update private.settings set value = 'false' where key = 'release_find_workers';
+
 select pg_temp.doc(:'d1', :'wa');
 select pg_temp.doc(:'d2', :'wa', 'skipped', 'certificate');
 select pg_temp.doc(:'dx', :'wb');
@@ -149,7 +152,7 @@ select is(
     'languages', jsonb_build_array(jsonb_build_object('code', 'de', 'level', 'A2'), jsonb_build_object('code', 'en', 'level', 'C1')),
     'preferred_countries', jsonb_build_array('AE', 'DE'),
     'work_authorizations', jsonb_build_array(jsonb_build_object('country', 'NG', 'expires_on', '2030-05-01')),
-    'completeness', 80
+    'completeness', 85
   ),
   'AC9: the snapshot holds the name, headline, country, occupation, skills, languages with levels, experience, availability, preferred countries, work authorisation with expiry and the completeness of the passport'
 );

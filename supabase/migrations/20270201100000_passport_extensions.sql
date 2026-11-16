@@ -6,6 +6,7 @@
 -- private.worker_list_limit, and they go with the passport (on delete cascade). Organisations never read them here; the
 -- Find Workers card (V68) shows them only when the worker allows it, behind release_find_workers. Nothing here stores an
 -- identity number, a date of birth, an age, a nationality or another attribute NFR-C1 forbids; dates are months and years.
+-- The lists are editable whatever the release switches; only the completeness weights wait for release 2c (below).
 
 insert into private.settings (key, value) values
   ('worker_training_max', '20'),
@@ -194,11 +195,13 @@ create policy worker_preferred_employment_types_update_own on public.worker_pref
 create policy worker_preferred_employment_types_delete_own on public.worker_preferred_employment_types
   for delete to authenticated using (worker_user_id = (select auth.uid()));
 
--- The weights of FR-Q4 AC7, the same as apps/web/lib/passport/completeness.ts: names and country 10, headline 5,
--- occupation 15, three skills 10, a language 10, years of experience 5, availability 10, a valid work authorisation 10,
--- a usable CV 15, a training entry 5, an employment history entry 5. Preferred industries and employment types carry no
--- weight. A passport complete under the Phase 1 weights now scores 90 (open point 8 of DATA_MODEL.md, to confirm with
--- CHARA); a snapshot stored before this migration keeps its number.
+-- The weights follow release 2c, as apps/web/lib/passport/completeness.ts does. While release_find_workers is off (a
+-- missing setting counts as off) they stay those of Phase 1 (20261027100000_applicant_list.sql), so no score changes
+-- with this migration: names and country 10, headline 5, occupation 15, three skills 15, a language 10, years of
+-- experience 10, availability 10, a valid work authorisation 10, a usable CV 15. Once it is on, those of FR-Q4 AC7:
+-- three skills 10, years of experience 5, a training entry 5, an employment history entry 5, the others unchanged (a
+-- passport complete under the Phase 1 rules then scores 90, open point 8 of DATA_MODEL.md). Preferred industries and
+-- employment types carry no weight. A snapshot stored with an application keeps its number.
 create or replace function private.passport_completeness(p_user uuid) returns integer
 language sql
 stable
@@ -210,9 +213,10 @@ as $$
       10
       + (btrim(coalesce(p.headline, '')) <> '')::int * 5
       + (p.occupation_id is not null)::int * 15
-      + ((select count(*) from public.worker_skills s where s.worker_user_id = p.user_id) >= 3)::int * 10
+      + ((select count(*) from public.worker_skills s where s.worker_user_id = p.user_id) >= 3)::int
+        * case when r.find_workers then 10 else 15 end
       + exists (select 1 from public.worker_languages l where l.worker_user_id = p.user_id)::int * 10
-      + (p.years_experience is not null)::int * 5
+      + (p.years_experience is not null)::int * case when r.find_workers then 5 else 10 end
       + (p.availability is not null)::int * 10
       + exists (
         select 1 from public.worker_work_authorizations a
@@ -222,9 +226,13 @@ as $$
         select 1 from public.worker_documents d
         where d.worker_user_id = p.user_id and d.type = 'cv' and d.deleted_at is null and d.scan_status in ('clean', 'skipped')
       )::int * 15
-      + exists (select 1 from public.worker_training t where t.worker_user_id = p.user_id)::int * 5
-      + exists (select 1 from public.worker_employment_history h where h.worker_user_id = p.user_id)::int * 5
-    from public.worker_profiles p where p.user_id = p_user
+      + case when r.find_workers then
+          exists (select 1 from public.worker_training t where t.worker_user_id = p.user_id)::int * 5
+          + exists (select 1 from public.worker_employment_history h where h.worker_user_id = p.user_id)::int * 5
+        else 0 end
+    from public.worker_profiles p
+    cross join (select private.release_on('release_find_workers') as find_workers) r
+    where p.user_id = p_user
   ), 0)
 $$;
 

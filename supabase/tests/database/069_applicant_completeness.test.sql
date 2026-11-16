@@ -1,40 +1,40 @@
 begin;
-select plan(20);
+select plan(19);
 
 \ir applicants_fixture.inc
 
--- The completeness a snapshot stores (FR-E1 data rules, FR-B4 weights as FR-Q4 AC7 changed them in V61): name and country
--- 10, headline 5, occupation 15, three skills 10, a language 10, years of experience 5, availability 10, a valid work
--- authorisation 10, a usable CV 15, a training entry 5, an employment history entry 5.
+-- The completeness a snapshot stores (FR-E1 data rules, FR-B4 weights): name and country 10, headline 5, occupation 15,
+-- three skills 15, a language 10, years of experience 10, availability 10, a valid work authorisation 10, a usable CV 15.
+-- These are the weights while release_find_workers is off; those of release 2c (FR-Q4 AC7) are tested in 176.
+update private.settings set value = 'false' where key = 'release_find_workers';
 -- The fixture passport of wa has its names, a country and an occupation: 25.
 select is(private.passport_completeness(:'wa'), 25, 'completeness: names, country and occupation');
 select is(private.passport_completeness(gen_random_uuid()), 0, 'completeness: a user without a passport has 0');
 insert into public.worker_skills (worker_user_id, skill) values (:'wa', 'Welding'), (:'wa', 'Wiring');
 select is(private.passport_completeness(:'wa'), 25, 'completeness: two skills do not count');
 insert into public.worker_skills (worker_user_id, skill) values (:'wa', 'Cabling');
-select is(private.passport_completeness(:'wa'), 35, 'completeness: three skills count 10');
+select is(private.passport_completeness(:'wa'), 40, 'completeness: three skills count 15');
 select pg_temp.doc('00000000-0000-0000-0000-0000000e0001', :'wa', 'rejected');
-select is(private.passport_completeness(:'wa'), 35, 'completeness: a CV that failed the file check does not count');
+select is(private.passport_completeness(:'wa'), 40, 'completeness: a CV that failed the file check does not count');
 select pg_temp.doc('00000000-0000-0000-0000-0000000e0002', :'wa', 'skipped');
-select is(private.passport_completeness(:'wa'), 50, 'completeness: a usable CV counts 15');
+select is(private.passport_completeness(:'wa'), 55, 'completeness: a usable CV counts 15');
 update public.worker_documents set deleted_at = now() where id = '00000000-0000-0000-0000-0000000e0002';
-select is(private.passport_completeness(:'wa'), 35, 'completeness: a deleted CV does not count');
+select is(private.passport_completeness(:'wa'), 40, 'completeness: a deleted CV does not count');
 update public.worker_documents set deleted_at = null where id = '00000000-0000-0000-0000-0000000e0002';
 update public.worker_profiles set headline = 'Welder', years_experience = 0, availability = 'now' where user_id = :'wa';
-select is(private.passport_completeness(:'wa'), 70, 'completeness: a headline 5, years of experience 5 (0 counts) and availability 10');
+select is(private.passport_completeness(:'wa'), 80, 'completeness: a headline 5, years of experience 10 (0 counts) and availability 10');
 insert into public.worker_languages (worker_user_id, language_code, cefr_level) values (:'wa', 'en', 'B2');
 insert into public.worker_work_authorizations (worker_user_id, country_code, expires_on) values (:'wa', 'DE', (now() at time zone 'utc')::date);
 -- The table refuses a date in the past; an authorisation that has run out is one whose date has passed since.
 alter table public.worker_work_authorizations disable trigger user;
 update public.worker_work_authorizations set expires_on = (now() at time zone 'utc')::date - 1 where worker_user_id = :'wa';
 alter table public.worker_work_authorizations enable trigger user;
-select is(private.passport_completeness(:'wa'), 80, 'completeness: a language 10; an authorisation that expired yesterday does not count');
+select is(private.passport_completeness(:'wa'), 90, 'completeness: a language 10; an authorisation that expired yesterday does not count');
 update public.worker_work_authorizations set expires_on = (now() at time zone 'utc')::date where worker_user_id = :'wa';
-select is(private.passport_completeness(:'wa'), 90, 'completeness: an authorisation that expires today counts; complete under the Phase 1 rules is 90');
+select is(private.passport_completeness(:'wa'), 100, 'completeness: an authorisation that expires today counts');
 insert into public.worker_training (worker_user_id, course, year_completed) values (:'wa', 'Welding course', 2020);
-select is(private.passport_completeness(:'wa'), 95, 'completeness: a training entry 5');
 insert into public.worker_employment_history (worker_user_id, role, country_code, from_month) values (:'wa', 'Welder', 'NG', '2018-01-01');
-select is(private.passport_completeness(:'wa'), 100, 'completeness: an employment history entry 5');
+select is(private.passport_completeness(:'wa'), 100, 'completeness: training and employment history (V61) add nothing before release 2c');
 
 -- apply_to_job stores the percentage at that moment in the snapshot, and a later change of the passport leaves it as it was.
 create temp table t_a as select pg_temp.org_on('employer_starter') as org;
