@@ -1,4 +1,5 @@
 import * as z from "zod";
+import type { Noun } from "@/lib/chips";
 import type { PartnerType } from "@/lib/validation/sign-up";
 
 // The number of reference countries: no list can name more (FR-K1).
@@ -35,8 +36,4 @@ export function marketsLimitMessage(limit: number): string {
   return `Your plan includes ${limit} ${limit === 1 ? "country" : "countries"} served.`;
 }
 
-// "2 of 3 countries" when the plan limits the list, "2 countries" otherwise.
-export function countryCount(count: number, limit: number | null): string {
-  const noun = (limit ?? count) === 1 ? "country" : "countries";
-  return limit === null ? `${count} ${noun}` : `${count} of ${limit} ${noun}`;
-}
+export const countryNoun: Noun = { one: "country", other: "countries" };

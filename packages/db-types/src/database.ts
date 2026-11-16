@@ -345,6 +345,37 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"organization_industries": {
+                  Row: {
+                    "created_at": string,"industry_code": string,"organization_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"industry_code": string,"organization_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"industry_code"?: string,"organization_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_industries_industry_code_fkey"
+      columns: ["industry_code"]
+isOneToOne: false
+      referencedRelation: "industries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "organization_industries_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_industries_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"organization_invitations": {
                   Row: {
                     "accepted_at": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"token_hash": string
@@ -370,6 +401,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "organization_invitations_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
+                },"organization_languages": {
+                  Row: {
+                    "created_at": string,"language_code": string,"organization_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"language_code": string,"organization_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"language_code"?: string,"organization_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_languages_language_code_fkey"
+      columns: ["language_code"]
+isOneToOne: false
+      referencedRelation: "languages"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "organization_languages_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_languages_organization_id_fkey"
       columns: ["organization_id"]
 isOneToOne: false
       referencedRelation: "v_org_limits"
@@ -413,6 +475,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"organization_occupations": {
+                  Row: {
+                    "created_at": string,"occupation_id": string,"organization_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"occupation_id": string,"organization_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"occupation_id"?: string,"organization_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_occupations_occupation_id_fkey"
+      columns: ["occupation_id"]
+isOneToOne: false
+      referencedRelation: "occupations"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "organization_occupations_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_occupations_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"organization_ownership_transfers": {
                   Row: {
                     "accepted_at": string | null,"cancelled_at": string | null,"created_at": string,"expires_at": string,"from_user_id": string,"id": string,"organization_id": string,"to_user_id": string
@@ -448,6 +541,31 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"organization_service_types": {
+                  Row: {
+                    "created_at": string,"organization_id": string,"service": Database["public"]['Enums']["partner_service_type"]
+                  }
+                  Insert: {
+                    "created_at"?: string,"organization_id": string,"service": Database["public"]['Enums']["partner_service_type"]
+                  }
+                  Update: {
+                    "created_at"?: string,"organization_id"?: string,"service"?: Database["public"]['Enums']["partner_service_type"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_service_types_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_service_types_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
     }
                   ]
                 },"organizations": {
@@ -1240,6 +1358,9 @@ isOneToOne: false
 "organization_markets_limit":
 { Args: { "p_org": string }; Returns: number
                            },
+"organization_occupations_limit":
+{ Args: { "p_org": string }; Returns: number
+                           },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {
               "availability_window_months": number,"skills_max": number,"work_authorization_expiry_max_years": number
@@ -1306,6 +1427,9 @@ isOneToOne: false
                            },
 "set_organization_geographies":
 { Args: { "p_org": string,"p_serves_market": (string)[],"p_sources_from": (string)[] }; Returns: Json
+                           },
+"set_organization_workforce_offer":
+{ Args: { "p_founded_year"?: number,"p_industries": (string)[],"p_languages": (string)[],"p_occupations": (string)[],"p_org": string,"p_recruitment_type": Database["public"]['Enums']["recruitment_preference"],"p_service_types": (Database["public"]['Enums']["partner_service_type"])[],"p_workforce_size_band"?: Database["public"]['Enums']["workforce_size_band"] }; Returns: Json
                            },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: {

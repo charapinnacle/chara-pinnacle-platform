@@ -24,8 +24,34 @@ vi.mock("@/lib/dal/reference", () => ({
     { code: "NP", name: "Nepal" },
     { code: "PH", name: "Philippines" },
   ],
+  getOccupations: async () => [
+    { code: "7126", label: "Plumbers and pipe fitters", synonyms: [] },
+    { code: "7212", label: "Welders and flame cutters", synonyms: ["welder"] },
+  ],
+  getIndustries: async () => [
+    { code: "C", name: "Manufacturing" },
+    { code: "F", name: "Construction" },
+  ],
+  getLanguages: async () => [
+    { code: "ar", name: "Arabic" },
+    { code: "en", name: "English" },
+  ],
 }));
 vi.mock("@/lib/actions/geographies", () => ({ saveOrganizationGeographies: vi.fn() }));
+vi.mock("@/lib/dal/workforce-offer", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/dal/workforce-offer")>("@/lib/dal/workforce-offer")),
+  getWorkforceOffer: async () => ({
+    occupations: ["7212"],
+    industries: ["C", "F"],
+    languages: ["ar"],
+    recruitmentType: "international",
+    serviceTypes: ["staffing", "temporary"],
+    sizeBand: "50_249",
+    foundedYear: 2019,
+  }),
+  getOccupationsLimit: async () => 10,
+}));
+vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 
 const { default: WorkforceProfilePage } = await import("@/app/[lang]/(app)/org/[slug]/workforce-profile/page");
 
@@ -48,7 +74,7 @@ beforeEach(() => {
   requireOrgRoleMock.mockResolvedValue(organization("owner"));
 });
 
-describe("the workforce profile page (FR-K1)", () => {
+describe("the workforce profile page (FR-K1, FR-K2)", () => {
   it("does not exist while release 2a is off", async () => {
     releasedMock.mockResolvedValue(false);
     await expect(render()).rejects.toThrow("NOT_FOUND");
@@ -72,12 +98,34 @@ describe("the workforce profile page (FR-K1)", () => {
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save countries<\/button>/);
   });
 
+  it("lets the owner change what the company offers, with the saved values filled in (FR-K2 AC1, AC7, AC10)", async () => {
+    requireOrgRoleMock.mockResolvedValue(organization("owner", "recruitment_company"));
+    const html = await render();
+    expect(html).toContain(">What you offer</h2>");
+    expect(html).toContain('aria-label="Remove Welders and flame cutters"');
+    expect(html).toContain(">1 of 10 occupations</p>");
+    expect(html).toContain('aria-label="Remove Manufacturing"');
+    expect(html).toContain('aria-label="Remove Arabic"');
+    expect(html).toMatch(/<legend[^>]*>Recruitment type<\/legend>/);
+    expect(html).toMatch(/<input[^>]*type="radio"[^>]*checked="" value="international"/);
+    expect(html).toContain("We also supply staff (staffing)");
+    expect(html).toMatch(/<legend[^>]*>Staffing types \(choose at least one\)<\/legend>/);
+    expect(html).toMatch(/<option value="50_249" selected="">50 to 249 people<\/option>/);
+    expect(html).toMatch(/<input[^>]*value="2019"/);
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save what you offer<\/button>/);
+  });
+
   it("shows a member the countries without a form", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("member", "recruitment_company"));
     const html = await render();
     expect(html).not.toContain("<form");
     expect(html).toMatch(/<dt[^>]*>Where do you source workers from\?<\/dt><dd[^>]*>Nepal, Philippines<\/dd>/);
     expect(html).toMatch(/<dt[^>]*>Where do you recruit for\?<\/dt><dd[^>]*>Germany<\/dd>/);
+    expect(html).toMatch(/<dt[^>]*>Occupations<\/dt><dd[^>]*>Welders and flame cutters<\/dd>/);
+    expect(html).toMatch(/<dt[^>]*>Industries<\/dt><dd[^>]*>Manufacturing, Construction<\/dd>/);
+    expect(html).toMatch(/<dt[^>]*>Recruitment type<\/dt><dd[^>]*>International<\/dd>/);
+    expect(html).toMatch(/<dt[^>]*>Staffing types<\/dt><dd[^>]*>Temporary<\/dd>/);
+    expect(html).toMatch(/<dt[^>]*>Year founded<\/dt><dd[^>]*>2019<\/dd>/);
   });
 
   it("says a suspended partner's details are not available", async () => {

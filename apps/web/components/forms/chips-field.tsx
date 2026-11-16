@@ -6,24 +6,30 @@ import { Controller, type Control, type FieldPath, type FieldValues } from "reac
 import { Combobox } from "@/components/forms/combobox";
 import { FieldMessage } from "@/components/forms/field-message";
 import { Field, FieldLabel } from "@/components/ui/field";
-import type { ReferenceItem } from "@/lib/dal/reference";
-import { toOptions } from "@/lib/reference-options";
-import { countryCount } from "@/lib/validation/geographies";
+import type { ComboboxOption } from "@/lib/combobox";
+import { chosenCount, type Noun } from "@/lib/chips";
 
-type CountryChipsFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
+// An option of the list; chip names it on its chip when the list label carries more (the code of an occupation).
+export type ChipOption = ComboboxOption & { chip?: string };
+
+type ChipsFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   control: Control<T>;
   name: N;
   id: string;
   label: string;
   description?: string;
-  countries: readonly ReferenceItem[];
-  // At most this many countries; null when the list is not limited.
+  options: readonly ChipOption[];
+  placeholder: string;
+  emptyText: string;
+  noneChosen: string;
+  noun: Noun;
+  // At most this many values; null when the list is not limited.
   limit: number | null;
-  // Shown, and announced, when a country beyond the limit is chosen.
+  // Shown, and announced, when a value beyond the limit is chosen.
   limitNotice?: React.ReactNode;
 };
 
-type ChipsControlProps = Omit<CountryChipsFieldProps<FieldValues, string>, "control" | "name"> & {
+type ChipsControlProps = Omit<ChipsFieldProps<FieldValues, string>, "control" | "name"> & {
   value: string[];
   onChange: (value: string[]) => void;
   onBlur: () => void;
@@ -33,14 +39,14 @@ type ChipsControlProps = Omit<CountryChipsFieldProps<FieldValues, string>, "cont
   error?: { message?: string };
 };
 
-// Several countries in one field (FR-K1 AC2): the country combobox of the home search adds the chosen country as a chip
-// and empties itself; each chip has a remove button that Backspace and Delete also press. A country beyond the limit is
-// not added and the limit notice is announced instead.
-export function CountryChipsField<T extends FieldValues, N extends FieldPath<T>>({
+// Several values of a code list in one field (FR-K1 AC2, FR-K2 AC2): the combobox of the home search adds the chosen
+// option as a chip and empties itself; each chip has a remove button that Backspace and Delete also press. A value beyond
+// the limit is not added and the limit notice is announced instead.
+export function ChipsField<T extends FieldValues, N extends FieldPath<T>>({
   control,
   name,
   ...props
-}: CountryChipsFieldProps<T, N>) {
+}: ChipsFieldProps<T, N>) {
   return (
     <Controller
       control={control}
@@ -65,7 +71,11 @@ function ChipsControl({
   id,
   label,
   description,
-  countries,
+  options,
+  placeholder,
+  emptyText,
+  noneChosen,
+  noun,
   limit,
   limitNotice,
   value,
@@ -81,7 +91,10 @@ function ChipsControl({
   const [blockedAttempts, setBlockedAttempts] = useState(0);
   const descriptionId = `${id}-description`;
   const countId = `${id}-count`;
-  const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
+  const nameOf = (code: string) => {
+    const option = options.find(({ value: optionValue }) => optionValue === code);
+    return option?.chip ?? option?.label ?? code;
+  };
   const describedBy = [description ? descriptionId : null, countId, error ? errorId : null].filter(Boolean).join(" ");
 
   function add(code: string) {
@@ -108,7 +121,7 @@ function ChipsControl({
           {description}
         </p>
       ) : null}
-      {/* Enter with typed text that names no country must not send the form: only chosen countries are saved. */}
+      {/* Enter with typed text that names no option must not send the form: only chosen values are saved. */}
       <div
         onKeyDown={(event) => {
           const typed = event.target instanceof HTMLInputElement && event.target.value !== "";
@@ -119,10 +132,10 @@ function ChipsControl({
           id={id}
           name={`${id}-search`}
           label={label}
-          placeholder="Type a country"
+          placeholder={placeholder}
           value=""
-          options={toOptions(countries.filter(({ code }) => !value.includes(code)))}
-          emptyText="No matching country"
+          options={options.filter((option) => !value.includes(option.value))}
+          emptyText={emptyText}
           freeText={false}
           noScriptSelect={false}
           inputRef={inputRef}
@@ -133,7 +146,7 @@ function ChipsControl({
         />
       </div>
       {value.length === 0 ? (
-        <p className="text-small text-muted-foreground">No countries chosen yet.</p>
+        <p className="text-small text-muted-foreground">{noneChosen}</p>
       ) : (
         <ul aria-label={`${label} chosen`} className="flex flex-wrap gap-2">
           {value.map((code) => (
@@ -161,7 +174,7 @@ function ChipsControl({
         </ul>
       )}
       <p id={countId} aria-live="polite" className="-mt-0.5 text-small text-muted-foreground tabular-nums">
-        {countryCount(value.length, limit)}
+        {chosenCount(value.length, limit, noun)}
       </p>
       <div role="status" className="empty:hidden">
         {blockedAttempts > 0 ? <div key={blockedAttempts}>{limitNotice}</div> : null}

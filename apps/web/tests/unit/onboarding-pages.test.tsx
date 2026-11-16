@@ -9,6 +9,7 @@ const welcomeDueMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const geographiesMock = vi.hoisted(() => vi.fn());
 const marketsLimitMock = vi.hoisted(() => vi.fn());
+const offerMock = vi.hoisted(() => vi.fn());
 const headerValues = vi.hoisted(() => ({ acceptLanguage: null as string | null }));
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
@@ -33,6 +34,12 @@ vi.mock("@/lib/dal/geographies", async () => ({
   getMarketsLimit: marketsLimitMock,
 }));
 vi.mock("@/lib/actions/geographies", () => ({ saveOrganizationGeographies: vi.fn() }));
+vi.mock("@/lib/dal/workforce-offer", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/dal/workforce-offer")>("@/lib/dal/workforce-offer")),
+  getWorkforceOffer: offerMock,
+  getOccupationsLimit: async () => 10,
+}));
+vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
 vi.mock("@/lib/dal/reference", () => ({
@@ -41,6 +48,8 @@ vi.mock("@/lib/dal/reference", () => ({
     { code: "DE", name: "Germany" },
   ],
   getIndustries: async () => [{ code: "F", name: "Construction" }],
+  getLanguages: async () => [{ code: "tl", name: "Tagalog" }],
+  getOccupations: async () => [{ code: "7212", label: "Welders and flame cutters", synonyms: ["welder"] }],
 }));
 vi.mock("@/lib/dal/legal", () => ({ getOnboardingDocuments: vi.fn(), getSignUpForm: vi.fn() }));
 vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: vi.fn() }));
@@ -65,6 +74,16 @@ async function render(page: PageComponent, searchParams: Record<string, string> 
   return (await new Response(prelude).text()).replace(/<!-- -->/g, "");
 }
 
+const emptyOffer = {
+  occupations: [],
+  industries: [],
+  languages: [],
+  recruitmentType: null,
+  serviceTypes: [],
+  sizeBand: null,
+  foundedYear: null,
+};
+const savedOffer = { ...emptyOffer, occupations: ["7212"], recruitmentType: "international" };
 const owner = { id: "org-1", slug: "acme-bau", displayName: "Acme Bau", type: "employer", role: "owner", suspended: false };
 const currentStep = (html: string) => /<li aria-current="step"[^>]*>.*?Step \d of \d: <\/span>([^<]+)/.exec(html)?.[1];
 
@@ -79,6 +98,7 @@ beforeEach(() => {
   releasedMock.mockResolvedValue(true);
   geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: [] });
   marketsLimitMock.mockResolvedValue(3);
+  offerMock.mockResolvedValue(emptyOffer);
 });
 
 describe("the first step of onboarding (resume)", () => {
@@ -190,21 +210,55 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain(">0 countries</p>");
   });
 
-  it("moves on to the pending Commitments step once both lists hold a country, with a way back to the countries", async () => {
+  it("asks for what the partner offers once both lists hold a country, still within Where you serve", async () => {
+    requireUserMock.mockResolvedValue(partner("staffing_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Where you serve");
+    expect(html).toContain(">What you offer</h1>");
+    expect(html).toContain("Which occupations do you recruit or supply?");
+    expect(html).toContain(">0 of 10 occupations</p>");
+    expect(html).toMatch(/<legend[^>]*>Recruitment type<\/legend>/);
+    expect(html).toMatch(/<legend[^>]*>Staffing types \(choose at least one\)<\/legend>/);
+    expect(html).not.toContain("We also supply staff (staffing)");
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Continue<\/button>/);
+    expect(offerMock).toHaveBeenCalledWith("org-1");
+  });
+
+  it("keeps a staffing company on What you offer until it names a staffing type", async () => {
+    requireUserMock.mockResolvedValue(partner("staffing_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "staffing_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    expect(await render(OnboardingPage)).toContain(">What you offer</h1>");
+    offerMock.mockResolvedValue({ ...savedOffer, serviceTypes: ["temporary"] });
+    expect(await render(OnboardingPage)).toContain(">Next: Commitments</h1>");
+  });
+
+  it("moves on to the pending Commitments step once the countries and the offer are saved, with a way back to each", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Commitments");
     expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Next: Commitments</h1>");
-    expect(html).toContain("Manila Skills and the countries where you serve are saved.");
+    expect(html).toContain("Manila Skills, the countries where you serve and what you offer are saved.");
     expect(html).toContain('role="status"');
     expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=what-you-offer"[^>]*>Change what you offer/);
 
     const reopened = await render(OnboardingPage, { step: "where-you-serve" });
     expect(currentStep(reopened)).toBe("Where you serve");
     expect(reopened).toContain('aria-label="Remove Germany"');
+
+    const offer = await render(OnboardingPage, { step: "what-you-offer" });
+    expect(offer).toContain(">What you offer</h1>");
+    expect(offer).toContain('aria-label="Remove Welders and flame cutters"');
+    expect(offer).toContain("We also supply staff (staffing)");
+    expect(offer).not.toMatch(/<legend[^>]*>Staffing types/);
   });
 
   it("keeps the step closed while release 2a is off, and leaves the countries to the owner or an admin", async () => {
@@ -222,9 +276,15 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("The owner or an admin of Manila Skills chooses the countries where you serve.");
     expect(html).not.toContain("<form");
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    html = await render(OnboardingPage, { step: "what-you-offer" });
+    expect(html).toContain(">Next: What you offer</h1>");
+    expect(html).toContain("The owner or an admin of Manila Skills chooses what you offer.");
+    expect(html).not.toContain("<form");
+    offerMock.mockResolvedValue(savedOffer);
     html = await render(OnboardingPage, { step: "where-you-serve" });
     expect(html).toContain(">Next: Commitments</h1>");
     expect(html).not.toContain("Change where you serve");
+    expect(html).not.toContain("Change what you offer");
   });
 
   it("titles the commit step after the partner type", async () => {
