@@ -6,19 +6,23 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AuthorizationsSection } from "@/components/passport/authorizations-section";
 import { BasicsForm } from "@/components/passport/basics-form";
 import { CompletenessCard } from "@/components/passport/completeness-card";
+import { EmploymentHistorySection } from "@/components/passport/employment-history-section";
 import { ExperienceForm } from "@/components/passport/experience-form";
 import { LanguagesSection } from "@/components/passport/languages-section";
 import { OccupationForm } from "@/components/passport/occupation-form";
+import { PreferredEmploymentTypesSection, PreferredIndustriesSection } from "@/components/passport/preferences-sections";
 import { PreferredCountriesSection } from "@/components/passport/preferred-countries-section";
 import { Section } from "@/components/layout/section";
 import { SkillsSection } from "@/components/passport/skills-section";
+import { TrainingSection } from "@/components/passport/training-section";
 import { hasUsableCv } from "@/lib/dal/documents";
 import { getPassport, getPassportLimits } from "@/lib/dal/passport";
-import { getCountries, getLanguages, getOccupations } from "@/lib/dal/reference";
+import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { requireUser } from "@/lib/dal/session";
 import { computeCompleteness } from "@/lib/passport/completeness";
 import { homePath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
+import { SENSITIVE_DETAILS_NOTICE } from "@/lib/validation/passport-extensions";
 
 export const metadata: Metadata = { title: "CHARA Worker Passport", robots: { index: false } };
 
@@ -27,13 +31,14 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
   const user = await requireUser(lang);
   if (user.accountKind !== "worker") redirect(homePath(lang, user.accountKind));
 
-  const [passport, hasCv, limits, countries, languages, occupations] = await Promise.all([
+  const [passport, hasCv, limits, countries, languages, occupations, industries] = await Promise.all([
     getPassport(user.id),
     hasUsableCv(),
     getPassportLimits(),
     getCountries(),
     getLanguages(),
     getOccupations(),
+    getIndustries(),
   ]);
   if (!passport) redirect(`/${lang}/onboarding`);
 
@@ -76,8 +81,36 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
               }}
             />
           </Section>
+          <Section
+            id="training"
+            title="Training"
+            description={`Courses and qualifications you completed. ${SENSITIVE_DETAILS_NOTICE}`}
+          >
+            <TrainingSection entries={passport.training} max={limits.trainingMax} />
+          </Section>
+          <Section
+            id="employment-history"
+            title="Employment history"
+            description={`The jobs you have had, by month. ${SENSITIVE_DETAILS_NOTICE}`}
+          >
+            <EmploymentHistorySection
+              entries={passport.employmentHistory}
+              countries={countries}
+              max={limits.employmentHistoryMax}
+            />
+          </Section>
           <Section id="preferred-countries" title="Preferred countries">
             <PreferredCountriesSection selected={passport.preferredCountries} countries={countries} />
+          </Section>
+          <Section id="preferred-industries" title="Preferred industries">
+            <PreferredIndustriesSection
+              selected={passport.preferredIndustries}
+              industries={industries}
+              max={limits.preferredIndustriesMax}
+            />
+          </Section>
+          <Section id="preferred-employment-types" title="Preferred employment types">
+            <PreferredEmploymentTypesSection selected={passport.preferredEmploymentTypes} />
           </Section>
           <Section
             id="authorizations"

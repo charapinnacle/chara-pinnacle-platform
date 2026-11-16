@@ -5,7 +5,7 @@ import { showsNudge, type Completeness } from "@/lib/passport/completeness";
 
 type CompletenessCardProps = { lang: string; completeness: Completeness };
 
-// The meter, the next item as the one primary action, the nine items in two columns and how the score is made. The meter
+// The meter, the next item as the one primary action, the eleven items in two columns and how the score is made. The meter
 // is a progress element (role progressbar) and the percentage is also written out, so colour carries no meaning.
 export function CompletenessCard({ lang, completeness }: CompletenessCardProps) {
   const { percent, items, next } = completeness;
