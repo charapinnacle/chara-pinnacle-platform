@@ -7,6 +7,7 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { AvailabilitySection } from "@/components/organization/availability-section";
 import { LicencesSection } from "@/components/organization/licences-section";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
@@ -14,15 +15,23 @@ import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getMarketsLimit, getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
+import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
+import {
+  getAvailabilityRules,
+  getListingCounts,
+  getListingsLimit,
+  getWorkforceListings,
+} from "@/lib/dal/workforce-availability";
 import { getOccupationsLimit, getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { billingPath, onboardingPath } from "@/lib/routes";
 import { commitmentOutdated } from "@/lib/validation/commitment";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
 import { partnerTypeSchema } from "@/lib/validation/sign-up";
+import type { AvailabilityRules } from "@/lib/validation/workforce-availability";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 export const metadata: Metadata = { title: "Workforce profile", robots: { index: false } };
@@ -76,16 +85,64 @@ async function Licences({
   );
 }
 
+// The availability listings are read in their own boundary too; a listing names one of the occupations and one of the
+// source countries of the profile above.
+async function Availability({
+  organizationId,
+  slug,
+  canManage,
+  occupations,
+  countries,
+  rules,
+  billingHref,
+}: {
+  organizationId: string;
+  slug: string;
+  canManage: boolean;
+  occupations: ReferenceItem[];
+  countries: ReferenceItem[];
+  rules: AvailabilityRules;
+  billingHref: string;
+}) {
+  const [listings, limit] = await Promise.all([getWorkforceListings(organizationId), getListingsLimit(organizationId)]);
+  return (
+    <AvailabilitySection
+      slug={slug}
+      canManage={canManage}
+      listings={listings}
+      occupations={occupations}
+      countries={countries}
+      rules={rules}
+      limit={limit}
+      billingHref={billingHref}
+      now={new Date().toISOString()}
+    />
+  );
+}
+
 // The workforce profile of a recruitment or staffing company: where it serves (FR-K1) and what it offers (FR-K2), changed
 // after onboarding by the owner or an admin (at aal2, as on every organisation page); a member reads it. The licences it
-// holds per country (FR-J2) are recorded here too, for staff only. Release 2a only.
+// holds per country (FR-J2) are recorded here too, for staff only, and the workforce it can supply (FR-K3). Release 2a
+// only.
 export default async function WorkforceProfilePage({ params }: PageProps<"/[lang]/org/[slug]/workforce-profile">) {
   const { lang, slug } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true, partner: true });
   if (organization.suspended) return <SuspendedOrganization title="Workforce profile" subject="details" />;
   const partnerType = partnerTypeSchema.parse(organization.type);
-  const [geographies, marketsLimit, profile, countries, offer, occupationsLimit, occupations, industries, languages, commitment] =
+  const [
+    geographies,
+    marketsLimit,
+    profile,
+    countries,
+    offer,
+    occupationsLimit,
+    occupations,
+    industries,
+    languages,
+    commitment,
+    availabilityRules,
+  ] =
     await Promise.all([
       getOrganizationGeographies(organization.id),
       getMarketsLimit(organization.id),
@@ -97,8 +154,11 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getIndustries(),
       getLanguages(),
       getCommitmentStatus(organization.id),
+      getAvailabilityRules(),
     ]);
   const nameOf = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
+  // Not awaited: the profile forms show the warning about listings once the counts arrive.
+  const listingCounts = organization.role === "member" ? null : getListingCounts(organization.id);
   const basedIn = profile ? nameOf(profile.country) : "";
   const named = (items: readonly { code: string; name: string }[], codes: string[]) =>
     codes.map((code) => items.find((item) => item.code === code)?.name ?? code);
@@ -155,6 +215,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             marketsLimit={marketsLimit}
             billingHref={billingPath(lang, slug)}
             onboarding={false}
+            listingCounts={listingCounts?.then((counts) => counts.countries)}
           />
         )}
       </section>
@@ -182,8 +243,34 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             occupationsLimit={occupationsLimit}
             billingHref={billingPath(lang, slug)}
             onboarding={false}
+            listingCounts={listingCounts?.then((counts) => counts.occupations)}
           />
         )}
+      </section>
+      <section aria-labelledby="availability-heading" className="grid gap-6">
+        <div className="grid gap-2">
+          <h2 id="availability-heading" className="text-h2">
+            Availability
+          </h2>
+          <p className="text-body text-muted-foreground">
+            The workers you can supply per occupation and source country. Once your company is listed, signed-in users see
+            each listing confirmed within the last {formatCount(availabilityRules.staleDays)} days.
+          </p>
+        </div>
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <Availability
+            organizationId={organization.id}
+            slug={slug}
+            canManage={organization.role !== "member"}
+            occupations={offer.occupations.map((code) => ({
+              code,
+              name: occupations.find((item) => item.code === code)?.label ?? code,
+            }))}
+            countries={geographies.sourcesFrom.map((code) => ({ code, name: nameOf(code) }))}
+            rules={availabilityRules}
+            billingHref={billingPath(lang, slug)}
+          />
+        </Suspense>
       </section>
       <section aria-labelledby="licences-heading" className="grid gap-6">
         <div className="grid gap-2">

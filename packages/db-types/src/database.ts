@@ -948,6 +948,61 @@ isOneToOne: false
       referencedColumns: ["user_id"]
     }
                   ]
+                },"workforce_availability": {
+                  Row: {
+                    "available": number,"available_from": string,"confirmed_at": string,"created_at": string,"created_by": string | null,"id": string,"monthly_capacity": number,"occupation_id": string,"organization_id": string,"reminded_at": string | null,"source_country": string,"source_scope": Database["public"]['Enums']["geography_scope"],"updated_at": string
+                  }
+                  Insert: {
+                    "available": number,"available_from": string,"confirmed_at"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"monthly_capacity": number,"occupation_id": string,"organization_id": string,"reminded_at"?: string | null,"source_country": string,"source_scope"?: never,"updated_at"?: string
+                  }
+                  Update: {
+                    "available"?: number,"available_from"?: string,"confirmed_at"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"monthly_capacity"?: number,"occupation_id"?: string,"organization_id"?: string,"reminded_at"?: string | null,"source_country"?: string,"source_scope"?: never,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "workforce_availability_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workforce_availability_occupation_id_fkey"
+      columns: ["occupation_id"]
+isOneToOne: false
+      referencedRelation: "occupations"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "workforce_availability_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workforce_availability_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "workforce_availability_profile_occupation_fkey"
+      columns: ["organization_id","occupation_id"]
+isOneToOne: false
+      referencedRelation: "organization_occupations"
+      referencedColumns: ["organization_id","occupation_id"]
+    },{
+      foreignKeyName: "workforce_availability_profile_source_fkey"
+      columns: ["organization_id","source_scope","source_country"]
+isOneToOne: false
+      referencedRelation: "organization_geographies"
+      referencedColumns: ["organization_id","scope","country_code"]
+    },{
+      foreignKeyName: "workforce_availability_source_country_fkey"
+      columns: ["source_country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -1093,6 +1148,9 @@ isOneToOne: false
                            },
 "add_partner_licence":
 { Args: { "p_confirmed": boolean,"p_country_code": string,"p_issuing_authority": string,"p_licence_number": string,"p_org": string,"p_valid_until": string }; Returns: string
+                           },
+"add_workforce_availability":
+{ Args: { "p_available": number,"p_available_from": string,"p_monthly_capacity": number,"p_occupation_id": string,"p_org": string,"p_source_country": string }; Returns: string
                            },
 "admin_application_counts":
 { Args: { "p_from": string,"p_to": string }; Returns: {
@@ -1278,6 +1336,9 @@ isOneToOne: false
 "choose_account_kind":
 { Args: { "p_consents"?: Json,"p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: Database["public"]['Enums']["account_kind"]
                            },
+"confirm_workforce_availability":
+{ Args: { "p_listing": string }; Returns: string
+                           },
 "count_applications_in_progress":
 { Args: { "p_job_id": string }; Returns: number
                            },
@@ -1292,6 +1353,9 @@ isOneToOne: false
                            },
 "delete_worker_document":
 { Args: { "p_document_id": string }; Returns: undefined
+                           },
+"delete_workforce_availability":
+{ Args: { "p_listing": string }; Returns: undefined
                            },
 "document_access_grant":
 { Args: { "p_document_id": string,"p_purpose": string }; Returns: {
@@ -1575,11 +1639,17 @@ isOneToOne: false
 "update_partner_licence":
 { Args: { "p_confirmed": boolean,"p_country_code": string,"p_issuing_authority": string,"p_licence": string,"p_licence_number": string,"p_valid_until": string }; Returns: undefined
                            },
+"update_workforce_availability":
+{ Args: { "p_available": number,"p_available_from": string,"p_listing": string,"p_monthly_capacity": number }; Returns: undefined
+                           },
 "withdraw_application":
 { Args: { "p_application_id": string }; Returns: undefined
                            },
 "withdraw_consent":
 { Args: { "p_purpose": string }; Returns: undefined
+                           },
+"workforce_listings_limit":
+{ Args: { "p_org": string }; Returns: number
                            }
           }
           Enums: {

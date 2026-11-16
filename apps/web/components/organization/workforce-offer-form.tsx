@@ -2,6 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Earth, MapPin, Plane } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { CheckboxField } from "@/components/forms/checkbox-field";
@@ -14,6 +16,7 @@ import { RadioGroupField } from "@/components/forms/radio-group-field";
 import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import { ListingRemovalNotice } from "@/components/organization/listing-removal-notice";
 import { saveWorkforceOffer } from "@/lib/actions/workforce-offer";
 import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
@@ -43,6 +46,8 @@ type WorkforceOfferFormProps = {
   billingHref: string;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
+  // The availability listings per occupation (FR-K3), on the workforce profile page only.
+  listingCounts?: Promise<Readonly<Record<string, number>>>;
 };
 
 const FAILURE_TITLE = "Could not save what you offer";
@@ -81,7 +86,9 @@ export function WorkforceOfferForm({
   occupationsLimit,
   billingHref,
   onboarding,
+  listingCounts,
 }: WorkforceOfferFormProps) {
+  const router = useRouter();
   const form = useForm<WorkforceOfferInput>({
     resolver: zodResolver(workforceOfferSchema(partnerType)),
     defaultValues: defaults,
@@ -89,6 +96,7 @@ export function WorkforceOfferForm({
   const { control, formState, handleSubmit } = form;
   const { summaryRef, submit } = useServerFormSubmit(form, { failureTitle: FAILURE_TITLE });
   const staffingService = useWatch({ control, name: "staffingService" });
+  const chosenOccupations = useWatch({ control, name: "occupations" });
   const showStaffingTypes = partnerType === "staffing_company" || staffingService;
   const occupationOptions: ChipOption[] = occupations.map(({ code, label, synonyms }) => ({
     value: code,
@@ -104,6 +112,8 @@ export function WorkforceOfferForm({
         if (result.message) toastError(FAILURE_TITLE, result.message);
         if (result.saved) {
           form.reset(form.getValues());
+          // A removed code took its availability listings with it: the counts and the listings are read again.
+          if (listingCounts) router.refresh();
           toast({ title: "Workforce offer saved" });
         }
       },
@@ -195,6 +205,16 @@ export function WorkforceOfferForm({
         maxLength={4}
         autoComplete="off"
       />
+      {listingCounts ? (
+        <Suspense fallback={null}>
+          <ListingRemovalNotice
+            counts={listingCounts}
+            saved={formState.defaultValues?.occupations?.filter((code) => code !== undefined) ?? []}
+            current={chosenOccupations}
+            nameOf={(code) => occupations.find((occupation) => occupation.code === code)?.label ?? code}
+          />
+        </Suspense>
+      ) : null}
       <FormButton type="submit" busy={formState.isSubmitting}>
         {formState.isSubmitting ? "Saving..." : onboarding ? "Continue" : "Save what you offer"}
       </FormButton>

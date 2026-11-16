@@ -96,6 +96,7 @@ export default defineConfig({
         "**/partner-submit-review.spec.ts",
         "**/partner-licences.spec.ts",
         "**/partner-approval.spec.ts",
+        "**/partner-availability.spec.ts",
       ],
     },
     {
@@ -326,13 +327,21 @@ export default defineConfig({
       testMatch: "**/partner-approval.spec.ts",
       dependencies: ["partner-licences-release"],
     },
+    // The same release switch is set for the availability listings (FR-K3), and one test withdraws the update function,
+    // so this spec follows the one above.
+    {
+      name: "partner-availability-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-availability.spec.ts",
+      dependencies: ["partner-approval-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-approval-release"],
+      dependencies: ["partner-availability-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
