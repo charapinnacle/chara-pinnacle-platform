@@ -34,6 +34,17 @@ describe("OnboardingSteps", () => {
     expect(markup.match(/aria-current="step"/g)).toHaveLength(1);
   });
 
+  it("shows a step staff reopened as not done again, and says so to screen readers (FR-J4)", () => {
+    const [company, where, commitments, security, ready] = items(html(<OnboardingSteps kind="partner" current={4} reopened={1} />));
+    expect(company).toContain("(done)");
+    expect(where).toContain("Step 2 of 5: </span>Where you serve<span class=\"sr-only\"> (more information requested)</span>");
+    expect(where).not.toContain("(done)");
+    expect(where).not.toContain("<svg");
+    expect(commitments).toContain("(done)");
+    expect(security).toContain("(done)");
+    expect(ready).toMatch(/^<li aria-current="step"/);
+  });
+
   it("says which step it is in words for phones, hidden from screen readers that read the list", () => {
     expect(html(<OnboardingSteps kind="company" current={0} />)).toMatch(/<p aria-hidden="true" class="[^"]*sm:hidden[^"]*">Step 1 of 3<\/p>/);
   });

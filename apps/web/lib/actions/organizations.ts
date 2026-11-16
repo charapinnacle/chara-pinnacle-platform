@@ -6,7 +6,7 @@ import { GENERIC_FAILURE } from "@/lib/auth-errors";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { mfaPath, onboardingPath, organizationProfilePath } from "@/lib/routes";
+import { mfaPath, onboardingPath, organizationProfilePath, partnerStepPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
   createdOrganizationSchema,
@@ -127,14 +127,18 @@ const LEGAL_NAME_LOCKED = "The legal name cannot be changed once a payment has b
 const SUSPENDED = "This organization is suspended, so its profile cannot be changed.";
 
 // The organization comes from the slug in the address, checked against the caller's membership and role; the function
-// checks the role, two-step verification and the lock of the legal name again in the database.
+// checks the role, two-step verification and the lock of the legal name again in the database. A recruitment or staffing
+// company corrects its details on the company step of onboarding (FR-J1), an employer on its profile page.
 export async function updateOrganizationProfile(
   slug: string,
   input: OrganizationProfileInput,
 ): Promise<UpdateOrganizationResult> {
   const parsedSlug = slugSchema.safeParse(slug);
   if (!parsedSlug.success) return { message: GENERIC_FAILURE };
-  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", { hideFromOutsiders: true });
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "admin", {
+    hideFromOutsiders: true,
+    partner: "either",
+  });
   const parsed = organizationProfileSchema.safeParse(input);
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
@@ -149,7 +153,10 @@ export async function updateOrganizationProfile(
     p_description: parsed.data.description,
   });
   if (error) {
-    const path = organizationProfilePath(defaultLocale, parsedSlug.data);
+    const path =
+      organization.type === "employer"
+        ? organizationProfilePath(defaultLocale, parsedSlug.data)
+        : partnerStepPath(defaultLocale, "company");
     if (error.message === "CHARA_FORBIDDEN" && error.details === "aal2_required") redirect(mfaPath(defaultLocale, path));
     if (error.message === "CHARA_FORBIDDEN" && error.details === "legal_name_locked") {
       return { errors: { legalName: LEGAL_NAME_LOCKED } };

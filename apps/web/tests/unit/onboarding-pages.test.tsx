@@ -12,6 +12,7 @@ const marketsLimitMock = vi.hoisted(() => vi.fn());
 const offerMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const legalDocumentMock = vi.hoisted(() => vi.fn());
+const reviewMock = vi.hoisted(() => vi.fn());
 const headerValues = vi.hoisted(() => ({ acceptLanguage: null as string | null }));
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
@@ -27,7 +28,14 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
 vi.mock("@/lib/dal/organizations", () => ({
   getMyOrganization: organizationMock,
-  getOrganizationProfile: async () => ({ country: "AT" }),
+  getOrganizationProfile: async () => ({
+    legalName: "Manila Skills Recruitment Inc.",
+    displayName: "Manila Skills",
+    country: "AT",
+    industry: "F",
+    website: "",
+    description: "",
+  }),
 }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/geographies", async () => ({
@@ -59,11 +67,19 @@ vi.mock("@/lib/dal/legal", () => ({
   getLegalDocument: legalDocumentMock,
 }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
+const billingMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/dal/billing", () => ({ getBillingState: billingMock }));
+vi.mock("@/lib/dal/partner-review", () => ({ getPartnerReview: reviewMock, getReviewTargetDays: async () => 1 }));
+vi.mock("@/lib/actions/partner-review", () => ({ submitForReview: vi.fn() }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn() }));
 vi.mock("@/lib/dal/team", () => ({ getInvitationPreview: vi.fn() }));
 vi.mock("@/lib/invitation-cookie", () => ({ pendingInvitationToken: async () => null }));
 vi.mock("@/lib/welcome-cookie", () => ({ welcomeIsDue: welcomeDueMock }));
-vi.mock("@/lib/actions/organizations", () => ({ createOrganization: vi.fn(), createPartnerOrganization: vi.fn() }));
+vi.mock("@/lib/actions/organizations", () => ({
+  createOrganization: vi.fn(),
+  createPartnerOrganization: vi.fn(),
+  updateOrganizationProfile: vi.fn(),
+}));
 vi.mock("@/lib/actions/passport", () => ({ createPassport: vi.fn() }));
 vi.mock("@/lib/actions/consents", () => ({ commitAccountKind: vi.fn(), chooseAccountKind: vi.fn() }));
 vi.mock("@/lib/actions/mfa", () => ({ startFactorEnrolment: vi.fn(), verifyEnrolment: vi.fn() }));
@@ -120,6 +136,7 @@ beforeEach(() => {
   offerMock.mockResolvedValue(emptyOffer);
   commitmentMock.mockResolvedValue(openCommitment);
   legalDocumentMock.mockResolvedValue(commitmentDraft);
+  reviewMock.mockResolvedValue({ status: "onboarding", submittedAt: null, infoStep: null });
 });
 
 describe("the first step of onboarding (resume)", () => {
@@ -170,6 +187,7 @@ describe("the first step of onboarding (resume)", () => {
 describe("the partner journey of onboarding (FR-J1)", () => {
   const partner = (type: "recruitment_company" | "staffing_company") => ({
     id: "user-2",
+    aal: "aal1",
     email: "rita@example.test",
     accountKind: "company",
     intendedAccountKind: "company",
@@ -356,7 +374,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("Accept and continue");
   });
 
-  it("moves on to the pending Security step once the commitment is accepted", async () => {
+  it("moves on to Security once the commitment is accepted, where the owner sets up two-step verification", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
@@ -365,11 +383,141 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Security");
     expect(html).toMatch(/Step 3 of 5: <\/span>Commitments<span class="sr-only"> \(done\)<\/span>/);
-    expect(html).toContain(">Next: Security</h1>");
-    expect(html).toContain("Manila Skills has accepted the employer-pays commitment.");
-    expect(html).toContain("This step is not open yet.");
-    expect(html).not.toContain("<form");
-    expect(html).toContain("Change what you offer");
+    expect(html).toContain(">Secure your account</h1>");
+    expect(html).toContain("As the owner of Manila Skills you will manage its team, billing, job orders and candidates");
+    expect(html).toContain("Show the QR code");
+    expect(html).not.toContain("This step is not open yet.");
+
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company", role: "admin" });
+    expect(await render(OnboardingPage)).toContain("As an admin of Manila Skills you will manage");
+  });
+
+  it("opens Ready once Security is done, with what staff check, the review time and the submission", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
+    twoStepMock.mockResolvedValue(true);
+    for (const html of [await render(OnboardingPage), await render(OnboardingPage, { step: "ready" })]) {
+      expect(currentStep(html)).toBe("Ready");
+      expect(html).toMatch(/Step 4 of 5: <\/span>Security<span class="sr-only"> \(done\)<\/span>/);
+      expect(html).toContain(">Submit your company for review</h1>");
+      expect(html).toContain("A review usually takes one working day.");
+      expect(html).toContain(">What our team checks</h2>");
+      expect(html).toContain("<li>Your company name and registration number</li><li>Your website</li><li>The licences you declare</li>");
+      expect(html).toMatch(/<button[^>]*type="button"[^>]*>Submit for review<\/button>/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=company"[^>]*>Change your company details/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
+      expect(html).not.toMatch(/approved|verified/i);
+    }
+  });
+
+  it("lets a member read Ready without the submission, and skips Security for a member", async () => {
+    requireUserMock.mockResolvedValue(partner("staffing_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company", role: "member" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue({ ...savedOffer, serviceTypes: ["temporary"] });
+    commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain("The owner or an admin of Manila Staff submits the company for review.");
+    expect(html).not.toContain("Submit for review</button>");
+    expect(html).not.toContain("Change your company details");
+    expect(twoStepMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-J1 AC8: sends the address of Ready to the first step not done", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    await expect(render(OnboardingPage, { step: "ready" })).rejects.toThrow("REDIRECT:/en/onboarding");
+    commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
+    await expect(render(OnboardingPage, { step: "ready" })).rejects.toThrow("REDIRECT:/en/onboarding");
+    twoStepMock.mockResolvedValue(true);
+    expect(currentStep(await render(OnboardingPage, { step: "ready" }))).toBe("Ready");
+  });
+
+  it("FR-J1 AC11: shows the pending state once submitted, and the dashboard to a listed or declined partner", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company" });
+    for (const status of ["pending_review", "re_review"]) {
+      reviewMock.mockResolvedValue({ status, submittedAt: "2026-11-21T10:00:00Z", infoStep: null });
+      const html = await render(OnboardingPage, { step: "where-you-serve" });
+      expect(currentStep(html)).toBe("Ready");
+      expect(html).toContain(">Your company is waiting for review</h1>");
+      expect(html).toContain("Our team is reviewing Manila Skills. A review usually takes one working day.");
+      expect(html).toContain("The licences you declare");
+      const tiles = [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>.*?<span class="text-body font-semibold">([^<]+)<\/span>/g)].map(
+        (match) => [match[1], match[2]],
+      );
+      expect(tiles).toEqual([
+        ["/en/org/manila-skills/workforce-profile", "Complete your workforce profile"],
+        ["/en/dashboard/employer", "Go to your dashboard"],
+      ]);
+      expect(html).not.toMatch(/approved|verified/i);
+      expect(html).not.toContain("<form");
+    }
+    expect(geographiesMock).not.toHaveBeenCalled();
+    for (const status of ["listed", "declined"]) {
+      reviewMock.mockResolvedValue({ status, submittedAt: null, infoStep: null });
+      await expect(render(OnboardingPage)).rejects.toThrow("REDIRECT:/en/dashboard/employer");
+    }
+  });
+
+  it("FR-J4 AC7: after a request for information Ready names the reopened step and links to it", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
+    twoStepMock.mockResolvedValue(true);
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: "2026-11-21T10:00:00Z", infoStep: "where_you_serve" });
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain(">Submit your company again</h1>");
+    expect(html).toContain("Our team asked for more information about where you serve and what you offer.");
+    expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/<button[^>]*>Submit again for review<\/button>/);
+
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "commitments" });
+    const commitments = await render(OnboardingPage);
+    expect(commitments).toMatch(/<a[^>]*href="\/en\/onboarding\?step=commitments"[^>]*>Review the commitment/);
+    const reopened = await render(OnboardingPage, { step: "commitments" });
+    expect(currentStep(reopened)).toBe("Commitments");
+    expect(reopened).toContain("Manila Skills has accepted the employer-pays commitment.");
+    expect(reopened).not.toContain("<form");
+    expect(reopened).toMatch(/<a[^>]*href="\/en\/onboarding\?step=ready"[^>]*>Back to Ready/);
+  });
+
+  it("reopens the company details for the owner at aal2, and asks for the code first at aal1", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    await expect(render(OnboardingPage, { step: "company" })).rejects.toThrow(
+      `REDIRECT:/en/mfa?next=${encodeURIComponent("/en/onboarding?step=company")}`,
+    );
+    requireUserMock.mockResolvedValue({ ...partner("recruitment_company"), aal: "aal2" });
+    billingMock.mockResolvedValue({ identifier: "CS201904512", identifier_kind: "registration_number", identifier_locked: false });
+    const html = await render(OnboardingPage, { step: "company" });
+    expect(currentStep(html)).toBe("Company");
+    expect(html).toContain(">Your company details</h1>");
+    expect(html).toContain('value="Manila Skills Recruitment Inc."');
+    expect(html).toContain("The name employers see on your profile.");
+    expect(html).not.toContain("candidates");
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save profile<\/button>/);
+    expect(html).toContain(">Company identifier</h2>");
+    expect(html).toContain(": CS201904512. The owner corrects it on the billing page, or contact support.");
+    expect(html).not.toMatch(/readonly/i);
+    billingMock.mockResolvedValue({ identifier: "CS201904512", identifier_kind: "registration_number", identifier_locked: true });
+    const locked = await render(OnboardingPage, { step: "company" });
+    expect(locked).toMatch(/<input[^>]*id="org-legal-name"[^>]*readOnly|<input[^>]*readOnly[^>]*id="org-legal-name"/i);
+    expect(locked).toContain("It cannot be changed once a payment has been started for the company.");
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company", role: "member" });
+    expect(await render(OnboardingPage, { step: "company" })).not.toContain("Your company details");
   });
 
   it("titles the commit step after the partner type", async () => {

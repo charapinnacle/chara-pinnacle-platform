@@ -128,8 +128,9 @@ type OrgRoleOptions = {
   mfa?: boolean;
   // Vacancy (FR-C1) and billing (FR-G6) pages answer a user who is no member as if the page did not exist.
   hideFromOutsiders?: boolean;
-  // A page of a recruitment or staffing company (FR-K1): an employer's member is answered as an outsider.
-  partner?: boolean;
+  // A page of a recruitment or staffing company (FR-K1): an employer's member is answered as an outsider. "either" for
+  // an action both kinds of organisation share (the company details, FR-A2 and FR-J1).
+  partner?: boolean | "either";
 };
 
 // The role is looked up in the database on every request, never read from the token, so a removed or demoted member
@@ -157,7 +158,7 @@ export async function requireOrgRole(
   // The organisation pages are the employer's; a partner organisation is sent to its onboarding, except on the pages of
   // its own (FR-J1, FR-K1).
   const isPartner = data.organizations.type !== "employer";
-  if (isPartner !== partner) {
+  if (partner !== "either" && isPartner !== partner) {
     if (partner && hideFromOutsiders) notFound();
     redirect(partner ? `/${lang}/forbidden` : onboardingPath(lang));
   }

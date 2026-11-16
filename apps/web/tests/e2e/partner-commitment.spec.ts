@@ -126,16 +126,14 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
     await page.getByRole("button", { name: "Accept and continue" }).focus();
     await page.keyboard.press("Enter");
 
-    await expect(page.getByRole("heading", { name: "Next: Security", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
     await expect(currentStep(page)).toContainText("Step 4 of 5: Security");
-    await expect(page.getByText(/has accepted the employer-pays commitment\./)).toBeVisible();
-    await expect(page.getByRole("status").filter({ hasText: "This step is not open yet." })).toBeVisible();
     expect(commitmentRows(user.id)).toEqual([{ purpose: SLUG, version: 0, action: "granted", user_id: user.id }]);
     expect(acceptanceAudits(id)).toEqual([expect.objectContaining({ actor_id: user.id, metadata: { version: 0 } })]);
     await expectAccessibleAtBothWidths(page);
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Next: Security", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
   });
 
   test("AC2: an admin and a member read the commitment and learn that only the owner accepts it", async ({ page }) => {
@@ -208,7 +206,8 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
       await expect(box).toBeChecked();
       await page.getByRole("button", { name: "Accept and continue" }).focus();
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("heading", { name: "Next: Security", level: 1 })).toBeVisible();
+      // The owner has set up two-step verification already, so onboarding continues with Ready (V09).
+      await expect(page.getByRole("heading", { name: "Submit your company for review", level: 1 })).toBeVisible();
       const rows = commitmentRows(partner.user.id);
       expect(rows.map((row) => row.version)).toEqual([0, version]);
       expect(rows.at(-1)).toEqual({ purpose: SLUG, version, action: "granted", user_id: partner.user.id });
