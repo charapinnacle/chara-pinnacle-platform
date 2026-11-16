@@ -139,7 +139,10 @@ const accountStatePages = [
 // (statuses, empty and failed, as a member and an owner) and the inbox and invitation pages of a partner (pending, full,
 // accepted and declined) are checked in invitations.spec.ts. The comparison of the responses to a requirement (with
 // decisions as an owner, as a member, with one column, empty and failed) and the decided responses of the employer and
-// the partners are checked in response-decisions.spec.ts.
+// the partners are checked in response-decisions.spec.ts. The candidate's submission requests and submissions (pending,
+// submitted by another partner, approved, declined, withdrawn, empty), the partner's submission form (refused, sent, at
+// the limit) and lists (empty, with each status) and the employer's candidates of a requirement are checked in
+// candidate-submissions.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -166,17 +169,22 @@ const releasedPages = [
   "/[lang]/org/[slug]/requirements/[id]/responses",
   "/[lang]/org/[slug]/requirements/[id]/responses/[responseId]",
   "/[lang]/org/[slug]/requirements/[id]/responses/compare",
+  "/[lang]/org/[slug]/requirements/[id]/submissions",
+  "/[lang]/org/[slug]/requirements/[id]/submissions/new",
   "/[lang]/org/[slug]/responses",
   "/[lang]/org/[slug]/responses/[id]",
   "/[lang]/org/[slug]/responses/[id]/edit",
   "/[lang]/org/[slug]/requirements/new",
   "/[lang]/org/[slug]/saved-partners",
+  "/[lang]/org/[slug]/submissions",
   "/[lang]/org/[slug]/workforce-profile",
   "/[lang]/org/[slug]/workforce-profile/preview",
   "/[lang]/partners/[slug]",
   "/[lang]/partners/recruitment",
   "/[lang]/partners/staffing",
   "/[lang]/settings/data-export",
+  "/[lang]/submissions",
+  "/[lang]/submissions/[id]",
 ];
 
 async function expectPage(page: Page, address: string): Promise<void> {
