@@ -2,7 +2,19 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { applicantPath, applicationPath, billingPath, homePath, jobPath, mfaPath, settingsPath } from "@/lib/routes";
+import {
+  applicantPath,
+  applicationPath,
+  billingPath,
+  employerDashboardPath,
+  homePath,
+  jobPath,
+  mfaPath,
+  partnerStepPath,
+  settingsPath,
+  whereYouServePath,
+  workforceProfilePath,
+} from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -33,6 +45,18 @@ describe("in-app notification items (FR-T1)", () => {
     ["account_suspended", { reasons: "x" }, worker, "Your account was suspended", "/en/suspended"],
     ["account_reinstated", {}, worker, "Your account was reinstated", homePath("en", "worker")],
     ["account_exists", {}, company, "Someone tried to sign up with your email address", null],
+    ["partner_approved", { org_name: "Manila Recruit", org_slug: "manila" }, company, "Manila Recruit is now listed in the partner directories", employerDashboardPath("en")],
+    ["partner_info_requested", { info_step: "company", reason: "x" }, company, "Our team needs more information about your company details", partnerStepPath("en", "company")],
+    ["partner_info_requested", { info_step: "where_you_serve" }, company, "Our team needs more information about where you serve and what you offer", whereYouServePath("en")],
+    ["partner_info_requested", { info_step: "commitments" }, company, "Our team needs more information about the employer-pays commitment", partnerStepPath("en", "commitments")],
+    ["partner_info_requested", { info_step: "security" }, company, "Our team needs more information about your company", partnerStepPath("en", "ready")],
+    ["partner_declined", { org_name: "Manila Recruit", reason: "x" }, company, "Manila Recruit was not listed in the partner directories", employerDashboardPath("en")],
+    ["licence_expiring", { country_name: "Philippines", valid_until: "2026-12-26", org_slug: "manila" }, company, "Your licence for Philippines expires on 26 December 2026", `${workforceProfilePath("en", "manila")}#licences-heading`],
+    ["licence_expiring", { valid_until: "not a date" }, company, "Your licence expires soon", null],
+    ["partner_licence_expired", { country_name: "Philippines", org_slug: "manila" }, company, "Your licence for Philippines has expired", `${workforceProfilePath("en", "manila")}#licences-heading`],
+    ["listing_confirmation_due", { total: 3, org_slug: "manila" }, company, "3 availability listings need confirming", `${workforceProfilePath("en", "manila")}#availability-heading`],
+    ["listing_confirmation_due", { total: 1, org_slug: "manila" }, company, "1 availability listing needs confirming", `${workforceProfilePath("en", "manila")}#availability-heading`],
+    ["listing_confirmation_due", {}, company, "Some availability listings need confirming", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);

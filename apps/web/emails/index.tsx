@@ -9,8 +9,14 @@ import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
 import { erasurePaused } from "./templates/erasure-paused.tsx";
 import { legalVersion } from "./templates/legal-version.tsx";
+import { licenceExpiring } from "./templates/licence-expiring.tsx";
+import { listingConfirmationDue } from "./templates/listing-confirmation-due.tsx";
 import { memberInvitation } from "./templates/member-invitation.tsx";
 import { mfaReset } from "./templates/mfa-reset.tsx";
+import { partnerApproved } from "./templates/partner-approved.tsx";
+import { partnerDeclined } from "./templates/partner-declined.tsx";
+import { partnerInfoRequested } from "./templates/partner-info-requested.tsx";
+import { partnerLicenceExpired } from "./templates/partner-licence-expired.tsx";
 import { paymentFailed } from "./templates/payment-failed.tsx";
 import { statusChanged } from "./templates/status-changed.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
@@ -31,6 +37,12 @@ const TEMPLATES = {
   account_reinstated: accountReinstated,
   member_invitation: memberInvitation,
   account_exists: accountExists,
+  partner_approved: partnerApproved,
+  partner_info_requested: partnerInfoRequested,
+  partner_declined: partnerDeclined,
+  licence_expiring: licenceExpiring,
+  partner_licence_expired: partnerLicenceExpired,
+  listing_confirmation_due: listingConfirmationDue,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

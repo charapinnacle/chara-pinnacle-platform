@@ -368,10 +368,13 @@ select is(pg_temp.state(:'a11') || ',' || pg_temp.decisions(:'a11') || ',' || pg
   'AC3: the decline sets declined with one decision row and one audit row');
 select ok(not private.is_listed_partner(:'a11'), 'AC8: a declined partner is not listed');
 
--- AC6 (deferred to V14): no notification is queued until the kinds exist
+-- AC6: each decision queues its kind to the owners and admins (the payloads and the rollback: 132_partner_review_emails)
 select is(
-  (select count(*)::integer from public.notifications where user_id in (:'ow', :'ow2', :'ow3')),
-  0, 'AC6 deferred to V14: the decisions queue no notification until the kinds partner_approved, partner_info_requested and partner_declined exist'
+  (select string_agg(u.ord || ':' || n.kind, ',' order by u.ord)
+   from unnest(array[:'ow', :'mb', :'ow2', :'ow3']::uuid[]) with ordinality u (id, ord)
+   join public.notifications n on n.user_id = u.id),
+  '1:partner_approved,3:partner_info_requested,4:partner_declined',
+  'AC6: the approval, the request for information and the decline each queue one notification for the owner; none for the member'
 );
 
 -- AC5: only open decisions ---------------------------------------------------------------------------------------------

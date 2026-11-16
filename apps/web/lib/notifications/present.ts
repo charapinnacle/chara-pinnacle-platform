@@ -1,7 +1,20 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import { formatDate } from "@/lib/i18n/format";
-import { applicantPath, applicationPath, billingPath, homePath, jobPath, mfaPath, settingsPath } from "@/lib/routes";
+import {
+  applicantPath,
+  applicationPath,
+  billingPath,
+  employerDashboardPath,
+  homePath,
+  jobPath,
+  mfaPath,
+  partnerStepPath,
+  settingsPath,
+  whereYouServePath,
+  workforceProfilePath,
+} from "@/lib/routes";
+import { infoStepLabels, infoStepSchema, type InfoStep } from "@/lib/validation/partner-review";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -34,6 +47,16 @@ function documentName(slug: string): string {
 
 function isApplicationStatus(value: string | undefined): value is ApplicationStatus {
   return value !== undefined && Object.hasOwn(applicationStatusLabels, value);
+}
+
+// The onboarding step staff reopened with a request for information (FR-J4).
+function infoStepPath(lang: string, step: InfoStep): string {
+  return step === "where_you_serve" ? whereYouServePath(lang) : partnerStepPath(lang, step);
+}
+
+function licencePath(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  return slug ? `${workforceProfilePath(lang, slug)}#licences-heading` : null;
 }
 
 type Presenter = (payload: Record<string, unknown>, context: Context) => Omit<PresentedNotification, "kindLabel">;
@@ -131,6 +154,67 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
   account_exists: {
     label: "Security",
     present: () => ({ title: "Someone tried to sign up with your email address", href: null }),
+  },
+  partner_approved: {
+    label: "Partner review",
+    present: (payload, { lang }) => ({
+      title: `${text(payload, "org_name") ?? "Your company"} is now listed in the partner directories`,
+      href: employerDashboardPath(lang),
+    }),
+  },
+  partner_info_requested: {
+    label: "Partner review",
+    present: (payload, { lang }) => {
+      const step = infoStepSchema.safeParse(payload.info_step);
+      return {
+        title: step.success
+          ? `Our team needs more information about ${infoStepLabels[step.data]}`
+          : "Our team needs more information about your company",
+        href: step.success ? infoStepPath(lang, step.data) : partnerStepPath(lang, "ready"),
+      };
+    },
+  },
+  partner_declined: {
+    label: "Partner review",
+    present: (payload, { lang }) => ({
+      title: `${text(payload, "org_name") ?? "Your company"} was not listed in the partner directories`,
+      href: employerDashboardPath(lang),
+    }),
+  },
+  licence_expiring: {
+    label: "Licences",
+    present: (payload, { lang }) => {
+      const country = text(payload, "country_name");
+      const value = text(payload, "valid_until");
+      const until = value && !Number.isNaN(Date.parse(value)) ? value : undefined;
+      return {
+        title: `Your licence${country ? ` for ${country}` : ""} expires ${until ? `on ${formatDate(until)}` : "soon"}`,
+        href: licencePath(lang, payload),
+      };
+    },
+  },
+  partner_licence_expired: {
+    label: "Licences",
+    present: (payload, { lang }) => {
+      const country = text(payload, "country_name");
+      return { title: `Your licence${country ? ` for ${country}` : ""} has expired`, href: licencePath(lang, payload) };
+    },
+  },
+  listing_confirmation_due: {
+    label: "Availability",
+    present: (payload, { lang }) => {
+      const total = Number(text(payload, "total"));
+      const slug = text(payload, "org_slug");
+      return {
+        title:
+          total === 1
+            ? "1 availability listing needs confirming"
+            : total > 1
+              ? `${total} availability listings need confirming`
+              : "Some availability listings need confirming",
+        href: slug ? `${workforceProfilePath(lang, slug)}#availability-heading` : null,
+      };
+    },
   },
 };
 
