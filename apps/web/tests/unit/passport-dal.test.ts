@@ -50,6 +50,13 @@ const row = {
   worker_languages: [{ language_code: "en", cefr_level: "B2" }],
   worker_preferred_countries: [{ country_code: "DE" }],
   worker_work_authorizations: [{ country_code: "DE", expires_on: null }],
+  worker_training: [{ id: "t1", course: "Welding MIG/MAG level 2", provider: null, year_completed: 2021 }],
+  worker_employment_history: [
+    { id: "h1", role: "Welder", employer_name: null, country_code: "DE", from_month: "2022-12-01", to_month: null },
+    { id: "h2", role: "Pipe welder", employer_name: "Acme", country_code: "DE", from_month: "2019-03-01", to_month: "2022-11-01" },
+  ],
+  worker_preferred_industries: [{ industry_code: "C" }],
+  worker_preferred_employment_types: [{ employment_type: "full_time" }],
 };
 
 beforeEach(() => {
@@ -58,7 +65,7 @@ beforeEach(() => {
 });
 
 describe("getPassport", () => {
-  it("reads the profile and its four lists in one request for the given candidate, each list in a fixed order", async () => {
+  it("reads the profile and its eight lists in one request for the given candidate, each list in a fixed order", async () => {
     await getPassport(userId);
     expect(requests).toHaveLength(1);
     expect(requests[0].table).toBe("worker_profiles");
@@ -69,6 +76,10 @@ describe("getPassport", () => {
       "language_code@worker_languages",
       "country_code@worker_preferred_countries",
       "country_code@worker_work_authorizations",
+      "year_completed@worker_training",
+      "from_month@worker_employment_history",
+      "industry_code@worker_preferred_industries",
+      "employment_type@worker_preferred_employment_types",
     ]);
   });
 
@@ -86,6 +97,13 @@ describe("getPassport", () => {
       languages: [{ code: "en", level: "B2" }],
       preferredCountries: ["DE"],
       authorizations: [{ country: "DE", expiresOn: null }],
+      training: [{ id: "t1", course: "Welding MIG/MAG level 2", provider: null, yearCompleted: 2021 }],
+      employmentHistory: [
+        { id: "h1", role: "Welder", employerName: null, country: "DE", fromMonth: "2022-12", toMonth: null },
+        { id: "h2", role: "Pipe welder", employerName: "Acme", country: "DE", fromMonth: "2019-03", toMonth: "2022-11" },
+      ],
+      preferredIndustries: ["C"],
+      preferredEmploymentTypes: ["full_time"],
     });
   });
 
@@ -98,15 +116,25 @@ describe("getPassport", () => {
 });
 
 describe("getPassportLimits", () => {
-  it("maps the three settings the forms need and throws without the details when the read fails", async () => {
+  it("maps the six settings the forms need and throws without the details when the read fails", async () => {
     rpcOutcome = {
-      data: { skills_max: 40, availability_window_months: 12, work_authorization_expiry_max_years: 30 },
+      data: {
+        skills_max: 40,
+        availability_window_months: 12,
+        work_authorization_expiry_max_years: 30,
+        training_max: 20,
+        employment_history_max: 25,
+        preferred_industries_max: 10,
+      },
       error: null,
     };
     await expect(getPassportLimits()).resolves.toEqual({
       skillsMax: 40,
       availabilityWindowMonths: 12,
       authorizationExpiryYears: 30,
+      trainingMax: 20,
+      employmentHistoryMax: 25,
+      preferredIndustriesMax: 10,
     });
     expect(rpcName).toBe("passport_limits");
   });

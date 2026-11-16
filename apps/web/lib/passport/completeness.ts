@@ -7,22 +7,24 @@ type CompletenessItemKey =
   | "experience"
   | "availability"
   | "authorization"
-  | "headline";
+  | "headline"
+  | "training"
+  | "employmentHistory";
 
 type CompletenessItem = { key: CompletenessItemKey; label: string; rule: string; weight: number; section: string };
 
-// The weights and rules are shown to the candidate as they are (FR-B4, "transparent weights"). The order is the order of
-// the suggested next item: by weight, descending, ties in this fixed order. The weights add up to 100. The employer's
-// applicant list stores the same percentage when a candidate applies, computed by private.passport_completeness in
-// supabase/migrations/20261027100000_applicant_list.sql: change the weights and rules in both (pgTAP 069 and
+// The weights and rules are shown to the candidate as they are (FR-B4, "transparent weights"; FR-Q4 AC7 added training and
+// employment history). The order is the order of the suggested next item: by weight, descending, ties in this fixed order.
+// The weights add up to 100; preferred industries and employment types carry none. The employer's applicant list stores
+// the same percentage when a candidate applies, computed by private.passport_completeness, last defined in
+// supabase/migrations/20270201100000_passport_extensions.sql: change the weights and rules in both (pgTAP 069 and
 // completeness.test.ts compare them).
 const completenessItems: readonly CompletenessItem[] = [
   { key: "names", label: "Name and country", rule: "Your first name, last name and country", weight: 10, section: "basics" },
   { key: "occupation", label: "Occupation", rule: "An occupation chosen from the ISCO-08 list", weight: 15, section: "occupation" },
-  { key: "skills", label: "Skills", rule: "At least 3 skills", weight: 15, section: "skills" },
   { key: "cv", label: "CV", rule: "A CV that has passed the file check", weight: 15, section: "documents" },
+  { key: "skills", label: "Skills", rule: "At least 3 skills", weight: 10, section: "skills" },
   { key: "languages", label: "Languages", rule: "At least 1 language", weight: 10, section: "languages" },
-  { key: "experience", label: "Years of experience", rule: "Any number of years, including 0", weight: 10, section: "experience" },
   { key: "availability", label: "Availability", rule: "Any choice, including unavailable", weight: 10, section: "experience" },
   {
     key: "authorization",
@@ -31,7 +33,16 @@ const completenessItems: readonly CompletenessItem[] = [
     weight: 10,
     section: "authorizations",
   },
+  { key: "experience", label: "Years of experience", rule: "Any number of years, including 0", weight: 5, section: "experience" },
   { key: "headline", label: "Headline", rule: "A headline that is not blank", weight: 5, section: "basics" },
+  { key: "training", label: "Training", rule: "At least 1 training entry", weight: 5, section: "training" },
+  {
+    key: "employmentHistory",
+    label: "Employment history",
+    rule: "At least 1 employment history entry",
+    weight: 5,
+    section: "employment-history",
+  },
 ];
 
 const MIN_SKILLS_FOR_SCORE = 3;
@@ -51,6 +62,8 @@ type CompletenessInput = {
   skills: readonly unknown[];
   languages: readonly unknown[];
   authorizations: readonly { expiresOn: string | null }[];
+  training: readonly unknown[];
+  employmentHistory: readonly unknown[];
   hasCv: boolean;
 };
 
@@ -73,6 +86,8 @@ export function computeCompleteness(input: CompletenessInput, today: string): Co
     availability: input.availability !== null,
     authorization: input.authorizations.some(({ expiresOn }) => expiresOn === null || expiresOn >= today),
     headline: (input.headline ?? "").trim() !== "",
+    training: input.training.length >= 1,
+    employmentHistory: input.employmentHistory.length >= 1,
   };
   const items = completenessItems.map((item) => ({ ...item, done: done[item.key] }));
   return {
