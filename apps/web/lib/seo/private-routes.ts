@@ -26,6 +26,7 @@ export const privateSegments = [
   "saved",
   "settings",
   "signup",
+  "submissions",
   "suspended",
   "verify-email",
 ] as const;
