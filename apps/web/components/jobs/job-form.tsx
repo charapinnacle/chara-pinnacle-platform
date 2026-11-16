@@ -49,6 +49,7 @@ const ids = {
   accommodation: "job-accommodation",
   visaSupport: "job-visa-support",
   recruitmentPreference: "job-recruitment-preference",
+  requiredExperience: "job-required-experience",
 } as const satisfies Record<keyof JobFormInput, string>;
 
 const defaultValues: JobFormInput = {
@@ -66,6 +67,7 @@ const defaultValues: JobFormInput = {
   accommodation: false,
   visaSupport: false,
   recruitmentPreference: "",
+  requiredExperience: "",
 };
 
 export function JobForm({ slug, occupations, industries, countries, currencies, edit }: JobFormProps) {
@@ -166,6 +168,15 @@ export function JobForm({ slug, occupations, industries, countries, currencies, 
         label="Employment type"
         placeholder="Choose an employment type"
         options={employmentTypeOptions}
+      />
+      <InputField
+        control={control}
+        name="requiredExperience"
+        id={ids.requiredExperience}
+        label="Required experience (years)"
+        description="Optional. A whole number from 0 to 40; leave it empty when the vacancy asks for none."
+        inputMode="numeric"
+        autoComplete="off"
       />
 
       <fieldset className="grid gap-6 sm:grid-cols-2">

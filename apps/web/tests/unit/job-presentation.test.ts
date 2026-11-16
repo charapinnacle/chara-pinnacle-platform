@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSalary, isJobStatus, jobStatusText, publicWebsite } from "@/lib/jobs/presentation";
+import { formatRequiredExperience, formatSalary, isJobStatus, jobStatusText, publicWebsite } from "@/lib/jobs/presentation";
 
 const none = { salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null };
 
@@ -20,6 +20,18 @@ describe("formatSalary", () => {
     expect(formatSalary(none)).toBeNull();
     expect(formatSalary({ ...none, salaryMin: 100 })).toBeNull();
     expect(formatSalary({ ...none, salaryMin: 100, salaryCurrency: "EUR" })).toBeNull();
+  });
+});
+
+describe("formatRequiredExperience", () => {
+  it("states the years a vacancy needs, one year in the singular, and none as no experience", () => {
+    expect(formatRequiredExperience(3)).toBe("At least 3 years of experience");
+    expect(formatRequiredExperience(1)).toBe("At least 1 year of experience");
+    expect(formatRequiredExperience(0)).toBe("No experience required");
+  });
+
+  it("shows nothing for a vacancy that states no requirement", () => {
+    expect(formatRequiredExperience(null)).toBeNull();
   });
 });
 

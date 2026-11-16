@@ -31,6 +31,13 @@ describe("filterChips", () => {
     expect(country?.href).toBe("/en/jobs?q=welder&city=Hamburg&employer=Acme&occupation=7212&industry=F&employment_type=full_time&recruitment=local");
   });
 
+  it("names the experience in years and keeps 0 as a filter (FR-Q4 AC11)", () => {
+    const [chip] = chipsOf({ experience: "5", country: "DE" }).filter(({ name }) => name === "experience");
+    expect(chip).toEqual({ name: "experience", label: "My experience: 5 years", href: "/en/jobs?country=DE" });
+    expect(chipsOf({ experience: "1" }).map(({ label }) => label)).toEqual(["My experience: 1 year"]);
+    expect(chipsOf({ experience: "0" }).map(({ label }) => label)).toEqual(["My experience: 0 years"]);
+  });
+
   it("removes the minimum salary with its currency and pay period, and the flags one at a time", () => {
     const chips = chipsOf({ salary_min: "2800", salary_currency: "EUR", salary_period: "month", accommodation: "true", visa_support: "true" });
     expect(chips.map(({ label }) => label)).toEqual([

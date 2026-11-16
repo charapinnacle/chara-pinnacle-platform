@@ -76,6 +76,7 @@ const input: JobFormInput = {
   accommodation: true,
   visaSupport: false,
   recruitmentPreference: "both",
+  requiredExperience: " 3 ",
 };
 
 function refusal(message: string, code: string, details: string | null = null) {
@@ -110,6 +111,7 @@ describe("createJob", () => {
       accommodation: true,
       visa_support: false,
       recruitment_preference: "both",
+      required_experience_years: 3,
     });
     expect(selectMock).toHaveBeenCalledWith("id");
   });
@@ -223,7 +225,9 @@ describe("vacancy writes beyond the daily quota (SA-06)", () => {
 
 describe("updateJob", () => {
   it("checks the role of the slug, updates only the content columns of that organization's live vacancy and revalidates", async () => {
-    await expect(updateJob("acme-bau", jobId, { ...input, salaryMin: "", salaryMax: "" })).resolves.toEqual({ saved: true });
+    await expect(updateJob("acme-bau", jobId, { ...input, salaryMin: "", salaryMax: "", requiredExperience: "" })).resolves.toEqual({
+      saved: true,
+    });
     expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme-bau", "admin", { mfa: false, hideFromOutsiders: true });
     expect(updateMock).toHaveBeenCalledWith("jobs", {
       title: "Welder MIG/MAG",
@@ -240,6 +244,7 @@ describe("updateJob", () => {
       accommodation: true,
       visa_support: false,
       recruitment_preference: "both",
+      required_experience_years: null,
     });
     expect(eqMock).toHaveBeenCalledWith("id", jobId);
     expect(eqMock).toHaveBeenCalledWith("organization_id", orgId);

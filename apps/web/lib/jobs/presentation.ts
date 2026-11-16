@@ -64,6 +64,13 @@ export function formatSalary({ salaryMin, salaryMax, salaryCurrency, salaryPerio
   return salaryMin !== null ? `From ${money(salaryMin)}, ${period}` : `Up to ${money(salaryMax ?? 0)}, ${period}`;
 }
 
+// A vacancy that states no requirement shows nothing, so the page never suggests a requirement the employer did not set.
+export function formatRequiredExperience(years: number | null): string | null {
+  if (years === null) return null;
+  if (years === 0) return "No experience required";
+  return `At least ${years} ${years === 1 ? "year" : "years"} of experience`;
+}
+
 // The employer's website as a link target: only http and https are linked, and an address with a user name or password
 // is not (the label shows the host only, so it would hide where the link really goes). Whatever the table let through,
 // the rest is shown as nothing.

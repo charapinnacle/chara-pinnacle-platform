@@ -37,6 +37,7 @@ const fieldByConstraint: Record<string, [field: keyof JobFormInput, message: str
   jobs_salary_min_check: ["salaryMin", CHECK_VALUE],
   jobs_salary_max_check: ["salaryMax", CHECK_VALUE],
   jobs_salary_order: ["salaryMin", "The minimum salary cannot be higher than the maximum."],
+  jobs_required_experience_years_check: ["requiredExperience", CHECK_VALUE],
   jobs_salary_terms: ["salaryCurrency", "Select a currency and a pay period when you enter a salary."],
 };
 
