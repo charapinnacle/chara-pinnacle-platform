@@ -19,6 +19,11 @@ export function onboardingPath(lang: string, step?: "security" | "welcome"): str
   return step ? `/${lang}/onboarding/${step}` : `/${lang}/onboarding`;
 }
 
+// The Where you serve step of partner onboarding, reopened after it was done (FR-K1).
+export function whereYouServePath(lang: string): string {
+  return `${onboardingPath(lang)}?step=where-you-serve`;
+}
+
 // A user whose account kind is not committed yet still has the onboarding step to finish.
 export function homePath(lang: string, accountKind: AccountKind | null): string {
   const segment = Object.entries(dashboardSegments).find(([, kind]) => kind === accountKind)?.[0];
@@ -75,6 +80,11 @@ export function billingPath(lang: string, slug: string): string {
 
 export function organizationProfilePath(lang: string, slug: string): string {
   return `/${lang}/org/${slug}/profile`;
+}
+
+// The workforce profile of a recruitment or staffing company (FR-K1): where it serves.
+export function workforceProfilePath(lang: string, slug: string): string {
+  return `/${lang}/org/${slug}/workforce-profile`;
 }
 
 export function membersPath(lang: string, slug: string): string {

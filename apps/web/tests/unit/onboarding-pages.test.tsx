@@ -6,6 +6,9 @@ const organizationMock = vi.hoisted(() => vi.fn());
 const twoStepMock = vi.hoisted(() => vi.fn());
 const passportMock = vi.hoisted(() => vi.fn());
 const welcomeDueMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
+const geographiesMock = vi.hoisted(() => vi.fn());
+const marketsLimitMock = vi.hoisted(() => vi.fn());
 const headerValues = vi.hoisted(() => ({ acceptLanguage: null as string | null }));
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
@@ -19,7 +22,17 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(headerValues.acceptLanguage ? { "accept-language": headerValues.acceptLanguage } : {}),
 }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock }));
-vi.mock("@/lib/dal/organizations", () => ({ getMyOrganization: organizationMock }));
+vi.mock("@/lib/dal/organizations", () => ({
+  getMyOrganization: organizationMock,
+  getOrganizationProfile: async () => ({ country: "AT" }),
+}));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/geographies", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/dal/geographies")>("@/lib/dal/geographies")),
+  getOrganizationGeographies: geographiesMock,
+  getMarketsLimit: marketsLimitMock,
+}));
+vi.mock("@/lib/actions/geographies", () => ({ saveOrganizationGeographies: vi.fn() }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 vi.mock("@/lib/dal/passport", () => ({ getPassport: passportMock }));
 vi.mock("@/lib/dal/reference", () => ({
@@ -47,8 +60,8 @@ type PageComponent = (props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) => Promise<React.ReactElement>;
 
-async function render(page: PageComponent) {
-  const { prelude } = await prerender(await page({ params: Promise.resolve({ lang: "en" }), searchParams: Promise.resolve({}) }));
+async function render(page: PageComponent, searchParams: Record<string, string> = {}) {
+  const { prelude } = await prerender(await page({ params: Promise.resolve({ lang: "en" }), searchParams: Promise.resolve(searchParams) }));
   return (await new Response(prelude).text()).replace(/<!-- -->/g, "");
 }
 
@@ -63,6 +76,9 @@ beforeEach(() => {
   twoStepMock.mockResolvedValue(false);
   passportMock.mockResolvedValue(null);
   welcomeDueMock.mockResolvedValue(true);
+  releasedMock.mockResolvedValue(true);
+  geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: [] });
+  marketsLimitMock.mockResolvedValue(3);
 });
 
 describe("the first step of onboarding (resume)", () => {
@@ -139,21 +155,76 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(await render(OnboardingPage)).toContain(">Staffing company</strong>");
   });
 
-  it("puts a partner with a company on the pending Where you serve step, never on Security or the dashboard", async () => {
+  it("puts a partner with a company on the Where you serve step, never on Security or the dashboard", async () => {
     requireUserMock.mockResolvedValue(partner("staffing_company"));
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Where you serve");
     expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
-    expect(html).toContain(">Next: Where you serve</h1>");
+    expect(html).toContain(">Where you serve</h1>");
     expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 5: Where you serve<\/p>/);
-    expect(html).toContain("Manila Staff is saved.");
-    expect(html).toContain('role="status"');
-    expect(html).toMatch(/<a[^>]*href="\/en"[^>]*>Go to the home page/);
+    expect(html).toMatch(/<dt[^>]*>Where are you based\?<\/dt><dd[^>]*>Austria<\/dd>/);
+    expect(html).toContain("Where do you source workers from?");
+    expect(html).toContain("Where do you supply workers for?");
+    expect(html).not.toContain("Where do you recruit for?");
+    expect(html).toContain(">0 of 3 countries</p>");
+    expect(html).toContain(">0 countries</p>");
+    expect(html.match(/No countries chosen yet\./g)).toHaveLength(2);
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Continue<\/button>/);
+    expect(geographiesMock).toHaveBeenCalledWith("org-1");
     expect(redirectMock).not.toHaveBeenCalled();
 
     await expect(render(SecurityPage)).rejects.toThrow("REDIRECT:/en/onboarding");
     await expect(render(WelcomePage)).rejects.toThrow("REDIRECT:/en/onboarding");
+  });
+
+  it("asks a recruitment company where it recruits for, with the saved countries as chips and no limit when none applies", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: [] });
+    marketsLimitMock.mockResolvedValue(null);
+    const html = await render(OnboardingPage);
+    expect(html).toContain("Where do you recruit for?");
+    expect(html).toContain('aria-label="Remove Austria"');
+    expect(html).toContain(">1 country</p>");
+    expect(html).toContain(">0 countries</p>");
+  });
+
+  it("moves on to the pending Commitments step once both lists hold a country, with a way back to the countries", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Commitments");
+    expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toContain(">Next: Commitments</h1>");
+    expect(html).toContain("Manila Skills and the countries where you serve are saved.");
+    expect(html).toContain('role="status"');
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
+
+    const reopened = await render(OnboardingPage, { step: "where-you-serve" });
+    expect(currentStep(reopened)).toBe("Where you serve");
+    expect(reopened).toContain('aria-label="Remove Germany"');
+  });
+
+  it("keeps the step closed while release 2a is off, and leaves the countries to the owner or an admin", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company" });
+    releasedMock.mockResolvedValue(false);
+    let html = await render(OnboardingPage);
+    expect(html).toContain(">Next: Where you serve</h1>");
+    expect(html).toContain("This step is not open yet. Manila Skills is saved");
+    expect(geographiesMock).not.toHaveBeenCalled();
+
+    releasedMock.mockResolvedValue(true);
+    organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Skills", type: "recruitment_company", role: "member" });
+    html = await render(OnboardingPage, { step: "where-you-serve" });
+    expect(html).toContain("The owner or an admin of Manila Skills chooses the countries where you serve.");
+    expect(html).not.toContain("<form");
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    html = await render(OnboardingPage, { step: "where-you-serve" });
+    expect(html).toContain(">Next: Commitments</h1>");
+    expect(html).not.toContain("Change where you serve");
   });
 
   it("titles the commit step after the partner type", async () => {

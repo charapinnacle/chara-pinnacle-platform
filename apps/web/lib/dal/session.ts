@@ -118,6 +118,7 @@ type OrganizationAccess = {
   id: string;
   slug: string;
   displayName: string;
+  type: Database["public"]["Enums"]["organization_type"];
   role: MemberRole;
   suspended: boolean;
 };
@@ -127,6 +128,8 @@ type OrgRoleOptions = {
   mfa?: boolean;
   // Vacancy (FR-C1) and billing (FR-G6) pages answer a user who is no member as if the page did not exist.
   hideFromOutsiders?: boolean;
+  // A page of a recruitment or staffing company (FR-K1): an employer's member is answered as an outsider.
+  partner?: boolean;
 };
 
 // The role is looked up in the database on every request, never read from the token, so a removed or demoted member
@@ -137,7 +140,7 @@ export async function requireOrgRole(
   lang: string,
   slug: string,
   minRole: MemberRole,
-  { mfa = true, hideFromOutsiders = false }: OrgRoleOptions = {},
+  { mfa = true, hideFromOutsiders = false, partner = false }: OrgRoleOptions = {},
 ): Promise<{ user: CurrentUser; organization: OrganizationAccess }> {
   const user = await requireUser(lang);
   const supabase = await createClient();
@@ -151,10 +154,17 @@ export async function requireOrgRole(
   if (error) throw new Error("The organization role could not be loaded", { cause: error });
   if (!data && hideFromOutsiders) notFound();
   if (!data || roleRank[data.role] < roleRank[minRole]) redirect(`/${lang}/forbidden`);
-  // The organisation pages are the employer's; a partner organisation is sent to its onboarding until later units open
-  // pages of its own (FR-J1).
-  if (data.organizations.type !== "employer") redirect(onboardingPath(lang));
+  // The organisation pages are the employer's; a partner organisation is sent to its onboarding, except on the pages of
+  // its own (FR-J1, FR-K1).
+  const isPartner = data.organizations.type !== "employer";
+  if (isPartner !== partner) {
+    if (partner && hideFromOutsiders) notFound();
+    redirect(partner ? `/${lang}/forbidden` : onboardingPath(lang));
+  }
   if (mfa && data.role !== "member") await requireAal2(lang, user);
-  const { id, display_name, status } = data.organizations;
-  return { user, organization: { id, slug, displayName: display_name, role: data.role, suspended: status === "suspended" } };
+  const { id, display_name, type, status } = data.organizations;
+  return {
+    user,
+    organization: { id, slug, displayName: display_name, type, role: data.role, suspended: status === "suspended" },
+  };
 }

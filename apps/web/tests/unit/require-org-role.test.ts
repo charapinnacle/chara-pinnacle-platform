@@ -76,6 +76,27 @@ describe("requireOrgRole", () => {
     },
   );
 
+  it("FR-K1: opens a page of a partner to its members, with the type, and answers an employer's member as an outsider", async () => {
+    membershipMock.mockResolvedValue(membership("admin", "active", "staffing_company"));
+    await expect(requireOrgRole("en", "acme-bau", "member", { partner: true })).resolves.toMatchObject({
+      organization: { type: "staffing_company", role: "admin" },
+    });
+    membershipMock.mockResolvedValue(membership("owner"));
+    await expect(requireOrgRole("en", "acme-bau", "member", { partner: true })).rejects.toThrow("REDIRECT:/en/forbidden");
+    await expect(requireOrgRole("en", "acme-bau", "member", { partner: true, hideFromOutsiders: true })).rejects.toThrow(
+      "NOT_FOUND",
+    );
+  });
+
+  it("FR-K1: still asks the owner of a partner for two-step verification on its organisation pages", async () => {
+    membershipMock.mockResolvedValue(membership("owner", "active", "recruitment_company"));
+    claimsMock.mockResolvedValue({ data: { claims: { sub: "user-1", aal: "aal1" } } });
+    await expect(requireOrgRole("en", "acme-bau", "member", { partner: true })).rejects.toThrow("REDIRECT:/en/mfa?next=");
+    await expect(requireOrgRole("en", "acme-bau", "admin", { partner: true, mfa: false })).resolves.toMatchObject({
+      organization: { type: "recruitment_company" },
+    });
+  });
+
   it("tells a suspended organization from an active one", async () => {
     membershipMock.mockResolvedValue(membership("member", "suspended"));
     await expect(requireOrgRole("en", "acme-bau", "member")).resolves.toMatchObject({ organization: { suspended: true } });

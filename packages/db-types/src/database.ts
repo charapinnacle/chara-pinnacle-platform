@@ -314,6 +314,37 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"organization_geographies": {
+                  Row: {
+                    "country_code": string,"created_at": string,"organization_id": string,"scope": Database["public"]['Enums']["geography_scope"]
+                  }
+                  Insert: {
+                    "country_code": string,"created_at"?: string,"organization_id": string,"scope": Database["public"]['Enums']["geography_scope"]
+                  }
+                  Update: {
+                    "country_code"?: string,"created_at"?: string,"organization_id"?: string,"scope"?: Database["public"]['Enums']["geography_scope"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_geographies_country_code_fkey"
+      columns: ["country_code"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "organization_geographies_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_geographies_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"organization_invitations": {
                   Row: {
                     "accepted_at": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"organization_id": string,"role": Database["public"]['Enums']["member_role"],"token_hash": string
@@ -1206,6 +1237,9 @@ isOneToOne: false
 "notify_existing_account":
 { Args: { "p_email": string,"p_key": string,"p_proof"?: string }; Returns: undefined
                            },
+"organization_markets_limit":
+{ Args: { "p_org": string }; Returns: number
+                           },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {
               "availability_window_months": number,"skills_max": number,"work_authorization_expiry_max_years": number
@@ -1269,6 +1303,9 @@ isOneToOne: false
 { Args: { "p_digest": boolean }; Returns: undefined
                            } |
 { Args: { "p_kinds": Json }; Returns: undefined
+                           },
+"set_organization_geographies":
+{ Args: { "p_org": string,"p_serves_market": (string)[],"p_sources_from": (string)[] }; Returns: Json
                            },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: {

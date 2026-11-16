@@ -162,10 +162,9 @@ test.describe("partner registration (FR-J1)", () => {
     await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(page.getByRole("heading", { name: "Next: Where you serve", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
     await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
-    await expect(page.getByRole("status")).toContainText("This step is not open yet.");
-    await expect(page.getByRole("link", { name: "Go to the home page" })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Where do you recruit for?" })).toBeVisible();
     await expect(page.getByText(/approved|verified/i)).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
 
@@ -230,7 +229,8 @@ test.describe("partner registration (FR-J1)", () => {
     const token = uniqueToken();
     await fillPartnerCompany(page, { legalName: `Google Staffing ${token} Inc.`, identifier: `GS${token}` });
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Next: Where you serve", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Where do you supply workers for?" })).toBeVisible();
     expect(partnerOrganization(user.id)).toEqual([{ type: "staffing_company", review_status: "onboarding", description: null }]);
   });
 
@@ -315,7 +315,7 @@ test.describe("partner registration (FR-J1)", () => {
     });
     await page.getByRole("button", { name: "Continue" }).dblclick();
     await expect(page.getByRole("button", { name: "Creating company..." })).toBeDisabled();
-    await expect(page.getByRole("heading", { name: "Next: Where you serve", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
     expect(organizationCountByName(legalName)).toBe(1);
     expect(partnerOrganization(user.id)).toEqual([{ type: "recruitment_company", review_status: "onboarding", description: null }]);
   });
