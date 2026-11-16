@@ -241,6 +241,7 @@ export function ResponseForm({
             prompt={limitReached}
             billingHref={billingHref}
             canUpgrade={organization.canManage}
+            focusUpgrade
           />
         </Notice>
       ) : null}

@@ -90,6 +90,7 @@ export function SubmitCandidateForm({ slug, requirementId, organization, billing
             prompt={limitReached}
             billingHref={billingHref}
             canUpgrade={organization.canManage}
+            focusUpgrade
           />
         </Notice>
       ) : null}
