@@ -1351,6 +1351,55 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"saved_searches": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"destination_country": string | null,"id": string,"industry_code": string | null,"kind": string,"min_workers": number | null,"occupation_id": string | null,"organization_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"destination_country"?: string | null,"id"?: string,"industry_code"?: string | null,"kind"?: string,"min_workers"?: number | null,"occupation_id"?: string | null,"organization_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"destination_country"?: string | null,"id"?: string,"industry_code"?: string | null,"kind"?: string,"min_workers"?: number | null,"occupation_id"?: string | null,"organization_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "saved_searches_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_searches_destination_country_fkey"
+      columns: ["destination_country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "saved_searches_industry_code_fkey"
+      columns: ["industry_code"]
+isOneToOne: false
+      referencedRelation: "industries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "saved_searches_occupation_id_fkey"
+      columns: ["occupation_id"]
+isOneToOne: false
+      referencedRelation: "occupations"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "saved_searches_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_searches_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"submission_events": {
                   Row: {
                     "actor_id": string | null,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"] | null,"id": number,"note": string | null,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
@@ -2174,6 +2223,9 @@ isOneToOne: false
 "delete_partner_licence":
 { Args: { "p_licence": string }; Returns: undefined
                            },
+"delete_saved_search":
+{ Args: { "p_id": string,"p_org": string }; Returns: undefined
+                           },
 "delete_worker_document":
 { Args: { "p_document_id": string }; Returns: undefined
                            },
@@ -2631,12 +2683,20 @@ isOneToOne: false
 "revoke_platform_role":
 { Args: { "p_reason": string,"p_role": string,"p_user_id": string }; Returns: undefined
                            },
+"save_employer_search":
+{ Args: { "p_destination"?: string,"p_industry"?: string,"p_min_workers"?: number,"p_occupation"?: string,"p_org": string }; Returns: string
+                           },
 "save_requirement":
 { Args: { "p_accommodation": boolean,"p_additional_countries"?: (string)[],"p_city_region": string,"p_country_code": string,"p_duration_months"?: number,"p_employment_type": Database["public"]['Enums']["employment_type"],"p_expected_updated_at"?: string,"p_experience_years"?: number,"p_industry_code": string,"p_occupations": Json,"p_org": string,"p_partner_need": Database["public"]['Enums']["partner_need"],"p_recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"p_requirement"?: string,"p_salary_currency"?: string,"p_salary_max"?: number,"p_salary_min"?: number,"p_salary_period"?: Database["public"]['Enums']["salary_period"],"p_skills"?: string,"p_start_date": string,"p_title"?: string,"p_visa_support": boolean,"p_work_permit_support": boolean,"p_workers_needed": number }; Returns: string
                            },
 "search_available_workforce":
 { Args: { "p_cursor"?: string,"p_destination": string,"p_limit"?: number,"p_occupation": string,"p_within_days": number,"p_workers_needed": number }; Returns: {
               "available_now": number,"confirmed_at": string,"display_name": string,"id": string,"listings": Json,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"supply": number
+            }[]
+                           },
+"search_employers":
+{ Args: { "p_cursor"?: string,"p_destination"?: string,"p_industry"?: string,"p_limit"?: number,"p_min_workers"?: number,"p_occupation"?: string,"p_org": string }; Returns: {
+              "based_in_country": string,"display_name": string,"employer_id": string,"industry_code": string,"job_order_count": number,"job_orders": Json,"kind": string,"next_cursor": string,"open_vacancy_count": number,"slug": string,"website": string
             }[]
                            },
 "search_jobs":
