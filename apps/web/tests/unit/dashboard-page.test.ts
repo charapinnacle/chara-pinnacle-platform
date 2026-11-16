@@ -20,7 +20,10 @@ const notFoundMock = vi.hoisted(() =>
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ notFound: notFoundMock, redirect: redirectMock, useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
-vi.mock("@/lib/dal/organizations", () => ({ getMyOrganizations: organizationsMock }));
+vi.mock("@/lib/dal/organizations", () => ({
+  getMyOrganizations: organizationsMock,
+  getMyOrganization: async (id: string) => ((await organizationsMock(id)) as unknown[] | undefined)?.[0] ?? null,
+}));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 const firstStepsMock = vi.hoisted(() => vi.fn());
 const passportMock = vi.hoisted(() => vi.fn());
@@ -68,6 +71,26 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
     await expect(render("employer")).rejects.toThrow("REDIRECT:/en/dashboard/worker");
     await expect(render("recruiter")).rejects.toThrow("NOT_FOUND");
     expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-J1: sends a recruitment or staffing company without an organisation, or with its own, to its onboarding", async () => {
+    for (const type of ["recruitment_company", "staffing_company"]) {
+      requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal1", intendedOrganizationType: type });
+      organizationsMock.mockResolvedValue([]);
+      await expect(render("employer")).rejects.toThrow("REDIRECT:/en/onboarding");
+      organizationsMock.mockResolvedValue([{ id: "org-9", slug: "agency", displayName: "Agency", type, role: "owner", suspended: false }]);
+      await expect(render("employer")).rejects.toThrow("REDIRECT:/en/onboarding");
+    }
+    expect(requireOrgRoleMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-J1: keeps the employer dashboard for a partner account that belongs to an employer, so it never loops", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-1", accountKind: "company", aal: "aal2", intendedOrganizationType: "staffing_company" });
+    organizationsMock.mockResolvedValue([{ id: "org-1", slug: "acme-bau", displayName: "Acme Bau", type: "employer", role: "owner", suspended: false }]);
+    await render("employer").catch((error: unknown) => {
+      expect(String(error)).not.toContain("REDIRECT:/en/onboarding");
+    });
+    expect(redirectMock).not.toHaveBeenCalledWith("/en/onboarding");
   });
 
   it("checks the membership of the organization in the address and hides it from outsiders", async () => {

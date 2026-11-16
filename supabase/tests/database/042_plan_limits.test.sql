@@ -361,7 +361,10 @@ select pg_temp.set_enforced('false');
 -- The fallback plan of the staffing type is a seeded row since FR-R1; without it this organisation's plan code has no row.
 delete from billing.plans where code = 'free_staffing_company';
 select pg_temp.new_org(:'own1', 'staffing_company') as unknown_org \gset
+-- A partner organisation has no vacancies (jobs_employer_only); the guard is lifted for this one row only.
+alter table public.jobs disable trigger jobs_employer_only;
 select (pg_temp.seed(:'unknown_org', 'draft'))[1] as unknown_job \gset
+alter table public.jobs enable always trigger jobs_employer_only;
 select pg_temp.set_enforced('true');
 select is(
   pg_temp.set_status(:'own1', :'unknown_job', 'open'), '42501|CHARA_FORBIDDEN|unknown_plan',
@@ -401,7 +404,7 @@ select is(pg_temp.set_status(:'own1', :'basic_override_job', 'open'), 'P0001|CHA
 select is(
   (select array_agg(t.tgname::text order by t.tgname) from pg_trigger t
    where t.tgrelid = 'public.jobs'::regclass and not t.tgisinternal and t.tgtype & 2 = 2),
-  array['jobs_guard_filled', 'jobs_guard_transition', 'jobs_limit_check', 'jobs_quota', 'jobs_touch_updated_at'],
+  array['jobs_employer_only', 'jobs_guard_filled', 'jobs_guard_transition', 'jobs_limit_check', 'jobs_quota', 'jobs_touch_updated_at'],
   'the limit trigger is a BEFORE trigger that sorts after the transition guard (and before the stamp of updated_at)'
 );
 select pg_temp.org_on('employer_starter') as order_org \gset

@@ -9,7 +9,7 @@ import { getCurrentUser, requireUser } from "@/lib/dal/session";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { formatDate } from "@/lib/i18n/format";
 import { homePath } from "@/lib/routes";
-import { invitationTokenSchema, roleLabels, WORKER_CANNOT_JOIN } from "@/lib/validation/team";
+import { invitationTokenSchema, COMPANY_TYPE_CANNOT_JOIN, roleLabels, WORKER_CANNOT_JOIN } from "@/lib/validation/team";
 
 export const metadata: Metadata = {
   title: "Team invitation",
@@ -24,11 +24,11 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/invi
   const signedIn = (await getCurrentUser()) !== null;
   const user = signedIn ? await requireUser(lang) : null;
 
-  if (user?.accountKind === "worker") {
+  if (user?.accountKind === "worker" || user?.intendedOrganizationType) {
     return (
       <AuthCard icon={MailCheck} title="Team invitation">
         <Notice tone="error" role="alert">
-          {WORKER_CANNOT_JOIN}
+          {user.accountKind === "worker" ? WORKER_CANNOT_JOIN : COMPANY_TYPE_CANNOT_JOIN}
         </Notice>
         <TextLink standalone="center" href={homePath(lang, user.accountKind)}>
           Back to your dashboard

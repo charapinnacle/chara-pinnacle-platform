@@ -22,6 +22,7 @@ import {
   slugSchema,
   TEAM_FAILURE,
   TEAM_RATE_LIMITED,
+  COMPANY_TYPE_CANNOT_JOIN,
   WORKER_CANNOT_JOIN,
   type InviteFormInput,
   type MemberRole,
@@ -157,6 +158,7 @@ function invitationRefusal(error: PostgrestError): string {
   if (error.message === "CHARA_FORBIDDEN" && error.details === "email_unconfirmed") {
     return "Confirm your email address first, then open the invitation link again.";
   }
+  if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_type_mismatch") return COMPANY_TYPE_CANNOT_JOIN;
   if (error.message === "CHARA_CONFLICT") return "You are already a member of this team.";
   if (error.message === "CHARA_INVITATION_INVALID") return INVITATION_INVALID;
   console.error("Accept invitation failed", { code: error.code, message: error.message });
@@ -164,7 +166,9 @@ function invitationRefusal(error: PostgrestError): string {
 }
 
 export async function acceptInvitation(token: string): Promise<{ message: string } | undefined> {
-  await requireUser(defaultLocale);
+  const user = await requireUser(defaultLocale);
+  // The invitations of this page are an employer's (FR-A5); a recruitment or staffing company account joins none (FR-J1).
+  if (user.intendedOrganizationType) return { message: COMPANY_TYPE_CANNOT_JOIN };
   const parsed = invitationTokenSchema.safeParse(token);
   if (!parsed.success) return { message: INVITATION_INVALID };
 

@@ -4,8 +4,11 @@ import { cn } from "@/lib/utils";
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
 // page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Below
 // 640 px only the current step is named beside the circles, under "Step 2 of 3"; the other names stay for screen readers.
+// A recruitment or staffing company (FR-J1) has the five steps of its own journey: too many for a name beside the circles
+// at 360 px, so there the current name joins the "Step 2 of 5" line instead.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
+  partner: ["Company", "Where you serve", "Commitments", "Security", "Ready"],
   worker: ["Your profile", "Ready"],
 } as const;
 
@@ -13,10 +16,11 @@ type OnboardingStepsProps = { kind: keyof typeof onboardingJourneys; current: nu
 
 export function OnboardingSteps({ kind, current }: OnboardingStepsProps) {
   const steps = onboardingJourneys[kind];
+  const long = steps.length > 3;
   return (
     <div className="grid gap-3">
       <p aria-hidden className="text-small text-muted-foreground tabular-nums sm:hidden">
-        {`Step ${current + 1} of ${steps.length}`}
+        {long ? `Step ${current + 1} of ${steps.length}: ${steps[current]}` : `Step ${current + 1} of ${steps.length}`}
       </p>
       <ol aria-label="Setting up your account" className="flex items-center gap-2 sm:gap-3">
         {steps.map((label, index) => {
@@ -42,6 +46,7 @@ export function OnboardingSteps({ kind, current }: OnboardingStepsProps) {
                 className={cn(
                   "text-small whitespace-nowrap",
                   state === "current" ? "font-semibold text-foreground" : "text-muted-foreground max-sm:sr-only",
+                  long && "max-sm:sr-only",
                 )}
               >
                 <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>

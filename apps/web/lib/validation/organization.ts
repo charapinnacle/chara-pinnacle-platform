@@ -60,40 +60,43 @@ const companyFields = {
     }),
 };
 
-export const organizationFormSchema = z
-  .object({
-    ...companyFields,
-    identifierKind: z
-      .string()
-      .trim()
-      .refine((value) => value === "" || identifierKindValues.includes(value), {
-        error: "Choose the type of identifier.",
-      }),
-    identifier: z
-      .string()
-      .trim()
-      .max(64, { error: "Identifier must be 64 characters or fewer." }),
-  })
-  .check((context) => {
-    const { identifier, identifierKind } = context.value;
-    if (identifier === "") return;
-    if (identifierKind === "") {
-      context.issues.push({
-        code: "custom",
-        input: identifierKind,
-        path: ["identifierKind"],
-        message: "Choose the type of identifier.",
-      });
-    }
-    if (!/^[A-Z0-9]{4,32}$/.test(normalizeIdentifier(identifier))) {
-      context.issues.push({
-        code: "custom",
-        input: identifier,
-        path: ["identifier"],
-        message: "Enter 4 to 32 letters or digits; spaces, dots, hyphens and slashes are ignored.",
-      });
-    }
-  });
+const identifierFields = {
+  identifierKind: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || identifierKindValues.includes(value), {
+      error: "Choose the type of identifier.",
+    }),
+  identifier: z
+    .string()
+    .trim()
+    .max(64, { error: "Identifier must be 64 characters or fewer." }),
+};
+
+type IdentifierValues = { identifier: string; identifierKind: string };
+
+function checkIdentifier(context: z.core.ParsePayload<IdentifierValues>): void {
+  const { identifier, identifierKind } = context.value;
+  if (identifier === "") return;
+  if (identifierKind === "") {
+    context.issues.push({
+      code: "custom",
+      input: identifierKind,
+      path: ["identifierKind"],
+      message: "Choose the type of identifier.",
+    });
+  }
+  if (!/^[A-Z0-9]{4,32}$/.test(normalizeIdentifier(identifier))) {
+    context.issues.push({
+      code: "custom",
+      input: identifier,
+      path: ["identifier"],
+      message: "Enter 4 to 32 letters or digits; spaces, dots, hyphens and slashes are ignored.",
+    });
+  }
+}
+
+export const organizationFormSchema = z.object({ ...companyFields, ...identifierFields }).check(checkIdentifier);
 
 export const organizationInputSchema = organizationFormSchema.transform((value) => ({
   type: "employer" as const,
@@ -108,13 +111,61 @@ export const organizationInputSchema = organizationFormSchema.transform((value) 
 
 export type OrganizationFormInput = z.input<typeof organizationFormSchema>;
 
+// Plain text keeps its tabs and line breaks; any other control character is refused.
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return (code < 32 && character !== "\t" && character !== "\n" && character !== "\r") || code === 127;
+  });
+}
+
+const descriptionField = z
+  .string()
+  .trim()
+  .max(DESCRIPTION_MAX_CHARS, { error: `The description can have at most ${DESCRIPTION_MAX_CHARS} characters.` })
+  .refine((value) => !hasControlCharacter(value), { error: "Remove the control characters from the description." });
+
+// The Company step of a recruitment or staffing company (FR-J1): the identifier is required, because staff check it before
+// the partner is listed, and the description is asked at once. The type is not a field: it is the one chosen at sign-up.
+export const partnerOrganizationFormSchema = z
+  .object({ ...companyFields, ...identifierFields, description: descriptionField })
+  .check((context) => {
+    if (context.value.identifier === "") {
+      context.issues.push({
+        code: "custom",
+        input: context.value.identifier,
+        path: ["identifier"],
+        message: "Enter the registration number, VAT number or other identifier of your company.",
+      });
+    }
+    checkIdentifier(context);
+  });
+
+export type PartnerOrganizationFormInput = z.input<typeof partnerOrganizationFormSchema>;
+
+// The resolver of the Company step form, which holds the description for both: an employer's form has no such field, so
+// its value stays empty and is not sent.
+export function companyStepSchema(partner: boolean): z.ZodType<PartnerOrganizationFormInput, PartnerOrganizationFormInput> {
+  return partner
+    ? partnerOrganizationFormSchema
+    : z.object({ ...companyFields, ...identifierFields, description: z.string() }).check(checkIdentifier);
+}
+
+export const partnerOrganizationInputSchema = partnerOrganizationFormSchema.transform((value) => ({
+  legalName: value.legalName,
+  displayName: value.displayName === "" ? value.legalName : value.displayName,
+  country: value.country,
+  industry: value.industry,
+  website: value.website === "" ? null : value.website,
+  identifier: normalizeIdentifier(value.identifier),
+  identifierKind: value.identifierKind,
+  description: value.description === "" ? null : value.description,
+}));
+
 // The profile page edits the company details; the identifier keeps its own owner-only form on the billing page.
 export const organizationProfileSchema = z.object({
   ...companyFields,
-  description: z
-    .string()
-    .trim()
-    .max(DESCRIPTION_MAX_CHARS, { error: `The description can have at most ${DESCRIPTION_MAX_CHARS} characters.` }),
+  description: descriptionField,
 });
 
 export type OrganizationProfileInput = z.input<typeof organizationProfileSchema>;

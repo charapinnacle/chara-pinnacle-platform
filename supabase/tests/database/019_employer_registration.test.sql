@@ -17,13 +17,13 @@ select hasnt_function('public', 'create_organization',
 select ok(
   (select bool_and(prosecdef and proconfig = array['search_path=""'])
    from pg_proc where oid in (
-     'public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure,
+     'public.create_organization(public.organization_type, text, text, text, text, text, text, text, text)'::regprocedure,
      'public.set_legal_entity_identifier(uuid, text, text)'::regprocedure))
-  and has_function_privilege('authenticated', 'public.create_organization(public.organization_type, text, text, text, text, text, text, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.create_organization(public.organization_type, text, text, text, text, text, text, text, text)', 'execute')
   and has_function_privilege('authenticated', 'public.set_legal_entity_identifier(uuid, text, text)', 'execute')
-  and not has_function_privilege('anon', 'public.create_organization(public.organization_type, text, text, text, text, text, text, text)', 'execute')
+  and not has_function_privilege('anon', 'public.create_organization(public.organization_type, text, text, text, text, text, text, text, text)', 'execute')
   and not has_function_privilege('anon', 'public.set_legal_entity_identifier(uuid, text, text)', 'execute')
-  and not has_function_privilege('service_role', 'public.create_organization(public.organization_type, text, text, text, text, text, text, text)', 'execute')
+  and not has_function_privilege('service_role', 'public.create_organization(public.organization_type, text, text, text, text, text, text, text, text)', 'execute')
   and not has_function_privilege('service_role', 'public.set_legal_entity_identifier(uuid, text, text)', 'execute'),
   'both RPCs are security definer with an empty search_path and run for authenticated only'
 );
@@ -237,7 +237,7 @@ select is(
 
 -- No subscription is inserted by registration
 select ok(
-  pg_get_functiondef('public.create_organization(public.organization_type, text, text, text, text, text, text, text)'::regprocedure)
+  pg_get_functiondef('public.create_organization(public.organization_type, text, text, text, text, text, text, text, text)'::regprocedure)
     !~* 'insert\s+into\s+billing\.',
   'create_organization inserts nothing into the billing schema'
 );

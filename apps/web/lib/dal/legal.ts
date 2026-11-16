@@ -2,6 +2,7 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import { cache } from "react";
 import * as z from "zod";
+import { isReleased } from "@/lib/dal/release";
 import { createClient } from "@/lib/supabase/server";
 import {
   AGE_ATTESTATION_SLUG,
@@ -9,6 +10,7 @@ import {
   unacceptedDocuments,
   type LegalDocumentSummary,
 } from "@/lib/validation/consents";
+import type { SignUpDocuments } from "@/lib/validation/sign-up";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type OrganizationType = Database["public"]["Enums"]["organization_type"];
@@ -64,13 +66,17 @@ async function getAttestationWording(
   return data.body;
 }
 
-export async function getSignUpForm() {
-  const [worker, company] = await Promise.all([
+// The documents of every choice the sign-up form offers: the partner types only while release 2a is on (FR-J1).
+export async function getSignUpForm(): Promise<{ documents: SignUpDocuments; attestationWording: string | null }> {
+  const partners = await isReleased("release_partner_directories");
+  const [worker, company, recruitment, staffing] = await Promise.all([
     getSignupDocuments("worker"),
     getSignupDocuments("company"),
+    partners ? getSignupDocuments("company", "recruitment_company") : undefined,
+    partners ? getSignupDocuments("company", "staffing_company") : undefined,
   ]);
   return {
-    documents: { worker, company },
+    documents: { worker, company, recruitment_company: recruitment, staffing_company: staffing },
     attestationWording: await getAttestationWording(worker),
   };
 }

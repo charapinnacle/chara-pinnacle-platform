@@ -3,11 +3,12 @@
 import { redirect } from "next/navigation";
 import { refreshAppShell } from "@/lib/app/refresh-shell";
 import { getPendingReconsents, getSignupDocuments } from "@/lib/dal/legal";
+import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { consentReturnPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
-import { accountKindSchema } from "@/lib/validation/sign-up";
+import { accountChoiceSchema, splitAccountChoice } from "@/lib/validation/sign-up";
 import {
   consentEntriesSchema,
   consentMessage,
@@ -40,23 +41,27 @@ export async function commitAccountKind(
   redirect(`/${defaultLocale}/onboarding`);
 }
 
-// For an account that has no kind yet (a Google sign-up): the kind is chosen here, once, and committed with the consents.
+// For an account that has no kind yet (a Google sign-up): the kind, or a partner type (FR-J1), is chosen here, once, and
+// committed with the consents.
 export async function chooseAccountKind(
-  kind: string,
+  choice: string,
   entries: ConsentEntry[],
 ): Promise<ConsentActionResult> {
   await requireUser(defaultLocale);
-  const parsedKind = accountKindSchema.safeParse(kind);
+  const parsedChoice = accountChoiceSchema.safeParse(choice);
   const parsedEntries = consentEntriesSchema.safeParse(entries);
-  if (!parsedKind.success || !parsedEntries.success) return { error: GENERIC_FAILURE };
+  if (!parsedChoice.success || !parsedEntries.success) return { error: GENERIC_FAILURE };
+  const { kind, organizationType } = splitAccountChoice(parsedChoice.data);
+  if (organizationType && !(await isReleased("release_partner_directories"))) return { error: GENERIC_FAILURE };
 
-  const missing = unacceptedDocuments(await getSignupDocuments(parsedKind.data), parsedEntries.data);
+  const missing = unacceptedDocuments(await getSignupDocuments(kind, organizationType), parsedEntries.data);
   if (missing.length > 0) return { error: consentMessage(missing[0]) };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("choose_account_kind", {
-    p_kind: parsedKind.data,
+    p_kind: kind,
     p_consents: parsedEntries.data,
+    p_org_type: organizationType,
   });
   if (error) return { error: describe(error.message) };
   refreshAppShell();

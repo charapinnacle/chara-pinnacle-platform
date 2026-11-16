@@ -2,26 +2,29 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toastError } from "@/components/feedback/toast-store";
 import { ComboboxField } from "@/components/forms/combobox-field";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
-import { InputField } from "@/components/forms/form-field";
+import { InputField, TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
-import { createOrganization } from "@/lib/actions/organizations";
+import { partnerTypeLabels } from "@/components/forms/account-kind-options";
+import { createOrganization, createPartnerOrganization } from "@/lib/actions/organizations";
 import { identifierPurpose } from "@/lib/billing/presentation";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import { onboardingPath } from "@/lib/routes";
 import {
+  DESCRIPTION_MAX_CHARS,
   identifierKindOptions,
-  organizationFormSchema,
-  type OrganizationFormInput,
+  companyStepSchema,
+  type PartnerOrganizationFormInput,
 } from "@/lib/validation/organization";
+import type { PartnerType } from "@/lib/validation/sign-up";
 import { BRAND_NAME } from "@/lib/brand";
 
 type OrganizationFormProps = {
@@ -29,9 +32,12 @@ type OrganizationFormProps = {
   countries: ReferenceItem[];
   industries: ReferenceItem[];
   defaultCountry: string;
+  partnerType?: PartnerType;
 };
 
 const IDENTIFIER_HELP = `${identifierPurpose} 4 to 32 letters and digits, for example DE123456789 (VAT) or HRB12345 (company register); spaces, dots, hyphens and slashes are ignored.`;
+
+const PARTNER_IDENTIFIER_HELP = "Our team checks it before your company is listed. 4 to 32 letters and digits, for example DE123456789 (VAT) or HRB12345 (company register); spaces, dots, hyphens and slashes are ignored.";
 
 const ids = {
   legalName: "org-legal-name",
@@ -41,13 +47,17 @@ const ids = {
   website: "org-website",
   identifier: "org-identifier",
   identifierKind: "org-identifier-kind",
-} as const satisfies Record<keyof OrganizationFormInput, string>;
+  description: "org-description",
+} as const satisfies Record<keyof PartnerOrganizationFormInput, string>;
 
 const groupTitleClassName = "mb-5 text-eyebrow text-muted-foreground uppercase";
 
-export function OrganizationForm({ lang, countries, industries, defaultCountry }: OrganizationFormProps) {
-  const form = useForm<OrganizationFormInput>({
-    resolver: zodResolver(organizationFormSchema),
+// The Company step of onboarding. An employer registers as in Phase 1; with partnerType a recruitment or staffing
+// company (FR-J1) registers the type it chose at sign-up, which is shown and cannot be changed, with the identifier
+// required and the description asked at once.
+export function OrganizationForm({ lang, countries, industries, defaultCountry, partnerType }: OrganizationFormProps) {
+  const form = useForm<PartnerOrganizationFormInput>({
+    resolver: zodResolver(companyStepSchema(partnerType !== undefined)),
     defaultValues: {
       legalName: "",
       displayName: "",
@@ -56,10 +66,12 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
       website: "",
       identifier: "",
       identifierKind: "",
+      description: "",
     },
     shouldFocusError: false,
   });
   const { control, formState, handleSubmit } = form;
+  const descriptionLength = useWatch({ control, name: "description" }).length;
   const [duplicateLegalName, setDuplicateLegalName] = useState(false);
   const { summaryRef, submit } = useServerFormSubmit(form, {
     failureTitle: "Could not create the company",
@@ -67,7 +79,10 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
 
   function onSubmit() {
     return submit(
-      () => createOrganization(form.getValues()),
+      () => {
+        const { description, ...values } = form.getValues();
+        return partnerType ? createPartnerOrganization({ ...values, description }) : createOrganization(values);
+      },
       (result) => {
         setDuplicateLegalName(Boolean(result.duplicateLegalName));
         if (result.message) {
@@ -84,7 +99,7 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
         <Notice tone="info" role="status">
           An organisation with a similar name already exists on {BRAND_NAME}.
         </Notice>
-        <TextLink standalone href={onboardingPath(lang, "security")}>
+        <TextLink standalone href={partnerType ? onboardingPath(lang) : onboardingPath(lang, "security")}>
           Continue
         </TextLink>
       </div>
@@ -96,6 +111,12 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <fieldset className="grid min-w-0 gap-6">
         <legend className={groupTitleClassName}>Company</legend>
+        {partnerType ? (
+          <p className="text-body leading-relaxed">
+            Company type: <strong className="font-semibold">{partnerTypeLabels[partnerType]}</strong>. You chose it when you
+            signed up; only our team can correct it.
+          </p>
+        ) : null}
         <InputField
           control={control}
           name="legalName"
@@ -114,7 +135,7 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
           control={control}
           name="country"
           id={ids.country}
-          label="Country"
+          label={partnerType ? "Country where you are based" : "Country"}
           placeholder="Choose a country"
           options={toOptions(countries)}
         />
@@ -134,6 +155,15 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
           type="url"
           autoComplete="url"
         />
+        {partnerType ? (
+          <TextareaField
+            control={control}
+            name="description"
+            id={ids.description}
+            label="About your company (optional)"
+            description={`Plain text: what you do and for whom. Line breaks are kept. ${descriptionLength}/${DESCRIPTION_MAX_CHARS}`}
+          />
+        ) : null}
       </fieldset>
       <div className="border-t pt-8">
         <fieldset className="grid min-w-0 gap-6">
@@ -142,8 +172,12 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry }
             control={control}
             name="identifier"
             id={ids.identifier}
-            label="Company registration number or VAT number (optional until you start your trial)"
-            description={IDENTIFIER_HELP}
+            label={
+              partnerType
+                ? "Company registration number, VAT number or other identifier"
+                : "Company registration number or VAT number (optional until you start your trial)"
+            }
+            description={partnerType ? PARTNER_IDENTIFIER_HELP : IDENTIFIER_HELP}
           />
           <SelectField
             control={control}

@@ -89,6 +89,7 @@ export default defineConfig({
         "**/perf-smoke.spec.ts",
         "**/in-app-notifications.spec.ts",
         "**/partner-legal-documents.spec.ts",
+        "**/partner-registration.spec.ts",
       ],
     },
     {
@@ -266,13 +267,21 @@ export default defineConfig({
       testMatch: "**/partner-legal-documents.spec.ts",
       dependencies: ["notifications-release"],
     },
+    // The same release switch is set for partner sign-up (FR-J1), which adds the partner choices to every sign-up form,
+    // so this spec follows the one above.
+    {
+      name: "partner-registration-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-registration.spec.ts",
+      dependencies: ["partner-legal-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-legal-release"],
+      dependencies: ["partner-registration-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

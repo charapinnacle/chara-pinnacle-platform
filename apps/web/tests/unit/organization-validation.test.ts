@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { fieldErrors } from "@/lib/validation/sign-up";
-import { organizationInputSchema, organizationProfileSchema, type OrganizationFormInput } from "@/lib/validation/organization";
+import {
+  companyStepSchema,
+  organizationInputSchema,
+  organizationProfileSchema,
+  partnerOrganizationInputSchema,
+  type OrganizationFormInput,
+} from "@/lib/validation/organization";
 
 const valid: OrganizationFormInput = {
   legalName: "Acme Bau GmbH",
@@ -164,5 +170,46 @@ describe("organization profile schema", () => {
   it("accepts 2000 characters in the description and refuses 2001, naming the field", () => {
     expect(profileErrors({ description: "d".repeat(2000) })).toEqual({});
     expect(Object.keys(profileErrors({ description: "d".repeat(2001) }))).toEqual(["description"]);
+  });
+});
+
+describe("partner Company step schema (FR-J1 AC12)", () => {
+  const partner = { ...valid, identifier: "CS 2019-04512", identifierKind: "registration_number", description: "" };
+
+  it("requires the identifier and its kind, and normalises the identifier", () => {
+    const empty = partnerOrganizationInputSchema.safeParse({ ...partner, identifier: "", identifierKind: "" });
+    expect(empty.success ? {} : fieldErrors(empty.error)).toEqual({
+      identifier: "Enter the registration number, VAT number or other identifier of your company.",
+    });
+    const noKind = partnerOrganizationInputSchema.safeParse({ ...partner, identifierKind: "" });
+    expect(noKind.success ? {} : fieldErrors(noKind.error)).toEqual({ identifierKind: "Choose the type of identifier." });
+    const parsed = partnerOrganizationInputSchema.parse(partner);
+    expect(parsed).toMatchObject({ identifier: "CS201904512", identifierKind: "registration_number", description: null });
+    expect(parsed).not.toHaveProperty("type");
+  });
+
+  it("keeps a description of up to 2000 characters, trimmed, and refuses a longer one", () => {
+    expect(partnerOrganizationInputSchema.parse({ ...partner, description: ` ${"a".repeat(2000)} ` }).description).toHaveLength(2000);
+    const long = partnerOrganizationInputSchema.safeParse({ ...partner, description: "a".repeat(2001) });
+    expect(long.success ? {} : fieldErrors(long.error)).toEqual({
+      description: "The description can have at most 2000 characters.",
+    });
+  });
+
+  it("refuses control characters in the description but keeps tabs and line breaks", () => {
+    expect(partnerOrganizationInputSchema.parse({ ...partner, description: "Nurses\tand carers.\r\nSince 2019." }).description).toBe(
+      "Nurses\tand carers.\r\nSince 2019.",
+    );
+    for (const control of ["\u0000", "\u0007", "\u001b", "\u007f"]) {
+      const result = partnerOrganizationInputSchema.safeParse({ ...partner, description: `Nurses${control}carers` });
+      expect(result.success ? {} : fieldErrors(result.error), JSON.stringify(control)).toEqual({
+        description: "Remove the control characters from the description.",
+      });
+    }
+  });
+
+  it("lets the employer form leave the identifier empty, as in Phase 1", () => {
+    expect(companyStepSchema(false).safeParse({ ...partner, identifier: "", identifierKind: "" }).success).toBe(true);
+    expect(companyStepSchema(true).safeParse({ ...partner, identifier: "", identifierKind: "" }).success).toBe(false);
   });
 });

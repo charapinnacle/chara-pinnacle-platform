@@ -5,11 +5,13 @@ import { employerEntry } from "@/components/dashboard/employer-entry";
 import { WorkerDashboard } from "@/components/dashboard/worker-dashboard";
 import { ReportOutcomes } from "@/components/reports/report-outcomes";
 import { getDocumentReminders, hasUsableCv } from "@/lib/dal/documents";
+import { getMyOrganization } from "@/lib/dal/organizations";
 import { getPassport } from "@/lib/dal/passport";
 import { requireUser } from "@/lib/dal/session";
 import { computeCompleteness } from "@/lib/passport/completeness";
-import { dashboardSegments, homePath, isDashboardSegment } from "@/lib/routes";
+import { dashboardSegments, homePath, isDashboardSegment, onboardingPath } from "@/lib/routes";
 import { todayUtc } from "@/lib/validation/passport";
+import { partnerTypeSchema } from "@/lib/validation/sign-up";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -19,6 +21,13 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
   const user = await requireUser(lang);
   if (user.accountKind !== dashboardSegments[kind]) {
     redirect(homePath(lang, user.accountKind));
+  }
+  // A recruitment or staffing company has no dashboard until its onboarding is done (FR-J1; the pending dashboard is V09).
+  // A partner account in an employer organisation (one that joined before invitations checked the type) keeps the
+  // employer dashboard, so it never bounces between this page and onboarding.
+  if (kind === "employer" && partnerTypeSchema.safeParse(user.intendedOrganizationType).success) {
+    const organization = await getMyOrganization(user.id);
+    if (organization?.type !== "employer") redirect(onboardingPath(lang));
   }
   const outcomes = (
     <Suspense fallback={null}>

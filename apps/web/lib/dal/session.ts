@@ -5,12 +5,13 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getPendingReconsents } from "@/lib/dal/legal";
 import { createClient } from "@/lib/supabase/server";
-import { homePath, mfaPath } from "@/lib/routes";
+import { homePath, mfaPath, onboardingPath } from "@/lib/routes";
 import { safeNextPath } from "@/lib/safe-next";
 import type { PlatformRole } from "@/lib/validation/admin";
 import type { MemberRole } from "@/lib/validation/team";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
+type OrganizationType = Database["public"]["Enums"]["organization_type"];
 
 export const roleRank = { member: 1, admin: 2, owner: 3 } as const satisfies Record<MemberRole, number>;
 
@@ -20,6 +21,7 @@ type CurrentUser = {
   aal: "aal1" | "aal2";
   accountKind: AccountKind | null;
   intendedAccountKind: AccountKind | null;
+  intendedOrganizationType: OrganizationType | null;
   suspended: boolean;
 };
 
@@ -30,7 +32,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const { sub } = data.claims;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("account_kind, intended_account_kind, status")
+    .select("account_kind, intended_account_kind, intended_organization_type, status")
     .eq("id", sub)
     .maybeSingle();
   if (!profile) return null;
@@ -40,6 +42,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     aal: data.claims.aal === "aal2" ? "aal2" : "aal1",
     accountKind: profile.account_kind,
     intendedAccountKind: profile.intended_account_kind,
+    intendedOrganizationType: profile.intended_organization_type,
     suspended: profile.status === "suspended",
   };
 });
@@ -140,7 +143,7 @@ export async function requireOrgRole(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_members")
-    .select("role, organizations!inner(id, slug, display_name, status)")
+    .select("role, organizations!inner(id, slug, display_name, type, status)")
     .eq("user_id", user.id)
     .eq("organizations.slug", slug)
     .not("accepted_at", "is", null)
@@ -148,6 +151,9 @@ export async function requireOrgRole(
   if (error) throw new Error("The organization role could not be loaded", { cause: error });
   if (!data && hideFromOutsiders) notFound();
   if (!data || roleRank[data.role] < roleRank[minRole]) redirect(`/${lang}/forbidden`);
+  // The organisation pages are the employer's; a partner organisation is sent to its onboarding until later units open
+  // pages of its own (FR-J1).
+  if (data.organizations.type !== "employer") redirect(onboardingPath(lang));
   if (mfa && data.role !== "member") await requireAal2(lang, user);
   const { id, display_name, status } = data.organizations;
   return { user, organization: { id, slug, displayName: display_name, role: data.role, suspended: status === "suspended" } };

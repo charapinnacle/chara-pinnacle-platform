@@ -9,6 +9,7 @@ const redirectMock = vi.hoisted(() =>
 const rpcMock = vi.fn();
 const documentsMock = vi.hoisted(() => vi.fn());
 const refreshShellMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
@@ -17,6 +18,7 @@ vi.mock("@/lib/dal/legal", () => ({
   getSignupDocuments: documentsMock,
   getPendingReconsents: vi.fn(),
 }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
@@ -35,17 +37,42 @@ beforeEach(() => {
   vi.clearAllMocks();
   documentsMock.mockResolvedValue(documents);
   rpcMock.mockResolvedValue({ data: "company", error: null });
+  releasedMock.mockResolvedValue(true);
 });
 
 describe("chooseAccountKind", () => {
   it("commits the chosen kind with the accepted versions and goes back to onboarding", async () => {
     await expect(chooseAccountKind("company", entries)).rejects.toThrow("REDIRECT:/en/onboarding");
     expect(refreshShellMock).toHaveBeenCalledOnce();
-    expect(documentsMock).toHaveBeenCalledWith("company");
+    expect(documentsMock).toHaveBeenCalledWith("company", undefined);
     expect(rpcMock).toHaveBeenCalledWith("choose_account_kind", { p_kind: "company", p_consents: entries });
+    expect(rpcMock.mock.calls[0][1]).not.toHaveProperty("p_org_type", expect.anything());
   });
 
-  it.each(["admin", "", "Worker", "company "])("refuses the kind %j without calling the database", async (kind) => {
+  it.each(["recruitment_company", "staffing_company"] as const)(
+    "FR-J1: commits a company account of the partner type %s with the documents of that type",
+    async (type) => {
+      await expect(chooseAccountKind(type, entries)).rejects.toThrow("REDIRECT:/en/onboarding");
+      expect(releasedMock).toHaveBeenCalledWith("release_partner_directories");
+      expect(documentsMock).toHaveBeenCalledWith("company", type);
+      expect(rpcMock).toHaveBeenCalledWith("choose_account_kind", {
+        p_kind: "company",
+        p_consents: entries,
+        p_org_type: type,
+      });
+    },
+  );
+
+  it("FR-J1: refuses a partner type while release 2a is off, without reading the documents or calling the database", async () => {
+    releasedMock.mockResolvedValue(false);
+    await expect(chooseAccountKind("staffing_company", entries)).resolves.toEqual({
+      error: "We could not save this step. Try again.",
+    });
+    expect(documentsMock).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["admin", "", "Worker", "company ", "employer", "agency"])("refuses the kind %j without calling the database", async (kind) => {
     await expect(chooseAccountKind(kind, entries)).resolves.toEqual({
       error: "We could not save this step. Try again.",
     });

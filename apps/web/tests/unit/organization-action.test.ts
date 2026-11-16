@@ -17,7 +17,7 @@ vi.mock("@/lib/app/refresh-shell", () => ({ refreshAppShell: refreshShellMock })
 vi.mock("@/lib/dal/session", () => ({ requireUser: requireUserMock, requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { createOrganization, updateOrganizationProfile } = await import("@/lib/actions/organizations");
+const { createOrganization, createPartnerOrganization, updateOrganizationProfile } = await import("@/lib/actions/organizations");
 
 const input: OrganizationFormInput = {
   legalName: "  Acme Bau GmbH ",
@@ -37,6 +37,72 @@ const created = {
 beforeEach(() => {
   vi.clearAllMocks();
   rpcMock.mockResolvedValue({ data: created, error: null });
+});
+
+describe("createPartnerOrganization (FR-J1)", () => {
+  const partnerInput = { ...input, description: "  We place nurses.\nSince 2019. " };
+
+  beforeEach(() => {
+    requireUserMock.mockResolvedValue({ id: "user-2", intendedOrganizationType: "recruitment_company" });
+  });
+
+  it("creates the type of the profile with the identifier and the description and returns to onboarding", async () => {
+    await expect(createPartnerOrganization(partnerInput)).rejects.toThrow("REDIRECT:/en/onboarding");
+    expect(redirectMock).toHaveBeenCalledWith("/en/onboarding");
+    expect(refreshShellMock).toHaveBeenCalledOnce();
+    expect(rpcMock).toHaveBeenCalledWith("create_organization", {
+      p_type: "recruitment_company",
+      p_legal_name: "Acme Bau GmbH",
+      p_display_name: "Acme Bau GmbH",
+      p_based_in_country: "DE",
+      p_industry_code: "F",
+      p_website: undefined,
+      p_identifier: "DE123456789",
+      p_identifier_kind: "vat_number",
+      p_description: "We place nurses.\nSince 2019.",
+    });
+  });
+
+  it("takes the type from the profile only: a form value cannot change it", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-2", intendedOrganizationType: "staffing_company" });
+    const tampered = { ...partnerInput, type: "recruitment_company" } as typeof partnerInput;
+    await expect(createPartnerOrganization(tampered)).rejects.toThrow("REDIRECT");
+    expect(rpcMock.mock.calls[0][1]).toMatchObject({ p_type: "staffing_company" });
+  });
+
+  it.each([null, "employer"])("refuses a user whose intended type is %j without calling the database", async (type) => {
+    requireUserMock.mockResolvedValue({ id: "user-2", intendedOrganizationType: type });
+    await expect(createPartnerOrganization(partnerInput)).resolves.toEqual({ message: expect.any(String) });
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("requires the identifier and sends nothing without it", async () => {
+    const result = await createPartnerOrganization({ ...partnerInput, identifier: "", identifierKind: "" });
+    expect(result?.errors).toEqual({
+      identifier: "Enter the registration number, VAT number or other identifier of your company.",
+    });
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("says that partner registration is closed when release 2a is off in the database", async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "CHARA_FORBIDDEN", details: "organization_type_not_available", code: "P0001" },
+    });
+    await expect(createPartnerOrganization(partnerInput)).resolves.toEqual({
+      message: "Registration for recruitment and staffing companies is not open at the moment.",
+    });
+  });
+
+  it("maps a refused description to its field and keeps the duplicate notice of FR-A2", async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "CHARA_INVALID_INPUT", details: "organizations_description_check", code: "P0001" },
+    });
+    await expect(createPartnerOrganization(partnerInput)).resolves.toEqual({ errors: { description: "Check this value." } });
+    rpcMock.mockResolvedValue({ data: { ...created, duplicate_legal_name: true }, error: null });
+    await expect(createPartnerOrganization(partnerInput)).resolves.toEqual({ duplicateLegalName: true });
+  });
 });
 
 describe("createOrganization", () => {

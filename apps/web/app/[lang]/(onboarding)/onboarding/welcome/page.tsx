@@ -21,7 +21,7 @@ export default async function WelcomePage({ params }: PageProps<"/[lang]/onboard
 
   if (user.accountKind === "company") {
     const organization = await getMyOrganization(user.id);
-    if (!organization) redirect(onboardingPath(lang));
+    if (!organization || organization.type !== "employer") redirect(onboardingPath(lang));
     return (
       <OnboardingPanel
         steps={<OnboardingSteps kind="company" current={2} />}

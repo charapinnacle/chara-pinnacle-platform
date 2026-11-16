@@ -6,6 +6,10 @@ export const INVITATION_INVALID =
   "This invitation is not valid for your account. It may have expired, been replaced, or been sent to another email address.";
 export const WORKER_CANNOT_JOIN =
   "This invitation can only be accepted by an employer account. Use a different email address.";
+// An account joins only an organisation of the type it registered as (FR-J1): a recruitment or staffing company account
+// no employer team, an employer account no partner team.
+export const COMPANY_TYPE_CANNOT_JOIN =
+  "This invitation is for a different type of company account than yours. Use a different email address.";
 export const TEAM_RATE_LIMITED = "You have sent many invitations in the last hour. Try again later.";
 export const ALREADY_MEMBER = "This person is already a member of the team.";
 export const TEAM_FAILURE = "We could not complete this request. Try again.";

@@ -12,11 +12,13 @@ import {
   createdOrganizationSchema,
   organizationInputSchema,
   organizationProfileSchema,
+  partnerOrganizationInputSchema,
   updatedOrganizationSchema,
   type OrganizationFormInput,
   type OrganizationProfileInput,
+  type PartnerOrganizationFormInput,
 } from "@/lib/validation/organization";
-import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
+import { fieldErrors, partnerTypeSchema, type FieldErrors } from "@/lib/validation/sign-up";
 import { slugSchema } from "@/lib/validation/team";
 
 export type CreateOrganizationResult = {
@@ -78,6 +80,45 @@ export async function createOrganization(
   if (created.duplicate_legal_name) return { duplicateLegalName: true };
   refreshAppShell();
   redirect(onboardingPath(defaultLocale, "security"));
+}
+
+const PARTNER_TYPE_UNAVAILABLE = "Registration for recruitment and staffing companies is not open at the moment.";
+
+// The Company step of a recruitment or staffing company (FR-J1). The type is the one the person chose at sign-up, read
+// from the profile, never from the form, so it cannot be changed here; the database checks it again.
+export async function createPartnerOrganization(
+  input: PartnerOrganizationFormInput,
+): Promise<CreateOrganizationResult | undefined> {
+  const user = await requireUser(defaultLocale);
+  const type = partnerTypeSchema.safeParse(user.intendedOrganizationType);
+  if (!type.success) return { message: GENERIC_FAILURE };
+  const parsed = partnerOrganizationInputSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const organization = parsed.data;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_organization", {
+    p_type: type.data,
+    p_legal_name: organization.legalName,
+    p_display_name: organization.displayName,
+    p_based_in_country: organization.country,
+    p_industry_code: organization.industry,
+    p_website: organization.website ?? undefined,
+    p_identifier: organization.identifier,
+    p_identifier_kind: organization.identifierKind,
+    p_description: organization.description ?? undefined,
+  });
+  if (error) {
+    if (error.message === "CHARA_FORBIDDEN" && error.details === "organization_type_not_available") {
+      return { message: PARTNER_TYPE_UNAVAILABLE };
+    }
+    return refusal(error);
+  }
+
+  const created = createdOrganizationSchema.parse(data);
+  if (created.duplicate_legal_name) return { duplicateLegalName: true };
+  refreshAppShell();
+  redirect(onboardingPath(defaultLocale));
 }
 
 type UpdateOrganizationResult = CreateOrganizationResult & ({ saved?: undefined } | { saved: true; displayName: string });
