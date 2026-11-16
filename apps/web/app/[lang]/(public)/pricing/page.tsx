@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_rethrow } from "next/navigation";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
@@ -81,7 +82,12 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
   const [plans, viewer, partners] = await Promise.all([
     listPublicPlans(),
     getPricingViewer(),
-    isReleased("release_partner_directories"),
+    // A failed read counts the release as off, so the page is still served (FR-H1 AC8).
+    isReleased("release_partner_directories").catch((error: unknown) => {
+      unstable_rethrow(error);
+      console.error("The release switch could not be read", error);
+      return false;
+    }),
   ]);
   const [recruitmentPlans, staffingPlans] = partners
     ? await Promise.all([listPublicPlans("recruitment_company"), listPublicPlans("staffing_company")])
