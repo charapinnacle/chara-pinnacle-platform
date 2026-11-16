@@ -258,12 +258,15 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await expect(page.getByText(WORKERS_NEVER_PAY)).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
-    // The employer reads the approved candidate with the partner (step Deliver); the partner reads the name, not the address.
+    // The employer reads the approved candidate with the partner (step Deliver) in the pipeline of the requirement (V50),
+    // where the notice's link leads; the partner reads the name, not the address.
     const employer = await newVisitor(browser);
-    await signInAtAal2(employer.page, team.owner, team.ownerSecret, candidatesUrl(team.slug, requirement));
-    const employerList = employer.page.getByRole("list", { name: "Candidates" });
-    await expect(employerList.getByRole("heading", { name: "Test Candidate" })).toBeVisible();
-    await expect(employerList.getByText(`Proposed by ${s1.displayName}`)).toBeVisible();
+    await signInAtAal2(employer.page, team.owner, team.ownerSecret, `/en/org/${team.slug}/requirements`);
+    await employer.page.goto(candidatesUrl(team.slug, requirement));
+    await expect(employer.page).toHaveURL(new RegExp(`/en/org/${team.slug}/applicants\\?requirement=${requirement}$`));
+    const employerList = employer.page.getByRole("list", { name: "Submitted candidates" });
+    await expect(employerList.getByRole("link", { name: "Test Candidate" })).toBeVisible();
+    await expect(employerList.getByText(`Submitted by ${s1.displayName}`)).toBeVisible();
     await expect(employer.page.getByText(worker.email)).toHaveCount(0);
     await expectAccessibleAtBothWidths(employer.page);
     await employer.context.close();

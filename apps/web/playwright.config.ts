@@ -125,6 +125,7 @@ export default defineConfig({
         "**/partner-responses.spec.ts",
         "**/response-decisions.spec.ts",
         "**/candidate-submissions.spec.ts",
+        "**/submission-pipeline.spec.ts",
       ],
     },
     {
@@ -570,13 +571,21 @@ export default defineConfig({
       testMatch: "**/candidate-submissions.spec.ts",
       dependencies: ["decisions-release"],
     },
+    // The submission pipeline (FR-O5, V50) sets releases 2a and 2b and candidate submissions for the whole database and
+    // withdraws list_employer_submissions for a moment, so it follows the submission pages.
+    {
+      name: "pipeline-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/submission-pipeline.spec.ts",
+      dependencies: ["submissions-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["submissions-release"],
+      dependencies: ["pipeline-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

@@ -142,7 +142,8 @@ const accountStatePages = [
 // the partners are checked in response-decisions.spec.ts. The candidate's submission requests and submissions (pending,
 // submitted by another partner, approved, declined, withdrawn, empty), the partner's submission form (refused, sent, at
 // the limit) and lists (empty, with each status) and the employer's candidates of a requirement are checked in
-// candidate-submissions.spec.ts.
+// candidate-submissions.spec.ts; the employer's pipeline of submitted candidates (list, board, empty, no match) and a
+// submitted candidate's page in submission-pipeline.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -153,6 +154,7 @@ const releasedPages = [
   "/[lang]/job-orders",
   "/[lang]/legal/ranking",
   "/[lang]/notifications",
+  "/[lang]/org/[slug]/applicants/submissions/[id]",
   "/[lang]/org/[slug]/invitations",
   "/[lang]/org/[slug]/invitations/[id]",
   "/[lang]/org/[slug]/invitations/[id]/respond",
