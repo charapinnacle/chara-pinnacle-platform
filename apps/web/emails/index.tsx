@@ -31,6 +31,10 @@ import { responseDecided } from "./templates/response-decided.tsx";
 import { responseReceived } from "./templates/response-received.tsx";
 import { responseWithdrawn } from "./templates/response-withdrawn.tsx";
 import { statusChanged } from "./templates/status-changed.tsx";
+import { submissionApproved } from "./templates/submission-approved.tsx";
+import { submissionRequest } from "./templates/submission-request.tsx";
+import { submissionRequestSignup } from "./templates/submission-request-signup.tsx";
+import { submissionWithdrawn } from "./templates/submission-withdrawn.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
 import { vacancyHidden } from "./templates/vacancy-hidden.tsx";
 
@@ -67,6 +71,10 @@ const TEMPLATES = {
   response_received: responseReceived,
   response_withdrawn: responseWithdrawn,
   response_decided: responseDecided,
+  submission_request: submissionRequest,
+  submission_request_signup: submissionRequestSignup,
+  submission_approved: submissionApproved,
+  submission_withdrawn: submissionWithdrawn,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

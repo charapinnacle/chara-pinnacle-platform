@@ -14,7 +14,9 @@ $$;
 -- reads no candidate data and reaches the share only through the private function that sets its expiry, or
 -- (withdraw_application) the candidate's withdrawal, which revokes the share of the own application, or (application_documents,
 -- application_profile_changed) the member's reads of the applicant page, which answer only while the share is valid and return
--- no storage path and no live profile data (FR-E2 AC6). The match is on source text, so a helper two calls away or a dynamic query would not be seen.
+-- no storage path and no live profile data (FR-E2 AC6), or (approve_submission, withdraw_submission) the candidate's own
+-- answer to a submission request, which shares the chosen documents of the own passport with the employer and revokes that
+-- share again (FR-O4, V48). The match is on source text, so a helper two calls away or a dynamic query would not be seen.
 select set_eq(
   $$select p.proname::text
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -26,7 +28,7 @@ select set_eq(
           where q.pronamespace = 'private'::regnamespace
             and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares)'
             and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
-  $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('mark_application_viewed'), ('passport_limits'), ('withdraw_application')$$,
+  $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('approve_submission'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('mark_application_viewed'), ('passport_limits'), ('withdraw_application'), ('withdraw_submission')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'
 );
 

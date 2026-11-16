@@ -116,6 +116,61 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"candidate_submissions": {
+                  Row: {
+                    "created_at": string,"decided_at": string | null,"employer_organization_id": string,"id": string,"invitation_emailed_at": string | null,"invited_email": string,"note": string | null,"organization_id": string,"passport_share_id": string | null,"profile_snapshot": Json | null,"requirement_id": string,"response_id": string | null,"status": Database["public"]['Enums']["submission_status"],"submitted_by": string | null,"updated_at": string,"withdrawn_at": string | null,"worker_approved_at": string | null,"worker_user_id": string | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"decided_at"?: string | null,"employer_organization_id": string,"id"?: string,"invitation_emailed_at"?: string | null,"invited_email": string,"note"?: string | null,"organization_id": string,"passport_share_id"?: string | null,"profile_snapshot"?: Json | null,"requirement_id": string,"response_id"?: string | null,"status"?: Database["public"]['Enums']["submission_status"],"submitted_by"?: string | null,"updated_at"?: string,"withdrawn_at"?: string | null,"worker_approved_at"?: string | null,"worker_user_id"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"decided_at"?: string | null,"employer_organization_id"?: string,"id"?: string,"invitation_emailed_at"?: string | null,"invited_email"?: string,"note"?: string | null,"organization_id"?: string,"passport_share_id"?: string | null,"profile_snapshot"?: Json | null,"requirement_id"?: string,"response_id"?: string | null,"status"?: Database["public"]['Enums']["submission_status"],"submitted_by"?: string | null,"updated_at"?: string,"withdrawn_at"?: string | null,"worker_approved_at"?: string | null,"worker_user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "candidate_submissions_employer_organization_id_fkey"
+      columns: ["employer_organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "candidate_submissions_employer_organization_id_fkey"
+      columns: ["employer_organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "candidate_submissions_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "candidate_submissions_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "candidate_submissions_requirement_id_fkey"
+      columns: ["requirement_id"]
+isOneToOne: false
+      referencedRelation: "workforce_requirements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "candidate_submissions_response_id_fkey"
+      columns: ["response_id"]
+isOneToOne: false
+      referencedRelation: "partner_responses"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "candidate_submissions_submitted_by_fkey"
+      columns: ["submitted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"cities": {
                   Row: {
                     "country_code": string,"id": number,"name": string,"population": number
@@ -964,13 +1019,13 @@ isOneToOne: false
                   ]
                 },"passport_shares": {
                   Row: {
-                    "application_id": string,"consent_id": number,"created_at": string,"expires_at": string | null,"id": string,"organization_id": string,"revoked_at": string | null,"scope": NonNullable<Json>,"worker_user_id": string
+                    "application_id": string | null,"consent_id": number,"created_at": string,"expires_at": string | null,"id": string,"organization_id": string,"revoked_at": string | null,"scope": NonNullable<Json>,"submission_id": string | null,"worker_user_id": string
                   }
                   Insert: {
-                    "application_id": string,"consent_id": number,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"organization_id": string,"revoked_at"?: string | null,"scope": NonNullable<Json>,"worker_user_id": string
+                    "application_id"?: string | null,"consent_id": number,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"organization_id": string,"revoked_at"?: string | null,"scope": NonNullable<Json>,"submission_id"?: string | null,"worker_user_id": string
                   }
                   Update: {
-                    "application_id"?: string,"consent_id"?: number,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"organization_id"?: string,"revoked_at"?: string | null,"scope"?: NonNullable<Json>,"worker_user_id"?: string
+                    "application_id"?: string | null,"consent_id"?: number,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"organization_id"?: string,"revoked_at"?: string | null,"scope"?: NonNullable<Json>,"submission_id"?: string | null,"worker_user_id"?: string
                   }
                   Relationships: [
                     {
@@ -997,6 +1052,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_org_limits"
       referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "passport_shares_submission_id_fkey"
+      columns: ["submission_id"]
+isOneToOne: false
+      referencedRelation: "candidate_submissions"
+      referencedColumns: ["id"]
     }
                   ]
                 },"platform_staff": {
@@ -1287,6 +1348,31 @@ isOneToOne: false
       columns: ["worker_user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"submission_events": {
+                  Row: {
+                    "actor_id": string | null,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"] | null,"id": number,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
+                  }
+                  Insert: {
+                    "actor_id"?: string | null,"created_at"?: string,"from_status"?: Database["public"]['Enums']["submission_status"] | null,"id"?: never,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
+                  }
+                  Update: {
+                    "actor_id"?: string | null,"created_at"?: string,"from_status"?: Database["public"]['Enums']["submission_status"] | null,"id"?: never,"submission_id"?: string,"to_status"?: Database["public"]['Enums']["submission_status"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "submission_events_actor_id_fkey"
+      columns: ["actor_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "submission_events_submission_id_fkey"
+      columns: ["submission_id"]
+isOneToOne: false
+      referencedRelation: "candidate_submissions"
       referencedColumns: ["id"]
     }
                   ]
@@ -1936,6 +2022,9 @@ isOneToOne: false
               "application_id": string,"outcome": string
             }[]
                            },
+"approve_submission":
+{ Args: { "p_document_ids"?: (string)[],"p_submission": string }; Returns: Database["public"]['Enums']["submission_status"]
+                           },
 "audit_export_count":
 { Args: { "p_month": string }; Returns: number
                            },
@@ -2039,6 +2128,9 @@ isOneToOne: false
                            },
 "decide_response":
 { Args: { "p_decision": Database["public"]['Enums']["response_status"],"p_note"?: string,"p_org": string,"p_response": string }; Returns: Database["public"]['Enums']["response_status"]
+                           },
+"decline_submission":
+{ Args: { "p_submission": string }; Returns: Database["public"]['Enums']["submission_status"]
                            },
 "delete_partner_licence":
 { Args: { "p_licence": string }; Returns: undefined
@@ -2232,6 +2324,16 @@ isOneToOne: false
               "available_from": string,"capacity": number,"country_code": string,"created_at": string,"decided_at": string,"employer_name": string,"fee_amount": number,"fee_currency": string,"fee_model": Database["public"]['Enums']["fee_model"],"id": string,"invitation_id": string,"next_cursor": string,"requirement_id": string,"requirement_status": Database["public"]['Enums']["requirement_status"],"status": Database["public"]['Enums']["response_status"],"title": string,"updated_at": string,"version": number,"withdrawn_at": string,"workers_needed": number
             }[]
                            },
+"list_my_submission_requests":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "city_region": string,"country_code": string,"country_name": string,"created_at": string,"employer_name": string,"expires_at": string,"id": string,"note": string,"partner_name": string,"partner_slug": string,"start_date": string,"submitted_by_partner": string,"title": string,"workers_needed": number
+            }[]
+                           },
+"list_my_submissions":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "country_code": string,"country_name": string,"created_at": string,"decided_at": string,"employer_name": string,"id": string,"partner_name": string,"partner_slug": string,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
+            }[]
+                           },
 "list_organization_invitations":
 { Args: { "p_limit"?: number,"p_org": string }; Returns: {
               "email": string,"expires_at": string,"id": string,"is_open": boolean,"role": Database["public"]['Enums']["member_role"]
@@ -2240,6 +2342,11 @@ isOneToOne: false
 "list_organization_members":
 { Args: { "p_after_user"?: string,"p_limit"?: number,"p_org": string }; Returns: {
               "accepted_at": string,"display_name": string,"email": string,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["member_role"],"user_id": string
+            }[]
+                           },
+"list_partner_submissions":
+{ Args: { "p_cursor"?: string,"p_limit"?: number,"p_org": string,"p_requirement"?: string }; Returns: {
+              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"next_cursor": string,"note": string,"requirement_id": string,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "list_platform_staff":
@@ -2255,6 +2362,11 @@ isOneToOne: false
 "list_requirement_responses":
 { Args: { "p_org": string,"p_requirement": string }; Returns: {
               "available_from": string,"capacity": number,"created_at": string,"decided_at": string,"fee_amount": number,"fee_currency": string,"fee_model": Database["public"]['Enums']["fee_model"],"id": string,"invitation_id": string,"organization_id": string,"partner_name": string,"partner_slug": string,"status": Database["public"]['Enums']["response_status"],"updated_at": string,"updated_unseen": boolean,"version": number,"withdrawal_reason": string,"withdrawn_at": string
+            }[]
+                           },
+"list_requirement_submissions":
+{ Args: { "p_org": string,"p_requirement": string }; Returns: {
+              "candidate_name": string,"created_at": string,"id": string,"note": string,"partner_name": string,"partner_organization_id": string,"partner_slug": string,"profile_snapshot": Json,"status": Database["public"]['Enums']["submission_status"],"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "list_requirement_versions":
@@ -2517,6 +2629,11 @@ isOneToOne: false
               "appeal_id": number,"due_at": string
             }[]
                            },
+"submit_candidate":
+{ Args: { "p_email": string,"p_note"?: string,"p_org": string,"p_requirement": string }; Returns: {
+              "existing": boolean,"id": string,"status": Database["public"]['Enums']["submission_status"]
+            }[]
+                           },
 "submit_partner_for_review":
 { Args: { "p_org": string }; Returns: Json
                            },
@@ -2579,10 +2696,13 @@ isOneToOne: false
                            },
 "withdraw_response":
 { Args: { "p_org": string,"p_reason"?: string,"p_response": string }; Returns: Database["public"]['Enums']["response_status"]
+                           },
+"withdraw_submission":
+{ Args: { "p_submission": string }; Returns: Database["public"]['Enums']["submission_status"]
                            }
           }
           Enums: {
-            "account_kind": "worker"|"company","analytics_metric": "profile_views","appeal_status": "open"|"upheld"|"restored","application_status": "applied"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","data_export_status": "queued"|"ready","direct_hiring_rule_value": "allowed"|"licensed_partner_required"|"blocked","employment_type": "full_time"|"part_time"|"contract"|"temporary"|"seasonal","fee_model": "fee_per_hire"|"percent_first_year_salary"|"hourly_rate"|"monthly_rate"|"on_request","geography_scope": "sources_from"|"serves_market","invitation_status": "invited"|"viewed"|"accepted"|"declined"|"responded"|"withdrawn"|"expired","job_moderation_state": "visible"|"hidden"|"org_suspended","job_status": "draft"|"open"|"paused"|"closed"|"filled","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","partner_need": "none"|"recruitment"|"staffing"|"both","partner_review_status": "onboarding"|"pending_review"|"info_requested"|"listed"|"re_review"|"declined","partner_service_type": "staffing"|"temporary"|"contract"|"project"|"permanent","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","recruitment_preference": "local"|"international"|"both","report_category": "illegal_content"|"misleading_or_fraud"|"discrimination"|"fee_demanded_from_worker"|"harassment"|"privacy_violation"|"other","report_status": "new"|"in_review"|"actioned"|"dismissed","report_target_type": "job"|"company"|"profile"|"content"|"partner_profile","requirement_close_reason": "filled"|"cancelled"|"expired","requirement_status": "draft"|"open"|"paused"|"closed"|"filled","requirement_visibility": "private"|"job_order_marketplace","response_status": "submitted"|"updated"|"withdrawn"|"shortlisted"|"selected"|"declined","salary_period": "hour"|"month"|"year","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate","workforce_size_band": "1_49"|"50_249"|"250_999"|"1000_plus"
+            "account_kind": "worker"|"company","analytics_metric": "profile_views","appeal_status": "open"|"upheld"|"restored","application_status": "applied"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","cefr_level": "A1"|"A2"|"B1"|"B2"|"C1"|"C2","consent_action": "granted"|"withdrawn","data_export_status": "queued"|"ready","direct_hiring_rule_value": "allowed"|"licensed_partner_required"|"blocked","employment_type": "full_time"|"part_time"|"contract"|"temporary"|"seasonal","fee_model": "fee_per_hire"|"percent_first_year_salary"|"hourly_rate"|"monthly_rate"|"on_request","geography_scope": "sources_from"|"serves_market","invitation_status": "invited"|"viewed"|"accepted"|"declined"|"responded"|"withdrawn"|"expired","job_moderation_state": "visible"|"hidden"|"org_suspended","job_status": "draft"|"open"|"paused"|"closed"|"filled","member_role": "owner"|"admin"|"member","organization_status": "active"|"suspended","organization_type": "employer"|"recruitment_company"|"staffing_company","partner_need": "none"|"recruitment"|"staffing"|"both","partner_review_status": "onboarding"|"pending_review"|"info_requested"|"listed"|"re_review"|"declined","partner_service_type": "staffing"|"temporary"|"contract"|"project"|"permanent","platform_role": "admin"|"verification_reviewer"|"trust_safety","profile_status": "active"|"suspended"|"deletion_pending","recruitment_preference": "local"|"international"|"both","report_category": "illegal_content"|"misleading_or_fraud"|"discrimination"|"fee_demanded_from_worker"|"harassment"|"privacy_violation"|"other","report_status": "new"|"in_review"|"actioned"|"dismissed","report_target_type": "job"|"company"|"profile"|"content"|"partner_profile","requirement_close_reason": "filled"|"cancelled"|"expired","requirement_status": "draft"|"open"|"paused"|"closed"|"filled","requirement_visibility": "private"|"job_order_marketplace","response_status": "submitted"|"updated"|"withdrawn"|"shortlisted"|"selected"|"declined","salary_period": "hour"|"month"|"year","submission_status": "awaiting_candidate"|"declined_by_candidate"|"expired"|"submitted"|"viewed"|"shortlisted"|"interview"|"offer"|"hired"|"rejected"|"withdrawn","worker_availability": "now"|"from_date"|"unavailable","worker_document_type": "cv"|"certificate","workforce_size_band": "1_49"|"50_249"|"250_999"|"1000_plus"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -2698,7 +2818,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "account_kind": ["worker", "company"],"analytics_metric": ["profile_views"],"appeal_status": ["open", "upheld", "restored"],"application_status": ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"data_export_status": ["queued", "ready"],"direct_hiring_rule_value": ["allowed", "licensed_partner_required", "blocked"],"employment_type": ["full_time", "part_time", "contract", "temporary", "seasonal"],"fee_model": ["fee_per_hire", "percent_first_year_salary", "hourly_rate", "monthly_rate", "on_request"],"geography_scope": ["sources_from", "serves_market"],"invitation_status": ["invited", "viewed", "accepted", "declined", "responded", "withdrawn", "expired"],"job_moderation_state": ["visible", "hidden", "org_suspended"],"job_status": ["draft", "open", "paused", "closed", "filled"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"partner_need": ["none", "recruitment", "staffing", "both"],"partner_review_status": ["onboarding", "pending_review", "info_requested", "listed", "re_review", "declined"],"partner_service_type": ["staffing", "temporary", "contract", "project", "permanent"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"recruitment_preference": ["local", "international", "both"],"report_category": ["illegal_content", "misleading_or_fraud", "discrimination", "fee_demanded_from_worker", "harassment", "privacy_violation", "other"],"report_status": ["new", "in_review", "actioned", "dismissed"],"report_target_type": ["job", "company", "profile", "content", "partner_profile"],"requirement_close_reason": ["filled", "cancelled", "expired"],"requirement_status": ["draft", "open", "paused", "closed", "filled"],"requirement_visibility": ["private", "job_order_marketplace"],"response_status": ["submitted", "updated", "withdrawn", "shortlisted", "selected", "declined"],"salary_period": ["hour", "month", "year"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"],"workforce_size_band": ["1_49", "50_249", "250_999", "1000_plus"]
+            "account_kind": ["worker", "company"],"analytics_metric": ["profile_views"],"appeal_status": ["open", "upheld", "restored"],"application_status": ["applied", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"cefr_level": ["A1", "A2", "B1", "B2", "C1", "C2"],"consent_action": ["granted", "withdrawn"],"data_export_status": ["queued", "ready"],"direct_hiring_rule_value": ["allowed", "licensed_partner_required", "blocked"],"employment_type": ["full_time", "part_time", "contract", "temporary", "seasonal"],"fee_model": ["fee_per_hire", "percent_first_year_salary", "hourly_rate", "monthly_rate", "on_request"],"geography_scope": ["sources_from", "serves_market"],"invitation_status": ["invited", "viewed", "accepted", "declined", "responded", "withdrawn", "expired"],"job_moderation_state": ["visible", "hidden", "org_suspended"],"job_status": ["draft", "open", "paused", "closed", "filled"],"member_role": ["owner", "admin", "member"],"organization_status": ["active", "suspended"],"organization_type": ["employer", "recruitment_company", "staffing_company"],"partner_need": ["none", "recruitment", "staffing", "both"],"partner_review_status": ["onboarding", "pending_review", "info_requested", "listed", "re_review", "declined"],"partner_service_type": ["staffing", "temporary", "contract", "project", "permanent"],"platform_role": ["admin", "verification_reviewer", "trust_safety"],"profile_status": ["active", "suspended", "deletion_pending"],"recruitment_preference": ["local", "international", "both"],"report_category": ["illegal_content", "misleading_or_fraud", "discrimination", "fee_demanded_from_worker", "harassment", "privacy_violation", "other"],"report_status": ["new", "in_review", "actioned", "dismissed"],"report_target_type": ["job", "company", "profile", "content", "partner_profile"],"requirement_close_reason": ["filled", "cancelled", "expired"],"requirement_status": ["draft", "open", "paused", "closed", "filled"],"requirement_visibility": ["private", "job_order_marketplace"],"response_status": ["submitted", "updated", "withdrawn", "shortlisted", "selected", "declined"],"salary_period": ["hour", "month", "year"],"submission_status": ["awaiting_candidate", "declined_by_candidate", "expired", "submitted", "viewed", "shortlisted", "interview", "offer", "hired", "rejected", "withdrawn"],"worker_availability": ["now", "from_date", "unavailable"],"worker_document_type": ["cv", "certificate"],"workforce_size_band": ["1_49", "50_249", "250_999", "1000_plus"]
           }
         }
 } as const

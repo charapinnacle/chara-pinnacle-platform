@@ -157,6 +157,11 @@ export function requirementResponsePath(lang: string, slug: string, id: string, 
   return `${requirementResponsesPath(lang, slug, id)}/${responseId}`;
 }
 
+// The candidates submitted for one requirement: the partner's own and the employer's (FR-O4, FR-O5).
+export function requirementSubmissionsPath(lang: string, slug: string, id: string): string {
+  return `${requirementPath(lang, slug, id)}/submissions`;
+}
+
 // The responses to one requirement side by side, with the decisions (FR-O3).
 export function requirementResponsesComparePath(lang: string, slug: string, id: string): string {
   return `${requirementResponsesPath(lang, slug, id)}/compare`;
@@ -246,6 +251,15 @@ export function applicationsPath(lang: string, { stage, page }: { stage?: Applic
 
 export function applicationPath(lang: string, id: string): string {
   return `/${lang}/applications/${id}`;
+}
+
+// The candidate's submission requests and submissions (FR-O4), and one of them.
+export function submissionsPath(lang: string): string {
+  return `/${lang}/submissions`;
+}
+
+export function submissionPath(lang: string, id: string): string {
+  return `${submissionsPath(lang)}/${id}`;
 }
 
 export function applicantPath(lang: string, slug: string, id: string): string {

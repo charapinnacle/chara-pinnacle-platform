@@ -101,6 +101,13 @@ insert into catalogue values
   ('public.partner_response_documents', 'cascade',
    'organisation data: a supporting document lives with its response (partner_responses, 730 days, applied from V58); staged files that never reach a response are dropped by the daily clean-up; uploaded_by is cleared with the profile',
    'organisation data: the supporting documents of a partner company''s proposal; uploaded_by only names the member who added one'),
+  ('public.candidate_submissions',
+   'worker_user_id carries no foreign key, as on job_applications: erase_user deletes the candidate''s submissions and their shares from V58 (DATA_MODEL.md section 10), before release 2b goes live; submitted_by is cleared with the profile',
+   'candidate_submissions (730 days after the requirement closed or the submission was withdrawn) is applied from V58, before release 2b goes live',
+   'the candidate''s copy gains the own submissions with V58 (FR-S3), before release 2b goes live; the address a partner entered is not the candidate''s data until the candidate approves'),
+  ('public.submission_events', 'cascade',
+   'an event lives with its submission (candidate_submissions, applied from V58); actor_id is cleared with the profile',
+   'the history of a submission, exported with the submissions from V58; actor_id only names who moved it'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -219,8 +226,8 @@ select is(
   (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
      'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages']) t
    where to_regclass(t) is null),
-  'public.candidate_submissions,public.contact_requests,public.conversation_participants,public.conversations,public.messages',
-  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44'
+  'public.contact_requests,public.conversation_participants,public.conversations,public.messages',
+  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44, candidate_submissions with V48'
 );
 select is(
   (select string_agg(entity, ',' order by entity) from private.retention_policies

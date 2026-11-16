@@ -19,8 +19,10 @@ import {
   partnerStepPath,
   requirementPath,
   requirementResponsesPath,
+  requirementSubmissionsPath,
   responsePath,
   settingsPath,
+  submissionPath,
   whereYouServePath,
   workforceProfilePath,
 } from "@/lib/routes";
@@ -101,6 +103,13 @@ function requirementResponsesHref(lang: string, payload: Record<string, unknown>
   const slug = text(payload, "org_slug");
   const id = text(payload, "requirement_id");
   return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementResponsesPath(lang, slug, id) : null;
+}
+
+// The candidates of the requirement a submission notice names, on the recipient organisation's page (FR-O4).
+function requirementSubmissionsHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "requirement_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementSubmissionsPath(lang, slug, id) : null;
 }
 
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
@@ -444,6 +453,39 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: decision && Object.hasOwn(sentences, decision) ? sentences[decision] : `${employer} decided your response to ${requirement}`,
         href: responseHref(lang, payload),
+      };
+    },
+  },
+  // FR-O4 step Invite, to the candidate: the partner asks to propose them; the request page answers it.
+  submission_request: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const id = text(payload, "submission_id");
+      return {
+        title: `${text(payload, "partner_name") ?? "A recruitment company"} would like to propose you for ${title ? `"${title}"` : "a job"}`,
+        href: id && /^[0-9a-f-]{36}$/.test(id) ? submissionPath(lang, id) : null,
+      };
+    },
+  },
+  // FR-O4 steps Approve and Withdraw, to the partner and the employer: never the candidate.
+  submission_approved: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"} was submitted for ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: requirementSubmissionsHref(lang, payload),
+      };
+    },
+  },
+  submission_withdrawn: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"} withdrew from ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: requirementSubmissionsHref(lang, payload),
       };
     },
   },

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, requirementResponsesPath, responsePath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -10,7 +10,7 @@ const company = { lang: "en", accountKind: "company" } as const;
 const worker = { lang: "en", accountKind: "worker" } as const;
 
 // Kinds whose rows have no user (sent to an address) or that the in-app list never shows (DATA_MODEL.md section 9).
-const NOT_LISTED = ["deletion_completed", "member_invitation", "erasure_paused"];
+const NOT_LISTED = ["deletion_completed", "member_invitation", "erasure_paused", "submission_request_signup"];
 
 describe("in-app notification items (FR-T1)", () => {
   it("present every kind a user can find in the list, and only kinds of the catalogue", () => {
@@ -87,6 +87,11 @@ describe("in-app notification items (FR-T1)", () => {
     ["response_decided", { response_id: APP, title: "Hamburg welders", employer_name: "Acme Bau", decision: "selected", org_slug: "manila" }, company, 'Acme Bau selected your company for "Hamburg welders"', responsePath("en", "manila", APP)],
     ["response_decided", { response_id: APP, decision: "submissions_allowed", org_slug: "manila" }, company, "The employer allows your company to submit candidates for a workforce requirement", responsePath("en", "manila", APP)],
     ["response_decided", { response_id: "../x", decision: "constructor", org_slug: "manila" }, company, "The employer decided your response to a workforce requirement", null],
+    ["submission_request", { submission_id: APP, partner_name: "Manila Recruit", title: "Hamburg welders" }, worker, 'Manila Recruit would like to propose you for "Hamburg welders"', submissionPath("en", APP)],
+    ["submission_request", { submission_id: "../x" }, worker, "A recruitment company would like to propose you for a job", null],
+    ["submission_approved", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'A candidate proposed by Manila Recruit was submitted for "Hamburg welders"', requirementSubmissionsPath("en", "acme", JOB)],
+    ["submission_withdrawn", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "manila" }, company, 'A candidate proposed by Manila Recruit withdrew from "Hamburg welders"', requirementSubmissionsPath("en", "manila", JOB)],
+    ["submission_withdrawn", {}, company, "A candidate proposed by a partner withdrew from a workforce requirement", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
@@ -126,7 +131,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "submission_approved", payload: { submission_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "submission_stage_changed", payload: { submission_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,
