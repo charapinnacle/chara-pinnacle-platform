@@ -43,7 +43,7 @@ describe("the sitemap entries (FR-H5 AC3)", () => {
   });
 
   it("leaves room for the vacancies under the limit of the protocol", () => {
-    expect(vacancyCapacity(10) + 9 + 10).toBe(50_000);
+    expect(vacancyCapacity(10) + 8 + 10).toBe(50_000);
   });
 });
 
