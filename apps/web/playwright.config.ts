@@ -126,6 +126,7 @@ export default defineConfig({
         "**/response-decisions.spec.ts",
         "**/candidate-submissions.spec.ts",
         "**/submission-pipeline.spec.ts",
+        "**/commitment-reconsent.spec.ts",
       ],
     },
     {
@@ -579,13 +580,22 @@ export default defineConfig({
       testMatch: "**/submission-pipeline.spec.ts",
       dependencies: ["submissions-release"],
     },
+    // The outdated employer-pays commitment (V52) publishes a version of the commitment, which blocks the responses and
+    // submissions of every partner of the database for a while, and sets releases 2a and 2b and candidate submissions, so
+    // it follows the pipeline.
+    {
+      name: "commitment-reconsent-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/commitment-reconsent.spec.ts",
+      dependencies: ["pipeline-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["pipeline-release"],
+      dependencies: ["commitment-reconsent-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

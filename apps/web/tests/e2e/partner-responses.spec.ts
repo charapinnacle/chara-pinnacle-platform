@@ -435,8 +435,13 @@ test.describe("The eligibility panel (FR-N2 AC4, AC12, FR-J2 AC10)", () => {
     const q2 = await eligiblePartner({ commitment: false });
     const second = await newVisitor(browser);
     await signInAtAal1(second.page, q2.owner, orderUrl(q2.slug, id));
-    await expect(panel(second.page)).toContainText("Accept the current employer-pays commitment to respond.");
-    await expect(panel(second.page).getByRole("link", { name: "Review the commitment" })).toHaveAttribute("href", `/en/org/${q2.slug}/workforce-profile`);
+    // V52: the panel says why, with Respond disabled, and Review and accept opens the owner's dialog.
+    const reason = "Accept the employer-pays commitment so that your company can respond to job orders and submit candidates.";
+    await expect(panel(second.page).getByRole("status").filter({ hasText: reason })).toBeVisible();
+    await expect(panel(second.page).getByRole("button", { name: "Respond" })).toBeDisabled();
+    await expect(panel(second.page).getByRole("button", { name: "Respond" })).toHaveAccessibleDescription(reason);
+    await panel(second.page).getByRole("button", { name: "Review and accept" }).click();
+    await expect(second.page.getByRole("dialog", { name: "Accept the employer-pays commitment" })).toBeVisible();
     await second.context.close();
 
     const q4 = await eligiblePartner({ serves: false });
