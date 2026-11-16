@@ -2240,6 +2240,9 @@ isOneToOne: false
 "document_set_scan_status":
 { Args: { "p_document_id": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
                            },
+"employer_search_access":
+{ Args: { "p_org": string }; Returns: boolean
+                           },
 "erase_user":
 { Args: { "p_user_id": string }; Returns: boolean
                            },

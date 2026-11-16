@@ -1,5 +1,5 @@
 begin;
-select plan(105);
+select plan(109);
 
 \ir jobs_fixture.inc
 
@@ -324,6 +324,17 @@ select is(pg_temp.se(:'ub', :'pb', ', p_min_workers => 50'), 'P0001|CHARA_FEATUR
   'AC4: Basic cannot search by size');
 select is(pg_temp.se(:'up', :'pp', ', p_occupation => ''7212'''), 'ok', 'AC4: Professional searches by occupation');
 select is(pg_temp.se(:'up', :'pp', ', p_min_workers => 50'), 'ok', 'AC4: Professional searches by size');
+
+select is(pg_temp.val_as(:'ub', 'aal1', format('select public.employer_search_access(%L)::text', :'pb')), 'false',
+  'AC9: the page learns that Basic has no advanced filters');
+select is(pg_temp.val_as(:'upm', 'aal1', format('select public.employer_search_access(%L)::text', :'pp')), 'true',
+  'AC9: and that Professional has them, for any member');
+select is(pg_temp.call_as(:'uf', 'authenticated', format('select public.employer_search_access(%L)', :'pf'), 'aal1'),
+  'P0001|CHARA_FEATURE_NOT_IN_PLAN|employer_discovery', 'AC8: the free partner''s page learns it is refused');
+select ok(
+  not has_function_privilege('anon', 'public.employer_search_access(uuid)', 'execute')
+  and has_function_privilege('authenticated', 'public.employer_search_access(uuid)', 'execute'),
+  'employer_search_access is executable by authenticated only');
 
 -- AC5: size and occupation -----------------------------------------------------------------------------------------------------------
 

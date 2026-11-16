@@ -241,6 +241,24 @@ $$;
 revoke all on function private.employer_search_job_order(uuid, boolean, boolean, text[])
   from public, anon, authenticated, service_role;
 
+-- Whether the partner p_org may use the advanced filters and saved searches, for the page to show them or show them
+-- locked (FR-L3 AC9), after the checks of private.assert_employer_search_partner, whose refusals the page shows instead
+-- of the form (AC8). Not counted against the search allowance: it reads no employer.
+create function public.employer_search_access(p_org uuid) returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.assert_employer_search_partner(p_org);
+  return private.has_feature(p_org, 'advanced_employer_discovery');
+end;
+$$;
+
+revoke all on function public.employer_search_access(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.employer_search_access(uuid) to authenticated;
+
 -- The search -------------------------------------------------------------------------------------------------------------------
 
 -- Find Employers for the partner p_org (FR-L3 AC1 to AC6, AC10). Filters, all optional and combined: destination (a
