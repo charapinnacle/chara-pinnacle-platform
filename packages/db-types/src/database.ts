@@ -1353,13 +1353,13 @@ isOneToOne: false
                   ]
                 },"submission_events": {
                   Row: {
-                    "actor_id": string | null,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"] | null,"id": number,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
+                    "actor_id": string | null,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"] | null,"id": number,"note": string | null,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
                   }
                   Insert: {
-                    "actor_id"?: string | null,"created_at"?: string,"from_status"?: Database["public"]['Enums']["submission_status"] | null,"id"?: never,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
+                    "actor_id"?: string | null,"created_at"?: string,"from_status"?: Database["public"]['Enums']["submission_status"] | null,"id"?: never,"note"?: string | null,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
                   }
                   Update: {
-                    "actor_id"?: string | null,"created_at"?: string,"from_status"?: Database["public"]['Enums']["submission_status"] | null,"id"?: never,"submission_id"?: string,"to_status"?: Database["public"]['Enums']["submission_status"]
+                    "actor_id"?: string | null,"created_at"?: string,"from_status"?: Database["public"]['Enums']["submission_status"] | null,"id"?: never,"note"?: string | null,"submission_id"?: string,"to_status"?: Database["public"]['Enums']["submission_status"]
                   }
                   Relationships: [
                     {
@@ -1370,6 +1370,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "submission_events_submission_id_fkey"
+      columns: ["submission_id"]
+isOneToOne: false
+      referencedRelation: "candidate_submissions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"submission_notes": {
+                  Row: {
+                    "author_id": string | null,"body": string,"created_at": string,"id": number,"organization_id": string,"submission_id": string
+                  }
+                  Insert: {
+                    "author_id"?: string | null,"body": string,"created_at"?: string,"id"?: never,"organization_id": string,"submission_id": string
+                  }
+                  Update: {
+                    "author_id"?: string | null,"body"?: string,"created_at"?: string,"id"?: never,"organization_id"?: string,"submission_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "submission_notes_author_id_fkey"
+      columns: ["author_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "submission_notes_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "submission_notes_submission_id_fkey"
       columns: ["submission_id"]
 isOneToOne: false
       referencedRelation: "candidate_submissions"
@@ -2004,6 +2035,9 @@ isOneToOne: false
 "answer_invitation":
 { Args: { "p_answer": string,"p_invitation": string,"p_org": string,"p_reason"?: string }; Returns: Database["public"]['Enums']["invitation_status"]
                            },
+"add_submission_note":
+{ Args: { "p_body": string,"p_submission": string }; Returns: number
+                           },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
               "available": boolean,"expires_on": string,"file_name": string,"id": string,"size_bytes": number,"title": string,"type": Database["public"]['Enums']["worker_document_type"]
@@ -2075,6 +2109,11 @@ isOneToOne: false
 "bulk_set_application_status":
 { Args: { "p_application_ids": (string)[],"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: {
               "application_id": string,"error_code": string,"ok": boolean
+            }[]
+                           },
+"bulk_set_submission_status":
+{ Args: { "p_note"?: string,"p_status": Database["public"]['Enums']["submission_status"],"p_submission_ids": (string)[] }; Returns: {
+              "error_code": string,"ok": boolean,"submission_id": string
             }[]
                            },
 "cancel_account_deletion":
@@ -2191,6 +2230,11 @@ isOneToOne: false
               "plan_chosen": boolean,"team_invited": boolean,"vacancy_published": boolean
             }[]
                            },
+"get_employer_submission":
+{ Args: { "p_submission": string }; Returns: {
+              "candidate_name": string,"id": string,"note": string,"organization_id": string,"partner_name": string,"partner_slug": string,"profile_snapshot": Json,"requirement_id": string,"requirement_title": string,"share_active": boolean,"status": Database["public"]['Enums']["submission_status"],"withdrawn_at": string,"worker_approved_at": string
+            }[]
+                           },
 "get_dashboard_plan":
 { Args: { "p_organization_id": string }; Returns: {
               "current_period_end": string,"past_due_since": string,"plan_name": string,"status": string,"subscription_ended": boolean,"trial_ends_at": string
@@ -2279,6 +2323,11 @@ isOneToOne: false
               "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
             }[]
                            },
+"list_employer_submissions":
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_org": string,"p_requirement"?: string,"p_stage"?: Database["public"]['Enums']["submission_status"] }; Returns: {
+              "candidate_name": string,"id": string,"partner_name": string,"partner_slug": string,"requirement_id": string,"requirement_title": string,"stage_changed_at": string,"status": Database["public"]['Enums']["submission_status"],"total_count": number,"worker_approved_at": string
+            }[]
+                           },
 "list_followed_companies":
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "based_in_country": string,"based_in_country_name": string,"display_name": string,"followed_at": string,"next_cursor": string,"organization_id": string,"organization_type": Database["public"]['Enums']["organization_type"],"slug": string,"total": number
@@ -2346,7 +2395,7 @@ isOneToOne: false
                            },
 "list_partner_submissions":
 { Args: { "p_cursor"?: string,"p_limit"?: number,"p_org": string,"p_requirement"?: string }; Returns: {
-              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"next_cursor": string,"note": string,"requirement_id": string,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
+              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"next_cursor": string,"note": string,"requirement_id": string,"stage_changed_at": string,"stages": Json,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "list_platform_staff":
@@ -2384,6 +2433,16 @@ isOneToOne: false
               "changed_fields": (string)[],"created_at": string,"payload": Json,"version": number
             }[]
                            },
+"list_submission_events":
+{ Args: { "p_submission": string }; Returns: {
+              "actor_role": string,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"],"note": string,"to_status": Database["public"]['Enums']["submission_status"]
+            }[]
+                           },
+"list_submission_notes":
+{ Args: { "p_before_id"?: number,"p_submission": string }; Returns: {
+              "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
+            }[]
+                           },
 "list_saved_jobs":
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
@@ -2405,6 +2464,9 @@ isOneToOne: false
                            },
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
+                           },
+"mark_submission_viewed":
+{ Args: { "p_submission": string }; Returns: undefined
                            },
 "mark_notifications_read":
 { Args: { "p_ids"?: (string)[] }; Returns: number
@@ -2610,6 +2672,9 @@ isOneToOne: false
 "set_organization_workforce_offer":
 { Args: { "p_founded_year"?: number,"p_industries": (string)[],"p_languages": (string)[],"p_occupations": (string)[],"p_org": string,"p_recruitment_type": Database["public"]['Enums']["recruitment_preference"],"p_service_types": (Database["public"]['Enums']["partner_service_type"])[],"p_workforce_size_band"?: Database["public"]['Enums']["workforce_size_band"] }; Returns: Json
                            },
+"set_submission_status":
+{ Args: { "p_note"?: string,"p_status": Database["public"]['Enums']["submission_status"],"p_submission": string }; Returns: undefined
+                           },
 "set_requirement_capacity_tolerance":
 { Args: { "p_org": string,"p_percent": number,"p_requirement": string }; Returns: boolean
                            },
@@ -2627,6 +2692,11 @@ isOneToOne: false
 "submit_appeal":
 { Args: { "p_action": number,"p_grounds": string }; Returns: {
               "appeal_id": number,"due_at": string
+            }[]
+                           },
+"submission_documents":
+{ Args: { "p_submission": string }; Returns: {
+              "available": boolean,"expires_on": string,"file_name": string,"id": string,"size_bytes": number,"title": string,"type": Database["public"]['Enums']["worker_document_type"]
             }[]
                            },
 "submit_candidate":

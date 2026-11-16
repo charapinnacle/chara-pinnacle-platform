@@ -108,6 +108,9 @@ insert into catalogue values
   ('public.submission_events', 'cascade',
    'an event lives with its submission (candidate_submissions, applied from V58); actor_id is cleared with the profile',
    'the history of a submission, exported with the submissions from V58; actor_id only names who moved it'),
+  ('public.submission_notes', 'cascade',
+   'an internal note lives with its submission (candidate_submissions, applied from V58); author_id is cleared with the profile',
+   'organisation data: the employer''s internal notes on a submitted candidate, never shown to the candidate (as application_notes); author_id only names the member who wrote one'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 

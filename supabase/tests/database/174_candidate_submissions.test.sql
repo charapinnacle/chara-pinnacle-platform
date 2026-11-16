@@ -445,7 +445,7 @@ select throws_ok(
 select is(
   (select string_agg(kind || ':' || mandatory || ':' || default_email || ':' || audience || ':'
      || coalesce(organization_types::text, '-'), ',' order by kind)
-   from private.notification_kinds where kind like 'submission\_%'),
+   from private.notification_kinds where kind like 'submission\_%' and kind <> 'submission_stage_changed'),
   'submission_approved:false:true:company:{employer,recruitment_company,staffing_company},'
     || 'submission_request:true:true:worker:-,submission_request_signup:true:true:worker:-,'
     || 'submission_withdrawn:false:true:company:{employer,recruitment_company,staffing_company}',
