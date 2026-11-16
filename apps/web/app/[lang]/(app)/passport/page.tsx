@@ -18,6 +18,7 @@ import { TrainingSection } from "@/components/passport/training-section";
 import { hasUsableCv } from "@/lib/dal/documents";
 import { getPassport, getPassportLimits } from "@/lib/dal/passport";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
+import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
 import { computeCompleteness } from "@/lib/passport/completeness";
 import { homePath } from "@/lib/routes";
@@ -31,9 +32,10 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
   const user = await requireUser(lang);
   if (user.accountKind !== "worker") redirect(homePath(lang, user.accountKind));
 
-  const [passport, hasCv, limits, countries, languages, occupations, industries] = await Promise.all([
+  const [passport, hasCv, findWorkers, limits, countries, languages, occupations, industries] = await Promise.all([
     getPassport(user.id),
     hasUsableCv(),
+    isReleased("release_find_workers"),
     getPassportLimits(),
     getCountries(),
     getLanguages(),
@@ -48,7 +50,7 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
 
       <div className="grid items-start gap-page xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Section id="completeness" title="Completeness" className="xl:sticky xl:top-24 xl:col-start-2 xl:row-start-1">
-          <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, todayUtc())} />
+          <CompletenessCard lang={lang} completeness={computeCompleteness({ ...passport, hasCv }, todayUtc(), findWorkers)} />
         </Section>
         <div className="grid min-w-0 gap-page xl:col-start-1 xl:row-start-1">
           <Section id="basics" title="Your details">

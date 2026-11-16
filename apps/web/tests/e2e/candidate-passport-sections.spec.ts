@@ -88,8 +88,8 @@ test.describe("candidate passport: sections", () => {
     expect(profileRows(user.id)[0].occupation_id).toBe("7411");
 
     await page.goto("/en/dashboard/worker");
-    await expect(page.getByText("60% complete")).toBeVisible();
-    await expect(page.getByText("Next:")).toContainText("CV");
+    await expect(page.getByText("65% complete")).toBeVisible();
+    await expect(page.getByText("Next:")).toContainText("Skills");
   });
 
   test("FR-B1: a candidate removes an item and can add it again, and the same item twice is refused", async ({ page }) => {

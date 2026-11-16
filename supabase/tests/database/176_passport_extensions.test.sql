@@ -1,5 +1,5 @@
 begin;
-select plan(72);
+select plan(75);
 
 \ir apply_fixture.inc
 
@@ -255,24 +255,42 @@ select is(split_part(pg_temp.call_as(null, 'anon', $$select * from public.passpo
   'passport_limits is not open to anonymous callers');
 
 -- AC7: completeness weights ------------------------------------------------------------------------------------------------
+-- The Phase 1 weights stay while release_find_workers is off, so no score changes with V61; FR-Q4 AC7 once it is on.
 
+update private.settings set value = 'false' where key = 'release_find_workers';
 update public.worker_profiles set headline = 'Plumber', years_experience = 4, availability = 'now' where user_id = :'wb';
 insert into public.worker_skills (worker_user_id, skill) values (:'wb', 'Pipes'), (:'wb', 'Valves'), (:'wb', 'Pumps');
 insert into public.worker_languages (worker_user_id, language_code, cefr_level) values (:'wb', 'en', 'B2');
 insert into public.worker_work_authorizations (worker_user_id, country_code) values (:'wb', 'DE');
 select pg_temp.doc(:'d1', :'wb');
 delete from public.worker_training where worker_user_id = :'wb';
-select is(private.passport_completeness(:'wb'), 90, 'AC7: a passport complete under the Phase 1 rules scores 90');
+delete from public.worker_employment_history where worker_user_id = :'wb';
+select is(private.passport_completeness(:'wb'), 100, 'AC7, switch off: a passport complete under the Phase 1 rules keeps 100');
 insert into public.worker_training (worker_user_id, course, year_completed) values (:'wb', 'Pipe fitting', 2019);
-select is(private.passport_completeness(:'wb'), 95, 'AC7: a training entry adds 5');
 insert into public.worker_employment_history (worker_user_id, role, country_code, from_month) values (:'wb', 'Plumber', 'PH', '2015-01-01');
-select is(private.passport_completeness(:'wb'), 100, 'AC7: an employment history entry adds 5: 100');
-insert into public.worker_preferred_industries (worker_user_id, industry_code) values (:'wb', 'F');
-insert into public.worker_preferred_employment_types (worker_user_id, employment_type) values (:'wb', 'contract');
-select is(private.passport_completeness(:'wb'), 100, 'AC7: preferred industries and employment types carry no weight');
 update public.worker_profiles set years_experience = null where user_id = :'wb';
 delete from public.worker_skills where worker_user_id = :'wb' and skill = 'Pumps';
-select is(private.passport_completeness(:'wb'), 85, 'AC7: skills now weigh 10 and years of experience 5');
+select is(private.passport_completeness(:'wb'), 75,
+  'AC7, switch off: training and employment history add nothing, skills weigh 15 and years of experience 10 as in Phase 1');
+update public.worker_profiles set years_experience = 4 where user_id = :'wb';
+insert into public.worker_skills (worker_user_id, skill) values (:'wb', 'Pumps');
+delete from public.worker_training where worker_user_id = :'wb';
+delete from public.worker_employment_history where worker_user_id = :'wb';
+
+update private.settings set value = 'true' where key = 'release_find_workers';
+select is(private.passport_completeness(:'wb'), 90, 'AC7, switch on: a passport complete under the Phase 1 rules scores 90');
+insert into public.worker_training (worker_user_id, course, year_completed) values (:'wb', 'Pipe fitting', 2019);
+select is(private.passport_completeness(:'wb'), 95, 'AC7, switch on: a training entry adds 5');
+insert into public.worker_employment_history (worker_user_id, role, country_code, from_month) values (:'wb', 'Plumber', 'PH', '2015-01-01');
+select is(private.passport_completeness(:'wb'), 100, 'AC7, switch on: an employment history entry adds 5: 100');
+insert into public.worker_preferred_industries (worker_user_id, industry_code) values (:'wb', 'F');
+insert into public.worker_preferred_employment_types (worker_user_id, employment_type) values (:'wb', 'contract');
+select is(private.passport_completeness(:'wb'), 100, 'AC7, switch on: preferred industries and employment types carry no weight');
+update public.worker_profiles set years_experience = null where user_id = :'wb';
+delete from public.worker_skills where worker_user_id = :'wb' and skill = 'Pumps';
+select is(private.passport_completeness(:'wb'), 85, 'AC7, switch on: skills weigh 10 and years of experience 5');
+update private.settings set value = 'false' where key = 'release_find_workers';
+select is(private.passport_completeness(:'wb'), 75, 'AC7: switched off again, the Phase 1 weights apply again');
 
 -- The user's copy (FR-S3, V29) holds the new lists ---------------------------------------------------------------------
 
