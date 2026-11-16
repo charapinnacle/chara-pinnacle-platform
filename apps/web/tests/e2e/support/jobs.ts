@@ -45,6 +45,7 @@ export const FIELD_LABELS = [
   "Country",
   "City",
   "Employment type",
+  "Required experience (years)",
   "Salary minimum",
   "Salary maximum",
   "Currency",
@@ -155,6 +156,7 @@ interface SeedJobOptions {
   salary: Salary | null;
   accommodation: boolean;
   visaSupport: boolean;
+  requiredExperience: number | null;
 }
 
 const SEED_DEFAULTS: SeedJobOptions = {
@@ -170,23 +172,25 @@ const SEED_DEFAULTS: SeedJobOptions = {
   salary: null,
   accommodation: false,
   visaSupport: false,
+  requiredExperience: null,
 };
 
 // A vacancy as an administrator would have saved it, written by the database owner so that a test can give it any status.
 export function seedJob(company: Company, options: Partial<SeedJobOptions> = {}): string {
-  const { title, description, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport } = {
-    ...SEED_DEFAULTS,
-    ...options,
-  };
+  const {
+    title, description, status, moderation, createdAt, statusChangedAt, country, city, employment, salary, accommodation, visaSupport,
+    requiredExperience,
+  } = { ...SEED_DEFAULTS, ...options };
   const amount = (value: number | null | undefined) => (value === null || value === undefined ? "null" : String(value));
   const output = execute(
     `insert into public.jobs (organization_id, title, description, occupation_id, industry_code, country_code, city,
         employment_type, salary_min, salary_max, salary_currency, salary_period, accommodation, visa_support,
-        recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at)
+        recruitment_preference, status, moderation_state, created_by, created_at, status_changed_at, required_experience_years)
      values (${literal(company.id)}, ${literal(title)}, ${literal(description)},
         '7212', 'C', ${literal(country)}, ${literal(city)}, ${literal(employment)}, ${amount(salary?.min)}, ${amount(salary?.max)},
         ${salary ? literal(salary.currency) : "null"}, ${salary ? literal(salary.period) : "null"}, ${accommodation}, ${visaSupport},
-        'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt})
+        'both', ${literal(status)}, ${literal(moderation)}, ${literal(company.owner.id)}, ${createdAt}, ${statusChangedAt},
+        ${amount(requiredExperience)})
      returning id`,
   );
   return output.trim();
