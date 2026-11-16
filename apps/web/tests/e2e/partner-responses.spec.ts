@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { displayName, expectAccessibleAtBothWidths } from "./support/applications";
+import { formatDate } from "@/lib/i18n/format";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
 import { pdfBytes } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
-import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, type Team } from "./support/team";
+import { addMember, enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -491,5 +492,84 @@ test.describe("The eligibility panel (FR-N2 AC4, AC12, FR-J2 AC10)", () => {
     await other.page.goto(responseUrl(p2.slug, "abc"));
     await expect(other.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await other.context.close();
+  });
+});
+
+// The upgrade prompt of the monthly limit (V51; FR-R1 AC10, AC11): the response refused at the limit keeps the offer and
+// moves the focus to Upgrade; a member reads the usage without it; a lapsed partner is told its free plan allows none.
+test.describe("The monthly limit's upgrade prompt (FR-R1 AC10, AC11)", () => {
+  function firstOfNextMonth(): string {
+    const now = new Date();
+    return formatDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString());
+  }
+
+  function prompts(organizationId: string): number {
+    return query<{ n: number }>(
+      `select count(*)::integer as n from audit.log where action = 'limit.prompt_shown' and entity_id = ${literal(organizationId)}
+         and metadata ->> 'limit_key' = 'job_order_responses_per_month'`,
+    )[0].n;
+  }
+
+  test("AC11: the eleventh response is refused with the plan, the usage, the reset and Upgrade focused; a member sees no Upgrade", async ({ page, browser }) => {
+    test.setTimeout(300_000);
+    const team = await newTeam();
+    const r = await eligiblePartner();
+    const partnerTeam = { id: r.id, slug: r.slug, owner: r.owner, ownerSecret: "" };
+    const admin = await addMember(partnerTeam, "admin");
+    const member = await addMember(partnerTeam, "member");
+    seedUsedResponses(team, r.id, 9);
+    const id = seedJobOrder(team, "Vaduz limit welders");
+    const [{ name: planName }] = query<{ name: string }>(`select name from billing.plans where code = 'recruitment_partner'`);
+
+    await signInAtAal2(page, admin.user, admin.secret ?? "", respondUrl(r.slug, id));
+    const send = page.getByRole("button", { name: "Send response" });
+    await waitForHydration(send);
+    await fillResponse(page);
+    // The tenth response of the month is sent by someone else while the form is open.
+    seedUsedResponses(team, r.id, 1);
+    await send.click();
+
+    const upgrade = page.getByRole("link", { name: "Upgrade your plan" });
+    await expect(upgrade).toBeFocused();
+    await expect(upgrade).toHaveAttribute("href", `/en/org/${r.slug}/billing`);
+    const notice = page.getByRole("status").filter({ has: upgrade });
+    await expect(notice).toContainText(`10 of 10 job order responses this month on your ${planName} plan.`);
+    await expect(notice).toContainText(`The count starts again on ${firstOfNextMonth()}.`);
+    expect(responseRows(id)).toHaveLength(0);
+    await expect(page.getByLabel("Workers you can supply")).toHaveValue("80");
+    await expect(page.getByLabel("Amount")).toHaveValue("1500.00");
+    await expect.poll(() => prompts(r.id)).toBeGreaterThan(0);
+    await expectAccessibleAtBothWidths(page);
+
+    const other = await newVisitor(browser);
+    await signInAtAal1(other.page, member.user, orderUrl(r.slug, id));
+    await expect(panel(other.page)).toContainText(`10 of 10 job order responses this month on your ${planName} plan.`);
+    await expect(panel(other.page)).toContainText(`The count starts again on ${firstOfNextMonth()}.`);
+    await expect(panel(other.page).getByRole("link", { name: "Upgrade your plan" })).toHaveCount(0);
+    await expect(panel(other.page).getByRole("link", { name: "Respond" })).toHaveCount(0);
+    await expectNoAxeViolations(other.page);
+    await other.context.close();
+  });
+
+  test("AC10: an invited partner whose plan lapsed is told its free plan allows no responses, without a reset date", async ({ page }) => {
+    test.setTimeout(240_000);
+    const team = await newTeam();
+    const l = await eligiblePartner();
+    const id = seedJobOrder(team, "Private Vaduz riggers", { visibility: "private" });
+    const invitation = randomUUID();
+    execute(
+      `insert into public.requirement_invitations (id, requirement_id, organization_id, employer_organization_id, source, status)
+       values (${literal(invitation)}, ${literal(id)}, ${literal(l.id)}, ${literal(team.id)}, 'directory', 'viewed');
+       update billing.subscriptions set status = 'canceled' where organization_id = ${literal(l.id)}`,
+    );
+    const [{ name: planName }] = query<{ name: string }>(`select name from billing.plans where code = 'free_recruitment_company'`);
+
+    await signInAtAal1(page, l.owner, `/en/org/${l.slug}/invitations/${invitation}/respond`);
+    await expect(panel(page)).toContainText(`0 of 0 job order responses this month on your ${planName} plan.`);
+    await expect(panel(page)).not.toContainText("The count starts again");
+    await expect(panel(page).getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", `/en/org/${l.slug}/billing`);
+    await expect(page.getByRole("button", { name: "Send response" })).toHaveCount(0);
+    await expectAccessibleAtBothWidths(page);
+    expect(responseRows(id)).toHaveLength(0);
   });
 });
