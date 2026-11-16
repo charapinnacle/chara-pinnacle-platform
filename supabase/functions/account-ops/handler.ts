@@ -12,6 +12,7 @@ const DOCUMENT_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const BUCKET_ID = /^[a-z0-9-]{1,63}$/;
 const OBJECT_PATH = /^[A-Za-z0-9._/-]{1,300}$/;
 const PASSPORT_BUCKET = "passport-documents";
+const PARTNER_BUCKET = "partner-documents";
 const LIST_PAGE = 100;
 // Objects sit at {user}/{document}/{file}; the walk goes a level deeper than that and no further.
 const MAX_DEPTH = 3;
@@ -23,6 +24,7 @@ export type Job =
   & (
     | { action: "sign_out_organization"; organizationId: string }
     | { action: "fan_out_legal_version"; documentSlug: string; version: number }
+    | { action: "delete_organization_object"; organizationId: string; bucketId: string; path: string }
     | (
       & { userId: string }
       & (
@@ -73,6 +75,15 @@ function parseJob(row: unknown): Job | null {
   if (action === "sign_out_organization") {
     return typeof organizationId === "string" && UUID.test(organizationId)
       ? { msgId, audit, action, organizationId }
+      : null;
+  }
+  // An organisation's file (licence evidence, FR-J2) is only ever removed from the evidence bucket, in the folder of the
+  // organisation the job names.
+  if (action === "delete_organization_object") {
+    return typeof organizationId === "string" && UUID.test(organizationId) && bucketId === PARTNER_BUCKET &&
+        typeof path === "string" && OBJECT_PATH.test(path) &&
+        path.startsWith(`${organizationId}/`) && !path.includes("..")
+      ? { msgId, audit, action, organizationId, bucketId, path }
       : null;
   }
   if (action === "fan_out_legal_version") {
@@ -254,7 +265,7 @@ async function run(client: SupabaseClient, job: Job): Promise<Record<string, num
   if (job.action === "suspend_user" || job.action === "reinstate_user") {
     return await syncBan(client, job.userId);
   }
-  if (job.action === "delete_object") {
+  if (job.action === "delete_object" || job.action === "delete_organization_object") {
     return { objects_removed: await removeObjects(client, job.bucketId, [job.path]) };
   }
   if (job.action === "erase_user") {

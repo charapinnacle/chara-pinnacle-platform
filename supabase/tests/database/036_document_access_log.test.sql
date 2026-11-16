@@ -231,15 +231,16 @@ select is(
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
           or has_function_privilege('service_role', p.oid, 'execute'))
      and pg_get_function_result(p.oid) ~* '(object_path|storage_path|bucket_id|url)'),
-  1::bigint, 'AC11: exactly one function open to an API role returns a path, a bucket or a link'
+  2::bigint, 'AC11: exactly two functions open to an API role return a path, a bucket or a link'
 );
 select is(
-  (select p.proname::text from pg_proc p
+  (select array_agg(p.proname::text order by p.proname) from pg_proc p
    where p.pronamespace in ('public'::regnamespace, 'private'::regnamespace, 'audit'::regnamespace)
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
           or has_function_privilege('service_role', p.oid, 'execute'))
      and pg_get_function_result(p.oid) ~* '(object_path|storage_path|bucket_id|url)'),
-  'document_access_grant', 'AC11: and it is document_access_grant'
+  array['document_access_grant', 'partner_document_access_grant'],
+  'AC11: they are document_access_grant and the broker of partner licence evidence (FR-J2), which serves another bucket'
 );
 select is(
   (select count(*) from pg_proc p

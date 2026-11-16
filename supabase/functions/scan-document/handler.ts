@@ -2,9 +2,23 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasSharedSecret } from "../_shared/auth.ts";
 import { json } from "../_shared/http.ts";
 
-const BUCKET = "passport-documents";
-const OBJECT_NAME =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/[A-Za-z0-9._-]{1,100}$/i;
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+// The buckets whose new objects are scanned, the shape of an object name (the second folder is the id of the row the file
+// belongs to) and the service RPC that records the verdict on that row. Candidate documents are named
+// {user_id}/{document_id}/{file_name} by the storage policy; licence evidence {organization_id}/{licence_id}/{uuid} by
+// partner_document_access_grant (FR-J2).
+const TARGETS: Readonly<Record<string, { name: RegExp; rpc: string; idParam: string }>> = {
+  "passport-documents": {
+    name: new RegExp(`^${UUID}/(${UUID})/[A-Za-z0-9._-]{1,100}$`, "i"),
+    rpc: "document_set_scan_status",
+    idParam: "p_document_id",
+  },
+  "partner-documents": {
+    name: new RegExp(`^${UUID}/(${UUID})/${UUID}$`, "i"),
+    rpc: "partner_document_set_scan_status",
+    idParam: "p_licence",
+  },
+};
 const HEAD_BYTES = 8;
 // No scanning vendor is chosen yet (OPEN_QUESTIONS.md O4): a file whose first bytes are what it claims to be is recorded
 // as skipped, and the documents are served download-only. A vendor adds the status clean here.
@@ -18,7 +32,10 @@ interface ScanDeps {
 }
 
 interface ObjectRecord {
-  documentId: string;
+  bucket: string;
+  rpc: string;
+  idParam: string;
+  rowId: string;
   path: string;
   mimetype: string | null;
   size: number | null;
@@ -35,8 +52,8 @@ export function detectType(head: Uint8Array): string | null {
   return match?.type ?? null;
 }
 
-// The webhook of the database sends the new row of storage.objects; anything that is not an insert into the bucket is not
-// ours to scan. The name is shaped {user_id}/{document_id}/{file_name} by the storage policy.
+// The webhook of the database sends the new row of storage.objects; anything that is not an insert into one of the
+// buckets above, at a name of its shape, is not ours to scan.
 function parseRecord(payload: unknown): ObjectRecord | "other" | null {
   if (typeof payload !== "object" || payload === null) {
     return null;
@@ -48,16 +65,20 @@ function parseRecord(payload: unknown): ObjectRecord | "other" | null {
     return null;
   }
   const { bucket_id: bucket, name, metadata } = record as Record<string, unknown>;
-  if (bucket !== BUCKET) {
+  const target = typeof bucket === "string" && Object.hasOwn(TARGETS, bucket) ? TARGETS[bucket] : null;
+  if (!target) {
     return "other";
   }
-  const parts = typeof name === "string" ? OBJECT_NAME.exec(name) : null;
+  const parts = typeof name === "string" ? target.name.exec(name) : null;
   if (!parts) {
     return "other";
   }
   const stored = typeof metadata === "object" && metadata !== null ? (metadata as Record<string, unknown>) : {};
   return {
-    documentId: parts[1].toLowerCase(),
+    bucket: bucket as string,
+    rpc: target.rpc,
+    idParam: target.idParam,
+    rowId: parts[1].toLowerCase(),
     path: name as string,
     mimetype: typeof stored.mimetype === "string" ? stored.mimetype.split(";")[0].trim().toLowerCase() : null,
     size: typeof stored.size === "number" ? stored.size : null,
@@ -66,8 +87,8 @@ function parseRecord(payload: unknown): ObjectRecord | "other" | null {
 
 // A range request fetches the first bytes only; a server that ignores the range still costs at most the first chunk,
 // because the stream is cancelled once enough bytes have arrived.
-async function readHead(deps: ScanDeps, path: string): Promise<Uint8Array> {
-  const { data, error } = await deps.client.storage.from(BUCKET).createSignedUrl(path, 60);
+async function readHead(deps: ScanDeps, bucket: string, path: string): Promise<Uint8Array> {
+  const { data, error } = await deps.client.storage.from(bucket).createSignedUrl(path, 60);
   if (error) {
     throw error;
   }
@@ -127,10 +148,10 @@ export async function handleScanDocument(req: Request, deps: ScanDeps): Promise<
   }
 
   try {
-    const detected = detectType(await readHead(deps, record.path));
+    const detected = detectType(await readHead(deps, record.bucket, record.path));
     const verdict = detected !== null && detected === record.mimetype ? VERIFIED_STATUS : "rejected";
-    const { data, error } = await deps.client.rpc("document_set_scan_status", {
-      p_document_id: record.documentId,
+    const { data, error } = await deps.client.rpc(record.rpc, {
+      [record.idParam]: record.rowId,
       p_path: record.path,
       p_status: verdict,
       p_mime: record.mimetype,

@@ -593,6 +593,43 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"partner_licences": {
+                  Row: {
+                    "confirmed_at": string,"country_code": string,"created_at": string,"created_by": string | null,"evidence_mime": string | null,"evidence_path": string | null,"evidence_requested_at": string | null,"evidence_scan_status": string | null,"evidence_size_bytes": number | null,"expiry_notified_on": string | null,"id": string,"issuing_authority": string,"licence_number": string,"organization_id": string,"partner_terms_version": number,"previous_evidence_mime": string | null,"previous_evidence_path": string | null,"previous_evidence_scan_status": string | null,"previous_evidence_size_bytes": number | null,"status": string,"updated_at": string,"valid_until": string
+                  }
+                  Insert: {
+                    "confirmed_at": string,"country_code": string,"created_at"?: string,"created_by"?: string | null,"evidence_mime"?: string | null,"evidence_path"?: string | null,"evidence_requested_at"?: string | null,"evidence_scan_status"?: string | null,"evidence_size_bytes"?: number | null,"expiry_notified_on"?: string | null,"id"?: string,"issuing_authority": string,"licence_number": string,"organization_id": string,"partner_terms_version": number,"previous_evidence_mime"?: string | null,"previous_evidence_path"?: string | null,"previous_evidence_scan_status"?: string | null,"previous_evidence_size_bytes"?: number | null,"status"?: string,"updated_at"?: string,"valid_until": string
+                  }
+                  Update: {
+                    "confirmed_at"?: string,"country_code"?: string,"created_at"?: string,"created_by"?: string | null,"evidence_mime"?: string | null,"evidence_path"?: string | null,"evidence_requested_at"?: string | null,"evidence_scan_status"?: string | null,"evidence_size_bytes"?: number | null,"expiry_notified_on"?: string | null,"id"?: string,"issuing_authority"?: string,"licence_number"?: string,"organization_id"?: string,"partner_terms_version"?: number,"previous_evidence_mime"?: string | null,"previous_evidence_path"?: string | null,"previous_evidence_scan_status"?: string | null,"previous_evidence_size_bytes"?: number | null,"status"?: string,"updated_at"?: string,"valid_until"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "partner_licences_country_code_fkey"
+      columns: ["country_code"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "partner_licences_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_licences_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "partner_licences_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    }
+                  ]
                 },"passport_shares": {
                   Row: {
                     "application_id": string,"consent_id": number,"created_at": string,"expires_at": string | null,"id": string,"organization_id": string,"revoked_at": string | null,"scope": NonNullable<Json>,"worker_user_id": string
@@ -1029,6 +1066,9 @@ isOneToOne: false
 "account_ops_user_status":
 { Args: { "p_user_id": string }; Returns: string
                            },
+"add_partner_licence":
+{ Args: { "p_confirmed": boolean,"p_country_code": string,"p_issuing_authority": string,"p_licence_number": string,"p_org": string,"p_valid_until": string }; Returns: string
+                           },
 "admin_application_counts":
 { Args: { "p_from": string,"p_to": string }; Returns: {
               "count": number,"status": Database["public"]['Enums']["application_status"]
@@ -1072,6 +1112,11 @@ isOneToOne: false
 "admin_list_moderation_actions":
 { Args: { "p_after_id"?: number,"p_limit"?: number }; Returns: {
               "action": string,"actor_id": string,"created_at": string,"id": number,"statement_of_reasons": string,"target_id": string,"target_name": string,"target_type": string
+            }[]
+                           },
+"admin_list_partner_licences":
+{ Args: { "p_org": string }; Returns: {
+              "confirmed_at": string,"country_code": string,"created_at": string,"evidence_mime": string,"evidence_scan_status": string,"evidence_size_bytes": number,"id": string,"issuing_authority": string,"licence_number": string,"partner_terms_version": number,"status": string,"updated_at": string,"valid_until": string
             }[]
                            },
 "admin_list_reports":
@@ -1203,6 +1248,9 @@ isOneToOne: false
                            },
 "create_worker_passport":
 { Args: { "p_current_country": string,"p_first_name": string,"p_last_name": string,"p_preferred_lang"?: string }; Returns: undefined
+                           },
+"delete_partner_licence":
+{ Args: { "p_licence": string }; Returns: undefined
                            },
 "delete_worker_document":
 { Args: { "p_document_id": string }; Returns: undefined
@@ -1367,6 +1415,14 @@ isOneToOne: false
 "partner_commitment_status":
 { Args: { "p_org": string }; Returns: Json
                            },
+"partner_document_access_grant":
+{ Args: { "p_licence": string,"p_mime"?: string,"p_purpose": string,"p_size"?: number }; Returns: {
+              "bucket_id": string,"file_name": string,"object_path": string
+            }[]
+                           },
+"partner_document_set_scan_status":
+{ Args: { "p_licence": string,"p_mime": string,"p_path": string,"p_size": number,"p_status": string }; Returns: string
+                           },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {
               "availability_window_months": number,"skills_max": number,"work_authorization_expiry_max_years": number
@@ -1472,6 +1528,9 @@ isOneToOne: false
                            },
 "update_organization_profile":
 { Args: { "p_based_in_country": string,"p_description": string,"p_display_name": string,"p_industry_code": string,"p_legal_name": string,"p_org": string,"p_website": string }; Returns: Json
+                           },
+"update_partner_licence":
+{ Args: { "p_confirmed": boolean,"p_country_code": string,"p_issuing_authority": string,"p_licence": string,"p_licence_number": string,"p_valid_until": string }; Returns: undefined
                            },
 "withdraw_application":
 { Args: { "p_application_id": string }; Returns: undefined
