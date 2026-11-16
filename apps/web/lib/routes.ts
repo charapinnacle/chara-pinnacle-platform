@@ -158,8 +158,20 @@ export function requirementResponsePath(lang: string, slug: string, id: string, 
 }
 
 // The candidates submitted for one requirement: the partner's own and the employer's (FR-O4, FR-O5).
-export function requirementSubmissionsPath(lang: string, slug: string, id: string): string {
-  return `${requirementPath(lang, slug, id)}/submissions`;
+export function requirementSubmissionsPath(lang: string, slug: string, id: string, cursor?: string): string {
+  const path = `${requirementPath(lang, slug, id)}/submissions`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+}
+
+// The partner's form to ask a candidate's permission to submit them for one requirement (FR-O4 step Request).
+export function newSubmissionPath(lang: string, slug: string, id: string): string {
+  return `${requirementSubmissionsPath(lang, slug, id)}/new`;
+}
+
+// Every candidate the partner asked to submit, newest first (FR-O4 AC12).
+export function partnerSubmissionsPath(lang: string, slug: string, cursor?: string): string {
+  const path = `/${lang}/org/${slug}/submissions`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
 }
 
 // The responses to one requirement side by side, with the decisions (FR-O3).
