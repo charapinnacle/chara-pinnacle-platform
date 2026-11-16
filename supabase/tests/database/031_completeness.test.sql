@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(23);
 
 \ir passport_fixture.inc
 
@@ -13,9 +13,9 @@ select
   10
   + (btrim(coalesce(p.headline, '')) <> '')::int * 5
   + (p.occupation_id is not null)::int * 15
-  + ((select count(*) from public.worker_skills s where s.worker_user_id = p.user_id) >= 3)::int * 15
+  + ((select count(*) from public.worker_skills s where s.worker_user_id = p.user_id) >= 3)::int * 10
   + exists (select 1 from public.worker_languages l where l.worker_user_id = p.user_id)::int * 10
-  + (p.years_experience is not null)::int * 10
+  + (p.years_experience is not null)::int * 5
   + (p.availability is not null)::int * 10
   + exists (
     select 1 from public.worker_work_authorizations a
@@ -25,7 +25,9 @@ select
     select 1 from public.worker_documents d
     where d.worker_user_id = p.user_id and d.type = 'cv' and d.deleted_at is null
       and d.scan_status in ('clean', 'skipped')
-  )::int * 15 as score
+  )::int * 15
+  + exists (select 1 from public.worker_training t where t.worker_user_id = p.user_id)::int * 5
+  + exists (select 1 from public.worker_employment_history h where h.worker_user_id = p.user_id)::int * 5 as score
 from public.worker_profiles p;
 
 insert into public.worker_profiles (user_id, first_name, last_name, current_country)
@@ -45,7 +47,7 @@ begin
 end;
 $$;
 
--- B: occupation, three skills and a usable CV (55); C: everything except the CV (85); D: everything (100)
+-- B: occupation, three skills and a usable CV (50); C: everything except the CV (85); D: everything (100)
 update public.worker_profiles set occupation_id = '7411' where user_id = :'wb';
 insert into public.worker_skills (worker_user_id, skill)
 select u, s from unnest(array[:'wb', :'wnew', :'wsus']::uuid[]) u, unnest(array['Welding', 'Wiring', 'Cabling']) s;
@@ -55,19 +57,22 @@ where user_id in (:'wnew', :'wsus');
 insert into public.worker_languages (worker_user_id, language_code, cefr_level)
 values (:'wnew', 'en', 'B2'), (:'wsus', 'en', 'B2');
 insert into public.worker_work_authorizations (worker_user_id, country_code) values (:'wnew', 'DE'), (:'wsus', 'DE');
+insert into public.worker_training (worker_user_id, course, year_completed) values (:'wnew', 'Wiring course', 2020), (:'wsus', 'Wiring course', 2020);
+insert into public.worker_employment_history (worker_user_id, role, country_code, from_month)
+values (:'wnew', 'Electrician', 'CN', '2018-01-01'), (:'wsus', 'Electrician', 'NG', '2018-01-01');
 select pg_temp.add_cv(:'wsus', 'clean');
 
 select is(
   array[pg_temp.score_of(:'wa'), pg_temp.score_of(:'wb'), pg_temp.score_of(:'wnew'), pg_temp.score_of(:'wsus')],
-  array[10, 55, 85, 100],
-  'AC1: the score query gives 10, 55, 85 and 100 for the four reference profiles'
+  array[10, 50, 85, 100],
+  'AC1: the score query gives 10, 50, 85 and 100 for the four reference profiles'
 );
 
 -- The reviewed numbers, over the four fixture profiles (other rows of a shared database are left out).
 select is(
   (select percentile_cont(0.5) within group (order by score)::text from completeness_scores where user_id in (:'wa', :'wb', :'wnew', :'wsus')),
-  '70',
-  'KPI: median completeness is the middle of 10, 55, 85 and 100'
+  '67.5',
+  'KPI: median completeness is the middle of 10, 50, 85 and 100'
 );
 select is(
   (select round(100.0 * count(*) filter (where score >= 80) / nullif(count(*), 0), 1)::text
@@ -78,11 +83,11 @@ select is(
 
 -- AC2, AC3: thresholds of the list and value items
 delete from public.worker_skills where worker_user_id = :'wsus' and skill = 'Cabling';
-select is(pg_temp.score_of(:'wsus'), 85, 'AC2: two skills do not count');
+select is(pg_temp.score_of(:'wsus'), 90, 'AC2: two skills do not count');
 insert into public.worker_skills (worker_user_id, skill) values (:'wsus', 'Cabling');
 select is(pg_temp.score_of(:'wsus'), 100, 'AC2: three skills count');
 update public.worker_profiles set years_experience = null where user_id = :'wsus';
-select is(pg_temp.score_of(:'wsus'), 90, 'AC3: years of experience not set does not count');
+select is(pg_temp.score_of(:'wsus'), 95, 'AC3: years of experience not set does not count');
 update public.worker_profiles set years_experience = 0 where user_id = :'wsus';
 select is(pg_temp.score_of(:'wsus'), 100, 'AC3: 0 years counts');
 update public.worker_profiles set availability = 'unavailable' where user_id = :'wsus';
@@ -90,6 +95,14 @@ select is(pg_temp.score_of(:'wsus'), 100, 'AC3: availability unavailable counts'
 update public.worker_profiles set headline = null where user_id = :'wsus';
 select is(pg_temp.score_of(:'wsus'), 95, 'AC3: no headline does not count');
 update public.worker_profiles set headline = 'Electrician' where user_id = :'wsus';
+
+-- FR-Q4 AC7: a training entry and an employment history entry count 5 each
+delete from public.worker_training where worker_user_id = :'wsus';
+select is(pg_temp.score_of(:'wsus'), 95, 'FR-Q4 AC7: no training does not count');
+delete from public.worker_employment_history where worker_user_id = :'wsus';
+select is(pg_temp.score_of(:'wsus'), 90, 'FR-Q4 AC7: no employment history either: a passport complete under the Phase 1 rules is 90');
+insert into public.worker_training (worker_user_id, course, year_completed) values (:'wsus', 'Wiring course', 2020);
+insert into public.worker_employment_history (worker_user_id, role, country_code, from_month) values (:'wsus', 'Electrician', 'NG', '2018-01-01');
 
 -- AC4: only a valid work authorisation counts (a trigger refuses a past date, so the check is lifted for the setup)
 alter table public.worker_work_authorizations disable trigger worker_authorizations_check_expiry;
@@ -114,7 +127,7 @@ select is(pg_temp.score_of(:'wsus'), 100, 'AC5: a skipped CV counts');
 -- No stored score: nothing in the candidate tables holds a percentage or a score
 select is_empty(
   $$select table_name || '.' || column_name from information_schema.columns
-    where table_schema = 'public' and table_name like 'worker\_%' and column_name ~ '(complet|score|percent)'$$,
+    where table_schema = 'public' and table_name like 'worker\_%' and column_name ~ '(completeness|score|percent)'$$,
   'the completeness is computed on read: no candidate table stores a score or a percentage'
 );
 
