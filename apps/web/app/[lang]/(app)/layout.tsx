@@ -35,7 +35,7 @@ async function bellOrNone(userId: string): Promise<{ userId: string; initialUnre
 
 // The links of a partner organisation follow release 2a, the requirement and invitation links release 2b; a failed read
 // counts the switch as off and keeps the header.
-async function releasedOrOff(key: "release_partner_directories" | "release_job_orders"): Promise<boolean> {
+async function releasedOrOff(key: "release_partner_directories" | "release_job_orders" | "release_candidate_submissions"): Promise<boolean> {
   try {
     return await isReleased(key);
   } catch (error) {
@@ -51,11 +51,12 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
   const { lang } = await params;
   const user = await getCurrentUser();
   const accountKind = user && !user.suspended ? user.accountKind : null;
-  const [organizations, notifications, partnersReleased, jobOrdersReleased] = await Promise.all([
+  const [organizations, notifications, partnersReleased, jobOrdersReleased, submissionsReleased] = await Promise.all([
     user && accountKind === "company" ? organizationsOrNone(user.id) : [],
     user && accountKind ? bellOrNone(user.id) : null,
     user && accountKind === "company" ? releasedOrOff("release_partner_directories") : false,
     user && accountKind === "company" ? releasedOrOff("release_job_orders") : false,
+    user && accountKind ? releasedOrOff("release_candidate_submissions") : false,
   ]);
   const navigation = user
     ? {
@@ -73,8 +74,10 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
             suspended,
             ...(type === "employer" ? {} : { partnerSegment: partnerSegments[type] }),
             ...(jobOrdersReleased ? { jobOrders: true as const } : {}),
+            ...(submissionsReleased ? { candidateSubmissions: true as const } : {}),
           })),
         notifications,
+        submissions: accountKind === "worker" && submissionsReleased,
       }
     : null;
 

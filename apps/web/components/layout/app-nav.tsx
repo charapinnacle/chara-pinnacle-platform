@@ -18,15 +18,17 @@ export type AppNavProps = {
   organizations: readonly NavOrganization[];
   // The bell of the in-app notifications, while they are released and the person is a worker or a company user.
   notifications?: { userId: string; initialUnread: number } | null;
+  // Set for a candidate while candidate submissions are released (FR-O4).
+  submissions?: boolean;
 };
 
 // What the header and the sidebar offer, for who is signed in: a candidate, or the role in the organisation named by the
 // address.
-export function useAppNavigation({ lang, email, accountKind, organizations }: AppNavProps) {
+export function useAppNavigation({ lang, email, accountKind, organizations, submissions }: AppNavProps) {
   const pathname = usePathname();
   const orgParam = useSearchParams().get("org");
   const organization = accountKind === "company" ? currentOrganization(lang, pathname, orgParam, organizations) : undefined;
-  const offered = accountKind === "worker" ? workerLinks(lang) : organization ? organizationLinks(lang, organization) : [];
+  const offered = accountKind === "worker" ? workerLinks(lang, { submissions }) : organization ? organizationLinks(lang, organization) : [];
   const links = isGatePage(lang, pathname) ? [] : offered;
   const roleLabel = accountKind === "worker" ? "Worker" : accountKind === "company" ? (organization?.roleLabel ?? "Employer") : undefined;
   const switcher = organizations.length > 1 ? organization : undefined;

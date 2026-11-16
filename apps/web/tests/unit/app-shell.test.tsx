@@ -215,7 +215,7 @@ describe("the layout of the signed-in area", () => {
   });
 
   it("FR-O1: adds Invitations for a partner and Requirements for an employer while release 2b is on", async () => {
-    releasedMock.mockResolvedValue(true);
+    releasedMock.mockImplementation(async (key: string) => key !== "release_candidate_submissions");
     unreadMock.mockResolvedValue(0);
     userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
     organizationsMock.mockResolvedValue([
@@ -230,6 +230,26 @@ describe("the layout of the signed-in area", () => {
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Invitations<\/a>/);
     navigation.pathname = "/en/org/acme/requirements";
     expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Team"]);
+  });
+
+  it("FR-O4: adds Submissions for a candidate and a partner while candidate submissions are released", async () => {
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockResolvedValue(0);
+    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
+    navigation.pathname = "/en/submissions";
+    let html = renderToStaticMarkup((await shell()).headerActions);
+    expect(mainLabels(html)).toContain("Submissions");
+    expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Submissions<\/a>/);
+    userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "o3", slug: "manila", displayName: "Manila Skills", type: "recruitment_company", role: "member", suspended: false },
+    ]);
+    navigation.pathname = "/en/org/manila/submissions";
+    html = renderToStaticMarkup((await shell()).headerActions);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Responses", "Submissions", "Team"]);
+    releasedMock.mockImplementation(async (key: string) => key !== "release_candidate_submissions");
+    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
+    expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Submissions");
   });
 
   it("FR-J1: gives a member of a recruitment or staffing company no organisation links while release 2a is off", async () => {
