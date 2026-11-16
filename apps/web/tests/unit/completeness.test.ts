@@ -16,7 +16,8 @@ const empty: CompletenessInput = {
   employmentHistory: [],
   hasCv: false,
 };
-const score = (patch: Partial<CompletenessInput>) => computeCompleteness({ ...empty, ...patch }, TODAY);
+const score = (patch: Partial<CompletenessInput>) => computeCompleteness({ ...empty, ...patch }, TODAY, false);
+const scoreFrom2c = (patch: Partial<CompletenessInput>) => computeCompleteness({ ...empty, ...patch }, TODAY, true);
 const many = (count: number) => Array.from({ length: count }, (_, index) => `item ${index}`);
 const expiring = (...dates: (string | null)[]) => dates.map((expiresOn) => ({ expiresOn }));
 
@@ -28,57 +29,33 @@ const full: Partial<CompletenessInput> = {
   skills: many(3),
   languages: many(1),
   authorizations: expiring(null),
-  training: many(1),
-  employmentHistory: many(1),
   hasCv: true,
 };
-const phaseOneComplete: Partial<CompletenessInput> = { ...full, training: [], employmentHistory: [] };
 
-describe("computeCompleteness", () => {
+describe("computeCompleteness while release_find_workers is off (Phase 1 weights)", () => {
   it("scores a new passport at 10 percent and suggests the occupation first", () => {
     const result = score({});
     expect(result.percent).toBe(10);
     expect(result.next?.label).toBe("Occupation");
   });
 
-  it("uses the published weights of FR-Q4 AC7, which add up to 100", () => {
+  it("uses the published weights, which add up to 100", () => {
     const { items } = score({});
     expect(Object.fromEntries(items.map((item) => [item.key, item.weight]))).toEqual({
       names: 10,
       headline: 5,
       occupation: 15,
-      skills: 10,
+      skills: 15,
       languages: 10,
-      experience: 5,
+      experience: 10,
       availability: 10,
       authorization: 10,
       cv: 15,
-      training: 5,
-      employmentHistory: 5,
     });
     expect(items.reduce((sum, item) => sum + item.weight, 0)).toBe(100);
   });
 
-  it("FR-Q4 AC7: scores 90 for a passport complete under the Phase 1 rules and suggests Training", () => {
-    const result = score(phaseOneComplete);
-    expect(result.percent).toBe(90);
-    expect(result.next?.label).toBe("Training");
-    expect(result.next?.section).toBe("training");
-  });
-
-  it("FR-Q4 AC7: scores 100 with one training and one employment history entry, and 10 for names and country only", () => {
-    expect(score({ ...phaseOneComplete, training: many(1) }).percent).toBe(95);
-    expect(score({ ...phaseOneComplete, employmentHistory: many(1) }).next?.label).toBe("Training");
-    expect(score({ ...phaseOneComplete, training: many(1), employmentHistory: many(1) }).percent).toBe(100);
-    expect(score({}).percent).toBe(10);
-  });
-
-  it("FR-Q4 AC7: gives preferred industries and employment types no item and no weight", () => {
-    expect(score({}).items.map((item) => item.key)).not.toContain("preferredIndustries");
-    expect(score({}).items.map((item) => item.label.toLowerCase()).some((label) => label.includes("preferred"))).toBe(false);
-  });
-
-  it("scores 10, 50, 85 and 100 for the four reference profiles, always a whole number from 0 to 100", () => {
+  it("scores 10, 55, 85 and 100 for the four reference profiles, always a whole number from 0 to 100", () => {
     const withoutCv = { ...full, hasCv: false };
     const results = [
       score({}).percent,
@@ -86,7 +63,7 @@ describe("computeCompleteness", () => {
       score(withoutCv).percent,
       score(full).percent,
     ];
-    expect(results).toEqual([10, 50, 85, 100]);
+    expect(results).toEqual([10, 55, 85, 100]);
     for (const percent of results) expect(Number.isInteger(percent) && percent >= 0 && percent <= 100).toBe(true);
   });
 
@@ -94,13 +71,20 @@ describe("computeCompleteness", () => {
     expect(score(full).next).toBeNull();
   });
 
+  it("V61: lists no training or employment history item and scores their entries nothing until release 2c", () => {
+    expect(score({}).items).toHaveLength(9);
+    expect(score({}).items.map((item) => item.key)).not.toContain("training");
+    expect(score({ ...full, training: many(1), employmentHistory: many(1) }).percent).toBe(100);
+    expect(score({ training: many(2), employmentHistory: many(1) }).percent).toBe(10);
+  });
+
   it("counts skills from three tags and languages from one", () => {
-    expect([0, 2, 3, 4].map((count) => score({ skills: many(count) }).percent)).toEqual([10, 10, 20, 20]);
+    expect([0, 2, 3, 4].map((count) => score({ skills: many(count) }).percent)).toEqual([10, 10, 25, 25]);
     expect([0, 1].map((count) => score({ languages: many(count) }).percent)).toEqual([10, 20]);
   });
 
   it("counts a years value of 0 and any availability including unavailable, but not a blank headline", () => {
-    expect([null, 0, 12].map((yearsExperience) => score({ yearsExperience }).percent)).toEqual([10, 15, 15]);
+    expect([null, 0, 12].map((yearsExperience) => score({ yearsExperience }).percent)).toEqual([10, 20, 20]);
     expect([null, "unavailable", "now", "from_date"].map((availability) => score({ availability }).percent)).toEqual([
       10, 20, 20, 20,
     ]);
@@ -121,6 +105,92 @@ describe("computeCompleteness", () => {
   it("suggests the next item in the fixed order as items are completed", () => {
     const steps: Partial<CompletenessInput>[] = [
       { occupationId: "7212" },
+      { skills: many(3) },
+      { hasCv: true },
+      { languages: many(1) },
+      { yearsExperience: 2 },
+      { availability: "now" },
+      { authorizations: expiring(null) },
+      { headline: "Welder" },
+    ];
+    let state: Partial<CompletenessInput> = {};
+    const suggested = [score(state).next?.label];
+    for (const step of steps) {
+      state = { ...state, ...step };
+      suggested.push(score(state).next?.label);
+    }
+    expect(suggested).toEqual([
+      "Occupation",
+      "Skills",
+      "CV",
+      "Languages",
+      "Years of experience",
+      "Availability",
+      "Work authorisation",
+      "Headline",
+      undefined,
+    ]);
+  });
+
+  it("points each suggestion at the passport section where the item is added", () => {
+    expect(score({}).next?.section).toBe("occupation");
+    expect(score({ occupationId: "7212", skills: many(3) }).next?.section).toBe("documents");
+  });
+});
+
+describe("computeCompleteness from release 2c (release_find_workers on, FR-Q4 AC7)", () => {
+  const complete = { ...full, training: many(1), employmentHistory: many(1) };
+
+  it("uses the weights of FR-Q4 AC7, which add up to 100", () => {
+    const { items } = scoreFrom2c({});
+    expect(Object.fromEntries(items.map((item) => [item.key, item.weight]))).toEqual({
+      names: 10,
+      headline: 5,
+      occupation: 15,
+      skills: 10,
+      languages: 10,
+      experience: 5,
+      availability: 10,
+      authorization: 10,
+      cv: 15,
+      training: 5,
+      employmentHistory: 5,
+    });
+    expect(items.reduce((sum, item) => sum + item.weight, 0)).toBe(100);
+  });
+
+  it("scores 90 for a passport complete under the Phase 1 rules and suggests Training, then 95 and 100", () => {
+    const result = scoreFrom2c(full);
+    expect(result.percent).toBe(90);
+    expect(result.next?.label).toBe("Training");
+    expect(result.next?.section).toBe("training");
+    expect(scoreFrom2c({ ...full, training: many(1) }).percent).toBe(95);
+    expect(scoreFrom2c({ ...full, training: many(1) }).next?.section).toBe("employment-history");
+    expect(scoreFrom2c({ ...full, employmentHistory: many(1) }).next?.label).toBe("Training");
+    expect(scoreFrom2c(complete).percent).toBe(100);
+    expect(scoreFrom2c(complete).next).toBeNull();
+    expect(scoreFrom2c({}).percent).toBe(10);
+  });
+
+  it("gives preferred industries and employment types no item and no weight", () => {
+    expect(scoreFrom2c({}).items.map((item) => item.key)).not.toContain("preferredIndustries");
+    expect(scoreFrom2c({}).items.map((item) => item.label.toLowerCase()).some((label) => label.includes("preferred"))).toBe(false);
+  });
+
+  it("scores 10, 50, 85 and 100 for the four reference profiles with training and employment history", () => {
+    expect([
+      scoreFrom2c({}).percent,
+      scoreFrom2c({ occupationId: "7212", skills: many(3), hasCv: true }).percent,
+      scoreFrom2c({ ...complete, hasCv: false }).percent,
+      scoreFrom2c(complete).percent,
+    ]).toEqual([10, 50, 85, 100]);
+    expect([0, 2, 3].map((count) => scoreFrom2c({ skills: many(count) }).percent)).toEqual([10, 10, 20]);
+    expect([null, 0].map((yearsExperience) => scoreFrom2c({ yearsExperience }).percent)).toEqual([10, 15]);
+  });
+
+  it("suggests the next item in the order of FR-Q4 AC7 as items are completed", () => {
+    const steps: Partial<CompletenessInput>[] = [
+      { occupationId: "7212" },
       { hasCv: true },
       { skills: many(3) },
       { languages: many(1) },
@@ -132,10 +202,10 @@ describe("computeCompleteness", () => {
       { employmentHistory: many(1) },
     ];
     let state: Partial<CompletenessInput> = {};
-    const suggested = [score(state).next?.label];
+    const suggested = [scoreFrom2c(state).next?.label];
     for (const step of steps) {
       state = { ...state, ...step };
-      suggested.push(score(state).next?.label);
+      suggested.push(scoreFrom2c(state).next?.label);
     }
     expect(suggested).toEqual([
       "Occupation",
@@ -150,12 +220,6 @@ describe("computeCompleteness", () => {
       "Employment history",
       undefined,
     ]);
-  });
-
-  it("points each suggestion at the passport section where the item is added", () => {
-    expect(score({}).next?.section).toBe("occupation");
-    expect(score({ occupationId: "7212", skills: many(3) }).next?.section).toBe("documents");
-    expect(score({ ...phaseOneComplete, training: many(1) }).next?.section).toBe("employment-history");
   });
 });
 
