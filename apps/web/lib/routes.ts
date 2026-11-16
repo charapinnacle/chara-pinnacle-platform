@@ -1,5 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import type { ApplicantListParams } from "@/lib/validation/applicant-list";
+import type { SubmissionListParams } from "@/lib/validation/submission-pipeline";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -292,6 +293,23 @@ export function applicantsPath(lang: string, slug: string, params: Partial<Appli
   if (page && page > 1) query.set("page", String(page));
   const text = query.toString();
   return text ? `/${lang}/org/${slug}/applicants?${text}` : `/${lang}/org/${slug}/applicants`;
+}
+
+// The submitted candidates on the applicants page (FR-O5): of one requirement, or of every requirement with the source
+// filter; a value that is the default of the page is left out of the address.
+export function submissionPipelinePath(lang: string, slug: string, params: Partial<SubmissionListParams> = {}): string {
+  const { requirement, view, stage, page } = params;
+  const query = new URLSearchParams();
+  if (requirement) query.set("requirement", requirement);
+  else query.set("source", "submissions");
+  if (requirement && view === "board") query.set("view", "board");
+  if (stage) query.set("stage", stage);
+  if (page && page > 1) query.set("page", String(page));
+  return `/${lang}/org/${slug}/applicants?${query.toString()}`;
+}
+
+export function employerSubmissionPath(lang: string, slug: string, id: string): string {
+  return `/${lang}/org/${slug}/applicants/submissions/${id}`;
 }
 
 export function applicantsExportPath(lang: string, slug: string): string {

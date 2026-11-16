@@ -92,3 +92,50 @@ export function submissionUsageText(used: number, limit: number): string {
 export function submissionCountText(count: number, more: boolean): string {
   return `${more ? "The newest " : ""}${formatCount(count)} ${count === 1 ? "candidate" : "candidates"}`;
 }
+
+// The stages of an approved submission in the employer's pipeline (FR-O5): those of an application, with Submitted in
+// place of Applied, in the same order.
+export const pipelineSubmissionStages = [
+  "submitted",
+  "viewed",
+  "shortlisted",
+  "interview",
+  "offer",
+  "hired",
+  "rejected",
+  "withdrawn",
+] as const satisfies readonly SubmissionStatus[];
+
+export type PipelineSubmissionStage = (typeof pipelineSubmissionStages)[number];
+
+export const employerSubmissionLabels: Record<PipelineSubmissionStage, string> = {
+  submitted: "Submitted",
+  viewed: "Viewed",
+  shortlisted: "Shortlisted",
+  interview: "Interview",
+  offer: "Offer",
+  hired: "Hired",
+  rejected: "Not selected",
+  withdrawn: "Withdrawn",
+};
+
+export function isPipelineSubmissionStage(value: unknown): value is PipelineSubmissionStage {
+  return typeof value === "string" && Object.hasOwn(employerSubmissionLabels, value);
+}
+
+// The label FR-O5 AC1 puts on every submitted candidate in the pipeline.
+export function submittedByLabel(partnerName: string): string {
+  return `Submitted by ${partnerName}`;
+}
+
+// How the candidate's journey tracker names a submission (FR-O5 AC9).
+export function proposedByLabel(partnerName: string, title: string): string {
+  return `Proposed by ${partnerName} for ${title}`;
+}
+
+// What the candidate reads about who moved a stage.
+export const submissionActorLabels: Record<string, string> = {
+  candidate: "By you",
+  employer: "By the employer",
+  system: "Automatic",
+};

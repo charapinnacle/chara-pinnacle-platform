@@ -7,14 +7,20 @@ import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { TextareaField } from "@/components/forms/form-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import type { ReviewSubject } from "@/components/applicants/review-subject";
 import { addInternalNote } from "@/lib/actions/applicant-review";
+import { addSubmissionInternalNote } from "@/lib/actions/submission-pipeline";
 import { NOTE_MAX_CHARS, noteInputSchema, type NoteInput } from "@/lib/validation/applicant";
+import { SUBMISSION_NOTE_MAX_CHARS, submissionNoteInputSchema } from "@/lib/validation/submission-pipeline";
 
 const NOTE_ID = "internal-note-body";
 
-export function NoteForm({ slug, applicationId }: { slug: string; applicationId: string }) {
+// A submitted candidate's note may be longer (submission_notes.body, FR-O5) and is hidden from the partner as well.
+export function NoteForm({ slug, subject, visibility }: { slug: string; subject: ReviewSubject; visibility: string }) {
+  const submission = subject.kind === "submission";
+  const maxChars = submission ? SUBMISSION_NOTE_MAX_CHARS : NOTE_MAX_CHARS;
   const form = useForm<NoteInput>({
-    resolver: zodResolver(noteInputSchema),
+    resolver: zodResolver(submission ? submissionNoteInputSchema : noteInputSchema),
     defaultValues: { body: "" },
     shouldFocusError: false,
   });
@@ -24,7 +30,7 @@ export function NoteForm({ slug, applicationId }: { slug: string; applicationId:
 
   function add(values: NoteInput) {
     return submit(
-      () => addInternalNote(slug, applicationId, values),
+      () => (submission ? addSubmissionInternalNote(slug, subject.id, values) : addInternalNote(slug, subject.id, values)),
       (result) => {
         if (result.done) {
           reset();
@@ -44,7 +50,7 @@ export function NoteForm({ slug, applicationId }: { slug: string; applicationId:
         name="body"
         id={NOTE_ID}
         label="Add an internal note"
-        description={`Visible to your organization only. ${length}/${NOTE_MAX_CHARS}`}
+        description={`${visibility} ${length}/${maxChars}`}
       />
       <div>
         <FormButton type="submit" busy={formState.isSubmitting} className="w-full sm:w-auto">

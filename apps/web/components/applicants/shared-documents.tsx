@@ -1,4 +1,5 @@
 import { OpenDocumentButton } from "@/components/applicants/open-document-button";
+import type { ReviewSubject } from "@/components/applicants/review-subject";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
 import { Card } from "@/components/layout/card";
@@ -9,7 +10,7 @@ import { documentTypeOptions } from "@/lib/validation/documents";
 
 type SharedDocumentsProps = {
   slug: string;
-  applicationId: string;
+  subject: ReviewSubject;
   documents: SharedDocument[];
   shareEnded: boolean;
   today: string;
@@ -18,7 +19,8 @@ type SharedDocumentsProps = {
 const typeLabels: Record<string, string> = Object.fromEntries(documentTypeOptions.map((option) => [option.value, option.label]));
 
 // The documents of the share, never a storage path or a link: a link is asked for when a member presses Open.
-export function SharedDocuments({ slug, applicationId, documents, shareEnded, today }: SharedDocumentsProps) {
+export function SharedDocuments({ slug, subject, documents, shareEnded, today }: SharedDocumentsProps) {
+  const what = subject.kind === "submission" ? "submission" : "application";
   return (
     <section aria-labelledby="documents-heading" className="grid gap-3">
       <h2 id="documents-heading" className="text-h2">
@@ -26,10 +28,17 @@ export function SharedDocuments({ slug, applicationId, documents, shareEnded, to
       </h2>
       {shareEnded ? (
         <Notice tone="info" role="status">
-          This document is no longer available. The candidate no longer shares documents with this application.
+          This document is no longer available. The candidate no longer shares documents with this {what}.
         </Notice>
       ) : documents.length === 0 ? (
-        <EmptyState title="No documents were shared" description="The candidate applied without sharing a CV or a certificate." />
+        <EmptyState
+          title="No documents were shared"
+          description={
+            subject.kind === "submission"
+              ? "The candidate approved the submission without sharing a CV or a certificate."
+              : "The candidate applied without sharing a CV or a certificate."
+          }
+        />
       ) : (
         <ul className="grid gap-2">
           {documents.map((document) => {
@@ -44,7 +53,7 @@ export function SharedDocuments({ slug, applicationId, documents, shareEnded, to
                   </p>
                 </div>
                 {document.available ? (
-                  <OpenDocumentButton slug={slug} applicationId={applicationId} documentId={document.id} title={document.title} />
+                  <OpenDocumentButton slug={slug} subject={subject} documentId={document.id} title={document.title} />
                 ) : (
                   <p className="text-small text-muted-foreground">The file is still being checked</p>
                 )}

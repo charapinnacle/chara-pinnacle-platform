@@ -1,4 +1,5 @@
 import { NoteForm } from "@/components/applicants/note-form";
+import type { ReviewSubject } from "@/components/applicants/review-subject";
 import { ReadOnlyButton } from "@/components/applicants/read-only-button";
 import { READ_ONLY_REASON_ID } from "@/components/billing/read-only-plan";
 import { Notice } from "@/components/forms/notice";
@@ -13,22 +14,27 @@ import { cn } from "@/lib/utils";
 
 type InternalNotesProps = {
   slug: string;
-  applicationId: string;
+  subject: ReviewSubject;
   notes: ApplicantNote[];
   blocked: boolean;
   olderHref: string | null;
   newestHref: string | null;
 };
 
-// Notes belong to the organization: the candidate has no way to read them. Text is shown as typed, never as markup.
-export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, newestHref }: InternalNotesProps) {
+// Notes belong to the organization: the candidate, and for a submitted candidate the partner, have no way to read them
+// (FR-O5 AC5). Text is shown as typed, never as markup.
+export function InternalNotes({ slug, subject, notes, blocked, olderHref, newestHref }: InternalNotesProps) {
+  const visibility =
+    subject.kind === "submission"
+      ? "Internal, not visible to the candidate or the partner."
+      : "Visible to your organization only. The candidate never sees them.";
   return (
     <section aria-labelledby="notes-heading" className="grid gap-3">
       <div className="grid gap-1">
         <h2 id="notes-heading" className="text-h2">
           Internal notes
         </h2>
-        <p className="text-small text-muted-foreground">Visible to your organization only. The candidate never sees them.</p>
+        <p className="text-small text-muted-foreground">{visibility}</p>
       </div>
       {blocked ? (
         <div className="grid gap-3">
@@ -44,7 +50,7 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
           </div>
         </div>
       ) : (
-        <NoteForm slug={slug} applicationId={applicationId} />
+        <NoteForm slug={slug} subject={subject} visibility={visibility} />
       )}
       {notes.length === 0 ? (
         <p className="text-small text-muted-foreground">No internal notes yet.</p>

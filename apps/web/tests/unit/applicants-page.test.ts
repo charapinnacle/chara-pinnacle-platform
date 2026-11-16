@@ -8,6 +8,8 @@ const endedMock = vi.hoisted(() => vi.fn());
 const getAccessMock = vi.hoisted(() => vi.fn());
 const listApplicantsMock = vi.hoisted(() => vi.fn());
 const listBoardMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
+const getRequirementMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
     throw new Error(`REDIRECT:${path}`);
@@ -35,6 +37,12 @@ vi.mock("@/components/applicants/bulk-toolbar", () => ({
   BulkToolbar: (props: { slug: string; shortlisting: boolean; noteMaxChars: number }) =>
     `TOOLBAR ${props.slug} shortlisting=${props.shortlisting} note=${props.noteMaxChars}`,
 }));
+vi.mock("@/lib/dal/submissions", () => ({ submissionsReleased: releasedMock }));
+vi.mock("@/lib/dal/requirements", () => ({ getRequirement: getRequirementMock }));
+vi.mock("@/components/submissions/submission-pipeline-view", () => ({
+  SubmissionPipelineView: (props: { params: { requirement: string | null; source: string; view: string }; frozen: boolean }) =>
+    `PIPELINE requirement=${props.params.requirement} source=${props.params.source} view=${props.params.view} frozen=${props.frozen}`,
+}));
 vi.mock("@/components/applications/stage-filter", () => ({ StageFilter: (props: { basePath: string }) => `FILTER ${props.basePath}` }));
 
 const { default: ApplicantsPage } = await import("@/app/[lang]/(app)/org/[slug]/applicants/page");
@@ -58,6 +66,50 @@ beforeEach(() => {
   getJobMock.mockResolvedValue({ id: job, title: "Welder" });
   endedMock.mockResolvedValue(false);
   listApplicantsMock.mockResolvedValue({ rows: [row("a1", "Ana Silva"), row("a2", "Ben Okoro", "shortlisted")], total: 2, page: 1 });
+  releasedMock.mockResolvedValue(false);
+});
+
+describe("the submitted candidates on the applicants page (FR-O5 AC1, AC12)", () => {
+  const requirement = "9a1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d22";
+
+  it("ignores the source and the requirement while candidate submissions are not released", async () => {
+    const html = await render({ requirement, source: "submissions" });
+    expect(html).not.toContain("PIPELINE");
+    expect(html).not.toContain("Partner submissions");
+    expect(listApplicantsMock).toHaveBeenCalled();
+  });
+
+  it("offers the source filter next to the direct applicants once released", async () => {
+    releasedMock.mockResolvedValue(true);
+    const html = await render();
+    expect(html).toContain('href="/en/org/acme-bau/applicants?source=submissions"');
+    expect(html).toMatch(/aria-current="page"[^>]*>Direct applications/);
+  });
+
+  it("shows the pipeline of one requirement, as a list or a board, and reads no direct applicant", async () => {
+    releasedMock.mockResolvedValue(true);
+    getRequirementMock.mockResolvedValue({ id: requirement, title: "Hamburg welders" });
+    const html = await render({ requirement, view: "board" });
+    expect(getRequirementMock).toHaveBeenCalledWith("org-1", requirement);
+    expect(html).toContain(`PIPELINE requirement=${requirement} source=submissions view=board frozen=false`);
+    expect(html).toContain("Hamburg welders");
+    expect(html).toContain(`href="/en/org/acme-bau/applicants?requirement=${requirement}"`);
+    expect(listApplicantsMock).not.toHaveBeenCalled();
+    expect(listBoardMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the submitted candidates of every requirement with the source filter", async () => {
+    releasedMock.mockResolvedValue(true);
+    const html = await render({ source: "submissions" });
+    expect(html).toContain("PIPELINE requirement=null source=submissions view=list");
+    expect(html).toMatch(/aria-current="page"[^>]*>Partner submissions/);
+  });
+
+  it("answers another organisation's requirement with the 404", async () => {
+    releasedMock.mockResolvedValue(true);
+    getRequirementMock.mockResolvedValue(null);
+    await expect(render({ requirement })).rejects.toThrow("NOT_FOUND");
+  });
 });
 
 describe("the access rules of the applicants page", () => {

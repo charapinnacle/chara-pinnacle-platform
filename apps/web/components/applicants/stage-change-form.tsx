@@ -10,7 +10,9 @@ import { TextareaField } from "@/components/forms/form-field";
 import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
+import type { ReviewSubject } from "@/components/applicants/review-subject";
 import { changeApplicantStage } from "@/lib/actions/applicants";
+import { changeSubmissionStage } from "@/lib/actions/submission-pipeline";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
 import type { Database } from "@chara-pinnacle/db-types";
 import {
@@ -22,11 +24,12 @@ import {
 
 export type StageChangeProps = {
   slug: string;
-  applicationId: string;
+  subject: ReviewSubject;
   applicantName: string;
   targets: Database["public"]["Enums"]["application_status"][];
   noteMaxChars: number;
   initialStatus?: Database["public"]["Enums"]["application_status"];
+  reasonMinChars?: number;
 };
 
 const ids = { status: "stage-change-status", reason: "stage-change-reason", note: "stage-change-note" } as const;
@@ -36,14 +39,15 @@ const ids = { status: "stage-change-status", reason: "stage-change-reason", note
 // which a dialog would hide.
 export function StageChangeForm({
   slug,
-  applicationId,
+  subject,
   applicantName,
   targets,
   noteMaxChars,
   initialStatus,
+  reasonMinChars,
   onClose,
 }: StageChangeProps & { onClose: () => void }) {
-  const schema = useMemo(() => stageChangeFormSchema(noteMaxChars), [noteMaxChars]);
+  const schema = useMemo(() => stageChangeFormSchema(noteMaxChars, reasonMinChars), [noteMaxChars, reasonMinChars]);
   const form = useForm<StageChangeFormValues, undefined, StageChangeFormOutput>({
     resolver: zodResolver(schema),
     defaultValues: { status: initialStatus ?? "", reason: "", note: "" },
@@ -60,7 +64,10 @@ export function StageChangeForm({
 
   function confirm(values: StageChangeFormOutput) {
     return submit(
-      () => changeApplicantStage(slug, applicationId, { status: values.status, note: values.note }),
+      () =>
+        subject.kind === "submission"
+          ? changeSubmissionStage(slug, subject.id, { status: values.status, note: values.note })
+          : changeApplicantStage(slug, subject.id, { status: values.status, note: values.note }),
       (result) => {
         if (result.done) {
           onClose();
