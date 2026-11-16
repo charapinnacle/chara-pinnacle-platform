@@ -52,6 +52,7 @@ test.describe("candidate passport: training, employment history and preferences"
     const user = await createCommittedUser("worker");
     await signIn(page, user);
     await page.goto("/en/passport");
+    // Release 2c is off here: the entries are kept but weigh nothing until it goes live (partner-network-pages.spec.ts).
     await expectPercent(page, 10);
 
     await expect(section(page, "Training").getByText("No training added yet", { exact: true })).toBeVisible();
@@ -75,7 +76,7 @@ test.describe("candidate passport: training, employment history and preferences"
     await expect(section(page, "Training").getByRole("listitem").filter({ hasText: "Welding MIG/MAG level 2" })).toContainText(
       "(TÜV Nord, 2021)",
     );
-    await expectPercent(page, 15);
+    await expectPercent(page, 10);
 
     await press(page.getByRole("button", { name: "Add employment" }));
     const addEmployment = page.getByRole("dialog", { name: "Add employment" });
@@ -93,7 +94,7 @@ test.describe("candidate passport: training, employment history and preferences"
     await press(addEmployment.getByRole("button", { name: "Save employment" }));
     await expect(page.getByText("Employment added", { exact: true })).toBeVisible();
     await expect(section(page, "Employment history").getByRole("listitem")).toContainText("Pipe welder (Germany, 2019-03 to now)");
-    await expectPercent(page, 20);
+    await expectPercent(page, 10);
 
     await press(page.getByRole("button", { name: "Edit Pipe welder" }));
     const editEmployment = page.getByRole("dialog", { name: "Edit employment" });
@@ -110,18 +111,18 @@ test.describe("candidate passport: training, employment history and preferences"
     await press(confirm.getByRole("button", { name: "Remove", exact: true }));
     await expect(page.getByText("Training removed", { exact: true })).toBeVisible();
     await expect(section(page, "Training").getByText("No training added yet", { exact: true })).toBeVisible();
-    await expectPercent(page, 15);
+    await expectPercent(page, 10);
 
     await chooseByKeyboard(page, "Preferred industry", "Manufacturing");
     await press(page.getByRole("button", { name: "Add industry" }));
     await expect(page.getByText("Industry added", { exact: true })).toBeVisible();
     await expect(section(page, "Preferred industries").getByRole("listitem")).toContainText("Manufacturing");
-    await expectPercent(page, 15);
+    await expectPercent(page, 10);
 
     await page.reload();
     await expect(section(page, "Employment history").getByRole("listitem")).toContainText("Senior pipe welder (Germany, 2019-03 to now)");
     await expect(section(page, "Preferred industries").getByRole("listitem")).toContainText("Manufacturing");
-    await expectPercent(page, 15);
+    await expectPercent(page, 10);
     expect(extensionRows(user.id)).toEqual({
       training: [],
       history: [{ role: "Senior pipe welder", employer_name: null, country_code: "DE", from_month: "2019-03-01", to_month: null }],

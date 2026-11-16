@@ -27,12 +27,12 @@ test.describe("candidate passport: completeness", () => {
     await seedDocument(user.id, { title: "My CV", object: false });
     await signIn(page, user);
 
-    await expectMeter(page, 50, "Languages");
+    await expectMeter(page, 55, "Languages");
     await expect(banner(page)).toBeVisible();
     await expect(page.getByRole("link", { name: "Languages" })).toHaveAttribute("href", "/en/passport#languages");
 
     await page.goto("/en/passport");
-    await expectMeter(page, 50, "Languages");
+    await expectMeter(page, 55, "Languages");
     await expect(banner(page)).toBeVisible();
     await page.getByRole("link", { name: "Languages" }).click();
     await expect(page).toHaveURL(/\/en\/passport#languages$/);
@@ -40,12 +40,6 @@ test.describe("candidate passport: completeness", () => {
     await page.getByLabel("Headline", { exact: true }).fill("Electrician");
     await page.getByRole("button", { name: "Save details" }).click();
     await expect(page.getByText("Your details were saved", { exact: true })).toBeVisible();
-    await expectMeter(page, 55, "Languages");
-    await expect(banner(page)).toBeVisible();
-
-    await page.getByLabel("Years of experience", { exact: true }).fill("6");
-    await page.getByRole("button", { name: "Set availability" }).click();
-    await expect(page.getByText("Your experience and availability were saved", { exact: true })).toBeVisible();
     await expectMeter(page, 60, "Languages");
     await expect(banner(page)).toHaveCount(0);
 
@@ -66,7 +60,7 @@ test.describe("candidate passport: completeness", () => {
     await page.getByRole("combobox", { name: "Occupation", exact: true }).fill("electrician");
     await page.getByRole("option", { name: /^Building and related electricians$/ }).click();
     await page.getByRole("button", { name: "Save occupation" }).click();
-    await expectMeter(page, 25, "CV");
+    await expectMeter(page, 25, "Skills");
     expect(await page.evaluate(() => (window as unknown as { loadMarker?: boolean }).loadMarker)).toBe(true);
   });
 
@@ -78,9 +72,9 @@ test.describe("candidate passport: completeness", () => {
     await signIn(page, user);
     await page.goto("/en/passport");
 
-    await expect(page.getByText("50% complete", { exact: true })).toBeVisible();
+    await expect(page.getByText("55% complete", { exact: true })).toBeVisible();
     await expect(meter(page)).toHaveAttribute("max", "100");
-    await expect(meter(page)).toHaveAttribute("value", "50");
+    await expect(meter(page)).toHaveAttribute("value", "55");
 
     const summary = page.getByText("How is this calculated?", { exact: true });
     await summary.focus();
@@ -99,8 +93,9 @@ test.describe("candidate passport: completeness", () => {
         hasCv: false,
       },
       "2026-10-03",
+      false,
     ).items;
-    expect(published).toHaveLength(11);
+    expect(published).toHaveLength(9);
     for (const { label, weight, rule } of published) {
       await expect(page.getByText(`${label}: ${weight} points`, { exact: true })).toBeVisible();
       await expect(page.getByText(`. ${rule}.`, { exact: true })).toBeVisible();
@@ -109,7 +104,7 @@ test.describe("candidate passport: completeness", () => {
     expect(await overflow(page)).toBe(0);
     await expectNoAxeViolations(page);
     await page.goto("/en/dashboard/worker");
-    await expect(page.getByText("50% complete", { exact: true })).toBeVisible();
+    await expect(page.getByText("55% complete", { exact: true })).toBeVisible();
     expect(await overflow(page)).toBe(0);
     await expectNoAxeViolations(page);
   });
