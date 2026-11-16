@@ -1,0 +1,104 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
+import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { PageHeader } from "@/components/layout/page-header";
+import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { SubmitCandidateForm } from "@/components/submissions/submit-candidate-form";
+import { organizationCrumb } from "@/lib/app/navigation";
+import { requireOrgRole } from "@/lib/dal/session";
+import { getSubmissionTarget, submissionsReleased } from "@/lib/dal/submissions";
+import { getUsagePrompts } from "@/lib/dal/usage";
+import { employerLabel } from "@/lib/job-orders/presentation";
+import { billingPath, partnerSubmissionsPath, requirementSubmissionsPath, responsePath } from "@/lib/routes";
+import { SUBMISSION_LIMIT_KEY, submissionUsageText } from "@/lib/submissions/presentation";
+import { requirementIdSchema } from "@/lib/validation/requirement";
+import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
+
+// The tab names no requirement or employer (NFR-S11).
+export const metadata: Metadata = { title: "Submit a candidate", robots: { index: false } };
+
+// The partner's form to ask a candidate's permission to be submitted for one requirement (FR-O4 step Request, AC12), for
+// any member while candidate submissions are released, with the month's use of the plan's submissions while the limit
+// applies. Offered while the employer selected the partner, or shortlisted it and opened submissions, on an open
+// requirement; otherwise the page says so and links the response. A partner without a response and an unknown id end in
+// the same 404.
+export default async function NewSubmissionPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/submissions/new">) {
+  const { lang, slug, id } = await params;
+  if (!(await submissionsReleased())) notFound();
+  const { organization } = await requireOrgRole(lang, slug, "member", { mfa: false, hideFromOutsiders: true, partner: true });
+  if (organization.suspended) return <SuspendedOrganization title="Submit a candidate" subject="candidate submissions" />;
+  const parsedId = requirementIdSchema.safeParse(id);
+  if (!parsedId.success) notFound();
+  const target = await getSubmissionTarget(organization.id, parsedId.data);
+  if (!target) notFound();
+  const prompts = target.open ? await getUsagePrompts(organization.id, organization.type, [SUBMISSION_LIMIT_KEY]).catch(() => null) : null;
+  const usage = prompts?.[SUBMISSION_LIMIT_KEY] ?? null;
+  const canManage = organization.role !== "member";
+  const billingHref = billingPath(lang, slug);
+
+  return (
+    <div className="grid w-full max-w-3xl gap-section">
+      <PageHeader
+        title="Submit a candidate"
+        breadcrumb={
+          <Breadcrumbs
+            items={[
+              organizationCrumb(lang, organization),
+              { label: "Submissions", href: partnerSubmissionsPath(lang, slug) },
+              { label: target.title, href: requirementSubmissionsPath(lang, slug, target.requirementId) },
+              { label: "Submit a candidate" },
+            ]}
+          />
+        }
+      >
+        <p className="text-body break-words">
+          {target.title} · {employerLabel(target.employerName)}
+        </p>
+        <p className="max-w-[65ch] text-body leading-relaxed text-muted-foreground">
+          The candidate receives a request by email and in their worker account, or an invitation to create one. Nothing
+          reaches the employer until the candidate approves and chooses which documents to share. {WORKERS_NEVER_PAY}.
+        </p>
+      </PageHeader>
+
+      {target.open ? (
+        <>
+          {usage ? (
+            usage.used < usage.limit ? (
+              <p className="text-small text-muted-foreground">{submissionUsageText(usage.used, usage.limit)}.</p>
+            ) : (
+              <Notice tone="warning" role="status">
+                <UpgradePrompt
+                  organizationId={organization.id}
+                  organizationType={organization.type}
+                  prompt={usage}
+                  billingHref={billingHref}
+                  canUpgrade={canManage}
+                />
+              </Notice>
+            )
+          ) : null}
+          <SubmitCandidateForm
+            slug={slug}
+            requirementId={target.requirementId}
+            organization={{ id: organization.id, type: organization.type, canManage }}
+            billingHref={billingHref}
+          />
+          <p>
+            <TextLink standalone href={requirementSubmissionsPath(lang, slug, target.requirementId)}>
+              See the candidates of this requirement
+            </TextLink>
+          </p>
+        </>
+      ) : (
+        <Notice tone="info" role="status">
+          Your company cannot submit candidates for this requirement at the moment: the employer must select your company, or
+          allow it to submit candidates, and the requirement must be open.{" "}
+          <TextLink href={responsePath(lang, slug, target.responseId)}>See your response</TextLink>
+        </Notice>
+      )}
+    </div>
+  );
+}

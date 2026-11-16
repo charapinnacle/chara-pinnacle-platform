@@ -21,7 +21,14 @@ import { formatDate } from "@/lib/i18n/format";
 import { employerLabel } from "@/lib/job-orders/presentation";
 import { isLive, partnerNextSteps, submissionsOpen } from "@/lib/responses/presentation";
 import { requirementStatusLabels } from "@/lib/requirements/presentation";
-import { invitationPath, jobOrderPath, responseEditPath, responsesPath } from "@/lib/routes";
+import {
+  invitationPath,
+  jobOrderPath,
+  newSubmissionPath,
+  requirementSubmissionsPath,
+  responseEditPath,
+  responsesPath,
+} from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 // The tab names no requirement or employer (NFR-S11).
@@ -42,12 +49,13 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  const [versions, documents, changes, countries, industries] = await Promise.all([
+  const [versions, documents, changes, countries, industries, submissions] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listResponseChanges(organization.id, response.id).catch(() => null),
     getCountries(),
     getIndustries(),
+    isReleased("release_candidate_submissions"),
   ]);
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
@@ -94,6 +102,18 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
             </p>
             {response.decisionNote ? <p className="break-words whitespace-pre-line">Note from the employer: {response.decisionNote}</p> : null}
           </Notice>
+        ) : null}
+        {submissions && submissionsOpen(response.status, response.submissionsAllowed) ? (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            {response.requirementStatus === "open" ? (
+              <LinkButton href={newSubmissionPath(lang, slug, response.requirementId)} size="default">
+                Submit a candidate
+              </LinkButton>
+            ) : null}
+            <TextLink standalone href={requirementSubmissionsPath(lang, slug, response.requirementId)}>
+              See your candidates
+            </TextLink>
+          </div>
         ) : null}
         {isLive(response.status) && response.requirementStatus !== "open" ? (
           <Notice tone="info" role="status">
