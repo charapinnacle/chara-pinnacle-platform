@@ -95,6 +95,7 @@ export default defineConfig({
         "**/partner-commitment.spec.ts",
         "**/partner-submit-review.spec.ts",
         "**/partner-licences.spec.ts",
+        "**/partner-approval.spec.ts",
       ],
     },
     {
@@ -317,13 +318,21 @@ export default defineConfig({
       testMatch: "**/partner-licences.spec.ts",
       dependencies: ["partner-submit-review-release"],
     },
+    // The same release switch is set for the partner reviews (FR-J4), and one test withdraws the decision function, so
+    // this spec follows the one above.
+    {
+      name: "partner-approval-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-approval.spec.ts",
+      dependencies: ["partner-licences-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["partner-licences-release"],
+      dependencies: ["partner-approval-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

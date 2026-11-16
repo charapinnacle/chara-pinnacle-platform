@@ -26,7 +26,7 @@ import { getCommitmentStatus } from "@/lib/dal/commitment";
 import { getLegalDocument, getOnboardingDocuments, getSignUpForm } from "@/lib/dal/legal";
 import { hasVerifiedTotpFactor } from "@/lib/dal/mfa";
 import { getMyOrganization, getOrganizationProfile } from "@/lib/dal/organizations";
-import { getPartnerReview, getReviewTargetDays } from "@/lib/dal/partner-review";
+import { getPartnerReview, getReviewOutcome, getReviewTargetDays } from "@/lib/dal/partner-review";
 import { getPassport } from "@/lib/dal/passport";
 import { getInvitationPreview } from "@/lib/dal/team";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
@@ -204,7 +204,8 @@ type PartnerNextStepProps = {
 // member reads it; then Security, where the owner and each admin set up two-step verification (a member is not asked);
 // then Ready, where the owner or an admin submits the company for review, and which shows the pending state once it is
 // in the staff queue. A partner who comes back lands on the first step not done; the address of Ready leads there while
-// an earlier step is open. After a request for information (info_requested, V11) Ready names the step staff reopened.
+// an earlier step is open. After a request for information (info_requested, FR-J4) Ready names the step staff reopened and
+// shows their message.
 // Only the owner or an admin saves the details; while release 2a is off the steps stay closed.
 async function PartnerNextStep({ lang, aal, organization, countries, industries, step }: PartnerNextStepProps) {
   if (!(await isReleased("release_partner_directories"))) {
@@ -220,7 +221,14 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   if (!submittable(review.status)) {
     // A listed or declined partner is past onboarding: its dashboard says where it stands.
     if (!awaitingReview(review.status)) redirect(homePath(lang, "company"));
-    return <PartnerReviewPending lang={lang} organization={organization} targetDays={await getReviewTargetDays()} />;
+    return (
+      <PartnerReviewPending
+        lang={lang}
+        organization={organization}
+        targetDays={await getReviewTargetDays()}
+        wasListed={review.listedAt !== null}
+      />
+    );
   }
 
   const member = organization.role === "member";
@@ -412,14 +420,19 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     );
   }
 
+  const [targetDays, outcome] = await Promise.all([
+    getReviewTargetDays(),
+    review.status === "info_requested" ? getReviewOutcome(organization.id) : null,
+  ]);
   return (
     <PartnerReadyStep
       lang={lang}
       organization={organization}
       manager={!member}
-      targetDays={await getReviewTargetDays()}
+      targetDays={targetDays}
       infoRequested={review.status === "info_requested"}
       infoStep={reopened === undefined ? null : review.infoStep}
+      message={outcome?.decision === "request_info" ? outcome.reason : null}
     />
   );
 }

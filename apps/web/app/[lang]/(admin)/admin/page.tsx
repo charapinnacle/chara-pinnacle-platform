@@ -5,9 +5,11 @@ import { Panel } from "@/components/dashboard/panel";
 import { StageTable } from "@/components/dashboard/stage-table";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { TextLink } from "@/components/forms/text-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { applicationCounts, listLegalDocuments } from "@/lib/dal/admin";
 import { moderationCounts, staffCount } from "@/lib/dal/admin-overview";
+import { isReleased } from "@/lib/dal/release";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { stageTotals, sumOf } from "@/lib/dashboard/stage-counts";
 import { formatCount } from "@/lib/i18n/format";
@@ -108,11 +110,27 @@ function TrustSafetyOverview({ lang }: { lang: string }) {
   );
 }
 
+// The queue of recruitment and staffing companies waiting to be listed (FR-J4), for the three roles while release 2a is on.
+function PartnerReviewsOverview({ lang }: { lang: string }) {
+  return (
+    <section aria-labelledby="partner-reviews-heading" className="grid gap-2">
+      <h2 id="partner-reviews-heading" className="text-h2">
+        Partner reviews
+      </h2>
+      <p className="text-body text-muted-foreground">Recruitment and staffing companies waiting to be listed, oldest first.</p>
+      <TextLink standalone href={adminPath(lang, "partners")}>
+        Open the partners to review
+      </TextLink>
+    </section>
+  );
+}
+
 export default async function AdminPage({ params }: PageProps<"/[lang]/admin">) {
   const { lang } = await params;
   const { roles } = await requirePlatformRole(lang);
   const administrator = roles.includes("admin");
   const trustSafety = roles.includes("trust_safety");
+  const partnerReviews = await isReleased("release_partner_directories");
 
   return (
     <div className="grid gap-section">
@@ -124,7 +142,8 @@ export default async function AdminPage({ params }: PageProps<"/[lang]/admin">) 
       </PageHeader>
       {administrator ? <AdministratorOverview lang={lang} /> : null}
       {trustSafety ? <TrustSafetyOverview lang={lang} /> : null}
-      {administrator || trustSafety ? null : (
+      {partnerReviews ? <PartnerReviewsOverview lang={lang} /> : null}
+      {administrator || trustSafety || partnerReviews ? null : (
         <EmptyState icon={ShieldAlert} title="Nothing to do here yet" description="No functions are available for your role in this release." />
       )}
     </div>

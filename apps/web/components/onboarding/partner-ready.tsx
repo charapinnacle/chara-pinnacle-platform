@@ -31,11 +31,13 @@ type PartnerReadyStepProps = {
   // Staff asked for more information (review_status info_requested), about this step when they named one.
   infoRequested: boolean;
   infoStep: InfoStep | null;
+  // What our team wrote with the request (FR-J4 AC7).
+  message: string | null;
 };
 
 // Ready, the last step of partner onboarding (FR-J1 AC10, AC11): what staff check, how long it takes, and the submission
 // by the owner or an admin. After a request for information it names the step staff reopened and links to it.
-export function PartnerReadyStep({ lang, organization, manager, targetDays, infoRequested, infoStep }: PartnerReadyStepProps) {
+export function PartnerReadyStep({ lang, organization, manager, targetDays, infoRequested, infoStep, message }: PartnerReadyStepProps) {
   const reopen = infoStep ? reopenLinks[infoStep](lang) : null;
   return (
     <OnboardingPanel
@@ -49,6 +51,12 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
             Our team asked for more information about {infoStep ? infoStepLabels[infoStep] : "your company"}. Check and update{" "}
             {infoStep ? "that step" : "your details"}, then submit your company again.
           </p>
+          {message ? (
+            <>
+              <p className="mt-2 font-medium">Message from our team</p>
+              <p className="whitespace-pre-line break-words">{message}</p>
+            </>
+          ) : null}
           {manager && reopen ? (
             <TextLink href={reopen.href} className="mt-2 inline-block">
               {reopen.label}
@@ -86,18 +94,18 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
   );
 }
 
-type PartnerReviewPendingProps = { lang: string; organization: Organization; targetDays: number };
+type PartnerReviewPendingProps = { lang: string; organization: Organization; targetDays: number; wasListed: boolean };
 
 // The Ready step once the company is in the staff queue (FR-J1 AC11): it says the company is being reviewed, how long that
 // usually takes and what staff check, and offers what can be done meanwhile. Never "approved" or "verified" (decision
 // 2.6). Choosing a plan and inviting the team are not offered yet: the billing page of a partner comes with V15 and no
 // team page is open to partners.
-export function PartnerReviewPending({ lang, organization, targetDays }: PartnerReviewPendingProps) {
+export function PartnerReviewPending({ lang, organization, targetDays, wasListed }: PartnerReviewPendingProps) {
   return (
     <OnboardingPanel
       steps={<OnboardingSteps kind="partner" current={4} />}
       title="Your company is waiting for review"
-      description={`Our team is reviewing ${organization.displayName}. A review usually takes ${reviewTimeText(targetDays)}. Until it is done, your company is not shown to employers.`}
+      description={`Our team is reviewing ${organization.displayName}. A review usually takes ${reviewTimeText(targetDays)}. ${wasListed ? "Your company stays listed while our team reviews the change." : "Until it is done, your company is not shown to employers."}`}
     >
       <ReviewChecks id="review-checks" />
       <section aria-labelledby="next-heading" className="grid gap-3">
