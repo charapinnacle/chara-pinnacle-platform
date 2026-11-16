@@ -993,6 +993,9 @@ isOneToOne: false
             "accept_consents":
 { Args: { "p_consents": Json }; Returns: undefined
                            },
+"accept_employer_pays_commitment":
+{ Args: { "p_org": string,"p_version": number }; Returns: Json
+                           },
 "accept_invitation":
 { Args: { "p_token": string }; Returns: string
                            },
@@ -1360,6 +1363,9 @@ isOneToOne: false
                            },
 "organization_occupations_limit":
 { Args: { "p_org": string }; Returns: number
+                           },
+"partner_commitment_status":
+{ Args: { "p_org": string }; Returns: Json
                            },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {

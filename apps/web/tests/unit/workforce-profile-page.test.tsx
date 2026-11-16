@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
+const commitmentMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -52,6 +53,7 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
   getOccupationsLimit: async () => 10,
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
+vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
 
 const { default: WorkforceProfilePage } = await import("@/app/[lang]/(app)/org/[slug]/workforce-profile/page");
 
@@ -72,6 +74,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   releasedMock.mockResolvedValue(true);
   requireOrgRoleMock.mockResolvedValue(organization("owner"));
+  commitmentMock.mockResolvedValue({ version: 1, isDraft: false, accepted: true, acceptedVersion: 1 });
 });
 
 describe("the workforce profile page (FR-K1, FR-K2)", () => {
@@ -131,5 +134,36 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
   it("says a suspended partner's details are not available", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("owner", "staffing_company", true));
     expect(await render()).toContain("This organization is suspended, so its details are not available.");
+  });
+
+  it("says nothing about the commitment while the current version is accepted", async () => {
+    const html = await render();
+    expect(html).not.toContain("commitment");
+    expect(commitmentMock).toHaveBeenCalledWith("org-1");
+  });
+
+  it("FR-J3: leads the owner to accept an outdated commitment and tells an admin and a member what waits on it", async () => {
+    commitmentMock.mockResolvedValue({ version: 2, isDraft: false, accepted: false, acceptedVersion: 1 });
+    let html = await render();
+    expect(html).toMatch(/<div[^>]*role="status"[^>]*>.*The employer-pays commitment has changed\. Accept the updated version/);
+    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding"[^>]*>Review and accept the commitment<\/a>/);
+
+    for (const role of ["admin", "member"]) {
+      requireOrgRoleMock.mockResolvedValue(organization(role));
+      html = await render();
+      expect(html).toMatch(
+        /<div[^>]*role="status"[^>]*>.*Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates\./,
+      );
+      expect(html).not.toContain("Review and accept the commitment");
+    }
+  });
+
+  it("FR-J3: asks for the commitment after a transfer of ownership, when the new owner has accepted no version", async () => {
+    commitmentMock.mockResolvedValue({ version: 2, isDraft: false, accepted: false, acceptedVersion: null });
+    let html = await render();
+    expect(html).toContain("Accept the employer-pays commitment before your company can respond to job orders or submit candidates.");
+    requireOrgRoleMock.mockResolvedValue(organization("member"));
+    html = await render();
+    expect(html).toContain("Your owner needs to accept the employer-pays commitment before you can respond to job orders");
   });
 });
