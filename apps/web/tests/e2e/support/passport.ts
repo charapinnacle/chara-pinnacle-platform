@@ -95,8 +95,8 @@ export async function expectTabOrderFollowsPage(page: Page): Promise<void> {
   }
 }
 
-// Gives a candidate name and country, an occupation and three skills (40 percent); with seedDocument, a CV as well
-// (55 percent).
+// Gives a candidate name and country, an occupation and three skills (35 percent); with seedDocument, a CV as well
+// (50 percent).
 export function seedOccupationAndSkills(userId: string): void {
   const id = literal(userId);
   execute(
@@ -113,6 +113,9 @@ export function seedAllButCv(userId: string): void {
     `update public.worker_profiles
        set headline = 'Electrician', years_experience = 6, availability = 'now' where user_id = ${id};
      insert into public.worker_languages (worker_user_id, language_code, cefr_level) values (${id}, 'en', 'B2');
-     insert into public.worker_work_authorizations (worker_user_id, country_code) values (${id}, 'DE')`,
+     insert into public.worker_work_authorizations (worker_user_id, country_code) values (${id}, 'DE');
+     insert into public.worker_training (worker_user_id, course, year_completed) values (${id}, 'Electrical safety', 2020);
+     insert into public.worker_employment_history (worker_user_id, role, country_code, from_month)
+       values (${id}, 'Electrician', 'DE', '2018-01-01')`,
   );
 }
