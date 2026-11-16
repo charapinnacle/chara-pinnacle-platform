@@ -11,6 +11,7 @@ import { FormButton } from "@/components/forms/form-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { networkStatisticsAction } from "@/lib/actions/admin-statistics";
+import type { PartnerSearchKind } from "@/lib/dal/admin";
 import { isReleased } from "@/lib/dal/release";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,8 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
   const from = value(query.from, initial.from);
   const to = value(query.to, initial.to);
   const range = rangeSchema.safeParse({ from, to });
-  const partnerNetwork = await isReleased("release_partner_directories");
+  const [partnerNetwork, jobOrders] = await Promise.all([isReleased("release_partner_directories"), isReleased("release_job_orders")]);
+  const searchKinds: PartnerSearchKind[] = ["recruitment", "staffing", "available_workforce", ...(jobOrders ? ["employers" as const] : [])];
 
   return (
     <div className="grid max-w-3xl gap-page">
@@ -71,7 +73,7 @@ export default async function StatisticsPage({ params, searchParams }: PageProps
           <h2 id="partner-searches-heading" className="text-h2">
             Partner searches
           </h2>
-          {(["recruitment", "staffing", "available_workforce"] as const).map((kind) => (
+          {searchKinds.map((kind) => (
             <Suspense key={`${kind}/${from}/${to}`} fallback={<LoadingSkeleton rows={3} />}>
               <PartnerSearchCounts kind={kind} from={range.data.from} to={range.data.to} />
             </Suspense>

@@ -129,6 +129,7 @@ describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)
     try {
       for (const role of ["owner", "member"] as const) {
         expect(await render({ role })).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>Job orders<\/a>/);
+        expect(await render({ role })).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/find-employers"[^>]*>Find employers<\/a>/);
       }
     } finally {
       releasedMock.mockImplementation(async () => false);

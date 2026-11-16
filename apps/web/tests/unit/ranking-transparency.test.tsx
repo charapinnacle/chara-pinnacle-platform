@@ -8,6 +8,9 @@ import {
   availableWorkforceHaving,
   availableWorkforceOrderBy,
   availableWorkforceSupply,
+  findEmployersCopy,
+  findEmployersOrderBy,
+  findEmployersSelection,
   freshListing,
   jobOrderCopy,
   jobOrderOrderBy,
@@ -69,6 +72,7 @@ const clause = (body: string, pattern: RegExp) => pattern.exec(body)?.[1] ?? "";
 const availableWorkforce = latestDefinition("search_available_workforce");
 const suggestPartners = latestDefinition("suggest_partners");
 const listJobOrders = latestDefinition("list_job_orders");
+const searchEmployers = latestDefinition("search_employers");
 
 async function renderPage(): Promise<string> {
   const page = await RankingPage({ params: Promise.resolve({ lang: "en" }) } as Parameters<typeof RankingPage>[0]);
@@ -231,6 +235,32 @@ describe("the ranking page and the job orders (FR-N1, NFR-C8)", () => {
     const text = await renderPage();
     for (const line of Object.values(jobOrderCopy)) expect(text).toContain(squash(line));
     expect(text).toContain("The time the employer published the job order, newest first.");
+  });
+});
+
+// FR-L3: the page says how Find Employers orders its results; each test fails when search_employers changes alone.
+describe("the ranking page and Find Employers (FR-L3, NFR-C8)", () => {
+  it("search_employers lists active employers, latest activity first, then by id", () => {
+    expect(searchEmployers).toContain(findEmployersSelection);
+    expect(searchEmployers).toContain(findEmployersOrderBy);
+  });
+
+  it("no order by of search_employers reads a plan", () => {
+    const orders = [...searchEmployers.matchAll(/order by [^;]*?(?=\)|;|limit|$)/g)].map((match) => match[0]);
+    expect(orders.length).toBeGreaterThan(0);
+    for (const order of orders) expect(order).not.toMatch(/\b(billing|subscriptions?|plan_code|plans|has_feature|paid)\b/i);
+  });
+
+  it("names no plan", () => {
+    for (const text of Object.values(findEmployersCopy)) expect(text).not.toMatch(/\b(Basic|Professional|Enterprise|Free)\b/);
+  });
+
+  it("the page describes Find Employers only while release 2b is on", async () => {
+    isReleased.mockImplementation((key: string) => Promise.resolve(key !== "release_job_orders"));
+    expect(await renderPage()).not.toContain(squash(findEmployersCopy.order));
+    isReleased.mockResolvedValue(true);
+    const text = await renderPage();
+    for (const line of Object.values(findEmployersCopy)) expect(text).toContain(squash(line));
   });
 });
 

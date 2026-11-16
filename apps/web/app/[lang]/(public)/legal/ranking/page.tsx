@@ -7,6 +7,7 @@ import { getAvailabilityRules } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
 import {
   directoryNames,
+  findEmployersCopy,
   jobOrderCopy,
   rankingCopy,
   rankingFilters,
@@ -26,9 +27,9 @@ const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice
 
 // The main parameters of the order of Find Partners (NFR-C8: P2B Regulation article 5, DSA article 27), written from
 // lib/partners/ranking.ts, whose values a unit test holds against public.search_partners and
-// public.search_available_workforce (and public.suggest_partners and public.list_job_orders). It describes release 2a,
-// so it exists only while release 2a is on; the partner suggestions (V36) and the job orders (V39) of release 2b are
-// described while release 2b is on, and Find Workers (V80) adds its section.
+// public.search_available_workforce (and public.suggest_partners, public.list_job_orders and public.search_employers). It
+// describes release 2a, so it exists only while release 2a is on; the partner suggestions (V36), the job orders (V39) and
+// Find Employers (V53) of release 2b are described while release 2b is on, and Find Workers (V80) adds its section.
 export default async function RankingPage({ params }: PageProps<"/[lang]/legal/ranking">) {
   const { lang } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
@@ -179,6 +180,19 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           <p>{jobOrderCopy.filters}</p>
           <p>{jobOrderCopy.payment}</p>
           <p>{jobOrderCopy.paging}</p>
+        </ContentSection>
+      ) : null}
+
+      {suggestions ? (
+        <ContentSection heading="Find Employers">
+          <p>{findEmployersCopy.selection}</p>
+          <p>Results are sorted by these parameters, in this order:</p>
+          <ol className="grid list-decimal gap-2 ps-5">
+            <li>{findEmployersCopy.order}</li>
+            <li>The same fixed random number as above, so that results with the same activity always appear in the same order.</li>
+          </ol>
+          <p>{findEmployersCopy.payment}</p>
+          <p>{findEmployersCopy.paging}</p>
         </ContentSection>
       ) : null}
 
