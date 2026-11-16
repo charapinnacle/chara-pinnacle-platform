@@ -140,6 +140,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   submission_request_signup: { partner_name: "Manila Recruit", title: "Germany, 10 Welders", country_name: "Germany", start_date: "2027-03-01" },
   submission_approved: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   submission_withdrawn: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  submission_stage_changed: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", status: "interview", org_slug: "manila-recruit" },
 };
 
 const LEAKS = {
@@ -259,6 +260,7 @@ describe("notification templates", () => {
       submission_request_signup: signUpPath("en", "worker"),
       submission_approved: requirementSubmissionsPath("en", "acme-bau", JOB),
       submission_withdrawn: requirementSubmissionsPath("en", "acme-bau", JOB),
+      submission_stage_changed: requirementSubmissionsPath("en", "manila-recruit", JOB),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -422,6 +424,22 @@ describe("notification templates", () => {
     const withdrawn = await renderEmail("submission_withdrawn", SAMPLES.submission_withdrawn, SITE);
     expect(withdrawn.subject).toBe("Candidate withdrawn: Hamburg yard welders");
     expect(withdrawn.text).toContain("The documents the candidate shared can no longer be opened.");
+  });
+
+  it("a submitted candidate's stage names the partner to the candidate and the stage alone to the partner (FR-O5 AC9, AC10)", async () => {
+    const candidate = await renderEmail(
+      "status_changed",
+      { submission_id: APP, job_title: "Hamburg yard welders", org_name: "Acme Bau", partner_name: "Manila Recruit", status: "interview", ...LEAKS },
+      SITE,
+    );
+    expect(candidate.subject).toBe("Update on your submission for Hamburg yard welders");
+    expect(candidate.text).toContain("Your submission by Manila Recruit for Hamburg yard welders at Acme Bau is now: Interview.");
+    expect(candidate.text).toContain(`${SITE}${submissionPath("en", APP)}`);
+    expect(candidate.text).not.toContain("SECRET-STAGE-NOTE");
+    const partner = await renderEmail("submission_stage_changed", { ...SAMPLES.submission_stage_changed, ...LEAKS }, SITE);
+    expect(partner.subject).toBe("Candidate update: Hamburg yard welders");
+    expect(partner.text).toContain('A candidate you submitted for "Hamburg yard welders" is now: Interview.');
+    for (const secret of ["SECRET-STAGE-NOTE", "SECRET-DECLINE"]) expect(partner.text).not.toContain(secret);
   });
 
   it("the notices of V43 to a company that responded on the marketplace link its response and name no employer (FR-M2 AC6 P5, V44)", async () => {

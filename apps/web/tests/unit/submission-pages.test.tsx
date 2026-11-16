@@ -7,6 +7,7 @@ import { WorkersNeverPay } from "@/components/submissions/workers-never-pay";
 
 const releasedMock = vi.hoisted(() => vi.fn());
 const getMySubmissionMock = vi.hoisted(() => vi.fn());
+const listEventsMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -25,6 +26,7 @@ vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: async () => undefine
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/session", () => ({ requireCandidate: async () => ({ id: "w", accountKind: "worker" }) }));
 vi.mock("@/lib/dal/submissions", () => ({ getMySubmission: getMySubmissionMock }));
+vi.mock("@/lib/dal/submission-pipeline", () => ({ listSubmissionEvents: listEventsMock }));
 vi.mock("@/lib/dal/applications", () => ({
   getApplyDocuments: async () => [{ id: "0a1b2c3d-0000-4000-8000-0000000000d1", title: "Welding certificate", type: "certificate" }],
   getApplyLimits: async () => ({ coverNoteMaxChars: 2000, documentsMax: 10 }),
@@ -54,6 +56,7 @@ const render = async (id = ID) =>
 
 beforeEach(() => {
   releasedMock.mockResolvedValue(true);
+  listEventsMock.mockReset().mockResolvedValue([]);
   notFoundMock.mockClear();
 });
 
@@ -111,6 +114,39 @@ describe("the candidate's request page (FR-O4 AC5, AC8, AC11)", () => {
     html = await render();
     expect(html).toContain("You declined this request.");
     expect(html).not.toContain("Withdraw submission");
+    expect(listEventsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the stage history with the employer's reason of a decline (FR-O5 AC3, AC9)", async () => {
+    getMySubmissionMock.mockResolvedValue({
+      kind: "answered",
+      submission: {
+        id: ID,
+        status: "rejected",
+        partnerName: "Manila Recruit",
+        partnerSlug: "manila-recruit",
+        title: "Welders for a shipyard",
+        countryCode: "MC",
+        countryName: "Monaco",
+        employerName: null,
+        createdAt: "2026-11-10T00:00:00Z",
+        decidedAt: "2026-11-11T00:00:00Z",
+        approvedAt: "2026-11-11T00:00:00Z",
+        withdrawnAt: null,
+      },
+    });
+    listEventsMock.mockResolvedValue([
+      { fromStatus: null, toStatus: "submitted", actorRole: "candidate", note: null, createdAt: "2026-11-11T00:00:00Z" },
+      { fromStatus: "submitted", toStatus: "viewed", actorRole: "system", note: null, createdAt: "2026-11-12T00:00:00Z" },
+      { fromStatus: "viewed", toStatus: "rejected", actorRole: "employer", note: "The position was filled.", createdAt: "2026-11-13T00:00:00Z" },
+    ]);
+    const html = await render();
+    expect(listEventsMock).toHaveBeenCalledWith(ID);
+    expect(html).toContain("Timeline");
+    expect(html).toContain("Viewed by the employer");
+    expect(html).toContain("Reason from the employer");
+    expect(html).toContain("The position was filled.");
+    expect(html).toContain("By the employer");
   });
 
   it("is not found while the release is off, for an id that is not a uuid, and for another person's id", async () => {

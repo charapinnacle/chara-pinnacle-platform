@@ -92,6 +92,9 @@ describe("in-app notification items (FR-T1)", () => {
     ["submission_approved", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'A candidate proposed by Manila Recruit was submitted for "Hamburg welders"', requirementSubmissionsPath("en", "acme", JOB)],
     ["submission_withdrawn", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "manila" }, company, 'A candidate proposed by Manila Recruit withdrew from "Hamburg welders"', requirementSubmissionsPath("en", "manila", JOB)],
     ["submission_withdrawn", {}, company, "A candidate proposed by a partner withdrew from a workforce requirement", null],
+    ["submission_stage_changed", { requirement_id: JOB, title: "Hamburg welders", status: "rejected", org_slug: "manila" }, company, 'A candidate you submitted for "Hamburg welders" is now Not selected', requirementSubmissionsPath("en", "manila", JOB)],
+    ["submission_stage_changed", {}, company, "The stage of a candidate you submitted for a workforce requirement changed", null],
+    ["status_changed", { submission_id: JOB, job_title: "Hamburg welders", partner_name: "Manila Recruit", status: "offer" }, worker, "Your submission by Manila Recruit for Hamburg welders is now Offer", submissionPath("en", JOB)],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
@@ -131,7 +134,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "submission_stage_changed", payload: { submission_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "new_message", payload: { submission_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,

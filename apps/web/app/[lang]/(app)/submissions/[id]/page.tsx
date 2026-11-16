@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import * as z from "zod";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { Card } from "@/components/layout/card";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { ApproveRequestForm } from "@/components/submissions/approve-request-form";
@@ -13,10 +14,16 @@ import { WorkersNeverPay } from "@/components/submissions/workers-never-pay";
 import { getApplyDocuments, getApplyLimits } from "@/lib/dal/applications";
 import { isReleased } from "@/lib/dal/release";
 import { requireCandidate } from "@/lib/dal/session";
+import { listSubmissionEvents } from "@/lib/dal/submission-pipeline";
 import { getMySubmission, type SubmissionRequest } from "@/lib/dal/submissions";
-import { formatCount, formatDate } from "@/lib/i18n/format";
+import { formatCount, formatDate, formatShortDate } from "@/lib/i18n/format";
 import { submissionsPath } from "@/lib/routes";
-import { candidateNextSteps, isWithdrawable } from "@/lib/submissions/presentation";
+import {
+  candidateNextSteps,
+  candidateSubmissionLabels,
+  isWithdrawable,
+  submissionActorLabels,
+} from "@/lib/submissions/presentation";
 
 // The tab names no partner, employer or requirement.
 export const metadata: Metadata = { title: "Submission request", robots: { index: false } };
@@ -40,8 +47,9 @@ function RequestSummary({ request }: { request: SubmissionRequest }) {
 // NFR-U4), the page the request email and notice link to. A pending request shows the partner, the requirement as the
 // candidate may read it (NFR-S11), the partner's note and what will be shared, then Approve with the choice of documents
 // and the consent, or Decline; when another company already submitted the candidate for the same requirement only
-// Decline is offered. An approved submission can be withdrawn at any stage. Another person's id and an unknown one end in
-// the same 404, as does the page while candidate submissions are not released.
+// Decline is offered. An approved submission shows its stage history with the employer's notes and the reason of a
+// decline (FR-O5 AC3, AC9; never an internal note) and can be withdrawn at any stage. Another person's id and an unknown
+// one end in the same 404, as does the page while candidate submissions are not released.
 export default async function SubmissionPage({ params }: PageProps<"/[lang]/submissions/[id]">) {
   const { lang, id } = await params;
   if (!(await isReleased("release_candidate_submissions"))) notFound();
@@ -53,6 +61,7 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
 
   if (found.kind === "answered") {
     const { submission } = found;
+    const history = submission.approvedAt ? await listSubmissionEvents(submission.id) : [];
     return (
       <div className="grid w-full max-w-3xl gap-section">
         <PageHeader title={submission.title}>
@@ -93,6 +102,34 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
             <WithdrawSubmission submissionId={submission.id} title={submission.title} />
           ) : null}
         </section>
+        {history.length > 0 ? (
+          <section aria-labelledby="timeline-heading" className="grid gap-2">
+            <h2 id="timeline-heading" className="text-h2">
+              Timeline
+            </h2>
+            <ol className="grid gap-2">
+              {history.map((event) => (
+                <Card as="li" padding="sm" key={`${event.createdAt}-${event.toStatus}`} className="block">
+                  <p className="font-medium">
+                    {candidateSubmissionLabels[event.toStatus]}{" "}
+                    <time dateTime={event.createdAt} className="font-normal text-muted-foreground">
+                      {formatShortDate(event.createdAt)}
+                    </time>
+                  </p>
+                  <p className="text-small text-muted-foreground">{submissionActorLabels[event.actorRole]}</p>
+                  {event.note ? (
+                    <div className="mt-1 grid gap-0.5">
+                      <p className="text-small text-muted-foreground">
+                        {event.toStatus === "rejected" ? "Reason from the employer" : "Note from the employer"}
+                      </p>
+                      <p className="wrap-anywhere whitespace-pre-line">{event.note}</p>
+                    </div>
+                  ) : null}
+                </Card>
+              ))}
+            </ol>
+          </section>
+        ) : null}
         <WorkersNeverPay lang={lang} partnerName={submission.partnerName} partnerSlug={submission.partnerSlug} />
       </div>
     );

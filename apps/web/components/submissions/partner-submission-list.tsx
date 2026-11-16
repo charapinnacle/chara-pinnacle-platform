@@ -5,7 +5,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { SubmissionStatusBadge } from "@/components/submissions/submission-status";
 import { listPartnerSubmissions } from "@/lib/dal/submissions";
 import { formatDate } from "@/lib/i18n/format";
-import { partnerNextSteps, submissionCountText } from "@/lib/submissions/presentation";
+import { partnerNextSteps, partnerSubmissionLabels, submissionCountText } from "@/lib/submissions/presentation";
 import { partnerSubmissionsPath, requirementSubmissionsPath, responsesPath } from "@/lib/routes";
 
 type PartnerSubmissionListProps = {
@@ -18,7 +18,8 @@ type PartnerSubmissionListProps = {
 };
 
 // One page of the candidates the partner asked to submit, newest first (FR-O4 AC12, NFR-U4): the address entered until
-// the candidate approves and the candidate's name after it, the status in words with what it means, and the dates.
+// the candidate approves and the candidate's name after it, the status in words with what it means, and the dates, with
+// each stage the employer moved the candidate to and when (FR-O5 AC10), never the employer's notes or reasons.
 export async function PartnerSubmissionList({ lang, slug, organizationId, requirementId, cursor }: PartnerSubmissionListProps) {
   const { submissions, nextCursor, cursorIgnored } = await listPartnerSubmissions(organizationId, requirementId, cursor);
   const pagePath = (next?: string) =>
@@ -83,7 +84,22 @@ export async function PartnerSubmissionList({ lang, slug, organizationId, requir
                   · Withdrawn <time dateTime={submission.withdrawnAt}>{formatDate(submission.withdrawnAt)}</time>
                 </>
               ) : null}
+              {submission.stageChangedAt ? (
+                <>
+                  {" "}
+                  · Last change <time dateTime={submission.stageChangedAt}>{formatDate(submission.stageChangedAt)}</time>
+                </>
+              ) : null}
             </p>
+            {submission.stages.length > 1 ? (
+              <ol aria-label={`Stages of ${submission.candidateName ?? "the candidate"}`} className="flex flex-wrap gap-x-4 gap-y-1 text-small">
+                {submission.stages.map((stage) => (
+                  <li key={`${stage.status}-${stage.at}`}>
+                    {partnerSubmissionLabels[stage.status]} <time dateTime={stage.at}>{formatDate(stage.at)}</time>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
           </li>
         ))}
       </ul>

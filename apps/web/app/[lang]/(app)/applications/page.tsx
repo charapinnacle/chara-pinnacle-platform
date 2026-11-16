@@ -8,22 +8,32 @@ import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { TrackerSubmissions } from "@/components/submissions/tracker-submissions";
 import { applicationStatusLabels, applicationStatusTones } from "@/lib/applications/presentation";
 import { logTrackerView } from "@/lib/applications/tracker-log";
 import { listMyApplications } from "@/lib/dal/applications";
 import { requireCandidate } from "@/lib/dal/session";
+import { isReleased } from "@/lib/dal/release";
+import { listMySubmissions } from "@/lib/dal/submissions";
 import { formatShortDate } from "@/lib/i18n/format";
 import { applicationPath, applicationsPath } from "@/lib/routes";
 import { parseApplicationListParams } from "@/lib/validation/application";
 
 export const metadata: Metadata = { title: "My applications", robots: { index: false } };
 
+// The journey tracker: the candidate's applications and, while candidate submissions are released, the submissions the
+// candidate approved, each named by the partner that proposed it (FR-O5 AC9).
 export default async function ApplicationsPage({ params, searchParams }: PageProps<"/[lang]/applications">) {
   const { lang } = await params;
   await requireCandidate(lang);
 
   const { stage, page } = parseApplicationListParams(await searchParams);
-  const { applications, hasNext } = await listMyApplications(stage, page);
+  const [{ applications, hasNext }, submissions] = await Promise.all([
+    listMyApplications(stage, page),
+    isReleased("release_candidate_submissions").then(async (released) =>
+      released ? (await listMySubmissions()).filter((submission) => submission.approvedAt !== null) : [],
+    ),
+  ]);
   const firstUse = applications.length === 0 && !stage && page === 1;
   logTrackerView("list");
 
@@ -97,6 +107,7 @@ export default async function ApplicationsPage({ params, searchParams }: PagePro
           ) : null}
         </div>
       )}
+      {submissions.length > 0 ? <TrackerSubmissions lang={lang} submissions={submissions} /> : null}
     </div>
   );
 }

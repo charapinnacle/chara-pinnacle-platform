@@ -1,9 +1,10 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
+import * as z from "zod";
 import { isReleased } from "@/lib/dal/release";
 import { getResponse, getResponseEligibility } from "@/lib/dal/responses";
 import { submissionsOpen } from "@/lib/responses/presentation";
-import type { SubmissionStatus } from "@/lib/submissions/presentation";
+import { partnerSubmissionLabels, type SubmissionStatus } from "@/lib/submissions/presentation";
 import { createClient } from "@/lib/supabase/server";
 
 export const PARTNER_SUBMISSIONS_PAGE_SIZE = 20;
@@ -134,8 +135,14 @@ export async function getMySubmission(
   return submission ? { kind: "answered", submission } : null;
 }
 
+// A stage the submission reached from the approval on and when (FR-O5 AC4, AC10): never the note, the reason or who.
+export type SubmissionStageChange = { status: SubmissionStatus; at: string };
+
+const stagesSchema = z.array(z.object({ status: z.custom<SubmissionStatus>((value) => typeof value === "string" && Object.hasOwn(partnerSubmissionLabels, value)), at: z.string() }));
+
 // A candidate the partner asked to submit (list_partner_submissions, FR-O4 AC12): the address until the candidate
-// approves and the candidate's name after it, never a worker id; the requirement's title as the partner knows it.
+// approves and the candidate's name after it, never a worker id; the requirement's title as the partner knows it; the
+// stages the employer moved the candidate through, with their dates (FR-O5).
 export type PartnerSubmission = {
   id: string;
   requirementId: string;
@@ -148,6 +155,8 @@ export type PartnerSubmission = {
   decidedAt: string | null;
   approvedAt: string | null;
   withdrawnAt: string | null;
+  stageChangedAt: string | null;
+  stages: SubmissionStageChange[];
 };
 
 export type PartnerSubmissionsPage = { submissions: PartnerSubmission[]; nextCursor: string | null; cursorIgnored: boolean };
@@ -184,6 +193,8 @@ export async function listPartnerSubmissions(
       decidedAt: row.decided_at ?? null,
       approvedAt: row.worker_approved_at ?? null,
       withdrawnAt: row.withdrawn_at ?? null,
+      stageChangedAt: row.stage_changed_at ?? null,
+      stages: stagesSchema.catch([]).parse(row.stages),
     })),
     nextCursor: data.at(-1)?.next_cursor ?? null,
     cursorIgnored: false,
