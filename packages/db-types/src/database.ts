@@ -2461,7 +2461,7 @@ isOneToOne: false
                            },
 "apply_to_job":
 { Args: { "p_document_ids"?: (string)[],"p_job_id": string,"p_note"?: string }; Returns: {
-              "application_id": string,"outcome": string
+              "application_id": string,"hiring_notice": string,"hiring_rule": Database["public"]['Enums']["direct_hiring_rule_value"],"outcome": string
             }[]
                            },
 "approve_submission":
@@ -2758,6 +2758,11 @@ isOneToOne: false
 "item_moderation":
 { Args: { "p_org": string,"p_target_id": string,"p_target_type": string }; Returns: {
               "decided_at": string,"moderation_action_id": number,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"reasons": string
+            }[]
+                           },
+"licence_required_destinations":
+{ Args: { "p_org": string }; Returns: {
+              "country_code": string
             }[]
                            },
 "list_applicant_events":
