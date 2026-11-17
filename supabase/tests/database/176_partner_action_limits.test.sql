@@ -72,11 +72,11 @@ select extensions.dblink_exec('setup', format($$
     recruitment_preference, partner_need, status, visibility, published_at, closes_on
   ) select x.id, %2$L, x.t, 10, 'DE', 'Hamburg', 'C', current_date + 30, 'full_time', 'international', 'both',
     'open', 'job_order_marketplace', now(), current_date + 80
-  from (values (%6$L::uuid, 'Lock R1'), (%7$L::uuid, 'Lock R2'), (%8$L::uuid, 'Lock S'), (%9$L::uuid, 'Lock R3')) x (id, t)
-  union all
-  select gen_random_uuid(), %2$L, 'Lock earlier ' || n, 10, 'DE', 'Hamburg', 'C', current_date + 30, 'full_time',
-    'international', 'both', 'open', 'job_order_marketplace', now(), current_date + 80
-  from generate_series(1, 8) n;
+  from (
+    values (%6$L::uuid, 'Lock R1'), (%7$L::uuid, 'Lock R2'), (%8$L::uuid, 'Lock S'), (%9$L::uuid, 'Lock R3')
+    union all
+    select gen_random_uuid(), 'Lock earlier ' || n from generate_series(1, 8) n
+  ) x (id, t);
   insert into public.requirement_occupations (requirement_id, occupation_id, quantity)
   select id, '7212', 10 from public.workforce_requirements where organization_id = %2$L;
   insert into public.requirement_countries (requirement_id, country_code)
