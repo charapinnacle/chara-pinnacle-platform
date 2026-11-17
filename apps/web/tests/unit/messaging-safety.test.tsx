@@ -26,9 +26,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 vi.mock("@/lib/messaging/hooks", () => ({
-  announceMessagesRead: vi.fn(),
   useConversationMessages: () => ({ messages: threadMessages.current, connected: false, refresh: async () => undefined, add: vi.fn() }),
 }));
+vi.mock("@/lib/messaging/unread", () => ({ announceMessagesRead: vi.fn() }));
 
 const { readOnlyText } = await import("@/lib/messaging/present");
 const { sendMessage, setConversationBlocked } = await import("@/lib/actions/messaging");

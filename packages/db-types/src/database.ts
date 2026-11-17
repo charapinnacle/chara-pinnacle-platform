@@ -343,6 +343,12 @@ isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "conversation_blocks_blocked_by_organization_id_fkey"
+      columns: ["blocked_by_organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
       foreignKeyName: "conversation_blocks_blocked_by_user_id_fkey"
       columns: ["blocked_by_user_id"]
 isOneToOne: false
@@ -596,13 +602,13 @@ isOneToOne: false
                   ]
                 },"jobs": {
                   Row: {
-                    "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry_code": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id": string | null,"published_at": string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"requirement_id": string | null,"required_experience_years": number | null,"salary_currency": string | null,"salary_max": number | null,"salary_min": number | null,"salary_period": Database["public"]['Enums']["salary_period"] | null,"search_vector": unknown,"status": Database["public"]['Enums']["job_status"],"status_changed_at": string,"title": string,"updated_at": string,"visa_support": boolean
+                    "accommodation": boolean,"city": string,"country_code": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"industry_code": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id": string | null,"published_at": string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"required_experience_years": number | null,"requirement_id": string | null,"salary_currency": string | null,"salary_max": number | null,"salary_min": number | null,"salary_period": Database["public"]['Enums']["salary_period"] | null,"search_vector": unknown,"status": Database["public"]['Enums']["job_status"],"status_changed_at": string,"title": string,"updated_at": string,"visa_support": boolean
                   }
                   Insert: {
-                    "accommodation"?: boolean,"city": string,"country_code": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code": string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"requirement_id"?: string | null,"required_experience_years"?: number | null,"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title": string,"updated_at"?: string,"visa_support"?: boolean
+                    "accommodation"?: boolean,"city": string,"country_code": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code": string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id": string,"organization_id": string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference": Database["public"]['Enums']["recruitment_preference"],"required_experience_years"?: number | null,"requirement_id"?: string | null,"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title": string,"updated_at"?: string,"visa_support"?: boolean
                   }
                   Update: {
-                    "accommodation"?: boolean,"city"?: string,"country_code"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description"?: string,"employment_type"?: Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code"?: string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id"?: string,"organization_id"?: string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference"?: Database["public"]['Enums']["recruitment_preference"],"requirement_id"?: string | null,"required_experience_years"?: number | null,"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visa_support"?: boolean
+                    "accommodation"?: boolean,"city"?: string,"country_code"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"description"?: string,"employment_type"?: Database["public"]['Enums']["employment_type"],"id"?: string,"industry_code"?: string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"occupation_id"?: string,"organization_id"?: string,"posted_on_behalf_of_organization_id"?: string | null,"published_at"?: string | null,"recruitment_preference"?: Database["public"]['Enums']["recruitment_preference"],"required_experience_years"?: number | null,"requirement_id"?: string | null,"salary_currency"?: string | null,"salary_max"?: number | null,"salary_min"?: number | null,"salary_period"?: Database["public"]['Enums']["salary_period"] | null,"search_vector"?: never,"status"?: Database["public"]['Enums']["job_status"],"status_changed_at"?: string,"title"?: string,"updated_at"?: string,"visa_support"?: boolean
                   }
                   Relationships: [
                     {
@@ -2234,7 +2240,7 @@ isOneToOne: false
                   ]
                 },"worker_search": {
                   Row: {
-                    "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"card_id": string | null,"current_country": string | null,"employment_history": Json | null,"headline": string | null,"languages": Json | null,"occupation_id": string | null,"preferred_countries": string[] | null,"preferred_employment_types": string[] | null,"preferred_industries": string[] | null,"skills": string[] | null,"training": Json | null,"updated_at": string | null,"work_authorization_countries": string[] | null,"years_experience": number | null
+                    "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"card_id": string | null,"current_country": string | null,"employment_history": Json | null,"headline": string | null,"languages": Json | null,"occupation_id": string | null,"preferred_countries": (string)[] | null,"preferred_employment_types": (string)[] | null,"preferred_industries": (string)[] | null,"skills": (string)[] | null,"training": Json | null,"updated_at": string | null,"work_authorization_countries": (string)[] | null,"years_experience": number | null
                   }
                   Relationships: [
                     
@@ -3003,7 +3009,7 @@ isOneToOne: false
                            },
 "list_saved_worker_cards":
 { Args: { "p_org": string,"p_requirement"?: string }; Returns: {
-              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"skills": string[],"training": Json,"updated_at": string,"work_authorization_countries": string[],"years_experience": number,"direct_contact": string,"notice": string,"requirement_id": string,"saved_at": string,"visible": boolean
+              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"current_country": string,"direct_contact": string,"employment_history": Json,"headline": string,"languages": Json,"notice": string,"occupation_id": string,"preferred_countries": (string)[],"preferred_employment_types": (string)[],"preferred_industries": (string)[],"requirement_id": string,"saved_at": string,"skills": (string)[],"training": Json,"updated_at": string,"visible": boolean,"work_authorization_countries": (string)[],"years_experience": number
             }[]
                            },
 "list_sitemap_companies":
@@ -3057,7 +3063,7 @@ isOneToOne: false
                            },
 "my_card_preview":
 { Args: Record<PropertyKey, never>; Returns: {
-              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"confirm_by": string,"consent_version": number,"current_version": number,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"opted_in": boolean,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"show_employment_history": boolean,"show_industries": boolean,"show_training": boolean,"skills": string[],"training": Json,"updated_at": string,"visible": boolean,"visible_since": string,"work_authorization_countries": string[],"years_experience": number
+              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"confirm_by": string,"consent_version": number,"current_country": string,"current_version": number,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"opted_in": boolean,"preferred_countries": (string)[],"preferred_employment_types": (string)[],"preferred_industries": (string)[],"show_employment_history": boolean,"show_industries": boolean,"show_training": boolean,"skills": (string)[],"training": Json,"updated_at": string,"visible": boolean,"visible_since": string,"work_authorization_countries": (string)[],"years_experience": number
             }[]
                            },
 "my_platform_roles":
@@ -3249,7 +3255,7 @@ isOneToOne: false
                            },
 "search_workers":
 { Args: { "p_cursor"?: string,"p_filters"?: Json,"p_limit"?: number,"p_org": string }; Returns: {
-              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"skills": string[],"training": Json,"updated_at": string,"work_authorization_countries": string[],"years_experience": number,"direct_contact": string,"matched_on": string[],"next_cursor": string,"notice": string
+              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"current_country": string,"direct_contact": string,"employment_history": Json,"headline": string,"languages": Json,"matched_on": (string)[],"next_cursor": string,"notice": string,"occupation_id": string,"preferred_countries": (string)[],"preferred_employment_types": (string)[],"preferred_industries": (string)[],"skills": (string)[],"training": Json,"updated_at": string,"work_authorization_countries": (string)[],"years_experience": number
             }[]
                            },
 "send_contact_request":

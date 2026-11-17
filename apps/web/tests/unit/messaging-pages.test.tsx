@@ -33,8 +33,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 vi.mock("@/lib/messaging/hooks", () => ({
-  announceMessagesRead: vi.fn(),
   useConversationMessages: () => ({ messages: threadMessages.current, connected: false, refresh: async () => undefined, add: vi.fn() }),
+}));
+vi.mock("@/lib/messaging/unread", () => ({
+  announceMessagesRead: vi.fn(),
   useUnreadMessages: () => ({ counts: unreadCounts.current, total: 0, connected: false, refresh: async () => undefined }),
 }));
 

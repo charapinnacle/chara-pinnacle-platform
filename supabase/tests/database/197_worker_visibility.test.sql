@@ -33,8 +33,8 @@ insert into public.organization_members (organization_id, user_id, role, accepte
 values (:'p1', :'pr1', 'owner', now()), (:'p2', :'pr2', 'owner', now());
 insert into public.platform_staff (user_id, role) values (:'slg', 'admin');
 
-select pg_temp.call_as(u, 'authenticated', format($$select public.create_worker_passport(%L, 'Tester', 'PH', 'en')$$, n), 'aal1')
-from (values (:'wnew'::uuid, 'Nadia'), (:'wer'::uuid, 'Erik'), (:'c364'::uuid, 'Cora'), (:'c365'::uuid, 'Cleo'), (:'c400'::uuid, 'Cyrus')) v (u, n);
+select string_agg(pg_temp.call_as(u, 'authenticated', format($$select public.create_worker_passport(%L, 'Tester', 'PH', 'en')$$, n), 'aal1'), ',') as created
+from (values (:'wnew'::uuid, 'Nadia'), (:'wer'::uuid, 'Erik'), (:'c364'::uuid, 'Cora'), (:'c365'::uuid, 'Cleo'), (:'c400'::uuid, 'Cyrus')) v (u, n) \gset
 insert into public.worker_profiles (user_id, first_name, last_name, current_country) values (:'wsus', 'Sven', 'Suspended', 'PL');
 
 -- Versions 1 and 2 of the consent are published (2 is current); 3 is written but not published.

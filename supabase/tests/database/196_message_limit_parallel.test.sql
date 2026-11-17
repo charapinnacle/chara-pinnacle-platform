@@ -58,7 +58,7 @@ $$;
 select extensions.dblink_exec('holder', pg_temp.send_sql(:'m1')) as began \gset
 select t as held from extensions.dblink('holder', format(
   $$select 'ok' from public.send_message(%L, 'The hundredth message')$$, :'c1')) as r (t text) \gset
-select is(:'held', 'ok', 'FR-P3 AC1: the owner sends the 100th message and keeps the transaction open');
+select is(:'held'::text, 'ok', 'FR-P3 AC1: the owner sends the 100th message and keeps the transaction open');
 
 select extensions.dblink_exec('blocked', pg_temp.send_sql(:'m2')) as began \gset
 select extensions.dblink_send_query('blocked', format(

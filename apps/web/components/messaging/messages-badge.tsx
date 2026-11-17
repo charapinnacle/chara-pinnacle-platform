@@ -2,8 +2,8 @@
 
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
-import { useUnreadMessages } from "@/lib/messaging/hooks";
-import { messagesLabel, type UnreadMessages } from "@/lib/messaging/thread";
+import type { UnreadMessages } from "@/lib/messaging/thread";
+import { messagesLabel, useUnreadMessages } from "@/lib/messaging/unread";
 import { badgeText } from "@/lib/notifications/bell";
 
 export type MessagesBadgeProps = {
