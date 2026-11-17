@@ -304,9 +304,11 @@ select is(
     'employment_history', jsonb_build_array(jsonb_build_object('role', 'Plumber', 'employer_name', null, 'country', 'PH',
       'from_month', '2015-01', 'to_month', null)),
     'preferred_industries', jsonb_build_array((select name from public.industries where code = 'F')),
-    'preferred_employment_types', jsonb_build_array('contract')
+    'preferred_employment_types', jsonb_build_array('contract'),
+    'find_workers', jsonb_build_object('visible', false, 'show_training', false, 'show_employment_history', false,
+      'show_industries', false, 'confirmation_requested_at', null)
   ),
-  'FR-S3: the passport section of the user''s copy holds the training, the employment history and the preferences'
+  'FR-S3: the passport section of the user''s copy holds the training, the employment history, the preferences and the Find Workers choices'
 );
 
 select * from finish();
