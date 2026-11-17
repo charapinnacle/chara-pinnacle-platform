@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { StatusBadge } from "@/components/feedback/status-badge";
-import { Checkbox } from "@/components/forms/checkbox-field";
+import { Checkbox } from "@/components/forms/checkbox";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { formatShortDate } from "@/lib/i18n/format";

@@ -77,8 +77,8 @@ select results_eq(
   'each rule writes one audit row with its period and the number removed'
 );
 select is(
-  (select count(*) from audit.log where action = 'retention.run' and actor_id is null), 23::bigint,
-  'twenty-three rules ran (two of them for licence evidence, FR-S3, two for analytics, FR-R6, one for partner searches, FR-L1, one for closed appeals, FR-S1, one for data exports, FR-S3, four for the job order network, V58), all without an actor'
+  (select count(*) from audit.log where action = 'retention.run' and actor_id is null), 24::bigint,
+  'twenty-four rules ran (two of them for licence evidence, FR-S3, two for analytics, FR-R6, one for partner searches, FR-L1, one for closed appeals, FR-S1, one for data exports, FR-S3, four for the job order network, V58, one for worker searches, FR-Q2), all without an actor'
 );
 
 -- Idempotent, configurable, and a missing row skips its rule.

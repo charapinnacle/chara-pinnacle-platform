@@ -39,6 +39,7 @@ select results_eq(
     ('rate_limit_forgot_password_max', '10'), ('rate_limit_forgot_password_seconds', '300'),
     ('rate_limit_job_orders_max', '60'), ('rate_limit_job_orders_seconds', '60'),
     ('rate_limit_login_max', '30'), ('rate_limit_login_seconds', '300'),
+    ('rate_limit_message_max', '20'), ('rate_limit_message_seconds', '60'),
     ('rate_limit_mfa_code_max', '10'), ('rate_limit_mfa_code_seconds', '300'),
     ('rate_limit_org_audited_write_max', '2000'), ('rate_limit_org_audited_write_seconds', '86400'),
     ('rate_limit_partner_profile_max', '120'), ('rate_limit_partner_profile_seconds', '60'),
