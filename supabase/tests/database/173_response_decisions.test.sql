@@ -348,14 +348,16 @@ select is(
   (select count(*)::integer || ':' || min(metadata ->> 'cause') || ':' || min(metadata ->> 'organization_id') from audit.log
    where action = 'requirement.employer_revealed' and entity_id = :'g'),
   '1:selection:' || :'p3', 'exactly one requirement.employer_revealed row (cause selection), though the job order was never opened');
+-- A read's audit row is invisible to the statement that made the read (it keeps its start snapshot), so the counts below
+-- are taken by the next statement.
+select pg_temp.read_as(:'us1', format('select count(*) from public.list_my_responses(%L) where requirement_id = %L and employer_name = %L', :'s1', :'g', 'Acme Bau')) as g_s1_listed \gset
 select is(
-  pg_temp.read_as(:'us1', format('select count(*) from public.list_my_responses(%L) where requirement_id = %L and employer_name = %L', :'s1', :'g', 'Acme Bau'))
-    || ':' || (select count(*) from audit.log where action = 'requirement.employer_revealed' and entity_id = :'g'
+  :'g_s1_listed' || ':' || (select count(*) from audit.log where action = 'requirement.employer_revealed' and entity_id = :'g'
                and metadata ->> 'organization_id' = :'s1'),
   '1:1', 'the shortlisted S1 sees the name in its response list, and that first showing is audited once');
+select pg_temp.read_as(:'us1', format('select employer_name from public.get_response(%L, %L)', :'s1', :'g_s1')) as g_s1_read \gset
 select is(
-  pg_temp.read_as(:'us1', format('select employer_name from public.get_response(%L, %L)', :'s1', :'g_s1')) || ':'
-    || (select count(*) from audit.log where action = 'requirement.employer_revealed' and entity_id = :'g'),
+  :'g_s1_read' || ':' || (select count(*) from audit.log where action = 'requirement.employer_revealed' and entity_id = :'g'),
   'Acme Bau:2', 'a later read writes no second row for S1');
 
 -- AC7: the partners are told -------------------------------------------------------------------------------------------------
@@ -430,11 +432,12 @@ select is(pg_temp.allow(:'own1', :'acme', :'t_p2', true), 'P0001|CHARA_INVALID_S
   'FR-O3 AC8: set_submissions_allowed on the declined response fails with CHARA_INVALID_STATE');
 select is(pg_temp.allow(:'own1', :'acme', :'t_s1', false), 'P0001|CHARA_INVALID_STATE|selected',
   'a selected response keeps its submissions open');
-select is(pg_temp.allow(:'own1', :'acme', :'t_p1', false) || ':' || private.submissions_allowed_for(:'t', :'p1')::text, 'ok:false',
+select pg_temp.allow(:'own1', :'acme', :'t_p1', false) as t_p1_closed \gset
+select is(:'t_p1_closed' || ':' || private.submissions_allowed_for(:'t', :'p1')::text, 'ok:false',
   'the owner can close them again for a shortlisted partner');
+select pg_temp.allow(:'own1', :'acme', :'t_p1', true) || pg_temp.dec(:'own1', :'acme', :'t_p1', 'declined') as t_p1_declined \gset
 select is(
-  pg_temp.allow(:'own1', :'acme', :'t_p1', true) || pg_temp.dec(:'own1', :'acme', :'t_p1', 'declined') || ':'
-    || (select submissions_allowed::text from public.partner_responses where id = :'t_p1'),
+  :'t_p1_declined' || ':' || (select submissions_allowed::text from public.partner_responses where id = :'t_p1'),
   'okok:false', 'declining a shortlisted partner closes its submissions');
 
 -- AC9: closed and filled requirements ----------------------------------------------------------------------------------------
