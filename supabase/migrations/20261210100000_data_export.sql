@@ -21,9 +21,11 @@
 
 insert into private.settings (key, value) values ('data_export_interval_hours', '24'), ('release_data_export', 'false');
 
+-- The switch label avoids the word "download": the console's Change button carries it, and a Download button on a staff page
+-- reads as a way to a user's file (FR-F3 AC8, tests/e2e/staff-document-denial.spec.ts).
 insert into private.setting_rules (key, value_type, min, max, label, release_feature) values
   ('data_export_interval_hours', 'integer', 1, 168, 'Time between two data exports of one user (hours)', null),
-  ('release_data_export', 'boolean', null, null, 'Data export: Download my data', null);
+  ('release_data_export', 'boolean', null, null, 'Data export: a user exports a copy of their own data', null);
 
 -- The public settings of 20261206100000_release_settings.sql with release_data_export, so the settings pages show their
 -- link to the export page from it.
