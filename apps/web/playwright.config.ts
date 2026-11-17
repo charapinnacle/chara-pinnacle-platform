@@ -139,6 +139,7 @@ export default defineConfig({
         "**/worker-visibility.spec.ts",
         "**/find-workers.spec.ts",
         "**/contact-requests.spec.ts",
+        "**/direct-hiring-enforcement.spec.ts",
       ],
     },
     {
@@ -698,13 +699,21 @@ export default defineConfig({
       testMatch: "**/contact-requests.spec.ts",
       dependencies: ["find-workers-release"],
     },
+    // The direct-hiring rules in force (V72) set release_find_workers and releases 2a for the whole database and add rules
+    // that refuse direct applications and contact, so they follow the contact requests and come before the sitemap.
+    {
+      name: "direct-hiring-enforcement-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/direct-hiring-enforcement.spec.ts",
+      dependencies: ["contact-requests-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["contact-requests-release"],
+      dependencies: ["direct-hiring-enforcement-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
