@@ -18,13 +18,13 @@ import {
   nextActions,
   planUsageKeys,
   profileViewsText,
-  segmentOf,
   usageAttention,
   usageLine,
   type NextActionTarget,
   type PartnerFigures,
 } from "@/lib/dashboard/partner-dashboard";
 import { planStatusLabels, planStatusTones } from "@/lib/dashboard/plan-status";
+import { segmentOf } from "@/lib/dashboard/segments";
 import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getFollowerCount } from "@/lib/dal/connections";
 import { getDashboardPlan, type DashboardPlan } from "@/lib/dal/dashboard";

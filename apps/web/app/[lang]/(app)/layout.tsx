@@ -5,7 +5,7 @@ import { FooterLinks } from "@/components/layout/footer-links";
 import { getUnreadMessageCounts } from "@/lib/dal/messaging";
 import { getUnreadNotificationCount } from "@/lib/dal/notifications";
 import { getMyOrganizations } from "@/lib/dal/organizations";
-import { partnerSegments } from "@/lib/dashboard/partner-dashboard";
+import { partnerSegments } from "@/lib/dashboard/segments";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import type { UnreadMessages } from "@/lib/messaging/thread";
