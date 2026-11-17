@@ -66,6 +66,11 @@ export function mfaPath(lang: string, next?: string): string {
   return next && next !== "/" ? `/${lang}/mfa?next=${encodeURIComponent(next)}` : `/${lang}/mfa`;
 }
 
+// The Find Workers part of the passport: the card preview, the opt-in and the yearly confirmation (FR-Q1).
+export function findWorkersCardPath(lang: string): string {
+  return `/${lang}/passport#find-workers`;
+}
+
 export function settingsPath(lang: string): string {
   return `/${lang}/settings`;
 }

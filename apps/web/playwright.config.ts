@@ -136,6 +136,7 @@ export default defineConfig({
         "**/release-2b-journey.spec.ts",
         "**/job-order-anonymity.spec.ts",
         "**/messaging.spec.ts",
+        "**/worker-visibility.spec.ts",
       ],
     },
     {
@@ -671,13 +672,21 @@ export default defineConfig({
       testMatch: "**/messaging.spec.ts",
       dependencies: ["job-order-anonymity-release"],
     },
+    // The Find Workers opt-in (V68) sets release 2c's release_find_workers for the whole database and withdraws a function
+    // from the API role, so it follows the messaging pages.
+    {
+      name: "worker-visibility-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/worker-visibility.spec.ts",
+      dependencies: ["messaging-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["messaging-release"],
+      dependencies: ["worker-visibility-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

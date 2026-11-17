@@ -164,9 +164,10 @@ select is(
   pg_temp.state_as(:'wa', format($$update public.worker_profiles set searchable = true where user_id = %L$$, :'wa')),
   '42501', 'a candidate cannot make the profile searchable'
 );
-select throws_ok(
-  format($$update public.worker_profiles set searchable = true where user_id = %L$$, :'wa'),
-  '23514', null, 'searchable cannot be true for anyone in Phase 1'
+-- Since V68 the check (not searchable) is gone: set_worker_visibility is the only way to it (197).
+select ok(
+  not has_column_privilege('authenticated', 'public.worker_profiles', 'searchable', 'update'),
+  'searchable has no update grant: only set_worker_visibility changes it'
 );
 
 -- AC9: preferred countries

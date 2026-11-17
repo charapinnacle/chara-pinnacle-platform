@@ -39,6 +39,7 @@ import { submissionStageChanged } from "./templates/submission-stage-changed.tsx
 import { submissionWithdrawn } from "./templates/submission-withdrawn.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
 import { vacancyHidden } from "./templates/vacancy-hidden.tsx";
+import { visibilityConfirmation } from "./templates/visibility-confirmation.tsx";
 
 const TEMPLATES = {
   application_received: applicationReceived,
@@ -79,6 +80,7 @@ const TEMPLATES = {
   submission_approved: submissionApproved,
   submission_withdrawn: submissionWithdrawn,
   submission_stage_changed: submissionStageChanged,
+  visibility_confirmation: visibilityConfirmation,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

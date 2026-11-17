@@ -12,6 +12,7 @@ import {
   conversationPath,
   dataExportPath,
   employerDashboardPath,
+  findWorkersCardPath,
   homePath,
   invitationPath,
   jobOrderPath,
@@ -598,6 +599,19 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
           ? `A candidate you submitted for ${requirement} is now ${employerSubmissionLabels[status]}`
           : `The stage of a candidate you submitted for ${requirement} changed`,
         href: requirementSubmissionsHref(lang, payload),
+      };
+    },
+  },
+  // FR-Q1 AC8: the yearly question whether the Find Workers card should stay; only the date to answer by.
+  visibility_confirmation: {
+    label: "Find Workers",
+    present: (payload, { lang }) => {
+      const by = text(payload, "respond_by");
+      return {
+        title: by
+          ? `Please confirm by ${formatDate(by)} that your card should stay in Find Workers`
+          : "Please confirm that your card should stay in Find Workers",
+        href: findWorkersCardPath(lang),
       };
     },
   },
