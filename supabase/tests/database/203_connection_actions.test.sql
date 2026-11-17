@@ -459,6 +459,7 @@ select is((select status::text from public.connections where id = :'con_rk'), 'a
 
 -- AC8: Save partner and Follow company create no message ------------------------------------------------------------------
 
+update private.settings set value = 'true' where key = 'release_partner_directories';
 select (select count(*) from public.conversations) + (select count(*) from public.messages) + (select count(*) from public.connections)
   as before_saves \gset
 select pg_temp.read_as(:'mem', format('select public.toggle_saved_partner(%L, %L, true)::text', :'rek', :'acme'), 'aal1') as s1 \gset
