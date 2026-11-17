@@ -7,10 +7,10 @@ export type PricingTab = { key: string; label: string; panel: ReactNode };
 
 // The plans of each organisation type as tabs (FR-R1 AC3, FR-L5). The arrow keys, Home and End move between the tabs and
 // select the one they reach (automatic activation); Tab moves into the selected panel. Every panel is rendered on the
-// server; the panels not selected are hidden.
-export function PricingTabs({ label, tabs }: { label: string; tabs: readonly PricingTab[] }) {
+// server; the panels not selected are hidden. initial is the key of the tab selected first (the viewer's own type).
+export function PricingTabs({ label, tabs, initial }: { label: string; tabs: readonly PricingTab[]; initial?: string }) {
   const id = useId();
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(() => Math.max(0, tabs.findIndex((tab) => tab.key === initial)));
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function select(index: number) {

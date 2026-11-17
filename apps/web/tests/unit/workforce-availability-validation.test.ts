@@ -7,6 +7,7 @@ import {
   sortListings,
   type ListingInput,
 } from "@/lib/validation/workforce-availability";
+import { availabilityText } from "@/lib/workforce/freshness";
 
 const rules = { staleDays: 60, reminderDays: 30, maxDays: 730 };
 const now = new Date("2026-10-26T12:00:00Z");
@@ -126,5 +127,16 @@ describe("the list", () => {
     expect(
       sortListings([listing("7212", "PH", daysAgo(1)), listing("7212", "NP", daysAgo(65)), listing("7126", "PH", daysAgo(1))]),
     ).toEqual([listing("7212", "NP", daysAgo(65)), listing("7126", "PH", daysAgo(1)), listing("7212", "PH", daysAgo(1))]);
+  });
+});
+
+describe("availabilityText (FR-R4 AC4, FR-K3 AC7)", () => {
+  it("counts the workers as available now only from their date on, as the available workforce search does", () => {
+    const listing = { available: 25, monthlyCapacity: 10, availableFrom: "2026-12-01" };
+    expect(availabilityText(listing, now)).toBe("25 available from 1 December 2026, 10 per month");
+    expect(availabilityText({ ...listing, availableFrom: "2026-10-26" }, now)).toBe("25 available now, 10 per month");
+    expect(availabilityText({ ...listing, availableFrom: "2026-12-01" }, new Date("2026-12-01T00:00:00Z"))).toBe(
+      "25 available now, 10 per month",
+    );
   });
 });

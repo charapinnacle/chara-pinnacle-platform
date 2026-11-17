@@ -1,5 +1,5 @@
 begin;
-select plan(105);
+select plan(109);
 
 \ir organizations_fixture.inc
 
@@ -175,6 +175,9 @@ select ok(
   'AC4: no legal name, identifier, licence, member email, review state or plan in the result'
 );
 select is(pg_temp.result() -> 0 -> 'served_countries', '[{"code": "DE", "name": "Germany"}]'::jsonb, 'AC4: the countries served, named');
+select is(pg_temp.result() -> 0 -> 'capacity_confirmed_at', 'null'::jsonb, 'FR-K3 AC4: a visitor reads no confirmation time');
+select is(pg_temp.result() -> 0 -> 'available_workforce', 'null'::jsonb, 'FR-K3 AC4: and no available workforce');
+select is(pg_temp.search(:'wrk', '''recruitment'', p_destination => ''DE'', p_occupation => ''7212'''), 'ok', 'a signed-in reader');
 select ok((pg_temp.result() -> 0 ->> 'capacity_confirmed_at') is not null, 'AC4: the confirmation time of a fresh listing');
 select is((pg_temp.result() -> 1 ->> 'capacity_confirmed_at'), null, 'and none without a listing');
 
@@ -193,7 +196,13 @@ values (:'many', '7212', 'PH', 10, 5, current_date, now() - interval '1 day'),
        (:'many', '7411', 'PH', 50, 5, current_date, now() - interval '1 day'),
        (:'many', '7126', 'PH', 30, 5, current_date, now() - interval '1 day'),
        (:'many', '8322', 'PH', 99, 5, current_date, now() - interval '61 days');
-select is(pg_temp.search(null, '''recruitment'', p_destination => ''CH'''), 'ok', 'a partner with six occupations');
+select is(pg_temp.search(null, '''recruitment'', p_destination => ''CH'''), 'ok', 'a visitor, a partner with six occupations');
+select is(
+  (select string_agg(o ->> 'code', ',' order by n) from jsonb_array_elements(pg_temp.result() -> 0 -> 'main_occupations') with ordinality x (o, n)),
+  '7411,9313,8322,5120,7126',
+  'FR-K3 AC4: for a visitor the five main occupations are ordered by name only, never by workers'
+);
+select is(pg_temp.search(:'wrk', '''recruitment'', p_destination => ''CH'''), 'ok', 'a signed-in reader, a partner with six occupations');
 select is(
   (select string_agg(o ->> 'code', ',' order by n) from jsonb_array_elements(pg_temp.result() -> 0 -> 'main_occupations') with ordinality x (o, n)),
   '7411,7126,7212,9313,8322',
@@ -259,7 +268,7 @@ update private.settings set value = 'true' where key = 'entitlements_enforced';
 select is(pg_temp.search(:'acm', '''recruitment'', p_capacity => 100, p_within_days => 60'),
   'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search', 'AC5: capacity and timeframe are refused on Starter');
 select is(pg_temp.search(null, '''recruitment'', p_capacity => 100, p_within_days => 60'),
-  'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search', 'AC5: and for a visitor');
+  'P0001|CHARA_UNAUTHENTICATED|advanced_partner_search', 'AC5, FR-K3 AC4: a visitor is asked to sign in');
 select is(pg_temp.search(:'wrk', '''recruitment'', p_capacity => 100, p_within_days => 60'),
   'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search', 'AC5: and for a candidate');
 select is(pg_temp.search(:'own', '''recruitment'', p_capacity => 100'),
@@ -268,7 +277,7 @@ select is(pg_temp.search(:'bet', '''recruitment'', p_capacity => 100, p_within_d
 select is(pg_temp.search(:'acm', '''recruitment'', p_sources_from => ''{PH,IN}'''),
   'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search', 'AC5: two source countries are refused on Starter');
 select is(pg_temp.search(null, '''recruitment'', p_sources_from => ''{PH,IN}'''),
-  'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search', 'AC5: and for a visitor');
+  'P0001|CHARA_UNAUTHENTICATED|advanced_partner_search', 'AC5: a visitor is asked to sign in');
 select is(pg_temp.search(:'bet', '''recruitment'', p_sources_from => ''{PH,IN,ph}'''), 'ok', 'AC5: Professional may');
 select is(
   pg_temp.search(null, '''recruitment'', p_sources_from => ''{PH,ph}''') || pg_temp.search(:'wrk', '''recruitment'', p_sources_from => ''{PH}''')
@@ -279,8 +288,8 @@ update private.settings set value = 'false' where key = 'entitlements_enforced';
 select is(pg_temp.search(:'acm', '''recruitment'', p_capacity => 100, p_within_days => 60'), 'ok',
   'AC5: with entitlements_enforced false the Starter admin may');
 select is(pg_temp.search(null, '''recruitment'', p_capacity => 100') || '/' || pg_temp.search(:'wrk', '''recruitment'', p_sources_from => ''{PH,IN}'''),
-  'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search/P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search',
-  'AC5: while the visitor and the candidate are still refused (no plan)');
+  'P0001|CHARA_UNAUTHENTICATED|advanced_partner_search/P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search',
+  'AC5: while the visitor (not signed in) and the candidate (no plan) are still refused');
 
 -- AC6: the capacity filter uses fresh listings only ------------------------------------------------------------------------------
 select pg_temp.partner(:'own', 'cap-r1', '{DK}', '{7212}', '2026-09-01 08:00+00') as c1 \gset

@@ -50,7 +50,7 @@ describe("the partner network section", () => {
     expect(html).toContain("April 2026");
     expect(html).toContain("up from 9");
     expect(html).toContain("fewer than 5");
-    expect(html).not.toContain("No partner network activity in this period");
+    expect(html).not.toContain("Every count of this period is below the privacy threshold of 5, so the counts are hidden");
     expect(html).toContain('<th scope="row"');
   });
 
@@ -74,9 +74,9 @@ describe("the partner network section", () => {
     expect(html).toContain("Not shown: based on fewer than 5");
   });
 
-  it("says there was no activity when every count is hidden", () => {
+  it("says the counts are hidden below the threshold when every count is hidden, not that nothing happened", () => {
     const html = render({ ok: true, statistics: { minCount: 5, statesFrom: null, figures: [], counts: [{ metric: "partner_saves", periodStart: "2026-03-01", count: null }] } });
-    expect(html).toContain("No partner network activity in this period");
+    expect(html).toContain("Every count of this period is below the privacy threshold of 5, so the counts are hidden");
     expect(html).toContain("fewer than 5");
   });
 
