@@ -8,6 +8,7 @@ import {
   limitRefusalMessage,
   planComparison,
   resetText,
+  usagePromptText,
   usageText,
   type OrgUsage,
 } from "@/lib/billing/limits";
@@ -76,6 +77,21 @@ describe("usage and reset text (FR-R1 AC11)", () => {
 
   it("names the first of the next month in UTC", () => {
     expect(resetText("2026-12-01T00:00:00+00:00")).toBe("The count starts again on 1 December 2026.");
+  });
+});
+
+describe("the first line of the upgrade prompt (FR-R1 AC11, V51)", () => {
+  it("gives the usage on the plan", () => {
+    expect(usagePromptText("markets", "recruitment_company", 2, 3, "Basic")).toBe("2 of 3 countries served on your Basic plan.");
+    expect(usagePromptText("markets", "recruitment_company", 2, 3, null)).toBe("2 of 3 countries served on your plan.");
+  });
+
+  it("says a limit of 0 does not include the thing, rather than count against nothing", () => {
+    expect(usagePromptText("messages_per_month", "employer", 3, 0, "Free")).toBe("Messages are not included in your Free plan.");
+    expect(usagePromptText("job_order_responses_per_month", "staffing_company", 1, 0, "Free")).toBe(
+      "Responses to workforce requests are not included in your Free plan.",
+    );
+    expect(usagePromptText("workforce_listings", "staffing_company", 0, 0, null)).toBe("Workforce listings are not included in your plan.");
   });
 });
 

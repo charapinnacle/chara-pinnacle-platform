@@ -114,6 +114,17 @@ const actions = (viewer: "visitor" | "candidate" | "company", saved = false, app
   );
 
 describe("VacancyActions", () => {
+  it("shows a candidate the direct-hiring rule of their country for the vacancy's next to Apply now, as the apply page does", () => {
+    const hiringRule = { rule: "licensed_partner_required", notice: "Hiring from Nepal needs a licensed partner.", source: "NP", destination: "DE" } as const;
+    const html = renderToStaticMarkup(
+      <VacancyActions job={{ id: jobId, title: "Welder" }} lang="en" viewer="candidate" saved={false} application={null} hiringRule={hiringRule} />,
+    );
+    expect(html).toContain("Apply now");
+    expect(html).toContain("Hiring from Nepal needs a licensed partner.");
+    expect(actions("candidate")).not.toContain("Hiring from");
+  });
+
+
   it("offers a visitor Apply now and Save job as buttons that submit a form", () => {
     const html = actions("visitor");
     expect(html.match(/<form/g)).toHaveLength(2);

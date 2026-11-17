@@ -123,6 +123,17 @@ test.describe("Structured connection actions (FR-P2)", () => {
     );
     expect(row).toEqual({ kind: "inquiry", status: "sent" });
 
+    const reply = "Yes, we can send twenty welders from April.";
+    execute(
+      `insert into public.messages (conversation_id, sender_user_id, sender_organization_id, body)
+       select c.conversation_id, m.user_id, c.to_organization_id, ${literal(reply)}
+       from public.connections c join public.organization_members m on m.organization_id = c.to_organization_id and m.role = 'owner'
+       where c.from_organization_id = ${literal(acme.id)} and c.to_organization_id = ${literal(rekrut.id)}`,
+    );
+    await expect(thread).toContainText(reply);
+    await expect(thread).toContainText("Answered");
+    await expect(thread).not.toContainText("Waiting for an answer");
+
     await page.goto(profileUrl(rekrut.slug));
     const again = page.getByRole("button", { name: `Send inquiry to ${rekrut.name}` });
     await waitForHydration(again);
@@ -144,7 +155,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     const dialog = page.getByRole("dialog", { name: `Request workforce from ${staffit.name}` });
     await dialog.getByLabel("Occupation").selectOption("7212");
     await dialog.getByLabel("Number of workers").fill("25");
-    await dialog.getByLabel("Country of work").selectOption("DE");
+    await expect(dialog.getByLabel("Country of work"), "the employer's country comes preselected").toHaveValue("DE");
     await dialog.getByLabel("City or region").fill("Hamburg");
     const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
     await dialog.getByLabel("Start date").fill(start);
@@ -198,8 +209,19 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await workerPage.goto(`/en/messages/${conversation}`);
     const apply = workerPage.getByRole("link", { name: "Apply to Welder MIG/MAG" });
     await expect(apply).toHaveAttribute("href", `/en/jobs/${welder}/apply`);
+    await expect(apply.getByText("Welder MIG/MAG", { exact: true })).toHaveCSS("text-transform", "none");
     await expect(workerPage.getByRole("log")).toContainText("Hamburg, Germany");
     await expectAccessibleAtBothWidths(workerPage);
+    await workerPage.setViewportSize({ width: 1280, height: 900 });
+    const decline = workerPage.getByRole("button", { name: "Decline the invitation to apply" });
+    await waitForHydration(decline);
+    await decline.click();
+    const confirmDecline = workerPage.getByRole("dialog", { name: "Decline the invitation to apply?" });
+    await expect(confirmDecline).toContainText("This cannot be undone.");
+    await expectNoAxeViolations(workerPage);
+    await confirmDecline.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirmDecline).toHaveCount(0);
+    await expect(workerPage.getByRole("log")).toContainText("Not applied yet");
 
     execute(
       `insert into public.connections (kind, from_organization_id, to_user_id, conversation_id, job_id)

@@ -1,5 +1,5 @@
 begin;
-select plan(64);
+select plan(66);
 
 \ir apply_fixture.inc
 
@@ -235,6 +235,12 @@ select is(
   (select format('%s|%s|%s', count(*), min(actor_id::text), min(metadata ->> 'contact_request_id')) from audit.log
    where action = 'contact_request.context_opened' and entity_id = :'cr_report'::text),
   '1|' || :'t1' || '|' || :'cr_a', 'NFR-C5: one audit row contact_request.context_opened for the one opening, none for the refusals');
+select is(pg_temp.read_as(:'t1', format('select sender_former::text from public.admin_get_reported_message(%s)', :cr_report)), 'false',
+  'the member who sent the request is still a member, so staff do not call them a former member');
+update public.contact_requests set sent_by = null where id = :'cr_a';
+select is(pg_temp.read_as(:'t1', format('select sender_former::text from public.admin_get_reported_message(%s)', :cr_report)), 'true',
+  'a request whose sender was erased is from a former member');
+update public.contact_requests set sent_by = :'mem' where id = :'cr_a';
 
 -- FR-S1 AC5: only Trust & Safety at aal2 decides on a message -------------------------------------------------------------------
 

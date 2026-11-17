@@ -26,7 +26,7 @@ export function RevokeRoleDialog(props: RevokeRoleDialogProps) {
   return (
     <>
       <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
-        Revoke<span className="sr-only"> {props.roleLabel} of {props.person}</span>
+        Revoke<span className="sr-only normal-case"> {props.roleLabel} of {props.person}</span>
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title="Revoke a platform role">
         <Form {...props} onClose={() => setOpen(false)} />

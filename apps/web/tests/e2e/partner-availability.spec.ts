@@ -272,7 +272,7 @@ test.describe("Workforce availability (FR-K3)", () => {
        values (${literal(id)}, 'recruitment_partner', 'canceled', 'null')`,
     );
     await page.reload();
-    await expect(section).toContainText("0 of 0 workforce listings on your Free plan.");
+    await expect(section).toContainText("Workforce listings are not included in your Free plan.");
     await expect(section).toContainText(
       "Basic includes 10 workforce listings; Professional includes 50 workforce listings; Enterprise has no limit.",
     );

@@ -64,6 +64,8 @@ export type ContactEmployer = {
   displayName: string;
   // Request workforce is for owners and admins (FR-P2 roles), at aal2 as every requirement.
   manager: boolean;
+  // The country Request workforce starts with.
+  basedInCountry: string;
 };
 
 // The employer a signed-in member contacts a partner for from its public profile (FR-P2 AC9; SOP steps Send inquiry and
@@ -77,6 +79,12 @@ export async function getContactEmployer(saveFor: string | null): Promise<Contac
     ({ id, type, suspended }) => id === saveFor && type === "employer" && !suspended,
   );
   return employer
-    ? { id: employer.id, slug: employer.slug, displayName: employer.displayName, manager: employer.role !== "member" }
+    ? {
+        id: employer.id,
+        slug: employer.slug,
+        displayName: employer.displayName,
+        manager: employer.role !== "member",
+        basedInCountry: employer.basedInCountry,
+      }
     : null;
 }

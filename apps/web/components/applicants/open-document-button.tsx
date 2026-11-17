@@ -28,7 +28,7 @@ export function OpenDocumentButton({ slug, subject, documentId, title }: OpenDoc
         }, "Your download is starting")
       }
     >
-      Open<span className="sr-only"> {title}</span>
+      Open<span className="sr-only normal-case"> {title}</span>
     </FormButton>
   );
 }

@@ -17,6 +17,7 @@ const organization = (
   type,
   role,
   suspended,
+  basedInCountry: "DE",
 });
 
 describe("publishingOrganization (FR-C1: who may publish a vacancy)", () => {

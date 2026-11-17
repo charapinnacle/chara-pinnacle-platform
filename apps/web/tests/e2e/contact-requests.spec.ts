@@ -168,6 +168,27 @@ test.describe("Contact requests (FR-Q3)", () => {
     await expectAccessibleAtBothWidths(page);
   });
 
+  test("AC6, AC12: a request sent from a search with a Destination filter is checked for that destination", async ({ page }) => {
+    test.setTimeout(180_000);
+    const token = `egret${uniqueToken()}`;
+    const worker = await visibleWorker(token);
+    execute(`insert into public.worker_preferred_countries (worker_user_id, country_code) values (${literal(worker.id)}, 'AT')`);
+
+    await signInAtAal1(page, member, `${searchUrl(acme.slug, token)}&destination=AT`);
+    await expect(cards(page)).toHaveCount(1);
+    const send = cards(page).first().getByRole("button", { name: /^Send contact request: / });
+    await waitForHydration(send);
+    await send.click();
+    const dialog = page.getByRole("dialog", { name: "Send a contact request" });
+    await dialog.getByLabel("Message to the worker").fill("We are hiring welders for our Vienna yard.");
+    await dialog.getByRole("button", { name: "Send request" }).click();
+    await expect(page.getByText("Contact request sent")).toBeVisible();
+    const [row] = query<{ destination_country: string }>(
+      `select destination_country from public.contact_requests where organization_id = ${literal(acme.id)} and worker_user_id = ${literal(worker.id)}`,
+    );
+    expect(row).toEqual({ destination_country: "AT" });
+  });
+
   test("AC11, NFR-U4: the worker reads two requests, accepts one by keyboard and declines the other after the warning", async ({ page, browser }) => {
     test.setTimeout(240_000);
     const worker = await visibleWorker(`heron${uniqueToken()}`);
@@ -232,8 +253,15 @@ test.describe("Contact requests (FR-Q3)", () => {
     const withdraw = waitingItem.getByRole("button", { name: /^Withdraw the contact request: / });
     await waitForHydration(withdraw);
     await withdraw.click();
+    const confirmWithdraw = page.getByRole("dialog", { name: "Withdraw the contact request?" });
+    await expect(confirmWithdraw).toContainText("This cannot be undone.");
+    await expectNoAxeViolations(page);
+    await confirmWithdraw.getByRole("button", { name: "Withdraw request" }).click();
     await expect(page.getByText("Contact request withdrawn")).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText("Withdrawn");
+    await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText(
+      "You withdrew this request. Your organisation can send this worker a new request from",
+    );
 
     await page.goto(`/en/org/${acme.slug}/contact-requests?status=expired`);
     await expect(page.getByText("No contact requests with this status")).toBeVisible();

@@ -49,7 +49,7 @@ export function RequestWorkforce(props: RequestWorkforceProps) {
   return (
     <>
       <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
-        Request workforce<span className="sr-only"> from {props.partnerName}</span>
+        Request workforce<span className="sr-only normal-case"> from {props.partnerName}</span>
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title={`Request workforce from ${props.partnerName}`}>
         <RequestForm {...props} onClose={() => setOpen(false)} />

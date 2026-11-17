@@ -23,7 +23,7 @@ export function RemoveOverrideDialog(props: RemoveOverrideProps) {
   return (
     <>
       <FormButton type="button" variant="secondary" className="w-auto" onClick={() => setOpen(true)}>
-        Remove<span className="sr-only"> the {props.limitLabel.toLowerCase()} override of {props.organizationName}</span>
+        Remove<span className="sr-only normal-case"> the {props.limitLabel.toLowerCase()} override of {props.organizationName}</span>
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title="Remove an override">
         <RemoveForm {...props} onClose={() => setOpen(false)} />

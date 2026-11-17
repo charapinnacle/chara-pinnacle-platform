@@ -54,7 +54,7 @@ export function InviteToRequirement({ lang, partner, employers, invited, source 
     <>
       <FormButton type="button" variant="secondary" className="w-auto gap-2" onClick={() => setOpen(true)}>
         <Send aria-hidden className="size-4" />
-        Invite<span className="sr-only"> {partner.name}</span>
+        Invite<span className="sr-only normal-case"> {partner.name}</span>
       </FormButton>
       <ModalDialog open={open} onClose={close} title={`Invite ${partner.name} to a requirement`}>
         {already.length > 0 ? (

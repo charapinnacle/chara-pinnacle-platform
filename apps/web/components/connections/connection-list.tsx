@@ -80,7 +80,7 @@ function ConnectionRow({ mode, item, headingId, onRemove, invite }: RowProps) {
         ) : null}
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={remove}>
           {text.remove}
-          <span className="sr-only"> {item.name}</span>
+          <span className="sr-only normal-case"> {item.name}</span>
         </FormButton>
       </CardFooter>
     </Card>

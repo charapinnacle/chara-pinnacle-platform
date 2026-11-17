@@ -191,13 +191,18 @@ test.describe("Dashboard blocks of release 2c (V75)", () => {
     await close();
   });
 
-  test("FR-Q1 AC10: the worker's Find Workers card counts the contact requests and leads to them", async ({ page }) => {
+  test("FR-Q1 AC10: the worker's Find Workers card counts the contact requests, not a hidden one, and leads to them", async ({ page }) => {
     test.setTimeout(120_000);
     const worker = await visibleWorker();
     execute(
       `insert into public.contact_requests (organization_id, worker_user_id, card_id, sent_by, message, destination_country, expires_at)
        select ${literal(acme.id)}, w.user_id, w.card_id, ${literal(acme.owner.id)}, 'Welding work in Vaduz from March.', ${literal(LIECHTENSTEIN)},
               now() + interval '30 days'
+       from public.worker_profiles w where w.user_id = ${literal(worker.id)};
+       insert into public.contact_requests (organization_id, worker_user_id, card_id, sent_by, message, destination_country, expires_at,
+                                            moderation_state)
+       select ${literal(partner.id)}, w.user_id, w.card_id, ${literal(partner.user.id)}, 'Pay us and the job is yours.', ${literal(LIECHTENSTEIN)},
+              now() + interval '30 days', 'hidden'
        from public.worker_profiles w where w.user_id = ${literal(worker.id)}`,
     );
     await signIn(page, worker);

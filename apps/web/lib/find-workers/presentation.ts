@@ -3,6 +3,7 @@ import { formatCount } from "@/lib/i18n/format";
 
 type MatchContext = Pick<FindWorkersFilters, "current_country" | "destination" | "work_authorization"> & {
   languages: Record<string, string>;
+  countries: Record<string, string>;
 };
 
 // The order in which a card says what it matched, whatever order search_workers names them in.
@@ -22,16 +23,18 @@ const matchOrder = [
 
 type MatchKey = (typeof matchOrder)[number];
 
-const withCode = (label: string, code: string | undefined) => (code ? `${label} ${code}` : label);
+function withCountry(label: string, code: string | undefined, countries: Record<string, string>): string {
+  return code ? `${label} ${countries[code] ?? code}` : label;
+}
 
 function matchText(key: MatchKey, parts: string[], context: MatchContext): string | null {
   switch (key) {
     case "current_country":
-      return withCode("current country", context.current_country);
+      return withCountry("current country", context.current_country, context.countries);
     case "destination":
-      return withCode("destination", context.destination);
+      return withCountry("destination", context.destination, context.countries);
     case "work_authorization":
-      return withCode("work authorisation", context.work_authorization);
+      return withCountry("work authorisation", context.work_authorization, context.countries);
     case "employment_type":
       return "employment type";
     case "language": {
@@ -46,9 +49,9 @@ function matchText(key: MatchKey, parts: string[], context: MatchContext): strin
 
 const isMatchKey = (value: string): value is MatchKey => (matchOrder as readonly string[]).includes(value);
 
-// The "Matched on" line of a card (FR-Q2 AC7): the filters the card matched in a fixed order, with the chosen country
-// codes and the card's own language level; unknown keys are ignored, and a card found without a filter says so.
-export function matchedOnText(matchedOn: readonly string[], context: MatchContext): string {
+// The "Matched on" line of a card (FR-Q2 AC7): the filters the card matched in a fixed order, with the chosen countries by
+// name and the card's own language level; unknown keys are ignored, and a card found without a filter has no line (null).
+export function matchedOnText(matchedOn: readonly string[], context: MatchContext): string | null {
   const items = matchedOn
     .map((entry) => {
       const [key, ...parts] = entry.split(":");
@@ -56,7 +59,7 @@ export function matchedOnText(matchedOn: readonly string[], context: MatchContex
     })
     .filter((item): item is { key: MatchKey; text: string } => item !== null && item.text !== null)
     .sort((a, b) => matchOrder.indexOf(a.key) - matchOrder.indexOf(b.key));
-  return `Matched on: ${items.length > 0 ? items.map(({ text }) => text).join(", ") : "your search"}`;
+  return items.length > 0 ? `Matched on: ${items.map(({ text }) => text).join(", ")}` : null;
 }
 
 export function resultCountText(count: number, more: boolean): string {

@@ -17,7 +17,7 @@ export function WithdrawInvitationButton({ slug, requirementId, invitationId, pa
   return (
     <>
       <FormButton type="button" variant="secondary" className="w-auto" onClick={() => setOpen(true)}>
-        Withdraw<span className="sr-only"> the invitation of {partnerName}</span>
+        Withdraw<span className="sr-only normal-case"> the invitation of {partnerName}</span>
       </FormButton>
       <ModalDialog open={open} onClose={close} title={`Withdraw the invitation of ${partnerName}?`}>
         <p className="text-body leading-relaxed">

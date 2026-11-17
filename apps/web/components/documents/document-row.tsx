@@ -66,15 +66,15 @@ export function DocumentRow({ item, today, onChanged }: DocumentRowProps) {
                   }, "Your download is starting")
                 }
               >
-                Download<span className="sr-only"> {item.title}</span>
+                Download<span className="sr-only normal-case"> {item.title}</span>
               </FormButton>
               <FormButton type="button" variant="secondary" onClick={() => setRenaming(true)}>
-                Rename<span className="sr-only"> {item.title}</span>
+                Rename<span className="sr-only normal-case"> {item.title}</span>
               </FormButton>
             </>
           ) : null}
           <FormButton type="button" variant="secondary" onClick={() => setConfirming(true)}>
-            Delete<span className="sr-only"> {item.title}</span>
+            Delete<span className="sr-only normal-case"> {item.title}</span>
           </FormButton>
         </div>
         <DeleteDocumentDialog

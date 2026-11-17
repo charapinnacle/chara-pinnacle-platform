@@ -17,6 +17,8 @@ import { announceMessagesRead } from "@/lib/messaging/unread";
 import { appealPath, reportPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
+const NO_CONNECTIONS: Record<string, ConversationConnection> = {};
+
 type ConversationThreadProps = {
   lang: string;
   conversationId: string;
@@ -48,11 +50,11 @@ export function ConversationThread({
   maxChars,
   organization,
   notice,
-  connections = {},
+  connections: pageConnections = NO_CONNECTIONS,
   reader = "organization",
   children,
 }: ConversationThreadProps) {
-  const { messages, refresh, add } = useConversationMessages(conversationId, initialMessages);
+  const { messages, connections, refresh, add } = useConversationMessages(conversationId, initialMessages, pageConnections);
   const [hasEarlier, setHasEarlier] = useState(initialMessages.length >= MESSAGES_PAGE_SIZE);
   const [loadingEarlier, startLoadingEarlier] = useTransition();
   const newestId = messages[0]?.id;

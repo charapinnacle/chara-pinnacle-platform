@@ -7,6 +7,7 @@ const getCurrentUserMock = vi.hoisted(() => vi.fn());
 const getSavedJobIdsMock = vi.hoisted(() => vi.fn());
 const getApplicationStatesMock = vi.hoisted(() => vi.fn());
 const logMock = vi.hoisted(() => vi.fn());
+const hiringRuleMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -19,6 +20,7 @@ vi.mock("@/lib/dal/hiring", () => ({ getPublicJob: getPublicJobMock }));
 vi.mock("@/lib/dal/saved-jobs", () => ({ getSavedJobIds: getSavedJobIdsMock }));
 vi.mock("@/lib/dal/applications", () => ({ getApplicationStates: getApplicationStatesMock }));
 vi.mock("@/lib/dal/session", () => ({ getCurrentUser: getCurrentUserMock }));
+vi.mock("@/lib/dal/hiring-rules", () => ({ getApplyHiringRule: hiringRuleMock }));
 vi.mock("@/lib/jobs/vacancy-log", () => ({ logVacancy: logMock }));
 vi.mock("@/lib/jobs/job-posting", () => ({ jobPostingJsonLd: () => "{}" }));
 vi.mock("@/components/jobs/vacancy-view", () => ({ VacancyView: () => null }));
@@ -34,6 +36,7 @@ beforeEach(() => {
   getCurrentUserMock.mockResolvedValue(null);
   getSavedJobIdsMock.mockResolvedValue(new Set());
   getApplicationStatesMock.mockResolvedValue(new Map());
+  hiringRuleMock.mockResolvedValue(null);
 });
 
 type Props = { children: [unknown, ReactElement<{ actions: ReactElement<Record<string, unknown>> }>] };
@@ -74,6 +77,15 @@ describe("PublicJobPage view events", () => {
     expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ application: null });
   });
 
+  it("gives a candidate the direct-hiring rule of their country for the vacancy's country (FR-Q5 AC7)", async () => {
+    getPublicJobMock.mockResolvedValue({ id, title: "Welder", countryCode: "DE", employer: {} } as PublicJob);
+    getCurrentUserMock.mockResolvedValue({ id: "w1", accountKind: "worker" });
+    const rule = { rule: "licensed_partner_required", notice: "Hiring from Nepal needs a licensed partner.", source: "NP", destination: "DE" };
+    hiringRuleMock.mockResolvedValue(rule);
+    expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ hiringRule: rule });
+    expect(hiringRuleMock).toHaveBeenCalledWith("w1", "DE");
+  });
+
   it("does not ask who saved the vacancy for a visitor or a company user", async () => {
     getPublicJobMock.mockResolvedValue({ id, title: "Welder", employer: {} } as PublicJob);
     expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ viewer: "visitor", saved: false });
@@ -81,6 +93,7 @@ describe("PublicJobPage view events", () => {
     expect(actionProps(await PublicJobPage(props(id)))).toMatchObject({ viewer: "company", saved: false });
     expect(getSavedJobIdsMock).not.toHaveBeenCalled();
     expect(getApplicationStatesMock).not.toHaveBeenCalled();
+    expect(hiringRuleMock).not.toHaveBeenCalled();
   });
 
   it("logs an unavailable view without an id, before the not-found page", async () => {

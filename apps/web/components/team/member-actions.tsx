@@ -30,10 +30,10 @@ export function MemberActions({ slug, userId, name, role }: MemberActionsProps) 
         }
       >
         {target === "admin" ? "Make administrator" : "Make member"}
-        <span className="sr-only"> for {name}</span>
+        <span className="sr-only normal-case"> for {name}</span>
       </FormButton>
       <FormButton type="button" variant="secondary" onClick={() => setConfirming(true)}>
-        Remove<span className="sr-only"> {name}</span>
+        Remove<span className="sr-only normal-case"> {name}</span>
       </FormButton>
       <ModalDialog open={confirming} onClose={() => setConfirming(false)} title={`Remove ${name}?`}>
         <p className="text-body leading-relaxed">

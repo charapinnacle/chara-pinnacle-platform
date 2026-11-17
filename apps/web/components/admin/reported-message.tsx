@@ -26,10 +26,12 @@ const texts = {
   },
 } as const;
 
-function senderOf({ senderKind, senderName, senderOrganizationName }: ReportedMessage): string {
+// A member without a display name is named by the organisation, as elsewhere, never by email.
+export function reportedSenderLabel({ senderKind, senderName, senderOrganizationName, senderFormer }: ReportedMessage): string {
   if (senderKind === "worker") return "Candidate";
   const organization = senderOrganizationName ?? "Organisation";
-  return senderName ? `${senderName}, ${organization}` : `Former member, ${organization}`;
+  if (senderFormer) return `Former member, ${organization}`;
+  return senderName ? `${senderName}, ${organization}` : `A member of ${organization}`;
 }
 
 // The reported message and the five messages before and after it (FR-P3 AC7, NFR-C5), or the reported contact request
@@ -77,7 +79,7 @@ export function ReportedMessageContext({ reportId, kind }: { reportId: number; k
             className={cn("grid gap-1 rounded-xl border p-card-sm", message.reported ? "border-foreground/40 bg-accent/40" : "bg-card")}
           >
             <p className="flex flex-wrap gap-x-2 text-small text-muted-foreground">
-              <span className="font-medium text-foreground wrap-anywhere">{senderOf(message)}</span>
+              <span className="font-medium text-foreground wrap-anywhere">{reportedSenderLabel(message)}</span>
               <time dateTime={message.createdAt}>{formatDateTime(message.createdAt)}</time>
               {message.reported ? <strong className="text-foreground">{text.marker}</strong> : null}
             </p>
