@@ -128,7 +128,8 @@ const SUSPENDED = "This organization is suspended, so its profile cannot be chan
 
 // The organization comes from the slug in the address, checked against the caller's membership and role; the function
 // checks the role, two-step verification and the lock of the legal name again in the database. A recruitment or staffing
-// company corrects its details on the company step of onboarding (FR-J1), an employer on its profile page.
+// company corrects its details on the company step of onboarding (FR-J1) and, once listed, on its profile page like an
+// employer.
 export async function updateOrganizationProfile(
   slug: string,
   input: OrganizationProfileInput,
