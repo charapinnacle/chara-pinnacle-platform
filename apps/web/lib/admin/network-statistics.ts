@@ -71,7 +71,28 @@ export const networkMetricGroups: readonly MetricGroup[] = [
       { key: "partner_follows", label: "Follows of partners" },
     ],
   },
+  {
+    heading: "Job orders",
+    metrics: [
+      { key: "requirements", label: "Requirements published" },
+      { key: "job_orders", label: "Requirements published as job orders" },
+      { key: "invitations", label: "Invitations sent to partners" },
+      { key: "responses", label: "Partner responses" },
+      { key: "selections", label: "Partner responses selected" },
+      { key: "submissions", label: "Candidates submitted by partners" },
+      { key: "hires", label: "Submitted candidates hired" },
+    ],
+  },
 ];
+
+// The groups and metrics the database returned: the job order metrics only while their release is on.
+export function shownMetricGroups(counts: readonly NetworkCount[]): MetricGroup[] {
+  const returned = new Set(counts.map((row) => row.metric));
+  return networkMetricGroups.flatMap((group) => {
+    const metrics = group.metrics.filter((metric) => returned.has(metric.key));
+    return metrics.length > 0 ? [{ ...group, metrics }] : [];
+  });
+}
 
 const figureLabels: Record<string, string> = {
   review_median_hours: "Median time from submission to review decision",
