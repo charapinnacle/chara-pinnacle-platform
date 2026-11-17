@@ -17,7 +17,6 @@ import {
   jobPath,
   mfaPath,
   myReportsPath,
-  partnerStepPath,
   requirementPath,
   requirementResponsesPath,
   requirementSubmissionsPath,
@@ -27,7 +26,7 @@ import {
   whereYouServePath,
   workforceProfilePath,
 } from "@/lib/routes";
-import { infoStepLabels, infoStepSchema, type InfoStep } from "@/lib/validation/partner-review";
+import { infoStepLabels, infoStepSchema } from "@/lib/validation/partner-review";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -70,11 +69,6 @@ function documentName(slug: string): string {
 
 function isApplicationStatus(value: string | undefined): value is ApplicationStatus {
   return value !== undefined && Object.hasOwn(applicationStatusLabels, value);
-}
-
-// The onboarding step staff reopened with a request for information (FR-J4).
-function infoStepPath(lang: string, step: InfoStep): string {
-  return step === "where_you_serve" ? whereYouServePath(lang) : partnerStepPath(lang, step);
 }
 
 // The moderation decision a notice names, which its appeal page is addressed by.
@@ -251,7 +245,8 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
         title: step.success
           ? `Our team needs more information about ${infoStepLabels[step.data]}`
           : "Our team needs more information about your company",
-        href: step.success ? infoStepPath(lang, step.data) : partnerStepPath(lang, "ready"),
+        // The dashboard shows the team's message with the way back to onboarding; the reopened step page does not show it.
+        href: employerDashboardPath(lang),
       };
     },
   },

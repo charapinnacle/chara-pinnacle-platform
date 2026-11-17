@@ -91,7 +91,8 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
             </p>
             {hasNoActivity(statistics.counts) ? (
               <Notice tone="info" role="status">
-                No partner network activity in this period
+                Every count of this period is below the privacy threshold of {statistics.minCount}, so the counts are hidden; there
+                may still have been some activity.
               </Notice>
             ) : null}
             <section aria-labelledby="network-figures-heading" className="grid gap-4">

@@ -147,7 +147,8 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     await expect(cards(page).first().getByRole("heading", { level: 2 })).toHaveText(batch.staffing);
     await expect(supplier).toContainText("Markets served: Germany, Netherlands");
     await expect(supplier).toContainText("Staffing types: Temporary, Contract");
-    await expect(supplier).toContainText(`Welders and flame cutters: 120 available, confirmed ${longDate(daysAgo(12))}`);
+    await expect(supplier, "FR-K3 AC4: a visitor reads no capacity").not.toContainText("120 available");
+    await expect(supplier.getByRole("link", { name: `Sign in to see the available workforce of ${batch.staffing}` })).toBeVisible();
     await expect(supplier).toContainText("Matches: destination, staffing type");
     await expect(supplier).not.toContainText("also offers staffing");
     await expect(supplier.getByRole("link", { name: batch.staffing, exact: true })).toHaveAttribute(
@@ -207,6 +208,9 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
         await expect(viewerCard.getByRole("button", { name: `${action}: ${batch.staffing}` }), label).toHaveAttribute("aria-pressed", "false");
       }
       await expect(viewerPage.getByRole("region", { name: "Available workforce" }), label).toHaveCount(label === "employer admin" ? 1 : 0);
+      await expect(viewerCard, `FR-K3 AC4: ${label} reads the capacity`).toContainText(
+        `Welders and flame cutters: 120 available, confirmed ${longDate(daysAgo(12))}`,
+      );
       await context.close();
     }
   });

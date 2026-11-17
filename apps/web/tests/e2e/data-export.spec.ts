@@ -208,7 +208,9 @@ test.describe("Download my data (FR-S3 AC7, AC8)", () => {
     await page.goto("/en/settings/notifications");
     await page.getByRole("link", { name: "Download my data" }).click();
     await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
-    await expect(page.getByRole("link", { name: "Notification settings" })).toBeVisible();
+    const trail = page.getByRole("navigation", { name: "Breadcrumb" });
+    await expect(trail).toHaveText(/^Dashboard.*Settings.*Download my data$/);
+    await expect(trail.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("href", "/en/settings/notifications");
     await expectAccessibleAtBothWidths(page);
 
     setExportRelease(false);
