@@ -47,7 +47,8 @@ export type PartnerProfile = {
   website: string | null;
   commitmentCurrent: boolean;
   updatedAt: string | null;
-  listings: PartnerListing[];
+  // Null for a visitor: the capacity is for signed-in readers only (FR-K3 AC4).
+  listings: PartnerListing[] | null;
 };
 
 type SharedRow = Omit<ProfileRow, "viewer_is_member">;
@@ -75,14 +76,15 @@ export function partnerProfileFrom(row: SharedRow): PartnerProfile {
     updatedAt: row.profile_updated_at ?? null,
     listings: z
       .array(listingSchema)
-      .parse(row.listings)
-      .map((listing) => ({
+      .nullable()
+      .parse(row.listings ?? null)
+      ?.map((listing) => ({
         occupation: listing.occupation,
         sourceCountry: listing.source_country_name,
         available: listing.available,
         monthlyCapacity: listing.monthly_capacity,
         availableFrom: listing.available_from,
         confirmedAt: listing.confirmed_at,
-      })),
+      })) ?? null,
   };
 }

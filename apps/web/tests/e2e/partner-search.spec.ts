@@ -96,8 +96,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     await expect(first).toContainText("Based in Philippines");
     await expect(first).toContainText("Recruits for Germany");
     await expect(first).toContainText("Main occupations: Welders and flame cutters");
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-    await expect(first).toContainText(`Capacity confirmed ${longDate(threeDaysAgo)}`);
+    await expect(first, "FR-K3 AC4: a visitor reads no capacity").not.toContainText("Capacity confirmed");
     await expect(first).toContainText("Matches: destination, occupation");
     expect(await page.getByRole("main").getByRole("list").first().innerText()).not.toMatch(FORBIDDEN_WORDS);
     const html = await page.content();
@@ -157,6 +156,9 @@ test.describe("Find recruitment partners (FR-L1)", () => {
       const viewerCard = cards(viewerPage).filter({ hasText: batch.names[0] });
       await expect(viewerCard, label).toHaveCount(1);
       await expect(viewerCard.getByRole("link", { name: /Sign up to contact/ }), label).toHaveCount(0);
+      await expect(viewerCard, `AC4, FR-K3 AC4: ${label} reads the capacity`).toContainText(
+        `Capacity confirmed ${longDate(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000))}`,
+      );
       // Save partner and Follow (FR-L4, V24): employers save and follow, candidates follow, the partner's own member neither.
       const actions: Record<string, string[]> = { candidate: ["Follow"], "partner member": [], "employer admin": ["Save partner", "Follow"] };
       const expected = actions[label] ?? [];
@@ -168,13 +170,22 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     }
   });
 
-  test("AC5: advanced filters outside the plan say so and offer the search without them", async ({ page }) => {
-    await page.goto(`${DIRECTORY}?destination=DE&capacity=100&within_days=60`);
-    await expect(page.getByText("These filters need a plan with advanced partner search.")).toBeVisible();
+  test("AC5, FR-K3 AC4: advanced filters ask a visitor to sign in, tell a reader outside the plan so, and offer the search without them", async ({ page, browser }) => {
+    const address = `${DIRECTORY}?destination=DE&capacity=100&within_days=60`;
+    await page.goto(address);
+    await expect(page.getByText("Sign in to filter by workforce capacity.")).toBeVisible();
+    await expect(page.getByText("These filters need a plan with advanced partner search.")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", `/en/login?next=${encodeURIComponent(address)}`);
     await expect(page.getByRole("group", { name: "Workforce capacity" })).toBeVisible();
     await page.getByRole("link", { name: "Search without them" }).click();
     await expect(page).toHaveURL(`${DIRECTORY}?destination=DE`);
     await expect(page.getByRole("status").filter({ hasText: "shown" })).toBeVisible();
+
+    const { context, page: candidatePage } = await signedIn(browser, await createCommittedUser("worker"));
+    await candidatePage.goto(address);
+    await expect(candidatePage.getByText("These filters need a plan with advanced partner search.")).toBeVisible();
+    await expect(candidatePage.getByText("Sign in to filter by workforce capacity.")).toHaveCount(0);
+    await context.close();
   });
 
   test("AC10: the empty state, the skeleton, the keyboard and the 360 px layout", async ({ page }) => {

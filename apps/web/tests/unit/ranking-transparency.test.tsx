@@ -121,10 +121,10 @@ describe("the ranking page and the search functions (NFR-C8)", () => {
     expect(searchPartners).toContain("and (p_occupation is null or exists ( select 1 from public.organization_occupations oo");
   });
 
-  it("search_partners refuses capacity, timeframe and several source countries without the advanced feature, and orders nothing by it", () => {
+  it("search_partners asks a visitor to sign in for capacity, timeframe and several source countries, refuses them without the advanced feature, and orders nothing by it", () => {
     expect(searchPartners).toContain("v_listing_filter boolean := p_capacity is not null or p_within_days is not null;");
     expect(searchPartners).toContain(
-      `if v_listing_filter or cardinality(v_sources) > 1 then if v_uid is null or not exists ( select 1 from private.member_org_ids() m (organization_id) where private.has_feature(m.organization_id, '${advancedPartnerSearchFeature}') ) then raise exception 'CHARA_FEATURE_NOT_IN_PLAN'`,
+      `if v_listing_filter or cardinality(v_sources) > 1 then if v_uid is null then raise exception 'CHARA_UNAUTHENTICATED' using detail = '${advancedPartnerSearchFeature}'; end if; if not exists ( select 1 from private.member_org_ids() m (organization_id) where private.has_feature(m.organization_id, '${advancedPartnerSearchFeature}') ) then raise exception 'CHARA_FEATURE_NOT_IN_PLAN'`,
     );
     expect(searchPartners.match(/has_feature/g)).toHaveLength(1);
     expect(rankingFilters.filter(({ advanced }) => advanced).map(({ name }) => name)).toEqual(["capacity", "timeframe"]);

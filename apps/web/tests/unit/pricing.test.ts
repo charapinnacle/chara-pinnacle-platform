@@ -77,13 +77,13 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
   });
 
   it("gives a worker, a member and a person who has not finished setting up no link to buy", () => {
-    expect([links({ kind: "worker" }), links({ kind: "member" }), links({ kind: "setup" }), links({ kind: "unknown" })]).toEqual([null, null, null, null]);
+    expect([links({ kind: "worker" }), links({ kind: "member", type: "employer" }), links({ kind: "setup" }), links({ kind: "unknown" })]).toEqual([null, null, null, null]);
   });
 
   it("gives every reader the contact page for a plan sold by contact", () => {
     const enterprise = planCard({ ...BASIC, name: "Enterprise", contactSales: true });
-    for (const kind of ["visitor", "worker", "member", "setup", "unknown"] as const) {
-      expect(planLink({ kind }, enterprise, "en")).toEqual({ href: "/en/contact", label: "Contact sales about Enterprise" });
+    for (const viewer of [{ kind: "visitor" }, { kind: "worker" }, { kind: "member", type: "employer" }, { kind: "setup" }, { kind: "unknown" }] as const) {
+      expect(planLink(viewer, enterprise, "en")).toEqual({ href: "/en/contact", label: "Contact sales about Enterprise" });
     }
   });
 
@@ -92,7 +92,7 @@ describe("the link of a card by who reads the page (FR-H2 AC12)", () => {
     expect(viewerNote({ kind: "manager", slug: "x", type: "employer" }, "en")).toBeNull();
     expect(viewerNote({ kind: "worker" }, "en")?.text).toBe("Plans are for employers. Workers never pay.");
     expect(viewerNote({ kind: "worker" }, "en", true)?.text).toBe("Plans are for companies. Workers never pay.");
-    expect(viewerNote({ kind: "member" }, "en")?.text).toBe("The owner or an admin of your organisation manages its plan.");
+    expect(viewerNote({ kind: "member", type: "employer" }, "en")?.text).toBe("The owner or an admin of your organisation manages its plan.");
     expect(viewerNote({ kind: "setup" }, "en")?.link?.href).toBe("/en/onboarding");
     expect(viewerNote({ kind: "unknown" }, "en")).toBeNull();
   });
@@ -128,6 +128,7 @@ describe("the cards of the partner plans (FR-R1 AC3)", () => {
     expect(planCard({ ...PARTNER_BASIC, code: "recruitment_partner" }, "recruitment_company").limits).toEqual([
       "3 countries served",
       "10 occupations",
+      "10 workforce listings",
       "1 team member",
     ]);
     expect(card.limits.join(" ")).not.toMatch(/response|submission|message/i);
