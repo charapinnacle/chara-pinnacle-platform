@@ -5,12 +5,12 @@ import {
   outcomeText,
   planUsageKeys,
   profileViewsText,
-  segmentOf,
   submissionStageLines,
   usageAttention,
   usageLine,
   type PartnerFigures,
 } from "@/lib/dashboard/partner-dashboard";
+import { segmentOf } from "@/lib/dashboard/segments";
 import { listingFreshness } from "@/lib/validation/workforce-availability";
 
 const r = { slug: "r", type: "recruitment_company" as const };
