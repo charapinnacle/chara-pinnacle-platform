@@ -131,6 +131,7 @@ export default defineConfig({
         "**/job-order-company-page.spec.ts",
         "**/partner-dashboards-job-orders.spec.ts",
         "**/employer-network-dashboard.spec.ts",
+        "**/messaging.spec.ts",
       ],
     },
     {
@@ -625,13 +626,21 @@ export default defineConfig({
       testMatch: "**/employer-network-dashboard.spec.ts",
       dependencies: ["partner-dashboards-job-orders-release"],
     },
+    // The messaging pages (V65) set releases 2a, 2b and 2c for the whole database, so they follow the employer network
+    // dashboard.
+    {
+      name: "messaging-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/messaging.spec.ts",
+      dependencies: ["employer-network-dashboard-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["employer-network-dashboard-release"],
+      dependencies: ["messaging-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

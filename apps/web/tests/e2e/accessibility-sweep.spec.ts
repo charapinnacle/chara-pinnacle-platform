@@ -143,7 +143,9 @@ const accountStatePages = [
 // submitted by another partner, approved, declined, withdrawn, empty), the partner's submission form (refused, sent, at
 // the limit) and lists (empty, with each status) and the employer's candidates of a requirement are checked in
 // candidate-submissions.spec.ts; the employer's pipeline of submitted candidates (list, board, empty, no match) and a
-// submitted candidate's page in submission-pipeline.spec.ts.
+// submitted candidate's page in submission-pipeline.spec.ts. The messages of release 2c, the inbox of a candidate (with rows,
+// empty and failed) and of an employer (with rows and filtered), and a conversation of an employer, a partner and a
+// candidate (empty, with messages and closed), are checked in messaging.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -154,6 +156,8 @@ const releasedPages = [
   "/[lang]/following",
   "/[lang]/job-orders",
   "/[lang]/legal/ranking",
+  "/[lang]/messages",
+  "/[lang]/messages/[id]",
   "/[lang]/notifications",
   "/[lang]/org/[slug]/applicants/submissions/[id]",
   "/[lang]/org/[slug]/find-employers",
@@ -165,6 +169,8 @@ const releasedPages = [
   "/[lang]/org/[slug]/job-orders",
   "/[lang]/org/[slug]/job-orders/[id]",
   "/[lang]/org/[slug]/job-orders/[id]/respond",
+  "/[lang]/org/[slug]/messages",
+  "/[lang]/org/[slug]/messages/[id]",
   "/[lang]/org/[slug]/requirements",
   "/[lang]/org/[slug]/requirements/[id]",
   "/[lang]/org/[slug]/requirements/[id]/edit",
