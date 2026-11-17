@@ -2,22 +2,11 @@ import { limitNoun, usageText, type OrgUsage } from "@/lib/billing/limits";
 import { classifyUsage } from "@/lib/billing/usage";
 import { formatCount } from "@/lib/i18n/format";
 import { partnerSubmissionLabels, type SubmissionStatus } from "@/lib/submissions/presentation";
+import { partnerSegments, segmentOf, type CompanySegment } from "@/lib/dashboard/segments";
 import type { PartnerType } from "@/lib/validation/sign-up";
 import type { ReviewStatus } from "@/lib/validation/partner-review";
 
 type OrganizationType = "employer" | PartnerType;
-
-export type PartnerSegment = "recruitment" | "staffing";
-export type CompanySegment = "employer" | PartnerSegment;
-
-export const partnerSegments = { recruitment_company: "recruitment", staffing_company: "staffing" } as const satisfies Record<
-  PartnerType,
-  PartnerSegment
->;
-
-export function segmentOf(type: OrganizationType): CompanySegment {
-  return type === "employer" ? "employer" : partnerSegments[type];
-}
 
 type Membership = { slug: string; type: OrganizationType };
 
