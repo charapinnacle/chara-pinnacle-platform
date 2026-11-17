@@ -93,7 +93,12 @@ export function ApproveRequestForm({ lang, submissionId, recipient, documents, d
         </p>
       )}
 
-      <CheckboxField control={control} name="consent" id={ids.consent}>
+      <CheckboxField
+        control={control}
+        name="consent"
+        id={ids.consent}
+        accessibleName={`I agree to share my profile and the selected documents with ${recipient} for this submission, as the sharing notice describes`}
+      >
         <span>
           I agree to share my profile and the selected documents with {recipient} for this submission, as the{" "}
           <TextLink href={`/${lang}/legal/sharing-notice`} className="relative z-10">

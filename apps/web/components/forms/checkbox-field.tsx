@@ -50,6 +50,9 @@ type CheckboxRowProps = {
   compact?: boolean;
   // An on/off setting that takes effect when saved is announced as a switch.
   asSwitch?: boolean;
+  // The whole label as text, for a label that holds a link: some assistive technologies name the box from the label's
+  // text before the link only, or not at all.
+  accessibleName?: string;
   className?: string;
   children: React.ReactNode;
 };
@@ -69,6 +72,7 @@ export function CheckboxRow({
   meta,
   compact = false,
   asSwitch = false,
+  accessibleName,
   className,
   children,
 }: CheckboxRowProps) {
@@ -90,6 +94,7 @@ export function CheckboxRow({
           onChange={(event) => onChange(event.target.checked)}
           onBlur={onBlur}
           aria-invalid={invalid}
+          aria-label={accessibleName}
           aria-describedby={describedBy}
         />
       </span>
@@ -123,6 +128,7 @@ type CheckboxFieldProps<T extends FieldValues, N extends FieldPath<T>> = {
   id?: string;
   meta?: React.ReactNode;
   compact?: boolean;
+  accessibleName?: string;
   className?: string;
   children: React.ReactNode;
 };
@@ -133,6 +139,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
   id: idProp,
   meta,
   compact,
+  accessibleName,
   className,
   children,
 }: CheckboxFieldProps<T, N>) {
@@ -157,6 +164,7 @@ export function CheckboxField<T extends FieldValues, N extends FieldPath<T>>({
           error={fieldState.error}
           meta={meta}
           compact={compact}
+          accessibleName={accessibleName}
           className={className}
         >
           {children}

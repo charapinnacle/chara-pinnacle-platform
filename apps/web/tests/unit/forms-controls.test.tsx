@@ -159,6 +159,14 @@ describe("the consent rows (U67, FR-A8, FR-A9)", () => {
     expect(new Set(names).size).toBe(3);
   });
 
+  it("names each box with the whole sentence, link text included, instead of the bare value on", () => {
+    expect(consent(document("terms-of-service", "DRAFT: Terms of Service", 0))).toMatch(
+      /<input type="checkbox"[^>]*id="c-terms-of-service"[^>]*aria-label="I accept the Terms of Service"/,
+    );
+    expect(consent(document("privacy-policy", "Privacy Policy", 1))).toContain('aria-label="I have read the Privacy Policy"');
+    expect(consent(document("age-18-plus", "Age confirmation", 2), "I confirm that I am an adult in my country.")).not.toContain("aria-label=");
+  });
+
   it("reads the age confirmation as one plain sentence until counsel's wording is published", () => {
     const draft = document("age-18-plus", "DRAFT: Age confirmation", 0);
     expect(consent(draft, "I am 18 or older. (DRAFT wording, pending review by legal counsel.)")).toMatch(

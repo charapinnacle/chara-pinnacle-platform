@@ -261,7 +261,8 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await page.getByRole("checkbox", { name: "Reference letter" }).check();
     await page
       .getByRole("checkbox", {
-        name: /^I agree to share my profile and the selected documents with the employer for this submission, as the sharing notice describes$/,
+        name: "I agree to share my profile and the selected documents with the employer for this submission, as the sharing notice describes",
+        exact: true,
       })
       .check();
     await approve.click();
