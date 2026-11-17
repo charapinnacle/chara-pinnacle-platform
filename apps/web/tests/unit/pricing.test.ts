@@ -128,6 +128,7 @@ describe("the cards of the partner plans (FR-R1 AC3)", () => {
     expect(planCard({ ...PARTNER_BASIC, code: "recruitment_partner" }, "recruitment_company").limits).toEqual([
       "3 countries served",
       "10 occupations",
+      "10 workforce listings",
       "1 team member",
     ]);
     expect(card.limits.join(" ")).not.toMatch(/response|submission|message/i);

@@ -153,7 +153,7 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
     for (const text of ["EUR 49.00", "30 days free trial", "3 countries served", "10 occupations", "1 team member", "From EUR 199.00", "Unlimited occupations", "15 team members"]) {
       expect(recruitment).toContain(text);
     }
-    expect(recruitment).not.toContain("workforce listings");
+    expect(recruitment, "the limit the recruitment dashboard counts").toContain("10 workforce listings");
     expect(recruitment).toMatch(/<a [^>]*href="\/en\/signup\?kind=recruitment_company"[^>]*>Sign up for Basic<\/a>/);
     expect(recruitment).toMatch(/<a [^>]*href="\/en\/contact"[^>]*>Contact sales about Enterprise<\/a>/);
     const enterprise = recruitment.slice(recruitment.indexOf("Enterprise"));

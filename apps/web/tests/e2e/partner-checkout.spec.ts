@@ -59,6 +59,7 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     await expect(basic).toContainText("30 days free trial");
     await expect(basic).toContainText("One free trial is granted for each legal entity.");
     await expect(basic).toContainText("3 countries served");
+    await expect(basic, "the limit the recruitment dashboard counts").toContainText("10 workforce listings");
     await expect(basic.getByRole("link", { name: "Sign up for Basic" })).toHaveAttribute("href", "/en/signup?kind=recruitment_company");
     await expect(recruitment.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Professional" }) })).toContainText(
       "EUR 99.00",
