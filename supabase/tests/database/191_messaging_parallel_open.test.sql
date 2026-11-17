@@ -71,7 +71,7 @@ select is(extensions.dblink_is_busy('blocked'), 1,
 select extensions.dblink_exec('holder', 'commit') as committed \gset
 select t as waited from extensions.dblink_get_result('blocked') as r (t text) \gset
 select count(*) as drained from extensions.dblink_get_result('blocked') as r (t text) \gset
-select is(:'waited', :'held', 'FR-P1 AC1: once the first opening is committed, the waiting call answers the same conversation');
+select is(:'waited'::text, :'held', 'FR-P1 AC1: once the first opening is committed, the waiting call answers the same conversation');
 select extensions.dblink_exec('blocked', 'commit') as committed \gset
 
 select is(

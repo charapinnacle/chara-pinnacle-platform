@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FooterLinks } from "@/components/layout/footer-links";
 import { getUnreadNotificationCount } from "@/lib/dal/notifications";
 import { getMyOrganizations } from "@/lib/dal/organizations";
-import { partnerSegments } from "@/lib/dashboard/partner-dashboard";
+import { partnerSegments } from "@/lib/dashboard/segments";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { appFooterLinks } from "@/lib/public/navigation";
