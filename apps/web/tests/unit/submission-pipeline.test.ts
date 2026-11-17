@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { allowedTargets } from "@/lib/applications/stage-machine";
 import { employerSubmissionPath, submissionPipelinePath } from "@/lib/routes";
 import {
+  BULK_MOVE_SKIPPED,
   employerSubmissionLabels,
   pipelineSubmissionStages,
   proposedByLabel,
@@ -226,5 +227,12 @@ describe("the actions of the pipeline (FR-O5 AC3, AC5, AC6, AC8, AC11)", () => {
 
     rpcMock.mockResolvedValueOnce({ data: [detailRow], error: null }).mockResolvedValueOnce({ data: [], error: null });
     expect(await openSubmissionDocument("acme-bau", SUBMISSION, DOCUMENT)).toEqual({ message: "This document is no longer available." });
+  });
+});
+
+describe("the confirmation of a bulk move (FR-O5)", () => {
+  it("says plainly which candidates are skipped", () => {
+    expect(BULK_MOVE_SKIPPED).toBe("Candidates who withdrew, and candidates who cannot move to this stage from their current one, are skipped");
+    expect(BULK_MOVE_SKIPPED).not.toContain("moves their stage");
   });
 });

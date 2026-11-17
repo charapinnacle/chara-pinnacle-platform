@@ -4,8 +4,10 @@ import {
   billingPath,
   companyDashboardPath,
   employerDashboardPath,
+  findEmployersPath,
   homePath,
   invitationsPath,
+  jobOrdersPath,
   jobsPath,
   membersPath,
   myReportsPath,
@@ -17,6 +19,8 @@ import {
   submissionsPath,
   workforceProfilePath,
 } from "@/lib/routes";
+import type { OrganizationType } from "@/lib/billing/limits";
+import { segmentOf } from "@/lib/dashboard/partner-dashboard";
 import type { MemberRole } from "@/lib/validation/team";
 
 export type NavIcon =
@@ -31,6 +35,8 @@ export type NavIcon =
   | "team"
   | "workforce"
   | "requirements"
+  | "jobOrders"
+  | "employers"
   | "invitations"
   | "responses"
   | "submissions"
@@ -79,7 +85,8 @@ export function workerLinks(lang: string, { submissions = false }: { submissions
 // organisation has none of them: each answers with a notice that it is suspended. A recruitment or staffing company has
 // its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1). While release 2b
 // is on, an employer has its workforce requirements, where it follows its invitations and the responses, and a partner the
-// invitations it received and the responses it sent (FR-O1, FR-O2).
+// job order marketplace, Find employers, the invitations it received and the responses it sent (FR-N1, FR-L3, FR-O1,
+// FR-O2).
 export function organizationLinks(
   lang: string,
   {
@@ -104,6 +111,8 @@ export function organizationLinks(
         { label: "Workforce profile", href: workforceProfilePath(lang, slug), match: workforceProfilePath(lang, slug), icon: "workforce" },
         ...(jobOrders
           ? ([
+              { label: "Job orders", href: jobOrdersPath(lang, slug), match: jobOrdersPath(lang, slug), icon: "jobOrders" },
+              { label: "Find employers", href: findEmployersPath(lang, slug), match: findEmployersPath(lang, slug), icon: "employers" },
               { label: "Invitations", href: invitationsPath(lang, slug), match: invitationsPath(lang, slug), icon: "invitations" },
               { label: "Responses", href: responsesPath(lang, slug), match: responsesPath(lang, slug), icon: "responses" },
             ] as const)
@@ -171,7 +180,10 @@ export function currentOrganization(
   return organizations.find((organization) => organization.slug === slug) ?? organizations[0];
 }
 
-// The first item of every breadcrumb in an organisation: the organisation, which leads to its dashboard.
-export function organizationCrumb(lang: string, { slug, displayName }: Pick<NavOrganization, "slug" | "displayName">): Crumb {
-  return { label: displayName, href: employerDashboardPath(lang, slug) };
+// The first item of every breadcrumb in an organisation: the organisation, which leads to the dashboard of its type.
+export function organizationCrumb(
+  lang: string,
+  { slug, displayName, type }: Pick<NavOrganization, "slug" | "displayName"> & { type: OrganizationType },
+): Crumb {
+  return { label: displayName, href: companyDashboardPath(lang, segmentOf(type), slug) };
 }

@@ -45,6 +45,7 @@ export function ConsentCheckbox<T extends FieldValues>({
       id={id}
       compact
       className="py-1.5"
+      accessibleName={`${consentVerb(document.slug)} ${displayTitle(document.title)}`}
       meta={
         <>
           <span>

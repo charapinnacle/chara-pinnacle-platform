@@ -148,8 +148,8 @@ test.describe("Inviting partners to a requirement (FR-O1 AC12, FR-M3 AC7)", () =
     await inviteSelected.click();
     await expect(page.getByText("Select at least one partner to invite.", { exact: true })).toBeVisible();
 
-    await page.getByRole("checkbox", { name: `Invite ${q1.displayName}` }).check();
-    await page.getByRole("checkbox", { name: `Invite ${q2.displayName}` }).check();
+    await page.getByRole("checkbox", { name: `Invite ${q1.displayName}`, exact: true }).check();
+    await page.getByRole("checkbox", { name: `Invite ${q2.displayName}`, exact: true }).check();
     await expect(bar).toHaveText("2 selected · 1 of 3 invitations used");
     await expect(inviteSelected).toHaveText("Invite selected (2)");
     await expectAccessibleAtBothWidths(page);
@@ -453,6 +453,15 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     await waitForHydration(accept);
     await accept.focus();
     await pp.keyboard.press("Enter");
+    // An answer is final, so Accept asks first, like Decline; Cancel leaves the invitation unanswered.
+    const acceptDialog = pp.getByRole("dialog", { name: "Accept this invitation?" });
+    await expect(acceptDialog).toContainText("This is final");
+    await expectNoAxeViolations(pp);
+    await acceptDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(acceptDialog).toBeHidden();
+    expect(query<{ status: string }>(`select status from public.requirement_invitations where id = ${literal(privateInvitation.id)}`)[0].status).toBe("viewed");
+    await accept.click();
+    await acceptDialog.getByRole("button", { name: "Accept invitation" }).click();
     // Accept opens the response form of FR-O2 (V46); the invitation page then shows the new status.
     await expect(pp).toHaveURL(`${invitationUrl(p1.slug, privateInvitation.id)}/respond`);
     await expect(pp.getByRole("heading", { name: "Respond to this invitation", level: 1 })).toBeVisible();
@@ -504,6 +513,9 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
       "href",
       inboxUrl(p2.slug),
     );
+    const partnerNavigation = competitor.page.getByRole("navigation", { name: "Main" }).first();
+    await expect(partnerNavigation.getByRole("link", { name: "Job orders" })).toHaveAttribute("href", `/en/org/${p2.slug}/job-orders`);
+    await expect(partnerNavigation.getByRole("link", { name: "Find employers" })).toHaveAttribute("href", `/en/org/${p2.slug}/find-employers`);
     await expectNoAxeViolations(competitor.page);
 
     // Release 2b off: the pages and the link are gone.
@@ -512,6 +524,8 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
       await competitor.page.reload();
       await expect(competitor.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
       await expect(competitor.page.getByRole("link", { name: "Invitations" })).toHaveCount(0);
+      await expect(competitor.page.getByRole("link", { name: "Job orders" })).toHaveCount(0);
+      await expect(competitor.page.getByRole("link", { name: "Find employers" })).toHaveCount(0);
     } finally {
       setJobOrderRelease(true);
     }

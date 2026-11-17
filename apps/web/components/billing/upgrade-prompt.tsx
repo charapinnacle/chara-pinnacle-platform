@@ -17,6 +17,8 @@ type UpgradePromptProps = {
   requirement?: { id: string; attempted: number };
   // Shown after a refused submission: the Upgrade link takes the focus, so the next step is where the person is (FR-R1 AC11).
   focusUpgrade?: boolean;
+  // The id of the usage sentence, which a control disabled at the limit names as its description.
+  reasonId?: string;
 };
 
 // Shown where a plan limit stops a change (FR-R1): the usage and the plan, when a monthly count starts again, and the way
@@ -30,6 +32,7 @@ export function UpgradePrompt({
   canUpgrade,
   requirement,
   focusUpgrade = false,
+  reasonId,
 }: UpgradePromptProps) {
   const { limitKey, used, limit, resetsAt, planName, comparison } = prompt;
   const upgradeLink = useRef<HTMLAnchorElement>(null);
@@ -47,7 +50,7 @@ export function UpgradePrompt({
 
   return (
     <div className="grid gap-1 text-small">
-      <p className="font-medium">
+      <p id={reasonId} className="font-medium">
         {usageText(limitKey, organizationType, used, limit)} on your {planName ? `${planName} plan` : "plan"}.
       </p>
       {/* A limit of 0 (the free plan after a lapse) does not come back with the month. */}

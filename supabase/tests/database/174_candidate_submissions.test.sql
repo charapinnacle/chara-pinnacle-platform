@@ -1,5 +1,5 @@
 begin;
-select plan(173);
+select plan(174);
 
 \ir apply_fixture.inc
 
@@ -682,6 +682,12 @@ select is(
      and user_id in (:'u1', :'own1')),
   'false:' || private.job_order_neutral_title(:'r') || ',true:Acme Hamburg welders',
   'NFR-S11: the employer reads its own title, the partner the title it knows');
+select is(
+  (select string_agg((user_id = :'own1')::text || ':' || (payload ->> 'to_partner'), ',' order by user_id = :'own1')
+   from public.notifications where kind = 'submission_approved' and payload ->> 'submission_id' = :'sub_w'
+     and user_id in (:'u1', :'own1')),
+  'false:true,true:false',
+  'FR-O4 AC5: the partner''s notice says it is to the partner, so it reads "a candidate you proposed"');
 select ok(
   not exists (select 1 from public.notifications where kind = 'submission_approved'
               and payload ?| array['candidate_name', 'first_name', 'invited_email', 'email', 'worker_user_id']),

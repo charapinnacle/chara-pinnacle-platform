@@ -174,6 +174,12 @@ describe("the submission components", () => {
     expect(html).toContain("Passport scan");
     expect(html).toContain("I agree to share my profile and the selected documents with Acme Bau for this submission");
     expect(html).toContain('href="/en/legal/sharing-notice"');
+    expect(html).toMatch(
+      /<label[^>]*><span>I agree to share my profile and the selected documents with Acme Bau for this submission, as the <a [^>]*class="[^"]*relative z-10[^"]*"[^>]*>sharing notice<\/a> describes<\/span><\/label>/,
+    );
+    expect(html).toContain(
+      'aria-label="I agree to share my profile and the selected documents with Acme Bau for this submission, as the sharing notice describes"',
+    );
     expect(html.match(/type="checkbox"/g)).toHaveLength(2);
   });
 
