@@ -208,7 +208,8 @@ export function metricRows(
   }));
 }
 
-// No metric of the range is shown: every count is below the threshold, nothing happened that may be told (FR-S2 AC9).
+// No metric of the range is shown: every count is below the threshold, which hides a zero and a small count alike, so the
+// page says the counts are hidden rather than that nothing happened (FR-S2 AC9).
 export function hasNoActivity(counts: readonly NetworkCount[]): boolean {
   return counts.every((row) => row.count === null);
 }

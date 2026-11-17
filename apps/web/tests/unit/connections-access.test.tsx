@@ -96,11 +96,15 @@ describe("the rows of the lists (FR-L4 AC10)", () => {
     });
   });
 
-  it("a followed employer links to its company page, a followed partner to its profile", () => {
+  it("a followed employer links to its company page, a followed partner to its profile, each worded for its type", () => {
     const row = { id: "o-1", slug: "beta", displayName: "Beta", basedIn: "Germany", followedAt: "2026-12-01T10:00:00Z" };
     expect(followedCompanyItem("en", { ...row, organizationType: "employer" })).toMatchObject({
-      href: "/en/companies/beta", details: ["Employer, based in Germany"],
+      href: "/en/companies/beta",
+      details: ["Employer, based in Germany", "You hear about its new vacancies, at most once a day."],
     });
-    expect(followedCompanyItem("en", { ...row, organizationType: "recruitment_company" }).href).toBe("/en/partners/beta");
+    const partner = followedCompanyItem("en", { ...row, organizationType: "recruitment_company" });
+    expect(partner.href).toBe("/en/partners/beta");
+    expect(partner.details).toEqual(["Recruitment company, based in Germany", "Its profile stays at hand here."]);
+    expect(partner.details.join(" ")).not.toMatch(/vacanc/i);
   });
 });

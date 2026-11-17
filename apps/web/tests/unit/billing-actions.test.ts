@@ -138,9 +138,13 @@ describe("openPortal", () => {
 describe("saveLegalEntityIdentifier", () => {
   const values = { identifier: "de 123 456 789", identifierKind: "vat_number" };
 
+  beforeEach(() => {
+    requireOrgRoleMock.mockResolvedValue({ organization: { id: ORG, type: "employer" } });
+  });
+
   it("is the owner's: the role is checked, and the database normalises and locks", async () => {
     await expect(saveLegalEntityIdentifier("acme", values)).resolves.toEqual({});
-    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "owner");
+    expect(requireOrgRoleMock).toHaveBeenCalledWith("en", "acme", "owner", { partner: "either" });
     expect(rpcMock).toHaveBeenCalledWith("set_legal_entity_identifier", {
       p_org: ORG,
       p_identifier: "de 123 456 789",
@@ -167,5 +171,13 @@ describe("saveLegalEntityIdentifier", () => {
   it("sends a lapsed second step to confirm it", async () => {
     rpcMock.mockResolvedValue({ error: { message: "CHARA_FORBIDDEN", details: "aal2_required", code: "P0001" } });
     await expect(saveLegalEntityIdentifier("acme", values)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Forg%2Facme%2Fbilling");
+  });
+
+  it("serves a recruitment or staffing company on its company profile page (FR-J1, FR-J4 AC9)", async () => {
+    requireOrgRoleMock.mockResolvedValue({ organization: { id: ORG, type: "staffing_company" } });
+    await expect(saveLegalEntityIdentifier("acme", values)).resolves.toEqual({});
+    expect(revalidateMock).toHaveBeenCalledWith("/en/org/acme/profile");
+    rpcMock.mockResolvedValue({ error: { message: "CHARA_FORBIDDEN", details: "aal2_required", code: "P0001" } });
+    await expect(saveLegalEntityIdentifier("acme", values)).rejects.toThrow("REDIRECT:/en/mfa?next=%2Fen%2Forg%2Facme%2Fprofile");
   });
 });

@@ -59,6 +59,7 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     await expect(basic).toContainText("30 days free trial");
     await expect(basic).toContainText("One free trial is granted for each legal entity.");
     await expect(basic).toContainText("3 countries served");
+    await expect(basic, "the limit the recruitment dashboard counts").toContainText("10 workforce listings");
     await expect(basic.getByRole("link", { name: "Sign up for Basic" })).toHaveAttribute("href", "/en/signup?kind=recruitment_company");
     await expect(recruitment.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Professional" }) })).toContainText(
       "EUR 99.00",
@@ -97,6 +98,14 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     const secret = await enrollTotp(user);
     const hosted = await stubHostedPages(page);
     await signInAtAal2(page, user, secret, billingPath(slug));
+    await page.goto("/en/pricing");
+    const ownTab = page.getByRole("tab", { name: "Staffing companies" });
+    await expect(ownTab, "the pricing page opens on the company's own type").toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Staffing companies" }).getByRole("link", { name: "Choose Basic" })).toHaveAttribute(
+      "href",
+      billingPath(slug),
+    );
+    await page.goto(billingPath(slug));
 
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
     await expect(page.getByText(NO_PAYMENT)).toBeVisible();
