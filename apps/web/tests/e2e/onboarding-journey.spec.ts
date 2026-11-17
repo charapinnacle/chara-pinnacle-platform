@@ -221,7 +221,7 @@ test.describe("onboarding journey (U68)", () => {
     const button = page.getByRole("button", { name: "Continue" });
     await waitForHydration(button);
     const position = () => button.evaluate((element) => getComputedStyle(element).position);
-    const phoneLine = page.getByText("Step 1 of 3", { exact: true });
+    const phoneLine = page.getByText("Step 1 of 3: Company", { exact: true });
 
     await page.setViewportSize({ width: 375, height: 700 });
     await expect(phoneLine).toBeVisible();
