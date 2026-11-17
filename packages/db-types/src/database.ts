@@ -1524,6 +1524,49 @@ isOneToOne: false
       referencedColumns: ["organization_id"]
     }
                   ]
+                },"saved_worker_cards": {
+                  Row: {
+                    "card_id": string,"created_at": string,"id": string,"organization_id": string,"requirement_id": string | null,"saved_by": string | null
+                  }
+                  Insert: {
+                    "card_id": string,"created_at"?: string,"id"?: string,"organization_id": string,"requirement_id"?: string | null,"saved_by"?: string | null
+                  }
+                  Update: {
+                    "card_id"?: string,"created_at"?: string,"id"?: string,"organization_id"?: string,"requirement_id"?: string | null,"saved_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "saved_worker_cards_card_id_fkey"
+      columns: ["card_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["card_id"]
+    },{
+      foreignKeyName: "saved_worker_cards_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_worker_cards_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
+      foreignKeyName: "saved_worker_cards_requirement_id_fkey"
+      columns: ["requirement_id"]
+isOneToOne: false
+      referencedRelation: "workforce_requirements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "saved_worker_cards_saved_by_fkey"
+      columns: ["saved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"submission_events": {
                   Row: {
                     "actor_id": string | null,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"] | null,"id": number,"note": string | null,"submission_id": string,"to_status": Database["public"]['Enums']["submission_status"]
@@ -2763,6 +2806,11 @@ isOneToOne: false
               "based_in_country": string,"based_in_country_name": string,"display_name": string,"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"partner_id": string,"saved_at": string,"served_countries": Json,"slug": string,"total": number
             }[]
                            },
+"list_saved_worker_cards":
+{ Args: { "p_org": string,"p_requirement"?: string }; Returns: {
+              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"skills": string[],"training": Json,"updated_at": string,"work_authorization_countries": string[],"years_experience": number,"direct_contact": string,"notice": string,"requirement_id": string,"saved_at": string,"visible": boolean
+            }[]
+                           },
 "list_sitemap_companies":
 { Args: { "p_after_slug"?: string,"p_limit"?: number }; Returns: Json
                            },
@@ -2993,6 +3041,11 @@ isOneToOne: false
               "also_offers_staffing": boolean,"available_workforce": Json,"based_in_country": string,"capacity_confirmed_at": string,"display_name": string,"id": string,"main_occupations": Json,"matched_filters": (string)[],"next_cursor": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_updated_at": string,"served_countries": Json,"slug": string,"staffing_types": (Database["public"]['Enums']["partner_service_type"])[]
             }[]
                            },
+"search_workers":
+{ Args: { "p_cursor"?: string,"p_filters"?: Json,"p_limit"?: number,"p_org": string }; Returns: {
+              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"skills": string[],"training": Json,"updated_at": string,"work_authorization_countries": string[],"years_experience": number,"direct_contact": string,"matched_on": string[],"next_cursor": string,"notice": string
+            }[]
+                           },
 "send_message":
 { Args: { "p_body": string,"p_conversation": string }; Returns: {
               "created_at": string,"id": string
@@ -3092,6 +3145,9 @@ isOneToOne: false
 "toggle_saved_partner":
 { Args: { "p_org"?: string,"p_partner": string,"p_saved"?: boolean }; Returns: boolean
                            },
+"toggle_saved_worker_card":
+{ Args: { "p_card": string,"p_org": string,"p_requirement"?: string,"p_saved"?: boolean }; Returns: boolean
+                           },
 "transfer_ownership":
 { Args: { "p_new_owner": string,"p_org": string }; Returns: undefined
                            },
@@ -3124,6 +3180,11 @@ isOneToOne: false
                            },
 "withdraw_submission":
 { Args: { "p_submission": string }; Returns: Database["public"]['Enums']["submission_status"]
+                           },
+"worker_search_access":
+{ Args: { "p_org": string }; Returns: {
+              "advanced": boolean,"default_destination": string
+            }[]
                            }
           }
           Enums: {
