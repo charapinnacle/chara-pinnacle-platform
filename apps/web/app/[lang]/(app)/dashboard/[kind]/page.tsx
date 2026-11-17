@@ -98,6 +98,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
           reminders={reminders}
           today={today}
           network={network}
+          findWorkers={findWorkers}
         />
       </>
     );

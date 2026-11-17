@@ -1,4 +1,5 @@
 import { AvailabilityCard } from "@/components/dashboard/availability-card";
+import { FindWorkersCard } from "@/components/dashboard/find-workers-card";
 import { Panel } from "@/components/dashboard/panel";
 import { RecentApplications } from "@/components/dashboard/recent-applications";
 import { StageTable } from "@/components/dashboard/stage-table";
@@ -14,6 +15,7 @@ import type { DocumentReminder } from "@/lib/dal/documents";
 import type { Passport } from "@/lib/dal/passport";
 import { countFollowedCompanies } from "@/lib/dal/connections";
 import { countSavedJobs } from "@/lib/dal/saved-jobs";
+import { getMyCard } from "@/lib/dal/worker-visibility";
 import { sumOf } from "@/lib/dashboard/stage-counts";
 import { savedPath } from "@/lib/jobs/saved";
 import type { Completeness } from "@/lib/passport/completeness";
@@ -28,6 +30,8 @@ type WorkerDashboardProps = {
   today: string;
   // Release 2a is on: the companies the candidate follows are counted (FR-L4 AC10).
   network: boolean;
+  // Release 2c is on: the state of the Find Workers card is shown (FR-Q1 AC10).
+  findWorkers: boolean;
 };
 
 // The first step of a candidate who has not applied yet: the occupation when it is missing (an application needs it),
@@ -79,7 +83,7 @@ function WorkerApplications({ lang, completeness, stages }: { lang: string; comp
 
 // The candidate's dashboard (UX-03): the passport and its next step, when they can start, the saved jobs and the latest
 // applications with their stages. Each read shows its own skeleton or error; nothing here is stored.
-export function WorkerDashboard({ lang, completeness, availability, availableFrom, reminders, today, network }: WorkerDashboardProps) {
+export function WorkerDashboard({ lang, completeness, availability, availableFrom, reminders, today, network, findWorkers }: WorkerDashboardProps) {
   const stages = getMyStageCounts();
 
   return (
@@ -106,6 +110,11 @@ export function WorkerDashboard({ lang, completeness, availability, availableFro
         </Section>
         <div className="grid gap-6 lg:col-span-5 xl:col-span-4">
           <AvailabilityCard lang={lang} availability={availability} availableFrom={availableFrom} />
+          {findWorkers ? (
+            <Panel promise={getMyCard()} errorTitle="Your Find Workers card could not be loaded">
+              {(card) => (card ? <FindWorkersCard lang={lang} card={card} /> : null)}
+            </Panel>
+          ) : null}
           <Panel promise={countSavedJobs()} errorTitle="Your saved jobs could not be counted">
             {(count) => <SummaryCard label="Saved jobs" value={count} href={savedPath(lang)} />}
           </Panel>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AccessLogSection } from "@/components/access-log/access-log-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
+import { FindWorkersPreview } from "@/components/passport/find-workers-preview";
 import { PageHeader } from "@/components/layout/page-header";
 import { AuthorizationsSection } from "@/components/passport/authorizations-section";
 import { BasicsForm } from "@/components/passport/basics-form";
@@ -125,6 +126,15 @@ export default async function PassportPage({ params }: PageProps<"/[lang]/passpo
               expiryYears={limits.authorizationExpiryYears}
             />
           </Section>
+          {findWorkers ? (
+            <Section
+              id="find-workers"
+              title="Find Workers"
+              description="Employers and recruitment companies look for workers in Find Workers. They see your card only if you turn it on, and never your name."
+            >
+              <FindWorkersPreview countries={countries} languages={languages} occupations={occupations} industries={industries} />
+            </Section>
+          ) : null}
           <Section
             id="documents"
             title="Manage documents"
