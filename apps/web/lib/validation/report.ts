@@ -26,10 +26,10 @@ export const reportCategoryOptions = Object.entries(reportCategoryLabels).map(([
 
 export const FEE_DEMAND = "fee_demanded_from_worker" satisfies Enums["report_category"];
 
-// On a partner profile and a submission the fee category says what a worker experienced (FR-J3 AC8); elsewhere it keeps
-// its Phase 1 label.
+// On a partner profile, a submission and a contact request the fee category says what a worker experienced (FR-J3 AC8);
+// elsewhere it keeps its Phase 1 label.
 export function reportCategoryOptionsFor(type: Enums["report_target_type"]) {
-  if (type !== "partner_profile" && type !== "candidate_submission") return reportCategoryOptions;
+  if (type !== "partner_profile" && type !== "candidate_submission" && type !== "contact_request") return reportCategoryOptions;
   return reportCategoryOptions.map((option) =>
     option.value === FEE_DEMAND ? { value: option.value, label: "The company asked me to pay a fee" } : option,
   );
@@ -63,6 +63,7 @@ export const reportTargetLabels = {
   partner_response: "Partner response",
   candidate_submission: "Candidate submission",
   message: "Message",
+  contact_request: "Contact request",
 } as const satisfies Record<Enums["report_target_type"], string>;
 
 export const reportTargetTypes = [
@@ -75,6 +76,7 @@ export const reportTargetTypes = [
   "partner_response",
   "candidate_submission",
   "message",
+  "contact_request",
 ] as const satisfies readonly Enums["report_target_type"][];
 
 // The items of the job order network (V57): reported by a participant only, from the page of the item.
@@ -86,12 +88,12 @@ export function isReportItem(type: Enums["report_target_type"]): type is ReportI
   return (reportItemTypes as readonly string[]).includes(type);
 }
 
-// What only a signed-in participant reports, from the page of the item: the items above and a message of a conversation
-// (V66), which staff do not hide or suspend through the item (V73 adds the decisions on messages).
-export type ParticipantReportType = ReportItemType | "message";
+// What only a signed-in participant reports, from the page of the item: the items above, a message of a conversation
+// (V66) and a contact request, reported by the worker it was sent to (V73).
+export type ParticipantReportType = ReportItemType | "message" | "contact_request";
 
 export function isParticipantReport(type: Enums["report_target_type"]): type is ParticipantReportType {
-  return type === "message" || isReportItem(type);
+  return type === "message" || type === "contact_request" || isReportItem(type);
 }
 
 // The category a report link may preselect (?category=), for example "Report a fee demand"; anything else selects none.
@@ -242,10 +244,11 @@ export const decisionOfOption = {
 } as const satisfies Record<ReportDecisionOption, ReportDecisionValue>;
 
 // What the console offers for the target of a report, as the database allows it: a vacancy, partner profile, job order,
-// response or submission can be hidden (or the report closed on a hide in effect), the organisation of any of them or of
-// a company suspended (or the report closed on a suspension in effect), and every report dismissed. An item hidden with
-// the suspension of its organisation is not hidden on its own. A report about a candidate or a page has nothing on the
-// platform to act on; it is closed with a note instead.
+// response, submission, message or contact request can be hidden (or the report closed on a hide in effect), the
+// organisation of any of them or of a company suspended (or the report closed on a suspension in effect; a candidate's
+// message has no organisation), and every report dismissed. An item hidden with the suspension of its organisation is not
+// hidden on its own. A report about a candidate or a page has nothing on the platform to act on; it is closed with a note
+// instead.
 export function reportDecisionsFor({ targetType, job, item, organization }: DecisionTarget): ReportDecisionOption[] {
   const decisions: ReportDecisionOption[] = [];
   const itemState =
@@ -253,12 +256,12 @@ export function reportDecisionsFor({ targetType, job, item, organization }: Deci
       ? job?.moderationState
       : targetType === "partner_profile"
         ? organization?.moderationState
-        : isReportItem(targetType)
+        : isParticipantReport(targetType)
           ? item?.moderationState
           : null;
   if (itemState === "visible") decisions.push("hide");
   if (itemState === "hidden") decisions.push("hide_in_effect");
-  if (targetType === "job" || targetType === "company" || targetType === "partner_profile" || isReportItem(targetType)) {
+  if (targetType === "job" || targetType === "company" || targetType === "partner_profile" || isParticipantReport(targetType)) {
     if (organization?.status === "active") decisions.push("suspend_organization");
     if (organization?.status === "suspended") decisions.push("suspend_in_effect");
   }
@@ -278,7 +281,7 @@ export const reportDecisionLabels: Record<string, string> = {
 };
 
 export function reportDecisionLabel(decision: string, targetType: Enums["report_target_type"]): string {
-  if (decision === "content_hidden" && isReportItem(targetType)) return `${reportTargetLabels[targetType]} hidden`;
+  if (decision === "content_hidden" && isParticipantReport(targetType)) return `${reportTargetLabels[targetType]} hidden`;
   return reportDecisionLabels[decision] ?? decision;
 }
 

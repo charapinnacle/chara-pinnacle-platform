@@ -14,7 +14,7 @@ import { useConversationMessages } from "@/lib/messaging/hooks";
 import { senderLabel } from "@/lib/messaging/present";
 import { MESSAGES_PAGE_SIZE, type MessageItem } from "@/lib/messaging/thread";
 import { announceMessagesRead } from "@/lib/messaging/unread";
-import { reportPath } from "@/lib/routes";
+import { appealPath, reportPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type ConversationThreadProps = {
@@ -38,7 +38,8 @@ type ConversationThreadProps = {
 // arrives, followed live through V64 (a Realtime signal, or a poll while the channel is not connected), marked read for
 // the reader whenever a newer message shows (SOP P2-26 step Read). A body is rendered as text, so markup and addresses
 // stay literal: nothing becomes an element or a link, and nothing is previewed. Each message of someone else can be reported
-// (FR-P3 AC6). children replaces the composer while the conversation is closed.
+// (FR-P3 AC6); a message of the reader's side hidden by moderation says so with its decision (FR-S1, V73). children replaces
+// the composer while the conversation is closed.
 export function ConversationThread({
   lang,
   conversationId,
@@ -118,7 +119,12 @@ export function ConversationThread({
                   </p>
                   <MessageCard lang={lang} card={typedMessageCard(message.kind, connections[message.id], reader)} />
                   <p className="text-body whitespace-pre-wrap wrap-anywhere">{message.body}</p>
-                  {message.mine ? null : (
+                  {message.hiddenBy !== null ? (
+                    <p className="text-small">
+                      <strong>Hidden by moderation.</strong> The other side no longer sees this message.{" "}
+                      <TextLink href={appealPath(lang, message.hiddenBy)}>See the reasons and how to appeal</TextLink>
+                    </p>
+                  ) : message.mine ? null : (
                     <p className="text-small">
                       <TextLink href={reportPath(lang, "message", message.id)}>
                         Report<span className="sr-only"> the message of {senderLabel(message)}, {formatDateTime(message.createdAt)}</span>

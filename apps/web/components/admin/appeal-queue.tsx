@@ -12,6 +12,7 @@ import {
   appealCursorParam,
   appealListStatusLabels,
   appealStatusLabels,
+  NO_ORGANIZATION,
   appealStatusTones,
   appealTargetLabels,
   reversedShare,
@@ -90,7 +91,7 @@ export async function AppealQueue({ lang, status, after }: { lang: string; statu
                 <span className="text-muted-foreground">{appealTargetLabels[row.targetType] ?? row.targetType}: </span>
                 {row.title}
               </td>
-              <td className={`${cell} break-words`}>{row.organizationName}</td>
+              <td className={`${cell} break-words`}>{row.organizationName ?? NO_ORGANIZATION}</td>
               <td className={cell}>
                 <StatusBadge status={appealStatusTones[row.status]} className="whitespace-nowrap">
                   {appealStatusLabels[row.status]}

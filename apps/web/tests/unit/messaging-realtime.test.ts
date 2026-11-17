@@ -62,6 +62,7 @@ function message(id: string, createdAt: string) {
     senderName: "Amina Okafor",
     senderOrganizationName: null,
     senderErased: false,
+    hiddenBy: null,
   };
 }
 
@@ -329,6 +330,7 @@ describe("the reads behind the hooks", () => {
         senderName: null,
         senderOrganizationName: null,
         senderErased: false,
+        hiddenBy: null,
       },
     ]);
     expect(rpcMock).toHaveBeenCalledWith("list_messages", {
