@@ -19,6 +19,7 @@ import {
   Send,
   Settings,
   UserRoundCheck,
+  UserRoundSearch,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const icons: Record<NavIcon, LucideIcon> = {
   requirements: ClipboardList,
   jobOrders: BriefcaseBusiness,
   employers: Building,
+  workers: UserRoundSearch,
   invitations: Inbox,
   responses: FileText,
   submissions: UserRoundCheck,

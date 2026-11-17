@@ -24,7 +24,7 @@ import { getEmployerNetwork } from "@/lib/dal/employer-network";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { RECRUITMENT_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { ACTIVE_REQUIREMENTS } from "@/lib/requirements/limits";
-import { applicantsPath, billingPath, jobsPath, organizationProfilePath, requirementsPath } from "@/lib/routes";
+import { applicantsPath, billingPath, findWorkersPath, jobsPath, organizationProfilePath, requirementsPath } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
 
 type EmployerDashboardProps = {
@@ -35,6 +35,8 @@ type EmployerDashboardProps = {
   network: boolean;
   // Release 2b is on: the workforce requirements are linked (FR-M1, SOP step Start).
   requirements: boolean;
+  // Find Workers is released: the search is linked (FR-Q2 SOP step Open).
+  findWorkers?: boolean;
 };
 
 async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<boolean>; lang: string; slug: string; role: MemberRole }) {
@@ -114,7 +116,7 @@ function PartnerNetwork({ lang, organizationId, slug, canManage, requirements }:
 // The summary of the hiring of one organisation for a member, or for an owner or admin at aal2. The reads start together;
 // each part shows its own when it is ready, or its own error. An owner or admin also sees the first steps until they are
 // all done. The stage counts are shown once, in the table of the applications.
-export function EmployerDashboard({ lang, organization, twoStepDone, network, requirements }: EmployerDashboardProps) {
+export function EmployerDashboard({ lang, organization, twoStepDone, network, requirements, findWorkers = false }: EmployerDashboardProps) {
   const { slug, role } = organization;
   const { applications, vacancies, plan, empty } = startDashboardLoad(organization.id);
   const manager = role !== "member";
@@ -130,11 +132,16 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network, re
       <PageHeader
         title="Dashboard"
         actions={
-          manager || requirements ? (
+          manager || requirements || findWorkers ? (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
               {requirements ? (
                 <TextLink standalone href={requirementsPath(lang, slug)}>
                   Workforce requirements
+                </TextLink>
+              ) : null}
+              {findWorkers ? (
+                <TextLink standalone href={findWorkersPath(lang, slug)}>
+                  Find workers
                 </TextLink>
               ) : null}
               {manager ? (

@@ -36,7 +36,7 @@ async function bellOrNone(userId: string): Promise<{ userId: string; initialUnre
 // The links of a partner organisation follow release 2a, the requirement and invitation links release 2b; a failed read
 // counts the switch as off and keeps the header.
 async function releasedOrOff(
-  key: "release_partner_directories" | "release_job_orders" | "release_candidate_submissions" | "release_messaging",
+  key: "release_partner_directories" | "release_job_orders" | "release_candidate_submissions" | "release_messaging" | "release_find_workers",
 ): Promise<boolean> {
   try {
     return await isReleased(key);
@@ -53,13 +53,14 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
   const { lang } = await params;
   const user = await getCurrentUser();
   const accountKind = user && !user.suspended ? user.accountKind : null;
-  const [organizations, notifications, partnersReleased, jobOrdersReleased, submissionsReleased, messagingReleased] = await Promise.all([
+  const [organizations, notifications, partnersReleased, jobOrdersReleased, submissionsReleased, messagingReleased, findWorkersReleased] = await Promise.all([
     user && accountKind === "company" ? organizationsOrNone(user.id) : [],
     user && accountKind ? bellOrNone(user.id) : null,
     user && accountKind === "company" ? releasedOrOff("release_partner_directories") : false,
     user && accountKind === "company" ? releasedOrOff("release_job_orders") : false,
     user && accountKind ? releasedOrOff("release_candidate_submissions") : false,
     user && accountKind ? releasedOrOff("release_messaging") : false,
+    user && accountKind === "company" ? releasedOrOff("release_find_workers") : false,
   ]);
   const navigation = user
     ? {
@@ -80,6 +81,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
             ...(submissionsReleased ? { candidateSubmissions: true as const } : {}),
             ...(partnersReleased ? { analytics: true as const } : {}),
             ...(messagingReleased ? { messaging: true as const } : {}),
+            ...(findWorkersReleased ? { findWorkers: true as const } : {}),
           })),
         notifications,
         submissions: accountKind === "worker" && submissionsReleased,

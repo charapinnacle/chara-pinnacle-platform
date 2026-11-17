@@ -6,6 +6,7 @@ import {
   companyDashboardPath,
   employerDashboardPath,
   findEmployersPath,
+  findWorkersPath,
   homePath,
   invitationsPath,
   jobOrdersPath,
@@ -39,6 +40,7 @@ export type NavIcon =
   | "requirements"
   | "jobOrders"
   | "employers"
+  | "workers"
   | "invitations"
   | "responses"
   | "submissions"
@@ -71,6 +73,8 @@ export type NavOrganization = {
   analytics?: true;
   // Set while release 2c is on: the organisation's conversations (FR-P1).
   messaging?: true;
+  // Set while Find Workers is released: the search of workers (FR-Q2).
+  findWorkers?: true;
 };
 
 // The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered. While
@@ -104,7 +108,7 @@ function messagesLink(href: string): NavLink {
 // is on, an employer has its workforce requirements, where it follows its invitations and the responses, and a partner the
 // job order marketplace, Find employers, the invitations it received and the responses it sent (FR-N1, FR-L3, FR-O1,
 // FR-O2). While release 2a is on, both have their analytics (FR-R6). While release 2c is on, every organisation has its
-// conversations before the team (FR-P1).
+// conversations before the team (FR-P1). While Find Workers is released, both have it before the analytics (FR-Q2).
 export function organizationLinks(
   lang: string,
   {
@@ -116,9 +120,16 @@ export function organizationLinks(
     candidateSubmissions,
     analytics,
     messaging,
-  }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions" | "analytics" | "messaging">,
+    findWorkers,
+  }: Pick<
+    NavOrganization,
+    "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions" | "analytics" | "messaging" | "findWorkers"
+  >,
 ): NavLink[] {
   if (suspended) return [];
+  const workers: NavLink[] = findWorkers
+    ? [{ label: "Find workers", href: findWorkersPath(lang, slug), match: findWorkersPath(lang, slug), icon: "workers" }]
+    : [];
   const messages = messaging ? [messagesLink(messagesPath(lang, slug))] : [];
   const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
   const analyticsLinks: NavLink[] = analytics
@@ -151,6 +162,7 @@ export function organizationLinks(
               } as const,
             ]
           : []),
+        ...workers,
         ...analyticsLinks,
         ...messages,
         team,
@@ -162,6 +174,7 @@ export function organizationLinks(
         ...(jobOrders
           ? [{ label: "Requirements", href: requirementsPath(lang, slug), match: requirementsPath(lang, slug), icon: "requirements" } as const]
           : []),
+        ...workers,
         ...analyticsLinks,
         ...messages,
         team,

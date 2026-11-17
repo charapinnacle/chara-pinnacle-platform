@@ -7,6 +7,7 @@ export const RECRUITMENT_DIRECTORY_PATH = "partners/recruitment";
 export const STAFFING_DIRECTORY_PATH = "partners/staffing";
 export const JOB_ORDERS_PATH = "job-orders";
 export const FIND_COMPANIES_PATH = "companies";
+export const FIND_WORKERS_PATH = "find-workers";
 
 // The header shows a few links (OPEN_QUESTIONS.md D90, which replaces the header lists of P18 and P22): Find Jobs and For
 // employers on every public page, For job seekers instead of both on the For employers page, How it works, then Post a Job
@@ -21,14 +22,14 @@ export const jobSeekersLink = { path: "", label: "For job seekers" } as const;
 
 // The navigation of the client's structure (section 2) that Phase 1 does not have, in its order, with the release that
 // makes an item a page and its address then (FR-L5). Until its release is on an item is named in the menu as plain text,
-// never a link, so the client sees where it will go. The partner directories (release 2a), Job Orders (release 2b, V40)
-// and Find Companies (release 2b, V53) exist; Find Workers (V69) and Request Workers (V71) stay labels whatever their
-// switch says until the unit that builds the page gives the item its path and release here, which also puts it in the
-// sitemap. Workforce Corridors belongs to no release of Phase 2.
+// never a link, so the client sees where it will go. The partner directories (release 2a), Job Orders (release 2b, V40),
+// Find Companies (release 2b, V53) and Find Workers (release 2c, V69) exist; Request Workers (V71) stays a label whatever
+// its switch says until the unit that builds the page gives the item its path and release here, which also puts it in
+// the sitemap. Workforce Corridors belongs to no release of Phase 2.
 type NetworkFeature = { label: string } & ({ path: string; release: ReleaseSwitch } | { path: null; release: null });
 
 export const networkFeatures: readonly NetworkFeature[] = [
-  { label: "Find workers", path: null, release: null },
+  { label: "Find workers", path: FIND_WORKERS_PATH, release: "release_find_workers" },
   { label: "Request workers", path: null, release: null },
   { label: "Find companies", path: FIND_COMPANIES_PATH, release: "release_job_orders" },
   { label: "Recruitment partners", path: RECRUITMENT_DIRECTORY_PATH, release: "release_partner_directories" },

@@ -6,7 +6,7 @@ import type { CompanyPage } from "@/lib/companies/page";
 import { env } from "@/lib/env";
 import { countryInSentence, formatDate } from "@/lib/i18n/format";
 import type { PartnerProfile } from "@/lib/partners/profile";
-import { FIND_COMPANIES_PATH, JOB_ORDERS_PATH, RANKING_PATH } from "@/lib/public/navigation";
+import { FIND_COMPANIES_PATH, FIND_WORKERS_PATH, JOB_ORDERS_PATH, RANKING_PATH } from "@/lib/public/navigation";
 import { companyPagePath, partnerProfilePath } from "@/lib/routes";
 import { staticPages, type StaticPageKey } from "./pages";
 
@@ -110,6 +110,14 @@ export function findCompaniesPageMetadata(lang: string): Metadata {
     withBrand("Find companies", " — "),
     `How recruitment and staffing companies on ${BRAND_NAME} find employers with a public company page and open job orders.`,
     `/${lang}/${FIND_COMPANIES_PATH}`,
+  );
+}
+
+export function findWorkersPageMetadata(lang: string): Metadata {
+  return pageMetadata(
+    withBrand("Find workers", " — "),
+    `How employers and recruitment and staffing companies on ${BRAND_NAME} find workers who chose to be found, without names or contact details.`,
+    `/${lang}/${FIND_WORKERS_PATH}`,
   );
 }
 
