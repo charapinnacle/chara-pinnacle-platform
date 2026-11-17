@@ -129,6 +129,26 @@ describe("the header links of an organisation", () => {
     expect(organizationLinks("en", { slug: "manila", role: "owner", suspended: true, partnerSegment: "recruitment", jobOrders: true })).toEqual([]);
   });
 
+  it("FR-R6: add Analytics before Team for an employer and a partner while release 2a is on", () => {
+    expect(
+      organizationLinks("en", { slug: "acme", role: "member", suspended: false, analytics: true }).map(({ label, href }) => [label, href]),
+    ).toEqual([
+      ["Organisation", "/en/dashboard/employer?org=acme"],
+      ["Vacancies", "/en/org/acme/jobs"],
+      ["Applicants", "/en/org/acme/applicants"],
+      ["Analytics", "/en/org/acme/analytics"],
+      ["Team", "/en/org/acme/members"],
+    ]);
+    expect(labels(organizationLinks("en", { slug: "manila", role: "owner", suspended: false, partnerSegment: "recruitment", analytics: true }))).toEqual([
+      "Organisation",
+      "Workforce profile",
+      "Analytics",
+      "Team",
+      "Billing",
+    ]);
+    expect(organizationLinks("en", { slug: "manila", role: "owner", suspended: true, partnerSegment: "recruitment", analytics: true })).toEqual([]);
+  });
+
   it("give a suspended organisation none, because each of its pages only says that it is suspended", () => {
     for (const role of ["owner", "admin", "member"] as const) {
       expect(organizationLinks("en", { slug: "acme", role, suspended: true })).toEqual([]);

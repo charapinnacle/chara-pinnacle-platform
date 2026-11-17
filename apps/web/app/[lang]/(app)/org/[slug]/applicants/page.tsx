@@ -232,8 +232,7 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
               {parsed.job ? (
                 <ExportButton
                   action={applicantsExportPath(lang, slug)}
-                  jobId={parsed.job}
-                  stage={parsed.stage}
+                  fields={{ job: parsed.job, stage: parsed.stage ?? "" }}
                   disabled={!access.csvExportAvailable}
                   hint={access.csvExportAvailable || frozen ? null : csvNotInPlanText}
                 />
