@@ -338,7 +338,8 @@ test.describe("Public partner profile (FR-K4)", () => {
     await page.getByRole("link", { name: "Report company" }).click();
     await expect(page).toHaveURL(`/en/report?type=partner_profile&partner=${partner.slug}`);
     await expect(page.getByRole("heading", { name: "Report a company", level: 1 })).toBeVisible();
-    await expect(page.getByText(`/en/partners/${partner.slug}`)).toBeVisible();
+    await expect(page.getByRole("main").getByText(partner.displayName, { exact: true })).toBeVisible();
+    await expect(page.getByText(`/en/partners/${partner.slug}`), "the company is named, not its path").toHaveCount(0);
     await expect(page.getByLabel("What is wrong")).toHaveValue("");
     await fillReport(page, { category: "misleading_or_fraud", details: "This company claims placements it never made.", email: "visitor@example.test" });
     const reference = await sendReport(page);
