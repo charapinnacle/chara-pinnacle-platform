@@ -118,7 +118,8 @@ select is(
     'employer_industry', 'Construction',
     'employer_website', 'https://acme.example',
     'employer_description', null,
-    'employer_company_slug', null
+    'employer_company_slug', null,
+    'required_experience_years', null
   ),
   'the page has the labels of the lists and the employer by display name, country, industry and website'
 );
@@ -132,7 +133,7 @@ select is(
     'id', 'title', 'description', 'occupation', 'industry', 'country_code', 'country', 'city', 'employment_type',
     'salary_min', 'salary_max', 'salary_currency', 'salary_period', 'accommodation', 'visa_support',
     'recruitment_preference', 'published_at', 'created_at', 'employer_display_name', 'employer_country', 'employer_industry',
-    'employer_website', 'employer_description', 'employer_company_slug'
+    'employer_website', 'employer_description', 'employer_company_slug', 'required_experience_years'
   ],
   'the result columns are the public ones: no created_by, no organisation id, no legal name, no member or plan data'
 );

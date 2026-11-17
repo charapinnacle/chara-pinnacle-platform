@@ -83,7 +83,7 @@ select ok(
   'a trigram index on the folded display name serves the match'
 );
 select is(
-  (select p.proargnames[13] from pg_proc p where p.oid = 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, text, integer)'::regprocedure),
+  (select p.proargnames[13] from pg_proc p where p.oid = 'public.search_jobs(text, text, text, text, text, public.employment_type, numeric, text, public.salary_period, boolean, boolean, public.recruitment_preference, text, integer, text, integer)'::regprocedure),
   'p_employer', 'p_employer follows p_recruitment'
 );
 select is(

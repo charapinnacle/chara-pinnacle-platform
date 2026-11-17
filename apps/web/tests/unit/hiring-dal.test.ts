@@ -142,6 +142,7 @@ describe("toJobFormInput", () => {
     accommodation: true,
     visaSupport: true,
     recruitmentPreference: "both",
+    requiredExperienceYears: 3,
     status: "open",
     moderationState: "visible",
     statusChangedAt: "2026-10-06T10:00:00Z",
@@ -166,8 +167,15 @@ describe("toJobFormInput", () => {
       accommodation: true,
       visaSupport: true,
       recruitmentPreference: "both",
+      requiredExperience: "3",
     });
-    expect(toJobUpdate(jobFormSchema.parse(values))).toMatchObject({ occupation_id: "7212", industry_code: "C", country_code: "DE", salary_min: 2800.5 });
+    expect(toJobUpdate(jobFormSchema.parse(values))).toMatchObject({
+      occupation_id: "7212",
+      industry_code: "C",
+      country_code: "DE",
+      salary_min: 2800.5,
+      required_experience_years: 3,
+    });
   });
 
   it("gives empty strings for a vacancy without a salary", () => {
@@ -203,6 +211,7 @@ describe("getPublicJob", () => {
     employer_website: "https://acme.example",
     employer_description: "We build halls.\nSince 1999.",
     employer_company_slug: null,
+    required_experience_years: 3,
   };
 
   it("asks the public function for the vacancy and reads no table, so a member's session sees no more than a visitor's", async () => {
@@ -230,6 +239,7 @@ describe("getPublicJob", () => {
       accommodation: true,
       visaSupport: false,
       recruitmentPreference: "both",
+      requiredExperienceYears: 3,
       publishedAt: "2026-10-06T10:00:00+00:00",
       createdAt: "2026-10-04T08:00:00+00:00",
       employer: {
@@ -445,6 +455,7 @@ describe("searchJobs", () => {
       country: "DE",
       city: "Hamburg",
       employer: "Acme",
+      experience: 5,
       occupation: "7212",
       industry: "C",
       employment_type: "full_time",
@@ -474,6 +485,7 @@ describe("searchJobs", () => {
           p_visa_support: true,
           p_recruitment: "local",
           p_employer: "Acme",
+          p_experience: 5,
           p_cursor: "0|2026-10-07T10:00:00.000000Z|6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11",
           p_limit: 10,
         },
