@@ -6,6 +6,7 @@ import { PlanActions } from "@/components/billing/plan-actions";
 import { PlanChoices } from "@/components/billing/plan-choices";
 import { PlanSummary } from "@/components/billing/plan-summary";
 import { UsageSection } from "@/components/billing/usage-section";
+import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { organizationCrumb } from "@/lib/app/navigation";
@@ -13,6 +14,7 @@ import { planChanges, type SubscriptionStatus } from "@/lib/billing/presentation
 import { getBillingState, getSubscription, getUsage, listSoldPlans } from "@/lib/dal/billing";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
+import { organizationProfilePath } from "@/lib/routes";
 import { identifierKindLabels as kindLabels } from "@/lib/validation/organization";
 
 export const metadata: Metadata = { title: "Billing", robots: { index: false } };
@@ -80,6 +82,12 @@ export default async function BillingPage({ params }: PageProps<"/[lang]/org/[sl
               {partner
                 ? "It decides whether your company can have a free trial. It was recorded with your company details."
                 : "It cannot be changed once a payment has been started for the company."}
+              {partner && !state.identifier_locked ? (
+                <>
+                  {" "}
+                  <TextLink href={organizationProfilePath(lang, slug)}>Correct it on the company profile</TextLink>.
+                </>
+              ) : null}
             </p>
           ) : (
             <>
