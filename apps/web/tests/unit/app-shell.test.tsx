@@ -230,7 +230,9 @@ describe("the layout of the signed-in area", () => {
   });
 
   it("FR-O1: adds Invitations for a partner and Requirements for an employer while release 2b is on", async () => {
-    releasedMock.mockImplementation(async (key: string) => key !== "release_candidate_submissions" && key !== "release_messaging");
+    releasedMock.mockImplementation(
+      async (key: string) => key !== "release_candidate_submissions" && key !== "release_messaging" && key !== "release_find_workers",
+    );
     unreadMock.mockResolvedValue(0);
     userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
     organizationsMock.mockResolvedValue([
@@ -248,7 +250,7 @@ describe("the layout of the signed-in area", () => {
   });
 
   it("FR-O4: adds Submissions for a candidate and a partner while candidate submissions are released", async () => {
-    releasedMock.mockImplementation(async (key: string) => key !== "release_messaging");
+    releasedMock.mockImplementation(async (key: string) => key !== "release_messaging" && key !== "release_find_workers");
     unreadMock.mockResolvedValue(0);
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     navigation.pathname = "/en/submissions";
@@ -267,7 +269,7 @@ describe("the layout of the signed-in area", () => {
     expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Submissions");
   });
 
-  it("FR-P1: adds Messages for a candidate, an employer and a partner while release 2c is on", async () => {
+  it("FR-P1, FR-Q2: adds Messages for a candidate, an employer and a partner, and Find workers for the organisations, while release 2c is on", async () => {
     releasedMock.mockResolvedValue(true);
     unreadMock.mockResolvedValue(0);
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
@@ -283,11 +285,33 @@ describe("the layout of the signed-in area", () => {
     const props = await shell();
     navigation.pathname = "/en/org/manila/messages/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
     html = renderToStaticMarkup(props.headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Submissions", "Analytics", "Messages", "Team"]);
+    expect(mainLabels(html)).toEqual([
+      "Organisation",
+      "Workforce profile",
+      "Job orders",
+      "Find employers",
+      "Invitations",
+      "Responses",
+      "Submissions",
+      "Find workers",
+      "Analytics",
+      "Messages",
+      "Team",
+    ]);
+    expect(html).toContain('href="/en/org/manila/find-workers"');
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Messages<\/a>/);
     expect(html).toContain('href="/en/org/manila/messages"');
     navigation.pathname = "/en/org/acme/messages";
-    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Analytics", "Messages", "Team"]);
+    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual([
+      "Organisation",
+      "Vacancies",
+      "Applicants",
+      "Requirements",
+      "Find workers",
+      "Analytics",
+      "Messages",
+      "Team",
+    ]);
     releasedMock.mockImplementation(async (key: string) => key !== "release_messaging");
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Messages");

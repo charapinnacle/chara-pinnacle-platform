@@ -206,6 +206,11 @@ export function findEmployersPath(lang: string, slug: string, query = ""): strin
   return query === "" ? path : `${path}?${query}`;
 }
 
+export function findWorkersPath(lang: string, slug: string, query = ""): string {
+  const path = `/${lang}/org/${slug}/find-workers`;
+  return query === "" ? path : `${path}?${query}`;
+}
+
 // The response form for a job order of the marketplace (FR-N2 step Respond, FR-O2).
 export function jobOrderRespondPath(lang: string, slug: string, id: string): string {
   return `${jobOrderPath(lang, slug, id)}/respond`;

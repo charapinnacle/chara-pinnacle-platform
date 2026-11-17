@@ -8,6 +8,7 @@ import { formatCount } from "@/lib/i18n/format";
 import {
   directoryNames,
   findEmployersCopy,
+  findWorkersCopy,
   jobOrderCopy,
   rankingCopy,
   rankingFilters,
@@ -29,11 +30,15 @@ const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice
 // lib/partners/ranking.ts, whose values a unit test holds against public.search_partners and
 // public.search_available_workforce (and public.suggest_partners, public.list_job_orders and public.search_employers). It
 // describes release 2a, so it exists only while release 2a is on; the partner suggestions (V36), the job orders (V39) and
-// Find Employers (V53) of release 2b are described while release 2b is on, and Find Workers (V80) adds its section.
+// Find Employers (V53) of release 2b are described while release 2b is on, and Find Workers (V69) while release 2c is on.
 export default async function RankingPage({ params }: PageProps<"/[lang]/legal/ranking">) {
   const { lang } = await params;
   if (!(await isReleased("release_partner_directories"))) notFound();
-  const [{ staleDays }, suggestions] = await Promise.all([getAvailabilityRules(), isReleased("release_job_orders")]);
+  const [{ staleDays }, suggestions, findWorkers] = await Promise.all([
+    getAvailabilityRules(),
+    isReleased("release_job_orders"),
+    isReleased("release_find_workers"),
+  ]);
   const current = `confirmed by the company within the last ${formatCount(staleDays)} days`;
 
   return (
@@ -195,6 +200,21 @@ export default async function RankingPage({ params }: PageProps<"/[lang]/legal/r
           </ol>
           <p>{findEmployersCopy.payment}</p>
           <p>{findEmployersCopy.paging}</p>
+        </ContentSection>
+      ) : null}
+
+      {findWorkers ? (
+        <ContentSection heading="Find Workers">
+          <p>{findWorkersCopy.selection}</p>
+          <p>Workers are sorted by these parameters, in this order:</p>
+          <ol className="grid list-decimal gap-2 ps-5">
+            <li>{findWorkersCopy.score}</li>
+            <li>{findWorkersCopy.updated}</li>
+            <li>{findWorkersCopy.identifier}</li>
+          </ol>
+          <p>{findWorkersCopy.rules}</p>
+          <p>{findWorkersCopy.never}</p>
+          <p>{findWorkersCopy.paging}</p>
         </ContentSection>
       ) : null}
 
