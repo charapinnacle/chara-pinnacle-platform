@@ -15,7 +15,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { Card } from "@/components/layout/card";
 import type { PipelineRow } from "@/components/submissions/submission-pipeline";
 import { bulkChangeSubmissionStage } from "@/lib/actions/submission-pipeline";
-import { employerSubmissionLabels, submittedByLabel } from "@/lib/submissions/presentation";
+import { BULK_MOVE_SKIPPED, employerSubmissionLabels, submittedByLabel } from "@/lib/submissions/presentation";
 import {
   bulkSelectionSchema,
   declineReasonOptions,
@@ -202,8 +202,7 @@ export function SubmissionBulkActions({ slug, shortlisting, noteMaxChars, select
               </div>
             </dl>
             <Notice tone="info">
-              Withdrawn candidates and moves their stage does not allow will be skipped. Each moved candidate is told by email; the
-              partner sees the new stage but never the note.
+              {BULK_MOVE_SKIPPED}. Each moved candidate is told by email; the partner sees the new stage but never the note.
             </Notice>
             <div className="grid gap-3 sm:grid-cols-2">
               <FormButton type="button" variant="secondary" className="w-full" onClick={() => setReview(null)}>

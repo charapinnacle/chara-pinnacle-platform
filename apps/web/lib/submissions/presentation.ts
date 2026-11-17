@@ -108,6 +108,10 @@ export const pipelineSubmissionStages = [
 
 export type PipelineSubmissionStage = (typeof pipelineSubmissionStages)[number];
 
+// What a bulk move leaves out, said before the employer confirms it.
+export const BULK_MOVE_SKIPPED =
+  "Candidates who withdrew, and candidates who cannot move to this stage from their current one, are skipped";
+
 export const employerSubmissionLabels: Record<PipelineSubmissionStage, string> = {
   submitted: "Submitted",
   viewed: "Viewed",
