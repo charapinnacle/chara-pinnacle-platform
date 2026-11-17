@@ -18,7 +18,7 @@ import {
   type PartnerDirectoryKind,
   type PartnerSearchFilters,
 } from "@/lib/partners/search-params";
-import { partnerProfilePath, signUpPath } from "@/lib/routes";
+import { loginPath, partnerProfilePath, signUpPath } from "@/lib/routes";
 import { staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 const names = (items: readonly Named[]) => items.map((item) => item.name).join(", ");
@@ -68,7 +68,15 @@ function PartnerCard({ lang, kind, partner, basedIn, viewer, connection }: CardP
         {partner.mainOccupations.length > 0 ? (
           <p className="text-body break-words">Main occupations: {names(partner.mainOccupations)}</p>
         ) : null}
-        {staffing && partner.availableWorkforce.length > 0 ? (
+        {staffing && partner.availableWorkforce === null ? (
+          <p className="text-small text-muted-foreground">
+            <TextLink href={loginPath(lang, profilePath)}>
+              Sign in<span className="sr-only"> to see the available workforce of {partner.displayName}</span>
+            </TextLink>{" "}
+            <span aria-hidden>to see the available workforce</span>
+          </p>
+        ) : null}
+        {staffing && partner.availableWorkforce && partner.availableWorkforce.length > 0 ? (
           <ul aria-label={`Available workforce of ${partner.displayName}`} className="grid gap-0.5 text-body">
             {partner.availableWorkforce.map((item) => (
               <li key={item.occupation} className="break-words">
@@ -128,14 +136,34 @@ export async function PartnerResults({ lang, kind, filters }: { lang: string; ki
       </Notice>
     );
   }
+  const basic: PartnerSearchFilters = {
+    ...filters,
+    capacity: undefined,
+    within_days: undefined,
+    sources_from: filters.sources_from?.slice(0, 1),
+    cursor: undefined,
+  };
+  if (search.state === "advanced_needs_sign_in") {
+    return (
+      <Notice tone="warning" role="alert">
+        <p className="font-semibold">Sign in to filter by workforce capacity.</p>
+        <p>
+          {kind === "staffing"
+            ? "Capacity and availability are shown to signed-in companies only."
+            : "Capacity, availability and several source countries at once are for signed-in companies only."}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-x-6">
+          <TextLink standalone href={loginPath(lang, partnerDirectoryPath(lang, kind, filters))}>
+            Sign in
+          </TextLink>
+          <TextLink standalone href={partnerDirectoryPath(lang, kind, basic)}>
+            Search without them
+          </TextLink>
+        </div>
+      </Notice>
+    );
+  }
   if (search.state === "advanced_not_in_plan") {
-    const basic: PartnerSearchFilters = {
-      ...filters,
-      capacity: undefined,
-      within_days: undefined,
-      sources_from: filters.sources_from?.slice(0, 1),
-      cursor: undefined,
-    };
     return (
       <Notice tone="warning" role="alert">
         <p className="font-semibold">These filters need a plan with advanced partner search.</p>
