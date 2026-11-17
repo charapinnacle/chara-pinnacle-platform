@@ -462,3 +462,118 @@ test.describe("Messaging limits and safety (FR-P3)", () => {
     }
   });
 });
+
+// Message notifications (V67; FR-P4 AC1 and AC11, FR-T1 AC11; SOP P2-29 steps Badge and Respect; NFR-U3): the header badge
+// of a member follows the candidate's messages without a reload (by the 15 s poll of V64 where the stack runs without
+// Realtime, as in CI; the 2 s of AC1 need the Realtime signal), goes when the conversation is read, and shows 99+ past 99
+// with the exact count in its name; a candidate and a company user switch the delayed message emails off by keyboard,
+// a failed save keeps the stored choice, and a saved one is audited and survives a reload. The email itself is pgTAP 198.
+test.describe("Message notifications (FR-P4)", () => {
+  const SETTINGS = "/en/settings/notifications";
+  const POLLED = { timeout: 25_000 };
+
+  function emailKinds(userId: string): Record<string, boolean> | undefined {
+    return query<{ email_kinds: Record<string, boolean> }>(
+      `select email_kinds from public.notification_preferences where user_id = ${literal(userId)}`,
+    )[0]?.email_kinds;
+  }
+
+  function preferenceAudits(userId: string): unknown[] {
+    return query<{ change: unknown }>(
+      `select metadata -> 'kinds' -> 'new_message' as change from audit.log
+       where action = 'notification_preferences.changed' and entity_id = ${literal(userId)} and metadata -> 'kinds' ? 'new_message'`,
+    ).map(({ change }) => change);
+  }
+
+  async function send(user: TestUser, conversationId: string, body: string): Promise<void> {
+    const response = await dataApiAs(user, "rpc/send_message", { method: "POST", body: { p_conversation: conversationId, p_body: body } });
+    if (!response.ok) throw new Error(`send_message answered ${response.status}: ${await response.text()}`);
+  }
+
+  async function switchMessageEmailsOff(page: Page, userId: string): Promise<void> {
+    await page.goto(SETTINGS);
+    const section = page.locator("#email-notifications");
+    const messages = section.getByRole("switch", { name: "New messages", exact: true });
+    await expect(messages).toBeChecked();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await waitForHydration(messages);
+
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(`**${SETTINGS}`, async (route) => {
+      if (!route.request().headers()["next-action"]) return route.continue();
+      await held;
+      return route.abort();
+    });
+    await messages.focus();
+    await page.keyboard.press("Space");
+    await expect(messages).not.toBeChecked();
+    const save = section.getByRole("button", { name: "Save email choices" });
+    await save.focus();
+    await page.keyboard.press("Enter");
+    release();
+    await expect(page.getByText("The email choices were not saved", { exact: true })).toBeVisible();
+    expect(emailKinds(userId)?.new_message).toBeUndefined();
+    expect(preferenceAudits(userId)).toEqual([]);
+
+    await page.unroute(`**${SETTINGS}`);
+    await save.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Email choices saved", { exact: true })).toBeVisible();
+    expect(emailKinds(userId)?.new_message).toBe(false);
+    expect(preferenceAudits(userId)).toEqual([{ from: true, to: false }]);
+    await page.reload();
+    await expect(page.locator("#email-notifications").getByRole("switch", { name: "New messages", exact: true })).not.toBeChecked();
+  }
+
+  test("AC1: the header badge counts unread messages without a reload, goes when the conversation is read and shows 99+ past 99", async ({ page }) => {
+    test.setTimeout(240_000);
+    const { team, member, candidate, applicationId } = await applicantSetup();
+    const conversationId = await openAs(member, "application", applicationId);
+    const header = page.getByRole("banner");
+
+    await signInAtAal1(page, member, `/en/dashboard/employer?org=${team.slug}`);
+    const quiet = header.getByRole("link", { name: "Messages", exact: true });
+    await expect(quiet).toHaveAttribute("href", orgInboxUrl(team.slug));
+    await waitForHydration(quiet);
+    for (const body of ["Hello", "Are you there?", "I can start in March"]) await send(candidate, conversationId, body);
+    const three = header.getByRole("link", { name: "Messages, 3 unread", exact: true });
+    await expect(three).toBeVisible(POLLED);
+    await expect(three).toHaveText("3");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await three.click();
+    await expect(page).toHaveURL(orgInboxUrl(team.slug));
+    await page.goto(`${orgInboxUrl(team.slug)}/${conversationId}`);
+    await expect(page.getByText("I can start in March")).toBeVisible();
+    await expect(header.getByRole("link", { name: "Messages", exact: true })).toHaveText("", POLLED);
+
+    execute(
+      `insert into public.messages (conversation_id, sender_user_id, body)
+       select ${literal(conversationId)}, ${literal(candidate.id)}, 'Message ' || g from generate_series(1, 120) g`,
+    );
+    await page.goto(`/en/dashboard/employer?org=${team.slug}`);
+    const many = header.getByRole("link", { name: "Messages, 120 unread", exact: true });
+    await expect(many).toBeVisible();
+    await expect(many).toHaveText("99+");
+  });
+
+  test("AC11: a candidate and a company user turn message emails off by keyboard; a failed save keeps the stored choice", async ({ page, browser }) => {
+    test.setTimeout(240_000);
+    const { member, candidate } = await applicantSetup();
+    await signIn(page, candidate);
+    await switchMessageEmailsOff(page, candidate.id);
+
+    const other = await newVisitor(browser);
+    try {
+      await signInAtAal1(other.page, member, SETTINGS);
+      await switchMessageEmailsOff(other.page, member.id);
+    } finally {
+      await other.context.close();
+    }
+  });
+});
