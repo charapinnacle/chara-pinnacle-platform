@@ -212,6 +212,16 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await expect(apply.getByText("Welder MIG/MAG", { exact: true })).toHaveCSS("text-transform", "none");
     await expect(workerPage.getByRole("log")).toContainText("Hamburg, Germany");
     await expectAccessibleAtBothWidths(workerPage);
+    await workerPage.setViewportSize({ width: 1280, height: 900 });
+    const decline = workerPage.getByRole("button", { name: "Decline the invitation to apply" });
+    await waitForHydration(decline);
+    await decline.click();
+    const confirmDecline = workerPage.getByRole("dialog", { name: "Decline the invitation to apply?" });
+    await expect(confirmDecline).toContainText("This cannot be undone.");
+    await expectNoAxeViolations(workerPage);
+    await confirmDecline.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirmDecline).toHaveCount(0);
+    await expect(workerPage.getByRole("log")).toContainText("Not applied yet");
 
     execute(
       `insert into public.connections (kind, from_organization_id, to_user_id, conversation_id, job_id)

@@ -42,7 +42,18 @@ function statusChip(kind: ConnectionKind, status: ConnectionStatus): { text: str
 }
 
 // Apply names the vacancy apart from its words, so its title is shown as the employer wrote it.
-export type TypedMessageAction = { type: "apply"; jobId: string; vacancy: string } | { type: "decline"; label: string };
+// Decline cannot be undone, so it is confirmed in a dialog first (confirm: what the other side then reads).
+export type TypedMessageAction =
+  | { type: "apply"; jobId: string; vacancy: string }
+  | { type: "decline"; label: string; confirm: string };
+
+const declineConsequences: Record<ConnectionKind, string> = {
+  inquiry: "The company that sent the inquiry reads Declined, without a reason. This cannot be undone.",
+  request_workforce:
+    "The employer reads Declined, without a reason, and your invitation to its requirement is declined too. This cannot be undone.",
+  invite_to_job: "The company reads Declined, without a reason. This cannot be undone.",
+  submit_candidate: "The partner reads Declined, without a reason. This cannot be undone.",
+};
 
 export type TypedMessageCard =
   | { kind: "text" }
@@ -83,7 +94,7 @@ export function typedMessageCard(
     note = NO_LONGER_OPEN;
   }
   if (waiting && !sentByMe && (kind !== "invite_to_job" || reader === "worker")) {
-    actions.push({ type: "decline", label: `Decline the ${connectionKindLabels[kind].toLowerCase()}` });
+    actions.push({ type: "decline", label: `Decline the ${connectionKindLabels[kind].toLowerCase()}`, confirm: declineConsequences[kind] });
   }
   return {
     kind,

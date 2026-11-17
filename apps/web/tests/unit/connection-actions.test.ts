@@ -67,6 +67,18 @@ describe("typed message cards (FR-P2 AC10)", () => {
     expect(card.note).toBe("This vacancy is no longer accepting applications");
   });
 
+  it("asks to confirm a decline, saying what the other side reads and that it cannot be undone", () => {
+    const request = typedMessageCard("request_workforce", connection("request_workforce", "sent"), "organization");
+    expect(request.kind !== "text" && request.actions).toEqual([
+      {
+        type: "decline",
+        label: "Decline the workforce request",
+        confirm:
+          "The employer reads Declined, without a reason, and your invitation to its requirement is declined too. This cannot be undone.",
+      },
+    ]);
+  });
+
   it("lets the receiving side decline what waits for its answer, never the sender", () => {
     const received = typedMessageCard("inquiry", connection("inquiry", "sent"), "organization");
     expect(received.kind !== "text" && received.actions.map(({ type }) => type)).toEqual(["decline"]);
