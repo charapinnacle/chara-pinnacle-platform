@@ -279,11 +279,11 @@ describe("the layout of the signed-in area", () => {
     const props = await shell();
     navigation.pathname = "/en/org/manila/messages/6f1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d11";
     html = renderToStaticMarkup(props.headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Responses", "Submissions", "Messages", "Team"]);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Submissions", "Analytics", "Messages", "Team"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Messages<\/a>/);
     expect(html).toContain('href="/en/org/manila/messages"');
     navigation.pathname = "/en/org/acme/messages";
-    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Messages", "Team"]);
+    expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Analytics", "Messages", "Team"]);
     releasedMock.mockImplementation(async (key: string) => key !== "release_messaging");
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Messages");
