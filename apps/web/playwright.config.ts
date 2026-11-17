@@ -129,6 +129,7 @@ export default defineConfig({
         "**/commitment-reconsent.spec.ts",
         "**/find-employers.spec.ts",
         "**/job-order-company-page.spec.ts",
+        "**/partner-dashboards-job-orders.spec.ts",
       ],
     },
     {
@@ -607,13 +608,21 @@ export default defineConfig({
       testMatch: "**/job-order-company-page.spec.ts",
       dependencies: ["find-employers-release"],
     },
+    // The release 2b blocks of the partner dashboards (V55) set releases 2a and 2b for the whole database, so they follow
+    // the named job orders.
+    {
+      name: "partner-dashboards-job-orders-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-dashboards-job-orders.spec.ts",
+      dependencies: ["job-order-company-page-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["job-order-company-page-release"],
+      dependencies: ["partner-dashboards-job-orders-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

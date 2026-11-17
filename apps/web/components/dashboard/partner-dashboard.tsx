@@ -1,11 +1,12 @@
+import { BlockCard, Figure } from "@/components/dashboard/block-card";
 import { DateText } from "@/components/dashboard/date-text";
 import { Panel } from "@/components/dashboard/panel";
+import { InvitationsCard, JobOrdersCard, ResponsesCard, SubmissionsCard } from "@/components/dashboard/partner-network-blocks";
 import { PartnerReviewCard } from "@/components/dashboard/partner-review-card";
 import { PartnerWorkforceListings } from "@/components/dashboard/partner-workforce-listings";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
-import { Card } from "@/components/layout/card";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { CommitmentGate } from "@/components/organization/commitment-gate";
@@ -39,11 +40,13 @@ import {
   companyDashboardPath,
   findEmployersPath,
   followingPath,
+  invitationsPath,
   jobOrdersPath,
   membersPath,
   mfaPath,
   onboardingPath,
   partnerStepPath,
+  responsesPath,
   workforceProfilePath,
   workforceProfilePreviewPath,
 } from "@/lib/routes";
@@ -62,26 +65,6 @@ const capacityAction = {
   recruitment_company: "Update workforce capacity",
   staffing_company: "Add workforce",
 } as const satisfies Record<PartnerType, string>;
-
-function Figure({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid gap-0.5">
-      <dt className="text-small text-muted-foreground">{label}</dt>
-      <dd className="text-body font-medium">{children}</dd>
-    </div>
-  );
-}
-
-function BlockCard({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
-  return (
-    <Card as="section" padding="lg" aria-labelledby={id} className="content-start gap-3">
-      <h2 id={id} className="text-h3">
-        {title}
-      </h2>
-      {children}
-    </Card>
-  );
-}
 
 type Links = Record<NextActionTarget, string>;
 
@@ -241,13 +224,22 @@ function TeamCard({ href, canManage }: { href: string; canManage: boolean }) {
   );
 }
 
-type PlanUsageProps = { plan: DashboardPlan; usage: OrgUsage; type: PartnerType; billingHref: string | null };
+type PlanUsageProps = {
+  plan: DashboardPlan;
+  usage: OrgUsage;
+  usageKeys: readonly string[];
+  type: PartnerType;
+  billingHref: string | null;
+  // Release 2b is on, so a free plan has its responses and submissions paused (FR-R3 AC9).
+  paused: boolean;
+};
 
-// The plan and its usage against the limits of release 2a (FR-R3 AC9, FR-R4 AC8): the usage figures are those that
-// org_usage counts, as on the billing page. Only the owner and admins get the way to billing.
-function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
+// The plan and its usage against the limits of the released features (FR-R3 AC9, FR-R4 AC8): the usage figures are
+// those that org_usage counts, as on the billing page, the monthly responses and submissions included while job orders
+// and submissions are released. Only the owner and admins get the way to billing.
+function PlanUsageCard({ plan, usage, usageKeys, type, billingHref, paused }: PlanUsageProps) {
   const free = plan.status === "free";
-  const lines = planUsageKeys.flatMap((key) => {
+  const lines = usageKeys.flatMap((key) => {
     const line = usageLine(usage, key, type);
     return line ? [{ key, line }] : [];
   });
@@ -260,6 +252,7 @@ function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
           {planStatusLabels[plan.status]}
         </StatusBadge>
       </p>
+      {free && paused ? <p className="text-body">Free plan: responses and submissions are paused.</p> : null}
       {plan.status === "trialing" && plan.trialEndsAt ? (
         <p className="text-small text-muted-foreground">
           Free month ends <DateText date={plan.trialEndsAt} />
@@ -289,10 +282,12 @@ function PlanUsageCard({ plan, usage, type, billingHref }: PlanUsageProps) {
 // missing one too); the next actions, the review
 // and listing state, the workforce profile, profile views, followers, licences, the team, the available workforce and
 // the plan with its usage. Every figure is read from the database on each request and each part loads, fails and
-// retries on its own. While release 2b is on the header links the job order marketplace (V40) and Find employers (V53).
-// The blocks of job orders, invitations, submissions, projects, partner requests, matching employers and unread
-// messages, and the actions Submit candidates, Find companies and Respond to request, come with their releases (V55, V75); until
-// then they are absent, not shown as zero. A member sees
+// retries on its own. While release 2b is on (V55) the actions of spec §30 join the header in its order (recruitment:
+// Find job orders, Find employers, Submit candidates while submissions are on, Update workforce capacity; staffing: Add
+// workforce, Find companies, Respond to request) and the blocks fitting job orders or workforce requests with the
+// matching employers, invitations, responses with their decisions (projects) and submissions by stage with their
+// outcomes join the figures. Partner requests and unread messages come with release 2c (V75); until a release is on
+// its blocks and actions are absent, not shown as zero. A member sees
 // every block but none of the actions of the owner and admins. Owners and admins see the plan once at aal2, as on the
 // billing page (FR-A4).
 export async function PartnerDashboard({ lang, user, organization }: PartnerDashboardProps) {
@@ -323,11 +318,15 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
     () => null,
   );
   const listings = Promise.all([getWorkforceListings(id), getAvailabilityRules(), getOccupations(), getCountries()]);
-  const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, planUsageKeys)]);
-  const [twoStepDone, jobOrders] = await Promise.all([
+  const [twoStepDone, jobOrders, submissionsOn] = await Promise.all([
     planLocked ? hasVerifiedTotpFactor(lang) : false,
     jobOrdersReleased,
+    isReleased("release_candidate_submissions"),
   ]);
+  // The submission pages need both switches, as submissionsReleased says.
+  const submissions = jobOrders && submissionsOn;
+  const usageKeys = planUsageKeys({ jobOrders, submissions });
+  const plan = planLocked ? null : Promise.all([getDashboardPlan(id), getOrgUsage(id, usageKeys)]);
   const now = new Date().toISOString();
 
   return (
@@ -338,17 +337,40 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
         actions={
           jobOrders || canManage ? (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              {jobOrders ? (
+              {type === "recruitment_company" ? (
                 <>
-                  <TextLink standalone href={jobOrdersPath(lang, slug)}>
-                    Job orders
-                  </TextLink>
-                  <TextLink standalone href={findEmployersPath(lang, slug)}>
-                    Find employers
-                  </TextLink>
+                  {jobOrders ? (
+                    <>
+                      <TextLink standalone href={jobOrdersPath(lang, slug)}>
+                        Find job orders
+                      </TextLink>
+                      <TextLink standalone href={findEmployersPath(lang, slug)}>
+                        Find employers
+                      </TextLink>
+                    </>
+                  ) : null}
+                  {submissions ? (
+                    <TextLink standalone href={responsesPath(lang, slug)}>
+                      Submit candidates
+                    </TextLink>
+                  ) : null}
+                  {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
                 </>
-              ) : null}
-              {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
+              ) : (
+                <>
+                  {canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
+                  {jobOrders ? (
+                    <>
+                      <TextLink standalone href={findEmployersPath(lang, slug)}>
+                        Find companies
+                      </TextLink>
+                      <TextLink standalone href={invitationsPath(lang, slug)}>
+                        Respond to request
+                      </TextLink>
+                    </>
+                  ) : null}
+                </>
+              )}
             </div>
           ) : null
         }
@@ -380,6 +402,16 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
         {(value) => (
           <div className="animate-stagger grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
             <NextActionsCard figures={value} canManage={canManage} links={links} />
+            {value.network ? (
+              <>
+                <JobOrdersCard figures={value.network} type={type} lang={lang} slug={slug} />
+                <InvitationsCard figures={value.network} lang={lang} slug={slug} />
+                <ResponsesCard figures={value.network} type={type} lang={lang} slug={slug} />
+              </>
+            ) : null}
+            {value.submissionStages ? (
+              <SubmissionsCard stages={value.submissionStages} organizationId={id} lang={lang} slug={slug} />
+            ) : null}
             <ProfileCard figures={value} lang={lang} slug={slug} canManage={canManage} />
             <ViewsCard figures={value} billingHref={billingHref} />
             <LicencesCard figures={value} href={licencesHref} canManage={canManage} />
@@ -416,7 +448,9 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
 
       {plan ? (
         <Panel promise={plan} errorTitle="The plan and its usage could not be loaded">
-          {([planValue, usage]) => <PlanUsageCard plan={planValue} usage={usage} type={type} billingHref={billingHref} />}
+          {([planValue, usage]) => (
+            <PlanUsageCard plan={planValue} usage={usage} usageKeys={usageKeys} type={type} billingHref={billingHref} paused={jobOrders} />
+          )}
         </Panel>
       ) : (
         <Notice tone="info">

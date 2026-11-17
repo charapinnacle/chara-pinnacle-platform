@@ -1,6 +1,6 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PartnerFigures } from "@/lib/dashboard/partner-dashboard";
+import type { NetworkFigures, PartnerFigures, SubmissionOutcome } from "@/lib/dashboard/partner-dashboard";
 import type { ReviewOutcome } from "@/lib/dal/partner-review";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
 import type { CommitmentBlock } from "@/lib/validation/commitment";
@@ -13,6 +13,7 @@ const followersMock = vi.hoisted(() => vi.fn(async () => ({ fewerThan: 5 })));
 const planMock = vi.hoisted(() => vi.fn());
 const usageMock = vi.hoisted(() => vi.fn());
 const listingsMock = vi.hoisted(() => vi.fn<() => Promise<WorkforceListing[]>>(async () => []));
+const outcomesMock = vi.hoisted(() => vi.fn<() => Promise<SubmissionOutcome[]>>(async () => []));
 const twoStepMock = vi.hoisted(() => vi.fn(async () => true));
 const commitmentMock = vi.hoisted(() => vi.fn<() => Promise<CommitmentBlock | null>>(async () => null));
 const releasedMock = vi.hoisted(() => vi.fn<(name: string) => Promise<boolean>>(async () => false));
@@ -20,7 +21,7 @@ const releasedMock = vi.hoisted(() => vi.fn<(name: string) => Promise<boolean>>(
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/actions/workforce-availability", () => ({ confirmListing: vi.fn(), deleteListing: vi.fn(), saveListing: vi.fn() }));
-vi.mock("@/lib/dal/partner-dashboard", () => ({ getPartnerFigures: figuresMock }));
+vi.mock("@/lib/dal/partner-dashboard", () => ({ getPartnerFigures: figuresMock, getSubmissionOutcomes: outcomesMock }));
 vi.mock("@/lib/dal/partner-review", () => ({
   getPartnerReview: reviewMock,
   getReviewOutcome: outcomeMock,
@@ -61,6 +62,8 @@ const figures = (over: Partial<PartnerFigures> = {}): PartnerFigures => ({
   profileViews: 12,
   profileViewsFewerThan: null,
   profileViewsInPlan: true,
+  network: null,
+  submissionStages: null,
   ...over,
 });
 const listing = (id: string, daysAgo: number): WorkforceListing => ({
@@ -129,13 +132,34 @@ describe("the heading and the actions (FR-R3 AC1, FR-R4 AC1, AC6 release gating)
     }
   });
 
-  it("links the job order marketplace to every member while release 2b is on (V40)", async () => {
+  it("offers the recruitment actions of spec §30 in their order while release 2b is on (FR-R3 AC1, AC6)", async () => {
     releasedMock.mockImplementation(async (name: string) => name === "release_job_orders");
     try {
       for (const role of ["owner", "member"] as const) {
-        expect(await render({ role })).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>Job orders<\/a>/);
-        expect(await render({ role })).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/find-employers"[^>]*>Find employers<\/a>/);
+        const html = await render({ role });
+        expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>Find job orders<\/a>/);
+        expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/find-employers"[^>]*>Find employers<\/a>/);
+        expect(html, "Submit candidates waits for the submissions release").not.toContain("Submit candidates");
       }
+      releasedMock.mockImplementation(async () => true);
+      const html = await render();
+      const order = ["Find job orders", "Find employers", "Submit candidates", "Update workforce capacity"].map((name) => html.indexOf(`>${name}<`));
+      expect(order.every((index, n) => index > 0 && (n === 0 || index > order[n - 1]))).toBe(true);
+      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/responses"[^>]*>Submit candidates<\/a>/);
+    } finally {
+      releasedMock.mockImplementation(async () => false);
+    }
+  });
+
+  it("offers the staffing actions of spec §30 in their order while release 2b is on (FR-R4 AC1, AC7)", async () => {
+    releasedMock.mockImplementation(async () => true);
+    try {
+      const html = await render({ type: "staffing_company" });
+      const order = ["Add workforce", "Find companies", "Respond to request"].map((name) => html.indexOf(`>${name}<`));
+      expect(order.every((index, n) => index > 0 && (n === 0 || index > order[n - 1]))).toBe(true);
+      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/find-employers"[^>]*>Find companies<\/a>/);
+      expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/invitations"[^>]*>Respond to request<\/a>/);
+      expect(html).not.toContain(">Find job orders<");
     } finally {
       releasedMock.mockImplementation(async () => false);
     }
@@ -363,5 +387,124 @@ describe("an employer-pays commitment not accepted in its current version (FR-J3
     expect(await render()).toMatch(
       /<a[^>]*href="\/en\/org\/manila-skills\/workforce-profile#commitment-reason"[^>]*>Add the employer-pays commitment to complete your workforce profile/,
     );
+  });
+});
+
+const network = (over: Partial<NetworkFigures> = {}): NetworkFigures => ({
+  fittingJobOrders: 4,
+  matchingEmployers: 3,
+  invitationsAwaiting: 2,
+  responsesOpen: 1,
+  responsesShortlisted: 0,
+  responsesSelected: 2,
+  responsesDeclined: 1,
+  ...over,
+});
+const noStages = {
+  awaiting_candidate: 0,
+  declined_by_candidate: 0,
+  expired: 0,
+  submitted: 0,
+  viewed: 0,
+  shortlisted: 0,
+  interview: 0,
+  offer: 0,
+  hired: 0,
+  rejected: 0,
+  withdrawn: 0,
+};
+
+describe("the blocks of release 2b (FR-R3 AC4 to AC7, AC9, FR-R4 AC3, AC6 to AC9, FR-O5 AC10)", () => {
+  it("shows fitting job orders, matching employers, invitations and responses by decision as labelled counts", async () => {
+    figuresMock.mockResolvedValue(figures({ network: network() }));
+    let html = await render();
+    expect(html).toMatch(/<h2 id="job-orders-heading"[^>]*>Fitting job orders<\/h2>/);
+    expect(html).toMatch(/Open job orders that fit your profile<\/dt><dd[^>]*><span[^>]*>4</);
+    expect(html).toMatch(/Employers with fitting job orders<\/dt><dd[^>]*>3</);
+    expect(html).toMatch(/Waiting for your answer<\/dt><dd[^>]*><span[^>]*>2</);
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/invitations"[^>]*>Answer the invitations/);
+    expect(html).toMatch(/Waiting for the employer&#x27;s decision<\/dt><dd[^>]*>1</);
+    expect(html).toMatch(/>Selected<\/dt><dd[^>]*>2</);
+    expect(html).toMatch(/Not selected<\/dt><dd[^>]*>1</);
+    expect(html, "a decision at 0 is left out").not.toContain(">Shortlisted</dt>");
+    html = await render({ type: "staffing_company" });
+    expect(html).toMatch(/<h2 id="job-orders-heading"[^>]*>Workforce requests<\/h2>/);
+    expect(html).toMatch(/Open requests you can answer<\/dt>/);
+    expect(html).toMatch(/Selected \(projects\)<\/dt><dd[^>]*>2</);
+  });
+
+  it("guides an empty company in each block instead of a bare zero (FR-R3 AC7, FR-R4 AC7)", async () => {
+    const empty = network({
+      fittingJobOrders: 0,
+      matchingEmployers: 0,
+      invitationsAwaiting: 0,
+      responsesOpen: 0,
+      responsesSelected: 0,
+      responsesDeclined: 0,
+    });
+    figuresMock.mockResolvedValue(figures({ network: empty, submissionStages: noStages }));
+    let html = await render();
+    expect(html).toContain("Add the countries you serve and the occupations you recruit for to see job orders.");
+    expect(html).toContain("Employers invite partners whose profile fits their request.");
+    expect(html).toContain("No responses yet.");
+    expect(html).toContain("No candidates submitted yet.");
+    expect(html).toMatch(/id="submissions-heading".*<a[^>]*href="\/en\/org\/manila-skills\/job-orders"[^>]*>Find job orders/);
+    expect(outcomesMock, "no outcomes are read without a submission").not.toHaveBeenCalled();
+    html = await render({ type: "staffing_company" });
+    expect(html).toContain("No requests fit your profile yet. Add served countries and occupations to receive more.");
+  });
+
+  it("counts submissions by stage, the unapproved as waiting for the worker's agreement, with the outcomes per job order", async () => {
+    figuresMock.mockResolvedValue(
+      figures({ network: network(), submissionStages: { ...noStages, awaiting_candidate: 2, interview: 1, hired: 1, rejected: 1 } }),
+    );
+    outcomesMock.mockResolvedValue([
+      { requirementId: "req-1", title: "30 welders for Germany", submitted: 3, inProgress: 1, hired: 1, notSelected: 1, withdrawn: 0, lastChangeAt: "2026-11-10T10:00:00Z" },
+    ]);
+    const html = await render({ role: "member" });
+    expect(html).toMatch(/Waiting for the worker&#x27;s agreement<\/dt><dd[^>]*>2</);
+    expect(html).toMatch(/>Hired<\/dt><dd[^>]*>1</);
+    expect(html).toMatch(/>Not selected<\/dt><dd[^>]*>1</);
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/manila-skills\/requirements\/req-1\/submissions"[^>]*>30 welders for Germany<\/a>/);
+    expect(html).toContain("3 submitted: 1 hired, 1 not selected, 1 in progress");
+    expect(outcomesMock).toHaveBeenCalledWith("org-9");
+  });
+
+  it("keeps the counts when the outcomes fail", async () => {
+    figuresMock.mockResolvedValue(figures({ network: network(), submissionStages: { ...noStages, hired: 1 } }));
+    outcomesMock.mockRejectedValue(new Error("down"));
+    const html = await render();
+    expect(html).toContain("The outcomes of your submissions could not be loaded");
+    expect(html).toMatch(/>Hired<\/dt><dd[^>]*>1</);
+  });
+
+  it("adds the monthly responses and submissions to the plan while released, and says a free plan pauses them (FR-R3 AC9)", async () => {
+    releasedMock.mockImplementation(async () => true);
+    try {
+      await render();
+      expect(usageMock).toHaveBeenCalledWith("org-9", [
+        "markets",
+        "listed_occupations",
+        "workforce_listings",
+        "members",
+        "job_order_responses_per_month",
+        "candidate_submissions_per_month",
+      ]);
+      planMock.mockResolvedValue({
+        planName: "Free",
+        status: "free",
+        trialEndsAt: null,
+        currentPeriodEnd: null,
+        pastDueSince: null,
+        subscriptionEnded: true,
+      });
+      const html = await render();
+      expect(html).toContain("Free plan: responses and submissions are paused.");
+      expect(html).toMatch(/href="\/en\/org\/manila-skills\/billing"[^>]*>Choose a plan/);
+    } finally {
+      releasedMock.mockImplementation(async () => false);
+    }
+    await render();
+    expect(usageMock).toHaveBeenLastCalledWith("org-9", ["markets", "listed_occupations", "workforce_listings", "members"]);
   });
 });
