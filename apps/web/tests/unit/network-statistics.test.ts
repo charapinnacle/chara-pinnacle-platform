@@ -26,8 +26,11 @@ const figure = (over: Partial<NetworkFigure>): NetworkFigure => ({
 });
 
 // The metrics of private.network_count_metrics() in supabase/migrations/20261212100000_network_statistics.sql, in order,
-// then the job order metrics of 20270112100100_job_order_network_statistics.sql (listed while release 2b is on).
+// then the job order metrics of 20270112100100_job_order_network_statistics.sql (listed while release 2b is on) and the
+// messaging and Find Workers metrics of 20270214100100_messaging_network_statistics.sql (while their release is on).
 const JOB_ORDER_METRICS = ["requirements", "job_orders", "invitations", "responses", "selections", "submissions", "hires"];
+const MESSAGING_METRICS = ["conversations", "messages"];
+const FIND_WORKERS_METRICS = ["worker_searches", "contact_requests", "contact_requests_accepted"];
 const DATABASE_METRICS = [
   ...["recruitment_company", "staffing_company"].flatMap((type) =>
     ["new", "decision_approve", "decision_request_info", "decision_decline", "onboarding", "pending_review", "info_requested",
@@ -37,6 +40,8 @@ const DATABASE_METRICS = [
   "appeals_lodged", "appeals_decided", "appeals_restored",
   "searches.recruitment", "searches.staffing", "searches.available_workforce", "partner_saves", "partner_follows",
   ...JOB_ORDER_METRICS,
+  ...MESSAGING_METRICS,
+  ...FIND_WORKERS_METRICS,
 ];
 
 // FR-S2 AC7, AC9: the words of the Partner network section.
@@ -49,7 +54,9 @@ describe("the partner network statistics", () => {
 
   it("show only the metrics the database returned, so the job order group appears with release 2b", () => {
     const rows = (metrics: string[]) => metrics.map((metric) => ({ metric, periodStart: "2027-03-01", count: null }));
-    const partnerOnly = DATABASE_METRICS.filter((metric) => !JOB_ORDER_METRICS.includes(metric));
+    const partnerOnly = DATABASE_METRICS.filter(
+      (metric) => ![...JOB_ORDER_METRICS, ...MESSAGING_METRICS, ...FIND_WORKERS_METRICS].includes(metric),
+    );
     expect(shownMetricGroups(rows(partnerOnly)).map((group) => group.heading)).not.toContain("Job orders");
     const withoutSubmissions = shownMetricGroups(rows([...partnerOnly, ...JOB_ORDER_METRICS.slice(0, 5)]));
     expect(withoutSubmissions.find((group) => group.heading === "Job orders")?.metrics.map((metric) => metric.key)).toEqual(
@@ -58,6 +65,26 @@ describe("the partner network statistics", () => {
     expect(shownMetricGroups(rows(DATABASE_METRICS)).flatMap((group) => group.metrics.map((metric) => metric.key))).toEqual(
       DATABASE_METRICS,
     );
+  });
+
+  it("show the messaging and Find Workers groups with their releases (2c), each on its own", () => {
+    const rows = (metrics: string[]) => metrics.map((metric) => ({ metric, periodStart: "2027-03-01", count: null }));
+    const before = DATABASE_METRICS.filter((metric) => ![...MESSAGING_METRICS, ...FIND_WORKERS_METRICS].includes(metric));
+    expect(shownMetricGroups(rows(before)).map((group) => group.heading)).not.toContain("Messaging");
+    const findWorkersOnly = shownMetricGroups(rows([...before, ...FIND_WORKERS_METRICS])).map((group) => group.heading);
+    expect(findWorkersOnly).toContain("Find Workers");
+    expect(findWorkersOnly).not.toContain("Messaging");
+    expect(
+      shownMetricGroups(rows(DATABASE_METRICS))
+        .filter((group) => group.heading === "Messaging" || group.heading === "Find Workers")
+        .flatMap((group) => group.metrics.map((metric) => `${group.heading}: ${metric.label}`)),
+    ).toEqual([
+      "Messaging: Conversations started",
+      "Messaging: Messages sent",
+      "Find Workers: Find Workers searches",
+      "Find Workers: Contact requests sent",
+      "Find Workers: Contact requests accepted",
+    ]);
   });
 
   it("say the change from the previous period in words only where both values are shown", () => {
