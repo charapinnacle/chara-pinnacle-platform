@@ -178,6 +178,7 @@ const config = defineConfig({
         "**/contact-requests.spec.ts",
         "**/connection-actions.spec.ts",
         "**/direct-hiring-enforcement.spec.ts",
+        "**/messaging-dashboard-blocks.spec.ts",
         "**/release-2c-journey.spec.ts",
         "**/worker-identity.spec.ts",
       ],
