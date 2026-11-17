@@ -22,7 +22,7 @@ import {
   workforceProfilePath,
 } from "@/lib/routes";
 import type { OrganizationType } from "@/lib/billing/limits";
-import { segmentOf } from "@/lib/dashboard/partner-dashboard";
+import { segmentOf } from "@/lib/dashboard/segments";
 import type { MemberRole } from "@/lib/validation/team";
 
 export type NavIcon =
