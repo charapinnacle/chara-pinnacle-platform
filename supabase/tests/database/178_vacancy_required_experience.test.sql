@@ -1,5 +1,5 @@
 begin;
-select plan(39);
+select plan(40);
 
 \ir search_fixture.inc
 
@@ -166,5 +166,10 @@ select is(
   'the old signature is dropped: one search_jobs'
 );
 
+select ok(
+  has_column_privilege('authenticated', 'public.jobs', 'required_experience_years', 'SELECT')
+    and has_column_privilege('anon', 'public.jobs', 'required_experience_years', 'SELECT'),
+  'members and visitors read required_experience_years like the other vacancy columns, so the vacancy pages can load it'
+);
 select * from finish();
 rollback;

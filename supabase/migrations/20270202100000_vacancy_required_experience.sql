@@ -12,6 +12,7 @@ comment on column public.jobs.required_experience_years is
 
 -- The policies jobs_insert_admin and jobs_update_admin already confine the writes to owners and admins; a member, another
 -- organisation or a visitor writes no row. jobs_audit names the column in job.updated like every other content column.
+grant select (required_experience_years) on public.jobs to anon, authenticated;
 grant insert (required_experience_years), update (required_experience_years) on public.jobs to authenticated;
 
 -- As the other indexes of the public search (20261019100000): the public vacancies only, ending with the order of the
