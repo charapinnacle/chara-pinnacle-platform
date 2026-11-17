@@ -1,6 +1,3 @@
-"use client";
-
-import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { LinkButton } from "@/components/layout/link-button";
@@ -24,7 +21,6 @@ type PartnerWorkforceListingsProps = {
 // last confirmed, the longest unconfirmed first, a warning in words on a listing hidden from search and, for the owner and
 // admins, Confirm on each listing that needs it (FR-K3; the same action as the workforce profile).
 export function PartnerWorkforceListings({ slug, canManage, listings, names, rules, action, now }: PartnerWorkforceListingsProps) {
-  const router = useRouter();
   if (listings.length === 0) {
     return canManage ? (
       <EmptyState title="No workforce listed yet" description="Add the workers you can supply, by country and occupation.">
@@ -62,7 +58,7 @@ export function PartnerWorkforceListings({ slug, canManage, listings, names, rul
             <p className="text-small text-muted-foreground">{text}</p>
             {canManage && freshness.state !== "fresh" ? (
               <div>
-                <ConfirmListing slug={slug} listing={listing} name={name} onConfirmed={() => router.refresh()} />
+                <ConfirmListing slug={slug} listing={listing} name={name} />
               </div>
             ) : null}
           </li>
