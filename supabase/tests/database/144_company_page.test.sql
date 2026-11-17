@@ -148,8 +148,8 @@ select is(pg_temp.page_as(null, :'acme_slug'), 'ok', 'AC3: an anonymous visitor 
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(pg_temp.result() -> 0) k),
   array['based_in_country', 'based_in_country_name', 'description', 'display_name', 'industry_code', 'industry_name',
-    'open_vacancy_count', 'slug', 'vacancies', 'viewer_role', 'website'],
-  'AC3: exactly the public fields of FR-K5 and the viewer role'
+    'job_order_count', 'job_orders', 'open_vacancy_count', 'slug', 'vacancies', 'viewer_partner_slug', 'viewer_role', 'website'],
+  'AC3: exactly the public fields of FR-K5, the named job orders (V54) and the viewer'
 );
 select is(
   (select jsonb_build_object('n', r ->> 'display_name', 's', r ->> 'slug', 'b', r ->> 'based_in_country',
