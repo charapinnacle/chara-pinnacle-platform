@@ -8,6 +8,7 @@ import {
   invitationsPath,
   jobsPath,
   membersPath,
+  messagesPath,
   myReportsPath,
   notificationSettingsPath,
   requirementsPath,
@@ -34,6 +35,7 @@ export type NavIcon =
   | "invitations"
   | "responses"
   | "submissions"
+  | "messages"
   | "billing"
   | "reports"
   | "settings";
@@ -57,11 +59,17 @@ export type NavOrganization = {
   jobOrders?: true;
   // Set while candidate submissions are released: the candidates a partner asked to submit (FR-O4).
   candidateSubmissions?: true;
+  // Set while release 2c is on: the organisation's conversations (FR-P1).
+  messaging?: true;
 };
 
 // The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered. While
-// candidate submissions are released, the requests of partners to submit the candidate follow the applications (FR-O4).
-export function workerLinks(lang: string, { submissions = false }: { submissions?: boolean } = {}): NavLink[] {
+// candidate submissions are released, the requests of partners to submit the candidate follow the applications (FR-O4),
+// and while release 2c is on the conversations follow them (FR-P1).
+export function workerLinks(
+  lang: string,
+  { submissions = false, messaging = false }: { submissions?: boolean; messaging?: boolean } = {},
+): NavLink[] {
   const dashboard = homePath(lang, "worker");
   return [
     { label: "Dashboard", href: dashboard, match: dashboard, icon: "dashboard" },
@@ -71,15 +79,21 @@ export function workerLinks(lang: string, { submissions = false }: { submissions
     ...(submissions
       ? [{ label: "Submissions", href: submissionsPath(lang), match: submissionsPath(lang), icon: "submissions" } as const]
       : []),
+    ...(messaging ? [messagesLink(messagesPath(lang, null))] : []),
     { label: "Passport", href: `/${lang}/passport`, match: `/${lang}/passport`, icon: "passport" },
   ];
+}
+
+function messagesLink(href: string): NavLink {
+  return { label: "Messages", href, match: href, icon: "messages" };
 }
 
 // The pages of one organisation. Billing is for owners and administrators, as the page itself requires, and a suspended
 // organisation has none of them: each answers with a notice that it is suspended. A recruitment or staffing company has
 // its dashboard, its workforce profile and its team instead of vacancies and applicants (FR-J1, FR-K1). While release 2b
 // is on, an employer has its workforce requirements, where it follows its invitations and the responses, and a partner the
-// invitations it received and the responses it sent (FR-O1, FR-O2).
+// invitations it received and the responses it sent (FR-O1, FR-O2). While release 2c is on, every organisation has its
+// conversations before the team (FR-P1).
 export function organizationLinks(
   lang: string,
   {
@@ -89,9 +103,11 @@ export function organizationLinks(
     partnerSegment,
     jobOrders,
     candidateSubmissions,
-  }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions">,
+    messaging,
+  }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions" | "messaging">,
 ): NavLink[] {
   if (suspended) return [];
+  const messages = messaging ? [messagesLink(messagesPath(lang, slug))] : [];
   const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
   const links: NavLink[] = partnerSegment
     ? [
@@ -118,6 +134,7 @@ export function organizationLinks(
               } as const,
             ]
           : []),
+        ...messages,
         team,
       ]
     : [
@@ -127,6 +144,7 @@ export function organizationLinks(
         ...(jobOrders
           ? [{ label: "Requirements", href: requirementsPath(lang, slug), match: requirementsPath(lang, slug), icon: "requirements" } as const]
           : []),
+        ...messages,
         team,
       ];
   if (role !== "member") links.push({ label: "Billing", href: billingPath(lang, slug), match: billingPath(lang, slug), icon: "billing" });

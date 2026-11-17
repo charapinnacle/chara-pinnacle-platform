@@ -5,6 +5,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementHistory } from "@/components/requirements/requirement-history";
 import { ResponseDocumentList } from "@/components/responses/response-document-list";
@@ -49,13 +50,14 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  const [versions, documents, changes, countries, industries, submissions] = await Promise.all([
+  const [versions, documents, changes, countries, industries, submissions, messaging] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listResponseChanges(organization.id, response.id).catch(() => null),
     getCountries(),
     getIndustries(),
     isReleased("release_candidate_submissions"),
+    isReleased("release_messaging"),
   ]);
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
@@ -68,6 +70,11 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title={response.title}
+        actions={
+          messaging && response.status !== "withdrawn" ? (
+            <MessageButton contextType="partner_response" contextId={response.id} slug={slug} recipient={employerLabel(response.employerName)} />
+          ) : undefined
+        }
         breadcrumb={
           <Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Responses", href: responsesPath(lang, slug) }, { label: response.title }]} />
         }

@@ -16,6 +16,7 @@ const listDocumentsMock = vi.hoisted(() => vi.fn());
 const profileChangedMock = vi.hoisted(() => vi.fn());
 const listNotesMock = vi.hoisted(() => vi.fn());
 const endedMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -31,6 +32,10 @@ vi.mock("@/lib/dal/applicants", () => ({
   markApplicationViewed: markApplicationViewedMock,
 }));
 vi.mock("@/lib/dal/hiring", () => ({ isSubscriptionEnded: endedMock }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/components/messaging/message-button", () => ({
+  MessageButton: ({ contextType, recipient }: { contextType: string; recipient: string }) => `[message ${contextType} ${recipient}]`,
+}));
 vi.mock("@/lib/dal/applicant-review", () => ({
   getApplicantProfile: getProfileMock,
   listSharedDocuments: listDocumentsMock,
@@ -96,6 +101,7 @@ beforeEach(() => {
   profileChangedMock.mockResolvedValue(false);
   listNotesMock.mockResolvedValue({ notes: [], hasMore: false });
   endedMock.mockResolvedValue(false);
+  releasedMock.mockResolvedValue(false);
 });
 
 describe("the applicant page of FR-D5", () => {
@@ -131,6 +137,14 @@ describe("the applicant page of FR-D5", () => {
   it("shows the applicant of an active organization", async () => {
     const html = renderToStaticMarkup(await ApplicantPage(props()));
     expect(html).toContain("Ana Silva");
+    expect(html).not.toContain("[message");
+  });
+
+  it("FR-P1: offers Message to the applicant while release 2c is on, and not once the application is withdrawn", async () => {
+    releasedMock.mockImplementation(async (key: string) => key === "release_messaging");
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).toContain("[message application Ana Silva]");
+    getApplicantMock.mockResolvedValue({ ...applicant, status: "withdrawn" });
+    expect(renderToStaticMarkup(await ApplicantPage(props()))).not.toContain("[message");
   });
 
   it("shows the profile as submitted, with the date and the cover note, and no indicator when nothing changed", async () => {

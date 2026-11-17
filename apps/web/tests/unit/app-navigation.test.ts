@@ -39,6 +39,21 @@ describe("the header links of a candidate", () => {
   });
 });
 
+describe("the Messages link of a candidate", () => {
+  it("FR-P1: follows Applications and Submissions while release 2c is on", () => {
+    expect(workerLinks("en", { submissions: true, messaging: true }).map(({ label, href }) => [label, href])).toEqual([
+      ["Dashboard", "/en/dashboard/worker"],
+      ["Find jobs", "/en/jobs"],
+      ["Saved", "/en/saved"],
+      ["Applications", "/en/applications"],
+      ["Submissions", "/en/submissions"],
+      ["Messages", "/en/messages"],
+      ["Passport", "/en/passport"],
+    ]);
+    expect(workerLinks("en").map(({ label }) => label)).not.toContain("Messages");
+  });
+});
+
 describe("the header links of an organisation", () => {
   it.each(["owner", "admin"] as const)("give an %s Billing as well as the four pages of every member", (role) => {
     expect(labels(organizationLinks("en", { slug: "acme", role, suspended: false }))).toEqual([
@@ -125,6 +140,22 @@ describe("the header links of an organisation", () => {
     );
     expect(labels(organizationLinks("en", { slug: "acme", role: "owner", suspended: false }))).not.toContain("Requirements");
     expect(organizationLinks("en", { slug: "manila", role: "owner", suspended: true, partnerSegment: "recruitment", jobOrders: true })).toEqual([]);
+  });
+
+  it("FR-P1: add Messages before Team for every organisation while release 2c is on", () => {
+    expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, messaging: true }))).toEqual([
+      "Organisation",
+      "Vacancies",
+      "Applicants",
+      "Messages",
+      "Team",
+    ]);
+    expect(
+      organizationLinks("en", { slug: "manila", role: "member", suspended: false, partnerSegment: "recruitment", messaging: true }).find(
+        ({ label }) => label === "Messages",
+      )?.href,
+    ).toBe("/en/org/manila/messages");
+    expect(organizationLinks("en", { slug: "acme", role: "owner", suspended: true, messaging: true })).toEqual([]);
   });
 
   it("give a suspended organisation none, because each of its pages only says that it is suspended", () => {

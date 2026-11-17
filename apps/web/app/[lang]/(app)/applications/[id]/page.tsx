@@ -6,10 +6,12 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { applicationNextSteps, applicationStatusLabels, eventActorLabels, eventNoteLabels } from "@/lib/applications/presentation";
 import { allowedTargets } from "@/lib/applications/stage-machine";
 import { logTrackerView } from "@/lib/applications/tracker-log";
 import { getMyApplication, listTimeline } from "@/lib/dal/applications";
+import { isReleased } from "@/lib/dal/release";
 import { requireCandidate } from "@/lib/dal/session";
 import { formatShortDate } from "@/lib/i18n/format";
 import { applicationsPath } from "@/lib/routes";
@@ -23,14 +25,25 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
 
   const applicationId = z.uuid().safeParse(id);
   if (!applicationId.success) notFound();
-  const [application, timeline] = await Promise.all([getMyApplication(applicationId.data), listTimeline(applicationId.data)]);
+  const [application, timeline, messaging] = await Promise.all([
+    getMyApplication(applicationId.data),
+    listTimeline(applicationId.data),
+    isReleased("release_messaging"),
+  ]);
   if (!application) notFound();
   logTrackerView("application");
   const existing = (await searchParams).existing === "1";
 
   return (
     <div className="grid w-full max-w-3xl gap-page">
-      <PageHeader title={application.jobTitle}>
+      <PageHeader
+        title={application.jobTitle}
+        actions={
+          messaging && application.status !== "withdrawn" ? (
+            <MessageButton contextType="application" contextId={application.id} slug={null} recipient={application.employerName} />
+          ) : undefined
+        }
+      >
         <p className="text-body font-medium wrap-anywhere">{application.employerName}</p>
         <TextLink standalone href={applicationsPath(lang)}>
           My applications
