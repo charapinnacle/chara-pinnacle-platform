@@ -94,8 +94,13 @@ export function ApproveRequestForm({ lang, submissionId, recipient, documents, d
       )}
 
       <CheckboxField control={control} name="consent" id={ids.consent}>
-        I agree to share my profile and the selected documents with {recipient} for this submission, as the{" "}
-        <TextLink href={`/${lang}/legal/sharing-notice`}>sharing notice</TextLink> describes
+        <span>
+          I agree to share my profile and the selected documents with {recipient} for this submission, as the{" "}
+          <TextLink href={`/${lang}/legal/sharing-notice`} className="relative z-10">
+            sharing notice
+          </TextLink>{" "}
+          describes
+        </span>
       </CheckboxField>
 
       <FormButton type="submit" className="w-auto justify-self-start" busy={formState.isSubmitting}>

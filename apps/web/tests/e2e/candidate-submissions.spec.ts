@@ -236,7 +236,11 @@ test.describe("Candidate submissions (FR-O4)", () => {
     expect(submissionRow(id).status).toBe("awaiting_candidate");
     await page.getByRole("checkbox", { name: "Welding certificate" }).check();
     await page.getByRole("checkbox", { name: "Reference letter" }).check();
-    await page.getByRole("checkbox", { name: /I agree to share my profile/ }).check();
+    await page
+      .getByRole("checkbox", {
+        name: /^I agree to share my profile and the selected documents with the employer for this submission, as the sharing notice describes$/,
+      })
+      .check();
     await approve.click();
     await expect(page.getByText("Request approved", { exact: true })).toBeVisible();
     await expect(page.getByText("Submitted", { exact: true })).toBeVisible();
