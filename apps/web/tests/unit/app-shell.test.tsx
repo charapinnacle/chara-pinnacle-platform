@@ -226,7 +226,7 @@ describe("the layout of the signed-in area", () => {
     expect(releasedMock).toHaveBeenCalledWith("release_job_orders");
     navigation.pathname = "/en/org/manila/invitations";
     const html = renderToStaticMarkup(props.headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Responses", "Team"]);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Team"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Invitations<\/a>/);
     navigation.pathname = "/en/org/acme/requirements";
     expect(mainLabels(renderToStaticMarkup(props.headerActions))).toEqual(["Organisation", "Vacancies", "Applicants", "Requirements", "Team"]);
@@ -246,7 +246,7 @@ describe("the layout of the signed-in area", () => {
     ]);
     navigation.pathname = "/en/org/manila/submissions";
     html = renderToStaticMarkup((await shell()).headerActions);
-    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Invitations", "Responses", "Submissions", "Team"]);
+    expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Job orders", "Find employers", "Invitations", "Responses", "Submissions", "Team"]);
     releasedMock.mockImplementation(async (key: string) => key !== "release_candidate_submissions");
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Submissions");

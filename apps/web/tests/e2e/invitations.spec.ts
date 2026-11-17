@@ -513,6 +513,9 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
       "href",
       inboxUrl(p2.slug),
     );
+    const partnerNavigation = competitor.page.getByRole("navigation", { name: "Main" }).first();
+    await expect(partnerNavigation.getByRole("link", { name: "Job orders" })).toHaveAttribute("href", `/en/org/${p2.slug}/job-orders`);
+    await expect(partnerNavigation.getByRole("link", { name: "Find employers" })).toHaveAttribute("href", `/en/org/${p2.slug}/find-employers`);
     await expectNoAxeViolations(competitor.page);
 
     // Release 2b off: the pages and the link are gone.
@@ -521,6 +524,8 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
       await competitor.page.reload();
       await expect(competitor.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
       await expect(competitor.page.getByRole("link", { name: "Invitations" })).toHaveCount(0);
+      await expect(competitor.page.getByRole("link", { name: "Job orders" })).toHaveCount(0);
+      await expect(competitor.page.getByRole("link", { name: "Find employers" })).toHaveCount(0);
     } finally {
       setJobOrderRelease(true);
     }
