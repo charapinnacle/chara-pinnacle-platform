@@ -44,7 +44,7 @@ export function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
+    <form method="post" noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
       <FormErrorSummary form={form} summaryRef={summaryRef} ids={ids} />
       <PasswordField
         control={control}
