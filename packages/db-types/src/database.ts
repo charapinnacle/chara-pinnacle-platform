@@ -2742,7 +2742,7 @@ isOneToOne: false
                            },
 "get_employer_network_dashboard":
 { Args: { "p_org": string }; Returns: {
-              "draft_requirements": number,"followed_companies": number,"invitations_accepted": number,"invitations_declined": number,"invitations_responded": number,"invitations_waiting": number,"invited_partners": number,"invited_recruitment": number,"invited_staffing": number,"open_requirements": number,"paused_requirements": number,"requirements": Json,"responses_shortlisted": number,"responses_updated": number,"responses_waiting": number,"saved_partners": number,"selected_partners": number,"submission_stages": Json
+              "draft_requirements": number,"followed_companies": number,"invitations_accepted": number,"invitations_declined": number,"invitations_responded": number,"invitations_waiting": number,"invited_partners": number,"invited_recruitment": number,"invited_staffing": number,"matching_workers": number,"matching_workers_fewer_than": number,"matching_workers_reason": string,"matching_workers_suppressed": boolean,"open_requirements": number,"partner_requests_answered": number,"partner_requests_waiting": number,"paused_requirements": number,"requirements": Json,"responses_shortlisted": number,"responses_updated": number,"responses_waiting": number,"saved_partners": number,"selected_partners": number,"submission_stages": Json
             }[]
                            },
 "get_employer_submission":
@@ -2777,7 +2777,7 @@ isOneToOne: false
                            },
 "get_partner_dashboard":
 { Args: { "p_org": string }; Returns: {
-              "fitting_job_orders": number,"invitations_awaiting": number,"licences_current": number,"licences_expired": number,"licences_expiring": number,"listed": boolean,"listings_due": number,"listings_stale": number,"listings_total": number,"matching_employers": number,"next_licence_expiry": string,"oldest_listing_confirmed_at": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_hidden": boolean,"profile_missing": string,"profile_updated_at": string,"profile_views_30d": number,"profile_views_fewer_than": number,"profile_views_in_plan": boolean,"profile_views_suppressed": boolean,"responses_declined": number,"responses_open": number,"responses_selected": number,"responses_shortlisted": number,"review_status": Database["public"]['Enums']["partner_review_status"],"submission_stages": Json
+              "fitting_job_orders": number,"invitations_awaiting": number,"licences_current": number,"licences_expired": number,"licences_expiring": number,"listed": boolean,"listings_due": number,"listings_stale": number,"listings_total": number,"matching_employers": number,"matching_workers": number,"matching_workers_fewer_than": number,"matching_workers_reason": string,"matching_workers_suppressed": boolean,"next_licence_expiry": string,"oldest_listing_confirmed_at": string,"organization_type": Database["public"]['Enums']["organization_type"],"partner_inquiries": number,"partner_requests": number,"profile_hidden": boolean,"profile_missing": string,"profile_updated_at": string,"profile_views_30d": number,"profile_views_fewer_than": number,"profile_views_in_plan": boolean,"profile_views_suppressed": boolean,"responses_declined": number,"responses_open": number,"responses_selected": number,"responses_shortlisted": number,"review_status": Database["public"]['Enums']["partner_review_status"],"submission_stages": Json
             }[]
                            },
 "get_partner_profile":
@@ -3058,6 +3058,11 @@ isOneToOne: false
 "my_card_preview":
 { Args: Record<PropertyKey, never>; Returns: {
               "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"confirm_by": string,"consent_version": number,"current_version": number,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"opted_in": boolean,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"show_employment_history": boolean,"show_industries": boolean,"show_training": boolean,"skills": string[],"training": Json,"updated_at": string,"visible": boolean,"visible_since": string,"work_authorization_countries": string[],"years_experience": number
+            }[]
+                           },
+"my_contact_request_counts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "pending": number,"received": number
             }[]
                            },
 "my_platform_roles":
