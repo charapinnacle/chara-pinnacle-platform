@@ -105,7 +105,7 @@ describe("getUsage (FR-G5 AC7)", () => {
       { key: "workforce_listings", used: 0, limit: 10 },
       { key: "members", used: 1, limit: 1 },
     ]);
-    expect((await getUsage("org-1", "recruitment_company")).map((item) => item.key)).toEqual(["markets", "listed_occupations", "members"]);
+    expect((await getUsage("org-1", "recruitment_company")).map((item) => item.key)).toEqual(["markets", "listed_occupations", "workforce_listings", "members"]);
   });
 
   it("fails without the cause in the message when the database refuses, so that the error page shows", async () => {
