@@ -3,17 +3,18 @@ import type { Database } from "@chara-pinnacle/db-types";
 import { isReleased } from "@/lib/dal/release";
 import { createClient } from "@/lib/supabase/server";
 
-// A moderation decision on one of the caller's organisations that can be appealed, with its appeal (FR-S1 AC12): every
-// member reads it, canAppeal is the owner's and the admins' while the window is open. Never who decided.
+// A moderation decision on one of the caller's organisations, or on a message the caller sent as a candidate (V73), that
+// can be appealed, with its appeal (FR-S1 AC12): every member reads it, canAppeal is the owner's and the admins' (and the
+// sender's of a message) while the window is open. Never who decided.
 export type AppealableDecision = {
   id: number;
   targetType: string;
   targetId: string;
   action: string;
   title: string;
-  organizationId: string;
-  organizationName: string;
-  orgSlug: string;
+  organizationId: string | null;
+  organizationName: string | null;
+  orgSlug: string | null;
   reasons: string;
   decidedAt: string;
   appealUntil: string;
@@ -51,9 +52,9 @@ async function readAppeals(args: { p_action?: number; p_job?: string }): Promise
       targetId: row.target_id,
       action: row.action,
       title: row.title,
-      organizationId: row.organization_id,
-      organizationName: row.organization_name,
-      orgSlug: row.org_slug,
+      organizationId: row.organization_id ?? null,
+      organizationName: row.organization_name ?? null,
+      orgSlug: row.org_slug ?? null,
       reasons: row.reasons,
       decidedAt: row.decided_at,
       appealUntil: row.appeal_until,

@@ -46,8 +46,9 @@ export default async function AppealsPage({ params }: PageProps<"/[lang]/appeals
                   <StatusBadge status="info">Can be appealed until {formatDate(decision.appealUntil)}</StatusBadge>
                 ) : null}
                 <span>
-                  {decision.organizationName} · Decided on {formatDate(decision.decidedAt)}
-                  {decision.inEffect ? "" : " · No longer in effect"}
+                  {[decision.organizationName, `Decided on ${formatDate(decision.decidedAt)}`, decision.inEffect ? null : "No longer in effect"]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </p>
             </Card>

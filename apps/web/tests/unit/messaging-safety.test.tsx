@@ -51,6 +51,7 @@ function message(overrides: Record<string, unknown> = {}) {
     senderName: "Mia Member",
     senderOrganizationName: "Acme Bau",
     senderErased: false,
+    hiddenBy: null,
     ...overrides,
   };
 }

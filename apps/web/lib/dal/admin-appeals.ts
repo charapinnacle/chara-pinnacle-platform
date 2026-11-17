@@ -11,7 +11,7 @@ export type AppealRow = {
   decisionId: number;
   targetType: string;
   title: string;
-  organizationName: string;
+  organizationName: string | null;
   status: AppealStatus;
   lodgedAt: string;
   dueAt: string;
@@ -28,8 +28,8 @@ export type AppealDetail = {
   targetId: string;
   action: string;
   title: string;
-  organizationId: string;
-  organizationName: string;
+  organizationId: string | null;
+  organizationName: string | null;
   decisionReasons: string;
   decidedOn: string;
   decisionReportId: number | null;
@@ -65,7 +65,7 @@ export async function listAppeals(status: AppealListStatus, after: AppealCursor 
       decisionId: row.moderation_action_id,
       targetType: row.target_type,
       title: row.title,
-      organizationName: row.organization_name,
+      organizationName: row.organization_name ?? null,
       status: row.status,
       lodgedAt: row.lodged_at,
       dueAt: row.due_at,
@@ -91,8 +91,8 @@ export async function getAppeal(id: number): Promise<AppealDetail | null> {
     targetId: row.target_id,
     action: row.action,
     title: row.title,
-    organizationId: row.organization_id,
-    organizationName: row.organization_name,
+    organizationId: row.organization_id ?? null,
+    organizationName: row.organization_name ?? null,
     decisionReasons: row.decision_reasons,
     decidedOn: row.decided_on,
     decisionReportId: row.decision_report_id ?? null,

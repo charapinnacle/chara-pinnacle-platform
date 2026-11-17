@@ -61,6 +61,7 @@ function message(overrides: Record<string, unknown> = {}) {
     senderName: "Amina Okafor",
     senderOrganizationName: null,
     senderErased: false,
+    hiddenBy: null,
     ...overrides,
   };
 }

@@ -63,7 +63,12 @@ export const appealTargetLabels: Record<string, string> = {
   requirement: "Workforce requirement",
   partner_response: "Response",
   candidate_submission: "Candidate submission",
+  message: "Message",
+  contact_request: "Contact request",
 };
+
+// The appeal of a candidate's own message (V73) has no organisation.
+export const NO_ORGANIZATION = "None: a candidate's own message";
 
 // The decision as a heading: a hidden job order, response or submission (V57) is named by its kind, not as a profile.
 export function appealableDecisionLabel(action: string, targetType: string): string {

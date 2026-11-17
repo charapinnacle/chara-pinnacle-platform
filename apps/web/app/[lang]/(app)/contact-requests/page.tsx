@@ -19,7 +19,7 @@ import { getCountries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireCandidate } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
-import { conversationPath, findWorkersCardPath } from "@/lib/routes";
+import { conversationPath, findWorkersCardPath, reportPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Contact requests", robots: { index: false } };
 
@@ -37,13 +37,19 @@ function RequestDetails({ request, lang, countries }: { request: ReceivedContact
           Invites you to apply to <TextLink href={`/${lang}/jobs/${request.jobId}`}>{request.jobTitle}</TextLink>
         </p>
       ) : null}
+      <p className="text-small">
+        <TextLink href={reportPath(lang, "contact_request", request.id)}>
+          Report this request<span className="sr-only"> from {request.organizationName}</span>
+        </TextLink>
+      </p>
     </>
   );
 }
 
 // The contact requests companies sent the worker from Find Workers (FR-Q3 AC10, AC11; SOP steps Notify, Decide, Reveal;
 // NFR-U4), while Find Workers is released: the requests waiting for an answer first, with the date they close, then the
-// answered ones with their status and next step. Accepting shares the first and last name with that company only.
+// answered ones with their status and next step. Accepting shares the first and last name with that company only. Each
+// request can be reported (FR-Q3 AC11, FR-S1); one hidden by moderation leaves the list.
 export default async function ContactRequestsPage({ params }: PageProps<"/[lang]/contact-requests">) {
   const { lang } = await params;
   if (!(await isReleased("release_find_workers"))) notFound();

@@ -30,7 +30,8 @@ type Target =
   | { type: "requirement"; requirement: string }
   | { type: "partner_response"; response: string }
   | { type: "candidate_submission"; submission: string }
-  | { type: "message"; message: string };
+  | { type: "message"; message: string }
+  | { type: "contact_request"; contactRequest: string };
 
 type Report = { category: Enums["report_category"]; details: string; email: string };
 
@@ -49,6 +50,7 @@ export async function submitReport(target: Target, report: Report) {
     p_response: "response" in target ? target.response : undefined,
     p_submission: "submission" in target ? target.submission : undefined,
     p_message: "message" in target ? target.message : undefined,
+    p_contact_request: "contactRequest" in target ? target.contactRequest : undefined,
     p_category: report.category,
     p_details: report.details,
     p_good_faith: true,

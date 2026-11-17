@@ -14,9 +14,10 @@ import { appealableDecisionLabel, appealTargetLabels, idParam } from "@/lib/vali
 
 export const metadata: Metadata = { title: "Moderation decision", robots: { index: false } };
 
-// One moderation decision on an organisation of the user, with its statement of reasons and its appeal (FR-S1 AC12,
-// DSA Art. 17 and 20): the notices of the decision link here. An owner or admin appeals at aal2, as on every
-// organisation page; a member reads the decision and the state of the appeal. A decision that is not theirs is not
+// One moderation decision on an organisation of the user, or on a message the user sent as a candidate (V73), with its
+// statement of reasons and its appeal (FR-S1 AC12, DSA Art. 17 and 20): the notices of the decision link here. An owner
+// or admin, or the member who sent a hidden message, appeals at aal2, as on every organisation page; a candidate appeals
+// the own message without it; a member reads the decision and the state of the appeal. A decision that is not theirs is not
 // found. A suspended organisation reaches its suspension here too. Release 2a only.
 export default async function AppealPage({ params }: PageProps<"/[lang]/appeals/[id]">) {
   const { lang, id } = await params;
@@ -26,7 +27,7 @@ export default async function AppealPage({ params }: PageProps<"/[lang]/appeals/
   if (decisionId === null) notFound();
   const decision = await listMyAppeals(decisionId);
   if (!decision) notFound();
-  if (decision.canAppeal && user.aal !== "aal2") redirect(mfaPath(lang, appealPath(lang, decisionId)));
+  if (decision.canAppeal && decision.organizationId && user.aal !== "aal2") redirect(mfaPath(lang, appealPath(lang, decisionId)));
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -39,7 +40,7 @@ export default async function AppealPage({ params }: PageProps<"/[lang]/appeals/
         <DetailList
           items={[
             { label: appealTargetLabels[decision.targetType] ?? "About", value: decision.title },
-            { label: "Organisation", value: decision.organizationName },
+            ...(decision.organizationName ? [{ label: "Organisation", value: decision.organizationName }] : []),
             { label: "Decided on", value: formatDate(decision.decidedAt) },
             { label: "Statement of reasons", value: <p className="whitespace-pre-line wrap-anywhere">{decision.reasons}</p> },
           ]}
