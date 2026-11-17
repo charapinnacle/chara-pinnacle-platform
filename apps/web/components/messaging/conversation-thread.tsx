@@ -10,9 +10,10 @@ import { MessageComposer, type ComposerOrganization } from "@/components/messagi
 import { fetchEarlierMessages, markConversationRead } from "@/lib/actions/messaging";
 import { typedMessageCard, type ConversationConnection } from "@/lib/connections/typed-messages";
 import { formatDateTime } from "@/lib/i18n/format";
-import { announceMessagesRead, useConversationMessages } from "@/lib/messaging/hooks";
+import { useConversationMessages } from "@/lib/messaging/hooks";
 import { senderLabel } from "@/lib/messaging/present";
 import { MESSAGES_PAGE_SIZE, type MessageItem } from "@/lib/messaging/thread";
+import { announceMessagesRead } from "@/lib/messaging/unread";
 import { reportPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 

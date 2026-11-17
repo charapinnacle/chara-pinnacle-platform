@@ -159,6 +159,7 @@ select is(
      'recruitment_partner', 'staffing_professional')),
   'employer_enterprise:2000,employer_professional:500,employer_starter:100,recruitment_partner:100,staffing_professional:500',
   'FR-P3 data: the limits are read from billing.plan_limits messages_per_month');
+update private.settings set value = 'false' where key = 'release_messaging';
 select is(pg_temp.block(:'adm', gen_random_uuid()), '42501|CHARA_FORBIDDEN|release_off',
   'the block functions refuse to run while release_messaging is off');
 

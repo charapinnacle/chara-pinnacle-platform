@@ -208,7 +208,8 @@ select is(
   (select format('%s|%s|%s|%s', count(*), min(actor_id::text), max(jsonb_array_length(metadata -> 'message_ids')),
      max(metadata ->> 'message_id'))
    from audit.log where action = 'message.context_opened' and entity_id = :'ctx_report'::text),
-  '2|' || :'t1' || '|11|' || :'x12', 'FR-P3 AC7, NFR-C5: two audit rows message.context_opened with the actor, the report and the message ids');
+  '3|' || :'t1' || '|11|' || :'x12',
+  'FR-P3 AC7, NFR-C5: one audit row message.context_opened per opening (three above) with the actor, the report and the message ids');
 select is(
   (select count(*)::integer from audit.log where action = 'message.context_opened' and metadata::text like '%Message 1%'),
   0, 'FR-P3 AC7: the audit rows hold no body');
@@ -223,7 +224,7 @@ select is(
 select is(
   split_part(pg_temp.context(null, :ctx_report), '|', 1) || ';'
     || (select count(*) from audit.log where action = 'message.context_opened' and entity_id = :'ctx_report'::text),
-  '42501;2', 'FR-P3 AC7: an anonymous caller is refused, and no refusal wrote an audit row');
+  '42501;3', 'FR-P3 AC7: an anonymous caller is refused, and no refusal wrote an audit row');
 select is(pg_temp.read_as(:'t1', format('select count(*)::text from public.messages where conversation_id = %L', :'c_inv')), '0',
   'FR-P3 AC7: T1 still reads no row of public.messages directly');
 update private.settings set value = 'false' where key = 'release_messaging';

@@ -92,7 +92,7 @@ $$;
 
 -- The fixture --------------------------------------------------------------------------------------------------------------
 
-update private.settings set value = 'false' where key in ('release_messaging', 'release_partner_directories');
+update private.settings set value = 'false' where key in ('release_messaging', 'release_partner_directories', 'entitlements_enforced');
 select set_config('t.t0', (date_trunc('minute', now()) - interval '2 hours')::text, false) as t0 \gset
 select current_setting('t.a') as acme \gset
 select current_setting('t.b') as beta \gset
