@@ -3,6 +3,9 @@ select plan(48);
 
 \ir apply_fixture.inc
 
+-- The completeness of the snapshot uses the Phase 1 weights while release 2c is off (V61).
+update private.settings set value = 'false' where key = 'release_find_workers';
+
 select pg_temp.doc(:'d1', :'wa');
 select pg_temp.doc(:'d2', :'wa', 'skipped', 'certificate');
 select pg_temp.doc(:'dx', :'wb');

@@ -248,8 +248,9 @@ end;
 $$;
 select is(
   pg_temp.limits_as(:'wa'),
-  '{"skills_max": 30, "availability_window_months": 24, "work_authorization_expiry_max_years": 50}'::jsonb,
-  'a candidate reads the skills limit and the two date windows'
+  '{"skills_max": 30, "availability_window_months": 24, "work_authorization_expiry_max_years": 50,
+    "training_max": 20, "employment_history_max": 20, "preferred_industries_max": 10}'::jsonb,
+  'a candidate reads the skills limit, the two date windows and the list limits of the passport extensions (V61)'
 );
 update private.settings set value = '40' where key = 'worker_skills_max';
 select is((pg_temp.limits_as(:'wa') ->> 'skills_max')::integer, 40, 'a changed setting is what the candidate reads');

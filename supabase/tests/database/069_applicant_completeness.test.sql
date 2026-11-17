@@ -1,10 +1,12 @@
 begin;
-select plan(18);
+select plan(19);
 
 \ir applicants_fixture.inc
 
 -- The completeness a snapshot stores (FR-E1 data rules, FR-B4 weights): name and country 10, headline 5, occupation 15,
 -- three skills 15, a language 10, years of experience 10, availability 10, a valid work authorisation 10, a usable CV 15.
+-- These are the weights while release_find_workers is off; those of release 2c (FR-Q4 AC7) are tested in 176.
+update private.settings set value = 'false' where key = 'release_find_workers';
 -- The fixture passport of wa has its names, a country and an occupation: 25.
 select is(private.passport_completeness(:'wa'), 25, 'completeness: names, country and occupation');
 select is(private.passport_completeness(gen_random_uuid()), 0, 'completeness: a user without a passport has 0');
@@ -30,6 +32,9 @@ alter table public.worker_work_authorizations enable trigger user;
 select is(private.passport_completeness(:'wa'), 90, 'completeness: a language 10; an authorisation that expired yesterday does not count');
 update public.worker_work_authorizations set expires_on = (now() at time zone 'utc')::date where worker_user_id = :'wa';
 select is(private.passport_completeness(:'wa'), 100, 'completeness: an authorisation that expires today counts');
+insert into public.worker_training (worker_user_id, course, year_completed) values (:'wa', 'Welding course', 2020);
+insert into public.worker_employment_history (worker_user_id, role, country_code, from_month) values (:'wa', 'Welder', 'NG', '2018-01-01');
+select is(private.passport_completeness(:'wa'), 100, 'completeness: training and employment history (V61) add nothing before release 2c');
 
 -- apply_to_job stores the percentage at that moment in the snapshot, and a later change of the passport leaves it as it was.
 create temp table t_a as select pg_temp.org_on('employer_starter') as org;

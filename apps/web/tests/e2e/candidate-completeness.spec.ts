@@ -80,8 +80,20 @@ test.describe("candidate passport: completeness", () => {
     await summary.focus();
     await page.keyboard.press("Enter");
     const published = computeCompleteness(
-      { headline: null, occupationId: null, yearsExperience: null, availability: null, skills: [], languages: [], authorizations: [], hasCv: false },
+      {
+        headline: null,
+        occupationId: null,
+        yearsExperience: null,
+        availability: null,
+        skills: [],
+        languages: [],
+        authorizations: [],
+        training: [],
+        employmentHistory: [],
+        hasCv: false,
+      },
       "2026-10-03",
+      false,
     ).items;
     expect(published).toHaveLength(9);
     for (const { label, weight, rule } of published) {

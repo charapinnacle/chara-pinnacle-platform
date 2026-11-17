@@ -33,6 +33,18 @@ import {
   type PreferredCountryInput,
   type SkillInput,
 } from "@/lib/validation/passport";
+import {
+  employmentSchema,
+  employmentTypeSchema,
+  industryCodeSchema,
+  preferredEmploymentTypeSchema,
+  preferredIndustrySchema,
+  trainingSchema,
+  type EmploymentInput,
+  type PreferredEmploymentTypeInput,
+  type PreferredIndustryInput,
+  type TrainingInput,
+} from "@/lib/validation/passport-extensions";
 import { rememberWelcome } from "@/lib/welcome-cookie";
 
 export type PassportResult = { errors?: FieldErrors; message?: string };
@@ -40,10 +52,14 @@ export type PassportResult = { errors?: FieldErrors; message?: string };
 const ALREADY_ADDED = "This is already in your passport.";
 const CHECK_VALUES = "Check the values and try again.";
 const DATE_REFUSED = "Choose today or a later date that is not too far ahead.";
+const ENTRY_GONE = "This entry is no longer in your passport. Reload the page.";
 const limitMessages: Record<string, string> = {
   worker_skills: "You have reached the limit for skills in your passport.",
   worker_languages: "You have reached the limit for languages in your passport.",
   worker_preferred_countries: "You have reached the limit for preferred countries in your passport.",
+  worker_training: "You have reached the limit for training entries in your passport.",
+  worker_employment_history: "You have reached the limit for employment history entries in your passport.",
+  worker_preferred_industries: "You have reached the limit for preferred industries in your passport.",
 };
 const refusedDates: Record<string, string> = { available_from: "availableFrom", expires_on: "expiresOn" };
 
@@ -206,5 +222,145 @@ export async function removeAuthorization(code: string): Promise<PassportResult>
   return settle(
     (await supabase.from("worker_work_authorizations").delete().eq("worker_user_id", id).eq("country_code", parsed.data))
       .error,
+  );
+}
+
+export async function addTraining(input: TrainingInput): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = trainingSchema().safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { course, provider, yearCompleted } = parsed.data;
+  const supabase = await createClient();
+  return settle(
+    (await supabase.from("worker_training").insert({ worker_user_id: id, course, provider, year_completed: yearCompleted }))
+      .error,
+  );
+}
+
+export async function updateTraining(entryId: string, input: TrainingInput): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const entry = idSchema.safeParse(entryId);
+  if (!entry.success) return { message: GENERIC_FAILURE };
+  const parsed = trainingSchema().safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { course, provider, yearCompleted } = parsed.data;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("worker_training")
+    .update({ course, provider, year_completed: yearCompleted })
+    .eq("worker_user_id", id)
+    .eq("id", entry.data)
+    .select("id");
+  if (error) return refusal(error);
+  if (data.length === 0) return { message: ENTRY_GONE };
+  return settle(null);
+}
+
+export async function removeTraining(entryId: string): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = idSchema.safeParse(entryId);
+  if (!parsed.success) return { message: GENERIC_FAILURE };
+  const supabase = await createClient();
+  return settle((await supabase.from("worker_training").delete().eq("worker_user_id", id).eq("id", parsed.data)).error);
+}
+
+export async function addEmployment(input: EmploymentInput): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = employmentSchema().safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { role, employerName, country, fromMonth, toMonth } = parsed.data;
+  const supabase = await createClient();
+  return settle(
+    (
+      await supabase.from("worker_employment_history").insert({
+        worker_user_id: id,
+        role,
+        employer_name: employerName,
+        country_code: country,
+        from_month: fromMonth,
+        to_month: toMonth,
+      })
+    ).error,
+  );
+}
+
+export async function updateEmployment(entryId: string, input: EmploymentInput): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const entry = idSchema.safeParse(entryId);
+  if (!entry.success) return { message: GENERIC_FAILURE };
+  const parsed = employmentSchema().safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { role, employerName, country, fromMonth, toMonth } = parsed.data;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("worker_employment_history")
+    .update({ role, employer_name: employerName, country_code: country, from_month: fromMonth, to_month: toMonth })
+    .eq("worker_user_id", id)
+    .eq("id", entry.data)
+    .select("id");
+  if (error) return refusal(error);
+  if (data.length === 0) return { message: ENTRY_GONE };
+  return settle(null);
+}
+
+export async function removeEmployment(entryId: string): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = idSchema.safeParse(entryId);
+  if (!parsed.success) return { message: GENERIC_FAILURE };
+  const supabase = await createClient();
+  return settle(
+    (await supabase.from("worker_employment_history").delete().eq("worker_user_id", id).eq("id", parsed.data)).error,
+  );
+}
+
+export async function addPreferredIndustry(input: PreferredIndustryInput): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = preferredIndustrySchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const supabase = await createClient();
+  return settle(
+    (await supabase.from("worker_preferred_industries").insert({ worker_user_id: id, industry_code: parsed.data.industry }))
+      .error,
+  );
+}
+
+export async function removePreferredIndustry(code: string): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = industryCodeSchema.safeParse(code);
+  if (!parsed.success) return { message: GENERIC_FAILURE };
+  const supabase = await createClient();
+  return settle(
+    (await supabase.from("worker_preferred_industries").delete().eq("worker_user_id", id).eq("industry_code", parsed.data))
+      .error,
+  );
+}
+
+export async function addPreferredEmploymentType(input: PreferredEmploymentTypeInput): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = preferredEmploymentTypeSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const supabase = await createClient();
+  return settle(
+    (
+      await supabase
+        .from("worker_preferred_employment_types")
+        .insert({ worker_user_id: id, employment_type: parsed.data.employmentType })
+    ).error,
+  );
+}
+
+export async function removePreferredEmploymentType(type: string): Promise<PassportResult> {
+  const { id } = await requireUser(defaultLocale);
+  const parsed = employmentTypeSchema.safeParse(type);
+  if (!parsed.success) return { message: GENERIC_FAILURE };
+  const supabase = await createClient();
+  return settle(
+    (
+      await supabase
+        .from("worker_preferred_employment_types")
+        .delete()
+        .eq("worker_user_id", id)
+        .eq("employment_type", parsed.data)
+    ).error,
   );
 }

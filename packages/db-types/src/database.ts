@@ -1481,6 +1481,31 @@ isOneToOne: false
       referencedColumns: ["user_id"]
     }
                   ]
+                },"worker_employment_history": {
+                  Row: {
+                    "country_code": string,"created_at": string,"employer_name": string | null,"from_month": string,"id": string,"role": string,"to_month": string | null,"worker_user_id": string
+                  }
+                  Insert: {
+                    "country_code": string,"created_at"?: string,"employer_name"?: string | null,"from_month": string,"id"?: string,"role": string,"to_month"?: string | null,"worker_user_id": string
+                  }
+                  Update: {
+                    "country_code"?: string,"created_at"?: string,"employer_name"?: string | null,"from_month"?: string,"id"?: string,"role"?: string,"to_month"?: string | null,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_employment_history_country_code_fkey"
+      columns: ["country_code"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_employment_history_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"worker_languages": {
                   Row: {
                     "cefr_level": Database["public"]['Enums']["cefr_level"],"language_code": string,"worker_user_id": string
@@ -1531,6 +1556,50 @@ isOneToOne: false
       referencedColumns: ["user_id"]
     }
                   ]
+                },"worker_preferred_employment_types": {
+                  Row: {
+                    "employment_type": Database["public"]['Enums']["employment_type"],"worker_user_id": string
+                  }
+                  Insert: {
+                    "employment_type": Database["public"]['Enums']["employment_type"],"worker_user_id": string
+                  }
+                  Update: {
+                    "employment_type"?: Database["public"]['Enums']["employment_type"],"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_preferred_employment_types_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"worker_preferred_industries": {
+                  Row: {
+                    "industry_code": string,"worker_user_id": string
+                  }
+                  Insert: {
+                    "industry_code": string,"worker_user_id": string
+                  }
+                  Update: {
+                    "industry_code"?: string,"worker_user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_preferred_industries_industry_code_fkey"
+      columns: ["industry_code"]
+isOneToOne: false
+      referencedRelation: "industries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "worker_preferred_industries_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"worker_profiles": {
                   Row: {
                     "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"created_at": string,"current_country": string,"first_name": string,"headline": string | null,"last_name": string,"occupation_id": string | null,"searchable": boolean,"user_id": string,"years_experience": number | null
@@ -1575,6 +1644,25 @@ isOneToOne: true
                   Relationships: [
                     {
       foreignKeyName: "worker_skills_worker_user_id_fkey"
+      columns: ["worker_user_id"]
+isOneToOne: false
+      referencedRelation: "worker_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"worker_training": {
+                  Row: {
+                    "course": string,"created_at": string,"id": string,"provider": string | null,"worker_user_id": string,"year_completed": number
+                  }
+                  Insert: {
+                    "course": string,"created_at"?: string,"id"?: string,"provider"?: string | null,"worker_user_id": string,"year_completed": number
+                  }
+                  Update: {
+                    "course"?: string,"created_at"?: string,"id"?: string,"provider"?: string | null,"worker_user_id"?: string,"year_completed"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "worker_training_worker_user_id_fkey"
       columns: ["worker_user_id"]
 isOneToOne: false
       referencedRelation: "worker_profiles"
@@ -2620,7 +2708,7 @@ isOneToOne: false
                            },
 "passport_limits":
 { Args: Record<PropertyKey, never>; Returns: {
-              "availability_window_months": number,"skills_max": number,"work_authorization_expiry_max_years": number
+              "availability_window_months": number,"employment_history_max": number,"preferred_industries_max": number,"skills_max": number,"training_max": number,"work_authorization_expiry_max_years": number
             }[]
                            },
 "pending_reconsents":

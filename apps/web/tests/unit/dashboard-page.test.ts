@@ -305,6 +305,8 @@ describe("the candidate dashboard (UX-03)", () => {
       skills: [],
       languages: [],
       authorizations: [],
+      training: [],
+      employmentHistory: [],
     });
     expect(await render("worker")).toBe("WORKER from_date 2026-12-01 20");
   });

@@ -1,21 +1,24 @@
 begin;
-select plan(21);
+select plan(25);
 
 \ir passport_fixture.inc
 
 -- FR-B4: the completeness percentage is computed on read by the web tier and never stored. What the database holds
 -- is the data it is computed from, and the monthly review (SOP FR-B4, step Measure) is an offline query over that
 -- data. The view below is the score query of docs/runbooks/passport-completeness.md, with the same weights as
--- apps/web/lib/passport/completeness.ts.
+-- apps/web/lib/passport/completeness.ts: those of Phase 1 while release_find_workers is off, those of FR-Q4 AC7 (V61)
+-- once it is on.
+update private.settings set value = 'false' where key = 'release_find_workers';
 create temp view completeness_scores as
 select
   p.user_id,
   10
   + (btrim(coalesce(p.headline, '')) <> '')::int * 5
   + (p.occupation_id is not null)::int * 15
-  + ((select count(*) from public.worker_skills s where s.worker_user_id = p.user_id) >= 3)::int * 15
+  + ((select count(*) from public.worker_skills s where s.worker_user_id = p.user_id) >= 3)::int
+    * case when r.find_workers then 10 else 15 end
   + exists (select 1 from public.worker_languages l where l.worker_user_id = p.user_id)::int * 10
-  + (p.years_experience is not null)::int * 10
+  + (p.years_experience is not null)::int * case when r.find_workers then 5 else 10 end
   + (p.availability is not null)::int * 10
   + exists (
     select 1 from public.worker_work_authorizations a
@@ -25,8 +28,13 @@ select
     select 1 from public.worker_documents d
     where d.worker_user_id = p.user_id and d.type = 'cv' and d.deleted_at is null
       and d.scan_status in ('clean', 'skipped')
-  )::int * 15 as score
-from public.worker_profiles p;
+  )::int * 15
+  + case when r.find_workers then
+      exists (select 1 from public.worker_training t where t.worker_user_id = p.user_id)::int * 5
+      + exists (select 1 from public.worker_employment_history h where h.worker_user_id = p.user_id)::int * 5
+    else 0 end as score
+from public.worker_profiles p
+cross join (select private.release_on('release_find_workers') as find_workers) r;
 
 insert into public.worker_profiles (user_id, first_name, last_name, current_country)
 values (:'wa', 'Amina', 'Okafor', 'NG'), (:'wb', 'Bruno', 'Silva', 'PT'), (:'wnew', 'Chen', 'Wei', 'CN'), (:'wsus', 'Dara', 'Nwosu', 'NG');
@@ -111,10 +119,33 @@ select is(pg_temp.score_of(:'wsus'), 85, 'AC5: a certificate does not count');
 select pg_temp.add_cv(:'wsus', 'skipped');
 select is(pg_temp.score_of(:'wsus'), 100, 'AC5: a skipped CV counts');
 
+select is(
+  array(select private.passport_completeness(u) from unnest(array[:'wa', :'wb', :'wnew', :'wsus']::uuid[]) u),
+  array[10, 55, 85, 100],
+  'V61, switch off: private.passport_completeness keeps the Phase 1 scores of the four reference profiles'
+);
+
+-- V61: the same passport under the weights of release 2c (FR-Q4 AC7), and the function the snapshot uses agrees
+update private.settings set value = 'true' where key = 'release_find_workers';
+select is(pg_temp.score_of(:'wsus'), 90, 'FR-Q4 AC7, switch on: a passport complete under the Phase 1 rules is 90');
+insert into public.worker_training (worker_user_id, course, year_completed) values (:'wsus', 'Wiring course', 2020);
+insert into public.worker_employment_history (worker_user_id, role, country_code, from_month) values (:'wsus', 'Electrician', 'NG', '2018-01-01');
+select is(
+  array[pg_temp.score_of(:'wa'), pg_temp.score_of(:'wb'), pg_temp.score_of(:'wsus')],
+  array[10, 50, 100],
+  'FR-Q4 AC7, switch on: names only 10, occupation, three skills and a CV 50, with training and employment history 100'
+);
+select is(
+  array(select private.passport_completeness(u) from unnest(array[:'wa', :'wb', :'wnew', :'wsus']::uuid[]) u),
+  array(select pg_temp.score_of(u) from unnest(array[:'wa', :'wb', :'wnew', :'wsus']::uuid[]) u),
+  'the score query and private.passport_completeness agree while the switch is on'
+);
+update private.settings set value = 'false' where key = 'release_find_workers';
+
 -- No stored score: nothing in the candidate tables holds a percentage or a score
 select is_empty(
   $$select table_name || '.' || column_name from information_schema.columns
-    where table_schema = 'public' and table_name like 'worker\_%' and column_name ~ '(complet|score|percent)'$$,
+    where table_schema = 'public' and table_name like 'worker\_%' and column_name ~ '(completeness|score|percent)'$$,
   'the completeness is computed on read: no candidate table stores a score or a percentage'
 );
 
