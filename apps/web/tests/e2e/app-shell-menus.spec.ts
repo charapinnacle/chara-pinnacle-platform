@@ -240,7 +240,7 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
   test("the console keeps its own navigation, has the account menu in the header and wraps without overflow on a phone", async ({ page }) => {
     await signInStaff(page, "admin");
     const administration = page.getByRole("navigation", { name: "Administration" });
-    await expect(administration.getByRole("link")).toHaveCount(8);
+    await expect(administration.getByRole("link")).toHaveCount(10);
     await expect(page.getByRole("link", { name: "Chara Pinnacle" })).toHaveAttribute("href", "/en/admin");
     await openAccountMenu(page);
     await expect(await panelOf(page)).toContainText("Platform Administrator");
