@@ -36,6 +36,8 @@ const row = {
   description: null,
   open_vacancy_count: 0,
   vacancies: [],
+  job_order_count: 0,
+  job_orders: [],
 };
 
 beforeEach(() => {
@@ -47,8 +49,18 @@ beforeEach(() => {
 describe("getCompanyPage (FR-K5 AC1, AC3, AC8)", () => {
   it("reads the page by its slug and tells the page what the viewer may do", async () => {
     rpcMock.mockResolvedValue({ data: [{ ...row, viewer_role: "admin" }], error: null });
-    await expect(getCompanyPage("acme-bau")).resolves.toMatchObject({ state: "found", viewer: "manager", page: { displayName: "Acme Bau" } });
+    await expect(getCompanyPage("acme-bau")).resolves.toMatchObject({
+      state: "found",
+      viewer: "manager",
+      partnerSlug: null,
+      page: { displayName: "Acme Bau" },
+    });
     expect(rpcMock).toHaveBeenCalledWith("get_company_page", { p_slug: "acme-bau" });
+  });
+
+  it("passes the viewer's own partner slug for the job order links (V54)", async () => {
+    rpcMock.mockResolvedValue({ data: [{ ...row, viewer_role: null, viewer_partner_slug: "manila" }], error: null });
+    await expect(getCompanyPage("acme-bau")).resolves.toMatchObject({ state: "found", viewer: "outsider", partnerSlug: "manila" });
   });
 
   it("answers not_found for every page that is not public, and when no row comes back", async () => {

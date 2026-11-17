@@ -2,7 +2,7 @@ import * as z from "zod";
 import type { Database } from "@chara-pinnacle/db-types";
 import { employmentTypes, salaryPeriods } from "@/lib/validation/job";
 
-// What the visibility switch says it does (FR-K5 AC9). Named job orders join the page with release 2b (V54).
+// What the visibility switch says it does (FR-K5 AC9).
 export const COMPANY_PAGE_DESCRIPTION =
   "Shows your company details, open vacancies and named job orders to everyone. Anonymous job orders are never shown.";
 
@@ -22,6 +22,24 @@ const vacancySchema = z.object({
   salary_period: z.enum(salaryPeriods).nullable(),
   published_at: z.string(),
 });
+
+// A named job order of the company (FR-K5 AC3, V54): the id only for a member of a listed partner, who may open it.
+const jobOrderSchema = z.object({
+  id: z.string().optional(),
+  title: z.string(),
+  country_code: z.string(),
+  country: z.string(),
+  workers_needed: z.number().int(),
+  published_on: z.string(),
+});
+
+export type CompanyJobOrder = {
+  id: string | null;
+  title: string;
+  country: string;
+  workersNeeded: number;
+  publishedOn: string;
+};
 
 export type CompanyVacancy = {
   id: string;
@@ -46,10 +64,12 @@ export type CompanyPage = {
   description: string | null;
   openVacancyCount: number;
   vacancies: CompanyVacancy[];
+  jobOrderCount: number;
+  jobOrders: CompanyJobOrder[];
 };
 
 // The row of get_company_page; the generated types call every column required, but the optional ones come back as null.
-export function companyPageFrom(row: Omit<PageRow, "viewer_role">): CompanyPage {
+export function companyPageFrom(row: Omit<PageRow, "viewer_role" | "viewer_partner_slug">): CompanyPage {
   return {
     slug: row.slug,
     displayName: row.display_name,
@@ -72,6 +92,17 @@ export function companyPageFrom(row: Omit<PageRow, "viewer_role">): CompanyPage 
         salaryCurrency: vacancy.salary_currency,
         salaryPeriod: vacancy.salary_period,
         publishedAt: vacancy.published_at,
+      })),
+    jobOrderCount: row.job_order_count,
+    jobOrders: z
+      .array(jobOrderSchema)
+      .parse(row.job_orders)
+      .map((jobOrder) => ({
+        id: jobOrder.id ?? null,
+        title: jobOrder.title,
+        country: jobOrder.country,
+        workersNeeded: jobOrder.workers_needed,
+        publishedOn: jobOrder.published_on,
       })),
   };
 }

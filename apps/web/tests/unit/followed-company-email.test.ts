@@ -39,4 +39,28 @@ describe("followed_company_activity email", () => {
     const all = `${email.html}\n${email.text}`;
     for (const leak of ["€4,000", "follower@example.test", "u-1"]) expect(all).not.toContain(leak);
   });
+
+  it("lists the named job orders after the vacancies and links them to the partner follower's own job order pages", async () => {
+    const order = "22222222-2222-4222-8222-222222222222";
+    const email = await renderEmail(
+      "followed_company_activity",
+      { ...payload, total: 1, vacancies: payload.vacancies.slice(0, 1), job_order_total: 1, partner_slug: "manila", job_orders: [{ requirement_id: order, title: "Hamburg welders" }] },
+      SITE,
+    );
+    expect(email.subject).toBe("Acme Bau published 1 new vacancy and 1 new job order");
+    expect(email.text).toContain("Hamburg welders");
+    expect(hrefs(email.html)).toEqual([`${SITE}/en/org/manila/job-orders/${order}`, `${SITE}/en/companies/acme-bau`, `${SITE}/en/settings/notifications`]);
+  });
+
+  it("gives a candidate the job order titles without a link to a job order (decision 3.1)", async () => {
+    const email = await renderEmail(
+      "followed_company_activity",
+      { ...payload, total: 0, vacancies: [], job_order_total: 3, job_orders: [{ title: "Hamburg welders" }, { title: "Bremen fitters" }] },
+      SITE,
+    );
+    expect(email.subject).toBe("Acme Bau published 3 new job orders");
+    expect(email.text).toContain("Bremen fitters");
+    expect(email.text).toContain("And 1 job order more.");
+    expect(hrefs(email.html)).toEqual([`${SITE}/en/companies/acme-bau`, `${SITE}/en/settings/notifications`]);
+  });
 });

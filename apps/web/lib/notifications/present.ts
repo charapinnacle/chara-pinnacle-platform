@@ -59,6 +59,10 @@ function text(payload: Record<string, unknown>, key: string): string | undefined
   return typeof value === "string" && value !== "" ? value : typeof value === "number" ? String(value) : undefined;
 }
 
+function countOf(count: number, one: string, other: string): string {
+  return `${count} ${count === 1 ? one : other}`;
+}
+
 function documentName(slug: string): string {
   const name = slug.replace(/[-_]+/g, " ").trim();
   return name.charAt(0).toUpperCase() + name.slice(1);
@@ -293,14 +297,36 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
+  // V54: the digest also names the company's new named job orders; one job order alone links a partner follower to its
+  // job order page, everything else the company page (a candidate never gets a job order link, decision 3.1).
   followed_company_activity: {
     label: "Followed companies",
     present: (payload, { lang }) => {
       const org = text(payload, "org_name") ?? "A company you follow";
-      const total = Number(text(payload, "total"));
+      const total = Number(text(payload, "total")) || 0;
       const vacancies = Array.isArray(payload.vacancies) ? (payload.vacancies as Record<string, unknown>[]) : [];
       const first = vacancies[0] ? text(vacancies[0], "job_title") : undefined;
+      const jobOrderTotal = Number(text(payload, "job_order_total")) || 0;
+      const jobOrders = Array.isArray(payload.job_orders) ? (payload.job_orders as Record<string, unknown>[]) : [];
+      const firstJobOrder = jobOrders[0] ? text(jobOrders[0], "title") : undefined;
+      const jobOrderId = jobOrders[0] ? text(jobOrders[0], "requirement_id") : undefined;
       const slug = text(payload, "org_slug");
+      const partnerSlug = text(payload, "partner_slug");
+      const companyHref = slug ? companyPagePath(lang, slug) : null;
+      if (jobOrderTotal > 0 && total > 0) {
+        return {
+          title: `${org} published ${countOf(total, "new vacancy", "new vacancies")} and ${countOf(jobOrderTotal, "new job order", "new job orders")}`,
+          href: companyHref,
+        };
+      }
+      if (jobOrderTotal > 0) {
+        const one = jobOrderTotal === 1;
+        return {
+          title: one && firstJobOrder ? `${org} published a new job order: ${firstJobOrder}` : `${org} published ${jobOrderTotal} new job orders`,
+          href:
+            one && partnerSlug && jobOrderId && /^[0-9a-f-]{36}$/.test(jobOrderId) ? jobOrderPath(lang, partnerSlug, jobOrderId) : companyHref,
+        };
+      }
       return {
         title:
           total === 1 && first
@@ -308,7 +334,7 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
             : total > 1
               ? `${org} published ${total} new vacancies`
               : `${org} published new vacancies`,
-        href: slug ? companyPagePath(lang, slug) : null,
+        href: companyHref,
       };
     },
   },
