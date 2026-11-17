@@ -10,7 +10,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { organizationCrumb } from "@/lib/app/navigation";
-import { partnerSegments } from "@/lib/dashboard/partner-dashboard";
+import { partnerSegments } from "@/lib/dashboard/segments";
 import { getWorkerSearchAccess } from "@/lib/dal/find-workers";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
