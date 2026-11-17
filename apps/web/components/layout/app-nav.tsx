@@ -5,8 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { AccountMenu, AccountPanel } from "@/components/layout/account-panel";
 import { HeaderMenu } from "@/components/layout/header-menu";
 import { NavLink } from "@/components/layout/nav-link";
+import { MessagesBadge } from "@/components/messaging/messages-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { accountLinks, currentOrganization, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
+import type { UnreadMessages } from "@/lib/messaging/thread";
 import { companyDashboardPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,8 @@ export type AppNavProps = {
   submissions?: boolean;
   // Set for a candidate while release 2c is on (FR-P1).
   messages?: boolean;
+  // The unread messages of the header badge while release 2c is on (FR-P4), with the id of each organisation by slug.
+  unreadMessages?: { userId: string; initial: UnreadMessages[]; organizationIds: Readonly<Record<string, string>> } | null;
 };
 
 // What the header and the sidebar offer, for who is signed in: a candidate, or the role in the organisation named by the
@@ -62,11 +66,31 @@ export function OrganizationList({ lang, organizations, current }: { lang: strin
 // (visible without JavaScript), since a partner's row of links does not fit next to the account menu on a tablet; from
 // 1024 px the sidebar has the links and the switcher, and the header keeps the account menu.
 export function AppNav(props: AppNavProps) {
-  const { lang, organizations, notifications } = props;
-  const { links, switcher, account } = useAppNavigation(props);
+  const { lang, organizations, notifications, unreadMessages } = props;
+  const { organization, links, switcher, account } = useAppNavigation(props);
+  const messagesLink = unreadMessages ? links.find((link) => link.icon === "messages") : undefined;
+  const badge =
+    unreadMessages && messagesLink ? (
+      <MessagesBadge
+        href={messagesLink.href}
+        userId={unreadMessages.userId}
+        initial={unreadMessages.initial}
+        organizationId={organization ? (unreadMessages.organizationIds[organization.slug] ?? null) : null}
+      />
+    ) : null;
+  const bell = notifications ? <NotificationBell lang={lang} {...notifications} /> : null;
 
   return (
-    <HeaderMenu actions={notifications ? <NotificationBell lang={lang} {...notifications} /> : null}>
+    <HeaderMenu
+      actions={
+        badge || bell ? (
+          <>
+            {badge}
+            {bell}
+          </>
+        ) : null
+      }
+    >
       <div className="grid gap-2 lg:flex lg:items-center lg:gap-1">
         {links.length > 0 ? (
           <nav aria-label="Main" className="lg:hidden">

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, conversationPath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -107,6 +107,10 @@ describe("in-app notification items (FR-T1)", () => {
     ["submission_stage_changed", { requirement_id: JOB, title: "Hamburg welders", status: "rejected", org_slug: "manila" }, company, 'A candidate you submitted for "Hamburg welders" is now Not selected', requirementSubmissionsPath("en", "manila", JOB)],
     ["submission_stage_changed", {}, company, "The stage of a candidate you submitted for a workforce requirement changed", null],
     ["status_changed", { submission_id: JOB, job_title: "Hamburg welders", partner_name: "Manila Recruit", status: "offer" }, worker, "Your submission by Manila Recruit for Hamburg welders is now Offer", submissionPath("en", JOB)],
+    ["new_message", { conversation_id: APP, sender_name: "Amina Okafor", context_title: "Welder", unread: 3, org_slug: "acme" }, company, 'Amina Okafor sent you 3 unread messages about "Welder"', conversationPath("en", "acme", APP)],
+    ["new_message", { conversation_id: APP, sender_name: "Acme Bau", unread: 1 }, worker, "Acme Bau sent you 1 unread message", conversationPath("en", null, APP)],
+    ["new_message", { conversation_id: APP, unread: "many" }, company, "The other party sent you new messages", null],
+    ["new_message", { conversation_id: "../billing", org_slug: "acme" }, company, "The other party sent you new messages", null],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
@@ -154,7 +158,7 @@ describe("in-app notification items (FR-T1)", () => {
   });
 
   it("shows a kind of a later release without failing", () => {
-    expect(presentNotification({ kind: "new_message", payload: { submission_id: APP } }, company)).toEqual({
+    expect(presentNotification({ kind: "contact_request_received", payload: { submission_id: APP } }, company)).toEqual({
       title: "You have a new notification",
       kindLabel: "Notification",
       href: null,

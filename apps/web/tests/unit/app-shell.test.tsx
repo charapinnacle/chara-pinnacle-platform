@@ -13,6 +13,7 @@ const userMock = vi.hoisted(() => vi.fn());
 const organizationsMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const unreadMock = vi.hoisted(() => vi.fn());
+const unreadMessagesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
@@ -25,6 +26,8 @@ vi.mock("@/lib/dal/organizations", () => ({ getMyOrganizations: organizationsMoc
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/notifications", () => ({ getUnreadNotificationCount: unreadMock }));
 vi.mock("@/lib/actions/notifications", () => ({ fetchUnreadNotificationCount: vi.fn() }));
+vi.mock("@/lib/dal/messaging", () => ({ getUnreadMessageCounts: unreadMessagesMock }));
+vi.mock("@/lib/actions/messaging", () => ({ fetchUnreadMessageCounts: vi.fn(), fetchLatestMessages: vi.fn() }));
 
 const acme: NavOrganization = { slug: "acme", displayName: "Acme Bau", role: "owner", roleLabel: "Owner", suspended: false };
 const beta: NavOrganization = { slug: "beta", displayName: "Beta GmbH", role: "member", roleLabel: "Member", suspended: false };
@@ -133,6 +136,7 @@ describe("the layout of the signed-in area", () => {
     organizationsMock.mockReset();
     releasedMock.mockReset().mockResolvedValue(false);
     unreadMock.mockReset();
+    unreadMessagesMock.mockReset().mockResolvedValue([]);
   });
 
   it("shows no notification bell while the in-app notifications are not released (FR-T1)", async () => {
@@ -287,6 +291,55 @@ describe("the layout of the signed-in area", () => {
     releasedMock.mockImplementation(async (key: string) => key !== "release_messaging");
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     expect(mainLabels(renderToStaticMarkup((await shell()).headerActions))).not.toContain("Messages");
+  });
+
+  it("FR-P4 AC1: shows the unread messages of the inbox the Messages link opens, 99+ past 99 with the exact count in its name", async () => {
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockResolvedValue(0);
+    unreadMessagesMock.mockResolvedValue([
+      { conversationId: "c1", organizationId: "o1", unread: 3 },
+      { conversationId: "c2", organizationId: "o3", unread: 120 },
+      { conversationId: "c3", organizationId: null, unread: 2 },
+    ]);
+    userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
+    organizationsMock.mockResolvedValue([
+      { id: "o3", slug: "manila", displayName: "Manila Skills", type: "recruitment_company", role: "member", suspended: false },
+      { id: "o1", slug: "acme", displayName: "Acme Bau", type: "employer", role: "member", suspended: false },
+    ]);
+    const props = await shell();
+    navigation.pathname = "/en/org/acme/jobs";
+    let html = renderToStaticMarkup(props.headerActions);
+    expect(html).toMatch(/<a aria-label="Messages, 3 unread"[^>]*href="\/en\/org\/acme\/messages"[^>]*>.*?<span aria-hidden="true"[^>]*>3<\/span><\/a>/);
+    navigation.pathname = "/en/org/manila/jobs";
+    html = renderToStaticMarkup(props.headerActions);
+    expect(html).toMatch(/<a aria-label="Messages, 120 unread"[^>]*href="\/en\/org\/manila\/messages"[^>]*>.*?>99\+<\/span><\/a>/);
+
+    unreadMessagesMock.mockResolvedValue([{ conversationId: "c3", organizationId: null, unread: 0 }]);
+    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
+    html = renderToStaticMarkup((await shell()).headerActions);
+    expect(html).toMatch(/<a aria-label="Messages" [^>]*href="\/en\/messages"[^>]*><svg(?:(?!<\/a>).)*<\/svg><\/a>/);
+
+    releasedMock.mockImplementation(async (key: string) => key !== "release_messaging");
+    unreadMessagesMock.mockClear();
+    html = renderToStaticMarkup((await shell()).headerActions);
+    expect(html).not.toContain('aria-label="Messages');
+    expect(unreadMessagesMock).not.toHaveBeenCalled();
+  });
+
+  it("FR-P4: leaves the message badge out, and keeps the header, when the unread messages cannot be read", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    releasedMock.mockResolvedValue(true);
+    unreadMock.mockResolvedValue(0);
+    unreadMessagesMock.mockRejectedValue(new Error("The unread messages could not be counted"));
+    userMock.mockResolvedValue({ ...user, accountKind: "worker" });
+    const props = await shell();
+    expect(props.headerActions?.props.unreadMessages).toBeNull();
+    const html = renderToStaticMarkup(props.headerActions);
+    expect(html).toContain("Log out");
+    expect(html).toContain('aria-label="Notifications"');
+    expect(html).not.toContain('aria-label="Messages');
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("FR-J1: gives a member of a recruitment or staffing company no organisation links while release 2a is off", async () => {

@@ -9,6 +9,7 @@ import {
   applicationPath,
   billingPath,
   companyPagePath,
+  conversationPath,
   dataExportPath,
   employerDashboardPath,
   homePath,
@@ -529,6 +530,25 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: decision && Object.hasOwn(sentences, decision) ? sentences[decision] : `${employer} decided your response to ${requirement}`,
         href: responseHref(lang, payload),
+      };
+    },
+  },
+  // FR-P4 AC5: messages stayed unread for the delay; the other party and the context, never a message text. The
+  // conversation opens in the inbox of the recipient's organisation, or the candidate's own.
+  new_message: {
+    label: "Messages",
+    present: (payload, { lang, accountKind }) => {
+      const sender = text(payload, "sender_name") ?? "The other party";
+      const title = text(payload, "context_title");
+      const count = Number(text(payload, "unread"));
+      const unread = Number.isInteger(count) && count > 0 ? countOf(count, "unread message", "unread messages") : "new messages";
+      const id = text(payload, "conversation_id");
+      const slug = text(payload, "org_slug");
+      const conversation = id && /^[0-9a-f-]{36}$/.test(id) ? id : null;
+      const inbox = slug ?? (accountKind === "worker" ? null : undefined);
+      return {
+        title: `${sender} sent you ${unread}${title ? ` about "${title}"` : ""}`,
+        href: conversation && inbox !== undefined ? conversationPath(lang, inbox, conversation) : null,
       };
     },
   },

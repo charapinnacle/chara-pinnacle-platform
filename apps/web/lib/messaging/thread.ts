@@ -49,3 +49,8 @@ export function mergeLatest(current: MessageItem[], page: MessageItem[], pageSiz
 export function totalUnread(counts: UnreadMessages[]): number {
   return counts.reduce((sum, count) => sum + count.unread, 0);
 }
+
+// The accessible name of the header's messages link (FR-P4 AC1): the exact count, where the badge shows 99+ past 99.
+export function messagesLabel(unread: number): string {
+  return unread > 0 ? `Messages, ${unread} unread` : "Messages";
+}

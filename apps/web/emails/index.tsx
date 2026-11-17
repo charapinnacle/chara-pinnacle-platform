@@ -19,6 +19,7 @@ import { listingConfirmationDue } from "./templates/listing-confirmation-due.tsx
 import { memberInvitation } from "./templates/member-invitation.tsx";
 import { mfaReset } from "./templates/mfa-reset.tsx";
 import { moderationDecision } from "./templates/moderation-decision.tsx";
+import { newMessage } from "./templates/new-message.tsx";
 import { partnerApproved } from "./templates/partner-approved.tsx";
 import { partnerDeclined } from "./templates/partner-declined.tsx";
 import { partnerInfoRequested } from "./templates/partner-info-requested.tsx";
@@ -72,6 +73,7 @@ const TEMPLATES = {
   response_received: responseReceived,
   response_withdrawn: responseWithdrawn,
   response_decided: responseDecided,
+  new_message: newMessage,
   submission_request: submissionRequest,
   submission_request_signup: submissionRequestSignup,
   submission_approved: submissionApproved,
