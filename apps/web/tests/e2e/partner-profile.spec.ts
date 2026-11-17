@@ -121,10 +121,12 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(page.getByText("International", { exact: true })).toBeVisible();
 
     const capacity = page.getByRole("region", { name: "Workforce capacity" });
-    await expect(capacity.getByRole("listitem")).toHaveCount(2);
-    await expect(capacity.getByText(/^Confirmed on \d{1,2} \w+ \d{4}$/)).toHaveCount(2);
-    await expect(capacity).toContainText("Welders and flame cutters from Philippines");
-    await expect(capacity).not.toContainText("99 available");
+    await expect(capacity.getByRole("listitem"), "FR-K3 AC4: a visitor reads no listing").toHaveCount(0);
+    await expect(capacity).not.toContainText("available");
+    await expect(capacity.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(`/en/partners/${partner.slug}`)}`,
+    );
     await expect(page.getByRole("region", { name: "Languages" })).toContainText("English");
     const commitment = page.getByRole("region", { name: "Commitment" });
     await expect(commitment).toContainText(WORKERS_NEVER_PAY);
@@ -168,7 +170,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(page.getByText("Staffing company · Based in Philippines")).toBeVisible();
   });
 
-  test("AC6: a signed-in employer's page holds no private data either", async ({ page }) => {
+  test("AC6, FR-K3 AC4: a signed-in employer reads the capacity, and the page holds no private data either", async ({ page }) => {
     const partner = await listedPartner();
     const employer = await createCommittedUser("company");
     await registerOrganization(employer, `${uniqueName("Profile Viewer")} GmbH`);
@@ -177,6 +179,11 @@ test.describe("Public partner profile (FR-K4)", () => {
     const received = await collectResponses(page);
     await page.goto(profileUrl(partner.slug));
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(partner.displayName);
+    const capacity = page.getByRole("region", { name: "Workforce capacity" });
+    await expect(capacity.getByRole("listitem"), "FR-K3 AC4: a signed-in reader reads the fresh listings").toHaveCount(2);
+    await expect(capacity.getByText(/^Confirmed on \d{1,2} \w+ \d{4}$/)).toHaveCount(2);
+    await expect(capacity).toContainText("Welders and flame cutters from Philippines");
+    await expect(capacity).not.toContainText("99 available");
     expectNothingPrivate(await page.content(), partner);
     expectNothingPrivate(await received(), partner);
   });
@@ -331,7 +338,8 @@ test.describe("Public partner profile (FR-K4)", () => {
     await page.getByRole("link", { name: "Report company" }).click();
     await expect(page).toHaveURL(`/en/report?type=partner_profile&partner=${partner.slug}`);
     await expect(page.getByRole("heading", { name: "Report a company", level: 1 })).toBeVisible();
-    await expect(page.getByText(`/en/partners/${partner.slug}`)).toBeVisible();
+    await expect(page.getByRole("main").getByText(partner.displayName, { exact: true })).toBeVisible();
+    await expect(page.getByText(`/en/partners/${partner.slug}`), "the company is named, not its path").toHaveCount(0);
     await expect(page.getByLabel("What is wrong")).toHaveValue("");
     await fillReport(page, { category: "misleading_or_fraud", details: "This company claims placements it never made.", email: "visitor@example.test" });
     const reference = await sendReport(page);
@@ -418,6 +426,13 @@ test.describe("Public partner profile (FR-K4)", () => {
 
   test("AC11: a profile without listings and languages says so, omits Languages and fits 360 px", async ({ page }) => {
     const partner = await listedPartner({ complete: false });
+    await page.goto(profileUrl(partner.slug));
+    await expect(page.getByRole("region", { name: "Workforce capacity" }), "a visitor is asked to sign in").toContainText(
+      "Sign in to see the workers available",
+    );
+    const reader = await createCommittedUser("company");
+    await logIn(page, reader);
+    await page.waitForURL((url) => !url.pathname.endsWith("/login"));
     await page.goto(profileUrl(partner.slug));
     await expect(page.getByRole("region", { name: "Workforce capacity" })).toContainText("No current availability listed");
     await expect(page.getByRole("heading", { name: "Languages" })).toHaveCount(0);
@@ -698,6 +713,13 @@ test.describe("Public partner profile (FR-K4)", () => {
     await decider.page.goto("/en/admin/appeals");
     const row = decider.page.getByRole("row").filter({ hasText: partner.displayName });
     await expect(row).toContainText("Appeal under review");
+    await decider.page.setViewportSize({ width: 800, height: 900 });
+    const lines = await row.getByText("Appeal under review", { exact: true }).evaluate((badge) => {
+      const style = getComputedStyle(badge);
+      const content = badge.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      return Math.round(content / parseFloat(style.lineHeight));
+    });
+    expect(lines, "the status badge stays on one line at 800 px").toBe(1);
     await expectAccessibleAtBothWidths(decider.page);
     await decider.page.setViewportSize({ width: 1280, height: 900 });
     await row.getByRole("link").click();

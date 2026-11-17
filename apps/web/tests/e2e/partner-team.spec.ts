@@ -285,7 +285,12 @@ test.describe("Partner team pages (FR-J1 AC9, AC11, release 2a)", () => {
     await page.goto(`/en/dashboard/recruitment?org=${team.slug}`);
     const block = page.getByRole("region", { name: "Your team" });
     await expect(block.getByRole("link", { name: "Invite your team" })).toHaveAttribute("href", membersPath(team.slug));
-    await expect(page.getByRole("region", { name: "Plan and usage" })).toContainText("1 of 1 team member");
+    const plan = page.getByRole("region", { name: "Plan and usage" });
+    await expect(plan).toContainText("1 of 1 team member · Limit reached. Upgrade");
+    await expect(plan.getByRole("link", { name: "Upgrade (team members)" }), "FR-R1: a full limit offers the upgrade").toHaveAttribute(
+      "href",
+      `/en/org/${team.slug}/billing`,
+    );
     expect(await page.locator("main").innerText()).not.toMatch(/approved|verified/i);
     await expectAccessibleAtBothWidths(page);
   });
