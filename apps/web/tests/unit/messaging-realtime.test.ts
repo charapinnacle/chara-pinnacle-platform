@@ -45,7 +45,8 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcM
 const { listenOnTopic } = await import("@/lib/realtime/topic");
 const { subscribeUnreadCount } = await import("@/lib/notifications/unread-channel");
 const { followLive, subscribeConversation, subscribeUnreadMessages } = await import("@/lib/messaging/live");
-const { mergeLatest, mergeMessages, totalUnread } = await import("@/lib/messaging/thread");
+const { mergeLatest, mergeMessages } = await import("@/lib/messaging/thread");
+const { totalUnread } = await import("@/lib/messaging/unread");
 const { fetchLatestMessages, fetchUnreadMessageCounts } = await import("@/lib/actions/messaging");
 
 const CONVERSATION = "11111111-1111-4111-8111-111111111111";
