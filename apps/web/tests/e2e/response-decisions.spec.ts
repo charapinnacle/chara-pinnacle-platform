@@ -172,15 +172,18 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expect(page.getByRole("region", { name: "Withdrawn" })).toContainText(p3.displayName);
     await expect(comparison(page).getByText(/licen[cs]e/i)).toHaveCount(0);
 
-    // AC2: the table scrolls in its own container at 360 px, the page never sideways; named decision controls; axe.
+    // AC2: the table scrolls in its own container at 360 and 375 px, the page never sideways; named decision controls; axe.
     for (const partner of [p1, s1, p2]) {
       for (const verb of ["Shortlist", "Select", "Decline"]) {
         await expect(page.getByRole("button", { name: `${verb} ${partner.displayName}`, exact: true })).toBeVisible();
       }
     }
     await expectAccessibleAtBothWidths(page);
-    await page.setViewportSize({ width: 360, height: 800 });
-    expect(await comparison(page).evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+    for (const width of [360, 375]) {
+      await page.setViewportSize({ width, height: 800 });
+      expect(await comparison(page).evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    }
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // AC10: Select opens the statement that the platform is not a party and that the partner can then submit; by keyboard.
