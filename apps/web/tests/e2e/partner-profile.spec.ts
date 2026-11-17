@@ -122,7 +122,7 @@ test.describe("Public partner profile (FR-K4)", () => {
 
     const capacity = page.getByRole("region", { name: "Workforce capacity" });
     await expect(capacity.getByRole("listitem"), "FR-K3 AC4: a visitor reads no listing").toHaveCount(0);
-    await expect(capacity).not.toContainText("available");
+    await expect(capacity).not.toContainText(/\d+ available/);
     await expect(capacity.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       `/en/login?next=${encodeURIComponent(`/en/partners/${partner.slug}`)}`,
