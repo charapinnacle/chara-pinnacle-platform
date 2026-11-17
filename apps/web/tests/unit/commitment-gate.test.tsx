@@ -8,6 +8,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn(), acceptUpdatedCommitment: vi.fn() }));
 vi.mock("@/lib/actions/submissions", () => ({ submitCandidate: vi.fn() }));
 vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: vi.fn() }));
+// The owner's form loads when the dialog opens; static markup renders it in place so the dialog's content is read whole.
+vi.mock("next/dynamic", async () => {
+  const { CommitmentForm } = await import("@/components/organization/commitment-form");
+  return { default: (loader: () => unknown) => (String(loader).includes("commitment-form") ? CommitmentForm : () => null) };
+});
 
 const { CommitmentGate } = await import("@/components/organization/commitment-gate");
 const { EligibilityPanel } = await import("@/components/responses/eligibility-panel");
