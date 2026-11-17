@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { partnerSegments } from "@/lib/dashboard/partner-dashboard";
+import { listOpenVacancies } from "@/lib/dal/contact-requests";
 import { getWorkerSearchAccess } from "@/lib/dal/find-workers";
 import { getCountries, getIndustries, getLanguages, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
@@ -38,13 +39,14 @@ export default async function FindWorkersPage({ params, searchParams }: PageProp
   if (organization.suspended) return <SuspendedOrganization title="Find workers" subject="Find Workers" />;
   const canManage = organization.role !== "member";
   const { filters, errors } = parseFindWorkersParams(rawParams);
-  const [access, occupations, industries, countries, languages, requirement] = await Promise.all([
+  const [access, occupations, industries, countries, languages, requirement, vacancies] = await Promise.all([
     getWorkerSearchAccess(organization.id),
     getOccupations(),
     getIndustries(),
     getCountries(),
     getLanguages(),
     filters.requirement && organization.type === "employer" ? getRequirement(organization.id, filters.requirement) : null,
+    organization.type === "employer" ? listOpenVacancies(organization.id) : [],
   ]);
   const forRequirement = requirement && requirement.status !== "closed" && requirement.status !== "filled" ? requirement : null;
   if (!forRequirement) filters.requirement = undefined;
@@ -62,6 +64,7 @@ export default async function FindWorkersPage({ params, searchParams }: PageProp
     canManage,
     partnerSegment: organization.type === "employer" ? null : partnerSegments[organization.type],
     requirementId: forRequirement?.id ?? null,
+    vacancies,
   };
 
   return (

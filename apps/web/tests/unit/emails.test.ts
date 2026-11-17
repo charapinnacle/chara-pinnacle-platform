@@ -8,12 +8,14 @@ import {
   applicantsPath,
   applicationPath,
   billingPath,
+  contactRequestsPath,
   conversationPath,
   dataExportPath,
   findWorkersCardPath,
   invitationPath,
   jobOrderPath,
   jobPath,
+  orgContactRequestsPath,
   requirementPath,
   requirementResponsesPath,
   requirementSubmissionsPath,
@@ -145,6 +147,8 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   submission_withdrawn: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   submission_stage_changed: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", status: "interview", org_slug: "manila-recruit" },
   visibility_confirmation: { respond_by: "2027-12-17T01:35:00+00:00" },
+  contact_request_received: { contact_request_id: APP, org_name: "Acme Bau", org_type: "employer", country_code: "DE", country_name: "Germany", job_title: "Welder MIG/MAG" },
+  contact_request_decided: { contact_request_id: APP, decision: "accepted", org_slug: "acme-bau" },
 };
 
 const LEAKS = {
@@ -267,6 +271,8 @@ describe("notification templates", () => {
       submission_withdrawn: requirementSubmissionsPath("en", "acme-bau", JOB),
       submission_stage_changed: requirementSubmissionsPath("en", "manila-recruit", JOB),
       visibility_confirmation: findWorkersCardPath("en"),
+      contact_request_received: contactRequestsPath("en"),
+      contact_request_decided: orgContactRequestsPath("en", "acme-bau"),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -395,6 +401,23 @@ describe("notification templates", () => {
     const foreign = await renderEmail("new_message", { ...SAMPLES.new_message, org_slug: "../billing", conversation_id: "../billing" }, SITE);
     expect(foreign.html).not.toContain("billing\"");
     expect(foreign.html).not.toContain("Read the conversation");
+  });
+
+  it("contact_request_received names the company and the vacancy, never the message (FR-Q3 AC1, NFR-S9)", async () => {
+    const email = await renderEmail("contact_request_received", { ...SAMPLES.contact_request_received, message: "Call me on +49 170 0000" }, SITE);
+    expect(email.subject).toBe("Acme Bau would like to contact you");
+    expect(email.text).toContain('Acme Bau (Germany) found your card in Find Workers and sent you a contact request with an invitation to apply to "Welder MIG/MAG".');
+    for (const part of [email.subject, email.text, email.html]) expect(part).not.toContain("+49");
+  });
+
+  it("contact_request_decided says the answer without the worker's name and links only the recipient's own page (FR-Q3 AC8, NFR-S9)", async () => {
+    const accepted = await renderEmail("contact_request_decided", { ...SAMPLES.contact_request_decided, first_name: "Amina" }, SITE);
+    expect(accepted.subject).toBe("A worker accepted your contact request");
+    for (const part of [accepted.subject, accepted.text, accepted.html]) expect(part).not.toContain("Amina");
+    const declined = await renderEmail("contact_request_decided", { ...SAMPLES.contact_request_decided, decision: "declined" }, SITE);
+    expect(declined.text).toContain("cannot contact this worker again for 90 days");
+    const foreign = await renderEmail("contact_request_decided", { ...SAMPLES.contact_request_decided, org_slug: "../billing" }, SITE);
+    expect(foreign.html).not.toContain("See your contact requests");
   });
 
   it("response_decided tells the partner its own decision, never the note, and names the employer only when the payload does (FR-O3 AC7, NFR-S11)", async () => {

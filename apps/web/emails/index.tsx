@@ -5,6 +5,8 @@ import { accountExists } from "./templates/account-exists.tsx";
 import { accountReinstated } from "./templates/account-reinstated.tsx";
 import { accountSuspended } from "./templates/account-suspended.tsx";
 import { applicationReceived } from "./templates/application-received.tsx";
+import { contactRequestDecided } from "./templates/contact-request-decided.tsx";
+import { contactRequestReceived } from "./templates/contact-request-received.tsx";
 import { dataExportReady } from "./templates/data-export-ready.tsx";
 import { deletionCompleted } from "./templates/deletion-completed.tsx";
 import { deletionRequested } from "./templates/deletion-requested.tsx";
@@ -81,6 +83,8 @@ const TEMPLATES = {
   submission_withdrawn: submissionWithdrawn,
   submission_stage_changed: submissionStageChanged,
   visibility_confirmation: visibilityConfirmation,
+  contact_request_received: contactRequestReceived,
+  contact_request_decided: contactRequestDecided,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

@@ -158,13 +158,15 @@ describe("the addresses and labels of the pages (FR-P1 AC11)", () => {
       `/en/org/acme/requirements/${REQUIREMENT}/responses/${CONTEXT}`,
     );
     expect(contextHref("en", partner, { ...summary, contextType: "partner_response" })).toBe(`/en/org/rekrut/responses/${CONTEXT}`);
+    expect(contextHref("en", employer, { ...summary, contextType: "contact_request" })).toBe("/en/org/acme/contact-requests");
+    expect(contextHref("en", worker, { ...summary, contextType: "contact_request" })).toBe("/en/contact-requests");
     expect(contextHref("en", employer, { ...summary, contextType: "inquiry" })).toBeNull();
   });
 
   it("offers each side the filters of its contexts", () => {
-    expect(inboxContexts({ kind: "worker" })).toEqual(["application", "candidate_submission"]);
-    expect(inboxContexts({ kind: "partner", slug: "r" })).toEqual(["requirement_invitation", "partner_response"]);
-    expect(inboxContexts({ kind: "employer", slug: "a" })).toHaveLength(4);
+    expect(inboxContexts({ kind: "worker" })).toEqual(["application", "candidate_submission", "contact_request"]);
+    expect(inboxContexts({ kind: "partner", slug: "r" })).toEqual(["requirement_invitation", "partner_response", "contact_request"]);
+    expect(inboxContexts({ kind: "employer", slug: "a" })).toHaveLength(5);
   });
 
   it("names the other party and the sender, never more than the database answered (NFR-S11)", () => {

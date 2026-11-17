@@ -1,8 +1,11 @@
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { SendContactRequest } from "@/components/contact-requests/send-contact-request";
 import { SaveCardButton } from "@/components/find-workers/save-card-button";
 import { WorkerCard, type CardNames } from "@/components/find-workers/worker-card";
+import { sentStatusLabels } from "@/lib/contact-requests/presentation";
+import { cardContactRequests, type CardContactState, type OpenVacancy } from "@/lib/dal/contact-requests";
 import {
   listSavedWorkerCards,
   savedCardIds,
@@ -19,8 +22,9 @@ import {
   withoutAdvancedFilters,
   type FindWorkersFilters,
 } from "@/lib/find-workers/search-params";
+import { formatDate } from "@/lib/i18n/format";
 import { RECRUITMENT_DIRECTORY_PATH } from "@/lib/public/navigation";
-import { billingPath, companyDashboardPath, findWorkersPath, workforceProfilePath } from "@/lib/routes";
+import { billingPath, companyDashboardPath, findWorkersPath, orgContactRequestsPath, workforceProfilePath } from "@/lib/routes";
 
 export type FindWorkersContext = {
   lang: string;
@@ -29,6 +33,8 @@ export type FindWorkersContext = {
   canManage: boolean;
   partnerSegment: "recruitment" | "staffing" | null;
   requirementId: string | null;
+  // The open vacancies a contact request may invite the worker to (an employer's; none for a partner).
+  vacancies: readonly OpenVacancy[];
 };
 
 const cardLabel = (card: WorkerCardData, names: CardNames) =>
@@ -58,16 +64,38 @@ function ContactRule({ lang, directContact, notice, country, countryName }: {
   );
 }
 
+// Contacting the worker (FR-Q3 AC12): "Send contact request" while the rules allow direct contact and the organisation may
+// send one; once a request stops it, the date it was sent and how it stands, linked to the organisation's requests.
+function ContactAction({ card, directContact, contact, context }: {
+  card: WorkerCardData;
+  directContact: DirectContact;
+  contact: CardContactState | undefined;
+  context: FindWorkersContext;
+}) {
+  const { lang, slug, names, vacancies } = context;
+  if (contact && !contact.canSend) {
+    return (
+      <p className="text-small text-muted-foreground">
+        Request sent on <time dateTime={contact.sentAt}>{formatDate(contact.sentAt)}</time> ·{" "}
+        <TextLink href={orgContactRequestsPath(lang, slug)}>{sentStatusLabels[contact.status]}</TextLink>
+      </p>
+    );
+  }
+  if (directContact !== "allowed") return null;
+  return <SendContactRequest slug={slug} cardId={card.card_id} cardLabel={cardLabel(card, names)} vacancies={vacancies} />;
+}
+
 type ResultCardProps = {
   card: WorkerCardData;
   directContact: DirectContact;
   notice: string;
   matched: string | null;
   saved: boolean;
+  contact: CardContactState | undefined;
   context: FindWorkersContext;
 };
 
-function ResultCard({ card, directContact, notice, matched, saved, context }: ResultCardProps) {
+function ResultCard({ card, directContact, notice, matched, saved, contact, context }: ResultCardProps) {
   const { lang, slug, names, requirementId } = context;
   return (
     <li className="grid gap-3">
@@ -80,7 +108,8 @@ function ResultCard({ card, directContact, notice, matched, saved, context }: Re
         country={card.current_country}
         countryName={names.countries[card.current_country] ?? card.current_country}
       />
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <ContactAction card={card} directContact={directContact} contact={contact} context={context} />
         <SaveCardButton slug={slug} cardId={card.card_id} requirementId={requirementId} saved={saved} cardLabel={cardLabel(card, names)} />
       </div>
     </li>
@@ -159,6 +188,7 @@ export async function FindWorkersResults({ organizationId, filters, context, lan
   if (search.state === "refused") return <FindWorkersRefusalNotice reason={search.reason} context={context} />;
 
   const { results, nextCursor, cursorIgnored } = search;
+  const contacts = await cardContactRequests(organizationId, results.map(({ card }) => card.card_id));
   const ignoredCursor = cursorIgnored ? (
     <Notice tone="warning" role="alert">
       {findWorkersCursorError}
@@ -201,6 +231,7 @@ export async function FindWorkersResults({ organizationId, filters, context, lan
               notice={notice}
               matched={matchedOnText(matchedOn, { ...filters, languages })}
               saved={saved.has(card.card_id)}
+              contact={contacts.get(card.card_id)}
               context={context}
             />
           ))}
@@ -222,7 +253,7 @@ export async function FindWorkersResults({ organizationId, filters, context, lan
   );
 }
 
-function SavedCard({ saved, context }: { saved: SavedWorkerCard; context: FindWorkersContext }) {
+function SavedCard({ saved, contact, context }: { saved: SavedWorkerCard; contact: CardContactState | undefined; context: FindWorkersContext }) {
   if (!saved.visible) {
     return (
       <li className="grid gap-3 rounded-lg border p-4">
@@ -234,13 +265,25 @@ function SavedCard({ saved, context }: { saved: SavedWorkerCard; context: FindWo
     );
   }
   return (
-    <ResultCard card={saved.card} directContact={saved.directContact} notice={saved.notice} matched={null} saved context={context} />
+    <ResultCard
+      card={saved.card}
+      directContact={saved.directContact}
+      notice={saved.notice}
+      matched={null}
+      saved
+      contact={contact}
+      context={context}
+    />
   );
 }
 
 // The cards saved for the requirement the search was opened from, or for the organisation (FR-Q2 AC12, SOP step Act).
 export async function SavedWorkers({ organizationId, context }: { organizationId: string; context: FindWorkersContext }) {
   const saved = await listSavedWorkerCards(organizationId, context.requirementId);
+  const contacts = await cardContactRequests(
+    organizationId,
+    saved.filter((item) => item.visible).map((item) => item.cardId),
+  );
   return (
     <section aria-labelledby="saved-workers-heading" className="grid gap-3">
       <h2 id="saved-workers-heading" className="text-h2">
@@ -251,7 +294,7 @@ export async function SavedWorkers({ organizationId, context }: { organizationId
       ) : (
         <ul aria-label="Saved workers" className="grid gap-6">
           {saved.map((item) => (
-            <SavedCard key={item.cardId} saved={item} context={context} />
+            <SavedCard key={item.cardId} saved={item} contact={contacts.get(item.cardId)} context={context} />
           ))}
         </ul>
       )}

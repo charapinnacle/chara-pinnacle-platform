@@ -275,7 +275,7 @@ describe("the layout of the signed-in area", () => {
     userMock.mockResolvedValue({ ...user, accountKind: "worker" });
     navigation.pathname = "/en/messages";
     let html = renderToStaticMarkup((await shell()).headerActions);
-    expect(mainLabels(html)).toEqual(["Dashboard", "Find jobs", "Saved", "Applications", "Submissions", "Messages", "Passport"]);
+    expect(mainLabels(html)).toEqual(["Dashboard", "Find jobs", "Saved", "Applications", "Submissions", "Contact requests", "Messages", "Passport"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Messages<\/a>/);
     userMock.mockResolvedValue({ ...user, accountKind: "company", intendedOrganizationType: "recruitment_company" });
     organizationsMock.mockResolvedValue([
@@ -294,6 +294,7 @@ describe("the layout of the signed-in area", () => {
       "Responses",
       "Submissions",
       "Find workers",
+      "Contact requests",
       "Analytics",
       "Messages",
       "Team",
@@ -308,6 +309,7 @@ describe("the layout of the signed-in area", () => {
       "Applicants",
       "Requirements",
       "Find workers",
+      "Contact requests",
       "Analytics",
       "Messages",
       "Team",
