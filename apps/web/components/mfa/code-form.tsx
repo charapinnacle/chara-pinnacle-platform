@@ -55,7 +55,7 @@ export function CodeForm<TResult extends ServerResult>({
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(submitCode)(event)}>
+    <form method="post" noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(submitCode)(event)}>
       {serverMessage ? (
         <Notice tone="error" role="alert">
           {serverMessage}
