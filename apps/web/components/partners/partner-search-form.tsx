@@ -186,7 +186,7 @@ export function PartnerSearchForm({ lang, kind, query, occupations, industries, 
           <fieldset className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
             <legend className="mb-1 text-h3">Workforce capacity</legend>
             <p className="text-small text-muted-foreground sm:col-span-2">
-              Needs a plan with advanced partner search. Only listings confirmed recently count.
+              Needs signing in and a plan with advanced partner search. Only listings confirmed recently count.
             </p>
             <InputField control={control} name="capacity" id="partner-capacity" label="Workers available, at least" inputMode="numeric" />
             <InputField control={control} name="within_days" id="partner-within-days" label="Available within (days)" inputMode="numeric" />

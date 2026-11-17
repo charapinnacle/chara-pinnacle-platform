@@ -51,3 +51,15 @@ export function freshnessLabel(
   }
   return { badge: null, text: ago };
 }
+
+// The workers of a listing as the available workforce search counts them (search_available_workforce: available now only
+// when available_from is today or earlier in UTC): a listing that starts later says from when, never "available now".
+export function availabilityText(
+  listing: { available: number; monthlyCapacity: number; availableFrom: string },
+  now: Date,
+): string {
+  const later = listing.availableFrom > now.toISOString().slice(0, 10);
+  return later
+    ? `${formatCount(listing.available)} available from ${formatDate(listing.availableFrom)}, ${formatCount(listing.monthlyCapacity)} per month`
+    : `${formatCount(listing.available)} available now, ${formatCount(listing.monthlyCapacity)} per month`;
+}
