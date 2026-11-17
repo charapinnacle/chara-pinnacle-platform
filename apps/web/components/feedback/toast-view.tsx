@@ -1,12 +1,16 @@
 "use client";
 
 import { X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Toast } from "radix-ui";
 import { cva } from "class-variance-authority";
 import type { ToastItem } from "@/components/feedback/toast-store";
-import { TextLink } from "@/components/forms/text-link";
 import { cardVariants } from "@/components/layout/card";
 import { cn } from "@/lib/utils";
+
+// The Toaster fetches this view on every page after hydration; the link component (and next/link with it) is fetched
+// only when a toast has a link, so it stays out of that chunk.
+const TextLink = dynamic(() => import("@/components/forms/text-link").then((module) => module.TextLink), { ssr: false });
 
 const toastVariants = cva(
   cn(
