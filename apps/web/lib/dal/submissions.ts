@@ -157,6 +157,8 @@ export type PartnerSubmission = {
   withdrawnAt: string | null;
   stageChangedAt: string | null;
   stages: SubmissionStageChange[];
+  // Hidden by moderation (V57), with the decision an appeal names; the employer no longer sees the submission.
+  hidden: { decisionId: number | null } | null;
 };
 
 export type PartnerSubmissionsPage = { submissions: PartnerSubmission[]; nextCursor: string | null; cursorIgnored: boolean };
@@ -195,6 +197,7 @@ export async function listPartnerSubmissions(
       withdrawnAt: row.withdrawn_at ?? null,
       stageChangedAt: row.stage_changed_at ?? null,
       stages: stagesSchema.catch([]).parse(row.stages),
+      hidden: row.moderation_state === "hidden" ? { decisionId: row.moderation_action_id ?? null } : null,
     })),
     nextCursor: data.at(-1)?.next_cursor ?? null,
     cursorIgnored: false,

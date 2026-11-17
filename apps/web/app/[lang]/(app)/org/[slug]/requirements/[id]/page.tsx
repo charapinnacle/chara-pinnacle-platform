@@ -40,7 +40,7 @@ export const metadata: Metadata = { title: "Workforce requirement", robots: { in
 // V43), and for an owner or admin the capacity tolerance partners' offers must keep within (FR-O2 AC4), and while
 // submissions are released the candidates partners submitted (FR-O5 AC1). A failed read of the responses or the
 // submissions leaves their count out, and of the tolerance its form. A requirement hidden by moderation shows the badge,
-// the statement of reasons and the appeal (FR-S1 AC12).
+// the statement of reasons and the appeal (FR-S1 AC12), and no action of the employer on it.
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -71,7 +71,8 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
   };
-  const manager = organization.role !== "member";
+  // A requirement hidden by moderation is out of the employer's hands until a decision restores it (V57).
+  const manager = organization.role !== "member" && moderation?.state !== "hidden";
   const today = new Date().toISOString().slice(0, 10);
 
   return (

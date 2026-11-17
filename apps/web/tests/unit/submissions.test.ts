@@ -308,6 +308,17 @@ describe("the submission reads", () => {
     await expect(listPartnerSubmissions(PARTNER.id, null, null)).rejects.toThrow("The submissions could not be loaded");
   });
 
+  it("marks a submission hidden by moderation with the decision an appeal names (V57)", async () => {
+    const row = {
+      id: SUBMISSION, requirement_id: REQUIREMENT, title: "Welders", status: "submitted", invited_email: null, candidate_name: "Cara Lim",
+      note: null, created_at: "2026-11-10T00:00:00Z", decided_at: null, worker_approved_at: "2026-11-11T00:00:00Z", withdrawn_at: null,
+      next_cursor: null, moderation_state: "hidden", moderation_action_id: 42,
+    };
+    rpcMock.mockResolvedValue({ data: [row, { ...row, id: DOCUMENT, moderation_state: "visible", moderation_action_id: null }], error: null });
+    const page = await listPartnerSubmissions(PARTNER.id, null, null);
+    expect(page.submissions.map((submission) => submission.hidden)).toEqual([{ decisionId: 42 }, null]);
+  });
+
   it("reads the employer's approved submissions", async () => {
     rpcMock.mockResolvedValue({
       data: [

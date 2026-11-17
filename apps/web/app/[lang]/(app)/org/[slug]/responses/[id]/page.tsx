@@ -63,11 +63,13 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
     getItemModeration(organization.id, "partner_response", response.id),
   ]);
   const appeal = moderation?.decision ? await listMyAppeals(moderation.decision.id).catch(() => null) : null;
+  // A response hidden by moderation is neither changed nor withdrawn until a decision restores it (V57).
+  const hidden = moderation?.state === "hidden";
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
   };
-  const changeable = isLive(response.status) && response.requirementStatus !== "closed" && response.requirementStatus !== "filled";
+  const changeable = isLive(response.status) && response.requirementStatus !== "closed" && response.requirementStatus !== "filled" && !hidden;
   const requirementHref = response.invitationId ? invitationPath(lang, slug, response.invitationId) : jobOrderPath(lang, slug, response.requirementId);
 
   return (
@@ -123,13 +125,13 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
             </TextLink>
           </div>
         ) : null}
-        {isLive(response.status) && response.requirementStatus !== "open" ? (
+        {isLive(response.status) && !hidden && response.requirementStatus !== "open" ? (
           <Notice tone="info" role="status">
             The requirement is {requirementStatusLabels[response.requirementStatus].toLowerCase()} at the moment.
             {changeable ? " You can still change or withdraw your response." : " You can still withdraw your response."}
           </Notice>
         ) : null}
-        {isLive(response.status) ? (
+        {isLive(response.status) && !hidden ? (
           <div className="flex flex-wrap gap-3">
             {changeable ? (
               <LinkButton href={responseEditPath(lang, slug, response.id)} size="default">

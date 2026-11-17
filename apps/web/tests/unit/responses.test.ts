@@ -496,3 +496,12 @@ describe("the documents while files are sent and scanned (FR-O2 AC5)", () => {
     expect(countedDocuments(documents, [{ documentId: "a" }, { documentId: "e" }, { documentId: null }], now)).toBe(4);
   });
 });
+
+describe("a response hidden by moderation (V57)", () => {
+  it("is neither changed nor withdrawn, and says why", () => {
+    const hidden = { message: "CHARA_INVALID_STATE", details: "hidden" };
+    expect(responseRefusal(hidden)).toEqual({ kind: "message", message: RESPONSE_MESSAGES.hidden });
+    expect(withdrawRefusal(hidden)).toEqual({ kind: "message", message: RESPONSE_MESSAGES.hidden });
+    expect(RESPONSE_MESSAGES.hidden).toContain("how to appeal");
+  });
+});

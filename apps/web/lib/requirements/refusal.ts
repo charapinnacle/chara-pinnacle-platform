@@ -26,7 +26,13 @@ export const REQUIREMENT_MESSAGES = {
   final: "This workforce requirement is closed or filled, so it can no longer be changed.",
   stale: "This requirement was changed by someone else, reload.",
   tooManyChanges: "Too many changes were made today. Try again tomorrow.",
+  hidden: "This workforce requirement was hidden by moderation, so it cannot be changed. The reasons and how to appeal are shown on the requirement.",
 } as const;
+
+// A requirement hidden by moderation is out of its employer's hands until a decision restores it (V57).
+function isHidden(error: RefusalError): boolean {
+  return error.message === "CHARA_INVALID_STATE" && error.details === "hidden";
+}
 
 // save_requirement names the refused field in its detail; the checks and foreign keys of the tables are named by their
 // constraint.
@@ -77,6 +83,7 @@ export function requirementRefusal(error: RefusalError): RequirementRefusal {
   }
   if (error.code === "42501") return { kind: "message", message: REQUIREMENT_MESSAGES.notAllowed };
   if (error.code === "P0002") return { kind: "message", message: REQUIREMENT_MESSAGES.notFound };
+  if (isHidden(error)) return { kind: "message", message: REQUIREMENT_MESSAGES.hidden };
   if (error.message === "CHARA_INVALID_STATE") return { kind: "message", message: REQUIREMENT_MESSAGES.final };
   if (error.message === "CHARA_CONFLICT" && error.details === "stale") return { kind: "message", message: REQUIREMENT_MESSAGES.stale };
   if (error.message === "CHARA_RATE_LIMITED") return { kind: "message", message: REQUIREMENT_MESSAGES.tooManyChanges };
@@ -99,6 +106,7 @@ export function lifecycleRefusal(error: RefusalError): { kind: "message"; messag
     return error.details === ACTIVE_REQUIREMENTS ? { kind: "limit" } : { kind: "message", message: limitRefusalMessage(null, "employer") };
   }
   if (error.message === "CHARA_INVALID_TRANSITION") return { kind: "message", message: LIFECYCLE_MESSAGES.notPossible };
+  if (isHidden(error)) return { kind: "message", message: REQUIREMENT_MESSAGES.hidden };
   if (error.message === "CHARA_INVALID_STATE") {
     if (error.details === "closes_on_passed") return { kind: "message", message: LIFECYCLE_MESSAGES.closesOnPassed };
     if (error.details === "extension_limit") return { kind: "message", message: LIFECYCLE_MESSAGES.extensionLimit };
@@ -121,6 +129,7 @@ export const VACANCIES_MESSAGES = {
 // What the vacancies action shows for a refusal of create_vacancies_from_requirement: a requirement that is no longer
 // open, or a refusal it shares with the other actions (who may act, a stale version, the quota).
 export function vacanciesRefusal(error: RefusalError): { kind: "message"; message: string } | { kind: "fault" } {
+  if (isHidden(error)) return { kind: "message", message: REQUIREMENT_MESSAGES.hidden };
   if (error.message === "CHARA_INVALID_STATE") return { kind: "message", message: VACANCIES_MESSAGES.notOpen };
   const refusal = requirementRefusal(error);
   return refusal.kind === "message" ? refusal : { kind: "fault" };

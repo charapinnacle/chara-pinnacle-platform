@@ -40,6 +40,7 @@ import {
   responsePath,
   responsesPath,
 } from "@/lib/routes";
+import { REQUIREMENT_MESSAGES } from "@/lib/requirements/refusal";
 import { createClient } from "@/lib/supabase/server";
 import {
   decisionFormSchema,
@@ -303,6 +304,7 @@ export async function setCapacityTolerance(slug: string, requirementId: string, 
   revalidatePath(requirementResponsesPath(defaultLocale, organization.slug, id.data));
   if (!error) return { changed: data };
   if (error.message === "CHARA_INVALID_INPUT") return { errors: { percent: "Enter a whole number from 0 to 100." } };
+  if (error.message === "CHARA_INVALID_STATE" && error.details === "hidden") return { message: REQUIREMENT_MESSAGES.hidden };
   if (error.message === "CHARA_INVALID_STATE") return { message: "The requirement is closed, so the tolerance can no longer be changed." };
   if (error.message === "CHARA_NOT_FOUND" || error.code === "P0002") return { message: "This requirement could not be found. Reload the page." };
   if (error.message === "CHARA_RATE_LIMITED") {
