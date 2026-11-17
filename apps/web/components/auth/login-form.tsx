@@ -38,7 +38,7 @@ export function LoginForm({ next }: { next?: string }) {
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
+    <form method="post" noValidate className="grid gap-6" onSubmit={(event) => handleSubmit(onSubmit)(event)}>
       <FormErrorSummary
         form={form}
         summaryRef={summaryRef}
