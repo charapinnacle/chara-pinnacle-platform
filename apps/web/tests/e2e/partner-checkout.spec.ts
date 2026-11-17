@@ -168,7 +168,7 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     await terms(page).check();
     await proceed(page).click();
 
-    await expect(page.getByText(CHANGED)).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(CHANGED);
     await expect(disclosures.getByText(NO_TRIAL_TEXT)).toBeVisible();
     await expect(disclosures.getByText("EUR 49.00 per month, excluding VAT.")).toBeVisible();
     expect(checkoutAudit(id)).toEqual([]);
