@@ -10,6 +10,7 @@ import {
   billingPath,
   conversationPath,
   dataExportPath,
+  findWorkersCardPath,
   invitationPath,
   jobOrderPath,
   jobPath,
@@ -143,6 +144,7 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   submission_approved: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   submission_withdrawn: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   submission_stage_changed: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", status: "interview", org_slug: "manila-recruit" },
+  visibility_confirmation: { respond_by: "2027-12-17T01:35:00+00:00" },
 };
 
 const LEAKS = {
@@ -264,6 +266,7 @@ describe("notification templates", () => {
       submission_approved: requirementSubmissionsPath("en", "acme-bau", JOB),
       submission_withdrawn: requirementSubmissionsPath("en", "acme-bau", JOB),
       submission_stage_changed: requirementSubmissionsPath("en", "manila-recruit", JOB),
+      visibility_confirmation: findWorkersCardPath("en"),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);

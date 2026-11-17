@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, findWorkersCardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerSubmissionsPath, requirementPath, requirementResponsesPath, requirementSubmissionsPath, responsePath, settingsPath, submissionPath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -111,6 +111,8 @@ describe("in-app notification items (FR-T1)", () => {
     ["submission_stage_changed", { requirement_id: JOB, title: "Hamburg welders", status: "rejected", org_slug: "manila" }, company, 'A candidate you submitted for "Hamburg welders" is now Not selected', requirementSubmissionsPath("en", "manila", JOB)],
     ["submission_stage_changed", {}, company, "The stage of a candidate you submitted for a workforce requirement changed", null],
     ["status_changed", { submission_id: JOB, job_title: "Hamburg welders", partner_name: "Manila Recruit", status: "offer" }, worker, "Your submission by Manila Recruit for Hamburg welders is now Offer", submissionPath("en", JOB)],
+    ["visibility_confirmation", { respond_by: "2027-12-17T01:35:00+00:00" }, worker, "Please confirm by 17 December 2027 that your card should stay in Find Workers", findWorkersCardPath("en")],
+    ["visibility_confirmation", {}, worker, "Please confirm that your card should stay in Find Workers", findWorkersCardPath("en")],
   ] as const)("%s reads as one sentence and opens its context page", (kind, payload, context, title, href) => {
     const presented = presentNotification({ kind, payload }, context);
     expect(presented.title).toBe(title);
