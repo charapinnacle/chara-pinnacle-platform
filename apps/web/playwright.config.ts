@@ -178,6 +178,8 @@ const config = defineConfig({
         "**/contact-requests.spec.ts",
         "**/connection-actions.spec.ts",
         "**/direct-hiring-enforcement.spec.ts",
+        "**/release-2c-journey.spec.ts",
+        "**/worker-identity.spec.ts",
       ],
     },
     {
@@ -761,13 +763,29 @@ const config = defineConfig({
       testMatch: "**/messaging-dashboard-blocks.spec.ts",
       dependencies: ["direct-hiring-enforcement-release"],
     },
+    // The journeys of release 2c from Find Workers to a conversation and from an inquiry to a block (NFR-O4, V80) set
+    // releases 2a and 2c for the whole database, so they follow the release 2c projects and come before the sitemap.
+    {
+      name: "release-2c-journey",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/release-2c-journey.spec.ts",
+      dependencies: ["messaging-dashboard-blocks-release"],
+    },
+    // The checks that no worker is identified before accepting a contact request (NFR-S9, V80) set releases 2a and 2c
+    // for the whole database, so they follow the journeys.
+    {
+      name: "worker-identity-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/worker-identity.spec.ts",
+      dependencies: ["release-2c-journey"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["messaging-dashboard-blocks-release"],
+      dependencies: ["worker-identity-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
