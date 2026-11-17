@@ -7,6 +7,7 @@ import { waitForHydration } from "./support/hydration";
 import { seedDocument } from "./support/documents";
 import { addCompanyUser, newCompany, seedJob } from "./support/jobs";
 import { accessLog, requestDocumentUrl } from "./support/privacy";
+import { signIn } from "./support/passport";
 import { aal2Token } from "./support/staff";
 import { expect, test } from "./support/test";
 import { env } from "@/lib/env";
@@ -14,6 +15,7 @@ import { env } from "@/lib/env";
 const ROLES: StaffRole[] = ["admin", "trust_safety", "verification_reviewer"];
 const FILE_NAMES = ["passport-scan.pdf", "diploma.pdf"];
 const TITLES = ["Passport scan", "Diploma"];
+const DOCUMENT_BUTTON = /download|open .*\.pdf/i;
 
 // A candidate with two documents that an organisation received with an application, and a vacancy that was hidden.
 async function seedWorld() {
@@ -38,11 +40,22 @@ async function expectNoDocumentOnPage(page: Page, path: string): Promise<void> {
   }
   expect(text, `${path} shows a document event`).not.toMatch(/document\.(created|renamed|deleted|scanned)|share\.(created|revoked)/);
   expect(text, `${path} shows a document count`).not.toMatch(/\b\d+ documents?\b|\bdocuments?:? \d+\b/i);
-  await expect(page.getByRole("button", { name: /download|open .*\.pdf/i }), `${path} has a download button`).toHaveCount(0);
+  await expect(page.getByRole("button", { name: DOCUMENT_BUTTON }), `${path} has a download button`).toHaveCount(0);
   await expect(page.locator('a[href*="storage"], a[href*="document-url"], a[href$=".pdf"]'), `${path} links a file`).toHaveCount(0);
 }
 
 test.describe("no platform staff role has a way to documents", () => {
+  // The control of the checks below: the candidate's own page offers the documents, and the same button pattern finds them.
+  test("FR-F3 AC8: the button pattern of the checks finds the document buttons of the candidate's own page", async ({ page }) => {
+    const world = await seedWorld();
+    await signIn(page, world.candidate);
+    await page.goto("/en/passport");
+    for (const title of TITLES) {
+      await expect(page.getByRole("button", { name: `Download ${title}` })).toBeVisible({ timeout: 15_000 });
+    }
+    await expect(page.getByRole("button", { name: DOCUMENT_BUTTON })).toHaveCount(TITLES.length);
+  });
+
   for (const role of ROLES) {
     test(`FR-F3 AC8: the ${role} role finds no document function on any page of the console`, async ({ page }) => {
       const world = await seedWorld();
