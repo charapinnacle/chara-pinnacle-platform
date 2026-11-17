@@ -61,6 +61,11 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentBlock: commitmentMock }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn(), acceptUpdatedCommitment: vi.fn() }));
+// The owner's form loads when the dialog opens; static markup renders it in place so the dialog's content is read whole.
+vi.mock("next/dynamic", async () => {
+  const { CommitmentForm } = await import("@/components/organization/commitment-form");
+  return { default: (loader: () => unknown) => (String(loader).includes("commitment-form") ? CommitmentForm : () => null) };
+});
 vi.mock("@/lib/dal/partner-profile", () => ({ getPartnerProfileModeration: moderationMock }));
 vi.mock("@/lib/dal/appeals", () => ({ listMyAppeals: appealMock }));
 vi.mock("@/lib/actions/appeals", () => ({ submitAppeal: vi.fn() }));
