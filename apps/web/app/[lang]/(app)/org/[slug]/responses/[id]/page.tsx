@@ -5,6 +5,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementHistory } from "@/components/requirements/requirement-history";
 import { ResponseDocumentList } from "@/components/responses/response-document-list";
@@ -53,7 +54,7 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  const [versions, documents, changes, countries, industries, submissions, moderation] = await Promise.all([
+  const [versions, documents, changes, countries, industries, submissions, moderation, messaging] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listResponseChanges(organization.id, response.id).catch(() => null),
@@ -61,6 +62,7 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
     getIndustries(),
     isReleased("release_candidate_submissions"),
     getItemModeration(organization.id, "partner_response", response.id),
+    isReleased("release_messaging"),
   ]);
   const appeal = moderation?.decision ? await listMyAppeals(moderation.decision.id).catch(() => null) : null;
   // A response hidden by moderation is neither changed nor withdrawn until a decision restores it (V57).
@@ -76,6 +78,11 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title={response.title}
+        actions={
+          messaging && response.status !== "withdrawn" ? (
+            <MessageButton contextType="partner_response" contextId={response.id} slug={slug} recipient={employerLabel(response.employerName)} />
+          ) : undefined
+        }
         breadcrumb={
           <Breadcrumbs items={[organizationCrumb(lang, organization), { label: "Responses", href: responsesPath(lang, slug) }, { label: response.title }]} />
         }

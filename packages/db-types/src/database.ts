@@ -2622,7 +2622,7 @@ isOneToOne: false
             }[]
                            },
 "list_conversations":
-{ Args: { "p_before_at"?: string,"p_before_id"?: string,"p_limit"?: number,"p_org"?: string }; Returns: {
+{ Args: { "p_before_at"?: string,"p_before_id"?: string,"p_context_type"?: Database["public"]['Enums']["conversation_context"],"p_limit"?: number,"p_org"?: string }; Returns: {
               "context_id": string,"context_title": string,"context_type": Database["public"]['Enums']["conversation_context"],"counterpart_kind": string,"counterpart_name": string,"id": string,"last_message_at": string,"organization_id": string,"read_only_reason": string,"requirement_id": string,"unread": number
             }[]
                            },

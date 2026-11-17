@@ -34,10 +34,11 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
   if (!parsedId.success) notFound();
   const [requirement, directories] = await Promise.all([getRequirement(organization.id, parsedId.data), isReleased("release_partner_directories")]);
   if (!requirement) notFound();
-  const [invitations, usage, responses] = await Promise.all([
+  const [invitations, usage, responses, messaging] = await Promise.all([
     listRequirementInvitations(organization.id, requirement.id),
     getInvitationUsage(organization.id, requirement.id),
     listRequirementResponses(organization.id, requirement.id).catch(() => []),
+    isReleased("release_messaging"),
   ]);
   const responseOf = Object.fromEntries(
     responses.flatMap((response) => (response.invitationId ? [[response.invitationId, response.id] as const] : [])),
@@ -76,6 +77,7 @@ export default async function RequirementInvitationsPage({ params }: PageProps<"
         invitations={invitations}
         responseOf={responseOf}
         canManage={manager}
+        messaging={messaging}
         findPartnersHref={partnerDirectoryPath(lang, kind)}
         suggestionsHref={
           directories && canSuggestPartners(requirement.status, requirement.partnerNeed) ? requirementPartnersPath(lang, slug, requirement.id) : null

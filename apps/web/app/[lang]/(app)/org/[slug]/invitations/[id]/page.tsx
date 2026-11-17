@@ -12,6 +12,7 @@ import { EligibilityPanel } from "@/components/responses/eligibility-panel";
 import { commitmentBlockFor, limitPromptFor } from "@/components/responses/respond-section";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { RequirementHistory } from "@/components/requirements/requirement-history";
 import { organizationCrumb } from "@/lib/app/navigation";
@@ -57,11 +58,17 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
   const eligibility = responding ? await getResponseEligibility(organization.id, requirement.id).catch(() => "failed" as const) : null;
   const limitPrompt = eligibility && eligibility !== "failed" ? await limitPromptFor(organization, eligibility) : null;
   const commitment = eligibility && eligibility !== "failed" ? await commitmentBlockFor(organization.id, eligibility) : null;
+  const messaging = responding && (await isReleased("release_messaging"));
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
         title={invitation.title}
+        actions={
+          messaging ? (
+            <MessageButton contextType="requirement_invitation" contextId={invitation.id} slug={slug} recipient={invitation.employerName} />
+          ) : undefined
+        }
         breadcrumb={
           <Breadcrumbs
             items={[organizationCrumb(lang, organization), { label: "Invitations", href: invitationsPath(lang, slug) }, { label: invitation.title }]}

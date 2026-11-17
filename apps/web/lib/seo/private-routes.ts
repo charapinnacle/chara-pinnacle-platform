@@ -15,6 +15,7 @@ export const privateSegments = [
   "forgot-password",
   "invitations",
   "login",
+  "messages",
   "mfa",
   "notifications",
   "onboarding",

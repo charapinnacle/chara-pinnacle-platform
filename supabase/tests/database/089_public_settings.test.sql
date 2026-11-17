@@ -66,9 +66,9 @@ select is(
     union all select 'release_candidate_submissions' union all select 'release_messaging' union all select 'release_find_workers'
     union all select 'release_data_export' union all select 'requirement_open_days'
     union all select 'requirement_extension_days' union all select 'requirement_closing_reminder_days'
-    union all select 'response_documents_max'
+    union all select 'response_documents_max' union all select 'message_body_max_chars'
   ) k),
-  'an anonymous visitor gets exactly the seven public keys, the release switch (FR-T1), the partner review target (FR-J1), the licence form rules (FR-J2), the availability periods (FR-K3) and the release switches of 2b and 2c (FR-L5) and of the data export (FR-S3), the requirement durations (FR-M2) and the documents limit of a response (FR-O2)'
+  'an anonymous visitor gets exactly the seven public keys, the release switch (FR-T1), the partner review target (FR-J1), the licence form rules (FR-J2), the availability periods (FR-K3) and the release switches of 2b and 2c (FR-L5) and of the data export (FR-S3), the requirement durations (FR-M2), the documents limit of a response (FR-O2) and the length of a message (FR-P1)'
 );
 select is(
   (select count(*) from public.get_public_settings() where key in ('entitlements_enforced', 'share_expiry_days_after_final')),
@@ -91,7 +91,7 @@ select is(
     union all select 'release_candidate_submissions' union all select 'release_messaging' union all select 'release_find_workers'
     union all select 'release_data_export' union all select 'requirement_open_days'
     union all select 'requirement_extension_days' union all select 'requirement_closing_reminder_days'
-    union all select 'response_documents_max'
+    union all select 'response_documents_max' union all select 'message_body_max_chars'
   ) k),
   'a signed-in user gets the same keys'
 );

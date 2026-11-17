@@ -13,11 +13,13 @@ import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Card } from "@/components/layout/card";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageButton } from "@/components/messaging/message-button";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getApplicantAccess } from "@/lib/dal/applicant-list";
 import { isSubscriptionEnded } from "@/lib/dal/hiring";
 import { getCountries, getLanguages } from "@/lib/dal/reference";
+import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
 import {
   getEmployerSubmission,
@@ -61,7 +63,7 @@ export default async function EmployerSubmissionPage({ params, searchParams }: P
   if (!first || first.organizationId !== organization.id) notFound();
   const firstOpen = first.status === "submitted";
   if (firstOpen) await markSubmissionViewed(first.id);
-  const [reread, access, events, documents, notesPage, countries, languages] = await Promise.all([
+  const [reread, access, events, documents, notesPage, countries, languages, messaging] = await Promise.all([
     firstOpen ? getEmployerSubmission(first.id) : first,
     getApplicantAccess(organization.id),
     listSubmissionEvents(first.id),
@@ -69,6 +71,7 @@ export default async function EmployerSubmissionPage({ params, searchParams }: P
     listSubmissionNotes(first.id, before.success ? before.data : undefined),
     getCountries(),
     getLanguages(),
+    isReleased("release_messaging"),
   ]);
   if (!access) notFound();
   const submission = reread ?? first;
@@ -84,6 +87,11 @@ export default async function EmployerSubmissionPage({ params, searchParams }: P
     <div className="grid w-full max-w-3xl gap-page">
       <PageHeader
         title={name}
+        actions={
+          messaging && submission.candidateName && submission.status !== "withdrawn" ? (
+            <MessageButton contextType="candidate_submission" contextId={submission.id} slug={slug} recipient={name} />
+          ) : undefined
+        }
         breadcrumb={
           <Breadcrumbs
             items={[
