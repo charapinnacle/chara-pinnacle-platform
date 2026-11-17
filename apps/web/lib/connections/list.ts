@@ -29,6 +29,14 @@ export function savedPartnerItem(lang: string, partner: SavedPartner): Connectio
   };
 }
 
+// What a follow brings, per type of company: the follower digest lists the new vacancies of an employer; a recruitment or
+// staffing company publishes nothing that is followed yet, so its row promises no news.
+const followNews: Record<OrganizationType, string> = {
+  employer: "You hear about its new vacancies, at most once a day.",
+  recruitment_company: "Its profile stays at hand here.",
+  staffing_company: "Its profile stays at hand here.",
+};
+
 // A followed company links to its company page (an employer) or its partner profile.
 export function followedCompanyItem(lang: string, company: FollowedCompany): ConnectionItem {
   return {
@@ -36,7 +44,7 @@ export function followedCompanyItem(lang: string, company: FollowedCompany): Con
     name: company.displayName,
     href:
       company.organizationType === "employer" ? companyPagePath(lang, company.slug) : partnerProfilePath(lang, company.slug),
-    details: [`${typeLabels[company.organizationType]}, based in ${company.basedIn}`],
+    details: [`${typeLabels[company.organizationType]}, based in ${company.basedIn}`, followNews[company.organizationType]],
     at: company.followedAt,
   };
 }
