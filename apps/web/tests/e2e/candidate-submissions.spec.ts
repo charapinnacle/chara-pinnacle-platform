@@ -6,6 +6,7 @@ import { execute, literal, query } from "./support/db";
 import { seedDocument } from "./support/documents";
 import { waitForHydration } from "./support/hydration";
 import { signIn } from "./support/passport";
+import { runNotify } from "./support/notify";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
@@ -302,6 +303,11 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await expect(partner.page.getByRole("heading", { name: "Test Candidate" })).toBeVisible();
     await expect(partner.page.getByText("Submitted", { exact: true })).toBeVisible();
     await expect(partner.page.getByText(worker.email)).toHaveCount(0);
+    // The partner's own notice speaks of the candidate it proposed, not of its own company.
+    await runNotify();
+    await partner.page.goto("/en/notifications");
+    await expect(partner.page.getByRole("link", { name: /^A candidate you proposed was submitted for / })).toBeVisible();
+    await expect(partner.page.getByText(`A candidate proposed by ${s1.displayName}`)).toHaveCount(0);
     await partner.context.close();
 
     // AC9: Withdraw after a confirmation; the share is revoked at once.

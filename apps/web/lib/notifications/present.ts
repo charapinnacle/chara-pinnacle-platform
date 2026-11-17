@@ -110,6 +110,10 @@ function requirementSubmissionsHref(lang: string, payload: Record<string, unknow
   return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementSubmissionsPath(lang, slug, id) : null;
 }
 
+function proposedCandidate(payload: Record<string, unknown>): string {
+  return payload.to_partner === true ? "A candidate you proposed" : `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"}`;
+}
+
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
   const slug = text(payload, "org_slug");
   return slug ? `${workforceProfilePath(lang, slug)}#licences-heading` : null;
@@ -508,13 +512,14 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       };
     },
   },
-  // FR-O4 steps Approve and Withdraw, to the partner and the employer: never the candidate.
+  // FR-O4 steps Approve and Withdraw, to the partner and the employer: never the candidate. The partner reads "a candidate
+  // you proposed" rather than its own name (to_partner).
   submission_approved: {
     label: "Submissions",
     present: (payload, { lang }) => {
       const title = text(payload, "title");
       return {
-        title: `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"} was submitted for ${title ? `"${title}"` : "a workforce requirement"}`,
+        title: `${proposedCandidate(payload)} was submitted for ${title ? `"${title}"` : "a workforce requirement"}`,
         href: requirementSubmissionsHref(lang, payload),
       };
     },
@@ -524,7 +529,7 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
     present: (payload, { lang }) => {
       const title = text(payload, "title");
       return {
-        title: `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"} withdrew from ${title ? `"${title}"` : "a workforce requirement"}`,
+        title: `${proposedCandidate(payload)} withdrew from ${title ? `"${title}"` : "a workforce requirement"}`,
         href: requirementSubmissionsHref(lang, payload),
       };
     },
