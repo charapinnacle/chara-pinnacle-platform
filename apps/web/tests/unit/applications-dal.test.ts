@@ -88,6 +88,7 @@ describe("applyToJob", () => {
     ["CHARA_NOT_FOUND", "", { kind: "document_not_found" }],
     ["CHARA_FORBIDDEN", "account_not_active", { kind: "account_inactive" }],
     ["CHARA_FORBIDDEN", "worker_account_required", { kind: "not_candidate" }],
+    ["CHARA_FORBIDDEN", "direct_hiring_blocked", { kind: "direct_hiring_blocked" }],
     ["CHARA_INVALID_INPUT", "p_note", { kind: "invalid_input", field: "coverNote" }],
     ["CHARA_INVALID_INPUT", "p_document_ids", { kind: "invalid_input", field: "documentIds" }],
     ["CHARA_PROFILE_INCOMPLETE", "current_country, occupation_id", { kind: "profile_incomplete", missing: ["current_country", "occupation_id"] }],

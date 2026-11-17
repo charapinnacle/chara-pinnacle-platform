@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ApplyForm } from "@/components/applications/apply-form";
+import { HiringRuleNotice } from "@/components/applications/hiring-rule-notice";
 import { NotAcceptingNotice } from "@/components/applications/not-accepting-notice";
 import { TextLink } from "@/components/forms/text-link";
 import { Notice } from "@/components/forms/notice";
@@ -8,6 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { profileFields } from "@/lib/applications/presentation";
 import { getApplicationStates, getApplyDocuments, getApplyLimits, getApplyOccupation } from "@/lib/dal/applications";
 import { getPublicJob } from "@/lib/dal/hiring";
+import { getApplyHiringRule } from "@/lib/dal/hiring-rules";
 import { requireUser } from "@/lib/dal/session";
 import { logVacancy } from "@/lib/jobs/vacancy-log";
 import { applicationPath, homePath } from "@/lib/routes";
@@ -17,7 +19,9 @@ export const metadata: Metadata = { title: "Apply", robots: { index: false } };
 
 // For candidates only: a visitor goes to log in and comes back here (requireUser), a company user gets the page of an
 // address that does not exist. A candidate who has an application for the vacancy is sent to it instead of to a form;
-// a vacancy that is not open and visible, or does not exist, shows one message whatever the reason.
+// a vacancy that is not open and visible, or does not exist, shows one message whatever the reason. The direct-hiring rule
+// of the candidate's country for the vacancy's country (FR-Q5 AC7) is shown above Submit, or instead of the form when it
+// blocks direct applications.
 export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]/apply">) {
   const { lang, id } = await params;
   const user = await requireUser(lang);
@@ -38,7 +42,8 @@ export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]
   if (!occupation) redirect(homePath(lang, null));
   // Name, last name and country cannot be empty in the database; the occupation is the one field a passport may lack.
   const missing = occupation.occupationId === null ? [profileFields.occupation_id] : [];
-  if (job && missing.length === 0) {
+  const hiringRule = job ? await getApplyHiringRule(user.id, job.countryCode) : null;
+  if (job && missing.length === 0 && hiringRule?.rule !== "blocked") {
     logVacancy({ event: "vacancy_action", action: "apply", jobId: job.id, viewer: "candidate" });
   }
 
@@ -58,6 +63,8 @@ export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]
             ))}
           </ul>
         </Notice>
+      ) : hiringRule?.rule === "blocked" ? (
+        <HiringRuleNotice lang={lang} hiringRule={hiringRule} />
       ) : (
         <ApplyForm
           jobId={job.id}
@@ -65,6 +72,7 @@ export default async function ApplyPage({ params }: PageProps<"/[lang]/jobs/[id]
           employerName={job.employer.displayName}
           limits={limits}
           documents={documents}
+          hiringRule={hiringRule}
         />
       )}
     </div>

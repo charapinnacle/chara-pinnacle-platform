@@ -25,7 +25,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { billingPath, workforceProfilePreviewPath } from "@/lib/routes";
+import { billingPath, workforceProfilePath, workforceProfilePreviewPath } from "@/lib/routes";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
 import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
@@ -40,11 +40,15 @@ async function Licences({
   slug,
   canManage,
   countries,
+  initialCountry,
+  profilePath,
 }: {
   organizationId: string;
   slug: string;
   canManage: boolean;
   countries: ReferenceItem[];
+  initialCountry: string | null;
+  profilePath: string;
 }) {
   const [licences, { patterns, maxYears }] = await Promise.all([getPartnerLicences(organizationId), getLicenceSettings()]);
   return (
@@ -55,6 +59,9 @@ async function Licences({
       countries={countries}
       patterns={patterns}
       maxYears={maxYears}
+      initialCountry={initialCountry}
+      profilePath={profilePath}
+      key={initialCountry ?? ""}
     />
   );
 }
@@ -104,9 +111,9 @@ async function Availability({
 // The workforce profile of a recruitment or staffing company: where it serves (FR-K1) and what it offers (FR-K2), changed
 // after onboarding by the owner or an admin (at aal2, as on every organisation page); a member reads it. The licences it
 // holds per country (FR-J2) are recorded here too, for staff only, and the workforce it can supply (FR-K3). Release 2a
-// only.
-export default async function WorkforceProfilePage({ params }: PageProps<"/[lang]/org/[slug]/workforce-profile">) {
-  const { lang, slug } = await params;
+// only. ?licence=<country> opens the licence form for that country (the prompt after saving Where you serve, FR-K1 AC8).
+export default async function WorkforceProfilePage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/workforce-profile">) {
+  const [{ lang, slug }, { licence }] = await Promise.all([params, searchParams]);
   if (!(await isReleased("release_partner_directories"))) notFound();
   const { organization } = await requireOrgRole(lang, slug, "member", { hideFromOutsiders: true, partner: true });
   if (organization.suspended) return <SuspendedOrganization title="Workforce profile" subject="details" />;
@@ -205,6 +212,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             billingHref={billingHref}
             onboarding={false}
             listingCounts={listingCounts?.then((counts) => counts.countries)}
+            profilePath={workforceProfilePath(lang, slug)}
           />
         )}
       </section>
@@ -278,6 +286,8 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             slug={slug}
             canManage={organization.role !== "member"}
             countries={countries}
+            initialCountry={typeof licence === "string" && countries.some(({ code }) => code === licence) ? licence : null}
+            profilePath={workforceProfilePath(lang, slug)}
           />
         </Suspense>
       </section>
