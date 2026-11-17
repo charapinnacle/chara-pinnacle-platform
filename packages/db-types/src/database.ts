@@ -1726,13 +1726,13 @@ isOneToOne: false
                   ]
                 },"worker_profiles": {
                   Row: {
-                    "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"created_at": string,"current_country": string,"first_name": string,"headline": string | null,"last_name": string,"occupation_id": string | null,"searchable": boolean,"user_id": string,"years_experience": number | null
+                    "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"card_id": string,"card_show_employment_history": boolean,"card_show_industries": boolean,"card_show_training": boolean,"created_at": string,"current_country": string,"first_name": string,"headline": string | null,"last_name": string,"occupation_id": string | null,"searchable": boolean,"updated_at": string,"user_id": string,"visibility_reminded_at": string | null,"years_experience": number | null
                   }
                   Insert: {
-                    "availability"?: Database["public"]['Enums']["worker_availability"] | null,"available_from"?: string | null,"created_at"?: string,"current_country": string,"first_name": string,"headline"?: string | null,"last_name": string,"occupation_id"?: string | null,"searchable"?: boolean,"user_id": string,"years_experience"?: number | null
+                    "availability"?: Database["public"]['Enums']["worker_availability"] | null,"available_from"?: string | null,"card_id"?: string,"card_show_employment_history"?: boolean,"card_show_industries"?: boolean,"card_show_training"?: boolean,"created_at"?: string,"current_country": string,"first_name": string,"headline"?: string | null,"last_name": string,"occupation_id"?: string | null,"searchable"?: boolean,"updated_at"?: string,"user_id": string,"visibility_reminded_at"?: string | null,"years_experience"?: number | null
                   }
                   Update: {
-                    "availability"?: Database["public"]['Enums']["worker_availability"] | null,"available_from"?: string | null,"created_at"?: string,"current_country"?: string,"first_name"?: string,"headline"?: string | null,"last_name"?: string,"occupation_id"?: string | null,"searchable"?: boolean,"user_id"?: string,"years_experience"?: number | null
+                    "availability"?: Database["public"]['Enums']["worker_availability"] | null,"available_from"?: string | null,"card_id"?: string,"card_show_employment_history"?: boolean,"card_show_industries"?: boolean,"card_show_training"?: boolean,"created_at"?: string,"current_country"?: string,"first_name"?: string,"headline"?: string | null,"last_name"?: string,"occupation_id"?: string | null,"searchable"?: boolean,"updated_at"?: string,"user_id"?: string,"visibility_reminded_at"?: string | null,"years_experience"?: number | null
                   }
                   Relationships: [
                     {
@@ -2026,6 +2026,13 @@ isOneToOne: false
                 },"v_platform_counts": {
                   Row: {
                     "active_jobs": number | null,"countries": number | null,"employers": number | null,"workers": number | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"worker_search": {
+                  Row: {
+                    "availability": Database["public"]['Enums']["worker_availability"] | null,"available_from": string | null,"card_id": string | null,"current_country": string | null,"employment_history": Json | null,"headline": string | null,"languages": Json | null,"occupation_id": string | null,"preferred_countries": string[] | null,"preferred_employment_types": string[] | null,"preferred_industries": string[] | null,"skills": string[] | null,"training": Json | null,"updated_at": string | null,"work_authorization_countries": string[] | null,"years_experience": number | null
                   }
                   Relationships: [
                     
@@ -2805,6 +2812,11 @@ isOneToOne: false
               "applied_at": string,"employer_display_name": string,"id": string,"job_status": Database["public"]['Enums']["job_status"],"job_title": string,"last_event_at": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"status": Database["public"]['Enums']["application_status"]
             }[]
                            },
+"my_card_preview":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "availability": Database["public"]['Enums']["worker_availability"],"available_from": string,"card_id": string,"confirm_by": string,"consent_version": number,"current_version": number,"current_country": string,"employment_history": Json,"headline": string,"languages": Json,"occupation_id": string,"opted_in": boolean,"preferred_countries": string[],"preferred_employment_types": string[],"preferred_industries": string[],"show_employment_history": boolean,"show_industries": boolean,"show_training": boolean,"skills": string[],"training": Json,"updated_at": string,"visible": boolean,"visible_since": string,"work_authorization_countries": string[],"years_experience": number
+            }[]
+                           },
 "my_platform_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["platform_role"][]
                            },
@@ -2992,6 +3004,9 @@ isOneToOne: false
 "set_application_status":
 { Args: { "p_application_id": string,"p_note"?: string,"p_status": Database["public"]['Enums']["application_status"] }; Returns: undefined
                            },
+"set_card_sections":
+{ Args: { "p_employment_history": boolean,"p_industries": boolean,"p_training": boolean }; Returns: Json
+                           },
 "set_company_page_visibility":
 { Args: { "p_enabled": boolean,"p_org": string }; Returns: Json
                            },
@@ -3020,6 +3035,9 @@ isOneToOne: false
                            },
 "set_submissions_allowed":
 { Args: { "p_allowed": boolean,"p_org": string,"p_response": string }; Returns: boolean
+                           },
+"set_worker_visibility":
+{ Args: { "p_version"?: number,"p_visible": boolean }; Returns: Json
                            },
 "signup_documents":
 { Args: { "p_kind": Database["public"]['Enums']["account_kind"],"p_org_type"?: Database["public"]['Enums']["organization_type"] }; Returns: {

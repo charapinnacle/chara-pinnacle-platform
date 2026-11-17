@@ -14,8 +14,9 @@ select enum_has_labels('public', 'cefr_level', array['A1', 'A2', 'B1', 'B2', 'C1
 select columns_are(
   'public', 'worker_profiles',
   array['user_id', 'first_name', 'last_name', 'headline', 'current_country', 'occupation_id', 'years_experience',
-        'availability', 'available_from', 'searchable', 'created_at'],
-  'worker_profiles has the passport columns and nothing else'
+        'availability', 'available_from', 'searchable', 'created_at', 'card_id', 'card_show_training',
+        'card_show_employment_history', 'card_show_industries', 'visibility_reminded_at', 'updated_at'],
+  'worker_profiles has the passport columns and, since V68, the Find Workers card columns, and nothing else'
 );
 select is_empty(
   $$
