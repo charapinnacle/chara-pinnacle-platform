@@ -1,5 +1,5 @@
 begin;
-select plan(102);
+select plan(104);
 
 \ir organizations_fixture.inc
 
@@ -238,9 +238,9 @@ update private.settings set value = 'true' where key = 'entitlements_enforced';
 select is(
   concat_ws(',', pg_temp.search(null, '''staffing'', p_capacity => 100'), pg_temp.search(:'wrk', '''staffing'', p_within_days => 60'),
     pg_temp.search(:'acm', '''staffing'', p_capacity => 100, p_within_days => 60')),
-  'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search,P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search,'
+  'P0001|CHARA_UNAUTHENTICATED|advanced_partner_search,P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search,'
   'P0001|CHARA_FEATURE_NOT_IN_PLAN|advanced_partner_search',
-  'FR-L2 step Filter: capacity and timeframe are refused to a visitor, a candidate and a Starter employer'
+  'FR-L2 step Filter: capacity and timeframe ask a visitor to sign in and are refused to a candidate and a Starter employer'
 );
 select is(pg_temp.search(:'bet', '''staffing'', p_capacity => 100, p_within_days => 60'), 'ok', 'FR-L2 step Filter: Professional may');
 update private.settings set value = 'false' where key = 'entitlements_enforced';
@@ -277,7 +277,14 @@ select pg_temp.partner(:'own', 'staffing_company', 'l2a7-co', '{DE}', '{temporar
 select pg_temp.listing(:'a7', 120, 40, 0, 59) as fresh_listing \gset
 select pg_temp.listing(:'a7', 500, 40, 0, 61, '7214') as stale_listing \gset
 select pg_temp.listing(:'a7', 30, 5, 0, 10, '7212', 'NP') as second_source \gset
-select is(pg_temp.search(null, '''staffing'''), 'ok', 'a staffing company with a stale listing');
+select is(pg_temp.search(null, '''staffing'''), 'ok', 'a visitor');
+select is(
+  (select jsonb_build_object('w', e -> 'available_workforce', 'c', e -> 'capacity_confirmed_at')
+   from jsonb_array_elements(pg_temp.result()) e where e ->> 'slug' = 'l2a7-co'),
+  '{"w": null, "c": null}'::jsonb,
+  'FR-K3 AC4: a visitor reads neither the available workforce nor its confirmation'
+);
+select is(pg_temp.search(:'wrk', '''staffing'''), 'ok', 'a signed-in reader, a staffing company with a stale listing');
 select is(
   (select jsonb_agg(jsonb_build_object('code', w ->> 'code', 'name', w ->> 'name', 'available', (w ->> 'available')::integer))
    from jsonb_array_elements(pg_temp.result() -> 0 -> 'available_workforce') w),
@@ -290,7 +297,7 @@ select is(pg_temp.search(:'bet', '''staffing'', p_occupation => ''7214'', p_capa
 select is(pg_temp.matched('l2a7-co'), 'occupation', 'FR-L2 AC7: the stale listing does not count for capacity');
 select is(pg_temp.call_as(:'own', 'authenticated', format('select public.confirm_workforce_availability(%L)', :'stale_listing')), 'ok',
   'the partner confirms the stale listing');
-select is(pg_temp.search(null, '''staffing'''), 'ok', 'the next call');
+select is(pg_temp.search(:'wrk', '''staffing'''), 'ok', 'the next call');
 select is(
   (select string_agg(w ->> 'code', ',' order by n) from jsonb_array_elements(pg_temp.result() -> 0 -> 'available_workforce') with ordinality x (w, n)),
   '7214,7212', 'FR-L2 AC7: after the confirmation the 7214 listing is shown (the largest first)'

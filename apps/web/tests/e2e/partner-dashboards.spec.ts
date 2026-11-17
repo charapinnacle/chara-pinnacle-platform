@@ -235,7 +235,10 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await tabTo(page, add);
     await expectFocusVisible(add);
     const row = listingRow(page, "Welders and flame cutters, Philippines");
-    await expect(row).toContainText("25 available now, 5 per month");
+    // The listing starts in ten days, so none of its workers is available now, as the available workforce search counts.
+    const startsOn = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(Date.now() + 10 * 86_400_000));
+    await expect(row).toContainText(`25 available from ${startsOn}, 5 per month`);
+    await expect(row).not.toContainText("available now");
     const confirm = row.getByRole("button", { name: "Confirm the listing for Welders and flame cutters from Philippines" });
     await confirm.focus();
     await page.keyboard.press("Enter");

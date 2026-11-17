@@ -124,6 +124,7 @@ export default async function PricingPage({ params }: PageProps<"/[lang]/pricing
           {partners ? (
             <PricingTabs
               label="Plans by type of company"
+              initial={viewer.kind === "manager" || viewer.kind === "member" ? viewer.type : "employer"}
               tabs={[
                 { key: "employer", label: companyTypes.employer.tab, panel: employerPlans },
                 {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isNotificationKind } from "@/emails/index";
 import { badgeText, bellLabel } from "@/lib/notifications/bell";
 import { presentedKinds, presentNotification } from "@/lib/notifications/present";
-import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, partnerStepPath, requirementPath, requirementResponsesPath, responsePath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
+import { appealPath, applicantPath, applicationPath, billingPath, companyPagePath, dataExportPath, employerDashboardPath, homePath, invitationPath, jobOrderPath, jobPath, mfaPath, myReportsPath, requirementPath, requirementResponsesPath, responsePath, settingsPath, whereYouServePath, workforceProfilePath } from "@/lib/routes";
 
 const APP = "11111111-1111-4111-8111-111111111111";
 const JOB = "22222222-2222-4222-8222-222222222222";
@@ -35,10 +35,10 @@ describe("in-app notification items (FR-T1)", () => {
     ["account_reinstated", {}, worker, "Your account was reinstated", homePath("en", "worker")],
     ["account_exists", {}, company, "Someone tried to sign up with your email address", null],
     ["partner_approved", { org_name: "Manila Recruit", org_slug: "manila" }, company, "Manila Recruit is now listed in the partner directories", employerDashboardPath("en")],
-    ["partner_info_requested", { info_step: "company", reason: "x" }, company, "Our team needs more information about your company details", partnerStepPath("en", "company")],
-    ["partner_info_requested", { info_step: "where_you_serve" }, company, "Our team needs more information about where you serve and what you offer", whereYouServePath("en")],
-    ["partner_info_requested", { info_step: "commitments" }, company, "Our team needs more information about the employer-pays commitment", partnerStepPath("en", "commitments")],
-    ["partner_info_requested", { info_step: "security" }, company, "Our team needs more information about your company", partnerStepPath("en", "ready")],
+    ["partner_info_requested", { info_step: "company", reason: "x" }, company, "Our team needs more information about your company details", employerDashboardPath("en")],
+    ["partner_info_requested", { info_step: "where_you_serve" }, company, "Our team needs more information about where you serve and what you offer", employerDashboardPath("en")],
+    ["partner_info_requested", { info_step: "commitments" }, company, "Our team needs more information about the employer-pays commitment", employerDashboardPath("en")],
+    ["partner_info_requested", { info_step: "security" }, company, "Our team needs more information about your company", employerDashboardPath("en")],
     ["partner_declined", { org_name: "Manila Recruit", reason: "x" }, company, "Manila Recruit was not listed in the partner directories", employerDashboardPath("en")],
     ["licence_expiring", { country_name: "Philippines", valid_until: "2026-12-26", org_slug: "manila" }, company, "Your licence for Philippines expires on 26 December 2026", `${workforceProfilePath("en", "manila")}#licences-heading`],
     ["licence_expiring", { valid_until: "not a date" }, company, "Your licence expires soon", null],
