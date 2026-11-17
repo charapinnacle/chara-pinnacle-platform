@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type PlaywrightTestConfig } from "@playwright/test";
 
 const baseURL = "http://localhost:3100";
 const googleBaseURL = "http://localhost:3101";
@@ -49,7 +49,44 @@ process.env.DOCUMENT_URL_ENDPOINT ||= `http://127.0.0.1:${process.env.DOCUMENT_U
 process.env.BILLING_CHECKOUT_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_CHECKOUT_PORT}/`;
 process.env.BILLING_PLAN_PRICE_ENDPOINT ||= `http://127.0.0.1:${process.env.BILLING_PLAN_PRICE_PORT}/`;
 
-export default defineConfig({
+// CI runs the projects in three jobs, each against its own database (E2E_GROUP): the projects chained after "versions"
+// and after "notifications-release" only wait for the earlier projects so as not to share a database with them. A
+// group keeps the order of its own projects and drops its dependencies on the other groups.
+const e2eGroupRoots = new Map([
+  ["chromium", "parallel"],
+  ["versions", "serial"],
+  ["notifications-release", "release"],
+]);
+const e2eGroupOrder = ["parallel", "serial", "release"];
+
+function inE2EGroup(config: PlaywrightTestConfig): PlaywrightTestConfig {
+  const group = process.env.E2E_GROUP;
+  if (!group) return config;
+  if (!e2eGroupOrder.includes(group)) {
+    throw new Error(`E2E_GROUP must be one of ${e2eGroupOrder.join(", ")}`);
+  }
+  const projects = config.projects ?? [];
+  const byName = new Map(projects.map((project) => [project.name, project]));
+  const groupOf = (name: string): number => {
+    const root = e2eGroupRoots.get(name);
+    if (root) return e2eGroupOrder.indexOf(root);
+    return Math.max(...(byName.get(name)?.dependencies ?? []).map(groupOf));
+  };
+  const index = e2eGroupOrder.indexOf(group);
+  return {
+    ...config,
+    projects: projects
+      .filter((project) => groupOf(project.name ?? "") === index)
+      .map((project) => ({
+        ...project,
+        dependencies: project.dependencies?.filter(
+          (name) => groupOf(name) === index,
+        ),
+      })),
+  };
+}
+
+const config = defineConfig({
   testDir: "tests/e2e",
   fullyParallel: true,
   // The CI runner is slower than a development machine and runs the tests in parallel: the 5 s default is too tight
@@ -573,3 +610,5 @@ export default defineConfig({
     },
   ],
 });
+
+export default inE2EGroup(config);
