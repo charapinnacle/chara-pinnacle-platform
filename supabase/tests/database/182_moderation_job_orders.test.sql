@@ -1,5 +1,5 @@
 begin;
-select plan(109);
+select plan(110);
 
 \ir organizations_fixture.inc
 
@@ -474,6 +474,17 @@ select is(jsonb_array_length(pg_temp.queued(:'bow')), 0, 'AC8: a dismissal queue
 select is(pg_temp.decide(:'trust', 'unhide', 'Shown again after the correction.', null, 'requirement', :'m1'), 'ok', 'an unhide on own finding');
 select is((select moderation_state::text from public.workforce_requirements where id = :'m1'), 'visible', 'the job order is visible again');
 select is((select q -> 0 ->> 'decision' from (select pg_temp.queued(:'cow') as q) x), 'unhide', 'and Acme is told');
+
+-- V55's to_partner survives this unit's copy of notification_payload (FR-O4 AC5, AC9).
+select is(
+  (select string_agg(k || ':' || o || ':' || (private.notification_payload(k,
+     jsonb_build_object('organization_id', o::uuid, 'submission_id', :'sub_a')) ->> 'to_partner'), ',' order by k, o)
+   from unnest(array['submission_approved', 'submission_withdrawn']) k,
+     unnest(array[:'alpha', :'acme']::text[]) o),
+  (select string_agg(k || ':' || o || ':' || (o = :'alpha')::text, ',' order by k, o)
+   from unnest(array['submission_approved', 'submission_withdrawn']) k,
+     unnest(array[:'alpha', :'acme']::text[]) o),
+  'FR-O4 AC5: submission_approved and submission_withdrawn still tell the proposing partner the notice is to it');
 
 select * from finish();
 rollback;
