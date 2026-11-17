@@ -194,7 +194,7 @@ select is(
   'NFR-C8: search_partners asks for a feature once, to allow the advanced filters, never to order'
 );
 select ok(
-  (select prosrc ~ 'if v_listing_filter or cardinality\(v_sources\) > 1 then\s+if v_uid is null or not exists \(\s+select 1 from private\.member_org_ids\(\) m \(organization_id\) where private\.has_feature\(m\.organization_id, ''advanced_partner_search''\)'
+  (select prosrc ~ 'if v_listing_filter or cardinality\(v_sources\) > 1 then\s+if v_uid is null then\s+raise exception ''CHARA_UNAUTHENTICATED''[^;]*;\s+end if;\s+if not exists \(\s+select 1 from private\.member_org_ids\(\) m \(organization_id\) where private\.has_feature\(m\.organization_id, ''advanced_partner_search''\)'
    from pg_proc where proname = 'search_partners' and pronamespace = 'public'::regnamespace),
   'NFR-C8: and that one check refuses the capacity, the timeframe and several source countries without the feature'
 );
