@@ -96,6 +96,7 @@ const adminPages = (userId: string, organizationId: string, reportId: number): P
   "/[lang]/admin/mfa-reset": "/en/admin/mfa-reset",
   "/[lang]/admin/reports": "/en/admin/reports",
   "/[lang]/admin/reports/[id]": `/en/admin/reports/${reportId}`,
+  "/[lang]/admin/retention": "/en/admin/retention",
 });
 
 const trustSafetyPages = (jobId: string): Pages => ({
