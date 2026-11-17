@@ -124,7 +124,7 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
       await expect(section(page).getByText("Whole periods from 1 March 2025 to 30 April 2025.")).toBeVisible();
       await expect(section(page).getByText(/States recorded from 31 March 2025/)).toBeVisible();
       await expect(page.getByText(`Netstat ${seed.tag}`)).toHaveCount(0);
-      await expect(section(page).getByText("No partner network activity in this period")).toHaveCount(0);
+      await expect(section(page).getByText("Every count of this period is below the privacy threshold of 5, so the counts are hidden")).toHaveCount(0);
       await expectAccessibleAtBothWidths(page);
     } finally {
       removeNetwork(seed);
@@ -150,7 +150,7 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     await showRange(page, "2024-01-01", "2024-01-31");
     await expect(network.getByRole("status", { name: "Loading" })).toBeVisible();
     release();
-    await expect(network.getByText("No partner network activity in this period")).toBeVisible();
+    await expect(network.getByText("Every count of this period is below the privacy threshold of 5, so the counts are hidden")).toBeVisible();
     await expect(metricTable(page, "Recruitment companies: New sign-ups").getByRole("row", { name: /January 2024/ })).toContainText("fewer than 5");
     // January 2024 ends before the first daily state, so its states are unknown, not hidden.
     const state = metricTable(page, "Recruitment companies: Listed at the end of the period").getByRole("row", { name: /January 2024/ });
@@ -180,7 +180,7 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
       execute(`grant execute on function ${FUNCTION} to authenticated`);
     }
     await network.getByRole("button", { name: "Try again" }).click();
-    await expect(network.getByText("No partner network activity in this period")).toBeVisible();
+    await expect(network.getByText("Every count of this period is below the privacy threshold of 5, so the counts are hidden")).toBeVisible();
   });
 
   test("FR-S2 AC8: a Trust & Safety Administrator and an employer owner get not found, an administrator at aal1 is sent to two-step verification", async ({

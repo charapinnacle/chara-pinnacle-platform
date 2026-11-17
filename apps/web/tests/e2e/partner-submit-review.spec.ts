@@ -267,6 +267,43 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     ]);
   });
 
+  test("FR-J1, FR-J4 AC9: a listed partner's owner edits the company details; only the identifier returns it to review", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const partner = await partnerAtCommitments("staffing_company", { accepted: true });
+    const secret = await enrollTotp(partner.user);
+    execute(
+      `update public.organizations set review_status = 'listed', submitted_at = now() - interval '31 days',
+         listed_at = now() - interval '30 days'
+       where id = ${literal(partner.id)}`,
+    );
+    await signInAtAal2(page, partner.user, secret, "/en/onboarding?step=company");
+    await expect(page).toHaveURL(`/en/org/${partner.slug}/profile`);
+    await expect(page.getByRole("heading", { name: "Company profile", level: 1 })).toBeVisible();
+    await expect(page.getByText("Changing the legal name or the company identifier sends")).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await page.getByLabel("Display name (optional)").fill(`Manila Staffing ${partner.slug}`);
+    await page.getByLabel("Website (optional)").fill("https://manila-staffing.example");
+    await page.getByLabel(/^About your company/).fill("We supply welders to employers in Germany.");
+    await page.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
+    expect(reviewRow(partner.id).review_status, "the display name, website and description keep it listed").toBe("listed");
+
+    await page.getByLabel("Company registration number or VAT number").fill(`MSX${partner.id.slice(0, 8)}`);
+    await page.getByRole("button", { name: "Save identifier" }).click();
+    await expect(page.getByText("Identifier saved", { exact: true })).toBeVisible();
+    expect(reviewRow(partner.id).review_status, "a new identifier returns it to review").toBe("re_review");
+    expect(organizationAudit(partner.id).filter(({ action }) => action === "partner.returned_to_review").map(({ metadata }) => metadata)).toEqual([
+      { fields: ["legal_entity_identifier"] },
+    ]);
+
+    await page.goto(`/en/dashboard/staffing`);
+    await expect(page.getByRole("link", { name: "Company profile" })).toHaveAttribute("href", `/en/org/${partner.slug}/profile`);
+  });
+
   test("the release switch closes Ready, the submission and the pending dashboard", async ({ page }) => {
     test.setTimeout(90_000);
     const partner = await partnerAtCommitments("recruitment_company", { accepted: true });
