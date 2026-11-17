@@ -21,12 +21,8 @@ import type { OccupationItem, ReferenceItem } from "@/lib/dal/reference";
 import { formatCount } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { toOptions } from "@/lib/reference-options";
-import {
-  clearRequirementDraft,
-  readRequirementDraft,
-  requirementDraftKey,
-  writeRequirementDraft,
-} from "@/lib/requirements/drafts";
+import { requirementDraftKey } from "@/lib/requirements/draft-keys";
+import { clearRequirementDraft, readRequirementDraft, writeRequirementDraft } from "@/lib/requirements/drafts";
 import { employmentTypeOptions, recruitmentPreferenceOptions, salaryPeriodOptions } from "@/lib/validation/job";
 import {
   emptyRequirementForm,

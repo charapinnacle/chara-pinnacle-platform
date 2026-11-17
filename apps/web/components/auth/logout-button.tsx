@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { signOut } from "@/lib/actions/login";
-import { clearRequirementDrafts } from "@/lib/requirements/drafts";
+import { clearRequirementDrafts } from "@/lib/requirements/draft-keys";
 import { isRedirectError } from "@/lib/redirect-error";
 import { cn } from "@/lib/utils";
 
