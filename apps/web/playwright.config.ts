@@ -139,6 +139,7 @@ export default defineConfig({
         "**/worker-visibility.spec.ts",
         "**/find-workers.spec.ts",
         "**/contact-requests.spec.ts",
+        "**/connection-actions.spec.ts",
       ],
     },
     {
@@ -698,13 +699,21 @@ export default defineConfig({
       testMatch: "**/contact-requests.spec.ts",
       dependencies: ["find-workers-release"],
     },
+    // The connection actions (V71) set releases 2a, 2b and release_messaging for the whole database and open vacancies, so
+    // they follow the contact requests and come before the sitemap.
+    {
+      name: "connection-actions-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/connection-actions.spec.ts",
+      dependencies: ["contact-requests-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["contact-requests-release"],
+      dependencies: ["connection-actions-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {
