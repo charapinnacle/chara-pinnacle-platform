@@ -387,3 +387,28 @@ Deno.test("a failed upload leaves the request queued and the job unacknowledged,
   assert.equal(calls.filter((c) => c.path.endsWith("account_ops_export_ready")).length, 0);
   assert.deepEqual(acks(calls), []);
 });
+
+Deno.test("AC7: the submissions of the job order network are written as submissions.json in UTF-8", async () => {
+  const submissions = [{
+    side: "candidate",
+    job_order: "Schweißer für Lübeck",
+    partner: "Alpha Recruitment",
+    status: "submitted",
+    shared_documents: ["Zertifikat"],
+    requested_at: "2027-03-02T10:00:00Z",
+  }];
+  const data = { ...exportData([]), sections: { ...exportData([]).sections, submissions } };
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(build(49)),
+    "POST /rest/v1/rpc/account_ops_export_data": reply(200, data),
+    "POST /storage/v1/object/dsar-exports/{id}/{id}.zip": reply(200, { Key: `dsar-exports/${ZIP_PATH}` }),
+    "POST /rest/v1/rpc/account_ops_export_ready": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  const upload = calls.find((c) => c.path.startsWith("/storage/v1/object/dsar-exports"));
+  assert.ok(upload?.raw);
+  const entries = await unzip(upload.raw);
+  assert.deepEqual(readJson(entries, "submissions.json"), submissions);
+  assert.ok(new TextDecoder().decode(entries[0].data).includes("submissions.json"));
+});
