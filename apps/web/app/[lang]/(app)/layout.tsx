@@ -74,7 +74,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
     user && accountKind === "company" ? releasedOrOff("release_job_orders") : false,
     user && accountKind ? releasedOrOff("release_candidate_submissions") : false,
     user && accountKind ? releasedOrOff("release_messaging") : false,
-    user && accountKind === "company" ? releasedOrOff("release_find_workers") : false,
+    user && accountKind ? releasedOrOff("release_find_workers") : false,
   ]);
   const navigation = user
     ? {
@@ -103,6 +103,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
             ? { userId: user.id, initial: unreadMessages, organizationIds: Object.fromEntries(organizations.map(({ slug, id }) => [slug, id])) }
             : null,
         submissions: accountKind === "worker" && submissionsReleased,
+        contactRequests: accountKind === "worker" && findWorkersReleased,
         messages: accountKind === "worker" && messagingReleased,
       }
     : null;

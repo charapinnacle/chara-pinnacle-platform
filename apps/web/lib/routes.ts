@@ -211,6 +211,16 @@ export function findWorkersPath(lang: string, slug: string, query = ""): string 
   return query === "" ? path : `${path}?${query}`;
 }
 
+// The contact requests a worker received, and those an organisation sent from Find Workers (FR-Q3).
+export function contactRequestsPath(lang: string): string {
+  return `/${lang}/contact-requests`;
+}
+
+export function orgContactRequestsPath(lang: string, slug: string, status?: string): string {
+  const path = `/${lang}/org/${slug}/contact-requests`;
+  return status ? `${path}?${new URLSearchParams({ status }).toString()}` : path;
+}
+
 // The response form for a job order of the marketplace (FR-N2 step Respond, FR-O2).
 export function jobOrderRespondPath(lang: string, slug: string, id: string): string {
   return `${jobOrderPath(lang, slug, id)}/respond`;

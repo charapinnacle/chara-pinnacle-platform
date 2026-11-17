@@ -3,8 +3,10 @@ import { employerLabel } from "@/lib/job-orders/presentation";
 import {
   applicantPath,
   applicationPath,
+  contactRequestsPath,
   employerSubmissionPath,
   invitationPath,
+  orgContactRequestsPath,
   requirementPath,
   requirementResponsePath,
   responsePath,
@@ -45,9 +47,9 @@ export const contextLabels: Record<ConversationContext, string> = {
 
 // The filters of the inbox, the contexts the viewer can take part in.
 export function inboxContexts(viewer: MessagingViewer): readonly PageContext[] {
-  if (viewer.kind === "worker") return ["application", "candidate_submission"];
-  if (viewer.kind === "partner") return ["requirement_invitation", "partner_response"];
-  return ["application", "candidate_submission", "requirement_invitation", "partner_response"];
+  if (viewer.kind === "worker") return ["application", "candidate_submission", "contact_request"];
+  if (viewer.kind === "partner") return ["requirement_invitation", "partner_response", "contact_request"];
+  return ["application", "candidate_submission", "requirement_invitation", "partner_response", "contact_request"];
 }
 
 // The other party as FR-P1 AC11 names it: the candidate by name, an organisation by display name; an employer the partner
@@ -62,9 +64,11 @@ export function contextHref(lang: string, viewer: MessagingViewer, { contextType
   if (viewer.kind === "worker") {
     if (contextType === "application") return applicationPath(lang, contextId);
     if (contextType === "candidate_submission") return submissionPath(lang, contextId);
+    if (contextType === "contact_request") return contactRequestsPath(lang);
     return null;
   }
   const { slug } = viewer;
+  if (contextType === "contact_request") return orgContactRequestsPath(lang, slug);
   if (viewer.kind === "partner") {
     if (contextType === "requirement_invitation") return invitationPath(lang, slug, contextId);
     if (contextType === "partner_response") return responsePath(lang, slug, contextId);

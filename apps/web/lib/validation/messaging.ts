@@ -42,9 +42,9 @@ export function parseMessageMaxChars(value: string | undefined): number {
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= MESSAGE_MAX_CHARS ? parsed : MESSAGE_MAX_CHARS;
 }
 
-// The contexts the pages open and filter conversations by (V63, decision 5.1); contact requests (V70) and inquiries (V71)
-// join with their units.
-const pageContexts = ["application", "candidate_submission", "requirement_invitation", "partner_response"] as const;
+// The contexts the pages open and filter conversations by (V63, decision 5.1, contact requests since V70); inquiries
+// (V71) join with their unit.
+const pageContexts = ["application", "candidate_submission", "requirement_invitation", "partner_response", "contact_request"] as const;
 
 export type PageContext = (typeof pageContexts)[number];
 

@@ -142,6 +142,9 @@ insert into catalogue values
   ('public.conversation_blocks', 'cascade',
    'a block lives with its conversation (conversations, applied from V74) and goes with the blocker''s profile, which only the blocker could lift',
    'a safety setting of the conversation, not content of the user''s; the conversations themselves are exported from V74'),
+  ('public.contact_requests', 'cascade',
+   'contact_requests (365 days after the answer or the sending, declines 90) is applied by V74, before release 2c goes live; the worker''s rows go with the profile and sent_by is cleared with it',
+   'the candidate''s copy gains the own contact requests with V74 (FR-S3), before release 2c goes live; sent_by only names the member who sent one'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -286,8 +289,8 @@ select is(
   (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
      'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages']) t
    where to_regclass(t) is null),
-  'public.contact_requests',
-  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44, candidate_submissions with V48, the conversations with V63'
+  null,
+  'the tables of releases 2b and 2c exist, their retention rules and erasure arriving with V58 and V74: workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44, candidate_submissions with V48, the conversations with V63, contact_requests with V70'
 );
 select is(
   (select string_agg(entity, ',' order by entity) from private.retention_policies
