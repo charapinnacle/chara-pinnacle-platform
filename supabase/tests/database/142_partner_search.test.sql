@@ -1,5 +1,5 @@
 begin;
-select plan(109);
+select plan(110);
 
 \ir organizations_fixture.inc
 
