@@ -111,7 +111,8 @@ select is(
   || 'listings_stale,oldest_listing_confirmed_at,licences_current,licences_expiring,licences_expired,next_licence_expiry,'
   || 'profile_views_30d,profile_views_suppressed,profile_views_fewer_than,profile_views_in_plan,fitting_job_orders,'
   || 'matching_employers,invitations_awaiting,responses_open,responses_shortlisted,responses_selected,responses_declined,'
-  || 'submission_stages',
+  || 'submission_stages,partner_requests,partner_inquiries,matching_workers,matching_workers_suppressed,'
+  || 'matching_workers_fewer_than,matching_workers_reason',
   'AC3: the result columns are counts, dates and states only'
 );
 

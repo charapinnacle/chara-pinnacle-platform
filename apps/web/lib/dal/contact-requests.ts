@@ -1,6 +1,7 @@
 import "server-only";
 import * as z from "zod";
 import { contactRequestStatuses, type ContactRequestStatus } from "@/lib/contact-requests/presentation";
+import type { ContactRequestCounts } from "@/lib/dashboard/connections";
 import { createClient } from "@/lib/supabase/server";
 
 export const CONTACT_REQUESTS_PAGE_SIZE = 20;
@@ -185,4 +186,15 @@ export async function listOpenVacancies(organizationId: string): Promise<OpenVac
     .order("title");
   if (error) throw new Error("The vacancies could not be loaded", { cause: error });
   return data;
+}
+
+const countsSchema = z.object({ pending: z.number().int().nonnegative(), received: z.number().int().nonnegative() });
+
+// The worker's own contact requests for the Find Workers card of the dashboard (FR-Q1 AC10). Release 2c must be on (the
+// caller checks isReleased first).
+export async function getMyContactRequestCounts(): Promise<ContactRequestCounts> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_contact_request_counts").single();
+  if (error) throw new Error("The contact requests could not be counted", { cause: error });
+  return countsSchema.parse(data);
 }

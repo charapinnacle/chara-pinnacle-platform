@@ -1,4 +1,5 @@
 import { limitNoun, usageText, type OrgUsage } from "@/lib/billing/limits";
+import type { MatchingWorkers, PartnerRequests } from "@/lib/dashboard/connections";
 import { classifyUsage } from "@/lib/billing/usage";
 import { formatCount } from "@/lib/i18n/format";
 import { partnerSubmissionLabels, type SubmissionStatus } from "@/lib/submissions/presentation";
@@ -70,6 +71,10 @@ export type PartnerFigures = {
   network: NetworkFigures | null;
   // One count per submission status, null while candidate submissions are off.
   submissionStages: Record<SubmissionStatus, number> | null;
+  // The inquiries and workforce requests waiting for an answer, null while messaging is off (FR-R4 AC6).
+  requests: PartnerRequests | null;
+  // The listed Find Workers cards fitting the company's offer, null while Find Workers is off.
+  matchingWorkers: MatchingWorkers | null;
 };
 
 export type NetworkFigures = {

@@ -17,6 +17,7 @@ const outcomesMock = vi.hoisted(() => vi.fn<() => Promise<SubmissionOutcome[]>>(
 const twoStepMock = vi.hoisted(() => vi.fn(async () => true));
 const commitmentMock = vi.hoisted(() => vi.fn<() => Promise<CommitmentBlock | null>>(async () => null));
 const releasedMock = vi.hoisted(() => vi.fn<(name: string) => Promise<boolean>>(async () => false));
+const unreadMock = vi.hoisted(() => vi.fn(async () => [{ conversationId: "c1", organizationId: "org-9", unread: 3 }]));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -32,6 +33,7 @@ vi.mock("@/lib/dal/dashboard", () => ({ getDashboardPlan: planMock }));
 vi.mock("@/lib/dal/usage", () => ({ getOrgUsage: usageMock }));
 vi.mock("@/lib/dal/mfa", () => ({ hasVerifiedTotpFactor: twoStepMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/messaging", () => ({ getUnreadMessageCounts: unreadMock }));
 vi.mock("@/lib/dal/commitment", () => ({ getCommitmentBlock: commitmentMock }));
 vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn(), acceptUpdatedCommitment: vi.fn() }));
 vi.mock("@/lib/dal/workforce-availability", () => ({
@@ -64,6 +66,8 @@ const figures = (over: Partial<PartnerFigures> = {}): PartnerFigures => ({
   profileViewsInPlan: true,
   network: null,
   submissionStages: null,
+  requests: null,
+  matchingWorkers: null,
   ...over,
 });
 const listing = (id: string, daysAgo: number): WorkforceListing => ({
@@ -506,5 +510,52 @@ describe("the blocks of release 2b (FR-R3 AC4 to AC7, AC9, FR-R4 AC3, AC6 to AC9
     }
     await render();
     expect(usageMock).toHaveBeenLastCalledWith("org-9", ["markets", "listed_occupations", "workforce_listings", "members"]);
+  });
+});
+
+describe("the blocks of release 2c (FR-R3 AC6, AC11, FR-R4 AC6, V75)", () => {
+  const release2c = async (name: string) => name === "release_messaging" || name === "release_find_workers";
+
+  it("adds the partner requests, the unread messages and the matching workers only while their releases are on", async () => {
+    expect(await render()).not.toMatch(/Partner requests|Unread messages|Matching workers/);
+    expect(unreadMock).not.toHaveBeenCalled();
+    figuresMock.mockResolvedValue(
+      figures({ requests: { total: 3, inquiries: 2 }, matchingWorkers: { kind: "count", count: 12 } }),
+    );
+    releasedMock.mockImplementation(release2c);
+    try {
+      const html = await render();
+      expect(html).toContain(">Partner requests</h2>");
+      expect(html).toMatch(/href="\/en\/org\/manila-skills\/messages\?context=inquiry"[^>]*>Answer the inquiries/);
+      expect(html).toMatch(/<dt[^>]*>Unread messages<\/dt><dd[^>]*><span[^>]*>3<\/span>/);
+      expect(html).toContain("12 workers who chose to be visible match the occupations and countries you serve.");
+      expect(html).toMatch(/href="\/en\/org\/manila-skills\/find-workers"[^>]*>Find workers<\/a>/);
+    } finally {
+      releasedMock.mockImplementation(async () => false);
+    }
+  });
+
+  it("asks an owner at aal1 for the two-step check instead of reading the company's messages", async () => {
+    releasedMock.mockImplementation(release2c);
+    try {
+      const html = await render({ aal: "aal1" });
+      expect(unreadMock).not.toHaveBeenCalled();
+      expect(html).toContain("Owners and admins read the messages of the company after the two-step check.");
+      expect(html).toMatch(/href="\/en\/mfa\?next=[^"]*"[^>]*>Complete the two-step check/);
+    } finally {
+      releasedMock.mockImplementation(async () => false);
+    }
+  });
+
+  it("keeps the other blocks when the unread messages fail (FR-R3 AC11)", async () => {
+    releasedMock.mockImplementation(release2c);
+    unreadMock.mockRejectedValueOnce(new Error("down"));
+    try {
+      const html = await render();
+      expect(html).toContain("Your unread messages could not be loaded");
+      expect(html).toContain(">Workforce profile</h2>");
+    } finally {
+      releasedMock.mockImplementation(async () => false);
+    }
   });
 });

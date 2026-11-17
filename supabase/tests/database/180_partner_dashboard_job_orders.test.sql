@@ -173,7 +173,7 @@ update private.settings set value = '100000' where key = 'rate_limit_job_orders_
 select is(
   (select string_agg(a.name, ',' order by a.ord)
    from pg_proc p cross join lateral unnest(p.proargnames, p.proargmodes) with ordinality as a (name, mode, ord)
-   where p.oid = 'public.get_partner_dashboard(uuid)'::regprocedure and a.mode = 't' and a.ord > 19),
+   where p.oid = 'public.get_partner_dashboard(uuid)'::regprocedure and a.mode = 't' and a.ord between 20 and 27),
   'fitting_job_orders,matching_employers,invitations_awaiting,responses_open,responses_shortlisted,responses_selected,'
   || 'responses_declined,submission_stages',
   'FR-R3 AC3: the 2b columns are counts only, after the 2a columns'

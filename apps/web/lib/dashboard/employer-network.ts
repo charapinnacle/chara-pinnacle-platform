@@ -1,4 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
+import type { EmployerRequests, MatchingWorkers } from "@/lib/dashboard/connections";
 import { formatCount } from "@/lib/i18n/format";
 import { employerSubmissionLabels, pipelineSubmissionStages, type PipelineSubmissionStage } from "@/lib/submissions/presentation";
 
@@ -46,6 +47,10 @@ export type EmployerNetwork = {
   requirements: RequirementFigures | null;
   // The approved candidates by pipeline stage, null while candidate submissions are off.
   submissionStages: Record<PipelineSubmissionStage, number> | null;
+  // The employer's inquiries and workforce requests, null while messaging is off.
+  requests: EmployerRequests | null;
+  // The listed Find Workers cards fitting the open requirements and vacancies, null while Find Workers is off (FR-R5 AC5).
+  matchingWorkers: MatchingWorkers | null;
 };
 
 const plural = (count: number, one: string, other: string) => `${formatCount(count)} ${count === 1 ? one : other}`;

@@ -14,6 +14,7 @@ import { getMyStageCounts, getRecentApplications } from "@/lib/dal/applications"
 import type { DocumentReminder } from "@/lib/dal/documents";
 import type { Passport } from "@/lib/dal/passport";
 import { countFollowedCompanies } from "@/lib/dal/connections";
+import { getMyContactRequestCounts } from "@/lib/dal/contact-requests";
 import { countSavedJobs } from "@/lib/dal/saved-jobs";
 import { getMyCard } from "@/lib/dal/worker-visibility";
 import { sumOf } from "@/lib/dashboard/stage-counts";
@@ -112,7 +113,7 @@ export function WorkerDashboard({ lang, completeness, availability, availableFro
           <AvailabilityCard lang={lang} availability={availability} availableFrom={availableFrom} />
           {findWorkers ? (
             <Panel promise={getMyCard()} errorTitle="Your Find Workers card could not be loaded">
-              {(card) => (card ? <FindWorkersCard lang={lang} card={card} /> : null)}
+              {(card) => (card ? <FindWorkersCard lang={lang} card={card} requests={getMyContactRequestCounts()} /> : null)}
             </Panel>
           ) : null}
           <Panel promise={countSavedJobs()} errorTitle="Your saved jobs could not be counted">
