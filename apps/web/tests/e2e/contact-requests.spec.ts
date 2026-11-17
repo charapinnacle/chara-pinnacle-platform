@@ -255,6 +255,9 @@ test.describe("Contact requests (FR-Q3)", () => {
     await withdraw.click();
     await expect(page.getByText("Contact request withdrawn")).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText("Withdrawn");
+    await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText(
+      "You withdrew this request. Your organisation can send this worker a new request from",
+    );
 
     await page.goto(`/en/org/${acme.slug}/contact-requests?status=expired`);
     await expect(page.getByText("No contact requests with this status")).toBeVisible();
