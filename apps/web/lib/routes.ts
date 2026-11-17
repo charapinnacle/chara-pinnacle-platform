@@ -352,10 +352,11 @@ const reportTargetParams = {
   requirement: "requirement",
   partner_response: "response",
   candidate_submission: "submission",
+  message: "message",
 } as const;
 
 // The report form of a kind of target, with the target when the page knows it (the vacancy, the path, the slug of a
-// partner profile, or the id of a job order, response or submission) and a category to preselect, as "Report a fee
+// partner profile, or the id of a job order, response, submission or message) and a category to preselect, as "Report a fee
 // demand" does.
 export function reportPath(
   lang: string,

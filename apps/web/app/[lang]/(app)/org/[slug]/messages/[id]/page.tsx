@@ -6,7 +6,7 @@ import { ConversationView } from "@/components/messaging/conversation-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { messagesPath } from "@/lib/routes";
+import { billingPath, messagesPath } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Conversation", robots: { index: false } };
 
@@ -24,6 +24,12 @@ export default async function OrganizationConversationPage({ params }: PageProps
       viewer={{ kind: organization.type === "employer" ? "employer" : "partner", slug }}
       conversationId={parsedId.data}
       organizationId={organization.id}
+      organization={{
+        id: organization.id,
+        type: organization.type,
+        canUpgrade: organization.role !== "member",
+        billingHref: billingPath(lang, slug),
+      }}
       breadcrumb={(counterpart) => (
         <Breadcrumbs
           items={[organizationCrumb(lang, organization), { label: "Messages", href: messagesPath(lang, slug) }, { label: counterpart }]}

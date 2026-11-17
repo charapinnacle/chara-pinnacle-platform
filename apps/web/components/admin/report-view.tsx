@@ -3,6 +3,7 @@ import { Suspense, type ReactNode } from "react";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { ReportPartnerDetails } from "@/components/admin/partner-moderation-details";
 import { ReportDecision, type DecisionTarget } from "@/components/admin/report-decision";
+import { ReportedMessageContext } from "@/components/admin/reported-message";
 import { AccountStatusBadge } from "@/components/admin/account-status-badge";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { StatusBadge } from "@/components/feedback/status-badge";
@@ -71,6 +72,15 @@ function itemDetails(report: ReportDetail): { label: string; value: ReactNode }[
 
 function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; canAct: boolean }) {
   const { job, organization } = report;
+  if (report.targetType === "message") {
+    if (canAct && report.status === "in_review") return <ReportedMessageContext reportId={report.id} />;
+    return (
+      <p className="text-body text-muted-foreground">
+        A message in a conversation. Its text is shown only to the Trust &amp; Safety Administrator who puts this report in
+        review, and every opening is recorded.
+      </p>
+    );
+  }
   if (isReportItem(report.targetType)) {
     return (
       <div className="grid gap-3">
@@ -181,6 +191,7 @@ function decisionTarget(report: ReportDetail): DecisionTarget {
   const organization = report.organization?.name ?? null;
   if (report.targetType === "job") return { kind, title: report.job?.title ?? "Not available", organization };
   if (report.targetType === "content") return { kind, title: report.contentPath ?? "Not available", organization: null };
+  if (report.targetType === "message") return { kind, title: "A message in a conversation", organization: null };
   if (report.targetType === "requirement") return { kind, title: report.item?.context.title ?? "Not available", organization };
   if (report.targetType === "partner_response" || report.targetType === "candidate_submission") {
     return { kind, title: report.item?.context.requirement_title ?? "Not available", organization };

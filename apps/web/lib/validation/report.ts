@@ -62,6 +62,7 @@ export const reportTargetLabels = {
   requirement: "Job order",
   partner_response: "Partner response",
   candidate_submission: "Candidate submission",
+  message: "Message",
 } as const satisfies Record<Enums["report_target_type"], string>;
 
 export const reportTargetTypes = [
@@ -73,6 +74,7 @@ export const reportTargetTypes = [
   "requirement",
   "partner_response",
   "candidate_submission",
+  "message",
 ] as const satisfies readonly Enums["report_target_type"][];
 
 // The items of the job order network (V57): reported by a participant only, from the page of the item.
@@ -82,6 +84,14 @@ export type ReportItemType = (typeof reportItemTypes)[number];
 
 export function isReportItem(type: Enums["report_target_type"]): type is ReportItemType {
   return (reportItemTypes as readonly string[]).includes(type);
+}
+
+// What only a signed-in participant reports, from the page of the item: the items above and a message of a conversation
+// (V66), which staff do not hide or suspend through the item (V73 adds the decisions on messages).
+export type ParticipantReportType = ReportItemType | "message";
+
+export function isParticipantReport(type: Enums["report_target_type"]): type is ParticipantReportType {
+  return type === "message" || isReportItem(type);
 }
 
 // The category a report link may preselect (?category=), for example "Report a fee demand"; anything else selects none.

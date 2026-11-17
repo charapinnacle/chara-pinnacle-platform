@@ -23,6 +23,7 @@ export default async function CandidateConversationPage({ params }: PageProps<"/
       viewer={{ kind: "worker" }}
       conversationId={parsedId.data}
       organizationId={null}
+      organization={null}
       breadcrumb={(counterpart) => <Breadcrumbs items={[{ label: "Messages", href: messagesPath(lang, null) }, { label: counterpart }]} />}
     />
   );

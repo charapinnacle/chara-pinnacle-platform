@@ -27,8 +27,12 @@ export type ConversationSummary = {
   contextTitle: string | null;
   lastMessageAt: string;
   unread: number;
-  readOnlyReason: "org_suspended" | "context_closed" | null;
+  readOnlyReason: ReadOnlyReason | null;
 };
+
+// Why nobody can send in a conversation: an organisation suspended, the context ended (V63), or a participant blocked it
+// (V66).
+export type ReadOnlyReason = "org_suspended" | "context_closed" | "blocked";
 
 export const contextLabels: Record<ConversationContext, string> = {
   application: "Application",
@@ -87,8 +91,20 @@ export function contextLinkLabel(viewer: MessagingViewer, contextType: Conversat
   return contextLinkLabels[contextType];
 }
 
-// Why nobody can send, and what happens next (NFR-U4), from the viewer's side.
-export function readOnlyText(viewer: MessagingViewer, reason: "org_suspended" | "context_closed"): { title: string; next: string } {
+// Why nobody can send, and what happens next (NFR-U4), from the viewer's side. A block names its blocker only to the blocker
+// (FR-P3 AC8); everyone else reads that the conversation is closed.
+export function readOnlyText(viewer: MessagingViewer, reason: ReadOnlyReason, blockedByMe = false): { title: string; next: string } {
+  if (reason === "blocked") {
+    return blockedByMe
+      ? {
+          title: "You blocked this conversation",
+          next: "Neither side can send messages until you unblock it. The history stays here.",
+        }
+      : {
+          title: "This conversation is closed for new messages",
+          next: "A participant closed it. You can still read the history.",
+        };
+  }
   if (reason === "org_suspended") {
     return {
       title: "No new messages while an organisation in this conversation is suspended",
@@ -107,7 +123,7 @@ export function readOnlyText(viewer: MessagingViewer, reason: "org_suspended" | 
 }
 
 export function parseReadOnlyReason(value: string | null): ConversationSummary["readOnlyReason"] {
-  return value === "org_suspended" || value === "context_closed" ? value : null;
+  return value === "org_suspended" || value === "context_closed" || value === "blocked" ? value : null;
 }
 
 // The cursor of the page after the one that ends with this conversation: its last message time and id, as

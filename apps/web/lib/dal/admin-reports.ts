@@ -1,5 +1,6 @@
 import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
+import type { PostgrestError } from "@supabase/supabase-js";
 import * as z from "zod";
 import { adminClient, failure, paged, type Page } from "@/lib/dal/admin";
 import { feeModels } from "@/lib/responses/presentation";
@@ -236,6 +237,39 @@ export async function getPartnerModeration(organizationId: string): Promise<Part
       reasons: entry.reasons,
       at: entry.at,
       reportId: entry.report_id ?? null,
+    })),
+  };
+}
+
+export type ReportedMessage = {
+  id: string;
+  createdAt: string;
+  senderKind: "worker" | "organization";
+  senderName: string | null;
+  senderOrganizationName: string | null;
+  body: string;
+  reported: boolean;
+};
+
+// The reported message of a report and the five messages before and after it (FR-P3 AC7, NFR-C5), for the Trust & Safety
+// Administrator handling the report; the database refuses everyone else and audits every opening, so this is read only
+// when the handler asks for it, never with the page.
+export async function getReportedMessage(
+  reportId: number,
+): Promise<{ ok: true; messages: ReportedMessage[] } | { ok: false; error: PostgrestError }> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.rpc("admin_get_reported_message", { p_report: reportId });
+  if (error) return { ok: false, error };
+  return {
+    ok: true,
+    messages: data.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      senderKind: row.sender_kind === "worker" ? "worker" : "organization",
+      senderName: row.sender_name ?? null,
+      senderOrganizationName: row.sender_organization_name ?? null,
+      body: row.body,
+      reported: row.reported,
     })),
   };
 }

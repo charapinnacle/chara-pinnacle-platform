@@ -75,6 +75,7 @@ function conversationRow(overrides: Record<string, unknown> = {}) {
     last_message_at: "2027-02-05T10:00:00.123456+00:00",
     unread: 2,
     read_only_reason: null,
+    blocked_by_me: false,
     ...overrides,
   };
 }
@@ -193,7 +194,7 @@ describe("the thread renders text only (FR-P1 AC9, NFR-S10)", () => {
       message({ id: "m-1", body: "<img src=x onerror=alert(1)>\nsecond line" }),
     ];
     const html = renderToStaticMarkup(
-      <ConversationThread conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={4000} />,
+      <ConversationThread lang="en" organization={null} conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={4000} />,
     );
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;\nsecond line");
     expect(html).not.toContain("<img");
@@ -206,7 +207,7 @@ describe("the thread renders text only (FR-P1 AC9, NFR-S10)", () => {
 
   it("offers a plain-text composer named for the other party, with the counter and no attachment control (AC10)", () => {
     const html = renderToStaticMarkup(
-      <ConversationThread conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={4000} />,
+      <ConversationThread lang="en" organization={null} conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={4000} />,
     );
     expect(html).toMatch(/<label[^>]*for="message-body"[^>]*>Message to Amina Okafor<\/label>/);
     expect(html).toContain("0 / 4,000 characters");
@@ -216,7 +217,7 @@ describe("the thread renders text only (FR-P1 AC9, NFR-S10)", () => {
 
   it("replaces the composer with the closed state while nobody can send", () => {
     const html = renderToStaticMarkup(
-      <ConversationThread conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={null}>
+      <ConversationThread lang="en" organization={null} conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={[]} maxChars={null}>
         [closed]
       </ConversationThread>,
     );
@@ -228,7 +229,7 @@ describe("the thread renders text only (FR-P1 AC9, NFR-S10)", () => {
     const page = Array.from({ length: 50 }, (_, index) => message({ id: `m-${index}` }));
     threadMessages.current = page;
     const html = renderToStaticMarkup(
-      <ConversationThread conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={page} maxChars={4000} />,
+      <ConversationThread lang="en" organization={null} conversationId={CONVERSATION} counterpart="Amina Okafor" initialMessages={page} maxChars={4000} />,
     );
     expect(html).toContain("Show earlier messages");
   });
@@ -303,7 +304,7 @@ describe("the conversation page (FR-P1 AC11, NFR-U4)", () => {
       name === "get_conversation" ? { data: [conversationRow()], error: null } : { data: [], error: null },
     );
     const html = renderToStaticMarkup(
-      await ConversationView({ lang: "en", viewer: { kind: "employer", slug: "acme" }, conversationId: CONVERSATION, organizationId: "org-1", breadcrumb }),
+      await ConversationView({ lang: "en", viewer: { kind: "employer", slug: "acme" }, conversationId: CONVERSATION, organizationId: "org-1", organization: null, breadcrumb }),
     );
     expect(html).toContain("<h1");
     expect(html).toContain("Amina Okafor");
@@ -318,7 +319,7 @@ describe("the conversation page (FR-P1 AC11, NFR-U4)", () => {
       name === "get_conversation" ? { data: [conversationRow({ read_only_reason: "context_closed" })], error: null } : { data: [], error: null },
     );
     const html = renderToStaticMarkup(
-      await ConversationView({ lang: "en", viewer: { kind: "employer", slug: "acme" }, conversationId: CONVERSATION, organizationId: "org-1", breadcrumb }),
+      await ConversationView({ lang: "en", viewer: { kind: "employer", slug: "acme" }, conversationId: CONVERSATION, organizationId: "org-1", organization: null, breadcrumb }),
     );
     expect(html).toContain("This conversation is closed for new messages");
     expect(html).not.toContain("<textarea");
@@ -327,11 +328,11 @@ describe("the conversation page (FR-P1 AC11, NFR-U4)", () => {
   it("answers a conversation of another side, and one the caller takes no part in, as not found", async () => {
     rpcMock.mockResolvedValue({ data: [conversationRow()], error: null });
     await expect(
-      ConversationView({ lang: "en", viewer: { kind: "worker" }, conversationId: CONVERSATION, organizationId: null, breadcrumb }),
+      ConversationView({ lang: "en", viewer: { kind: "worker" }, conversationId: CONVERSATION, organizationId: null, organization: null, breadcrumb }),
     ).rejects.toThrow("NOT_FOUND");
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", details: null } });
     await expect(
-      ConversationView({ lang: "en", viewer: { kind: "employer", slug: "acme" }, conversationId: CONVERSATION, organizationId: "org-1", breadcrumb }),
+      ConversationView({ lang: "en", viewer: { kind: "employer", slug: "acme" }, conversationId: CONVERSATION, organizationId: "org-1", organization: null, breadcrumb }),
     ).rejects.toThrow("NOT_FOUND");
   });
 });

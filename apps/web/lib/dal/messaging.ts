@@ -77,13 +77,16 @@ export async function listConversations(
   return { items: data.slice(0, CONVERSATIONS_PAGE_SIZE).map(toSummary), hasMore: data.length > CONVERSATIONS_PAGE_SIZE };
 }
 
-// The header of one thread from the caller's side (FR-P1 AC11), with the organisation of that side; null for a
-// conversation the caller takes no part in and an unknown id, which get_conversation answers alike.
-export async function getConversation(conversationId: string): Promise<(ConversationSummary & { organizationId: string | null }) | null> {
+// The header of one thread from the caller's side (FR-P1 AC11), with the organisation of that side and whether the caller
+// blocked it (FR-P3 AC8); null for a conversation the caller takes no part in and an unknown id, which get_conversation
+// answers alike.
+export async function getConversation(
+  conversationId: string,
+): Promise<(ConversationSummary & { organizationId: string | null; blockedByMe: boolean }) | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_conversation", { p_conversation: conversationId });
   if (error?.message === "CHARA_FORBIDDEN" && !error.details) return null;
   if (error) throw new Error("The conversation could not be loaded", { cause: error });
   const row = data[0];
-  return row ? { ...toSummary(row), organizationId: row.organization_id ?? null } : null;
+  return row ? { ...toSummary(row), organizationId: row.organization_id ?? null, blockedByMe: row.blocked_by_me } : null;
 }
