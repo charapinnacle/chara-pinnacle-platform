@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requestHostedSession, type HostedSession } from "@/lib/dal/billing";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
-import { billingPath, mfaPath } from "@/lib/routes";
+import { billingPath, mfaPath, organizationProfilePath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { BILLING_FAILURE, checkoutInputSchema, legalEntityFormSchema, type CheckoutInput, type LegalEntityFormInput } from "@/lib/validation/billing";
 import { fieldErrors, type FieldErrors } from "@/lib/validation/sign-up";
@@ -85,10 +85,8 @@ const IDENTIFIER_REFUSALS: Record<string, string> = {
   organization_suspended: "This organization is suspended, so its identifier cannot be changed.",
 };
 
-function identifierRefusal(error: PostgrestError, slug: string): BillingResult {
-  if (error.message === "CHARA_FORBIDDEN" && error.details === "aal2_required") {
-    redirect(mfaPath(defaultLocale, billingPath(defaultLocale, slug)));
-  }
+function identifierRefusal(error: PostgrestError, back: string): BillingResult {
+  if (error.message === "CHARA_FORBIDDEN" && error.details === "aal2_required") redirect(mfaPath(defaultLocale, back));
   if (error.message === "CHARA_INVALID_INPUT" && error.details === "legal_entity_identifier") {
     return { errors: { identifier: "Check the identifier." } };
   }
@@ -103,7 +101,12 @@ export async function saveLegalEntityIdentifier(slug: string, input: LegalEntity
   const parsed = legalEntityFormSchema.safeParse(input);
   if (!parsedSlug.success) return { message: "We could not save the identifier. Try again." };
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "owner");
+  const { organization } = await requireOrgRole(defaultLocale, parsedSlug.data, "owner", { partner: "either" });
+  // An employer records the identifier on its billing page, a recruitment or staffing company on its company profile.
+  const page =
+    organization.type === "employer"
+      ? billingPath(defaultLocale, parsedSlug.data)
+      : organizationProfilePath(defaultLocale, parsedSlug.data);
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_legal_entity_identifier", {
@@ -111,7 +114,7 @@ export async function saveLegalEntityIdentifier(slug: string, input: LegalEntity
     p_identifier: parsed.data.identifier,
     p_kind: parsed.data.identifierKind,
   });
-  if (error) return identifierRefusal(error, parsedSlug.data);
-  revalidatePath(billingPath(defaultLocale, parsedSlug.data));
+  if (error) return identifierRefusal(error, page);
+  revalidatePath(page);
   return {};
 }

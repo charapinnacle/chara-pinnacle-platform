@@ -92,7 +92,9 @@ export async function AppealQueue({ lang, status, after }: { lang: string; statu
               </td>
               <td className={`${cell} break-words`}>{row.organizationName}</td>
               <td className={cell}>
-                <StatusBadge status={appealStatusTones[row.status]}>{appealStatusLabels[row.status]}</StatusBadge>
+                <StatusBadge status={appealStatusTones[row.status]} className="whitespace-nowrap">
+                  {appealStatusLabels[row.status]}
+                </StatusBadge>
               </td>
               <td className={cell}>
                 <time dateTime={row.lodgedAt}>{formatDate(row.lodgedAt)}</time>

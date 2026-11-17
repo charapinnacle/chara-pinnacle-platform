@@ -1,5 +1,5 @@
 begin;
-select plan(66);
+select plan(68);
 
 \ir organizations_fixture.inc
 
@@ -188,6 +188,9 @@ select is(
   '["F", "C", "7411", "7126", "7212", "en", "tl", "staffing"]'::jsonb,
   'industries, occupations and languages by name from the code lists, and the service types'
 );
+select is(pg_temp.result() -> 0 -> 'listings', 'null'::jsonb,
+  'FR-K3 AC4: an anonymous visitor reads no listing (null, not an empty list, so the page asks to sign in)');
+select is(pg_temp.profile_as(:'wrk', 'manila-skills'), 'ok', 'a signed-in reader');
 select is(
   (select jsonb_agg(jsonb_build_object('o', l ->> 'occupation_code', 'c', l ->> 'source_country', 'a', l -> 'available',
      'm', l -> 'monthly_capacity', 'confirmed', l ? 'confirmed_at') order by l ->> 'occupation_code')
