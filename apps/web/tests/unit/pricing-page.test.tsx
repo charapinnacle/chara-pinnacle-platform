@@ -171,6 +171,7 @@ describe("the pricing tabs of the company types (FR-R1 AC3, release 2a)", () => 
     expect(html.match(/href="\/en\/org\/manila\/billing"/g)).toHaveLength(1);
     const staffing = html.slice(html.indexOf('aria-label="Staffing company plans"'));
     expect(staffing).toMatch(/<a [^>]*href="\/en\/org\/manila\/billing"[^>]*>Choose Basic<\/a>/);
+    expect(html, "the page opens on the company's own type").toMatch(/aria-selected="true"[^>]*>Staffing companies</);
   });
 
   it("tells a worker that the plans are for companies", async () => {

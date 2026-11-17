@@ -97,6 +97,14 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     const secret = await enrollTotp(user);
     const hosted = await stubHostedPages(page);
     await signInAtAal2(page, user, secret, billingPath(slug));
+    await page.goto("/en/pricing");
+    const ownTab = page.getByRole("tab", { name: "Staffing companies" });
+    await expect(ownTab, "the pricing page opens on the company's own type").toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Staffing companies" }).getByRole("link", { name: "Choose Basic" })).toHaveAttribute(
+      "href",
+      billingPath(slug),
+    );
+    await page.goto(billingPath(slug));
 
     await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
     await expect(page.getByText(NO_PAYMENT)).toBeVisible();

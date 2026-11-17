@@ -109,7 +109,7 @@ export function planCard(plan: PublicPlan, type: OrganizationType = "employer", 
 export type PricingViewer =
   | { kind: "visitor" }
   | { kind: "worker" }
-  | { kind: "member" }
+  | { kind: "member"; type: OrganizationType }
   | { kind: "manager"; slug: string; type: OrganizationType }
   | { kind: "setup" }
   | { kind: "unknown" };
