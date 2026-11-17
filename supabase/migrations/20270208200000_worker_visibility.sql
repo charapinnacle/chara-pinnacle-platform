@@ -565,7 +565,7 @@ alter table public.notifications add constraint notifications_kind_check check (
   'moderation_decision', 'data_export_ready', 'requirement_closing_soon', 'job_order_match', 'invitation_received',
   'invitation_withdrawn', 'requirement_changed', 'requirement_closed', 'response_received', 'response_withdrawn',
   'response_decided', 'submission_request', 'submission_request_signup', 'submission_approved', 'submission_withdrawn',
-  'submission_stage_changed', 'visibility_confirmation'
+  'submission_stage_changed', 'new_message', 'visibility_confirmation'
 )) not valid;
 alter table public.notifications validate constraint notifications_kind_check;
 
@@ -640,8 +640,11 @@ select cron.schedule('visibility-confirmation', '35 1 * * *', 'select private.vi
 
 -- The payload of the new kind ----------------------------------------------------------------------------------------------
 
--- notification_payload of 20270111100100_moderation_job_orders.sql with one branch added for visibility_confirmation.
-create or replace function private.notification_payload(p_kind text, p_message jsonb) returns jsonb
+-- notification_payload_core of 20270208100000_message_notifications.sql (the body of 20270111100100_moderation_job_orders.sql
+-- with to_partner of 20270109200000_submission_notice_to_partner.sql in submission_approved and submission_withdrawn) with
+-- one branch added for visibility_confirmation. The wrapper private.notification_payload of V67 keeps answering
+-- new_message.
+create or replace function private.notification_payload_core(p_kind text, p_message jsonb) returns jsonb
 language plpgsql
 stable
 security definer
@@ -983,7 +986,8 @@ begin
         'title', case when (p_message ->> 'organization_id')::uuid = s.employer_organization_id
                         or private.requirement_named_to(r.id, s.organization_id) then r.title
           else private.job_order_neutral_title(r.id) end,
-        'partner_name', o.display_name, 'org_slug', v_slug)
+        'partner_name', o.display_name, 'org_slug', v_slug,
+        'to_partner', (p_message ->> 'organization_id')::uuid = s.organization_id)
       from public.candidate_submissions s
       join public.organizations o on o.id = s.organization_id
       join public.workforce_requirements r on r.id = s.requirement_id
@@ -993,7 +997,8 @@ begin
         'title', case when (p_message ->> 'organization_id')::uuid = s.employer_organization_id
                         or private.requirement_named_to(r.id, s.organization_id) then r.title
           else private.job_order_neutral_title(r.id) end,
-        'partner_name', o.display_name, 'org_slug', v_slug)
+        'partner_name', o.display_name, 'org_slug', v_slug,
+        'to_partner', (p_message ->> 'organization_id')::uuid = s.organization_id)
       from public.candidate_submissions s
       join public.organizations o on o.id = s.organization_id
       join public.workforce_requirements r on r.id = s.requirement_id
