@@ -107,6 +107,14 @@ describe("in-app notification items (FR-T1)", () => {
     expect(presented.kindLabel.length).toBeGreaterThan(0);
   });
 
+  it("files a change or the closing of a requirement under Responses for a partner that responded, as from the marketplace, and under Invitations otherwise", () => {
+    const label = (kind: string, payload: Record<string, unknown>) => presentNotification({ kind, payload }, company).kindLabel;
+    expect(label("requirement_changed", { response_id: APP, changed_fields: ["start_date"], org_slug: "manila" })).toBe("Responses");
+    expect(label("requirement_closed", { response_id: APP, close_reason: "filled", org_slug: "manila" })).toBe("Responses");
+    expect(label("requirement_changed", { invitation_id: APP, changed_fields: ["start_date"], org_slug: "manila" })).toBe("Invitations");
+    expect(label("requirement_closed", { invitation_id: APP, org_slug: "manila" })).toBe("Invitations");
+  });
+
   it("offers a reporter whose report was dismissed the Complaints and Dispute Process, and only then", () => {
     const dismissed = presentNotification({ kind: "moderation_decision", payload: { reference: "R-000124", outcome: "dismissed" } }, worker);
     expect(dismissed.href).toBe(myReportsPath("en"));

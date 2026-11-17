@@ -115,7 +115,12 @@ function licencePath(lang: string, payload: Record<string, unknown>): string | n
   return slug ? `${workforceProfilePath(lang, slug)}#licences-heading` : null;
 }
 
-type Presenter = (payload: Record<string, unknown>, context: Context) => Omit<PresentedNotification, "kindLabel">;
+// A presenter names its own kindLabel when the kind is filed by what it is about, as a change to a requirement is filed
+// with the recipient's response once there is one, and with the invitation otherwise.
+type Presenter = (
+  payload: Record<string, unknown>,
+  context: Context,
+) => Omit<PresentedNotification, "kindLabel"> & { kindLabel?: string };
 
 const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
   application_received: {
@@ -391,10 +396,12 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       const title = text(payload, "title");
       const employer = text(payload, "employer_name");
       const fields = changedFieldsText(payload.changed_fields);
-      const href = text(payload, "response_id") ? responseHref(lang, payload) : invitationHref(lang, payload);
+      const responded = text(payload, "response_id") !== undefined;
+      const href = responded ? responseHref(lang, payload) : invitationHref(lang, payload);
       return {
         title: `${employer ?? "The employer"} changed ${title ? `"${title}"` : "a workforce requirement"}${fields ? `: ${fields}` : ""}`,
         href: href ? `${href}#changes` : null,
+        ...(responded ? { kindLabel: "Responses" } : {}),
       };
     },
   },
@@ -407,6 +414,7 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: `${subject} ${text(payload, "close_reason") === "filled" ? "is filled" : "is closed"}`,
         href: responded ? responseHref(lang, payload) : invitationHref(lang, payload),
+        ...(responded ? { kindLabel: "Responses" } : {}),
       };
     },
   },
@@ -552,7 +560,7 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
 export function presentNotification(item: Pick<NotificationItem, "kind" | "payload">, context: Context): PresentedNotification {
   const entry = PRESENTERS[item.kind];
   if (!entry) return { title: "You have a new notification", kindLabel: "Notification", href: null };
-  return { ...entry.present(item.payload, context), kindLabel: entry.label };
+  return { kindLabel: entry.label, ...entry.present(item.payload, context) };
 }
 
 export const presentedKinds: readonly string[] = Object.keys(PRESENTERS);
