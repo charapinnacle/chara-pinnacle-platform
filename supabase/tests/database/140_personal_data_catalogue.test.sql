@@ -122,6 +122,18 @@ insert into catalogue values
   ('public.submission_notes', 'cascade',
    'an internal note lives with its submission (candidate_submissions, applied from V58); author_id is cleared with the profile',
    'organisation data: the employer''s internal notes on a submitted candidate, never shown to the candidate (as application_notes); author_id only names the member who wrote one'),
+  ('public.conversations', 'cascade',
+   'conversations (730 days after the last message, decision 5.4) is applied by the purge of V74, before release 2c goes live; opened_by is cleared with the profile',
+   'the candidate''s copy gains the own conversations and messages with V74 (FR-S3), before release 2c goes live; opened_by only names who opened one'),
+  ('public.conversation_participants', 'cascade',
+   'a participant lives with its conversation (conversations, applied from V74); the candidate''s row goes with the profile, which closes the conversation',
+   'the sides of a conversation, exported with the conversations from V74'),
+  ('public.messages', 'cascade',
+   'a message lives with its conversation (conversations, applied from V74); sender_user_id is cleared with the profile and the message stays with its side (FR-P3 AC10)',
+   'the candidate''s copy gains the own messages with V74 (FR-S3), before release 2c goes live'),
+  ('public.conversation_reads', 'cascade',
+   'a read row lives with its conversation (conversations, applied from V74) and goes with the profile',
+   'when the user last opened a conversation: a technical marker for unread counts, not content of the user''s'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 
@@ -266,8 +278,8 @@ select is(
   (select string_agg(t, ',' order by t) from unnest(array['public.partner_responses', 'public.candidate_submissions',
      'public.contact_requests', 'public.conversations', 'public.conversation_participants', 'public.messages']) t
    where to_regclass(t) is null),
-  'public.contact_requests,public.conversation_participants,public.conversations,public.messages',
-  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44, candidate_submissions with V48'
+  'public.contact_requests',
+  'the other tables of releases 2b and 2c do not exist yet: their retention rules and erasure arrive with them (V58, V74); workforce_requirements came with V32, requirement_invitations with V41, partner_responses with V44, candidate_submissions with V48, the conversations with V63'
 );
 select is(
   (select string_agg(entity, ',' order by entity) from private.retention_policies
