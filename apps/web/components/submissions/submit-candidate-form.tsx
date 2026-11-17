@@ -29,8 +29,8 @@ type SubmitCandidateFormProps = {
   requirementId: string;
   organization: { id: string; type: OrganizationType; canManage: boolean };
   billingHref: string;
-  // The id of the reason the request cannot be sent now (an outdated commitment): Send request is disabled and described
-  // by it.
+  // The ids of the reasons the request cannot be sent now (an outdated commitment, the month's limit): Send request is
+  // disabled and described by them.
   blockedBy?: string;
 };
 

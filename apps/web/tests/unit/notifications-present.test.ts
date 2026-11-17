@@ -97,6 +97,9 @@ describe("in-app notification items (FR-T1)", () => {
     ["submission_approved", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "acme" }, company, 'A candidate proposed by Manila Recruit was submitted for "Hamburg welders"', requirementSubmissionsPath("en", "acme", JOB)],
     ["submission_withdrawn", { requirement_id: JOB, title: "Hamburg welders", partner_name: "Manila Recruit", org_slug: "manila" }, company, 'A candidate proposed by Manila Recruit withdrew from "Hamburg welders"', requirementSubmissionsPath("en", "manila", JOB)],
     ["submission_withdrawn", {}, company, "A candidate proposed by a partner withdrew from a workforce requirement", null],
+    ["submission_approved", { requirement_id: JOB, title: "Germany, 10 Welders", partner_name: "Manila Recruit", org_slug: "manila", to_partner: true }, company, 'A candidate you proposed was submitted for "Germany, 10 Welders"', requirementSubmissionsPath("en", "manila", JOB)],
+    ["submission_withdrawn", { requirement_id: JOB, title: "Germany, 10 Welders", partner_name: "Manila Recruit", org_slug: "manila", to_partner: true }, company, 'A candidate you proposed withdrew from "Germany, 10 Welders"', requirementSubmissionsPath("en", "manila", JOB)],
+    ["submission_approved", { requirement_id: JOB, partner_name: "Manila Recruit", org_slug: "acme", to_partner: "true" }, company, "A candidate proposed by Manila Recruit was submitted for a workforce requirement", requirementSubmissionsPath("en", "acme", JOB)],
     ["submission_stage_changed", { requirement_id: JOB, title: "Hamburg welders", status: "rejected", org_slug: "manila" }, company, 'A candidate you submitted for "Hamburg welders" is now Not selected', requirementSubmissionsPath("en", "manila", JOB)],
     ["submission_stage_changed", {}, company, "The stage of a candidate you submitted for a workforce requirement changed", null],
     ["status_changed", { submission_id: JOB, job_title: "Hamburg welders", partner_name: "Manila Recruit", status: "offer" }, worker, "Your submission by Manila Recruit for Hamburg welders is now Offer", submissionPath("en", JOB)],
@@ -105,6 +108,14 @@ describe("in-app notification items (FR-T1)", () => {
     expect(presented.title).toBe(title);
     expect(presented.href).toBe(href);
     expect(presented.kindLabel.length).toBeGreaterThan(0);
+  });
+
+  it("files a change or the closing of a requirement under Responses for a partner that responded, as from the marketplace, and under Invitations otherwise", () => {
+    const label = (kind: string, payload: Record<string, unknown>) => presentNotification({ kind, payload }, company).kindLabel;
+    expect(label("requirement_changed", { response_id: APP, changed_fields: ["start_date"], org_slug: "manila" })).toBe("Responses");
+    expect(label("requirement_closed", { response_id: APP, close_reason: "filled", org_slug: "manila" })).toBe("Responses");
+    expect(label("requirement_changed", { invitation_id: APP, changed_fields: ["start_date"], org_slug: "manila" })).toBe("Invitations");
+    expect(label("requirement_closed", { invitation_id: APP, org_slug: "manila" })).toBe("Invitations");
   });
 
   it("offers a reporter whose report was dismissed the Complaints and Dispute Process, and only then", () => {

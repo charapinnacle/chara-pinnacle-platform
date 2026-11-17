@@ -166,6 +166,8 @@ test.describe("Changes to a published requirement (FR-M2 step Edit, AC8)", () =>
       name: `${employer} changed "Valletta welders": Number of workers, Occupations and Salary maximum`,
     });
     await waitForHydration(item);
+    // An invited partner without a response files the change under Invitations; a responder under Responses.
+    await expect(partner.page.getByRole("listitem").filter({ has: item })).toContainText("Invitations");
     await item.click();
     await expect(partner.page).toHaveURL(`${invitationUrl(p1.slug, invitation)}#changes`);
     const changes = partner.page.getByRole("region", { name: "Changes since you were invited" });

@@ -23,13 +23,15 @@ import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 export const metadata: Metadata = { title: "Submit a candidate", robots: { index: false } };
 
 const BLOCKED_REASON_ID = "submit-blocked-reason";
+const LIMIT_REASON_ID = "submit-limit-reason";
 
 // The partner's form to ask a candidate's permission to be submitted for one requirement (FR-O4 step Request, AC12), for
 // any member while candidate submissions are released, with the month's use of the plan's submissions while the limit
 // applies. Offered while the employer selected the partner, or shortlisted it and opened submissions, on an open
 // requirement; otherwise the page says so and links the response. A partner without a response and an unknown id end in
 // the same 404. While the employer-pays commitment is not accepted in its current version, the form stays in view with
-// Send request disabled, the reason and who acts (FR-J3 AC4, FR-S4 AC7).
+// Send request disabled, the reason and who acts (FR-J3 AC4, FR-S4 AC7); likewise at the month's limit, where the upgrade
+// prompt is the reason (FR-R1), since the database would refuse the request.
 export default async function NewSubmissionPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/submissions/new">) {
   const { lang, slug, id } = await params;
   if (!(await submissionsReleased())) notFound();
@@ -46,6 +48,8 @@ export default async function NewSubmissionPage({ params }: PageProps<"/[lang]/o
       ])
     : [null, null];
   const usage = prompts?.[SUBMISSION_LIMIT_KEY] ?? null;
+  const atLimit = usage !== null && usage.used >= usage.limit;
+  const blockedBy = [commitment ? BLOCKED_REASON_ID : null, atLimit ? LIMIT_REASON_ID : null].filter(Boolean).join(" ") || undefined;
   const canManage = organization.role !== "member";
   const billingHref = billingPath(lang, slug);
 
@@ -79,9 +83,7 @@ export default async function NewSubmissionPage({ params }: PageProps<"/[lang]/o
             <CommitmentGate slug={slug} owner={organization.role === "owner"} commitment={commitment} reasonId={BLOCKED_REASON_ID} />
           ) : null}
           {usage ? (
-            usage.used < usage.limit ? (
-              <p className="text-small text-muted-foreground">{submissionUsageText(usage.used, usage.limit)}.</p>
-            ) : (
+            atLimit ? (
               <Notice tone="warning" role="status">
                 <UpgradePrompt
                   organizationId={organization.id}
@@ -89,8 +91,11 @@ export default async function NewSubmissionPage({ params }: PageProps<"/[lang]/o
                   prompt={usage}
                   billingHref={billingHref}
                   canUpgrade={canManage}
+                  reasonId={LIMIT_REASON_ID}
                 />
               </Notice>
+            ) : (
+              <p className="text-small text-muted-foreground">{submissionUsageText(usage.used, usage.limit)}.</p>
             )
           ) : null}
           <SubmitCandidateForm
@@ -98,7 +103,7 @@ export default async function NewSubmissionPage({ params }: PageProps<"/[lang]/o
             requirementId={target.requirementId}
             organization={{ id: organization.id, type: organization.type, canManage }}
             billingHref={billingHref}
-            blockedBy={commitment ? BLOCKED_REASON_ID : undefined}
+            blockedBy={blockedBy}
           />
           <p>
             <TextLink standalone href={requirementSubmissionsPath(lang, slug, target.requirementId)}>
