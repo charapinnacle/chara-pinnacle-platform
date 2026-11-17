@@ -2471,7 +2471,7 @@ isOneToOne: false
                            },
 "list_partner_submissions":
 { Args: { "p_cursor"?: string,"p_limit"?: number,"p_org": string,"p_requirement"?: string }; Returns: {
-              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"next_cursor": string,"note": string,"requirement_id": string,"stage_changed_at": string,"stages": Json,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
+              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"moderation_action_id": number,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"next_cursor": string,"note": string,"requirement_id": string,"stage_changed_at": string,"stages": Json,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "list_platform_staff":
