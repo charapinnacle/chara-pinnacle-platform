@@ -412,6 +412,55 @@ begin
         select jsonb_agg(jsonb_build_object('action', l.action, 'about', l.entity_type, 'at', l.created_at, 'ip', host(l.ip))
           order by l.created_at, l.id)
         from audit.log l where l.actor_id = v_uid), '[]'),
+      'submissions', coalesce((
+        select jsonb_agg(x.item order by x.at, x.id)
+        from (
+          select s.created_at as at, s.id, jsonb_build_object(
+            'side', 'candidate', 'job_order', private.submission_candidate_title(r), 'destination', r.country_code,
+            'partner', o.display_name, 'status', s.status, 'partner_note', s.note, 'requested_at', s.created_at,
+            'answered_at', s.decided_at, 'approved_at', s.worker_approved_at, 'withdrawn_at', s.withdrawn_at,
+            'shared_documents', coalesce((
+              select jsonb_agg(d.title order by d.title)
+              from public.passport_shares sh
+              join public.worker_documents d on d.worker_user_id = v_uid and sh.scope ? d.id::text
+              where sh.id = s.passport_share_id), '[]'),
+            'history', coalesce((
+              select jsonb_agg(jsonb_build_object('from', e.from_status, 'to', e.to_status, 'note', e.note, 'at', e.created_at)
+                order by e.created_at, e.id)
+              from public.submission_events e where e.submission_id = s.id), '[]')) as item
+          from public.candidate_submissions s
+          join public.workforce_requirements r on r.id = s.requirement_id
+          join public.organizations o on o.id = s.organization_id
+          where s.worker_user_id = v_uid
+          union all
+          select s.created_at, s.id, jsonb_build_object(
+            'side', 'partner', 'organization', o.display_name,
+            'job_order', case when private.requirement_named_to(r.id, s.organization_id) then r.title
+                              else private.job_order_neutral_title(r.id) end,
+            'status', s.status, 'sent_at', s.created_at, 'answered_at', s.decided_at, 'withdrawn_at', s.withdrawn_at)
+          from public.candidate_submissions s
+          join public.workforce_requirements r on r.id = s.requirement_id
+          join public.organizations o on o.id = s.organization_id
+          where s.submitted_by = v_uid
+        ) x), '[]'),
+      'requirements', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'organization', o.display_name, 'title', r.title, 'destination', r.country_code,
+          'workers_needed', r.workers_needed, 'status', r.status, 'created_at', r.created_at, 'published_at', r.published_at,
+          'status_changed_at', r.status_changed_at) order by r.created_at, r.id)
+        from public.workforce_requirements r join public.organizations o on o.id = r.organization_id
+        where r.created_by = v_uid), '[]'),
+      'partner_responses', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'organization', o.display_name,
+          'job_order', case when private.requirement_named_to(r.id, p.organization_id) then r.title
+                            else private.job_order_neutral_title(r.id) end,
+          'status', p.status, 'version', p.version, 'sent_at', p.created_at, 'decided_at', p.decided_at,
+          'withdrawn_at', p.withdrawn_at) order by p.created_at, p.id)
+        from public.partner_responses p
+        join public.workforce_requirements r on r.id = p.requirement_id
+        join public.organizations o on o.id = p.organization_id
+        where p.created_by = v_uid), '[]'),
       'data_exports', coalesce((
         select jsonb_agg(jsonb_build_object('requested_at', r.requested_at, 'ready_at', r.ready_at, 'expires_at', r.expires_at)
           order by r.requested_at, r.id)
