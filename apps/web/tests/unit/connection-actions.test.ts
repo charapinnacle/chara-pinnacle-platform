@@ -51,7 +51,7 @@ describe("typed message cards (FR-P2 AC10)", () => {
 
   it("offers Apply on a waiting invitation to the worker only, named after the vacancy", () => {
     const worker = typedMessageCard("invite_to_job", connection("invite_to_job", "sent"), "worker");
-    expect(worker.kind !== "text" && worker.actions[0]).toEqual({ type: "apply", jobId: JOB, label: "Apply to Welder MIG/MAG" });
+    expect(worker.kind !== "text" && worker.actions[0]).toEqual({ type: "apply", jobId: JOB, vacancy: "Welder MIG/MAG" });
     const company = typedMessageCard("invite_to_job", connection("invite_to_job", "sent", { sentByMe: true }), "organization");
     expect(company.kind !== "text" && company.actions).toEqual([]);
     for (const status of ["answered", "accepted", "declined"] as const) {

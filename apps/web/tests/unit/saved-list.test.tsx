@@ -69,9 +69,9 @@ describe("SavedList", () => {
   it("gives every row its own Unsave button that names the vacancy", () => {
     const html = render([visible("a", "open", "First"), visible("b", "closed", "Second"), withdrawn]);
     expect(html.match(/<button/g)).toHaveLength(3);
-    expect(html).toContain("Unsave<span class=\"sr-only\"> vacancy: First</span>");
-    expect(html).toContain("Unsave<span class=\"sr-only\"> vacancy: Second</span>");
-    expect(html).toContain("Unsave<span class=\"sr-only\"> vacancy: no longer available</span>");
+    expect(html).toContain("Unsave<span class=\"sr-only normal-case\"> vacancy: First</span>");
+    expect(html).toContain("Unsave<span class=\"sr-only normal-case\"> vacancy: Second</span>");
+    expect(html).toContain("Unsave<span class=\"sr-only normal-case\"> vacancy: no longer available</span>");
   });
 
   it("shows the text of a vacancy as text", () => {

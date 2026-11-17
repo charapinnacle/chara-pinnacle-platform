@@ -209,6 +209,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     await workerPage.goto(`/en/messages/${conversation}`);
     const apply = workerPage.getByRole("link", { name: "Apply to Welder MIG/MAG" });
     await expect(apply).toHaveAttribute("href", `/en/jobs/${welder}/apply`);
+    await expect(apply.getByText("Welder MIG/MAG", { exact: true })).toHaveCSS("text-transform", "none");
     await expect(workerPage.getByRole("log")).toContainText("Hamburg, Germany");
     await expectAccessibleAtBothWidths(workerPage);
 

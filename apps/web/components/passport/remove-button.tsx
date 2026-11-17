@@ -10,7 +10,7 @@ export function RemoveButton({ name, removed, remove }: RemoveButtonProps) {
   const { pending, run } = useActionCall("Could not remove it");
   return (
     <FormButton type="button" variant="secondary" busy={pending} onClick={() => run(remove, removed)}>
-      Remove<span className="sr-only"> {name}</span>
+      Remove<span className="sr-only normal-case"> {name}</span>
     </FormButton>
   );
 }

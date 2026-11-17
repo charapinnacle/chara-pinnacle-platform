@@ -45,7 +45,7 @@ export function EmploymentHistorySection({ entries, countries, max }: Employment
               </span>
               <span className="flex flex-wrap gap-2">
                 <FormButton type="button" variant="secondary" onClick={() => setEditing(entry)}>
-                  Edit<span className="sr-only"> {entry.role}</span>
+                  Edit<span className="sr-only normal-case"> {entry.role}</span>
                 </FormButton>
                 <ConfirmRemoveButton
                   name={entry.role}

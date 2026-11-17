@@ -71,7 +71,7 @@ function SavedRow({ job, lang, applied, onRemove }: SavedRowProps) {
           </TextLink>
         ) : null}
         <FormButton type="button" variant="secondary" className="w-auto" busy={pending} onClick={unsave}>
-          Unsave<span className="sr-only"> vacancy: {title ?? "no longer available"}</span>
+          Unsave<span className="sr-only normal-case"> vacancy: {title ?? "no longer available"}</span>
         </FormButton>
       </CardFooter>
     </Card>

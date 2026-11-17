@@ -101,7 +101,7 @@ function PartnerCard({ lang, kind, partner, basedIn, viewer, connection }: CardP
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {viewer === "visitor" ? (
             <LinkButton href={signUpPath(lang, "company")} variant="secondary">
-              Sign up to contact<span className="sr-only"> {partner.displayName}</span>
+              Sign up to contact<span className="sr-only normal-case"> {partner.displayName}</span>
             </LinkButton>
           ) : null}
           <ConnectionActions

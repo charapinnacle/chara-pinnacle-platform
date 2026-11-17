@@ -45,7 +45,7 @@ export function ResendInvitation({ slug, email, role }: ResendInvitationProps) {
   return (
     <>
       <FormButton type="button" variant="secondary" busy={pending} onClick={resend}>
-        Resend<span className="sr-only"> invitation to {email}</span>
+        Resend<span className="sr-only normal-case"> invitation to {email}</span>
       </FormButton>
       <ModalDialog open={created !== null} onClose={() => created && close()} title="Invitation link">
         {created ? <InvitationLink {...created} email={email} role={role} onDone={close} /> : null}

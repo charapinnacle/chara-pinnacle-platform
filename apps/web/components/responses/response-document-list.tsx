@@ -41,7 +41,7 @@ export function ResponseDocumentList({ slug, documents }: { slug: string; docume
             </span>
             {ready ? (
               <FormButton type="button" variant="secondary" className="w-auto" busy={opening === document.id} onClick={() => open(document)}>
-                Open<span className="sr-only"> {document.fileName}</span>
+                Open<span className="sr-only normal-case"> {document.fileName}</span>
               </FormButton>
             ) : (
               <StatusBadge status={document.scanStatus === "rejected" ? "danger" : "info"}>

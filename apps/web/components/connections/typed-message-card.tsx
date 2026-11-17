@@ -42,7 +42,7 @@ export function TypedMessageCard({ lang, card }: { lang: string; card: Exclude<C
           {card.actions.map((action) =>
             action.type === "apply" ? (
               <LinkButton key="apply" href={applyPath(lang, action.jobId)}>
-                {action.label}
+                Apply to <span className="normal-case">{action.vacancy}</span>
               </LinkButton>
             ) : (
               <FormButton

@@ -33,7 +33,7 @@ export function TrainingSection({ entries, max }: { entries: Entry[]; max: numbe
               </span>
               <span className="flex flex-wrap gap-2">
                 <FormButton type="button" variant="secondary" onClick={() => setEditing(entry)}>
-                  Edit<span className="sr-only"> {entry.course}</span>
+                  Edit<span className="sr-only normal-case"> {entry.course}</span>
                 </FormButton>
                 <ConfirmRemoveButton name={entry.course} removed="Training removed" remove={() => removeTraining(entry.id)} />
               </span>

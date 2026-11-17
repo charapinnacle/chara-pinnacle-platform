@@ -38,7 +38,7 @@ export default async function FindCompaniesPage({ params }: PageProps<"/[lang]/c
             {partners.map((partner) => (
               <li key={partner.slug}>
                 <LinkButton href={findEmployersPath(lang, partner.slug)} variant="secondary">
-                  Find employers for {partner.displayName}
+                  Find employers for <span className="normal-case">{partner.displayName}</span>
                 </LinkButton>
               </li>
             ))}

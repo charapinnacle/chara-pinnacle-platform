@@ -41,7 +41,8 @@ function statusChip(kind: ConnectionKind, status: ConnectionStatus): { text: str
   return { text: "Accepted", cue: "done" };
 }
 
-export type TypedMessageAction = { type: "apply"; jobId: string; label: string } | { type: "decline"; label: string };
+// Apply names the vacancy apart from its words, so its title is shown as the employer wrote it.
+export type TypedMessageAction = { type: "apply"; jobId: string; vacancy: string } | { type: "decline"; label: string };
 
 export type TypedMessageCard =
   | { kind: "text" }
@@ -74,7 +75,7 @@ export function typedMessageCard(
   let note: string | null = null;
   if (kind === "invite_to_job" && reader === "worker" && waiting) {
     if (connection.jobOpen && connection.jobId) {
-      actions.push({ type: "apply", jobId: connection.jobId, label: `Apply to ${connection.jobTitle ?? "this vacancy"}` });
+      actions.push({ type: "apply", jobId: connection.jobId, vacancy: connection.jobTitle ?? "this vacancy" });
     } else {
       note = NO_LONGER_OPEN;
     }

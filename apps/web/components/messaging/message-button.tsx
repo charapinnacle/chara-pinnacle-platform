@@ -32,7 +32,7 @@ export function MessageButton({ contextType, contextId, slug, recipient }: Messa
   return (
     <FormButton type="button" variant="secondary" className="w-full sm:w-auto" busy={pending} onClick={open}>
       <MessageSquare aria-hidden className="size-4" />
-      Message<span className="sr-only"> {recipient}</span>
+      Message<span className="sr-only normal-case"> {recipient}</span>
     </FormButton>
   );
 }

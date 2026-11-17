@@ -15,7 +15,7 @@ export function ConfirmRemoveButton({ name, removed, remove }: ConfirmRemoveButt
   return (
     <>
       <FormButton type="button" variant="secondary" onClick={() => setOpen(true)}>
-        Remove<span className="sr-only"> {name}</span>
+        Remove<span className="sr-only normal-case"> {name}</span>
       </FormButton>
       <ModalDialog open={open} onClose={() => setOpen(false)} title={`Remove ${name}?`}>
         <p className="text-body">It is removed from your passport. You can add it again later.</p>

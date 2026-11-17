@@ -273,7 +273,7 @@ describe("available workforce (FR-R3 AC7, AC8, FR-R4 AC5, AC7)", () => {
     expect(html.match(/Not confirmed for 60 days or more/g)).toHaveLength(1);
     expect(html).toContain("Confirmed 61 days ago, on");
     expect(html).toContain("Confirmed 2 days ago, on");
-    expect(html.match(/>Confirm<span class="sr-only"> the listing for Welders and flame cutters from Philippines/g)).toHaveLength(2);
+    expect(html.match(/>Confirm<span class="sr-only normal-case"> the listing for Welders and flame cutters from Philippines/g)).toHaveLength(2);
     html = await render({ role: "member" });
     expect(html).toContain("Not confirmed for 60 days or more");
     expect(html).not.toContain(">Confirm<span");
