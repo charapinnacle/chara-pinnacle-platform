@@ -22,7 +22,6 @@ import {
   responsePath,
   settingsPath,
   submissionPath,
-  whereYouServePath,
   workforceProfilePath,
 } from "@/lib/routes";
 import { infoStepLabels, infoStepSchema } from "@/lib/validation/partner-review";
