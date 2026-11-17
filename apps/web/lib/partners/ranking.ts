@@ -157,14 +157,23 @@ export const suggestionCopy = {
 export const jobOrderOrderBy = "order by r.published_at desc, r.id limit v_limit + 1";
 
 // The conditions under which a job order is listed, as the function writes them.
-export const jobOrderSelection = "where r.status = 'open' and r.visibility = 'job_order_marketplace' and e.status = 'active'";
+export const jobOrderSelection =
+  "where r.status = 'open' and r.visibility = 'job_order_marketplace' and e.status = 'active' and r.moderation_state = 'visible'";
+
+// The refusals of private.assert_job_order_partner, which every read of the board and of a job order makes first (V79):
+// only a listed, active and visible recruitment or staffing company sees job orders.
+export const jobOrderAccessChecks = ["partner_only", "organization_suspended", "not_listed", "profile_hidden"] as const;
 
 export const jobOrderCopy = {
   selection:
-    "Listed recruitment and staffing companies see the job orders of the marketplace: the workforce requirements that employers published to it, while they are open (not paused, closed or filled) and the employer's account is active.",
+    "Listed recruitment and staffing companies see the job orders of the marketplace: the workforce requirements that employers published to it, while they are open (not paused, closed or filled), not hidden by moderation, and the employer's account is active.",
+  access:
+    "Only a recruitment or staffing company that is listed in the directories, active and not hidden by moderation can open the job orders; the check is made again for every page of results and every job order.",
   details:
     "Every listed company sees every job order, in the same order. It sees the full job order when it serves one of the job order's destination countries, lists one of its occupations and its plan includes job orders; otherwise it sees only the title, the destination and the number of workers, with what it is missing. This decides how much a company sees, never the order.",
   filters: "With a filter on a detail a company cannot see, only the job orders it sees in full are listed.",
+  named:
+    "Whether the employer shows its name on a job order, or has revealed it to a company by inviting, shortlisting or selecting it, decides only what that company reads, never the order.",
   payment: "No employer can pay to place a job order higher, and the plan of the company looking never changes the order.",
   paging:
     "Job orders come 20 per page by default, with a link to the next page, and the number of requests per person is limited to prevent scraping; neither changes the order.",

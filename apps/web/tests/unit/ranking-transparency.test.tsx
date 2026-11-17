@@ -12,6 +12,7 @@ import {
   findEmployersOrderBy,
   findEmployersSelection,
   freshListing,
+  jobOrderAccessChecks,
   jobOrderCopy,
   jobOrderOrderBy,
   jobOrderSelection,
@@ -48,20 +49,21 @@ const { default: RankingPage } = await import("@/app/[lang]/(public)/legal/ranki
 
 const squash = (text: string) => text.replace(/\s+/g, " ");
 
-// The start of a create function statement for public.<name>, in any case and spacing, names quoted or not.
-const createFunction = (name: string) => new RegExp(String.raw`create\s+(or\s+replace\s+)?function\s+"?public"?\."?${name}"?\s*\(`, "i");
+// The start of a create function statement for <schema>.<name>, in any case and spacing, names quoted or not.
+const createFunction = (name: string, schema = "public") =>
+  new RegExp(String.raw`create\s+(or\s+replace\s+)?function\s+"?${schema}"?\."?${name}"?\s*\(`, "i");
 
 // The body of the function as the last migration that creates it defines it, whitespace collapsed.
-function latestDefinition(name: string): string {
+function latestDefinition(name: string, schema = "public"): string {
   const migrations = new URL("../../../../supabase/migrations/", import.meta.url);
-  const start = createFunction(name);
+  const start = createFunction(name, schema);
   const file = readdirSync(migrations)
     .filter((entry) => entry.endsWith(".sql"))
     .sort()
     .map((entry) => readFileSync(new URL(entry, migrations), "utf8"))
     .filter((sql) => start.test(sql))
     .at(-1);
-  if (file === undefined) throw new Error(`No migration creates public.${name}`);
+  if (file === undefined) throw new Error(`No migration creates ${schema}.${name}`);
   const from = file.slice(file.search(start));
   const body = from.indexOf("$$");
   return squash(from.slice(body, from.indexOf("$$;", body + 2)));
@@ -73,6 +75,7 @@ const availableWorkforce = latestDefinition("search_available_workforce");
 const suggestPartners = latestDefinition("suggest_partners");
 const listJobOrders = latestDefinition("list_job_orders");
 const searchEmployers = latestDefinition("search_employers");
+const assertJobOrderPartner = latestDefinition("assert_job_order_partner", "private");
 
 async function renderPage(): Promise<string> {
   const page = await RankingPage({ params: Promise.resolve({ lang: "en" }) } as Parameters<typeof RankingPage>[0]);
@@ -217,6 +220,19 @@ describe("the ranking page and the job orders (FR-N1, NFR-C8)", () => {
     expect(listJobOrders).toContain(jobOrderOrderBy);
   });
 
+  it("only a listed, active and visible partner opens the board, as the page says", () => {
+    expect(listJobOrders).toContain("perform private.assert_job_order_partner(p_org);");
+    for (const detail of jobOrderAccessChecks) expect(assertJobOrderPartner).toContain(`detail = '${detail}'`);
+    expect(jobOrderSelection).toContain("r.moderation_state = 'visible'");
+    expect(jobOrderCopy.selection).toContain("not hidden by moderation");
+    expect(jobOrderCopy.access).toContain("listed in the directories, active and not hidden by moderation");
+  });
+
+  it("no order by of list_job_orders reads the employer's name or a reveal", () => {
+    const orders = [...listJobOrders.matchAll(/order by [^;]*?(?=\)|;|limit|$)/g)].map((match) => match[0]);
+    for (const order of orders) expect(order).not.toMatch(/\b(show_identity|revealed|named|reveals?|display_name)\b/i);
+  });
+
   it("no order by of list_job_orders reads a plan", () => {
     const orders = [...listJobOrders.matchAll(/order by [^;]*?(?=\)|;|limit|$)/g)].map((match) => match[0]);
     expect(orders.length).toBeGreaterThan(0);
@@ -235,6 +251,7 @@ describe("the ranking page and the job orders (FR-N1, NFR-C8)", () => {
     const text = await renderPage();
     for (const line of Object.values(jobOrderCopy)) expect(text).toContain(squash(line));
     expect(text).toContain("The time the employer published the job order, newest first.");
+    expect(text).toContain("and the order of their Find Employers results");
   });
 });
 
