@@ -1,11 +1,10 @@
-// What the thread and the unread badge keep in the browser, shared by the server reads and the client hooks.
+// What the thread keeps in the browser, shared by the server reads and the client hooks.
 
 export const MESSAGES_PAGE_SIZE = 50;
 
-// While the Realtime channel is not connected: an open thread asks every 4 s, so a message shows within the 5 s of
-// NFR-P4 with the request's own time; the badge every 15 s (FR-P1, the assumed polling interval).
+// While the Realtime channel is not connected an open thread asks every 4 s, so a message shows within the 5 s of NFR-P4
+// with the request's own time.
 export const THREAD_POLL_MS = 4_000;
-export const UNREAD_MESSAGES_POLL_MS = 15_000;
 
 export type MessageItem = {
   id: string;
@@ -44,13 +43,4 @@ export function mergeLatest(current: MessageItem[], page: MessageItem[], pageSiz
     return [...page].sort(newestFirst);
   }
   return mergeMessages(current, page);
-}
-
-export function totalUnread(counts: UnreadMessages[]): number {
-  return counts.reduce((sum, count) => sum + count.unread, 0);
-}
-
-// The accessible name of the header's messages link (FR-P4 AC1): the exact count, where the badge shows 99+ past 99.
-export function messagesLabel(unread: number): string {
-  return unread > 0 ? `Messages, ${unread} unread` : "Messages";
 }

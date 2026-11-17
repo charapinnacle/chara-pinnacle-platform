@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { formatDateTime } from "@/lib/i18n/format";
-import { useUnreadMessages } from "@/lib/messaging/hooks";
 import { contextLabels, counterpartLabel, type ConversationSummary } from "@/lib/messaging/present";
 import type { UnreadMessages } from "@/lib/messaging/thread";
+import { useUnreadMessages } from "@/lib/messaging/unread";
 import { cn } from "@/lib/utils";
 
 type ConversationListProps = {

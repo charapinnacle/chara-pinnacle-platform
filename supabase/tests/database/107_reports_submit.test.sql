@@ -55,8 +55,8 @@ select pg_temp.seed_app('applied', current_setting('t.b')::uuid) as app_b \gset
 select gen_random_uuid() as nobody \gset
 
 -- Structure and privileges
-select enum_has_labels('public', 'report_target_type', array['job', 'company', 'profile', 'content', 'partner_profile', 'requirement', 'partner_response', 'candidate_submission'],
-  'the eight kinds of target (partner_profile since V26; requirement, partner_response and candidate_submission since V57)');
+select enum_has_labels('public', 'report_target_type', array['job', 'company', 'profile', 'content', 'partner_profile', 'requirement', 'partner_response', 'candidate_submission', 'message'],
+  'the nine kinds of target (partner_profile since V26; requirement, partner_response and candidate_submission since V57; message since V66)');
 select enum_has_labels('public', 'report_category',
   array['illegal_content', 'misleading_or_fraud', 'discrimination', 'fee_demanded_from_worker', 'harassment', 'privacy_violation', 'other'],
   'the seven categories');
@@ -64,7 +64,7 @@ select enum_has_labels('public', 'report_status', array['new', 'in_review', 'act
 select columns_are('public', 'reports',
   array['id', 'target_type', 'job_id', 'organization_id', 'application_id', 'content_path', 'category', 'details', 'reporter_user_id',
         'reporter_email', 'good_faith_confirmed', 'status', 'handled_by', 'handled_at', 'resolution_note', 'created_at', 'priority', 'due_at',
-        'decision_due_at', 'requirement_id', 'partner_response_id', 'candidate_submission_id'],
+        'decision_due_at', 'requirement_id', 'partner_response_id', 'candidate_submission_id', 'message_id'],
   'reports has the columns of the record and no name, no phone, no address of a reporter beyond the optional email');
 select ok(
   (select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.reports'::regclass)
