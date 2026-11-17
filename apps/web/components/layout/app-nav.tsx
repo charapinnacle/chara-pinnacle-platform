@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AccountMenu, AccountPanel } from "@/components/layout/account-panel";
 import { HeaderMenu } from "@/components/layout/header-menu";
-import { MenuDisclosure } from "@/components/layout/menu-disclosure";
 import { NavLink } from "@/components/layout/nav-link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { accountLinks, currentOrganization, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
@@ -57,19 +56,19 @@ export function OrganizationList({ lang, organizations, current }: { lang: strin
   );
 }
 
-// The header of the signed-in area. The menu panel is the mobile menu below 768 px (visible without JavaScript) and the
-// row of links with the organisation switcher and the account menu above; from 1024 px the sidebar has the links and the
-// switcher, and the header keeps the account menu.
+// The header of the signed-in area. Below 1024 px the links, the organisations and the account are in the menu panel
+// (visible without JavaScript), since a partner's row of links does not fit next to the account menu on a tablet; from
+// 1024 px the sidebar has the links and the switcher, and the header keeps the account menu.
 export function AppNav(props: AppNavProps) {
   const { lang, organizations, notifications } = props;
   const { links, switcher, account } = useAppNavigation(props);
 
   return (
     <HeaderMenu actions={notifications ? <NotificationBell lang={lang} {...notifications} /> : null}>
-      <div className="grid gap-2 md:flex md:items-center md:gap-1">
+      <div className="grid gap-2 lg:flex lg:items-center lg:gap-1">
         {links.length > 0 ? (
           <nav aria-label="Main" className="lg:hidden">
-            <ul className="grid md:flex md:items-center md:gap-1">
+            <ul className="grid">
               {links.map((link) => (
                 <li key={link.href}>
                   <NavLink link={link} />
@@ -79,18 +78,13 @@ export function AppNav(props: AppNavProps) {
           </nav>
         ) : null}
         {switcher ? (
-          <>
-            <MenuDisclosure label={switcher.displayName} className="hidden md:block lg:hidden">
-              <OrganizationList lang={lang} organizations={organizations} current={switcher.slug} />
-            </MenuDisclosure>
-            <div className="grid gap-1 border-t pt-2 md:hidden">
-              <p className="px-3 text-small text-muted-foreground">Your organisations</p>
-              <OrganizationList lang={lang} organizations={organizations} current={switcher.slug} />
-            </div>
-          </>
+          <div className="grid gap-1 border-t pt-2 lg:hidden">
+            <p className="px-3 text-small text-muted-foreground">Your organisations</p>
+            <OrganizationList lang={lang} organizations={organizations} current={switcher.slug} />
+          </div>
         ) : null}
-        <AccountMenu {...account} className="hidden md:block" />
-        <div className="border-t pt-2 md:hidden">
+        <AccountMenu {...account} className="hidden lg:block" />
+        <div className="border-t pt-2 lg:hidden">
           <AccountPanel {...account} />
         </div>
       </div>

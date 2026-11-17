@@ -73,6 +73,27 @@ test.describe("the menus of the header (UX-01, UX-08)", () => {
     await context.close();
   });
 
+  test("from 768 to 1023 px the links and the account stay behind the Menu button, so the header never runs past the edge", async ({ browser }) => {
+    const team = await newTeam(uniqueName("Tablet Bau"));
+    for (const width of [800, 820, 1000]) {
+      const { context, page } = await signedInPage(browser, team.owner, { viewport: { width, height: 900 } });
+      await page.goto(`/en/dashboard/employer?org=${team.slug}`);
+      const menu = page.getByRole("button", { name: "Menu", exact: true });
+      await waitForHydration(menu);
+      await expect(mainNavigation(page)).toBeHidden();
+      await expect(accountButton(page)).toBeHidden();
+      expect(await overflow(page)).toBeLessThanOrEqual(0);
+      await menu.click();
+      expect(await linkLabels(mainNavigation(page))).toEqual(["Organisation", "Vacancies", "Applicants", "Team", "Billing"]);
+      const logOut = page.getByRole("button", { name: "Log out" });
+      await expect(logOut).toBeVisible();
+      const box = await logOut.boundingBox();
+      expect(box && box.x + box.width <= width - 16).toBe(true);
+      await expectNoAxeViolations(page);
+      await context.close();
+    }
+  });
+
   test("below 768 px without JavaScript the links and the way out are on the page and there is no Menu button", async ({ browser }) => {
     const worker = await createCommittedUser("worker");
     const { context, page } = await signedInPage(browser, worker, { ...PHONE, javaScriptEnabled: false });

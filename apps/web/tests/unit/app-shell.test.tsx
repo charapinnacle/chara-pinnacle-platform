@@ -90,6 +90,13 @@ describe("the header of the signed-in area", () => {
     expect(one).toContain('href="/en/settings/notifications"');
   });
 
+  it("keeps the links, the organisations and the account in the menu panel below 1024 px, where a partner's row would not fit", () => {
+    const html = nav({ accountKind: "company", organizations: [acme, beta] }, "/en/dashboard/employer", "acme");
+    expect(html).toMatch(/<button[^>]*class="[^"]*\blg:hidden\b[^"]*"[^>]*>.*?Menu<\/button>/);
+    expect(html).toMatch(/<div class="[^"]*\bhidden lg:block\b[^"]*"><button[^>]*>.*?Account/);
+    expect(html).not.toMatch(/\bmd:/);
+  });
+
   it("offers an employer Settings, which lead to the notification settings, and no Edit profile", () => {
     const html = nav({ accountKind: "company", organizations: [acme] });
     expect(html).toMatch(/<a [^>]*href="\/en\/settings\/notifications"[^>]*>Settings<\/a>/);
