@@ -206,11 +206,14 @@ select pg_temp.connection(:'a', :'r', 'request_workforce', 'sent', :'q_closed');
 select pg_temp.connection(:'a', :'r', 'request_workforce', 'declined', :'q_open');
 select pg_temp.connection(:'a', :'s', 'request_workforce', 'sent', :'q_draft');
 
--- w1's requests: one waiting, one waiting past its expiry (expired as read), one accepted, one declined.
+-- w1's requests: one waiting, one waiting past its expiry (expired as read), one accepted, one declined, and one waiting
+-- that Trust & Safety hid (V73), which the worker no longer reads.
 select pg_temp.request(:'a', :'w1', 'pending', interval '20 days');
 select pg_temp.request(:'b', :'w1', 'pending', interval '-1 hour');
 select pg_temp.request(:'c', :'w1', 'accepted', interval '20 days');
 select pg_temp.request(:'r', :'w1', 'declined', interval '20 days');
+select pg_temp.request(:'s', :'w1', 'pending', interval '20 days');
+update public.contact_requests set moderation_state = 'hidden' where organization_id = :'s' and worker_user_id = :'w1';
 
 update private.settings set value = 'true'
 where key in ('release_partner_directories', 'release_job_orders', 'release_messaging', 'release_find_workers',
@@ -322,13 +325,14 @@ select matches(pg_temp.dash('get_employer_network_dashboard', null, :'a'),
   '^42501\|permission denied for function get_employer_network_dashboard', 'anonymous has no EXECUTE on the employer dashboard');
 
 -- The worker's contact requests (FR-Q1 AC10) -----------------------------------------------------------------------------------
-select is(pg_temp.counts(:'w1'), 'ok:1|4', 'FR-Q1 AC10: one request waits (a pending one past its expiry does not), four were received');
+select is(pg_temp.counts(:'w1'), 'ok:1|4',
+  'FR-Q1 AC10: one request waits (a pending one past its expiry does not), four were received; the hidden one counts in neither');
 select is(pg_temp.counts(:'w2'), 'ok:0|0', 'NFR-S8: another worker counts only their own requests');
 select is(pg_temp.counts(:'aown'), '42501|CHARA_FORBIDDEN|worker_account_required', 'a company account has no contact requests to count');
 select is(pg_temp.counts(:'rown'), '42501|CHARA_FORBIDDEN|worker_account_required', 'a partner account neither');
 select matches(pg_temp.counts(null), '^42501\|permission denied for function my_contact_request_counts', 'anonymous has no EXECUTE');
 select is(
-  (select count(*)::integer from public.contact_requests where worker_user_id = :'w1' and status = 'pending'), 2,
+  (select count(*)::integer from public.contact_requests where worker_user_id = :'w1' and status = 'pending'), 3,
   'reading the counts writes nothing: the stored statuses are unchanged'
 );
 
