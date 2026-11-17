@@ -514,7 +514,12 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     for (const status of ["listed", "declined"]) {
       reviewMock.mockResolvedValue({ status, submittedAt: null, infoStep: null });
       await expect(render(OnboardingPage)).rejects.toThrow("REDIRECT:/en/dashboard/employer");
+      // The company details stay editable past onboarding, on the company profile page (FR-J1).
+      await expect(render(OnboardingPage, { step: "company" })).rejects.toThrow("REDIRECT:/en/org/manila-skills/profile");
     }
+    organizationMock.mockResolvedValue({ ...owner, slug: "manila-skills", displayName: "Manila Skills", type: "recruitment_company", role: "member" });
+    reviewMock.mockResolvedValue({ status: "listed", submittedAt: null, infoStep: null });
+    await expect(render(OnboardingPage, { step: "company" })).rejects.toThrow("REDIRECT:/en/dashboard/employer");
   });
 
   it("FR-J4 AC7: after a request for information Ready names the reopened step and links to it", async () => {
@@ -570,7 +575,8 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).not.toContain("candidates");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save profile<\/button>/);
     expect(html).toContain(">Company identifier</h2>");
-    expect(html).toContain(": CS201904512. The owner corrects it on the billing page, or contact support.");
+    expect(html).toContain(": CS201904512. You correct it here.");
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Save identifier<\/button>/);
     expect(html).not.toMatch(/readonly/i);
     billingMock.mockResolvedValue({ identifier: "CS201904512", identifier_kind: "registration_number", identifier_locked: true });
     const locked = await render(OnboardingPage, { step: "company" });

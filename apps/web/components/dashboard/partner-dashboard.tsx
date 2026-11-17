@@ -10,7 +10,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { CommitmentGate } from "@/components/organization/commitment-gate";
-import type { OrgUsage } from "@/lib/billing/limits";
+import { limitNoun, type OrgUsage } from "@/lib/billing/limits";
 import { followerCountText, type FollowerCount } from "@/lib/connections/access";
 import {
   dashboardQuestions,
@@ -19,6 +19,7 @@ import {
   planUsageKeys,
   profileViewsText,
   segmentOf,
+  usageAttention,
   usageLine,
   type NextActionTarget,
   type PartnerFigures,
@@ -45,6 +46,7 @@ import {
   membersPath,
   mfaPath,
   onboardingPath,
+  organizationProfilePath,
   partnerStepPath,
   responsesPath,
   workforceProfilePath,
@@ -241,7 +243,7 @@ function PlanUsageCard({ plan, usage, usageKeys, type, billingHref, paused }: Pl
   const free = plan.status === "free";
   const lines = usageKeys.flatMap((key) => {
     const line = usageLine(usage, key, type);
-    return line ? [{ key, line }] : [];
+    return line ? [{ key, line, attention: usageAttention(usage, key) }] : [];
   });
   return (
     <BlockCard id="plan-heading" title="Plan and usage">
@@ -259,9 +261,23 @@ function PlanUsageCard({ plan, usage, usageKeys, type, billingHref, paused }: Pl
         </p>
       ) : null}
       <ul className="grid gap-1" aria-label="Usage of your plan">
-        {lines.map(({ key, line }) => (
+        {lines.map(({ key, line, attention }) => (
           <li key={key} className="text-body">
             {line}
+            {attention ? (
+              <span className="font-medium">
+                {" · "}
+                {attention === "over_limit" ? "Over the limit" : "Limit reached"}
+                {billingHref ? (
+                  <>
+                    {". "}
+                    <TextLink href={billingHref} aria-label={`Upgrade (${limitNoun(key, type)})`}>
+                      Upgrade
+                    </TextLink>
+                  </>
+                ) : null}
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -371,6 +387,11 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
                   ) : null}
                 </>
               )}
+              {canManage ? (
+                <TextLink standalone href={organizationProfilePath(lang, slug)}>
+                  Company profile
+                </TextLink>
+              ) : null}
             </div>
           ) : null
         }

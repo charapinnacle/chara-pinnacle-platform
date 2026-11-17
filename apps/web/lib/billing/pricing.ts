@@ -45,11 +45,12 @@ const limitLabels = {
 } as const satisfies Record<string, (value: number | null) => string | null>;
 
 // The limits a plan of each organisation type lists, and the billing page counts, in this order: those of the features
-// the type has in this release. A partner plan carries a row for every partner key (DATA_MODEL.md section 8), even for a
+// the type has in this release. A recruitment company lists available workforce too (FR-K3, assumed default) and its
+// dashboard counts the listings, so its plans show the workforce listings limit as the staffing plans do. A partner plan carries a row for every partner key (DATA_MODEL.md section 8), even for a
 // feature of the other partner type or of a later release.
 export const PLAN_LIMIT_KEYS = {
   employer: ["active_jobs", "members"],
-  recruitment_company: ["markets", "listed_occupations", "members"],
+  recruitment_company: ["markets", "listed_occupations", "workforce_listings", "members"],
   staffing_company: ["markets", "listed_occupations", "workforce_listings", "members"],
 } as const satisfies Record<OrganizationType, readonly (keyof typeof limitLabels)[]>;
 
@@ -111,7 +112,7 @@ export function planCard(plan: PublicPlan, type: OrganizationType = "employer", 
 export type PricingViewer =
   | { kind: "visitor" }
   | { kind: "worker" }
-  | { kind: "member" }
+  | { kind: "member"; type: OrganizationType }
   | { kind: "manager"; slug: string; type: OrganizationType }
   | { kind: "setup" }
   | { kind: "unknown" };

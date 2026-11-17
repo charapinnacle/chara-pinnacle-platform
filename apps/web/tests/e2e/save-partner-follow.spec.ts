@@ -212,6 +212,8 @@ test.describe("Save partner and follow company (FR-L4)", () => {
     const followed = listRows(employer.page);
     await expect(followed).toHaveCount(1);
     await expect(followed.first().getByRole("link", { name: beta.displayName })).toHaveAttribute("href", companyUrl(beta.slug));
+    await expect(followed.first()).toContainText("You hear about its new vacancies, at most once a day.");
+    await expect(employer.page.getByRole("main")).not.toContainText("new vacancies of these companies");
     await followed.first().getByRole("button", { name: `Unfollow ${beta.displayName}` }).click();
     await expect(employer.page.getByRole("status").filter({ hasText: `${beta.displayName} is no longer followed.` })).toBeAttached();
     await expect.poll(() => follows(member.id)).toEqual([]);
