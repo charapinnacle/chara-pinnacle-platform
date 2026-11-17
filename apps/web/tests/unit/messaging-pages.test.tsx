@@ -23,6 +23,9 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcM
 vi.mock("@/lib/dal/settings", () => ({ getPublicSettings: settingsMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
 vi.mock("@/lib/dal/session", () => ({ requireUser: async () => ({ id: "user-1", accountKind: "company" }) }));
+vi.mock("@/lib/dal/connection-actions", () => ({ listConversationConnections: async () => ({}) }));
+vi.mock("@/lib/dal/contact-requests", () => ({ listOpenVacancies: async () => [] }));
+vi.mock("@/lib/dal/submissions", () => ({ submissionsReleased: async () => false, getSubmissionTarget: async () => null }));
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
@@ -117,7 +120,8 @@ describe("the message rules of the composer (FR-P1 AC3, AC10)", () => {
 
   it("reads the inbox filter from the address", () => {
     expect(parseInboxFilter("partner_response")).toBe("partner_response");
-    for (const value of [undefined, "", "inquiry", ["application"]]) expect(parseInboxFilter(value)).toBeNull();
+    for (const value of [undefined, "", "poll", ["application"]]) expect(parseInboxFilter(value)).toBeNull();
+    expect(parseInboxFilter("inquiry")).toBe("inquiry");
   });
 });
 
@@ -165,8 +169,8 @@ describe("the addresses and labels of the pages (FR-P1 AC11)", () => {
 
   it("offers each side the filters of its contexts", () => {
     expect(inboxContexts({ kind: "worker" })).toEqual(["application", "candidate_submission", "contact_request"]);
-    expect(inboxContexts({ kind: "partner", slug: "r" })).toEqual(["requirement_invitation", "partner_response", "contact_request"]);
-    expect(inboxContexts({ kind: "employer", slug: "a" })).toHaveLength(5);
+    expect(inboxContexts({ kind: "partner", slug: "r" })).toEqual(["requirement_invitation", "partner_response", "contact_request", "inquiry"]);
+    expect(inboxContexts({ kind: "employer", slug: "a" })).toHaveLength(6);
   });
 
   it("names the other party and the sender, never more than the database answered (NFR-S11)", () => {

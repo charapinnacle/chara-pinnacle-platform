@@ -14,6 +14,8 @@ import { erasurePaused } from "./templates/erasure-paused.tsx";
 import { followedCompanyActivity } from "./templates/followed-company-activity.tsx";
 import { invitationReceived } from "./templates/invitation-received.tsx";
 import { invitationWithdrawn } from "./templates/invitation-withdrawn.tsx";
+import { inquiryReceived } from "./templates/inquiry-received.tsx";
+import { jobInvitation } from "./templates/job-invitation.tsx";
 import { jobOrderMatch } from "./templates/job-order-match.tsx";
 import { legalVersion } from "./templates/legal-version.tsx";
 import { licenceExpiring } from "./templates/licence-expiring.tsx";
@@ -42,6 +44,7 @@ import { submissionWithdrawn } from "./templates/submission-withdrawn.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
 import { vacancyHidden } from "./templates/vacancy-hidden.tsx";
 import { visibilityConfirmation } from "./templates/visibility-confirmation.tsx";
+import { workforceRequestReceived } from "./templates/workforce-request-received.tsx";
 
 const TEMPLATES = {
   application_received: applicationReceived,
@@ -85,6 +88,9 @@ const TEMPLATES = {
   visibility_confirmation: visibilityConfirmation,
   contact_request_received: contactRequestReceived,
   contact_request_decided: contactRequestDecided,
+  inquiry_received: inquiryReceived,
+  workforce_request_received: workforceRequestReceived,
+  job_invitation: jobInvitation,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

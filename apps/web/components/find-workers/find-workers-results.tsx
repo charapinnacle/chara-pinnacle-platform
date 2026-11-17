@@ -1,6 +1,7 @@
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
+import { InviteToJob } from "@/components/connections/invite-to-job";
 import { SendContactRequest } from "@/components/contact-requests/send-contact-request";
 import { SaveCardButton } from "@/components/find-workers/save-card-button";
 import { WorkerCard, type CardNames } from "@/components/find-workers/worker-card";
@@ -65,7 +66,8 @@ function ContactRule({ lang, directContact, notice, country, countryName }: {
 }
 
 // Contacting the worker (FR-Q3 AC12): "Send contact request" while the rules allow direct contact and the organisation may
-// send one; once a request stops it, the date it was sent and how it stands, linked to the organisation's requests.
+// send one; once a request stops it, the date it was sent and how it stands, linked to the organisation's requests. Once
+// the worker accepted, Invite to job sends an invitation to apply in their conversation (FR-P2 step Invite to job, V71).
 function ContactAction({ card, directContact, contact, context }: {
   card: WorkerCardData;
   directContact: DirectContact;
@@ -75,10 +77,15 @@ function ContactAction({ card, directContact, contact, context }: {
   const { lang, slug, names, vacancies } = context;
   if (contact && !contact.canSend) {
     return (
-      <p className="text-small text-muted-foreground">
+      <div className="grid gap-2 text-small text-muted-foreground">
+        <p>
         Request sent on <time dateTime={contact.sentAt}>{formatDate(contact.sentAt)}</time> ·{" "}
         <TextLink href={orgContactRequestsPath(lang, slug)}>{sentStatusLabels[contact.status]}</TextLink>
-      </p>
+        </p>
+        {contact.status === "accepted" ? (
+          <InviteToJob slug={slug} target={{ contactRequestId: contact.requestId }} workerLabel={cardLabel(card, names)} vacancies={vacancies} />
+        ) : null}
+      </div>
     );
   }
   if (directContact !== "allowed") return null;

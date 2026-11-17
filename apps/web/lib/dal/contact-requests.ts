@@ -141,9 +141,15 @@ export async function listReceivedContactRequests(): Promise<ReceivedContactRequ
     }));
 }
 
-const cardStateSchema = z.object({ card_id: z.uuid(), status: statusSchema, created_at: z.string(), can_send: z.boolean() });
+const cardStateSchema = z.object({
+  card_id: z.uuid(),
+  request_id: z.uuid(),
+  status: statusSchema,
+  created_at: z.string(),
+  can_send: z.boolean(),
+});
 
-export type CardContactState = { status: ContactRequestStatus; sentAt: string; canSend: boolean };
+export type CardContactState = { requestId: string; status: ContactRequestStatus; sentAt: string; canSend: boolean };
 
 // The latest request of the organisation to each card of a page, for the card's Send button (FR-Q3 AC12).
 export async function cardContactRequests(organizationId: string, cardIds: readonly string[]): Promise<Map<string, CardContactState>> {
@@ -155,7 +161,7 @@ export async function cardContactRequests(organizationId: string, cardIds: reado
     z
       .array(cardStateSchema)
       .parse(data)
-      .map((row) => [row.card_id, { status: row.status, sentAt: row.created_at, canSend: row.can_send }]),
+      .map((row) => [row.card_id, { requestId: row.request_id, status: row.status, sentAt: row.created_at, canSend: row.can_send }]),
   );
 }
 

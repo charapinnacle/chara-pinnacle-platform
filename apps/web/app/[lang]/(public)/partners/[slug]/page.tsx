@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ConnectionActions } from "@/components/connections/connection-actions";
+import { RequestWorkforce } from "@/components/connections/request-workforce";
+import { SendInquiry } from "@/components/connections/send-inquiry";
 import { InviteToRequirement } from "@/components/invitations/invite-to-requirement";
 import { TextLink } from "@/components/forms/text-link";
 import { AuthCard } from "@/components/layout/auth-card";
@@ -8,12 +10,15 @@ import { LinkButton } from "@/components/layout/link-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { PartnerProfileView } from "@/components/partners/partner-profile-view";
 import { hasConnectionActions } from "@/lib/connections/access";
+import { offersStaffing } from "@/lib/connections/contact-actions";
+import { getContactEmployer } from "@/lib/dal/connection-actions";
 import { getProfileConnection } from "@/lib/dal/connections";
 import { getInviteChoices } from "@/lib/dal/invitations";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
+import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
-import { partnerProfilePath, reportPath, signUpPath, workforceProfilePath } from "@/lib/routes";
+import { loginPath, partnerProfilePath, reportPath, workforceProfilePath } from "@/lib/routes";
 import { partnerProfileMetadata } from "@/lib/seo/metadata";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -74,7 +79,7 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
       />
     ) : null;
   // Invite to a requirement (FR-O1 AC12) for an owner or admin of employers with an open requirement, while release 2b
-  // is on; the employer named by ?for= (a link from one of its pages) comes first. Send inquiry comes with V71.
+  // is on; the employer named by ?for= (a link from one of its pages) comes first.
   const preferred = typeof forParam === "string" && slugSchema.safeParse(forParam).success ? forParam : undefined;
   const choices =
     connection?.id && (await isReleased("release_job_orders")) ? await getInviteChoices([connection.id], preferred) : null;
@@ -88,17 +93,40 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
         source="profile"
       />
     ) : null;
+  // Send inquiry for any member of the employer Save partner saves for, Request workforce for its owners and admins when
+  // the partner offers staffing and release 2b is on too (FR-P2 AC9).
+  const employer =
+    connection?.id && connection.access.kind === "signed_in" ? await getContactEmployer(connection.access.saveFor) : null;
+  const staffing = employer?.manager && offersStaffing(profile.type, profile.serviceTypes) && (await isReleased("release_job_orders"));
+  const [occupations, countries] = staffing ? await Promise.all([getOccupations(), getCountries()]) : [[], []];
+  const contact =
+    employer && connection?.id ? (
+      <div className="flex flex-wrap gap-3">
+        <SendInquiry slug={employer.slug} employerName={employer.displayName} partnerId={connection.id} partnerName={profile.displayName} />
+        {staffing ? (
+          <RequestWorkforce
+            slug={employer.slug}
+            partnerId={connection.id}
+            partnerName={profile.displayName}
+            occupations={occupations.map(({ code, label }) => ({ value: code, label }))}
+            countries={countries.map(({ code, name }) => ({ value: code, label: name }))}
+            defaultDestination=""
+          />
+        ) : null}
+      </div>
+    ) : null;
   const actions = viewerIsMember ? (
     <LinkButton href={workforceProfilePath(lang, profile.slug)}>Edit profile</LinkButton>
   ) : user ? (
     <div className="grid gap-3">
+      {contact}
       {invite}
       {connect}
       <div className={connect ? "border-t pt-2" : undefined}>{report}</div>
     </div>
   ) : (
     <div className="grid gap-3">
-      <LinkButton href={signUpPath(lang, "company")}>Sign up to contact</LinkButton>
+      <LinkButton href={loginPath(lang, path)}>Sign in to contact</LinkButton>
       {connect}
       <div className="border-t pt-2">{report}</div>
     </div>
