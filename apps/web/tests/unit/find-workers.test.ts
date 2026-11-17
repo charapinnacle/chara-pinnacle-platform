@@ -34,7 +34,13 @@ const card = {
   preferred_employment_types: null,
   updated_at: "2027-02-09T10:00:00+00:00",
 };
-const context = { destination: "DE", current_country: "NG", work_authorization: "PL", languages: { de: "German", en: "English" } };
+const context = {
+  destination: "DE",
+  current_country: "NG",
+  work_authorization: "PL",
+  languages: { de: "German", en: "English" },
+  countries: { DE: "Germany", NG: "Nigeria", PL: "Poland" },
+};
 
 beforeEach(() => {
   rpcMock.mockReset();
@@ -42,17 +48,19 @@ beforeEach(() => {
 
 // FR-Q2 AC7: the card says why it matched, in a fixed order.
 describe("matchedOnText (FR-Q2 AC7)", () => {
-  it("names occupation, destination with its code and the language with the card's level, in the fixed order", () => {
+  it("names occupation, destination by its country name and the language with the card's level, in the fixed order", () => {
     expect(matchedOnText(["occupation", "destination", "language:de:B2"], context)).toBe(
-      "Matched on: occupation, destination DE, German (B2)",
+      "Matched on: occupation, destination Germany, German (B2)",
     );
     expect(matchedOnText(["language:de:B2", "destination", "occupation"], context)).toBe(
-      "Matched on: occupation, destination DE, German (B2)",
+      "Matched on: occupation, destination Germany, German (B2)",
     );
+    expect(matchedOnText(["destination"], { ...context, countries: {} })).toBe("Matched on: destination DE");
   });
 
-  it("says your search for an empty list and ignores an unknown key", () => {
-    expect(matchedOnText([], context)).toBe("Matched on: your search");
+  it("has no line for a card found without a filter and ignores an unknown key", () => {
+    expect(matchedOnText([], context)).toBeNull();
+    expect(matchedOnText(["nationality"], context)).toBeNull();
     expect(matchedOnText(["nationality", "occupation", "language:de"], context)).toBe("Matched on: occupation");
   });
 
@@ -63,7 +71,7 @@ describe("matchedOnText (FR-Q2 AC7)", () => {
         context,
       ),
     ).toBe(
-      "Matched on: headline, skills, current country NG, availability, experience, industry, employment type, work authorisation PL",
+      "Matched on: headline, skills, current country Nigeria, availability, experience, industry, employment type, work authorisation Poland",
     );
   });
 });

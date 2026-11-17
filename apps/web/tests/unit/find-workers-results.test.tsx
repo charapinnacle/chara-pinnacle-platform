@@ -71,7 +71,7 @@ describe("the Find Workers results (FR-Q2 AC6, AC10, AC12)", () => {
     const html = await render(<FindWorkersResults organizationId="org" filters={filters} context={context} languages={names.languages} />);
     expect(html).toMatch(/role="status" aria-live="polite"[^>]*>1 worker shown\. More are on the next page\./);
     expect(html).toContain("Welders and flame cutters");
-    expect(html).toContain("Matched on: occupation, destination DE");
+    expect(html).toContain("Matched on: occupation, destination Germany");
     expect(html).toContain("Contact through a licensed partner");
     expect(html).toContain("Hiring from Nepal needs a licensed partner.");
     expect(html).toContain('href="/en/partners/recruitment?sources_from=NP"');
@@ -94,6 +94,7 @@ describe("the Find Workers results (FR-Q2 AC6, AC10, AC12)", () => {
     const { filters } = parseFindWorkersParams({});
     const html = await render(<FindWorkersResults organizationId="org" filters={filters} context={context} languages={{}} />);
     expect(contactsMock).toHaveBeenCalledWith("org", [card.card_id, other.card_id]);
+    expect(html).not.toContain("Matched on");
     expect(html.match(/aria-label="Send contact request: Welders and flame cutters"/g)).toHaveLength(1);
     expect(html).toContain("Request sent on <time");
     expect(html).toContain("10 February 2027");

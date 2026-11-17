@@ -242,7 +242,7 @@ export async function FindWorkersResults({ organizationId, filters, context, lan
               directContact={directContact}
               destination={filters.destination ?? null}
               notice={notice}
-              matched={matchedOnText(matchedOn, { ...filters, languages })}
+              matched={matchedOnText(matchedOn, { ...filters, languages, countries: context.names.countries })}
               saved={saved.has(card.card_id)}
               contact={contacts.get(card.card_id)}
               context={context}

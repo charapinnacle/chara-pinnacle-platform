@@ -179,6 +179,8 @@ test.describe("Find Workers (FR-Q2)", () => {
     await page.getByRole("link", { name: "Find workers for this requirement" }).click();
     await expect(page).toHaveURL(searchUrl(acme.slug, `requirement=${requirement}&occupation=7212&destination=DE`));
     await expect(page.getByText("Searching for the requirement")).toBeVisible();
+    await expect(page.getByText(/Matched on: .*destination DE/)).toHaveCount(0);
+    await expect(page.getByText("Matched on: your search")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Saved for this requirement", level: 2 })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
   });
