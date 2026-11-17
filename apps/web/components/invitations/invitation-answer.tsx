@@ -20,14 +20,11 @@ type InvitationAnswerProps = { slug: string; invitationId: string; employerName:
 type AnswerProps = InvitationAnswerProps & { respondHref: string };
 
 // Accept or decline an invitation that has no answer yet (FR-O1 step Answer, AC8), for any member of the invited
-// company. Accept answers at once and opens the response form (AC8); Decline asks for an optional reason (up to 500
-// characters, shown to the employer) and is confirmed in the dialog, and the page is drawn again with the new status.
-// Both are final.
+// company. Both are final, so each is confirmed in a dialog: Accept then opens the response form (AC8); Decline asks for an
+// optional reason (up to 500 characters, shown to the employer) and the page is drawn again with the new status.
 export function InvitationAnswer({ slug, invitationId, employerName, respondHref }: AnswerProps) {
-  const [declining, setDeclining] = useState(false);
-  const accept = useActionCall("The invitation was not accepted");
-  const router = useRouter();
-  const close = () => setDeclining(false);
+  const [answering, setAnswering] = useState<"accepted" | "declined" | null>(null);
+  const close = () => setAnswering(null);
   return (
     <section aria-labelledby="invitation-answer-heading" className="grid gap-3">
       <h2 id="invitation-answer-heading" className="text-h2">
@@ -37,29 +34,56 @@ export function InvitationAnswer({ slug, invitationId, employerName, respondHref
         {employerName} sees whether your company accepts or declines. An answer cannot be changed.
       </p>
       <div className="flex flex-wrap gap-3">
-        <FormButton
-          type="button"
-          className="w-auto"
-          busy={accept.pending}
-          disabled={accept.pending}
-          onClick={() =>
-            accept.run(async () => {
-              const result = await answerInvitation(slug, { invitationId, answer: "accepted", reason: "" });
-              if (result.done) router.push(respondHref);
-              return result;
-            }, "You accepted the invitation")
-          }
-        >
+        <FormButton type="button" className="w-auto" onClick={() => setAnswering("accepted")}>
           Accept
         </FormButton>
-        <FormButton type="button" variant="secondary" className="w-auto" disabled={accept.pending} onClick={() => setDeclining(true)}>
+        <FormButton type="button" variant="secondary" className="w-auto" onClick={() => setAnswering("declined")}>
           Decline
         </FormButton>
       </div>
-      <ModalDialog open={declining} onClose={close} title="Decline this invitation?">
-        <DeclineForm slug={slug} invitationId={invitationId} employerName={employerName} onClose={close} />
+      <ModalDialog open={answering !== null} onClose={close} title={answering === "accepted" ? "Accept this invitation?" : "Decline this invitation?"}>
+        {answering === "accepted" ? (
+          <AcceptConfirmation slug={slug} invitationId={invitationId} employerName={employerName} respondHref={respondHref} onClose={close} />
+        ) : (
+          <DeclineForm slug={slug} invitationId={invitationId} employerName={employerName} onClose={close} />
+        )}
       </ModalDialog>
     </section>
+  );
+}
+
+export function AcceptConfirmation({ slug, invitationId, employerName, respondHref, onClose }: AnswerProps & { onClose: () => void }) {
+  const accept = useActionCall("The invitation was not accepted");
+  const router = useRouter();
+  return (
+    <>
+      <p className="text-body leading-relaxed">
+        This is final: {employerName} sees that your company accepted, and the invitation can no longer be declined. You
+        then write your response to the requirement.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormButton type="button" variant="secondary" onClick={onClose}>
+          Cancel
+        </FormButton>
+        <FormButton
+          type="button"
+          busy={accept.pending}
+          onClick={() =>
+            accept.run(
+              async () => {
+                const result = await answerInvitation(slug, { invitationId, answer: "accepted", reason: "" });
+                if (result.done) router.push(respondHref);
+                return result;
+              },
+              "You accepted the invitation",
+              onClose,
+            )
+          }
+        >
+          {accept.pending ? "Accepting" : "Accept invitation"}
+        </FormButton>
+      </div>
+    </>
   );
 }
 

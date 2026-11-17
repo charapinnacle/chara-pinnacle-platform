@@ -453,6 +453,15 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     await waitForHydration(accept);
     await accept.focus();
     await pp.keyboard.press("Enter");
+    // An answer is final, so Accept asks first, like Decline; Cancel leaves the invitation unanswered.
+    const acceptDialog = pp.getByRole("dialog", { name: "Accept this invitation?" });
+    await expect(acceptDialog).toContainText("This is final");
+    await expectNoAxeViolations(pp);
+    await acceptDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(acceptDialog).toBeHidden();
+    expect(query<{ status: string }>(`select status from public.requirement_invitations where id = ${literal(privateInvitation.id)}`)[0].status).toBe("viewed");
+    await accept.click();
+    await acceptDialog.getByRole("button", { name: "Accept invitation" }).click();
     // Accept opens the response form of FR-O2 (V46); the invitation page then shows the new status.
     await expect(pp).toHaveURL(`${invitationUrl(p1.slug, privateInvitation.id)}/respond`);
     await expect(pp.getByRole("heading", { name: "Respond to this invitation", level: 1 })).toBeVisible();
