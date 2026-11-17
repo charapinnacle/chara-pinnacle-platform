@@ -82,7 +82,10 @@ test.describe("Find Workers visibility (FR-Q1)", () => {
     await page.keyboard.press("Space");
     const dialog = page.getByRole("dialog", { name: "Show your card in Find Workers?" });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("region", { name: "Consent wording" })).toContainText("worker search");
+    const wording = dialog.getByRole("region", { name: "Consent wording" });
+    await expect(wording).toContainText("worker search");
+    await expect(wording).not.toContainText("##");
+    await expect(wording.getByRole("heading", { name: "What this document will cover", level: 3 })).toBeVisible();
     await expect(dialog.getByRole("link", { name: /Worker visibility consent, version \d+/ })).toHaveAttribute(
       "href",
       "/en/legal/worker-visibility-consent",

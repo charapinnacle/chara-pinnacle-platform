@@ -11,11 +11,31 @@ import { LegalLink } from "@/components/forms/text-link";
 import { setCardSections, setWorkerVisibility } from "@/lib/actions/worker-visibility";
 import type { CardSections } from "@/lib/dal/worker-visibility";
 import { formatDate } from "@/lib/i18n/format";
+import { parseLegalBody } from "@/lib/public/legal-body";
 import { isRedirectError } from "@/lib/redirect-error";
 import { displayTitle } from "@/lib/validation/consents";
 
 const VISIBILITY_FAILED = "Your Find Workers card was not changed";
 const SECTIONS_FAILED = "Your card sections were not changed";
+
+// The consent text as the legal pages render it: "## " lines as headings, the rest as paragraphs, all as text.
+export function ConsentWording({ body }: { body: string }) {
+  return (
+    <blockquote className="grid gap-2">
+      {parseLegalBody(body).map((block, index) =>
+        block.kind === "heading" ? (
+          <h3 key={index} className="font-semibold">
+            {block.text}
+          </h3>
+        ) : (
+          <p key={index} className="whitespace-pre-line wrap-anywhere">
+            {block.text}
+          </p>
+        ),
+      )}
+    </blockquote>
+  );
+}
 
 export type VisibilityConsent = { slug: string; version: number; title: string; body: string; isDraft: boolean };
 
@@ -223,7 +243,7 @@ export function FindWorkersSection({ optedIn, hiddenByAccount, visibleSince: sin
             aria-label="Consent wording"
             className="max-h-48 overflow-y-auto rounded-lg border bg-secondary p-4 text-small leading-relaxed"
           >
-            <blockquote className="whitespace-pre-line">{consent.body}</blockquote>
+            <ConsentWording body={consent.body} />
           </div>
           <p className="flex flex-wrap items-center gap-2 text-small">
             <LegalLink slug={consent.slug} newTabLabel="(opens in a new tab)">
