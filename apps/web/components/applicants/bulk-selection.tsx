@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
-import { Checkbox } from "@/components/forms/checkbox-field";
+import { Checkbox } from "@/components/forms/checkbox";
 import type { ApplicantRow } from "@/lib/dal/applicant-list";
 
 export type SelectableRow = { id: string; name: string; status: ApplicantRow["status"] };
