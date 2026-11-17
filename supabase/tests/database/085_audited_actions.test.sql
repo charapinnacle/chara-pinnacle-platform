@@ -324,8 +324,8 @@ $$;
 select is_empty($$select * from pg_temp.unaudited()$$, 'AC8: every staff-gated function that is not read-only calls the audit function');
 select is(
   pg_temp.audited(),
-  array['admin_decide_partner', 'admin_delete_direct_hiring_rule', 'admin_record_plan_price', 'admin_remove_limit_override', 'admin_set_limit_override', 'admin_set_organization_type', 'admin_set_plan_feature', 'admin_set_plan_limit', 'admin_set_report_status', 'admin_set_retention_policy', 'admin_set_setting', 'admin_update_plan', 'admin_update_plan_bundle', 'admin_upsert_direct_hiring_rule', 'decide_appeal', 'grant_platform_role', 'moderate_job', 'moderation_decide', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
-  'AC8: the audited functions are the 25 that exist; the allowlist holds the read-only ones'
+  array['admin_decide_partner', 'admin_delete_direct_hiring_rule', 'admin_get_reported_message', 'admin_record_plan_price', 'admin_remove_limit_override', 'admin_set_limit_override', 'admin_set_organization_type', 'admin_set_plan_feature', 'admin_set_plan_limit', 'admin_set_report_status', 'admin_set_retention_policy', 'admin_set_setting', 'admin_update_plan', 'admin_update_plan_bundle', 'admin_upsert_direct_hiring_rule', 'decide_appeal', 'grant_platform_role', 'moderate_job', 'moderation_decide', 'publish_legal_document', 'reinstate_organization', 'reinstate_user', 'reset_mfa', 'revoke_platform_role', 'suspend_organization', 'suspend_user']::name[],
+  'AC8: the audited functions are the 26 that exist; the allowlist holds the read-only ones'
 );
 create function public.unaudited_admin_function() returns void
 language plpgsql security definer set search_path = ''
