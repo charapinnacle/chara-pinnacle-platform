@@ -127,6 +127,7 @@ export default defineConfig({
         "**/candidate-submissions.spec.ts",
         "**/submission-pipeline.spec.ts",
         "**/commitment-reconsent.spec.ts",
+        "**/find-employers.spec.ts",
       ],
     },
     {
@@ -589,13 +590,21 @@ export default defineConfig({
       testMatch: "**/commitment-reconsent.spec.ts",
       dependencies: ["pipeline-release"],
     },
+    // Find Employers (FR-L3, V53) sets releases 2a and 2b for the whole database and withdraws search_employers for a
+    // moment, so it follows the outdated commitment.
+    {
+      name: "find-employers-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/find-employers.spec.ts",
+      dependencies: ["commitment-reconsent-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["commitment-reconsent-release"],
+      dependencies: ["find-employers-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

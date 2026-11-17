@@ -183,7 +183,10 @@ describe("the features of Phase 2 on a card (FR-L5 AC7)", () => {
     ]);
     const partner = { ...PARTNER_BASIC, features: ["job_order_access", "employer_discovery", "worker_search", "analytics_basic"] };
     expect(planCard(partner, "staffing_company", ["release_partner_directories"]).features).toEqual([]);
-    expect(planCard(partner, "staffing_company", ["release_job_orders"]).features).toEqual(["Job order access"]);
+    expect(planCard(partner, "staffing_company", ["release_job_orders"]).features).toEqual([
+      "Job order access",
+      "Find employers by destination and industry",
+    ]);
   });
 
   it("says on no card that a plan verifies a company or raises it in search", () => {

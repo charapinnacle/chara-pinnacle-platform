@@ -128,13 +128,15 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
     { path: "partners/staffing", label: "Staffing partners" },
   ];
   const jobOrders = { path: "job-orders", label: "Job orders" };
+  const findCompanies = { path: "companies", label: "Find companies" };
   const three = ["release_partner_directories", "release_job_orders", "release_find_workers"] as const;
   const combinations: ReleaseSwitch[][] = Array.from({ length: 8 }, (_, bits) => three.filter((_, index) => bits & (1 << index)));
 
-  it("links the two partner directories exactly while release 2a is on and Job orders while release 2b is on, for every combination of the three switches", () => {
+  it("links the two partner directories exactly while release 2a is on and Find companies and Job orders while release 2b is on, for every combination of the three switches", () => {
     for (const released of combinations) {
       const { links, later } = networkMenu(released);
       const live = [
+        ...(released.includes("release_job_orders") ? [findCompanies] : []),
         ...(released.includes("release_partner_directories") ? directories : []),
         ...(released.includes("release_job_orders") ? [jobOrders] : []),
       ];
@@ -147,9 +149,11 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
     expect(networkFeatures.map(({ label }) => label)).toEqual(order);
     expect(networkMenu([]).later).toEqual(order);
     const all = networkMenu([...three, "release_candidate_submissions", "release_messaging"]);
-    expect(all.links).toEqual([...directories, jobOrders]);
-    expect(all.later).toEqual(["Find workers", "Request workers", "Find companies", "Workforce corridors"]);
-    expect(networkFeatures.filter(({ path }) => path !== null).map(({ path }) => path)).toEqual([...directories, jobOrders].map(({ path }) => path));
+    expect(all.links).toEqual([findCompanies, ...directories, jobOrders]);
+    expect(all.later).toEqual(["Find workers", "Request workers", "Workforce corridors"]);
+    expect(networkFeatures.filter(({ path }) => path !== null).map(({ path }) => path)).toEqual(
+      [findCompanies, ...directories, jobOrders].map(({ path }) => path),
+    );
   });
 
   it("offers a worker none of the network's pages, and a company and a visitor every released one", () => {
@@ -160,6 +164,8 @@ describe("the network items of the menu (FR-L5 AC4)", () => {
     expect(labels(forAccountKind(explore, null))).toEqual(labels(explore));
     const withJobOrders = [...menuLinks, ...networkMenu(["release_partner_directories", "release_job_orders"]).links];
     expect(labels(forAccountKind(withJobOrders, "worker"))).not.toContain("Job orders");
+    expect(labels(forAccountKind(withJobOrders, "worker"))).not.toContain("Find companies");
     expect(labels(forAccountKind(withJobOrders, "company"))).toContain("Job orders");
+    expect(labels(forAccountKind(withJobOrders, "company"))).toContain("Find companies");
   });
 });
