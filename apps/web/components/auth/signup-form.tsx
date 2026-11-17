@@ -97,6 +97,7 @@ export function SignupForm({ documents, attestationWording, invitation, preselec
 
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-6"
       onSubmit={(event) => handleSubmit(onSubmit)(event)}
