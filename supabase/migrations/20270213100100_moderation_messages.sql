@@ -1449,6 +1449,51 @@ $$;
 revoke all on function public.list_messages(uuid, timestamptz, uuid, integer) from public, anon, authenticated, service_role;
 grant execute on function public.list_messages(uuid, timestamptz, uuid, integer) to authenticated;
 
+-- list_conversation_connections of 20270211100000_connection_actions.sql with the moderation of its typed message: the
+-- connection of a hidden message leaves the other side as the message does (its vacancy or requirement would otherwise
+-- still be read there) and stays with the sending side. Everything else is unchanged.
+create or replace function public.list_conversation_connections(p_conversation uuid)
+returns table (
+  id uuid, message_id uuid, kind public.connection_kind, status public.connection_status, created_at timestamptz,
+  status_changed_at timestamptz, sent_by_me boolean, job_id uuid, job_title text, job_city text, job_country_code text,
+  job_open boolean, requirement_id uuid, requirement_title text, occupation_id text, occupation_label text,
+  quantity integer, destination_country text, start_date date
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := private.connection_caller();
+  v_row public.conversations := private.participant_conversation(p_conversation);
+  v_side uuid := (select s.organization_id from private.conversation_side(p_conversation) s);
+begin
+  return query
+  select c.id, m.id, c.kind, c.status, c.created_at, c.status_changed_at,
+    v_side is not null and c.from_organization_id = v_side,
+    j.id, j.title, j.city, j.country_code,
+    coalesce(j.status = 'open' and j.moderation_state = 'visible' and j.deleted_at is null, false),
+    r.id, r.title, o.occupation_id, oc.label, o.quantity, r.country_code, r.start_date
+  from public.connections c
+  left join public.messages m on m.connection_id = c.id
+  left join public.jobs j on j.id = c.job_id
+  left join public.workforce_requirements r on r.id = c.requirement_id
+  left join lateral (
+    select x.occupation_id, x.quantity from public.requirement_occupations x where x.requirement_id = r.id
+    order by x.quantity desc, x.occupation_id limit 1
+  ) o on true
+  left join public.occupations oc on oc.code = o.occupation_id
+  where c.conversation_id = v_row.id
+    and (m.moderation_state is distinct from 'hidden' or c.from_organization_id is not distinct from v_side)
+  order by c.created_at desc, c.id
+  limit 100;
+end;
+$$;
+
+revoke all on function public.list_conversation_connections(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.list_conversation_connections(uuid) to authenticated;
+
 -- Effects on contact requests ----------------------------------------------------------------------------------------------
 
 -- respond_to_contact_request of 20270210100000: a hidden request is no longer the worker's to answer (the same

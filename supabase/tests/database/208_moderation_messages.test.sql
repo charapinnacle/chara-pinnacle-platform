@@ -1,5 +1,5 @@
 begin;
-select plan(62);
+select plan(64);
 
 \ir apply_fixture.inc
 
@@ -118,6 +118,12 @@ select pg_temp.read_as(:'mem', format('select id::text from public.send_message(
 select pg_temp.read_as(:'wa', format('select id::text from public.send_message(%L, %L)', :'c_app', 'I will not pay, stop asking me.'),
   'aal1') as wa_msg \gset
 select pg_temp.read_as(:'adm', format('select id::text from public.send_message(%L, %L)', :'c_app', 'When can you start?')) as adm_msg \gset
+
+-- The member's message carries an invitation to apply (V71), whose connection hiding the message takes along.
+insert into public.connections (kind, from_organization_id, to_user_id, conversation_id, job_id, created_by)
+values ('invite_to_job', :'acme', :'wa', :'c_app', :'job', :'mem')
+returning id as fee_conn \gset
+update public.messages set connection_id = :'fee_conn' where id = :'fee_msg';
 
 -- Contact requests: Acme to W1 (sent by the member), Beta to W2.
 insert into public.contact_requests (organization_id, worker_user_id, card_id, sent_by, message, job_id, expires_at)
@@ -293,6 +299,12 @@ select is(
 select is(
   pg_temp.read_as(:'wa', format('select coalesce(sum(unread), 0)::text from public.my_unread_counts() where conversation_id = %L', :'c_app'), 'aal1'),
   '1', 'the hidden message no longer counts as unread for the candidate');
+select is(
+  pg_temp.read_as(:'wa', format('select count(*)::text from public.list_conversation_connections(%L)', :'c_app'), 'aal1'),
+  '0', 'the other side no longer reads the connection of the hidden message (V71)');
+select is(
+  pg_temp.read_as(:'mem', format('select id::text from public.list_conversation_connections(%L)', :'c_app'), 'aal1'),
+  :'fee_conn', 'the sending side still reads the connection of its hidden message (V71)');
 select is(pg_temp.report(:'wa', 'message', :'fee_msg', 'harassment'), 'P0002|CHARA_NOT_FOUND|',
   'a hidden message is not reported again');
 
