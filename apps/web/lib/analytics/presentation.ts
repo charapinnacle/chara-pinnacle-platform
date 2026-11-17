@@ -21,6 +21,7 @@ export function parsePeriod(raw: unknown): AnalyticsPeriod {
 
 export const analyticsMetrics = [
   "profile_views",
+  "inquiries",
   "invitations",
   "responses",
   "selections",
@@ -34,6 +35,7 @@ type Side = "partner" | "employer";
 const metricLabels: Record<Side, Record<AnalyticsMetric, string>> = {
   partner: {
     profile_views: "Profile views",
+    inquiries: "Inquiries received",
     invitations: "Invitations received",
     responses: "Responses sent",
     selections: "Times selected",
@@ -42,6 +44,7 @@ const metricLabels: Record<Side, Record<AnalyticsMetric, string>> = {
   },
   employer: {
     profile_views: "Profile views",
+    inquiries: "Inquiries sent",
     invitations: "Invitations sent",
     responses: "Responses received",
     selections: "Partners selected",
@@ -61,6 +64,11 @@ export function metricLabel(type: OrganizationType, metric: AnalyticsMetric): st
 // An employer has no partner profile, so no profile views.
 export function shownMetric(type: OrganizationType, metric: AnalyticsMetric): boolean {
   return metric !== "profile_views" || type !== "employer";
+}
+
+// Profile views and inquiries name no requirement, so they have no cell by occupation.
+export function hasDimension(metric: AnalyticsMetric, dimension: "country" | "occupation"): boolean {
+  return dimension === "country" || (metric !== "profile_views" && metric !== "inquiries");
 }
 
 // A figure as the database returns it, suppressed when value is null.

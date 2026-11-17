@@ -10,6 +10,7 @@ import {
   analyticsFileName,
   analyticsPeriods,
   fewerThanText,
+  hasDimension,
   metricLabel,
   periodLabels,
   type AnalyticsFigure,
@@ -98,6 +99,7 @@ export function AnalyticsView(props: AnalyticsViewProps) {
         <>
           <Breakdown
             id="by-country"
+            dimension="country"
             title="By country"
             description="The country of the company that viewed your profile or acted with you."
             rowHeader="Country"
@@ -106,6 +108,7 @@ export function AnalyticsView(props: AnalyticsViewProps) {
           />
           <Breakdown
             id="by-occupation"
+            dimension="occupation"
             title="By occupation"
             description="The occupations of the workforce requirement. A requirement for several occupations counts in each."
             rowHeader="Occupation"
@@ -201,10 +204,17 @@ function Totals({ organization, totals, fewerThan }: AnalyticsViewProps) {
   );
 }
 
-type BreakdownProps = AnalyticsViewProps & { id: string; title: string; description: string; rowHeader: string; rows: BreakdownRow[] };
+type BreakdownProps = AnalyticsViewProps & {
+  id: string;
+  dimension: "country" | "occupation";
+  title: string;
+  description: string;
+  rowHeader: string;
+  rows: BreakdownRow[];
+};
 
-function Breakdown({ id, title, description, rowHeader, rows, totals, organization, fewerThan }: BreakdownProps) {
-  const metrics: AnalyticsMetric[] = totals.map((figure) => figure.metric);
+function Breakdown({ id, dimension, title, description, rowHeader, rows, totals, organization, fewerThan }: BreakdownProps) {
+  const metrics: AnalyticsMetric[] = totals.map((figure) => figure.metric).filter((metric) => hasDimension(metric, dimension));
   return (
     <Card as="section" padding="lg" elevated className="content-start gap-4">
       <div className="grid gap-0.5">
