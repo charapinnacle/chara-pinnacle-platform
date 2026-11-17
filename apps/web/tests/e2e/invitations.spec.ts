@@ -148,8 +148,8 @@ test.describe("Inviting partners to a requirement (FR-O1 AC12, FR-M3 AC7)", () =
     await inviteSelected.click();
     await expect(page.getByText("Select at least one partner to invite.", { exact: true })).toBeVisible();
 
-    await page.getByRole("checkbox", { name: `Invite ${q1.displayName}` }).check();
-    await page.getByRole("checkbox", { name: `Invite ${q2.displayName}` }).check();
+    await page.getByRole("checkbox", { name: `Invite ${q1.displayName}`, exact: true }).check();
+    await page.getByRole("checkbox", { name: `Invite ${q2.displayName}`, exact: true }).check();
     await expect(bar).toHaveText("2 selected · 1 of 3 invitations used");
     await expect(inviteSelected).toHaveText("Invite selected (2)");
     await expectAccessibleAtBothWidths(page);
