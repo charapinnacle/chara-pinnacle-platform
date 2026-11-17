@@ -23,6 +23,14 @@ where kind in (
   'submission_request', 'submission_request_signup', 'submission_approved', 'submission_withdrawn', 'submission_stage_changed'
 );
 
+-- data_export_ready (2a, V29) is mandatory and waits for its own release: without this a user saw "Data exports" under
+-- Always sent before any export could be requested.
+update private.notification_kinds set release_key = 'release_data_export' where kind = 'data_export_ready';
+
+-- Since V54 the follower digest names job orders as well as vacancies; "openings" covers both and still reads right for a
+-- worker, whose digest never holds a job order.
+update private.notification_kinds set label = 'New openings from companies you follow' where kind = 'followed_company_activity';
+
 -- The function of 20261126100000_partner_review_emails.sql with one change: a kind whose release is off is left out.
 create or replace function public.notification_kind_catalogue() returns table (
   kind text,

@@ -182,7 +182,7 @@ test.describe("in-app notifications (FR-T1)", () => {
     // New applications and the follower digest that every account may receive (FR-L4, V24); the kinds of release 2b wait
     // for their release (V59).
     await expect(section.getByRole("switch")).toHaveCount(2);
-    await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "New openings from companies you follow" })).toBeChecked();
     await expect(section.getByText("Workforce requirement closing reminders")).toHaveCount(0);
     for (const label of ["Vacancy hidden by moderation", "Failed payments", "Team invitations", "New versions of legal documents"]) {
       const row = section.getByRole("listitem").filter({ hasText: label });
@@ -275,7 +275,7 @@ test.describe("in-app notifications (FR-T1)", () => {
     const section = page.locator("#email-notifications");
     await expect(section.getByRole("listitem").filter({ hasText: "Application updates" })).toContainText("Always sent");
     await expect(page.getByRole("switch")).toHaveCount(1);
-    const digest = section.getByRole("switch", { name: "New vacancies of companies you follow" });
+    const digest = section.getByRole("switch", { name: "New openings from companies you follow" });
     await expect(digest).toBeChecked();
     await waitForHydration(digest);
     await digest.click();

@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(28);
 
 \ir organizations_fixture.inc
 
@@ -31,7 +31,7 @@ language sql as $$
     $q$select coalesce(jsonb_agg(jsonb_build_object('kind', kind, 'mandatory', mandatory)), '[]')::text from public.notification_kind_catalogue()$q$)::jsonb)
     as c (kind text, mandatory boolean)
   join private.notification_kinds k on k.kind = c.kind
-  where k.release_key is not null
+  where k.release_key in ('release_job_orders', 'release_candidate_submissions')
 $$;
 
 create function pg_temp.prefs_as(p_user uuid, p_kinds text) returns text
@@ -76,16 +76,21 @@ select set_eq(
 );
 select is(
   (select string_agg(concat_ws(':', kind, mandatory, default_email), ',' order by kind) from private.notification_kinds
-   where release_key is not null and (mandatory or not default_email)),
+   where release_key in ('release_job_orders', 'release_candidate_submissions') and (mandatory or not default_email)),
   'job_order_match:f:f,submission_request:t:t,submission_request_signup:t:t',
   'catalogue: of the 2b kinds only the submission requests are mandatory and only job_order_match is off by default (DATA_MODEL.md section 9)'
 );
 select is(
-  (select string_agg(kind, ',' order by kind) from private.notification_kinds where release_key is null and kind in (
+  (select string_agg(kind || '=' || coalesce(release_key, '-'), ',' order by kind) from private.notification_kinds where kind in (
     'partner_approved', 'licence_expiring', 'listing_confirmation_due', 'followed_company_activity', 'moderation_decision',
     'data_export_ready', 'application_received', 'status_changed')),
-  'application_received,data_export_ready,followed_company_activity,licence_expiring,listing_confirmation_due,moderation_decision,partner_approved,status_changed',
-  'catalogue: the Phase 1 and 2a kinds name no release of their own'
+  'application_received=-,data_export_ready=release_data_export,followed_company_activity=-,licence_expiring=-,'
+  || 'listing_confirmation_due=-,moderation_decision=-,partner_approved=-,status_changed=-',
+  'catalogue: the Phase 1 and 2a kinds name no release of their own, except data_export_ready, which waits for release_data_export'
+);
+select is(
+  (select label from private.notification_kinds where kind = 'followed_company_activity'), 'New openings from companies you follow',
+  'catalogue: the follower digest label covers the vacancies and the job orders it names'
 );
 select throws_ok(
   $$update private.notification_kinds set release_key = 'release_nothing' where kind = 'job_order_match'$$, '23503', null,
@@ -210,6 +215,18 @@ select is(
   (select count(*) from public.notifications where user_id = :'em1' and kind = 'requirement_closing_soon')
     || ',' || (select count(*) from pgmq.q_notifications q where q.message ->> 'user_id' = :'em1' and q.message ->> 'kind' = 'requirement_closing_soon'),
   '1,1', 'AC6: the same key twice is one row and one message'
+);
+
+-- data_export_ready: listed under Always sent only while release_data_export is on.
+select pg_temp.release('release_data_export', false);
+select is(
+  pg_temp.val_as(:'wk1', 'aal1', $q$select count(*)::text from public.notification_kind_catalogue() where kind = 'data_export_ready'$q$),
+  '0', 'release_data_export off: the data export notice is not listed'
+);
+select pg_temp.release('release_data_export', true);
+select is(
+  pg_temp.val_as(:'wk1', 'aal1', $q$select kind || ':' || mandatory from public.notification_kind_catalogue() where kind = 'data_export_ready'$q$),
+  'data_export_ready:true', 'release_data_export on: the data export notice is listed as always sent'
 );
 
 -- Anonymous ------------------------------------------------------------------------------------------------------------
