@@ -28,12 +28,14 @@ type SendContactRequestProps = {
   cardId: string;
   // Names the card for assistive technology, which hears many Send buttons on one page.
   cardLabel: string;
+  // The destination the card's rules were read for, so the send checks the same ones (null: the organisation's country).
+  destination: string | null;
   vacancies: readonly { id: string; title: string }[];
 };
 
 // "Send contact request" on a Find Workers card (FR-Q3 AC12, SOP step Send): a short message and, for an employer, one of
 // its open vacancies. The worker sees the organisation; the worker's name reaches it only if the worker accepts.
-export function SendContactRequest({ slug, cardId, cardLabel, vacancies }: SendContactRequestProps) {
+export function SendContactRequest({ slug, cardId, cardLabel, destination, vacancies }: SendContactRequestProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   return (
@@ -42,13 +44,13 @@ export function SendContactRequest({ slug, cardId, cardLabel, vacancies }: SendC
         Send contact request
       </FormButton>
       <ModalDialog open={open} onClose={close} title="Send a contact request">
-        <SendForm slug={slug} cardId={cardId} vacancies={vacancies} onClose={close} />
+        <SendForm slug={slug} cardId={cardId} destination={destination} vacancies={vacancies} onClose={close} />
       </ModalDialog>
     </>
   );
 }
 
-function SendForm({ slug, cardId, vacancies, onClose }: Omit<SendContactRequestProps, "cardLabel"> & { onClose: () => void }) {
+function SendForm({ slug, cardId, destination, vacancies, onClose }: Omit<SendContactRequestProps, "cardLabel"> & { onClose: () => void }) {
   const form = useForm<ContactRequestFormInput, undefined, ContactRequestFormOutput>({
     resolver: zodResolver(contactRequestFormSchema),
     defaultValues: { message: "", jobId: "" },
@@ -60,7 +62,7 @@ function SendForm({ slug, cardId, vacancies, onClose }: Omit<SendContactRequestP
 
   function onSubmit(values: ContactRequestFormOutput) {
     return submit(
-      () => sendContactRequest(slug, cardId, values),
+      () => sendContactRequest(slug, cardId, values, destination),
       (result) => {
         if (!result.done) return;
         onClose();

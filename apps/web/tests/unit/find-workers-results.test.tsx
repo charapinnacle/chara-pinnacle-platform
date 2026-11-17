@@ -46,7 +46,7 @@ const names = {
   industries: {},
 };
 const vacancies = [{ id: "44444444-4444-4444-8444-444444444444", title: "Welder MIG/MAG" }];
-const context = { lang: "en", slug: "acme", names, canManage: true, partnerSegment: null, requirementId: null, vacancies };
+const context = { lang: "en", slug: "acme", names, canManage: true, partnerSegment: null, requirementId: null, requirementCountry: null, vacancies };
 
 const render = async (element: React.ReactNode) => {
   const { prelude } = await prerender(element);

@@ -64,6 +64,7 @@ export default async function FindWorkersPage({ params, searchParams }: PageProp
     canManage,
     partnerSegment: organization.type === "employer" ? null : partnerSegments[organization.type],
     requirementId: forRequirement?.id ?? null,
+    requirementCountry: forRequirement?.countryCode ?? null,
     vacancies,
   };
 

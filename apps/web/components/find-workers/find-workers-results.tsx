@@ -34,6 +34,8 @@ export type FindWorkersContext = {
   canManage: boolean;
   partnerSegment: "recruitment" | "staffing" | null;
   requirementId: string | null;
+  // The requirement's country, which list_saved_worker_cards reads the rules for.
+  requirementCountry: string | null;
   // The open vacancies a contact request may invite the worker to (an employer's; none for a partner).
   vacancies: readonly OpenVacancy[];
 };
@@ -68,9 +70,10 @@ function ContactRule({ lang, directContact, notice, country, countryName }: {
 // Contacting the worker (FR-Q3 AC12): "Send contact request" while the rules allow direct contact and the organisation may
 // send one; once a request stops it, the date it was sent and how it stands, linked to the organisation's requests. Once
 // the worker accepted, Invite to job sends an invitation to apply in their conversation (FR-P2 step Invite to job, V71).
-function ContactAction({ card, directContact, contact, context }: {
+function ContactAction({ card, directContact, destination, contact, context }: {
   card: WorkerCardData;
   directContact: DirectContact;
+  destination: string | null;
   contact: CardContactState | undefined;
   context: FindWorkersContext;
 }) {
@@ -89,12 +92,14 @@ function ContactAction({ card, directContact, contact, context }: {
     );
   }
   if (directContact !== "allowed") return null;
-  return <SendContactRequest slug={slug} cardId={card.card_id} cardLabel={cardLabel(card, names)} vacancies={vacancies} />;
+  return <SendContactRequest slug={slug} cardId={card.card_id} cardLabel={cardLabel(card, names)} destination={destination} vacancies={vacancies} />;
 }
 
 type ResultCardProps = {
   card: WorkerCardData;
   directContact: DirectContact;
+  // The destination the rules of directContact were read for (null: the organisation's country).
+  destination: string | null;
   notice: string;
   matched: string | null;
   saved: boolean;
@@ -102,7 +107,7 @@ type ResultCardProps = {
   context: FindWorkersContext;
 };
 
-function ResultCard({ card, directContact, notice, matched, saved, contact, context }: ResultCardProps) {
+function ResultCard({ card, directContact, destination, notice, matched, saved, contact, context }: ResultCardProps) {
   const { lang, slug, names, requirementId } = context;
   return (
     <li className="grid gap-3">
@@ -116,7 +121,7 @@ function ResultCard({ card, directContact, notice, matched, saved, contact, cont
         countryName={names.countries[card.current_country] ?? card.current_country}
       />
       <div className="flex flex-wrap items-center gap-3">
-        <ContactAction card={card} directContact={directContact} contact={contact} context={context} />
+        <ContactAction card={card} directContact={directContact} destination={destination} contact={contact} context={context} />
         <SaveCardButton slug={slug} cardId={card.card_id} requirementId={requirementId} saved={saved} cardLabel={cardLabel(card, names)} />
       </div>
     </li>
@@ -235,6 +240,7 @@ export async function FindWorkersResults({ organizationId, filters, context, lan
               key={card.card_id}
               card={card}
               directContact={directContact}
+              destination={filters.destination ?? null}
               notice={notice}
               matched={matchedOnText(matchedOn, { ...filters, languages })}
               saved={saved.has(card.card_id)}
@@ -275,6 +281,7 @@ function SavedCard({ saved, contact, context }: { saved: SavedWorkerCard; contac
     <ResultCard
       card={saved.card}
       directContact={saved.directContact}
+      destination={context.requirementCountry}
       notice={saved.notice}
       matched={null}
       saved
