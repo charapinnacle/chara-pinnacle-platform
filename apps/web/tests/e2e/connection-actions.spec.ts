@@ -123,6 +123,17 @@ test.describe("Structured connection actions (FR-P2)", () => {
     );
     expect(row).toEqual({ kind: "inquiry", status: "sent" });
 
+    const reply = "Yes, we can send twenty welders from April.";
+    execute(
+      `insert into public.messages (conversation_id, sender_user_id, sender_organization_id, body)
+       select c.conversation_id, m.user_id, c.to_organization_id, ${literal(reply)}
+       from public.connections c join public.organization_members m on m.organization_id = c.to_organization_id and m.role = 'owner'
+       where c.from_organization_id = ${literal(acme.id)} and c.to_organization_id = ${literal(rekrut.id)}`,
+    );
+    await expect(thread).toContainText(reply);
+    await expect(thread).toContainText("Answered");
+    await expect(thread).not.toContainText("Waiting for an answer");
+
     await page.goto(profileUrl(rekrut.slug));
     const again = page.getByRole("button", { name: `Send inquiry to ${rekrut.name}` });
     await waitForHydration(again);
