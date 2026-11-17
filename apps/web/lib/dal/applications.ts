@@ -134,6 +134,7 @@ function refusal(error: PostgrestError): ApplyRefusal {
     case "CHARA_NOT_FOUND":
       return { kind: "document_not_found" };
     case "CHARA_FORBIDDEN":
+      if (error.details === "direct_hiring_blocked") return { kind: "direct_hiring_blocked" };
       return error.details === "account_not_active" ? { kind: "account_inactive" } : { kind: "not_candidate" };
     default:
       return { kind: "fault", reference: logFault("Apply to vacancy", error) };

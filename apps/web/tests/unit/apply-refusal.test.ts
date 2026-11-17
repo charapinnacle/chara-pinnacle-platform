@@ -51,6 +51,14 @@ describe("D89, FR-D1 AC12: every apply refusal has its own message the candidate
     });
   });
 
+  it("a direct application the direct-hiring rules block says so and leads to licensed partners (FR-Q5 AC6)", () => {
+    expect(answer({ kind: "direct_hiring_blocked" })).toEqual({
+      message:
+        "Direct hiring from your country to the country of this vacancy is not allowed, so you cannot apply directly. A licensed recruitment partner can help you.",
+      links: [{ label: "Find licensed recruitment partners", href: "/en/partners/recruitment" }],
+    });
+  });
+
   it("an account that is not a candidate and one in closure are told apart, the second with the way to settings", () => {
     expect(answer({ kind: "not_candidate" })).toEqual({ message: "Only an active candidate account can apply." });
     expect(answer({ kind: "account_inactive" })).toEqual({
