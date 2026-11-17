@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import * as z from "zod";
+import { LegalEntityForm } from "@/components/billing/legal-entity-form";
 import { ChooseKindForm } from "@/components/consent/choose-kind-form";
 import { CommitKind } from "@/components/consent/commit-kind";
 import { ConsentForm } from "@/components/consent/consent-form";
@@ -41,6 +42,7 @@ import {
   homePath,
   mfaPath,
   onboardingPath,
+  organizationProfilePath,
   partnerStepPath,
   whatYouOfferPath,
   whereYouServePath,
@@ -222,8 +224,15 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   const review = await getPartnerReview(organization.id);
   if (!review) throw new Error("A partner organisation has no review state");
   if (!submittable(review.status)) {
-    // A listed or declined partner is past onboarding: its dashboard says where it stands.
-    if (!awaitingReview(review.status)) redirect(homePath(lang, "company"));
+    // A listed or declined partner is past onboarding: its dashboard says where it stands, and an owner or admin keeps the
+    // company details on the company profile page.
+    if (!awaitingReview(review.status)) {
+      redirect(
+        step === "company" && organization.role !== "member"
+          ? organizationProfilePath(lang, organization.slug)
+          : homePath(lang, "company"),
+      );
+    }
     return (
       <PartnerReviewPending
         lang={lang}
@@ -262,8 +271,6 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
     if (aal !== "aal2") redirect(mfaPath(lang, partnerStepPath(lang, "company")));
     const [profile, billing] = await Promise.all([getOrganizationProfile(organization.id), getBillingState(organization.id)]);
     if (!profile) throw new Error("The organisation has no profile");
-    // The identifier is shown only, as on the profile page of an employer: the owner records it on the billing page, which
-    // a partner gets with V15, so until then a correction goes through support.
     const identifier = billing.identifier
       ? `${identifierKindLabels[billing.identifier_kind ?? ""] ?? "Identifier"}: ${billing.identifier}.`
       : "No company registration number or VAT number is recorded yet.";
@@ -289,8 +296,16 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
             {identifier}{" "}
             {billing.identifier_locked
               ? "It cannot be changed once a payment has been started for the company."
-              : "The owner corrects it on the billing page, or contact support."}
+              : organization.role === "owner"
+                ? "You correct it here."
+                : "The owner corrects it on this page."}
           </p>
+          {!billing.identifier_locked && organization.role === "owner" ? (
+            <LegalEntityForm
+              slug={organization.slug}
+              defaults={{ identifier: billing.identifier ?? "", identifierKind: billing.identifier_kind ?? "" }}
+            />
+          ) : null}
         </section>
         <TextLink standalone href={partnerStepPath(lang, "ready")}>
           Back to Ready

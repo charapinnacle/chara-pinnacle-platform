@@ -38,6 +38,7 @@ import {
   membersPath,
   mfaPath,
   onboardingPath,
+  organizationProfilePath,
   partnerStepPath,
   workforceProfilePath,
   workforceProfilePreviewPath,
@@ -317,7 +318,16 @@ export async function PartnerDashboard({ lang, user, organization }: PartnerDash
       <PageHeader
         title={dashboardQuestions[type]}
         description={organization.displayName}
-        actions={canManage ? <LinkButton href={action.href}>{action.label}</LinkButton> : null}
+        actions={
+          canManage ? (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+              <TextLink standalone href={organizationProfilePath(lang, slug)}>
+                Company profile
+              </TextLink>
+              <LinkButton href={action.href}>{action.label}</LinkButton>
+            </div>
+          ) : null
+        }
       />
 
       <Panel promise={review} errorTitle="The review state could not be loaded">
