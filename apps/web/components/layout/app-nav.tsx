@@ -8,7 +8,7 @@ import { MenuDisclosure } from "@/components/layout/menu-disclosure";
 import { NavLink } from "@/components/layout/nav-link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { accountLinks, currentOrganization, isGatePage, organizationLinks, workerLinks, type NavOrganization } from "@/lib/app/navigation";
-import { employerDashboardPath } from "@/lib/routes";
+import { companyDashboardPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 export type AppNavProps = {
@@ -39,10 +39,10 @@ export function useAppNavigation({ lang, email, accountKind, organizations, subm
 export function OrganizationList({ lang, organizations, current }: { lang: string; organizations: readonly NavOrganization[]; current: string | undefined }) {
   return (
     <ul className="grid gap-1">
-      {organizations.map(({ slug, displayName }) => (
+      {organizations.map(({ slug, displayName, partnerSegment }) => (
         <li key={slug}>
           <Link
-            href={employerDashboardPath(lang, slug)}
+            href={companyDashboardPath(lang, partnerSegment ?? "employer", slug)}
             aria-current={slug === current ? "true" : undefined}
             className={cn(
               "inline-flex min-h-11 w-full items-center rounded-lg px-3 text-small font-medium [overflow-wrap:anywhere] transition-colors duration-150 hover:bg-secondary",

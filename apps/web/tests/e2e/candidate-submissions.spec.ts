@@ -151,6 +151,12 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await page.getByRole("link", { name: "Submit a candidate" }).click();
     await expect(page).toHaveURL(newUrl(s1.slug, requirement));
     await expect(page.getByRole("heading", { name: "Submit a candidate", level: 1 })).toBeVisible();
+    // The breadcrumb and the logo lead to the partner's own dashboard, not through the employer dashboard.
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link").first()).toHaveAttribute(
+      "href",
+      `/en/dashboard/recruitment?org=${s1.slug}`,
+    );
+    await expect(page.getByRole("link", { name: "Chara Pinnacle" }).first()).toHaveAttribute("href", "/en/dashboard/recruitment");
     await expect(page.getByText("0 of 25 submissions used this month")).toBeVisible();
     await expect(page.getByText(WORKERS_NEVER_PAY)).toBeVisible();
 

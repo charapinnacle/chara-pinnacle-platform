@@ -19,6 +19,8 @@ import {
   submissionsPath,
   workforceProfilePath,
 } from "@/lib/routes";
+import type { OrganizationType } from "@/lib/billing/limits";
+import { segmentOf } from "@/lib/dashboard/partner-dashboard";
 import type { MemberRole } from "@/lib/validation/team";
 
 export type NavIcon =
@@ -178,7 +180,10 @@ export function currentOrganization(
   return organizations.find((organization) => organization.slug === slug) ?? organizations[0];
 }
 
-// The first item of every breadcrumb in an organisation: the organisation, which leads to its dashboard.
-export function organizationCrumb(lang: string, { slug, displayName }: Pick<NavOrganization, "slug" | "displayName">): Crumb {
-  return { label: displayName, href: employerDashboardPath(lang, slug) };
+// The first item of every breadcrumb in an organisation: the organisation, which leads to the dashboard of its type.
+export function organizationCrumb(
+  lang: string,
+  { slug, displayName, type }: Pick<NavOrganization, "slug" | "displayName"> & { type: OrganizationType },
+): Crumb {
+  return { label: displayName, href: companyDashboardPath(lang, segmentOf(type), slug) };
 }

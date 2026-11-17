@@ -205,8 +205,12 @@ describe("the layout of the signed-in area", () => {
       { slug: "manila", displayName: "Manila Skills", role: "owner", roleLabel: "Owner", suspended: false, partnerSegment: "recruitment" },
       { slug: "staff", displayName: "Staff Co", role: "member", roleLabel: "Member", suspended: false, partnerSegment: "staffing" },
     ]);
+    expect(props.homeHref).toBe("/en/dashboard/recruitment");
     navigation.pathname = "/en/org/manila/members";
     const html = renderToStaticMarkup(props.headerActions);
+    expect(html).toContain('href="/en/dashboard/recruitment?org=manila"');
+    expect(html).toContain('href="/en/dashboard/staffing?org=staff"');
+    expect(html).not.toContain("/en/dashboard/employer");
     expect(mainLabels(html)).toEqual(["Organisation", "Workforce profile", "Team", "Billing"]);
     expect(html).toMatch(/<a [^>]*aria-current="page"[^>]*>Team<\/a>/);
     expect(html).not.toContain(">Vacancies<");

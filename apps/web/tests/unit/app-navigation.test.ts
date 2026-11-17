@@ -211,7 +211,12 @@ describe("the pages that finish a step", () => {
 });
 
 describe("the first item of a breadcrumb in an organisation", () => {
-  it("is the name of the organisation, which leads to its dashboard", () => {
-    expect(organizationCrumb("en", acme)).toEqual({ label: "Acme Bau", href: "/en/dashboard/employer?org=acme" });
+  it("is the name of the organisation, which leads to the dashboard of its type", () => {
+    expect(organizationCrumb("en", { ...acme, type: "employer" })).toEqual({ label: "Acme Bau", href: "/en/dashboard/employer?org=acme" });
+    expect(organizationCrumb("en", { slug: "manila", displayName: "Manila Recruit", type: "recruitment_company" })).toEqual({
+      label: "Manila Recruit",
+      href: "/en/dashboard/recruitment?org=manila",
+    });
+    expect(organizationCrumb("en", { slug: "crew", displayName: "Crew Staff", type: "staffing_company" }).href).toBe("/en/dashboard/staffing?org=crew");
   });
 });
