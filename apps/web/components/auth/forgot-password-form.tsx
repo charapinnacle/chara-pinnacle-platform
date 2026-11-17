@@ -22,6 +22,7 @@ export function ForgotPasswordForm({ defaultEmail }: { defaultEmail?: string }) 
 
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-6"
       onSubmit={(event) => handleSubmit((values) => submit(() => requestPasswordReset(values)))(event)}
