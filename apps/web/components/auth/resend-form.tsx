@@ -31,7 +31,7 @@ export function ResendForm() {
   }
 
   return (
-    <form noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
+    <form method="post" noValidate className="grid gap-6" onSubmit={handleSubmit(onSubmit)}>
       {formState.isSubmitSuccessful ? (
         <Notice tone="info" role="status">
           If an account with this email is waiting for confirmation, a new link
