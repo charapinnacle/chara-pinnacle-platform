@@ -9,7 +9,9 @@ async function restricted(code: string) {
   return result.messages.filter((message) => message.ruleId === "no-restricted-syntax");
 }
 
-describe("the Zod import rule", () => {
+// The first lint loads the whole ESLint config with its plugins, which takes longer than the default 5 s when the full
+// suite runs on a busy machine.
+describe("the Zod import rule", { timeout: 30_000 }, () => {
   it.each(['import { z } from "zod";', 'import z from "zod";', 'import { z } from "zod/v4";', 'import z from "zod/v4/classic";'])("refuses %s in application code", async (code) => {
     expect(await restricted(code)).toHaveLength(1);
   });
