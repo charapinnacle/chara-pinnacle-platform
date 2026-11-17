@@ -47,6 +47,9 @@ const linkLabels = {
   content: { label: "Address of the page", description: `A page of ${BRAND_NAME}, for example /en/pricing.` },
   profile: { label: "", description: "" },
   partner_profile: { label: "", description: "" },
+  requirement: { label: "", description: "" },
+  partner_response: { label: "", description: "" },
+  candidate_submission: { label: "", description: "" },
 } as const;
 
 const FAILURE = "The report was not sent";

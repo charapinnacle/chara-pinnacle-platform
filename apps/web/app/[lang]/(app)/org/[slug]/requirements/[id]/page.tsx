@@ -14,8 +14,11 @@ import { RequirementView } from "@/components/requirements/requirement-view";
 import { CapacityToleranceForm } from "@/components/responses/capacity-tolerance-form";
 import { RequirementSubmissions } from "@/components/submissions/requirement-submissions";
 import { RequirementResponses } from "@/components/responses/requirement-responses";
+import { ItemModerationNotice } from "@/components/organization/item-moderation-notice";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { listMyAppeals } from "@/lib/dal/appeals";
 import { getInvitationUsage } from "@/lib/dal/invitations";
+import { getItemModeration } from "@/lib/dal/item-moderation";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getRequirement, getRequirementDurations, listRequirementVacancies, listRequirementVersions } from "@/lib/dal/requirements";
@@ -36,7 +39,8 @@ export const metadata: Metadata = { title: "Workforce requirement", robots: { in
 // (FR-O1, V42) and the partners' responses (FR-O2, V46), the change history of a published requirement (FR-M2 step Edit,
 // V43), and for an owner or admin the capacity tolerance partners' offers must keep within (FR-O2 AC4), and while
 // submissions are released the candidates partners submitted (FR-O5 AC1). A failed read of the responses or the
-// submissions leaves their count out, and of the tolerance its form.
+// submissions leaves their count out, and of the tolerance its form. A requirement hidden by moderation shows the badge,
+// the statement of reasons and the appeal (FR-S1 AC12).
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -45,7 +49,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, durations, vacancies, directories, usage, versions, countries, industries, responses, tolerance, submissions] = await Promise.all([
+  const [requirement, durations, vacancies, directories, usage, versions, countries, industries, responses, tolerance, submissions, moderation] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getRequirementDurations(),
     listRequirementVacancies(organization.id, parsedId.data).catch(() => null),
@@ -59,8 +63,10 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
     submissionsReleased().then((released) =>
       released ? listRequirementSubmissions(organization.id, parsedId.data).catch(() => null) : undefined,
     ),
+    getItemModeration(organization.id, "requirement", parsedId.data),
   ]);
   if (!requirement) notFound();
+  const appeal = moderation?.decision ? await listMyAppeals(moderation.decision.id).catch(() => null) : null;
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
@@ -82,6 +88,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
           />
         }
       />
+      <ItemModerationNotice lang={lang} kind="requirement" effect="It is not in the job order marketplace, and partners cannot respond or submit candidates to it" moderation={moderation} appeal={appeal} />
       <RequirementStatusNotice requirement={requirement} today={today} reminderDays={durations.reminderDays} />
       {manager ? (
         <RequirementStatusActions

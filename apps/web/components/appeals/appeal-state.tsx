@@ -2,10 +2,10 @@ import { AppealButton } from "@/components/appeals/appeal-button";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import type { AppealableDecision } from "@/lib/dal/appeals";
 import { formatDate } from "@/lib/i18n/format";
-import { appealableDecisionLabels, appealStatusLabels, appealStatusTones } from "@/lib/validation/appeal";
+import { appealableDecisionLabel, appealStatusLabels, appealStatusTones } from "@/lib/validation/appeal";
 
-export function decisionSubject(decision: Pick<AppealableDecision, "action" | "title">): string {
-  return `${appealableDecisionLabels[decision.action] ?? "Decision"}: ${decision.title}`;
+export function decisionSubject(decision: Pick<AppealableDecision, "action" | "title" | "targetType">): string {
+  return `${appealableDecisionLabel(decision.action, decision.targetType)}: ${decision.title}`;
 }
 
 // Where an appeal of the decision stands for the person reading it (FR-S1 AC12): under review or decided with the reasons,

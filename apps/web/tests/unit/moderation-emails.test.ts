@@ -85,6 +85,31 @@ describe("moderation_decision email", () => {
 
 // The notices of Phase 1 link to the appeal of the decision once release 2a gives them its id (FR-S1); before it they keep
 // the Complaints and Dispute Process.
+describe("moderation_decision email about a job order, response or submission (V57)", () => {
+  const item = { target_id: "22222222-2222-4222-8222-222222222222", org_slug: "manila-recruit", reasons: REASONS, moderation_action_id: 43 };
+
+  it("a hidden response names it by the title the partner knows, quotes the reasons and links to the appeal and the response", async () => {
+    const email = await renderEmail("moderation_decision", { ...item, target_type: "partner_response", title: "Germany, 10 Welders", decision: "hide" }, SITE);
+    expect(email.subject).toBe("Your response to Germany, 10 Welders was hidden by moderation");
+    expect(email.text).toContain(REASONS);
+    expect(email.text).toContain("the owner or an admin can appeal");
+    expect(hrefs(email.html)).toEqual([`${SITE}${appealPath("en", 43)}`, `${SITE}/en/org/manila-recruit/responses/${item.target_id}`]);
+  });
+
+  it("a requirement shown again offers no appeal and links the requirement", async () => {
+    const email = await renderEmail("moderation_decision", { ...item, target_type: "requirement", title: "Hamburg welders", decision: "unhide" }, SITE);
+    expect(email.subject).toBe("Your requirement Hamburg welders is shown again");
+    expect(email.text).not.toContain("appeal");
+    expect(hrefs(email.html)).toEqual([`${SITE}/en/org/manila-recruit/requirements/${item.target_id}`]);
+  });
+
+  it("a hidden submission links the partner's submissions and never names a candidate", async () => {
+    const email = await renderEmail("moderation_decision", { ...item, target_type: "candidate_submission", title: "Germany, 10 Welders", decision: "hide" }, SITE);
+    expect(email.subject).toBe("Your candidate submission for Germany, 10 Welders was hidden by moderation");
+    expect(hrefs(email.html)).toContain(`${SITE}/en/org/manila-recruit/submissions`);
+  });
+});
+
 describe("vacancy_hidden and account_suspended emails", () => {
   it("link to the appeal when the notice names the decision", async () => {
     const hidden = await renderEmail("vacancy_hidden", { job_title: "Welder", reasons: REASONS, moderation_action_id: 5 }, SITE);

@@ -7,10 +7,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ReportForm } from "@/components/reports/report-form";
 import { getPublicJob } from "@/lib/dal/hiring";
 import { getPartnerProfile } from "@/lib/dal/partner-profile";
-import { isReleased } from "@/lib/dal/release";
+import { isReleased, type ReleaseSwitch } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
-import { reportCategorySchema, reportTargetTypes } from "@/lib/validation/report";
+import { loginPath, reportPath } from "@/lib/routes";
+import { isReportItem, reportCategorySchema, reportTargetTypes, type ReportItemType } from "@/lib/validation/report";
 import { slugSchema } from "@/lib/validation/team";
 
 export const metadata: Metadata = { title: "Report", robots: { index: false } };
@@ -21,7 +22,22 @@ const headings = {
   profile: "Report a profile",
   content: "Report content",
   partner_profile: "Report a company",
+  requirement: "Report a job order",
+  partner_response: "Report a response",
+  candidate_submission: "Report a submission",
 } as const;
+
+// The release each item of the job order network belongs to; while it is off the form is not found.
+const itemReleases = {
+  requirement: "release_job_orders",
+  partner_response: "release_job_orders",
+  candidate_submission: "release_candidate_submissions",
+} as const satisfies Record<ReportItemType, ReleaseSwitch>;
+
+const itemParams = { requirement: "requirement", partner_response: "response", candidate_submission: "submission" } as const satisfies Record<
+  ReportItemType,
+  string
+>;
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? "";
 
@@ -29,7 +45,8 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 // (?job= for a vacancy or a company, ?path= for a page, ?partner= for the slug of a partner profile) and a category to
 // preselect (?category=). A vacancy that is not public is no target: the person then gives a link, and the database
 // refuses what cannot be reported. Candidate profiles are private, so there is a note and no form. A partner profile is
-// reported from its page only, and only while release 2a is on.
+// reported from its page only, and only while release 2a is on. A job order, a response or a submission (?requirement=,
+// ?response=, ?submission=) is reported by a signed-in participant from its page, while its release is on.
 export default async function ReportPage({ params, searchParams }: PageProps<"/[lang]/report">) {
   const [{ lang }, query] = await Promise.all([params, searchParams]);
   const type = z.enum(reportTargetTypes).safeParse(first(query.type));
@@ -52,6 +69,25 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/[
   }
 
   const category = reportCategorySchema.safeParse(first(query.category)).data;
+
+  if (isReportItem(kind)) {
+    const id = z.uuid().safeParse(first(query[itemParams[kind]]));
+    const [released, user] = await Promise.all([isReleased(itemReleases[kind]), getCurrentUser()]);
+    if (!id.success || !released) notFound();
+    return (
+      <PageContainer layout="page" className="grid max-w-3xl gap-8">
+        <PageHeader title={headings[kind]} />
+        {user ? (
+          <ReportForm lang={lang} type={kind} target={id.data} category={category} signedIn />
+        ) : (
+          <p className="text-body">
+            Only the people who take part in it can report it.{" "}
+            <TextLink href={loginPath(lang, reportPath(lang, kind, id.data, category))}>Log in to report it</TextLink>
+          </p>
+        )}
+      </PageContainer>
+    );
+  }
 
   if (kind === "partner_profile") {
     const partner = slugSchema.safeParse(first(query.partner));

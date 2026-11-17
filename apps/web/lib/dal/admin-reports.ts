@@ -2,6 +2,7 @@ import "server-only";
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { adminClient, failure, paged, type Page } from "@/lib/dal/admin";
+import { feeModels } from "@/lib/responses/presentation";
 import { ADMIN_PAGE_SIZE } from "@/lib/validation/admin";
 import type { ReportListFilter, ReportQueueCursor } from "@/lib/validation/report";
 
@@ -21,7 +22,32 @@ type ReportRow = {
   handledAt: string | null;
 };
 
-// The target in context: the vacancy and the organisation it belongs to, or the page. Never a name of a candidate.
+// A job order, response or submission as staff read it to decide (V57): what its organisation wrote, never the
+// candidate. Each field is optional, as each kind has its own.
+const itemContextSchema = z.object({
+  title: z.string().optional(),
+  status: z.string().optional(),
+  visibility: z.string().optional(),
+  workers_needed: z.number().optional(),
+  country_code: z.string().optional(),
+  city_region: z.string().nullable().optional(),
+  skills: z.string().nullable().optional(),
+  requirement_title: z.string().optional(),
+  capacity: z.number().optional(),
+  available_from: z.string().optional(),
+  timeline_note: z.string().nullable().optional(),
+  experience_note: z.string().optional(),
+  fee_model: z.enum(feeModels).optional(),
+  fee_amount: z.number().nullable().optional(),
+  fee_currency: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+});
+
+export type ReportItemContext = z.output<typeof itemContextSchema>;
+
+// The target in context: the vacancy and the organisation it belongs to, the page, or the item of the job order network
+// with the organisation it affects. Never a name of a candidate.
 export type ReportDetail = {
   id: number;
   reference: string;
@@ -48,6 +74,7 @@ export type ReportDetail = {
   overdue: boolean;
   decisionDueAt: string;
   decision: string | null;
+  item: { id: string; moderationState: Enums["job_moderation_state"] | null; context: ReportItemContext } | null;
 };
 
 export type PartnerListing = {
@@ -151,6 +178,13 @@ export async function getReport(id: number): Promise<ReportDetail | null> {
     overdue: row.overdue,
     decisionDueAt: row.decision_due_at,
     decision: row.decision ?? null,
+    item: row.item_id
+      ? {
+          id: row.item_id,
+          moderationState: row.item_moderation_state ?? null,
+          context: itemContextSchema.parse(row.item_context ?? {}),
+        }
+      : null,
   };
 }
 

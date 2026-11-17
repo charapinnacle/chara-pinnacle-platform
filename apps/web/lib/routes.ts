@@ -328,10 +328,20 @@ export function adminPath(lang: string, segment = ""): string {
 
 // The form to report a vacancy, a company or a page (and the note on candidate profiles), with the target already named when the link comes from a page that
 // knows it (a vacancy by its id, a page by its path).
-const reportTargetParams = { job: "job", company: "job", profile: "job", content: "path", partner_profile: "partner" } as const;
+const reportTargetParams = {
+  job: "job",
+  company: "job",
+  profile: "job",
+  content: "path",
+  partner_profile: "partner",
+  requirement: "requirement",
+  partner_response: "response",
+  candidate_submission: "submission",
+} as const;
 
-// The report form of a kind of target, with the target when the page knows it (the vacancy, the path or the slug of a
-// partner profile) and a category to preselect, as "Report a fee demand" does.
+// The report form of a kind of target, with the target when the page knows it (the vacancy, the path, the slug of a
+// partner profile, or the id of a job order, response or submission) and a category to preselect, as "Report a fee
+// demand" does.
 export function reportPath(
   lang: string,
   type: keyof typeof reportTargetParams,

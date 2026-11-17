@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { JobModerationBadge } from "@/components/admin/job-moderation-badge";
 import { ReportPartnerDetails } from "@/components/admin/partner-moderation-details";
 import { ReportDecision, type DecisionTarget } from "@/components/admin/report-decision";
@@ -11,7 +11,9 @@ import { TextLink } from "@/components/forms/text-link";
 import { DetailList } from "@/components/layout/detail-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { Section } from "@/components/layout/section";
-import { getReport, type ReportDetail } from "@/lib/dal/admin-reports";
+import { getReport, type ReportDetail, type ReportItemContext } from "@/lib/dal/admin-reports";
+import { feeText } from "@/lib/responses/presentation";
+import { partnerSubmissionLabels } from "@/lib/submissions/presentation";
 import { isReleased } from "@/lib/dal/release";
 import { formatDateTime } from "@/lib/i18n/format";
 import { defaultLocale } from "@/lib/i18n/locale";
@@ -22,8 +24,9 @@ import {
   closesWithNote,
   FEE_DEMAND_LABEL,
   isFeeDemand,
+  isReportItem,
   reportCategoryLabels,
-  reportDecisionLabels,
+  reportDecisionLabel,
   reportDecisionsFor,
   reportStatusLabels,
   reportStatusTones,
@@ -36,8 +39,63 @@ function isPublicPage(path: string): boolean {
   return path.split("/")[1] === defaultLocale && !isPrivatePath(path);
 }
 
+// What staff read of a job order, response or submission to decide on it: the text its organisation wrote and its state.
+// A submission shows the partner's note and stage only; the candidate is never shown to staff.
+function itemDetails(report: ReportDetail): { label: string; value: ReactNode }[] {
+  const context: ReportItemContext = report.item?.context ?? {};
+  const text = (value: string | null | undefined) => <p className="whitespace-pre-line wrap-anywhere">{value ?? ""}</p>;
+  const rows: { label: string; value: ReactNode }[] = [];
+  if (report.targetType === "requirement") {
+    rows.push({ label: "Job order", value: context.title ?? "Not available" });
+    if (context.workers_needed !== undefined) rows.push({ label: "Workers", value: String(context.workers_needed) });
+    if (context.country_code) rows.push({ label: "Destination", value: [context.city_region, context.country_code].filter(Boolean).join(", ") });
+    if (context.skills) rows.push({ label: "Skills", value: text(context.skills) });
+  } else {
+    rows.push({ label: "Job order", value: context.requirement_title ?? "Not available" });
+  }
+  if (report.targetType === "partner_response") {
+    if (context.capacity !== undefined) rows.push({ label: "Capacity", value: String(context.capacity) });
+    if (context.experience_note) rows.push({ label: "Experience", value: text(context.experience_note) });
+    if (context.timeline_note) rows.push({ label: "Timeline", value: text(context.timeline_note) });
+    if (context.fee_model) rows.push({ label: "Fee", value: feeText(context.fee_model, context.fee_amount ?? null, context.fee_currency ?? null) });
+    if (context.notes) rows.push({ label: "Notes", value: text(context.notes) });
+  }
+  if (report.targetType === "candidate_submission") {
+    const stage = context.status;
+    if (stage && stage in partnerSubmissionLabels) rows.push({ label: "Stage", value: partnerSubmissionLabels[stage as keyof typeof partnerSubmissionLabels] });
+    if (context.note) rows.push({ label: "Partner's note", value: text(context.note) });
+  }
+  if (report.item?.moderationState) rows.push({ label: "Visibility", value: <JobModerationBadge state={report.item.moderationState} /> });
+  return rows;
+}
+
 function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; canAct: boolean }) {
   const { job, organization } = report;
+  if (isReportItem(report.targetType)) {
+    return (
+      <div className="grid gap-3">
+        <DetailList
+          items={[
+            ...itemDetails(report),
+            ...(organization
+              ? [
+                  { label: "Organisation", value: organization.name },
+                  { label: "Organisation status", value: <AccountStatusBadge status={organization.status} /> },
+                ]
+              : []),
+          ]}
+        />
+        {report.targetType === "candidate_submission" ? (
+          <p className="text-body text-muted-foreground">The candidate is not shown to staff. The report holds the submission only.</p>
+        ) : null}
+        {organization ? (
+          <TextLink standalone href={adminPath(lang, `organizations/${organization.id}`)}>
+            Open the organisation
+          </TextLink>
+        ) : null}
+      </div>
+    );
+  }
   if (report.targetType === "content" && report.contentPath) {
     return (
       <DetailList
@@ -123,6 +181,10 @@ function decisionTarget(report: ReportDetail): DecisionTarget {
   const organization = report.organization?.name ?? null;
   if (report.targetType === "job") return { kind, title: report.job?.title ?? "Not available", organization };
   if (report.targetType === "content") return { kind, title: report.contentPath ?? "Not available", organization: null };
+  if (report.targetType === "requirement") return { kind, title: report.item?.context.title ?? "Not available", organization };
+  if (report.targetType === "partner_response" || report.targetType === "candidate_submission") {
+    return { kind, title: report.item?.context.requirement_title ?? "Not available", organization };
+  }
   return { kind, title: report.targetType === "profile" ? "The candidate is not shown to staff" : (organization ?? "Not available"), organization };
 }
 
@@ -222,7 +284,7 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
           <DetailList
             items={[
               { label: "Outcome", value: reportStatusLabels[report.status] },
-              ...(report.decision ? [{ label: "Decision", value: reportDecisionLabels[report.decision] ?? report.decision }] : []),
+              ...(report.decision ? [{ label: "Decision", value: reportDecisionLabel(report.decision, report.targetType) }] : []),
               { label: "Closed", value: report.handledAt ? formatDateTime(report.handledAt) : "" },
               { label: "Statement of reasons", value: <p className="whitespace-pre-line">{report.resolutionNote}</p> },
             ]}

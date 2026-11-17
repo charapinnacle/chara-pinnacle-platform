@@ -18,6 +18,7 @@ import {
   closesWithNote,
   reportDecisionInputSchema,
   reportDecisionsFor,
+  reportDecisionLabel,
   decisionOfOption,
   reportReference,
 } from "@/lib/validation/report";
@@ -154,6 +155,7 @@ describe("fee demands (FR-J3 AC8, FR-S1 AC10)", () => {
     const label = (type: Parameters<typeof reportCategoryOptionsFor>[0]) =>
       reportCategoryOptionsFor(type).find((option) => option.value === "fee_demanded_from_worker")?.label;
     expect(label("partner_profile")).toBe("The company asked me to pay a fee");
+    expect(label("candidate_submission")).toBe("The company asked me to pay a fee");
     expect(label("job")).toBe("A fee is demanded from the worker");
     expect(reportCategoryOptionsFor("partner_profile").map((option) => option.value)).toEqual(reportCategoryOptions.map((option) => option.value));
   });
@@ -205,6 +207,42 @@ describe("the decisions on a report (FR-S1 AC4, AC10)", () => {
     expect(reportDecisionsFor({ targetType: "job", job: { moderationState: "hidden" }, organization: org("active", null) })).toEqual(["hide_in_effect", "suspend_organization", "dismiss"]);
     expect(decisionOfOption.hide_in_effect).toBe("hide");
     expect(decisionOfOption.suspend_in_effect).toBe("suspend_organization");
+  });
+
+  it("offers a hide, a suspension of the item's organisation and a dismissal for a job order, response or submission (V57)", () => {
+    for (const targetType of ["requirement", "partner_response", "candidate_submission"] as const) {
+      expect(reportDecisionsFor({ targetType, job: null, item: { moderationState: "visible" }, organization: org("active", null) })).toEqual([
+        "hide",
+        "suspend_organization",
+        "dismiss",
+      ]);
+      expect(reportDecisionsFor({ targetType, job: null, item: { moderationState: "hidden" }, organization: org("suspended", null) })).toEqual([
+        "hide_in_effect",
+        "suspend_in_effect",
+        "dismiss",
+      ]);
+      expect(reportDecisionsFor({ targetType, job: null, item: { moderationState: "org_suspended" }, organization: org("suspended", null) })).toEqual([
+        "suspend_in_effect",
+        "dismiss",
+      ]);
+      expect(closesWithNote(targetType)).toBe(false);
+    }
+    expect(reportDecisionsFor({ targetType: "requirement", job: null, item: null, organization: null })).toEqual(["dismiss"]);
+  });
+
+  it("names a hidden item by its kind", () => {
+    expect(reportDecisionLabel("content_hidden", "partner_response")).toBe("Partner response hidden");
+    expect(reportDecisionLabel("content_hidden", "partner_profile")).toBe("Partner profile hidden");
+    expect(reportDecisionLabel("organization_suspended", "candidate_submission")).toBe("Organisation suspended");
+  });
+
+  it("links the report form of a job order, response or submission by its id", () => {
+    const id = "6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d";
+    expect(reportPath("en", "requirement", id)).toBe(`/en/report?type=requirement&requirement=${id}`);
+    expect(reportPath("en", "partner_response", id)).toBe(`/en/report?type=partner_response&response=${id}`);
+    expect(reportPath("en", "candidate_submission", id, "fee_demanded_from_worker")).toBe(
+      `/en/report?type=candidate_submission&submission=${id}&category=fee_demanded_from_worker`,
+    );
   });
 
   it("closes only reports about a candidate or a page with a note", () => {

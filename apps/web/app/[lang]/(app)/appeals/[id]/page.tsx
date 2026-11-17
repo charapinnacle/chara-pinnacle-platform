@@ -10,7 +10,7 @@ import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { appealPath, appealsPath, mfaPath } from "@/lib/routes";
-import { appealableDecisionLabels, appealTargetLabels, idParam } from "@/lib/validation/appeal";
+import { appealableDecisionLabel, appealTargetLabels, idParam } from "@/lib/validation/appeal";
 
 export const metadata: Metadata = { title: "Moderation decision", robots: { index: false } };
 
@@ -31,7 +31,7 @@ export default async function AppealPage({ params }: PageProps<"/[lang]/appeals/
   return (
     <div className="grid w-full max-w-3xl gap-section">
       <PageHeader
-        title={appealableDecisionLabels[decision.action] ?? "Moderation decision"}
+        title={appealableDecisionLabel(decision.action, decision.targetType)}
         description={decision.title}
         breadcrumb={<Breadcrumbs items={[{ label: "Moderation decisions", href: appealsPath(lang) }, { label: decision.title }]} />}
       />

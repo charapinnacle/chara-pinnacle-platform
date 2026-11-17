@@ -130,7 +130,7 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
             </ol>
           </section>
         ) : null}
-        <WorkersNeverPay lang={lang} partnerName={submission.partnerName} partnerSlug={submission.partnerSlug} />
+        <WorkersNeverPay lang={lang} partnerName={submission.partnerName} submissionId={submission.id} />
       </div>
     );
   }
@@ -163,7 +163,7 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
         ) : null}
       </section>
 
-      <WorkersNeverPay lang={lang} partnerName={request.partnerName} partnerSlug={request.partnerSlug} />
+      <WorkersNeverPay lang={lang} partnerName={request.partnerName} submissionId={request.id} />
 
       <section aria-labelledby="answer-heading" className="grid gap-4">
         <h2 id="answer-heading" className="text-h2">

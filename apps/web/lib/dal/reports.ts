@@ -26,7 +26,10 @@ type Target =
   | { type: "job" | "company"; job: string }
   | { type: "profile"; application: string }
   | { type: "content"; path: string }
-  | { type: "partner_profile"; partner: string };
+  | { type: "partner_profile"; partner: string }
+  | { type: "requirement"; requirement: string }
+  | { type: "partner_response"; response: string }
+  | { type: "candidate_submission"; submission: string };
 
 type Report = { category: Enums["report_category"]; details: string; email: string };
 
@@ -41,6 +44,9 @@ export async function submitReport(target: Target, report: Report) {
     p_application: "application" in target ? target.application : undefined,
     p_path: "path" in target ? target.path : undefined,
     p_partner: "partner" in target ? target.partner : undefined,
+    p_requirement: "requirement" in target ? target.requirement : undefined,
+    p_response: "response" in target ? target.response : undefined,
+    p_submission: "submission" in target ? target.submission : undefined,
     p_category: report.category,
     p_details: report.details,
     p_good_faith: true,
