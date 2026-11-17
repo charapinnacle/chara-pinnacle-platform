@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(56);
 
 \ir apply_fixture.inc
 
@@ -245,6 +245,8 @@ select pg_temp.msg(:'c_wb_cr', :'wb', null, 1.2, 'Hello Alpha.') as m_wb3 \gset
 select pg_temp.msg(:'c_wb_cr', :'pa', :'alpha', 1.1, 'Hello Bruno.') as m_alpha1 \gset
 insert into public.conversation_reads (conversation_id, user_id, last_read_at) values (:'c_wb_app', :'wb', now());
 insert into public.conversation_blocks (conversation_id, blocked_by_user_id) values (:'c_wb_cr', :'wb');
+insert into public.connections (kind, from_organization_id, to_user_id, conversation_id, job_id, created_by)
+values ('invite_to_job', :'acme', :'wb', :'c_wb_app', :'job', :'mem') returning id as con_wb \gset
 update public.profiles set deleted_at = now() - interval '40 days' where id = :'wb';
 
 select is(public.erase_user(:'wb'), true, 'FR-S3 AC5: erase_user runs for the worker');
@@ -254,6 +256,8 @@ select is((select count(*)::integer from public.contact_requests where id in (:'
 select is((select count(*)::integer from public.messages where id in (:'m_wb1', :'m_wb2', :'m_wb3')), 0,
   'FR-S3 AC6: every message the worker sent is deleted');
 select is((select count(*)::integer from public.messages where id in (:'m_acme1', :'m_alpha1')), 2, 'FR-S3 AC6: the companies'' own messages stay');
+select is((select count(*)::integer from public.connections where id = :'con_wb' or to_user_id = :'wb'), 0,
+  'FR-S3 AC5: the invitation to apply sent to the worker (V71) is deleted');
 select is(
   (select string_agg(coalesce(p.organization_id::text, 'user:' || p.user_id::text), ',' order by p.organization_id nulls last)
    from public.conversation_participants p where p.conversation_id = :'c_wb_app'),
@@ -277,7 +281,7 @@ select is(
 );
 select is(
   (select (metadata -> 'deleted') || (metadata -> 'pseudonymised') from audit.log where action = 'account.erased' and entity_id = :'pseudonym'),
-  '{"candidate_submissions": 0, "submission_passport_shares": 0, "contact_requests": 4, "messages": 3, "conversation_participants": 2}'::jsonb,
+  '{"candidate_submissions": 0, "submission_passport_shares": 0, "contact_requests": 4, "messages": 3, "connections": 1, "conversation_participants": 2}'::jsonb,
   'FR-S3 AC5: the audit row counts the requests and messages deleted and the participant rows pseudonymised'
 );
 select is((select count(*)::integer from audit.log where action = 'account.erased' and metadata::text ~ (:'wb' || '|Bruno|Silva')), 0,
@@ -299,6 +303,12 @@ select is(
 );
 
 -- FR-S3 AC7: the export --------------------------------------------------------------------------------------------------------
+insert into public.connections (kind, from_organization_id, to_user_id, conversation_id, job_id, created_by)
+values ('invite_to_job', :'beta', :'wa', :'c_cr', :'job', :'own2');
+select pg_temp.decide('message', :'m_cr_wa');
+insert into public.appeals (moderation_action_id, organization_id, appellant_user_id, grounds, due_at)
+select max(a.id), null, :'wa', 'My message asked about the start date only.', now() + interval '14 days'
+from public.moderation_actions a where a.target_type = 'message' and a.target_id = :'m_cr_wa';
 insert into public.data_export_requests (id, user_id) values
   ('00000000-0000-0000-0000-000000211101', :'wa'), ('00000000-0000-0000-0000-000000211102', :'mem'),
   ('00000000-0000-0000-0000-000000211103', :'own2'), ('00000000-0000-0000-0000-000000211104', :'w3');
@@ -320,6 +330,16 @@ select is(
    from jsonb_array_elements((:'wa_data'::jsonb) -> 'contact_requests') r),
   'worker|Beta Works|accepted|t',
   'FR-S3 AC7: contact_requests.json holds the requests the worker received, with the company, the message and the status'
+);
+select is(
+  (select string_agg(format('%s|%s|%s', i ->> 'organization', i ->> 'vacancy', i ->> 'status'), ',')
+   from jsonb_array_elements((:'wa_data'::jsonb) -> 'job_invitations') i),
+  'Beta Works|Welder for Hamburg|sent', 'FR-S3 AC7: job_invitations.json holds the invitations to apply sent to the worker (V71)'
+);
+select is(
+  (select string_agg(format('%s|%s', coalesce(a ->> 'organization', '-'), a ->> 'status'), ',')
+   from jsonb_array_elements((:'wa_data'::jsonb) -> 'appeals') a),
+  '-|open', 'FR-S3 AC7: appeals.json keeps the appeal of the worker''s own message, which has no organisation (V73)'
 );
 select is(
   ((:'wa_data'::jsonb) #> '{passport,find_workers}') ->> 'visible', 'true', 'passport.json says whether the card is shown in Find Workers'
@@ -349,6 +369,19 @@ select is(
   (select jsonb_array_length((public.account_ops_export_data('00000000-0000-0000-0000-000000211104') -> 'sections') -> 'contact_requests')),
   1, 'w3''s copy holds the own decline only, no other worker''s request'
 );
+
+-- A contact request under a report that is not closed (V73's target contact_request) waits for it.
+select pg_temp.request(:'acme', :'w3', 'expired', 400, 366) as r_reported \gset
+insert into public.reports (target_type, contact_request_id, category, details, good_faith_confirmed, reporter_user_id)
+values ('contact_request', :'r_reported', 'fee_demanded_from_worker', 'The company asked me to pay before the job.', true, :'w3')
+returning id as cr_report \gset
+select private.apply_retention();
+select is(pg_temp.exists_row('public.contact_requests', :'r_reported'), true,
+  'FR-S3 AC4: an expired request under a new report is kept until the report closes');
+update public.reports set status = 'dismissed', handled_by = :'ts', handled_at = now(), resolution_note = 'No fee was asked.'
+where id = :cr_report;
+select private.apply_retention();
+select is(pg_temp.exists_row('public.contact_requests', :'r_reported'), false, 'and is deleted once the report is closed');
 
 -- NFR-S8: erasure, retention and the export stay closed to every API caller -----------------------------------------------------
 select is(

@@ -6,17 +6,20 @@
 --   participants, messages, read rows and block, unless a message of the conversation is under a report that is new or
 --   in review; the contact requests answered, withdrawn or expired (pending ones from their sending) longer than
 --   contact_requests ago, an accepted one only once its conversation is gone; declined requests after
---   contact_request_declines (90), never before the decline block of FR-Q3 ends; and the saved Find Workers cards that
+--   contact_request_declines (90), never before the decline block of FR-Q3 ends; a request under a report that is new or
+--   in review (V73's target contact_request) waits for it; and the saved Find Workers cards that
 --   have not been listed for saved_worker_cards (365) days. Neither request period goes below the block settings of V70,
 --   so a shortened period never lets an organisation ask again early. The Find Workers search log keeps its 90 days (V69).
 -- - A deleted message or contact request named by a moderation decision leaves its tombstone (V58), so the decision and
 --   its appeal stay listed.
--- - erase_user deletes the worker's contact requests and the messages the worker sent, and replaces the worker's
---   participant rows by the pseudonym (DATA_MODEL.md section 10), so the conversation stays with the company, closed for
---   messages. A company member's messages stay with the organisation: the profile's deletion clears sender_user_id and
+-- - erase_user deletes the worker's contact requests, the messages the worker sent and the invitations to apply sent to
+--   the worker (V71's connections.to_user_id; the organisation's typed message stays, as a plain message), and
+--   replaces the worker's participant rows by the pseudonym (DATA_MODEL.md section 10), so the conversation stays with
+--   the company, closed for messages. A company member's messages stay with the organisation: the profile's deletion clears sender_user_id and
 --   list_messages labels them as from a former member (V63).
--- - account_ops_export_data writes conversations.json, messages.json (the messages the user sent) and
---   contact_requests.json, and passport.json gains the worker's Find Workers choices.
+-- - account_ops_export_data writes conversations.json, messages.json (the messages the user sent),
+--   contact_requests.json and job_invitations.json (V71's invitations to apply sent to the worker), lists an appeal
+--   without an organisation (V73: a worker's own message), and passport.json gains the worker's Find Workers choices.
 
 update private.retention_policies p
 set description = v.description
@@ -356,7 +359,8 @@ begin
       and coalesce(r.responded_at, r.withdrawn_at, case when r.status = 'expired' then r.expires_at end, r.created_at)
         < now() - make_interval(days => v_floor)
       and not (r.status = 'accepted'
-               and exists (select 1 from public.conversations c where c.context_type = 'contact_request' and c.context_id = r.id));
+               and exists (select 1 from public.conversations c where c.context_type = 'contact_request' and c.context_id = r.id))
+      and not exists (select 1 from public.reports x where x.contact_request_id = r.id and x.status in ('new', 'in_review'));
     get diagnostics v_removed = row_count;
     perform private.record_retention('contact_requests', v_days, v_removed);
   end if;
@@ -367,7 +371,8 @@ begin
       select case when s.value #>> '{}' ~ '^[0-9]{1,5}$' then (s.value #>> '{}')::integer end
       from private.settings s where s.key = 'contact_request_decline_days'), 0));
     delete from public.contact_requests r
-    where r.status = 'declined' and r.responded_at < now() - make_interval(days => v_floor);
+    where r.status = 'declined' and r.responded_at < now() - make_interval(days => v_floor)
+      and not exists (select 1 from public.reports x where x.contact_request_id = r.id and x.status in ('new', 'in_review'));
     get diagnostics v_removed = row_count;
     perform private.record_retention('contact_request_declines', v_days, v_removed);
   end if;
@@ -403,8 +408,9 @@ revoke all on function private.apply_retention() from public, anon, authenticate
 -- Erasure ------------------------------------------------------------------------------------------------------------------
 
 -- erase_user of 20270208200000_worker_visibility.sql with the worker's messaging and Find Workers data (FR-S3 AC5, AC6;
--- FR-P3 AC10 as DATA_MODEL.md section 10 decides it): the contact requests and the messages the worker sent are deleted
--- and the participant rows carry the pseudonym, before the profile goes; account.erased counts them.
+-- FR-P3 AC10 as DATA_MODEL.md section 10 decides it): the contact requests, the messages the worker sent and the
+-- invitations to apply sent to the worker (V71) are deleted and the participant rows carry the pseudonym, before the
+-- profile goes; account.erased counts them.
 create or replace function public.erase_user(p_user_id uuid) returns boolean
 language plpgsql
 security definer
@@ -422,6 +428,7 @@ declare
   v_contact_requests bigint;
   v_messages bigint;
   v_participants bigint;
+  v_connections bigint;
 begin
   select p.account_kind, p.deleted_at, p.legal_hold into v_kind, v_requested, v_hold
   from public.profiles p where p.id = p_user_id for no key update;
@@ -462,6 +469,8 @@ begin
   get diagnostics v_contact_requests = row_count;
   delete from public.messages where sender_user_id = p_user_id and sender_organization_id is null;
   get diagnostics v_messages = row_count;
+  delete from public.connections where to_user_id = p_user_id;
+  get diagnostics v_connections = row_count;
   update public.conversation_participants set user_id = v_pseudonym where user_id = p_user_id;
   get diagnostics v_participants = row_count;
   update public.passport_shares
@@ -506,7 +515,7 @@ begin
     'account.erased', 'profile', v_pseudonym::text,
     jsonb_build_object('requested_at', v_requested, 'completed_at', now(),
       'deleted', jsonb_build_object('candidate_submissions', v_submissions, 'submission_passport_shares', v_shares,
-        'contact_requests', v_contact_requests, 'messages', v_messages),
+        'contact_requests', v_contact_requests, 'messages', v_messages, 'connections', v_connections),
       'pseudonymised', jsonb_build_object('conversation_participants', v_participants))
   );
   -- The auth user is deleted next, so the address travels in the message; notify deletes it after sending.
@@ -519,11 +528,12 @@ $$;
 
 -- Export -------------------------------------------------------------------------------------------------------------------
 
--- account_ops_export_data of 20270201100000_passport_extensions.sql (V58's sections and V61's passport lists) with three
+-- account_ops_export_data of 20270201100000_passport_extensions.sql (V58's sections and V61's passport lists) with four
 -- sections (FR-S3 AC7): conversations (the candidate's own, and those a member wrote in for an organisation, each with the
 -- other party as conversation_labels names it to that side, never a candidate to a member), messages (the messages the
--- user sent) and contact_requests (those the worker received, and those a member sent, never the worker); the passport
--- gains the worker's Find Workers choices (find_workers), whose consent history is in consents.json.
+-- user sent), contact_requests (those the worker received, and those a member sent, never the worker) and
+-- job_invitations (V71's invitations to apply sent to the worker); appeals keeps the appeal of a worker's own message,
+-- which has no organisation (V73); the passport gains the worker's Find Workers choices (find_workers), whose consent history is in consents.json.
 create or replace function public.account_ops_export_data(p_export uuid) returns jsonb
 language plpgsql
 stable
@@ -664,7 +674,7 @@ begin
         select jsonb_agg(jsonb_build_object(
           'organization', o.display_name, 'grounds', a.grounds, 'status', a.status, 'reasons', a.reasons,
           'lodged_at', a.lodged_at, 'decided_at', a.decided_at) order by a.lodged_at, a.id)
-        from public.appeals a join public.organizations o on o.id = a.organization_id
+        from public.appeals a left join public.organizations o on o.id = a.organization_id
         where a.appellant_user_id = v_uid), '[]'),
       'platform_roles', coalesce((
         select jsonb_agg(jsonb_build_object('role', s.role, 'granted_at', s.granted_at, 'revoked_at', s.revoked_at)
@@ -772,6 +782,14 @@ begin
           left join public.jobs j on j.id = r.job_id
           where r.sent_by = v_uid
         ) x), '[]'),
+      'job_invitations', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'organization', o.display_name, 'vacancy', j.title, 'conversation_id', c.conversation_id, 'status', c.status,
+          'sent_at', c.created_at, 'status_changed_at', c.status_changed_at) order by c.created_at, c.id)
+        from public.connections c
+        join public.organizations o on o.id = c.from_organization_id
+        left join public.jobs j on j.id = c.job_id
+        where c.to_user_id = v_uid), '[]'),
       'data_exports', coalesce((
         select jsonb_agg(jsonb_build_object('requested_at', r.requested_at, 'ready_at', r.ready_at, 'expires_at', r.expires_at)
           order by r.requested_at, r.id)
