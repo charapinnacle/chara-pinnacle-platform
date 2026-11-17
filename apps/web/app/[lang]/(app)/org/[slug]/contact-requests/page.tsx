@@ -15,6 +15,7 @@ import {
   contactRequestStatuses,
   contactRequestTones,
   isContactRequestStatus,
+  contactAgainFrom,
   contactRequestPeriods,
   sentNextStep,
   type ContactRequestPeriods,
@@ -98,7 +99,12 @@ function RequestItem({ request, lang, slug, names, messaging, periods }: {
       </p>
       {request.status === "pending" ? (
         <div>
-          <WithdrawContactRequest slug={slug} requestId={request.id} cardLabel={label} />
+          <WithdrawContactRequest
+            slug={slug}
+            requestId={request.id}
+            cardLabel={label}
+            againFrom={contactAgainFrom({ ...request, status: "withdrawn" }, periods)}
+          />
         </div>
       ) : null}
       {request.status === "accepted" && request.conversationId ? (

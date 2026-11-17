@@ -253,6 +253,10 @@ test.describe("Contact requests (FR-Q3)", () => {
     const withdraw = waitingItem.getByRole("button", { name: /^Withdraw the contact request: / });
     await waitForHydration(withdraw);
     await withdraw.click();
+    const confirmWithdraw = page.getByRole("dialog", { name: "Withdraw the contact request?" });
+    await expect(confirmWithdraw).toContainText("This cannot be undone.");
+    await expectNoAxeViolations(page);
+    await confirmWithdraw.getByRole("button", { name: "Withdraw request" }).click();
     await expect(page.getByText("Contact request withdrawn")).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText("Withdrawn");
     await expect(page.getByRole("listitem").filter({ hasText: "Waiting request." })).toContainText(

@@ -1,6 +1,12 @@
 import { prerender } from "react-dom/static";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CONTACT_MESSAGE_MAX, contactAgainFrom, sendRefusalText, sentNextStep } from "@/lib/contact-requests/presentation";
+import {
+  CONTACT_MESSAGE_MAX,
+  contactAgainFrom,
+  sendRefusalText,
+  sentNextStep,
+  withdrawConfirmText,
+} from "@/lib/contact-requests/presentation";
 import { contactRequestFormSchema } from "@/lib/validation/contact-request";
 
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
@@ -179,6 +185,13 @@ describe("when the organisation may ask a worker again (FR-Q3 AC3, AC5; NFR-U4)"
     );
     expect(contactAgainFrom({ ...withdrawn, status: "pending" }, periods, now)).toBeNull();
     expect(contactAgainFrom(withdrawn, periods, Date.parse("2027-04-01T00:00:00Z"))).toBeNull();
+  });
+
+  it("asks before a withdrawal, saying it cannot be undone and from when the organisation may ask again", () => {
+    expect(withdrawConfirmText("2027-03-12T09:00:00.000Z")).toBe(
+      "The worker can no longer answer it. This cannot be undone. Your organisation can send this worker a new request from 12 March 2027.",
+    );
+    expect(withdrawConfirmText(null)).toBe("The worker can no longer answer it. This cannot be undone. You can send a new request from Find Workers.");
   });
 
   it("names the date from the settings in the next step of a withdrawn and a declined request", () => {

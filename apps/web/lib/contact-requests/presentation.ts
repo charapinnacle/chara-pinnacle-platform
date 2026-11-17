@@ -54,12 +54,17 @@ export function contactAgainFrom(request: SentRequestDates, periods: ContactRequ
   return end > now ? new Date(end).toISOString() : null;
 }
 
+const askAgain = (from: string | null) =>
+  from ? `Your organisation can send this worker a new request from ${formatDate(from)}.` : "You can send a new request from Find Workers.";
+
+// What the dialog of Withdraw request says before the organisation confirms.
+export function withdrawConfirmText(againFrom: string | null): string {
+  return `The worker can no longer answer it. This cannot be undone. ${askAgain(againFrom)}`;
+}
+
 // What the organisation can do next with a request (NFR-U4), with the date from which it may ask the worker again.
 export function sentNextStep(request: SentRequestDates, periods: ContactRequestPeriods, now = Date.now()): string {
-  const from = contactAgainFrom(request, periods, now);
-  const again = from
-    ? `Your organisation can send this worker a new request from ${formatDate(from)}.`
-    : "You can send a new request from Find Workers.";
+  const again = askAgain(contactAgainFrom(request, periods, now));
   switch (request.status) {
     case "pending":
       return "The worker decides whether to share their name with you. You can withdraw the request while it waits.";
