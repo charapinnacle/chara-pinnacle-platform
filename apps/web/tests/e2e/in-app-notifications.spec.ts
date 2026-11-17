@@ -179,13 +179,11 @@ test.describe("in-app notifications (FR-T1)", () => {
     const section = page.locator("#email-notifications");
     const applications = section.getByRole("switch", { name: "New applications" });
     await expect(applications).toBeChecked();
-    // New applications, the follower digest that every account may receive (FR-L4, V24), the closing reminder of
-    // workforce requirements (FR-M2, V33) and the new and withdrawn partner responses (FR-O2, FR-N2, V44).
-    await expect(section.getByRole("switch")).toHaveCount(5);
+    // New applications and the follower digest that every account may receive (FR-L4, V24); the kinds of release 2b wait
+    // for their release (V59).
+    await expect(section.getByRole("switch")).toHaveCount(2);
     await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
-    await expect(section.getByRole("switch", { name: "Workforce requirement closing reminders" })).toBeChecked();
-    await expect(section.getByRole("switch", { name: "Responses to your workforce requirements", exact: true })).toBeChecked();
-    await expect(section.getByRole("switch", { name: "Withdrawn responses to your workforce requirements" })).toBeChecked();
+    await expect(section.getByText("Workforce requirement closing reminders")).toHaveCount(0);
     for (const label of ["Vacancy hidden by moderation", "Failed payments", "Team invitations", "New versions of legal documents"]) {
       const row = section.getByRole("listitem").filter({ hasText: label });
       await expect(row).toContainText("Always sent");
@@ -208,8 +206,8 @@ test.describe("in-app notifications (FR-T1)", () => {
     await applications.focus();
     await page.keyboard.press("Space");
     await expect(applications).not.toBeChecked();
-    // Past the four other switches to the save button.
-    for (let presses = 0; presses < 5; presses += 1) {
+    // Past the other switch to the save button.
+    for (let presses = 0; presses < 2; presses += 1) {
       await page.keyboard.press("Tab");
     }
     await expect(section.getByRole("button", { name: "Save email choices" })).toBeFocused();
@@ -225,14 +223,49 @@ test.describe("in-app notifications (FR-T1)", () => {
     expect(emailKinds(admin.id)).toEqual({
       application_received: false,
       followed_company_activity: true,
-      requirement_closing_soon: true,
-      response_received: true,
-      response_withdrawn: true,
     });
 
     await page.reload();
     await expect(page.locator("#email-notifications").getByRole("switch", { name: "New applications" })).not.toBeChecked();
     await expect(page.getByRole("radio", { name: "Immediately" })).toBeChecked();
+  });
+
+  test("V59: the kinds of release 2b are offered only while their release is on, a worker's submission requests as always sent", async ({
+    context,
+    page,
+  }) => {
+    const company = await newCompany();
+    const candidate = await createCommittedUser("worker");
+    execute(`update private.settings set value = 'true' where key in ('release_job_orders', 'release_candidate_submissions')`);
+    try {
+      await signInBrowser(context, company.owner);
+      await page.goto(SETTINGS);
+      const section = page.locator("#email-notifications");
+      await expect(section.getByRole("switch")).toHaveCount(7);
+      for (const label of [
+        "Workforce requirement closing reminders",
+        "Responses to your workforce requirements",
+        "Withdrawn responses to your workforce requirements",
+        "Candidates who approved a submission",
+        "Candidates who withdrew a submission",
+      ]) {
+        await expect(section.getByRole("switch", { name: label, exact: true })).toBeChecked();
+      }
+      await expect(section.getByText("Invitations to workforce requirements")).toHaveCount(0);
+      await expectAccessibleAtBothWidths(page);
+
+      await context.clearCookies();
+      await signInBrowser(context, candidate);
+      await page.goto(SETTINGS);
+      for (const label of ["Requests to submit you for a job", "Invitations to create an account for a submission request"]) {
+        const row = page.locator("#email-notifications").getByRole("listitem").filter({ hasText: label });
+        await expect(row).toContainText("Always sent");
+        await expect(row.getByRole("switch")).toHaveCount(0);
+      }
+      await expect(page.getByRole("switch")).toHaveCount(1);
+    } finally {
+      execute(`update private.settings set value = 'false' where key in ('release_job_orders', 'release_candidate_submissions')`);
+    }
   });
 
   test("a worker's only switch is the follower digest (FR-L4 AC6): every other email of a worker is always sent", async ({ context, page }) => {
