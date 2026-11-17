@@ -712,6 +712,13 @@ test.describe("Public partner profile (FR-K4)", () => {
     await decider.page.goto("/en/admin/appeals");
     const row = decider.page.getByRole("row").filter({ hasText: partner.displayName });
     await expect(row).toContainText("Appeal under review");
+    await decider.page.setViewportSize({ width: 800, height: 900 });
+    const lines = await row.getByText("Appeal under review", { exact: true }).evaluate((badge) => {
+      const style = getComputedStyle(badge);
+      const content = badge.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      return Math.round(content / parseFloat(style.lineHeight));
+    });
+    expect(lines, "the status badge stays on one line at 800 px").toBe(1);
     await expectAccessibleAtBothWidths(decider.page);
     await decider.page.setViewportSize({ width: 1280, height: 900 });
     await row.getByRole("link").click();
