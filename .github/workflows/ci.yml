@@ -64,10 +64,18 @@ jobs:
       - run: deno check "*/index.ts"
       - run: deno test --frozen --allow-env=NODE_ENV
 
+  # The projects of apps/web/playwright.config.ts form three groups that only wait for one another so as not to share a
+  # database: on separate runners each group gets its own, so they run side by side.
   e2e:
     needs: [web, db]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [parallel, serial, release]
+    env:
+      E2E_GROUP: ${{ matrix.group }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -86,7 +94,7 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-test-results
+          name: e2e-test-results-${{ matrix.group }}
           path: apps/web/test-results
           if-no-files-found: ignore
 
