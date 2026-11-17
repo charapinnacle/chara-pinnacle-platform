@@ -181,7 +181,8 @@ select is(
 );
 select is(
   (select (select array_agg(k order by k) from jsonb_object_keys(metadata) k) from audit.log where action = 'account.erased'),
-  array['completed_at', 'deleted', 'requested_at'], 'AC9: and the counts of what was deleted with the account (V58), nothing else'
+  array['completed_at', 'deleted', 'pseudonymised', 'requested_at'],
+  'AC9: and the counts of what was deleted (V58, V74) and pseudonymised (V74) with the account, nothing else'
 );
 select is(
   (select count(*) from audit.log where metadata::text like '%' || :'wa' || '%' or entity_id = :'wa'), 0::bigint,

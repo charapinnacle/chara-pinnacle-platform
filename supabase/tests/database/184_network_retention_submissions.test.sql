@@ -311,7 +311,7 @@ select is(
 );
 select is(
   (select metadata -> 'deleted' from audit.log where action = 'account.erased'),
-  '{"candidate_submissions": 4, "submission_passport_shares": 1}'::jsonb,
+  '{"candidate_submissions": 4, "submission_passport_shares": 1, "contact_requests": 0, "messages": 0}'::jsonb,
   'AC5: the audit row counts what was deleted, without the candidate''s name or address'
 );
 select is((select count(*)::integer from audit.log where action = 'account.erased' and metadata::text ~ (:'wb' || '|Bruno|Silva')), 0,
