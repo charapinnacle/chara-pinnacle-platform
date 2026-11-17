@@ -96,6 +96,7 @@ const adminPages = (userId: string, organizationId: string, reportId: number): P
   "/[lang]/admin/mfa-reset": "/en/admin/mfa-reset",
   "/[lang]/admin/reports": "/en/admin/reports",
   "/[lang]/admin/reports/[id]": `/en/admin/reports/${reportId}`,
+  "/[lang]/admin/retention": "/en/admin/retention",
 });
 
 const trustSafetyPages = (jobId: string): Pages => ({
@@ -117,13 +118,16 @@ const accountStatePages = [
 ];
 
 // The pages of a release that is switched off while this sweep runs; their own specs switch it on and check them at
-// both widths: notifications (in-app-notifications.spec.ts), the partner reviews of the console (partner-approval.spec.ts)
-// and the workforce profile (partner-geographies.spec.ts, partner-workforce-offer.spec.ts, partner-availability.spec.ts).
+// both widths: notifications (in-app-notifications.spec.ts), the partner reviews of the console (partner-approval.spec.ts),
+// the workforce profile (partner-geographies.spec.ts, partner-workforce-offer.spec.ts, partner-availability.spec.ts) and the
+// public partner profile with a complete listed partner and its members' preview of an unlisted one (partner-profile.spec.ts).
 const releasedPages = [
   "/[lang]/notifications",
   "/[lang]/admin/partners",
   "/[lang]/admin/partners/[id]",
   "/[lang]/org/[slug]/workforce-profile",
+  "/[lang]/org/[slug]/workforce-profile/preview",
+  "/[lang]/partners/[slug]",
 ];
 
 async function expectPage(page: Page, address: string): Promise<void> {
