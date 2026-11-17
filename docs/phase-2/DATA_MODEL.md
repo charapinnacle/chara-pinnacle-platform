@@ -180,7 +180,7 @@ Storage: private bucket `partner-response-documents` (PDF, 15 MB, scanned; no st
 | `private.worker_search_log` | organization_id, user_id, filter_names, result_count | none; 90 days |
 | View `public.worker_search` | card fields only: card_id, headline, occupation, skills, experience, languages, availability, countries, training, history without employer names, preferred industries and employment types, updated_at | not granted; `search_workers` is the only path |
 
-Realtime: Broadcast on private channels only, `conversation:<id>` and `user:<id>`, authorised by policies on `realtime.messages` that use the same helpers as the tables; polling fallback when disconnected.
+Realtime: Broadcast on private channels only, `conversation:<id>` and `user:<id>`, authorised by policies on `realtime.messages` that use the same helpers as the tables; polling fallback when disconnected. As built (V64): the database sends signals with `realtime.send`, never a body, a name or a user id (`message` `{id, created_at}` on `conversation:<id>`; `messages_unread` `{conversation_id}` on `user:<id>` of the other side after a message and of the reader after a read), and the client reads through `list_messages` and `my_unread_counts`; no `realtime.broadcast_changes` trigger on messages.
 
 ## 7. RPCs, jobs and Edge Functions (summary)
 
