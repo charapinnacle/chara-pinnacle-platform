@@ -146,7 +146,9 @@ const accountStatePages = [
 // submitted candidate's page in submission-pipeline.spec.ts. The messages of release 2c, the inbox of a candidate (with rows,
 // empty and failed) and of an employer (with rows and filtered), and a conversation of an employer, a partner and a
 // candidate (empty, with messages and closed), are checked in messaging.spec.ts. Find Workers of an employer (with cards, a
-// rule notice, saved, empty, failed and from a requirement) and the public Find Workers page are checked in find-workers.spec.ts.
+// rule notice, saved, empty, failed and from a requirement) and the public Find Workers page are checked in find-workers.spec.ts;
+// the contact requests of a worker (with requests, the decline dialog and empty) and of an organisation (with an accepted and
+// a waiting request, and filtered) in contact-requests.spec.ts.
 const releasedPages = [
   "/[lang]/appeals",
   "/[lang]/appeals/[id]",
@@ -154,6 +156,7 @@ const releasedPages = [
   "/[lang]/admin/appeals/[id]",
   "/[lang]/companies",
   "/[lang]/companies/[slug]",
+  "/[lang]/contact-requests",
   "/[lang]/find-workers",
   "/[lang]/following",
   "/[lang]/job-orders",
@@ -163,6 +166,7 @@ const releasedPages = [
   "/[lang]/notifications",
   "/[lang]/org/[slug]/analytics",
   "/[lang]/org/[slug]/applicants/submissions/[id]",
+  "/[lang]/org/[slug]/contact-requests",
   "/[lang]/org/[slug]/find-employers",
   "/[lang]/org/[slug]/find-workers",
   "/[lang]/org/[slug]/invitations",
