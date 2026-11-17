@@ -110,7 +110,7 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
             partnerName={profile.displayName}
             occupations={occupations.map(({ code, label }) => ({ value: code, label }))}
             countries={countries.map(({ code, name }) => ({ value: code, label: name }))}
-            defaultDestination=""
+            defaultDestination={employer.basedInCountry}
           />
         ) : null}
       </div>

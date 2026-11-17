@@ -155,7 +155,7 @@ test.describe("Structured connection actions (FR-P2)", () => {
     const dialog = page.getByRole("dialog", { name: `Request workforce from ${staffit.name}` });
     await dialog.getByLabel("Occupation").selectOption("7212");
     await dialog.getByLabel("Number of workers").fill("25");
-    await dialog.getByLabel("Country of work").selectOption("DE");
+    await expect(dialog.getByLabel("Country of work"), "the employer's country comes preselected").toHaveValue("DE");
     await dialog.getByLabel("City or region").fill("Hamburg");
     const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
     await dialog.getByLabel("Start date").fill(start);
