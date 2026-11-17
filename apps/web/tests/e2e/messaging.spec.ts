@@ -9,7 +9,8 @@ import { seedJob } from "./support/jobs";
 import { createCommittedUser } from "./support/login";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
 import { signIn } from "./support/passport";
-import { addMember, newTeam, newVisitor, signInAtAal1, type Team } from "./support/team";
+import { fillReport, sendReport } from "./support/reports";
+import { addMember, enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, signInAtAal2, subscribe, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -347,6 +348,117 @@ test.describe("Conversations and messages (FR-P1)", () => {
       await expect(page.getByRole("link", { name: "Messages" })).toHaveCount(0);
     } finally {
       setRelease("release_messaging", true);
+    }
+  });
+});
+
+// Messaging safety (V66; FR-P3 AC4, AC6, AC8, AC11; SOP P2-28 steps Limit, Report, Block and Notice; NFR-S10, NFR-U3, NFR-U4):
+// the candidate reads the "Workers never pay" notice and reports the company's fee request from it, then blocks the
+// conversation, which closes it for both sides without naming the blocker, and unblocks it; at the monthly limit a member
+// keeps the typed text and reads the usage and whom to ask, an admin gets the Upgrade link, and the candidate still sends.
+test.describe("Messaging limits and safety (FR-P3)", () => {
+  test("AC6, AC8, AC11: the notice leads to a fee report on the message, and a block closes the conversation for both sides", async ({ page, browser }) => {
+    test.setTimeout(240_000);
+    const { team, member, candidate, applicationId, candidateName, employerName } = await applicantSetup();
+    const conversationId = await openAs(member, "application", applicationId);
+    await callAs(member, "send_message", { p_conversation: conversationId, p_body: "Pay 300 euros for the contract first." });
+    const [{ id: feeMessage }] = query<{ id: string }>(
+      `select id from public.messages where conversation_id = ${literal(conversationId)} order by created_at desc limit 1`,
+    );
+
+    await signIn(page, candidate);
+    await page.goto(`${INBOX_URL}/${conversationId}`);
+    await expect(page.getByText("Workers never pay fees to get a job through Chara Pinnacle")).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.getByRole("link", { name: "Report a fee request" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Report a message" })).toBeVisible();
+    await expect(page.getByLabel("What is wrong")).toHaveValue("fee_demanded_from_worker");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await fillReport(page, { details: "The employer asked me to pay 300 euros before the contract." });
+    const reference = await sendReport(page);
+    expect(
+      query<{ target_type: string; message_id: string; category: string }>(
+        `select target_type::text, message_id, category::text from public.reports where reporter_user_id = ${literal(candidate.id)} order by id desc limit 1`,
+      ),
+    ).toEqual([{ target_type: "message", message_id: feeMessage, category: "fee_demanded_from_worker" }]);
+    expect(reference).toMatch(/^R-\d{6,}$/);
+
+    await page.goto(`${INBOX_URL}/${conversationId}`);
+    const block = page.getByRole("button", { name: "Block conversation" });
+    await waitForHydration(block);
+    await block.click();
+    const dialog = page.getByRole("dialog", { name: "Block this conversation?" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Block conversation" }).click();
+    await expect(page.getByText("You blocked this conversation")).toBeVisible();
+    await expect(page.getByRole("textbox")).toHaveCount(0);
+    await expect(logOf(page, employerName).getByText("Pay 300 euros for the contract first.")).toBeVisible();
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    const other = await newVisitor(browser);
+    try {
+      await signInAtAal1(other.page, member, `${orgInboxUrl(team.slug)}/${conversationId}`);
+      await expect(other.page.getByText("This conversation is closed for new messages")).toBeVisible();
+      await expect(other.page.getByText("A participant closed it. You can still read the history.")).toBeVisible();
+      await expect(other.page.getByRole("button", { name: /block conversation/i })).toHaveCount(0);
+      await expect(other.page.getByRole("textbox")).toHaveCount(0);
+      await expect(logOf(other.page, candidateName).getByText("Pay 300 euros for the contract first.")).toBeVisible();
+    } finally {
+      await other.context.close();
+    }
+
+    const unblock = page.getByRole("button", { name: "Unblock conversation" });
+    await waitForHydration(unblock);
+    await unblock.click();
+    await expect(composerOf(page, employerName)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Block conversation" })).toBeVisible();
+  });
+
+  test("AC4: at the monthly limit the text stays, a member is told whom to ask, an admin gets Upgrade and the candidate still sends", async ({ page, browser }) => {
+    test.setTimeout(240_000);
+    const { team, member, candidate, applicationId, candidateName } = await applicantSetup();
+    const { user: admin, secret } = await addMember(team, "admin");
+    const conversationId = await openAs(member, "application", applicationId);
+    subscribe(team, "employer_starter");
+    execute(
+      `insert into public.messages (conversation_id, sender_user_id, sender_organization_id, body)
+       select ${literal(conversationId)}, ${literal(member.id)}, ${literal(team.id)}, 'Earlier message ' || g from generate_series(1, 100) g`,
+    );
+    enforceLimits();
+    try {
+      await signInAtAal1(page, member, `${orgInboxUrl(team.slug)}/${conversationId}`);
+      const composer = composerOf(page, candidateName);
+      await waitForHydration(composer);
+      await composer.fill("One more question about the start date.");
+      await page.getByRole("button", { name: "Send" }).click();
+      const prompt = page.getByRole("status").filter({ hasText: "100 of 100 messages this month on your Basic plan." });
+      await expect(prompt).toBeVisible();
+      await expect(prompt.getByText("Ask an owner or administrator to upgrade.")).toBeVisible();
+      await expect(prompt.getByRole("link", { name: "Upgrade your plan" })).toHaveCount(0);
+      await expect(composer).toHaveValue("One more question about the start date.");
+      await expectAccessibleAtBothWidths(page);
+      expect(storedBodies(conversationId).filter((body) => !body.startsWith("Earlier message"))).toEqual([]);
+
+      const other = await newVisitor(browser);
+      try {
+        await signInAtAal2(other.page, admin, secret ?? "", `${orgInboxUrl(team.slug)}/${conversationId}`);
+        const adminComposer = composerOf(other.page, candidateName);
+        await waitForHydration(adminComposer);
+        await adminComposer.fill("Following up.");
+        await other.page.getByRole("button", { name: "Send" }).click();
+        await expect(other.page.getByRole("link", { name: "Upgrade your plan" })).toHaveAttribute("href", `/en/org/${team.slug}/billing`);
+        await expect(adminComposer).toHaveValue("Following up.");
+      } finally {
+        await other.context.close();
+      }
+
+      await callAs(candidate, "send_message", { p_conversation: conversationId, p_body: "I can start in March." });
+      expect(storedBodies(conversationId)).toContain("I can start in March.");
+    } finally {
+      restoreLimits();
     }
   });
 });
