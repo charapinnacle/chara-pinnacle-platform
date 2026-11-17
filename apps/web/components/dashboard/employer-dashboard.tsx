@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { EmployerRequestsCard, MatchingWorkersCard, UnreadMessagesCard } from "@/components/dashboard/connection-blocks";
 import {
   EmployerSubmissionsCard,
   FollowedCompaniesCard,
@@ -18,9 +19,11 @@ import { LinkButton } from "@/components/layout/link-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { GuidedSteps } from "@/components/organization/guided-steps";
 import { RequirementUsage } from "@/components/requirements/requirement-usage";
+import { organizationUnread } from "@/lib/dashboard/connections";
 import { EMPLOYER_NETWORK_QUESTION } from "@/lib/dashboard/employer-network";
 import { getFirstSteps, startDashboardLoad } from "@/lib/dal/dashboard";
 import { getEmployerNetwork } from "@/lib/dal/employer-network";
+import { getUnreadMessageCounts } from "@/lib/dal/messaging";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { RECRUITMENT_DIRECTORY_PATH } from "@/lib/public/navigation";
 import { ACTIVE_REQUIREMENTS } from "@/lib/requirements/limits";
@@ -37,6 +40,8 @@ type EmployerDashboardProps = {
   requirements: boolean;
   // Find Workers is released: the search is linked (FR-Q2 SOP step Open).
   findWorkers?: boolean;
+  // Messaging is released: the unread messages and the inquiries and workforce requests are shown (FR-R5, release 2c).
+  messaging?: boolean;
 };
 
 async function NoVacanciesYet({ empty, lang, slug, role }: { empty: Promise<boolean>; lang: string; slug: string; role: MemberRole }) {
@@ -69,13 +74,25 @@ function EmployerFigures({ lang, slug, loads }: { lang: string; slug: string; lo
   );
 }
 
-type PartnerNetworkProps = { lang: string; organizationId: string; slug: string; canManage: boolean; requirements: boolean };
+type PartnerNetworkProps = {
+  lang: string;
+  organizationId: string;
+  slug: string;
+  canManage: boolean;
+  requirements: boolean;
+  messaging: boolean;
+};
 
 // "Who can help me fill my workforce requirement?" (spec §30, FR-R5) after the Phase 1 blocks (AC2): one read for every
 // figure of the partner network, so its failure leaves the hiring figures in place (AC10). The blocks of release 2b come
-// only with job orders and the submitted candidates only with candidate submissions (AC7).
-function PartnerNetwork({ lang, organizationId, slug, canManage, requirements }: PartnerNetworkProps) {
+// only with job orders and the submitted candidates only with candidate submissions (AC7). Release 2c adds the
+// inquiries and workforce requests and the unread messages with messaging, the latter from a read of their own, and the
+// matching workers with Find Workers (AC5, AC6).
+function PartnerNetwork({ lang, organizationId, slug, canManage, requirements, messaging }: PartnerNetworkProps) {
   const findPartnersHref = `/${lang}/${RECRUITMENT_DIRECTORY_PATH}`;
+  const unread = messaging ? getUnreadMessageCounts().then((counts) => organizationUnread(counts, organizationId)) : null;
+  // Read inside the network figures, which are not drawn when they fail to load; the failure is then not left unhandled.
+  void unread?.catch(() => undefined);
   return (
     <section aria-labelledby="network-heading" className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
@@ -104,6 +121,22 @@ function PartnerNetwork({ lang, organizationId, slug, canManage, requirements }:
               </>
             ) : null}
             {value.submissionStages ? <EmployerSubmissionsCard stages={value.submissionStages} lang={lang} slug={slug} /> : null}
+            {value.requests ? (
+              <EmployerRequestsCard requests={value.requests} lang={lang} slug={slug} findPartnersHref={findPartnersHref} />
+            ) : null}
+            {unread ? (
+              <Panel promise={unread} errorTitle="Your unread messages could not be loaded">
+                {(count) => <UnreadMessagesCard unread={count} lang={lang} slug={slug} lockedHref={null} />}
+              </Panel>
+            ) : null}
+            {value.matchingWorkers ? (
+              <MatchingWorkersCard
+                value={value.matchingWorkers}
+                audience="employer"
+                findWorkersHref={findWorkersPath(lang, slug)}
+                billingHref={canManage ? billingPath(lang, slug) : null}
+              />
+            ) : null}
             <SavedPartnersCard count={value.savedPartners} findPartnersHref={findPartnersHref} lang={lang} slug={slug} />
             <FollowedCompaniesCard count={value.followedCompanies} findPartnersHref={findPartnersHref} lang={lang} />
           </div>
@@ -116,7 +149,15 @@ function PartnerNetwork({ lang, organizationId, slug, canManage, requirements }:
 // The summary of the hiring of one organisation for a member, or for an owner or admin at aal2. The reads start together;
 // each part shows its own when it is ready, or its own error. An owner or admin also sees the first steps until they are
 // all done. The stage counts are shown once, in the table of the applications.
-export function EmployerDashboard({ lang, organization, twoStepDone, network, requirements, findWorkers = false }: EmployerDashboardProps) {
+export function EmployerDashboard({
+  lang,
+  organization,
+  twoStepDone,
+  network,
+  requirements,
+  findWorkers = false,
+  messaging = false,
+}: EmployerDashboardProps) {
   const { slug, role } = organization;
   const { applications, vacancies, plan, empty } = startDashboardLoad(organization.id);
   const manager = role !== "member";
@@ -219,7 +260,14 @@ export function EmployerDashboard({ lang, organization, twoStepDone, network, re
       </div>
 
       {network ? (
-        <PartnerNetwork lang={lang} organizationId={organization.id} slug={slug} canManage={manager} requirements={requirements} />
+        <PartnerNetwork
+          lang={lang}
+          organizationId={organization.id}
+          slug={slug}
+          canManage={manager}
+          requirements={requirements}
+          messaging={messaging}
+        />
       ) : null}
     </div>
   );

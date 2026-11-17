@@ -4,12 +4,14 @@ import type { EmployerNetwork } from "@/lib/dashboard/employer-network";
 import type { MemberRole } from "@/lib/validation/team";
 
 const networkMock = vi.hoisted(() => vi.fn<() => Promise<EmployerNetwork>>());
+const unreadMock = vi.hoisted(() => vi.fn(async () => [{ conversationId: "c1", organizationId: "org-a", unread: 2 }]));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/dal/employer-network", () => ({
   getEmployerNetwork: networkMock,
 }));
+vi.mock("@/lib/dal/messaging", () => ({ getUnreadMessageCounts: unreadMock }));
 vi.mock("@/lib/dal/usage", () => ({
   getUsagePrompts: () => Promise.reject(new Error("usage")),
 }));
@@ -60,16 +62,19 @@ const network = (over: Partial<EmployerNetwork> = {}): EmployerNetwork => ({
     selectedPartners: 0,
   },
   submissionStages: null,
+  requests: null,
+  matchingWorkers: null,
   ...over,
 });
 
-const render = async ({ role = "admin" as MemberRole, released = true, requirements = true } = {}) => {
+const render = async ({ role = "admin" as MemberRole, released = true, requirements = true, messaging = false } = {}) => {
   const element = EmployerDashboard({
     lang: "en",
     organization: { id: "org-a", slug: "acme", displayName: "Acme", role },
     twoStepDone: true,
     network: released,
     requirements,
+    messaging,
   });
   const { prelude } = await prerender(element);
   return (await new Response(prelude).text()).replace(/<!-- -->|<!--\/?\$-->/g, "");
@@ -124,5 +129,35 @@ describe("the partner network part of the employer dashboard (FR-R5)", () => {
     const html = await render();
     expect(html).toContain("The partner network figures could not be loaded");
     expect(html).toContain("Try again");
+  });
+});
+
+describe("the blocks of release 2c (FR-R5 AC5 to AC7, V75)", () => {
+  it("shows the requests, the unread messages and the matching workers only with their releases", async () => {
+    let html = await render();
+    expect(html).not.toMatch(/Unread messages|Matching workers|Inquiries and workforce requests/);
+    expect(unreadMock).not.toHaveBeenCalled();
+    networkMock.mockResolvedValue(
+      network({ requests: { waiting: 2, answered: 1 }, matchingWorkers: { kind: "count", count: 40 } }),
+    );
+    html = await render({ messaging: true });
+    expect(html).toContain(">Inquiries and workforce requests</h2>");
+    expect(html).toMatch(/<dt[^>]*>Unread messages<\/dt><dd[^>]*><span[^>]*>2<\/span>/);
+    expect(html).toContain("40 workers who chose to be visible match your requirements.");
+    expect(html).toMatch(/href="\/en\/org\/acme\/find-workers"[^>]*>Find workers<\/a>/);
+  });
+
+  it("sends a manager without Find Workers in the plan to billing, and a member to the manager (AC6)", async () => {
+    networkMock.mockResolvedValue(network({ matchingWorkers: { kind: "unavailable", reason: "feature_not_in_plan" } }));
+    let html = await render({ role: "owner" });
+    expect(html).toContain("Find Workers is included in paid plans.");
+    expect(html).toMatch(/href="\/en\/org\/acme\/billing"[^>]*>Upgrade your plan/);
+    html = await render({ role: "member" });
+    expect(html).toContain("Ask an owner or admin of your company to upgrade.");
+  });
+
+  it("shows a suppressed count as fewer than 5 (AC6)", async () => {
+    networkMock.mockResolvedValue(network({ matchingWorkers: { kind: "suppressed", fewerThan: 5 } }));
+    expect(await render()).toContain("Fewer than 5 workers match your requirements.");
   });
 });

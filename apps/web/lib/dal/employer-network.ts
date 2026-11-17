@@ -1,5 +1,6 @@
 import "server-only";
 import * as z from "zod";
+import { matchingWorkersColumns, parseMatchingWorkers } from "@/lib/dashboard/connections";
 import type { EmployerNetwork } from "@/lib/dashboard/employer-network";
 import { pipelineSubmissionStages, type PipelineSubmissionStage } from "@/lib/submissions/presentation";
 import { createClient } from "@/lib/supabase/server";
@@ -41,6 +42,9 @@ const networkRow = z.object({
   responses_shortlisted: count.nullable(),
   selected_partners: count.nullable(),
   submission_stages: stagesSchema.nullable(),
+  partner_requests_waiting: count.nullable(),
+  partner_requests_answered: count.nullable(),
+  ...matchingWorkersColumns,
 });
 
 // The partner network figures of an employer dashboard (FR-R5), read again on every request in one call; the function
@@ -90,5 +94,10 @@ export async function getEmployerNetwork(organizationId: string): Promise<Employ
             selectedPartners: row.selected_partners ?? 0,
           },
     submissionStages: row.submission_stages,
+    requests:
+      row.partner_requests_waiting === null
+        ? null
+        : { waiting: row.partner_requests_waiting, answered: row.partner_requests_answered ?? 0 },
+    matchingWorkers: parseMatchingWorkers(row),
   };
 }
