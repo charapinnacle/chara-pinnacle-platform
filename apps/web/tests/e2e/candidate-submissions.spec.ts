@@ -187,6 +187,22 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await expect(page.getByText("2 of 25 submissions used this month")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
+    // At the month's limit Send request is disabled with the upgrade prompt as its reason, shown once (FR-R1).
+    execute(
+      `insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value)
+       values (${literal(s1.id)}, 'candidate_submissions_per_month', 2)`,
+    );
+    try {
+      await page.reload();
+      const blocked = page.getByRole("button", { name: "Send request" });
+      await expect(blocked).toBeDisabled();
+      await expect(blocked).toHaveAccessibleDescription(/2 of 2 .*submissions/);
+      await expect(page.getByRole("link", { name: "Upgrade your plan" })).toHaveCount(1);
+      await expectAccessibleAtBothWidths(page);
+    } finally {
+      execute(`delete from billing.organization_limit_overrides where organization_id = ${literal(s1.id)} and limit_key = 'candidate_submissions_per_month'`);
+    }
+
     // The list shows the address entered until the candidate approves, with the status in words (AC2, AC12).
     await page.goto(partnerListUrl(s1.slug));
     const list = page.getByRole("list", { name: "Candidates" });
