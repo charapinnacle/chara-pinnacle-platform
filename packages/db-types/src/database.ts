@@ -1400,6 +1400,12 @@ isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "submission_notes_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "v_org_limits"
+      referencedColumns: ["organization_id"]
+    },{
       foreignKeyName: "submission_notes_submission_id_fkey"
       columns: ["submission_id"]
 isOneToOne: false
@@ -1814,6 +1820,9 @@ isOneToOne: false
 "add_partner_licence":
 { Args: { "p_confirmed": boolean,"p_country_code": string,"p_issuing_authority": string,"p_licence_number": string,"p_org": string,"p_valid_until": string }; Returns: string
                            },
+"add_submission_note":
+{ Args: { "p_body": string,"p_submission": string }; Returns: number
+                           },
 "add_workforce_availability":
 { Args: { "p_available": number,"p_available_from": string,"p_monthly_capacity": number,"p_occupation_id": string,"p_org": string,"p_source_country": string }; Returns: string
                            },
@@ -2035,9 +2044,6 @@ isOneToOne: false
 "answer_invitation":
 { Args: { "p_answer": string,"p_invitation": string,"p_org": string,"p_reason"?: string }; Returns: Database["public"]['Enums']["invitation_status"]
                            },
-"add_submission_note":
-{ Args: { "p_body": string,"p_submission": string }; Returns: number
-                           },
 "application_documents":
 { Args: { "p_application_id": string }; Returns: {
               "available": boolean,"expires_on": string,"file_name": string,"id": string,"size_bytes": number,"title": string,"type": Database["public"]['Enums']["worker_document_type"]
@@ -2230,14 +2236,14 @@ isOneToOne: false
               "plan_chosen": boolean,"team_invited": boolean,"vacancy_published": boolean
             }[]
                            },
-"get_employer_submission":
-{ Args: { "p_submission": string }; Returns: {
-              "candidate_name": string,"id": string,"note": string,"organization_id": string,"partner_name": string,"partner_slug": string,"profile_snapshot": Json,"requirement_id": string,"requirement_title": string,"share_active": boolean,"status": Database["public"]['Enums']["submission_status"],"withdrawn_at": string,"worker_approved_at": string
-            }[]
-                           },
 "get_dashboard_plan":
 { Args: { "p_organization_id": string }; Returns: {
               "current_period_end": string,"past_due_since": string,"plan_name": string,"status": string,"subscription_ended": boolean,"trial_ends_at": string
+            }[]
+                           },
+"get_employer_submission":
+{ Args: { "p_submission": string }; Returns: {
+              "candidate_name": string,"id": string,"note": string,"organization_id": string,"partner_name": string,"partner_slug": string,"profile_snapshot": Json,"requirement_id": string,"requirement_title": string,"share_active": boolean,"status": Database["public"]['Enums']["submission_status"],"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "get_invitation":
@@ -2433,16 +2439,6 @@ isOneToOne: false
               "changed_fields": (string)[],"created_at": string,"payload": Json,"version": number
             }[]
                            },
-"list_submission_events":
-{ Args: { "p_submission": string }; Returns: {
-              "actor_role": string,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"],"note": string,"to_status": Database["public"]['Enums']["submission_status"]
-            }[]
-                           },
-"list_submission_notes":
-{ Args: { "p_before_id"?: number,"p_submission": string }; Returns: {
-              "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
-            }[]
-                           },
 "list_saved_jobs":
 { Args: { "p_cursor"?: string,"p_limit"?: number }; Returns: {
               "available": boolean,"employer_display_name": string,"job_id": string,"next_cursor": string,"saved_at": string,"status": Database["public"]['Enums']["job_status"],"title": string
@@ -2462,14 +2458,24 @@ isOneToOne: false
 "list_sitemap_partners":
 { Args: { "p_after_slug"?: string,"p_limit"?: number }; Returns: Json
                            },
+"list_submission_events":
+{ Args: { "p_submission": string }; Returns: {
+              "actor_role": string,"created_at": string,"from_status": Database["public"]['Enums']["submission_status"],"note": string,"to_status": Database["public"]['Enums']["submission_status"]
+            }[]
+                           },
+"list_submission_notes":
+{ Args: { "p_before_id"?: number,"p_submission": string }; Returns: {
+              "author_name": string,"body": string,"created_at": string,"has_more": boolean,"id": number
+            }[]
+                           },
 "mark_application_viewed":
 { Args: { "p_application_id": string }; Returns: undefined
                            },
-"mark_submission_viewed":
-{ Args: { "p_submission": string }; Returns: undefined
-                           },
 "mark_notifications_read":
 { Args: { "p_ids"?: (string)[] }; Returns: number
+                           },
+"mark_submission_viewed":
+{ Args: { "p_submission": string }; Returns: undefined
                            },
 "moderate_job":
 { Args: { "p_action": string,"p_job": string,"p_reason": string }; Returns: undefined
@@ -2672,14 +2678,14 @@ isOneToOne: false
 "set_organization_workforce_offer":
 { Args: { "p_founded_year"?: number,"p_industries": (string)[],"p_languages": (string)[],"p_occupations": (string)[],"p_org": string,"p_recruitment_type": Database["public"]['Enums']["recruitment_preference"],"p_service_types": (Database["public"]['Enums']["partner_service_type"])[],"p_workforce_size_band"?: Database["public"]['Enums']["workforce_size_band"] }; Returns: Json
                            },
-"set_submission_status":
-{ Args: { "p_note"?: string,"p_status": Database["public"]['Enums']["submission_status"],"p_submission": string }; Returns: undefined
-                           },
 "set_requirement_capacity_tolerance":
 { Args: { "p_org": string,"p_percent": number,"p_requirement": string }; Returns: boolean
                            },
 "set_requirement_status":
 { Args: { "p_close_reason"?: Database["public"]['Enums']["requirement_close_reason"],"p_expected_updated_at": string,"p_org": string,"p_requirement": string,"p_status": Database["public"]['Enums']["requirement_status"] }; Returns: Json
+                           },
+"set_submission_status":
+{ Args: { "p_note"?: string,"p_status": Database["public"]['Enums']["submission_status"],"p_submission": string }; Returns: undefined
                            },
 "set_submissions_allowed":
 { Args: { "p_allowed": boolean,"p_org": string,"p_response": string }; Returns: boolean
@@ -2689,14 +2695,14 @@ isOneToOne: false
               "change_summary": string,"published_at": string,"slug": string,"title": string,"version": number
             }[]
                            },
-"submit_appeal":
-{ Args: { "p_action": number,"p_grounds": string }; Returns: {
-              "appeal_id": number,"due_at": string
-            }[]
-                           },
 "submission_documents":
 { Args: { "p_submission": string }; Returns: {
               "available": boolean,"expires_on": string,"file_name": string,"id": string,"size_bytes": number,"title": string,"type": Database["public"]['Enums']["worker_document_type"]
+            }[]
+                           },
+"submit_appeal":
+{ Args: { "p_action": number,"p_grounds": string }; Returns: {
+              "appeal_id": number,"due_at": string
             }[]
                            },
 "submit_candidate":
