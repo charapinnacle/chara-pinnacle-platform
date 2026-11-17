@@ -5,7 +5,7 @@ select plan(31);
 
 -- Partner dashboards, release 2a parts (V30, FR-R3 AC3 and AC10, FR-R4 AC2, AC3 refusals and AC9 views; SOP P2-37 and
 -- P2-38 steps Blocks and Grow, control "figures from the database only"; NFR-S8): public.get_partner_dashboard. The
--- figures of release 2b and 2c (FR-R3 AC4 to AC6, FR-R4 AC3 counts and AC6) are V55 and V75.
+-- figures of release 2b (FR-R3 AC4 to AC6, FR-R4 AC3 counts and AC6) are tested in 180 (V55), those of 2c are V75's.
 
 create function pg_temp.new_org(p_owner uuid, p_type public.organization_type, p_slug text) returns uuid
 language plpgsql as $$
@@ -109,7 +109,9 @@ select is(
    where p.oid = 'public.get_partner_dashboard(uuid)'::regprocedure and a.mode = 't'),
   'organization_type,review_status,listed,profile_hidden,profile_missing,profile_updated_at,listings_total,listings_due,'
   || 'listings_stale,oldest_listing_confirmed_at,licences_current,licences_expiring,licences_expired,next_licence_expiry,'
-  || 'profile_views_30d,profile_views_suppressed,profile_views_fewer_than,profile_views_in_plan',
+  || 'profile_views_30d,profile_views_suppressed,profile_views_fewer_than,profile_views_in_plan,fitting_job_orders,'
+  || 'matching_employers,invitations_awaiting,responses_open,responses_shortlisted,responses_selected,responses_declined,'
+  || 'submission_stages',
   'AC3: the result columns are counts, dates and states only'
 );
 

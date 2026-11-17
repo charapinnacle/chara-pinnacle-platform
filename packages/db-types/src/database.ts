@@ -2317,7 +2317,7 @@ isOneToOne: false
                            },
 "get_partner_dashboard":
 { Args: { "p_org": string }; Returns: {
-              "licences_current": number,"licences_expired": number,"licences_expiring": number,"listed": boolean,"listings_due": number,"listings_stale": number,"listings_total": number,"next_licence_expiry": string,"oldest_listing_confirmed_at": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_hidden": boolean,"profile_missing": string,"profile_updated_at": string,"profile_views_30d": number,"profile_views_fewer_than": number,"profile_views_in_plan": boolean,"profile_views_suppressed": boolean,"review_status": Database["public"]['Enums']["partner_review_status"]
+              "fitting_job_orders": number,"invitations_awaiting": number,"licences_current": number,"licences_expired": number,"licences_expiring": number,"listed": boolean,"listings_due": number,"listings_stale": number,"listings_total": number,"matching_employers": number,"next_licence_expiry": string,"oldest_listing_confirmed_at": string,"organization_type": Database["public"]['Enums']["organization_type"],"profile_hidden": boolean,"profile_missing": string,"profile_updated_at": string,"profile_views_30d": number,"profile_views_fewer_than": number,"profile_views_in_plan": boolean,"profile_views_suppressed": boolean,"responses_declined": number,"responses_open": number,"responses_selected": number,"responses_shortlisted": number,"review_status": Database["public"]['Enums']["partner_review_status"],"submission_stages": Json
             }[]
                            },
 "get_partner_profile":
@@ -2446,6 +2446,11 @@ isOneToOne: false
 "list_organization_members":
 { Args: { "p_after_user"?: string,"p_limit"?: number,"p_org": string }; Returns: {
               "accepted_at": string,"display_name": string,"email": string,"mfa_enrolled": boolean,"role": Database["public"]['Enums']["member_role"],"user_id": string
+            }[]
+                           },
+"list_partner_submission_outcomes":
+{ Args: { "p_org": string }; Returns: {
+              "hired": number,"in_progress": number,"last_change_at": string,"not_selected": number,"requirement_id": string,"requirement_status": Database["public"]['Enums']["requirement_status"],"submitted": number,"title": string,"withdrawn": number
             }[]
                            },
 "list_partner_submissions":
