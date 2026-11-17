@@ -67,6 +67,11 @@ describe("partnerProfileFrom (FR-K4 AC3)", () => {
     });
   });
 
+  it("keeps the listings withheld from a visitor apart from an empty list (FR-K3 AC4)", () => {
+    expect(partnerProfileFrom({ ...row, listings: null }).listings).toBeNull();
+    expect(partnerProfileFrom({ ...row, listings: [] }).listings).toEqual([]);
+  });
+
   it("refuses a row whose lists do not have the expected shape", () => {
     expect(() => partnerProfileFrom({ ...row, served_countries: [{ code: "DE" }] })).toThrow();
     expect(() => partnerProfileFrom({ ...row, organization_type: "employer" })).toThrow();
