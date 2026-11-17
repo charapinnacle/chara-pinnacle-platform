@@ -6,6 +6,7 @@ import { VacancyView } from "@/components/jobs/vacancy-view";
 import { PageContainer } from "@/components/layout/page-container";
 import { getApplicationStates, type ApplicationState } from "@/lib/dal/applications";
 import { getPublicJob } from "@/lib/dal/hiring";
+import { getApplyHiringRule } from "@/lib/dal/hiring-rules";
 import { getSavedJobIds } from "@/lib/dal/saved-jobs";
 import { getCurrentUser } from "@/lib/dal/session";
 import { jobPostingJsonLd } from "@/lib/jobs/job-posting";
@@ -39,10 +40,10 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
     notFound();
   }
   logVacancy({ event: "vacancy_view", outcome: "ok", jobId: job.id, viewer });
-  const [savedIds, applications] =
-    viewer === "candidate"
-      ? await Promise.all([getSavedJobIds([job.id]), getApplicationStates([job.id])])
-      : [new Set<string>(), new Map<string, ApplicationState>()];
+  const [savedIds, applications, hiringRule] =
+    viewer === "candidate" && user
+      ? await Promise.all([getSavedJobIds([job.id]), getApplicationStates([job.id]), getApplyHiringRule(user.id, job.countryCode)])
+      : [new Set<string>(), new Map<string, ApplicationState>(), null];
   return (
     <PageContainer layout="page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jobPostingJsonLd(job) }} />
@@ -51,7 +52,16 @@ export default async function PublicJobPage({ params }: PageProps<"/[lang]/jobs/
         employer={job.employer}
         employerHref={job.employerCompanySlug ? companyPagePath(lang, job.employerCompanySlug) : null}
         publishedAt={job.publishedAt}
-        actions={<VacancyActions job={job} lang={lang} viewer={viewer} saved={savedIds.has(job.id)} application={applications.get(job.id) ?? null} />}
+        actions={
+          <VacancyActions
+            job={job}
+            lang={lang}
+            viewer={viewer}
+            saved={savedIds.has(job.id)}
+            application={applications.get(job.id) ?? null}
+            hiringRule={hiringRule}
+          />
+        }
       />
       <nav aria-label="Report" className="mt-10 flex flex-wrap gap-x-6 border-t pt-4">
         <TextLink standalone rel="nofollow" href={reportPath(lang, "job", job.id)}>

@@ -78,7 +78,12 @@ test.describe("Direct-hiring rules in applications (FR-Q5 AC7)", () => {
     const jobId = seedJob(company, { title: "Welder Bremen", status: "open", country: "DE" });
     const candidate = await candidateFrom("NP");
 
-    await logIn(page, candidate, applyUrl(jobId));
+    await logIn(page, candidate, `/en/jobs/${jobId}`);
+    const vacancyRegion = page.getByRole("region", { name: REGION });
+    await expect(vacancyRegion, "the vacancy page shows the rule next to Apply now").toContainText("Licensed partner required");
+    await expect(page.getByRole("link", { name: "Apply now: Welder Bremen" })).toBeVisible();
+
+    await page.goto(applyUrl(jobId));
     const region = page.getByRole("region", { name: REGION });
     await expect(region).toContainText("Licensed partner required");
     await expect(region).toContainText(PARTNER);
