@@ -412,3 +412,42 @@ Deno.test("AC7: the submissions of the job order network are written as submissi
   assert.deepEqual(readJson(entries, "submissions.json"), submissions);
   assert.ok(new TextDecoder().decode(entries[0].data).includes("submissions.json"));
 });
+
+Deno.test("AC7: conversations, the messages the user sent and contact requests are written as JSON files in UTF-8", async () => {
+  const conversations = [{
+    conversation_id: "00000000-0000-0000-0000-0000000c0001",
+    side: "candidate",
+    context: "contact_request",
+    with: "Beta Bau GmbH",
+    opened_at: "2027-03-02T10:00:00Z",
+  }];
+  const messages = [{
+    conversation_id: conversations[0].conversation_id,
+    text: "Grüße aus Lagos, ich kann im Juni anfangen.",
+    sent_at: "2027-03-02T11:00:00Z",
+  }];
+  const contact_requests = [{
+    side: "worker",
+    organization: "Beta Bau GmbH",
+    message: "Schweißer gesucht.",
+    status: "accepted",
+  }];
+  const base = exportData([]);
+  const data = { ...base, sections: { ...base.sections, conversations, messages, contact_requests } };
+  const { calls, client } = harness({
+    "POST /rest/v1/rpc/account_ops_dequeue": jobs(build(50)),
+    "POST /rest/v1/rpc/account_ops_export_data": reply(200, data),
+    "POST /storage/v1/object/dsar-exports/{id}/{id}.zip": reply(200, { Key: `dsar-exports/${ZIP_PATH}` }),
+    "POST /rest/v1/rpc/account_ops_export_ready": reply(200, true),
+    "POST /rest/v1/rpc/account_ops_ack": reply(200, true),
+  });
+  await handleAccountOps(request(), { client, sharedSecret: SECRET });
+  const upload = calls.find((c) => c.path.startsWith("/storage/v1/object/dsar-exports"));
+  assert.ok(upload?.raw);
+  const entries = await unzip(upload.raw);
+  assert.deepEqual(readJson(entries, "conversations.json"), conversations);
+  assert.deepEqual(readJson(entries, "messages.json"), messages);
+  assert.deepEqual(readJson(entries, "contact_requests.json"), contact_requests);
+  const readme = new TextDecoder().decode(entries[0].data);
+  for (const file of ["conversations.json", "messages.json", "contact_requests.json"]) assert.ok(readme.includes(file));
+});
