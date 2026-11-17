@@ -212,6 +212,54 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     expect((await page.goto(STATISTICS))?.status()).toBe(404);
   });
 
+  test("FR-S2 (2b): the job order metrics show while release 2b is on, below the threshold as fewer than 5", async ({ page }) => {
+    test.setTimeout(120_000);
+    const tag = uniqueTag();
+    const owner = await createCommittedPartner("recruitment_company");
+    execute(
+      `with employer as (
+         insert into public.organizations (type, slug, legal_name, display_name, based_in_country)
+         values ('employer', 'netstat-jo-${tag}', 'Netstat JO ${tag} GmbH', 'Netstat JO ${tag}', 'DE')
+         returning id
+       ), member as (
+         insert into public.organization_members (organization_id, user_id, role, accepted_at)
+         select id, ${literal(owner.id)}, 'owner', now() from employer
+       )
+       insert into public.workforce_requirements (organization_id, title, workers_needed, country_code, city_region,
+         industry_code, start_date, employment_type, recruitment_preference, partner_need, status, visibility, published_at,
+         closes_on, status_changed_at, created_at)
+       select employer.id, 'Netstat requirement ${tag} ' || n, 10, 'DE', 'Hamburg', 'C', date '2025-06-01', 'full_time', 'both',
+         'both', 'open', case when n <= 5 then 'job_order_marketplace' else 'private' end::public.requirement_visibility,
+         '2025-03-10 10:00+00'::timestamptz + make_interval(hours => n), date '2025-05-01', '2025-03-10 10:00+00',
+         '2025-03-09 10:00+00'
+       from employer, generate_series(1, 6) n`,
+    );
+    execute(`update private.settings set value = 'true' where key = 'release_job_orders'`);
+    try {
+      await signInStaff(page, "admin", STATISTICS);
+      await showRange(page, MARCH, APRIL_END);
+      await expect(metricTable(page, "Job orders: Requirements published").getByRole("row", { name: /March 2025/ })).toContainText("6");
+      await expect(metricTable(page, "Job orders: Requirements published as job orders").getByRole("row", { name: /March 2025/ }))
+        .toContainText("5");
+      await expect(metricTable(page, "Job orders: Partner responses").getByRole("row", { name: /April 2025/ })).toContainText("fewer than 5");
+      await expect(metricTable(page, "Job orders: Candidates submitted by partners")).toHaveCount(0);
+      await expect(page.getByText(`Netstat requirement ${tag}`)).toHaveCount(0);
+      await expectAccessibleAtBothWidths(page);
+
+      execute(`update private.settings set value = 'false' where key = 'release_job_orders'`);
+      await page.reload();
+      await showRange(page, MARCH, APRIL_END);
+      await expect(metricTable(page, "Recruitment companies: New sign-ups")).toBeVisible();
+      await expect(section(page).getByRole("heading", { name: "Job orders" })).toHaveCount(0);
+    } finally {
+      execute(
+        `update private.settings set value = 'false' where key = 'release_job_orders';
+         delete from public.workforce_requirements where title like 'Netstat requirement ${tag} %';
+         delete from public.organizations where slug = 'netstat-jo-${tag}'`,
+      );
+    }
+  });
+
   test("release 2a off: the statistics page has no Partner network section", async ({ page }) => {
     await signInStaff(page, "admin", STATISTICS);
     await expect(page.getByRole("heading", { name: "Partner network" })).toBeVisible();

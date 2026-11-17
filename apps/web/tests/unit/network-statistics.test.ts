@@ -9,6 +9,7 @@ import {
   networkMetricGroups,
   periodEnd,
   periodLabel,
+  shownMetricGroups,
   trendText,
   type NetworkFigure,
 } from "@/lib/admin/network-statistics";
@@ -24,7 +25,9 @@ const figure = (over: Partial<NetworkFigure>): NetworkFigure => ({
   ...over,
 });
 
-// The metrics of private.network_count_metrics() in supabase/migrations/20261212100000_network_statistics.sql, in order.
+// The metrics of private.network_count_metrics() in supabase/migrations/20261212100000_network_statistics.sql, in order,
+// then the job order metrics of 20270112100100_job_order_network_statistics.sql (listed while release 2b is on).
+const JOB_ORDER_METRICS = ["requirements", "job_orders", "invitations", "responses", "selections", "submissions", "hires"];
 const DATABASE_METRICS = [
   ...["recruitment_company", "staffing_company"].flatMap((type) =>
     ["new", "decision_approve", "decision_request_info", "decision_decline", "onboarding", "pending_review", "info_requested",
@@ -33,6 +36,7 @@ const DATABASE_METRICS = [
   "partner_suspensions", "partner_reinstatements", "partner_profiles_hidden", "partner_profile_reports",
   "appeals_lodged", "appeals_decided", "appeals_restored",
   "searches.recruitment", "searches.staffing", "searches.available_workforce", "partner_saves", "partner_follows",
+  ...JOB_ORDER_METRICS,
 ];
 
 // FR-S2 AC7, AC9: the words of the Partner network section.
@@ -41,6 +45,19 @@ describe("the partner network statistics", () => {
     expect(networkMetricGroups.flatMap((group) => group.metrics.map((metric) => metric.key))).toEqual(DATABASE_METRICS);
     const captions = networkMetricGroups.flatMap((group) => group.metrics.map((metric) => `${group.heading}: ${metric.label}`));
     expect(new Set(captions).size).toBe(captions.length);
+  });
+
+  it("show only the metrics the database returned, so the job order group appears with release 2b", () => {
+    const rows = (metrics: string[]) => metrics.map((metric) => ({ metric, periodStart: "2027-03-01", count: null }));
+    const partnerOnly = DATABASE_METRICS.filter((metric) => !JOB_ORDER_METRICS.includes(metric));
+    expect(shownMetricGroups(rows(partnerOnly)).map((group) => group.heading)).not.toContain("Job orders");
+    const withoutSubmissions = shownMetricGroups(rows([...partnerOnly, ...JOB_ORDER_METRICS.slice(0, 5)]));
+    expect(withoutSubmissions.find((group) => group.heading === "Job orders")?.metrics.map((metric) => metric.key)).toEqual(
+      JOB_ORDER_METRICS.slice(0, 5),
+    );
+    expect(shownMetricGroups(rows(DATABASE_METRICS)).flatMap((group) => group.metrics.map((metric) => metric.key))).toEqual(
+      DATABASE_METRICS,
+    );
   });
 
   it("say the change from the previous period in words only where both values are shown", () => {

@@ -19,8 +19,8 @@ import {
   figureText,
   hasNoActivity,
   metricRows,
-  networkMetricGroups,
   periodLabel,
+  shownMetricGroups,
   type NetworkFigure,
 } from "@/lib/admin/network-statistics";
 import {
@@ -110,7 +110,7 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
                 minCount={statistics.minCount}
               />
             </section>
-            {networkMetricGroups.map((group, index) => (
+            {shownMetricGroups(statistics.counts).map((group, index) => (
               <section key={group.heading} aria-labelledby={`network-group-${index}`} className="grid gap-4">
                 <h3 id={`network-group-${index}`} className="text-h3">
                   {group.heading}
