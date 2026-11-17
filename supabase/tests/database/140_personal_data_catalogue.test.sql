@@ -177,6 +177,27 @@ from (values
 ) as v (tbl, erasure, retention, export)
 where k.tbl = v.tbl;
 
+-- V74 applies the periods of messaging and Find Workers, erases the worker's requests and messages, pseudonymises the
+-- worker's participant rows and exports the conversations, the messages the user sent and the contact requests.
+update catalogue k set erasure = v.erasure, retention = v.retention, export = v.export
+from (values
+  ('public.conversations', 'cascade', 'policy:conversations', 'export:conversations'),
+  ('public.conversation_participants', 'erase_user',
+   'a participant is deleted with its conversation (conversations, 730 days after the last message)', 'export:conversations'),
+  ('public.messages', 'erase_user',
+   'a message is deleted with its conversation (conversations, 730 days after the last message)', 'export:messages'),
+  ('public.conversation_reads', 'cascade',
+   'a read row is deleted with its conversation (conversations) and goes with the profile',
+   'when the user last opened a conversation: a technical marker for unread counts, not content of the user''s'),
+  ('public.conversation_blocks', 'cascade',
+   'a block is deleted with its conversation (conversations) and goes with the blocker''s profile, which only the blocker could lift',
+   'a safety setting of the conversation, not content of the user''s; the conversations themselves are exported'),
+  ('public.contact_requests', 'erase_user', 'policy:contact_requests', 'export:contact_requests'),
+  ('public.saved_worker_cards', 'cascade', 'policy:saved_worker_cards',
+   'organisation data: the Find Workers cards an organisation saved; saved_by only names the member who saved one')
+) as v (tbl, erasure, retention, export)
+where k.tbl = v.tbl;
+
 -- The user columns of every table of the five application schemas, extension tables left out.
 create function pg_temp.user_columns() returns table (tbl text, col text, refers_on_delete "char")
 language sql stable as $$
