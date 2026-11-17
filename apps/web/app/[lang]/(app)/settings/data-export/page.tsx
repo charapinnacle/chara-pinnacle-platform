@@ -18,10 +18,9 @@ export default async function DataExportPage({ params }: PageProps<"/[lang]/sett
   const user = await requireUser(lang, { consentGate: false });
   if (!(await isReleased("release_data_export"))) notFound();
   const data = await listMyDataExports();
-  const settings =
-    user.accountKind === "worker"
-      ? { label: "Settings", href: settingsPath(lang) }
-      : { label: "Notification settings", href: notificationSettingsPath(lang) };
+  // A company user's settings are the notification settings page, which the menu calls Settings; the export is not a
+  // notification setting, so the trail names the settings, as for a candidate.
+  const settings = { label: "Settings", href: user.accountKind === "worker" ? settingsPath(lang) : notificationSettingsPath(lang) };
 
   return (
     <div className="grid w-full max-w-3xl gap-page">
