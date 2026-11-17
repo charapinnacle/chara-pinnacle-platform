@@ -1997,7 +1997,7 @@ $$;
 
 -- The notice ---------------------------------------------------------------------------------------------------------------------
 
--- private.notification_payload of 20270108100000: moderation_decision names a requirement, response or submission by the
+-- private.notification_payload of 20270109200000: moderation_decision names a requirement, response or submission by the
 -- title its message carries (the title as the organisation knows it, never the candidate). Every other branch is
 -- unchanged.
 create or replace function private.notification_payload(p_kind text, p_message jsonb) returns jsonb
@@ -2342,7 +2342,8 @@ begin
         'title', case when (p_message ->> 'organization_id')::uuid = s.employer_organization_id
                         or private.requirement_named_to(r.id, s.organization_id) then r.title
           else private.job_order_neutral_title(r.id) end,
-        'partner_name', o.display_name, 'org_slug', v_slug)
+        'partner_name', o.display_name, 'org_slug', v_slug,
+        'to_partner', (p_message ->> 'organization_id')::uuid = s.organization_id)
       from public.candidate_submissions s
       join public.organizations o on o.id = s.organization_id
       join public.workforce_requirements r on r.id = s.requirement_id
@@ -2352,7 +2353,8 @@ begin
         'title', case when (p_message ->> 'organization_id')::uuid = s.employer_organization_id
                         or private.requirement_named_to(r.id, s.organization_id) then r.title
           else private.job_order_neutral_title(r.id) end,
-        'partner_name', o.display_name, 'org_slug', v_slug)
+        'partner_name', o.display_name, 'org_slug', v_slug,
+        'to_partner', (p_message ->> 'organization_id')::uuid = s.organization_id)
       from public.candidate_submissions s
       join public.organizations o on o.id = s.organization_id
       join public.workforce_requirements r on r.id = s.requirement_id
