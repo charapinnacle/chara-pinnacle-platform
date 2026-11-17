@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  clearRequirementDrafts,
-  readRequirementDraft,
-  requirementDraftKey,
-  writeRequirementDraft,
-} from "@/lib/requirements/drafts";
+import { clearRequirementDrafts, requirementDraftKey } from "@/lib/requirements/draft-keys";
+import { readRequirementDraft, writeRequirementDraft } from "@/lib/requirements/drafts";
 import { emptyRequirementForm } from "@/lib/validation/requirement";
 
 // A Storage in memory, as the browser's sessionStorage behaves for these calls.

@@ -23,12 +23,8 @@ import type { MultiCountryPlan } from "@/lib/dal/requirements";
 import { formatCount } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { toOptions } from "@/lib/reference-options";
-import {
-  clearRequirementDraft,
-  readRequirementDraft,
-  requirementDraftKey,
-  writeRequirementDraft,
-} from "@/lib/requirements/drafts";
+import { requirementDraftKey } from "@/lib/requirements/draft-keys";
+import { clearRequirementDraft, readRequirementDraft, writeRequirementDraft } from "@/lib/requirements/drafts";
 import { ADDITIONAL_COUNTRIES_MAX, multiCountryText } from "@/lib/requirements/limits";
 import { employmentTypeOptions, recruitmentPreferenceOptions, salaryPeriodOptions } from "@/lib/validation/job";
 import {
