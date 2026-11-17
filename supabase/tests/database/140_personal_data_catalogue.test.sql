@@ -145,6 +145,9 @@ insert into catalogue values
   ('public.contact_requests', 'cascade',
    'contact_requests (365 days after the answer or the sending, declines 90) is applied by V74, before release 2c goes live; the worker''s rows go with the profile and sent_by is cleared with it',
    'the candidate''s copy gains the own contact requests with V74 (FR-S3), before release 2c goes live; sent_by only names the member who sent one'),
+  ('public.connections', 'cascade',
+   'a connection lives with its conversation (conversations, applied from V74); an invitation to apply goes with the invited worker''s profile and created_by is cleared with it',
+   'the worker''s copy gains the own invitations to apply with the conversations of V74 (FR-S3), before release 2c goes live; created_by only names the member who sent one'),
   ('public.workforce_availability', 'cascade', 'an organisation listing kept while the partner lists it; stale listings are hidden (FR-K3)',
    'organisation data: the availability listings of a partner company');
 

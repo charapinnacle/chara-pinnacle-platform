@@ -26,7 +26,9 @@ $$;
 -- behind them, and returns the card columns only (FR-Q2, V69), or (list_contact_requests_sent) the organisation's own
 -- contact requests, which name the worker by first and last name only once the worker accepted, or (list_conversations,
 -- get_conversation, list_messages) the conversations, which name the worker of an accepted contact request to the
--- organisation as they name an applicant (FR-Q3, V70). The match is on source text, so a helper two calls away or a dynamic query would not be seen.
+-- organisation as they name an applicant (FR-Q3, V70), or (invite_to_job) an invitation to apply in a conversation with a
+-- worker, which reads only the worker's current country for the direct-hiring rule and returns the connection id (FR-P2,
+-- V71). The match is on source text, so a helper two calls away or a dynamic query would not be seen.
 select set_eq(
   $$select p.proname::text
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -38,7 +40,7 @@ select set_eq(
           where q.pronamespace = 'private'::regnamespace
             and q.prosrc ~* '(worker_profiles|worker_skills|worker_languages|worker_preferred_countries|worker_work_authorizations|worker_documents|passport_shares|worker_training|worker_employment_history|worker_preferred_industries|worker_preferred_employment_types)'
             and p.prosrc ~* ('private\.' || q.proname || '\s*\(')))$$,
-  $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('approve_submission'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('get_conversation'), ('get_employer_submission'), ('list_contact_requests_sent'), ('list_conversations'), ('list_messages'), ('mark_application_viewed'), ('mark_submission_viewed'), ('my_card_preview'), ('passport_limits'), ('search_workers'), ('set_card_sections'), ('set_worker_visibility'), ('submission_documents'), ('withdraw_application'), ('withdraw_submission')$$,
+  $$values ('application_documents'), ('application_profile_changed'), ('apply_to_job'), ('approve_submission'), ('create_worker_passport'), ('delete_worker_document'), ('document_access_grant'), ('get_conversation'), ('get_employer_submission'), ('invite_to_job'), ('list_contact_requests_sent'), ('list_conversations'), ('list_messages'), ('mark_application_viewed'), ('mark_submission_viewed'), ('my_card_preview'), ('passport_limits'), ('search_workers'), ('set_card_sections'), ('set_worker_visibility'), ('submission_documents'), ('withdraw_application'), ('withdraw_submission')$$,
   'AC10: the functions open to the API roles that read candidate data are on the allow-list'
 );
 
