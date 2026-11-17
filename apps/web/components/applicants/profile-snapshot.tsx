@@ -1,6 +1,6 @@
 import { Notice } from "@/components/forms/notice";
 import type { ApplicantSnapshot } from "@/lib/applicants/snapshot";
-import { formatDate, formatIsoDate } from "@/lib/i18n/format";
+import { formatDate, formatShortDate } from "@/lib/i18n/format";
 
 type Names = Record<string, string>;
 
@@ -40,7 +40,9 @@ export function ProfileSnapshot({ snapshot, coverNote, submittedAt, changed, cou
         <h2 id="profile-heading" className="text-h2">
           Profile as submitted
         </h2>
-        <p className="text-small text-muted-foreground">Submitted {formatIsoDate(submittedAt)}</p>
+        <p className="text-small text-muted-foreground">
+          Submitted <time dateTime={submittedAt}>{formatShortDate(submittedAt)}</time>
+        </p>
       </div>
       {changed ? (
         <Notice tone="info" role="status">
