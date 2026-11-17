@@ -278,7 +278,8 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
          listed_at = now() - interval '30 days'
        where id = ${literal(partner.id)}`,
     );
-    await signInAtAal2(page, partner.user, secret, "/en/onboarding?step=company");
+    await signInAtAal2(page, partner.user, secret, `/en/org/${partner.slug}/profile`);
+    await page.goto("/en/onboarding?step=company");
     await expect(page).toHaveURL(`/en/org/${partner.slug}/profile`);
     await expect(page.getByRole("heading", { name: "Company profile", level: 1 })).toBeVisible();
     await expect(page.getByText("Changing the legal name or the company identifier sends")).toBeVisible();
