@@ -127,7 +127,9 @@ test.describe("Partner review, licence and availability notifications (FR-T1)", 
     });
     await waitForHydration(askItem);
     await askItem.click();
-    await expect(askedVisitor.page).toHaveURL("/en/onboarding?step=where-you-serve");
+    // The item opens the dashboard, where the team's message is shown with the way back to onboarding.
+    await expect(askedVisitor.page).toHaveURL(`/en/dashboard/recruitment?org=${asked.slug}`);
+    await expect(askedVisitor.page.getByText(askReason)).toBeVisible();
     await askedVisitor.context.close();
   });
 

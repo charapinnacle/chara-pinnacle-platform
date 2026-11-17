@@ -30,7 +30,8 @@ export type PartnerResult = {
   servedCountries: Named[];
   mainOccupations: Named[];
   staffingTypes: Row["staffing_types"];
-  availableWorkforce: { occupation: string; available: number; confirmedAt: string }[];
+  // Null for a visitor: the capacity is for signed-in readers only (FR-K3 AC4).
+  availableWorkforce: { occupation: string; available: number; confirmedAt: string }[] | null;
   capacityConfirmedAt: string | null;
   matchedFilters: MatchedFilter[];
 };
@@ -38,7 +39,8 @@ export type PartnerResult = {
 export type PartnerSearch =
   | { state: "found"; results: PartnerResult[]; nextCursor: string | null }
   | { state: "rate_limited" }
-  | { state: "advanced_not_in_plan" };
+  | { state: "advanced_not_in_plan" }
+  | { state: "advanced_needs_sign_in" };
 
 // One page of the recruitment (FR-L1) or the staffing (FR-L2) directory. A visitor is counted under the keyed hash of
 // the address with the proof of this minute, a signed-in reader by the database, which also logs the first page of each
@@ -67,6 +69,7 @@ export async function searchPartners(kind: PartnerDirectoryKind, filters: Partne
   });
   if (error?.message === "CHARA_RATE_LIMITED") return { state: "rate_limited" };
   if (error?.message === "CHARA_FEATURE_NOT_IN_PLAN") return { state: "advanced_not_in_plan" };
+  if (error?.message === "CHARA_UNAUTHENTICATED") return { state: "advanced_needs_sign_in" };
   if (error) throw new Error("The partners could not be searched", { cause: error });
   return {
     state: "found",
@@ -81,8 +84,9 @@ export async function searchPartners(kind: PartnerDirectoryKind, filters: Partne
       mainOccupations: namedSchema.parse(row.main_occupations),
       staffingTypes: row.staffing_types,
       availableWorkforce: workforceSchema
-        .parse(row.available_workforce)
-        .map((item) => ({ occupation: item.name, available: item.available, confirmedAt: item.confirmed_at })),
+        .nullable()
+        .parse(row.available_workforce ?? null)
+        ?.map((item) => ({ occupation: item.name, available: item.available, confirmedAt: item.confirmed_at })) ?? null,
       capacityConfirmedAt: row.capacity_confirmed_at ?? null,
       matchedFilters: matchedSchema.parse(row.matched_filters),
     })),
