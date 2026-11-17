@@ -26,14 +26,16 @@ const headings = {
   partner_response: "Report a response",
   candidate_submission: "Report a submission",
   message: "Report a message",
+  contact_request: "Report a contact request",
 } as const;
 
-// The release each item of the job order network, and a message, belongs to; while it is off the form is not found.
+// The release each item of the job order network, a message and a contact request belong to; while it is off the form is not found.
 const itemReleases = {
   requirement: "release_job_orders",
   partner_response: "release_job_orders",
   candidate_submission: "release_candidate_submissions",
   message: "release_messaging",
+  contact_request: "release_find_workers",
 } as const satisfies Record<ParticipantReportType, ReleaseSwitch>;
 
 const itemParams = {
@@ -41,6 +43,7 @@ const itemParams = {
   partner_response: "response",
   candidate_submission: "submission",
   message: "message",
+  contact_request: "request",
 } as const satisfies Record<ParticipantReportType, string>;
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? "";
@@ -49,9 +52,9 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 // (?job= for a vacancy or a company, ?path= for a page, ?partner= for the slug of a partner profile) and a category to
 // preselect (?category=). A vacancy that is not public is no target: the person then gives a link, and the database
 // refuses what cannot be reported. Candidate profiles are private, so there is a note and no form. A partner profile is
-// reported from its page only, and only while release 2a is on. A job order, a response, a submission or a message
-// (?requirement=, ?response=, ?submission=, ?message=) is reported by a signed-in participant from its page, while its
-// release is on.
+// reported from its page only, and only while release 2a is on. A job order, a response, a submission, a message or a
+// contact request (?requirement=, ?response=, ?submission=, ?message=, ?request=) is reported by a signed-in participant
+// from its page, while its release is on.
 export default async function ReportPage({ params, searchParams }: PageProps<"/[lang]/report">) {
   const [{ lang }, query] = await Promise.all([params, searchParams]);
   const type = z.enum(reportTargetTypes).safeParse(first(query.type));

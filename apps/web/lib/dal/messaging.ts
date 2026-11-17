@@ -28,6 +28,7 @@ export async function listMessages(conversationId: string, before?: MessagesBefo
     senderName: row.sender_name ?? null,
     senderOrganizationName: row.sender_organization_name ?? null,
     senderErased: row.sender_erased,
+    hiddenBy: row.moderation_state === "hidden" ? (row.moderation_action_id ?? null) : null,
   }));
 }
 

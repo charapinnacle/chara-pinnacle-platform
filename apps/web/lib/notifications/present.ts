@@ -18,6 +18,7 @@ import {
   invitationPath,
   jobOrderPath,
   jobPath,
+  messagesPath,
   mfaPath,
   myReportsPath,
   orgContactRequestsPath,
@@ -79,6 +80,27 @@ function isApplicationStatus(value: string | undefined): value is ApplicationSta
 function decisionId(payload: Record<string, unknown>): number | null {
   const value = payload.moderation_action_id;
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+// A hidden or shown again message or contact request (V73), named by its kind, never its text: a hidden one links to the
+// decision with its reasons and appeal, one shown again to where it is read.
+const sentItemKinds: Record<string, string> = { message: "message", contact_request: "contact request" };
+
+function sentItem(payload: Record<string, unknown>, lang: string, slug: string | undefined) {
+  const type = text(payload, "target_type");
+  const kind = type ? sentItemKinds[type] : undefined;
+  if (!type || !kind) return null;
+  const decision = decisionId(payload);
+  const unhidden = text(payload, "decision") === "unhide";
+  const href =
+    !unhidden && decision
+      ? appealPath(lang, decision)
+      : type === "message"
+        ? messagesPath(lang, slug ?? null)
+        : slug
+          ? orgContactRequestsPath(lang, slug)
+          : null;
+  return { kind, href };
 }
 
 // A hidden or unhidden job order, response or submission of the recipient's organisation (V57): its kind as the
@@ -390,7 +412,8 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       const outcome = text(payload, "appeal_outcome");
       if (outcome) {
         const decision = decisionId(payload);
-        const about = text(payload, "title");
+        const sentKind = sentItemKinds[text(payload, "target_type") ?? ""];
+        const about = sentKind ? `your ${sentKind}` : text(payload, "title");
         return {
           title: `${about ? `Your appeal about ${about}` : "Your appeal"} was decided: ${outcome === "restored" ? "the decision was reversed" : "the decision was upheld"}`,
           href: decision ? appealPath(lang, decision) : null,
@@ -398,6 +421,10 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       }
       const slug = text(payload, "org_slug");
       const unhidden = text(payload, "decision") === "unhide";
+      const sent = sentItem(payload, lang, slug);
+      if (sent) {
+        return { title: unhidden ? `Your ${sent.kind} is shown again` : `Your ${sent.kind} was hidden by moderation`, href: sent.href };
+      }
       const item = moderatedItem(payload, lang, slug);
       if (item) {
         return {

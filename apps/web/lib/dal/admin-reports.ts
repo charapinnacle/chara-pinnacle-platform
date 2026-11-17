@@ -23,8 +23,9 @@ type ReportRow = {
   handledAt: string | null;
 };
 
-// A job order, response or submission as staff read it to decide (V57): what its organisation wrote, never the
-// candidate. Each field is optional, as each kind has its own.
+// A job order, response, submission (V57) or contact request (V73) as staff read it to decide: what its organisation
+// wrote, never the candidate, and never the text of a request (read through the audited opening). Each field is
+// optional, as each kind has its own.
 const itemContextSchema = z.object({
   title: z.string().optional(),
   status: z.string().optional(),
@@ -43,6 +44,8 @@ const itemContextSchema = z.object({
   fee_currency: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   note: z.string().nullable().optional(),
+  job_title: z.string().nullable().optional(),
+  destination_country: z.string().nullable().optional(),
 });
 
 export type ReportItemContext = z.output<typeof itemContextSchema>;

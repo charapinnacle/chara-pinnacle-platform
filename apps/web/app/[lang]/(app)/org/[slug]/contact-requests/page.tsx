@@ -24,7 +24,7 @@ import { getCountries, getOccupations } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
-import { conversationPath, findWorkersPath, orgContactRequestsPath } from "@/lib/routes";
+import { appealPath, conversationPath, findWorkersPath, orgContactRequestsPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 // Nothing about a worker who has not accepted is in the title or the metadata (NFR-S9).
@@ -77,6 +77,12 @@ function RequestItem({ request, lang, slug, names, messaging }: {
       </p>
       <p className="text-body leading-relaxed whitespace-pre-line wrap-anywhere">{request.message}</p>
       {request.jobTitle ? <p className="text-body">Vacancy: {request.jobTitle}</p> : null}
+      {request.hiddenBy !== null ? (
+        <p className="text-small">
+          <strong>Hidden by moderation.</strong> The worker no longer sees this request and cannot answer it.{" "}
+          <TextLink href={appealPath(lang, request.hiddenBy)}>See the reasons and how to appeal</TextLink>
+        </p>
+      ) : null}
       <p className="text-small text-muted-foreground">
         {sentNextSteps[request.status]}
         {request.status === "pending" ? (

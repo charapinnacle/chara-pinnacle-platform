@@ -70,17 +70,36 @@ function itemDetails(report: ReportDetail): { label: string; value: ReactNode }[
   return rows;
 }
 
+// A message or a contact request: who sent it and its state with the page; its text only on the handler's audited
+// opening (NFR-C5).
+function SentItem({ report, canAct }: { report: ReportDetail; canAct: boolean }) {
+  const { organization } = report;
+  const kind = report.targetType === "contact_request" ? "contact_request" : "message";
+  const context: ReportItemContext = report.item?.context ?? {};
+  const details: { label: string; value: ReactNode }[] = [
+    { label: "Sent by", value: organization?.name ?? "A candidate" },
+    ...(organization ? [{ label: "Organisation status", value: <AccountStatusBadge status={organization.status} /> }] : []),
+    ...(kind === "contact_request" ? [{ label: "Vacancy offered", value: context.job_title ?? "None" }] : []),
+    ...(report.item?.moderationState ? [{ label: "Visibility", value: <JobModerationBadge state={report.item.moderationState} /> }] : []),
+  ];
+  return (
+    <div className="grid gap-4">
+      <DetailList items={details} />
+      {canAct && report.status === "in_review" ? (
+        <ReportedMessageContext reportId={report.id} kind={kind} />
+      ) : (
+        <p className="text-body text-muted-foreground">
+          {kind === "contact_request" ? "The text of the contact request" : "The text of the message"} is shown only to the
+          Trust &amp; Safety Administrator who puts this report in review, and every opening is recorded.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Target({ lang, report, canAct }: { lang: string; report: ReportDetail; canAct: boolean }) {
   const { job, organization } = report;
-  if (report.targetType === "message") {
-    if (canAct && report.status === "in_review") return <ReportedMessageContext reportId={report.id} />;
-    return (
-      <p className="text-body text-muted-foreground">
-        A message in a conversation. Its text is shown only to the Trust &amp; Safety Administrator who puts this report in
-        review, and every opening is recorded.
-      </p>
-    );
-  }
+  if (report.targetType === "message" || report.targetType === "contact_request") return <SentItem report={report} canAct={canAct} />;
   if (isReportItem(report.targetType)) {
     return (
       <div className="grid gap-3">
@@ -191,7 +210,10 @@ function decisionTarget(report: ReportDetail): DecisionTarget {
   const organization = report.organization?.name ?? null;
   if (report.targetType === "job") return { kind, title: report.job?.title ?? "Not available", organization };
   if (report.targetType === "content") return { kind, title: report.contentPath ?? "Not available", organization: null };
-  if (report.targetType === "message") return { kind, title: "A message in a conversation", organization: null };
+  if (report.targetType === "message") return { kind, title: "A message in a conversation", organization };
+  if (report.targetType === "contact_request") {
+    return { kind, title: report.item?.context.job_title ?? "A contact request without a vacancy", organization };
+  }
   if (report.targetType === "requirement") return { kind, title: report.item?.context.title ?? "Not available", organization };
   if (report.targetType === "partner_response" || report.targetType === "candidate_submission") {
     return { kind, title: report.item?.context.requirement_title ?? "Not available", organization };
