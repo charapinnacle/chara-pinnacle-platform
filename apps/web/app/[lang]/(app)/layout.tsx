@@ -75,6 +75,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[lan
             ...(type === "employer" ? {} : { partnerSegment: partnerSegments[type] }),
             ...(jobOrdersReleased ? { jobOrders: true as const } : {}),
             ...(submissionsReleased ? { candidateSubmissions: true as const } : {}),
+            ...(partnersReleased ? { analytics: true as const } : {}),
           })),
         notifications,
         submissions: accountKind === "worker" && submissionsReleased,

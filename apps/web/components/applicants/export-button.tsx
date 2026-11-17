@@ -6,12 +6,20 @@ import { FormButton } from "@/components/forms/form-button";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
 
-type ExportButtonProps = { action: string; jobId: string; stage: string | null; disabled: boolean; hint: string | null };
+// fields are sent with the request; fileName is used when the answer does not name its file.
+type ExportButtonProps = {
+  action: string;
+  fields: Record<string, string>;
+  disabled: boolean;
+  hint: string | null;
+  label?: string;
+  fileName?: string;
+};
 
 // The export is a POST that answers a file, or a sentence when it refuses (a plan that changed after the page was read, a
 // vacancy that is gone, too many rows). The file is saved from here so that a refusal is a toast and the list stays on
 // the screen. A redirect means the session needs a step again: the page is read again and its guards take over.
-export function ExportButton({ action, jobId, stage, disabled, hint }: ExportButtonProps) {
+export function ExportButton({ action, fields, disabled, hint, label = "Export CSV", fileName = "applicants.csv" }: ExportButtonProps) {
   const router = useRouter();
   const call = useActionCall("The export failed");
   const hintId = useId();
@@ -29,7 +37,7 @@ export function ExportButton({ action, jobId, stage, disabled, hint }: ExportBut
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "applicants.csv";
+      link.download = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? fileName;
       link.click();
       URL.revokeObjectURL(url);
       return {};
@@ -38,10 +46,11 @@ export function ExportButton({ action, jobId, stage, disabled, hint }: ExportBut
 
   return (
     <form method="post" action={action} onSubmit={exportCsv} className="grid gap-1">
-      <input type="hidden" name="job" value={jobId} />
-      <input type="hidden" name="stage" value={stage ?? ""} />
+      {Object.entries(fields).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <FormButton type="submit" variant="secondary" className="w-auto" disabled={disabled} busy={call.pending} aria-describedby={hint ? hintId : undefined}>
-        Export CSV
+        {label}
       </FormButton>
       {hint ? (
         <p id={hintId} className="text-small text-muted-foreground">

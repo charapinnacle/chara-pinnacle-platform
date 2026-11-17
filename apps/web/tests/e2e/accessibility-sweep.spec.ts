@@ -155,6 +155,7 @@ const releasedPages = [
   "/[lang]/job-orders",
   "/[lang]/legal/ranking",
   "/[lang]/notifications",
+  "/[lang]/org/[slug]/analytics",
   "/[lang]/org/[slug]/applicants/submissions/[id]",
   "/[lang]/org/[slug]/find-employers",
   "/[lang]/org/[slug]/invitations",

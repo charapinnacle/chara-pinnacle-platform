@@ -132,6 +132,7 @@ export default defineConfig({
         "**/partner-dashboards-job-orders.spec.ts",
         "**/employer-network-dashboard.spec.ts",
         "**/moderation-job-orders.spec.ts",
+        "**/network-analytics.spec.ts",
       ],
     },
     {
@@ -634,13 +635,21 @@ export default defineConfig({
       testMatch: "**/moderation-job-orders.spec.ts",
       dependencies: ["employer-network-dashboard-release"],
     },
+    // The network analytics page (V60) sets releases 2a and 2b and the plan limits for the whole database, so it follows
+    // the moderation of job orders.
+    {
+      name: "network-analytics-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/network-analytics.spec.ts",
+      dependencies: ["moderation-job-orders-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["moderation-job-orders-release"],
+      dependencies: ["network-analytics-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

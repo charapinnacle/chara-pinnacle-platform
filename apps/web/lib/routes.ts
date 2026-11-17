@@ -372,3 +372,13 @@ export function appealsPath(lang: string): string {
 export function appealPath(lang: string, decision: number): string {
   return `${appealsPath(lang)}/${decision}`;
 }
+
+// The analytics of an organisation for one period (FR-R6), and their CSV export.
+export function analyticsPath(lang: string, slug: string, period?: string): string {
+  const path = `/${lang}/org/${slug}/analytics`;
+  return period ? `${path}?period=${encodeURIComponent(period)}` : path;
+}
+
+export function analyticsExportPath(lang: string, slug: string): string {
+  return `${analyticsPath(lang, slug)}/export`;
+}
