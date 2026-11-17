@@ -2354,7 +2354,7 @@ isOneToOne: false
                            },
 "admin_get_reported_message":
 { Args: { "p_report": number }; Returns: {
-              "body": string,"created_at": string,"id": string,"reported": boolean,"sender_kind": string,"sender_name": string,"sender_organization_name": string
+              "body": string,"created_at": string,"id": string,"reported": boolean,"sender_former": boolean,"sender_kind": string,"sender_name": string,"sender_organization_name": string
             }[]
                            },
 "admin_get_user":

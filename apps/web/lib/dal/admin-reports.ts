@@ -250,6 +250,8 @@ export type ReportedMessage = {
   senderKind: "worker" | "organization";
   senderName: string | null;
   senderOrganizationName: string | null;
+  // No longer a member of the organisation: removed, or the account erased.
+  senderFormer: boolean;
   body: string;
   reported: boolean;
 };
@@ -271,6 +273,7 @@ export async function getReportedMessage(
       senderKind: row.sender_kind === "worker" ? "worker" : "organization",
       senderName: row.sender_name ?? null,
       senderOrganizationName: row.sender_organization_name ?? null,
+      senderFormer: row.sender_former,
       body: row.body,
       reported: row.reported,
     })),
