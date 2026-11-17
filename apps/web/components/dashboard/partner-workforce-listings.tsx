@@ -4,7 +4,7 @@ import { LinkButton } from "@/components/layout/link-button";
 import { ConfirmListing } from "@/components/organization/confirm-listing";
 import type { WorkforceListing } from "@/lib/dal/workforce-availability";
 import { formatCount } from "@/lib/i18n/format";
-import { freshnessLabel, listingFreshness, type AvailabilityRules } from "@/lib/workforce/freshness";
+import { availabilityText, freshnessLabel, listingFreshness, type AvailabilityRules } from "@/lib/workforce/freshness";
 
 type PartnerWorkforceListingsProps = {
   slug: string;
@@ -52,9 +52,7 @@ export function PartnerWorkforceListings({ slug, canManage, listings, names, rul
                 <StatusBadge status="warning">Not confirmed for {formatCount(rules.staleDays)} days or more</StatusBadge>
               ) : null}
             </div>
-            <p className="text-body">
-              {formatCount(listing.available)} available now, {formatCount(listing.monthlyCapacity)} per month
-            </p>
+            <p className="text-body">{availabilityText(listing, at)}</p>
             <p className="text-small text-muted-foreground">{text}</p>
             {canManage && freshness.state !== "fresh" ? (
               <div>

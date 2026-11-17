@@ -6,10 +6,10 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportForm } from "@/components/reports/report-form";
 import { getPublicJob } from "@/lib/dal/hiring";
+import { getPartnerProfile } from "@/lib/dal/partner-profile";
 import { isReleased } from "@/lib/dal/release";
 import { getCurrentUser } from "@/lib/dal/session";
 import { contentPathFrom, vacancyIdFrom } from "@/lib/reports/target";
-import { partnerProfilePath } from "@/lib/routes";
 import { reportCategorySchema, reportTargetTypes } from "@/lib/validation/report";
 import { slugSchema } from "@/lib/validation/team";
 
@@ -57,10 +57,13 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/[
     const partner = slugSchema.safeParse(first(query.partner));
     const [released, user] = await Promise.all([isReleased("release_partner_directories"), getCurrentUser()]);
     if (!partner.success || !released) notFound();
+    // The company is named as its profile names it; a profile that is not public names nothing, and the database refuses
+    // the report.
+    const profile = await getPartnerProfile(partner.data);
     return (
       <PageContainer layout="page" className="grid max-w-3xl gap-8">
         <PageHeader title={headings.partner_profile}>
-          <p className="text-body font-medium wrap-anywhere">{partnerProfilePath(lang, partner.data)}</p>
+          {profile.state === "found" ? <p className="text-body font-medium wrap-anywhere">{profile.profile.displayName}</p> : null}
         </PageHeader>
         <ReportForm lang={lang} type={kind} target={partner.data} category={category} signedIn={user !== null} />
       </PageContainer>

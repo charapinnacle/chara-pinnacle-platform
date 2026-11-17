@@ -30,7 +30,7 @@ export default async function FollowingPage({ params, searchParams }: PageProps<
       <PageHeader
         title="Followed companies"
         titleProps={{ id: FOLLOWING_HEADING_ID, tabIndex: -1 }}
-        description="You hear about the new vacancies of these companies, at most once a day per company. The companies only see how many people follow them, never who."
+        description="The companies you follow, newest first. The companies only see how many people follow them, never who."
       />
       <ConnectionList
         mode={{ kind: "following" }}
@@ -40,7 +40,7 @@ export default async function FollowingPage({ params, searchParams }: PageProps<
           title: "You do not follow any companies yet",
           description: worker
             ? "Follow a company from its page to hear about its new vacancies."
-            : "Follow a company from its page or profile to hear about its news.",
+            : "Follow an employer from its page to hear about its new vacancies, or a partner from its profile to keep it at hand.",
           href: worker ? `/${lang}/jobs` : partnerDirectoryPath(lang, "recruitment"),
           label: worker ? "Find jobs" : "Find Recruitment Partners",
         }}

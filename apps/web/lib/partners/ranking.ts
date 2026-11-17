@@ -106,7 +106,7 @@ export const rankingCopy = {
   paging:
     "Results come 20 per page by default, with a link to the next page, and searches are limited in number per person and per visitor to prevent scraping; neither changes the order.",
   advanced:
-    "Capacity and timeframe (both directories) and more than one source country (Find Recruitment Partners only) are advanced filters, available to an organisation whose plan includes them.",
+    "Capacity and timeframe (both directories) and more than one source country (Find Recruitment Partners only) are advanced filters, available to a signed-in organisation whose plan includes them.",
   size: "Company size (its workforce size band) counts only through the workforce size filter, when you choose it. The number of workers a company lists as available counts only in the capacity filter and in the available workforce search, as described above.",
   payment:
     "whether a company pays, which plan it is on and how much it pays are not read by any of these searches. Nobody can pay for a higher place.",

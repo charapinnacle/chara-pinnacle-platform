@@ -7,6 +7,7 @@ import { ImmigrationNotice } from "@/components/public/immigration-notice";
 import { formatCount, formatDate } from "@/lib/i18n/format";
 import { publicWebsite } from "@/lib/jobs/presentation";
 import type { Named, PartnerProfile } from "@/lib/partners/profile";
+import { loginPath, partnerProfilePath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { WORKERS_NEVER_PAY } from "@/lib/validation/commitment";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
@@ -120,7 +121,12 @@ export function PartnerProfileView({ lang, profile, actions, banner }: PartnerPr
           </ProfileSection>
 
           <ProfileSection id="profile-capacity" title="Workforce capacity">
-            {profile.listings.length === 0 ? (
+            {profile.listings === null ? (
+              <p className="text-body text-muted-foreground">
+                <TextLink href={loginPath(lang, partnerProfilePath(lang, profile.slug))}>Sign in</TextLink> to see the workers
+                available and the monthly capacity.
+              </p>
+            ) : profile.listings.length === 0 ? (
               <p className="text-body text-muted-foreground">No current availability listed</p>
             ) : (
               <ul className="grid gap-3">
