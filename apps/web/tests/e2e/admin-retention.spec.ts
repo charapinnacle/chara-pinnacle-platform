@@ -57,11 +57,12 @@ test.describe("the retention periods of the console (FR-S3)", () => {
     const conversations = row(page, "Conversations");
     await expect(conversations.getByRole("cell").nth(1)).toHaveText("730");
     await expect(conversations.getByRole("cell").nth(2)).toHaveText("24 months");
-    await expect(conversations).toContainText("Applies with messaging (release 2c).");
-    for (const label of ["Partner responses", "Candidate submissions", "Closed requirements", "Contact requests", "Replaced licence evidence", "Job order statistics"]) {
+    await expect(conversations).toContainText("after its last message (24 months, decision 5.4)");
+    for (const label of ["Partner responses", "Candidate submissions", "Closed requirements", "Contact requests", "Replaced licence evidence", "Job order statistics", "Declined contact requests", "Saved Find Workers cards", "Find Workers search log"]) {
       await expect(row(page, label)).toHaveCount(1);
     }
     await expect(row(page, "Contact requests").getByRole("cell").nth(1)).toHaveText("365");
+    await expect(row(page, "Declined contact requests").getByRole("cell").nth(1)).toHaveText("90");
     await expect(row(page, "Closed requirements")).toContainText("with its invitations, responses and submissions");
     await expect(row(page, "Replaced licence evidence").getByRole("cell").nth(2)).toHaveText("1 month");
     const audit = row(page, "Audit log");

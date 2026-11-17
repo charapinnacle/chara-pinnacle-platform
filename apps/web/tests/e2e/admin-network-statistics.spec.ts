@@ -260,6 +260,55 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
     }
   });
 
+  test("FR-S2 (2c): the messaging and Find Workers metrics show with their releases, below the threshold as fewer than 5", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const tag = uniqueTag();
+    const owner = await createCommittedPartner("recruitment_company");
+    execute(
+      `with employer as (
+         insert into public.organizations (type, slug, legal_name, display_name, based_in_country)
+         values ('employer', 'netstat-msg-${tag}', 'Netstat MSG ${tag} GmbH', 'Netstat MSG ${tag}', 'DE')
+         returning id
+       ), member as (
+         insert into public.organization_members (organization_id, user_id, role, accepted_at)
+         select id, ${literal(owner.id)}, 'owner', now() from employer
+       ), searches as (
+         insert into private.worker_search_log (organization_id, user_id, filter_names, result_count, created_at)
+         select employer.id, ${literal(owner.id)}, '{occupation}', 3, '2025-03-10 10:00+00'::timestamptz + make_interval(hours => n)
+         from employer, generate_series(1, 6) n
+       )
+       insert into public.conversations (context_type, context_id, created_at, last_message_at)
+       select 'partner_response', gen_random_uuid(), '2025-03-12 10:00+00'::timestamptz + make_interval(mins => n), now()
+       from generate_series(1, 7) n`,
+    );
+    execute(`update private.settings set value = 'true' where key in ('release_messaging', 'release_find_workers')`);
+    try {
+      await signInStaff(page, "admin", STATISTICS);
+      await showRange(page, MARCH, APRIL_END);
+      await expect(metricTable(page, "Messaging: Conversations started").getByRole("row", { name: /March 2025/ })).toContainText("7");
+      await expect(metricTable(page, "Messaging: Messages sent").getByRole("row", { name: /March 2025/ })).toContainText("fewer than 5");
+      await expect(metricTable(page, "Find Workers: Find Workers searches").getByRole("row", { name: /March 2025/ })).toContainText("6");
+      await expect(metricTable(page, "Find Workers: Contact requests accepted").getByRole("row", { name: /April 2025/ }))
+        .toContainText("fewer than 5");
+      await expect(page.getByText(`Netstat MSG ${tag}`)).toHaveCount(0);
+      await expectAccessibleAtBothWidths(page);
+
+      execute(`update private.settings set value = 'false' where key = 'release_messaging'`);
+      await page.reload();
+      await showRange(page, MARCH, APRIL_END);
+      await expect(section(page).getByRole("heading", { name: "Messaging" })).toHaveCount(0);
+      await expect(metricTable(page, "Find Workers: Find Workers searches")).toBeVisible();
+    } finally {
+      execute(
+        `update private.settings set value = 'false' where key in ('release_messaging', 'release_find_workers');
+         delete from public.conversations where created_at >= '2025-03-12 10:00+00' and created_at < '2025-03-12 10:08+00';
+         delete from public.organizations where slug = 'netstat-msg-${tag}'`,
+      );
+    }
+  });
+
   test("release 2a off: the statistics page has no Partner network section", async ({ page }) => {
     await signInStaff(page, "admin", STATISTICS);
     await expect(page.getByRole("heading", { name: "Partner network" })).toBeVisible();

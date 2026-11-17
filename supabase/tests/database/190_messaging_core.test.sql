@@ -178,8 +178,8 @@ select is(
    where k.contype = 'f' and k.confrelid = 'public.profiles'::regclass
      and k.conrelid in ('public.conversations'::regclass, 'public.conversation_participants'::regclass,
        'public.messages'::regclass, 'public.conversation_reads'::regclass)),
-  'conversation_participants.user_id:c,conversation_reads.user_id:c,conversations.opened_by:n,messages.sender_user_id:n',
-  'FR-P3 AC10 (room for V74): a deleted account leaves its messages with the side and no user, and removes its participant and read rows');
+  'conversation_reads.user_id:c,conversations.opened_by:n,messages.sender_user_id:n',
+  'FR-P3 AC10: a deleted account leaves its messages with the side and no user and removes its read rows; the candidate''s participant row has no foreign key, as erase_user pseudonymises it (V74)');
 select is(pg_temp.open(:'adm', 'application', :'app'), '42501|CHARA_FORBIDDEN|release_off',
   'every function refuses to run while release_messaging is off');
 
