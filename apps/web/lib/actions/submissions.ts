@@ -54,10 +54,13 @@ export async function submitCandidate(slug: string, requirementId: string, input
     p_email: parsed.data.email,
     p_note: parsed.data.note === "" ? undefined : parsed.data.note,
   });
-  revalidatePath(partnerSubmissionsPath(defaultLocale, organization.slug));
-  revalidatePath(requirementSubmissionsPath(defaultLocale, organization.slug, id.data));
-  revalidatePath(newSubmissionPath(defaultLocale, organization.slug, id.data));
-  if (!error) return { sent: { existing: data[0]?.existing ?? false } };
+  // A refusal (the monthly limit above all) keeps the form as typed: revalidating would re-render it as the limit panel.
+  if (!error) {
+    revalidatePath(partnerSubmissionsPath(defaultLocale, organization.slug));
+    revalidatePath(requirementSubmissionsPath(defaultLocale, organization.slug, id.data));
+    revalidatePath(newSubmissionPath(defaultLocale, organization.slug, id.data));
+    return { sent: { existing: data[0]?.existing ?? false } };
+  }
 
   const refusal = submitRefusal(error);
   switch (refusal.kind) {
