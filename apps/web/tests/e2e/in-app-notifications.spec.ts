@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
@@ -149,15 +149,30 @@ test.describe("in-app notifications (FR-T1)", () => {
   test("a skeleton shows while the list loads", async ({ context, page }) => {
     const candidate = await createCommittedUser("worker");
     await signInBrowser(context, candidate);
-    let prefetched = false;
+    const pending = new Set<Request>();
+    let answered = 0;
     page.on("request", (request) => {
-      if (request.url().includes("/en/notifications")) prefetched = true;
+      if (request.url().includes("/en/notifications")) pending.add(request);
     });
+    const settle = (request: Request) => {
+      if (pending.delete(request)) answered += 1;
+    };
+    page.on("requestfinished", settle);
+    page.on("requestfailed", settle);
     await page.goto("/en/dashboard/worker");
     const link = bell(page);
     await waitForHydration(link);
-    // The loading screen of a route is fetched when its link comes into view; only then can it show at once.
-    await expect.poll(() => prefetched).toBe(true);
+    // The dashboard's own blocks stream their skeletons first; once they are gone the only loading status is the page's.
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
+    // The loading screen of a route is fetched in several requests when its link comes into view; only once all of them
+    // are answered, with none following for a moment, can it show at once.
+    await expect
+      .poll(async () => {
+        const before = answered;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return answered > 0 && pending.size === 0 && answered === before;
+      })
+      .toBe(true);
     await page.route("**/en/notifications*", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       await route.continue();
