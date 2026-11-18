@@ -343,6 +343,16 @@ describe("the response actions", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
+  it("keeps the form when a document is not ready, revalidating nothing", async () => {
+    const { revalidatePath } = await import("next/cache");
+    vi.mocked(revalidatePath).mockClear();
+    rpcMock.mockResolvedValue(refusal("CHARA_DOCUMENT_NOT_SCANNED", "upload_missing"));
+    expect(await respondToRequirement("p1", REQUIREMENT, valid)).toEqual({ message: RESPONSE_MESSAGES.uploadMissing });
+    answers({ update_response: refusal("CHARA_DOCUMENT_NOT_SCANNED", null) });
+    expect(await updateMyResponse("p1", { responseId: RESPONSE, expectedVersion: 1 }, valid)).toEqual({ message: RESPONSE_MESSAGES.scanning });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("sends the expected version with an edit and says when it is stale", async () => {
     answers({ update_response: refusal("CHARA_CONFLICT", "stale") });
     expect(await updateMyResponse("p1", { responseId: RESPONSE, expectedVersion: 1 }, valid)).toEqual({ message: RESPONSE_MESSAGES.stale });
