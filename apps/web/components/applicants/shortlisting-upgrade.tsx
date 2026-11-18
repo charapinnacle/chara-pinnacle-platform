@@ -10,7 +10,7 @@ export function ShortlistingUpgrade({ role, billingHref }: { role: MemberRole; b
       {role === "member" ? (
         <>
           {UPGRADE}. Your plan does not include shortlisting, so applicants cannot be moved to Shortlisted. Contact an owner
-          or admin of your organization to upgrade the plan.
+          or admin of your organisation to upgrade the plan.
         </>
       ) : (
         <>

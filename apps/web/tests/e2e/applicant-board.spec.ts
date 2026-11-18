@@ -145,7 +145,7 @@ test.describe("the pipeline board", () => {
     await expect(dialog).toBeVisible();
     expect(statusOf(chiId)).toBe("applied");
     await dialog.getByRole("button", { name: "Review" }).click();
-    await expect(dialog.getByRole("alert").first()).toContainText("Choose a reason");
+    await expect(dialog.getByRole("alert").first()).toContainText("Choose a reason.");
     expect(statusOf(chiId)).toBe("applied");
     await dialog.getByLabel("Reason (visible to the candidate)", { exact: true }).selectOption({ label: "Position filled" });
     await dialog.getByRole("button", { name: "Review" }).click();
@@ -275,7 +275,7 @@ test.describe("the pipeline board", () => {
 
     execute(`update billing.subscriptions set status = 'canceled' where organization_id = ${literal(company.id)}`);
     await move(page, "Ana Silva", "Interview");
-    await expect(page.getByText("Your organization has no active paid plan, so stages cannot be changed.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Your organisation has no active paid plan, so stages cannot be changed.", { exact: true })).toBeVisible();
     await expect(banner).toBeVisible();
     await expect(boardColumn(page, "Applied").getByRole("link", { name: "Ana Silva" })).toBeVisible();
     expect(statusOf(ids[0])).toBe("applied");
