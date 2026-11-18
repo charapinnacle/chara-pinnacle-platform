@@ -2607,7 +2607,7 @@ isOneToOne: false
 { Args: { "p_org": string }; Returns: undefined
                            },
 "card_contact_requests":
-{ Args: { "p_cards": string[],"p_org": string }; Returns: {
+{ Args: { "p_cards": (string)[],"p_org": string }; Returns: {
               "can_send": boolean,"card_id": string,"created_at": string,"request_id": string,"status": Database["public"]['Enums']["contact_request_status"]
             }[]
                            },
