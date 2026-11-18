@@ -78,7 +78,7 @@ test.describe("candidate passport: training, employment history and preferences"
     );
     await expectPercent(page, 10);
 
-    await press(page.getByRole("button", { name: "Add employment" }));
+    await press(page.getByRole("button", { name: "Add employment", exact: true }));
     const addEmployment = page.getByRole("dialog", { name: "Add employment" });
     await expect(addEmployment).toBeVisible();
     for (const label of ["Role", "Employer name (optional)", "From", "To", "I still work here"]) {
@@ -156,7 +156,7 @@ test.describe("candidate passport: training, employment history and preferences"
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     await expectNoAxeViolations(page);
 
-    await page.getByRole("button", { name: "Add employment" }).click();
+    await page.getByRole("button", { name: "Add employment", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Add employment" })).toBeVisible();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     await expectNoAxeViolations(page);
