@@ -16,7 +16,7 @@ import { isReleased } from "@/lib/dal/release";
 import { requireCandidate } from "@/lib/dal/session";
 import { listSubmissionEvents } from "@/lib/dal/submission-pipeline";
 import { getMySubmission, type SubmissionRequest } from "@/lib/dal/submissions";
-import { formatCount, formatDate, formatShortDate } from "@/lib/i18n/format";
+import { formatCount, formatDate } from "@/lib/i18n/format";
 import { submissionsPath } from "@/lib/routes";
 import {
   CANDIDATE_CLOSED_NEXT_STEP,
@@ -118,7 +118,7 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
                   <p className="font-medium">
                     {candidateSubmissionLabels[event.toStatus]}{" "}
                     <time dateTime={event.createdAt} className="font-normal text-muted-foreground">
-                      {formatShortDate(event.createdAt)}
+                      {formatDate(event.createdAt)}
                     </time>
                   </p>
                   <p className="text-small text-muted-foreground">{submissionActorLabels[event.actorRole]}</p>
