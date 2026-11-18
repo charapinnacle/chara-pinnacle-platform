@@ -34,7 +34,7 @@ const subscriptionSchema = z.object({
 });
 
 const usageSchema = z.array(
-  z.object({ limit_key: z.string(), used: z.number(), limit_value: z.number().nullable() }),
+  z.object({ limit_key: z.string(), used: z.number(), limit_value: z.number().nullable(), applies: z.boolean() }),
 );
 
 export type BillingState = z.infer<typeof stateSchema>;
@@ -52,7 +52,9 @@ export type Subscription = {
 // The keys of the billing page: those its plans list, and the open workforce requirements while release 2b is on (FR-M4).
 export type UsageKey = PlanLimitKey | "active_requirements";
 
-export type Usage = { key: UsageKey; used: number; limit: number | null };
+// applies: the limit is enforced now (entitlements_enforced, or an organisation restricted to its free plan); otherwise
+// a change above it still succeeds.
+export type Usage = { key: UsageKey; used: number; limit: number | null; applies: boolean };
 
 // The plans a company of the given type can buy online: public, priced and not for contact.
 export async function listSoldPlans(orgType: OrganizationType = "employer"): Promise<SoldPlan[]> {
@@ -103,7 +105,7 @@ export async function getUsage(
   const rows = usageSchema.parse(data);
   return keys.flatMap((key) => {
     const row = rows.find((candidate) => candidate.limit_key === key);
-    return row ? [{ key, used: row.used, limit: row.limit_value }] : [];
+    return row ? [{ key, used: row.used, limit: row.limit_value, applies: row.applies }] : [];
   });
 }
 
