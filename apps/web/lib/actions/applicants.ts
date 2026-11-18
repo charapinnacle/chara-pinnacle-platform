@@ -28,8 +28,8 @@ function refusalMessage(refusal: StageRefusal): StageActionResult {
       return {
         message:
           refusal.reason === "organization_suspended"
-            ? "Your organization is suspended, so stages cannot be changed."
-            : "Your organization has no active paid plan, so stages cannot be changed.",
+            ? "Your organisation is suspended, so stages cannot be changed."
+            : "Your organisation has no active paid plan, so stages cannot be changed.",
       };
     case "shortlisting_not_in_plan":
       return { message: "Your plan does not include shortlisting." };
@@ -78,7 +78,7 @@ function itemMessage({ errorCode, status }: BulkItem): string {
     case "CHARA_FEATURE_NOT_IN_PLAN":
       return "Your plan does not include shortlisting.";
     case "CHARA_FORBIDDEN":
-      return "Your organization is suspended, so stages cannot be changed.";
+      return "Your organisation is suspended, so stages cannot be changed.";
     default:
       return GENERIC_FAILURE;
   }

@@ -3,7 +3,7 @@ import { BRAND_NAME } from "@/lib/brand";
 
 export const COMMITMENT_SLUG = "employer-pays-commitment";
 export const COMMITMENT_LABEL = "We charge workers no recruitment fees or related costs";
-export const COMMITMENT_REQUIRED = "Please confirm the commitment to continue";
+export const COMMITMENT_REQUIRED = "Please confirm the commitment to continue.";
 // The line every partner page shows (FR-J3, NFR-C6).
 export const WORKERS_NEVER_PAY = `Workers never pay fees to get a job through ${BRAND_NAME}`;
 

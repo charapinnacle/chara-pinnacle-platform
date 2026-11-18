@@ -42,7 +42,7 @@ describe("moveReport", () => {
   it("refuses a short reason with the field error and calls nothing", async () => {
     for (const status of ["in_review", "dismissed"] as const) {
       const result = await moveReport({ id: 7, status, reason: "short" });
-      expect(result.errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+      expect(result.errors).toEqual({ reason: "Give a reason of at least 10 characters." });
     }
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();
@@ -77,8 +77,8 @@ describe("decideReport (FR-S1 AC4, AC11)", () => {
   });
 
   it("refuses reasons outside 10 to 2,000 characters and an unknown decision before calling the database", async () => {
-    expect((await decideReport({ id: 9, decision: "dismiss", reason: "Nine char" })).errors).toEqual({ reason: "Give a reason of at least 10 characters" });
-    expect((await decideReport({ id: 9, decision: "dismiss", reason: "x".repeat(2001) })).errors).toEqual({ reason: "The reason can have at most 2000 characters" });
+    expect((await decideReport({ id: 9, decision: "dismiss", reason: "Nine char" })).errors).toEqual({ reason: "Give a reason of at least 10 characters." });
+    expect((await decideReport({ id: 9, decision: "dismiss", reason: "x".repeat(2001) })).errors).toEqual({ reason: "The reason can have at most 2000 characters." });
     expect(await decideReport({ id: 9, decision: "delete" as "hide", reason: "A reason that is long enough." })).toHaveProperty("errors");
     expect(rpcMock).not.toHaveBeenCalled();
   });

@@ -22,7 +22,7 @@ import { formatCount } from "@/lib/i18n/format";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
-import { getUsagePrompts } from "@/lib/dal/usage";
+import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { billingPath, workforceProfilePreviewPath } from "@/lib/routes";
@@ -123,6 +123,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
     commitment,
     availabilityRules,
     moderation,
+    allowances,
   ] =
     await Promise.all([
       getOrganizationGeographies(organization.id),
@@ -136,6 +137,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getCommitmentBlock(organization.id),
       getAvailabilityRules(),
       getPartnerProfileModeration(organization.id),
+      getUnenforcedAllowances(organization.id, ["markets"]),
     ]);
   const appeal = moderation.decision ? await listMyAppeals(moderation.decision.id) : null;
   const billingHref = billingPath(lang, slug);
@@ -202,6 +204,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
             countries={countries}
             defaults={geographies}
             marketsPrompt={prompts.markets}
+            marketsAllowance={allowances.markets}
             billingHref={billingHref}
             onboarding={false}
             listingCounts={listingCounts?.then((counts) => counts.countries)}

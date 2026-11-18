@@ -195,11 +195,11 @@ test.describe("bulk actions on applicants", () => {
 
     await chooseBulk(page, "Decline (Not selected)");
     await reviewButton(page).click();
-    await expect(page.getByRole("link", { name: "Choose a reason" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Choose a reason." })).toBeVisible();
     await expect(bulkDialog(page)).toBeHidden();
     await bulkToolbar(page).getByLabel("Reason (visible to the candidate)", { exact: true }).selectOption({ label: "Other" });
     await reviewButton(page).click();
-    await expect(page.getByRole("link", { name: "Enter a reason" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Enter a reason." })).toBeVisible();
     await bulkToolbar(page).getByLabel("Other reason (visible to the candidate)").fill("Moved abroad");
     await reviewButton(page).click();
     await expect(bulkDialog(page).getByRole("listitem")).toHaveText(["Chi WeiApplied", "Ana SilvaApplied"]);

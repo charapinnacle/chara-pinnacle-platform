@@ -8,11 +8,13 @@ const redirectMock = vi.hoisted(() =>
 const rpcMock = vi.fn();
 const requireOrgRoleMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
+const reviewMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("@/lib/dal/session", () => ({ requireOrgRole: requireOrgRoleMock }));
 vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/partner-review", () => ({ getPartnerReview: reviewMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
 const { submitForReview } = await import("@/lib/actions/partner-review");
@@ -24,6 +26,7 @@ beforeEach(() => {
   releasedMock.mockResolvedValue(true);
   requireOrgRoleMock.mockResolvedValue({ organization: { id: "org-1", type: "recruitment_company", role: "admin" } });
   rpcMock.mockResolvedValue({ data: { review_status: "pending_review", changed: true }, error: null });
+  reviewMock.mockResolvedValue({ status: "onboarding", submittedAt: null, infoStep: null, listedAt: null });
 });
 
 describe("submitForReview (FR-J1 AC10)", () => {
@@ -34,6 +37,17 @@ describe("submitForReview (FR-J1 AC10)", () => {
       hideFromOutsiders: true,
       partner: true,
     });
+    expect(rpcMock).toHaveBeenCalledWith("submit_partner_for_review", { p_org: "org-1" });
+  });
+
+  it("FR-J4 AC7: after a request for information submits again only once the change is confirmed", async () => {
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "company", listedAt: null });
+    await expect(submitForReview("manila-skills")).resolves.toEqual({
+      errors: { checked: "Confirm that you have updated what our team asked about, or that nothing needs to change." },
+    });
+    await expect(submitForReview("manila-skills", { checked: false })).resolves.toEqual({ errors: expect.any(Object) });
+    expect(rpcMock).not.toHaveBeenCalled();
+    await expect(submitForReview("manila-skills", { checked: true })).rejects.toThrow("REDIRECT:/en/onboarding");
     expect(rpcMock).toHaveBeenCalledWith("submit_partner_for_review", { p_org: "org-1" });
   });
 
@@ -66,7 +80,7 @@ describe("submitForReview (FR-J1 AC10)", () => {
   it("explains a suspended organisation and shows the state as it is after a staff decision", async () => {
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "organization_suspended"));
     await expect(submitForReview("manila-skills")).resolves.toEqual({
-      message: "This organization is suspended, so it cannot be submitted for review.",
+      message: "This organisation is suspended, so it cannot be submitted for review.",
     });
     rpcMock.mockResolvedValue(refusal("CHARA_INVALID_TRANSITION", "listed"));
     await expect(submitForReview("manila-skills")).rejects.toThrow("REDIRECT:/en/onboarding");
