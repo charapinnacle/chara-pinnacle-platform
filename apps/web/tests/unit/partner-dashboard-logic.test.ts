@@ -125,6 +125,22 @@ describe("usageLine (FR-R4 AC8)", () => {
     expect(usageLine(usage, "listed_occupations", "recruitment_company")).toBe("1 of 10 occupations listed");
     expect(usageLine(usage, "members", "recruitment_company")).toBeNull();
   });
+
+  it("says a limit of 0 not in use is not included in the plan, and counts usage kept above it", () => {
+    const free = {
+      planName: "Free",
+      items: {
+        workforce_listings: { used: 0, limit: 0, applies: true, resetsAt: null },
+        job_order_responses_per_month: { used: 0, limit: 0, applies: true, resetsAt: null },
+        markets: { used: 2, limit: 0, applies: true, resetsAt: null },
+      },
+    };
+    expect(usageLine(free, "workforce_listings", "staffing_company")).toBe("Workforce listings: not included in your plan");
+    expect(usageLine(free, "job_order_responses_per_month", "recruitment_company")).toBe(
+      "Job order responses: not included in your plan",
+    );
+    expect(usageLine(free, "markets", "staffing_company")).toBe("2 of 0 countries served");
+  });
 });
 
 describe("usageAttention (FR-R1 AC2, AC8)", () => {
@@ -148,6 +164,18 @@ describe("usageAttention (FR-R1 AC2, AC8)", () => {
     expect(usageAttention(usage, "markets")).toBeNull();
     expect(usageAttention(usage, "listed_occupations")).toBeNull();
     expect(usageAttention(usage, "active_jobs")).toBeNull();
+  });
+
+  it("marks nothing for a limit of 0 not in use, and usage kept above a limit of 0 as over it", () => {
+    const free = {
+      planName: "Free",
+      items: {
+        job_order_responses_per_month: { used: 0, limit: 0, applies: true, resetsAt: null },
+        workforce_listings: { used: 3, limit: 0, applies: true, resetsAt: null },
+      },
+    };
+    expect(usageAttention(free, "job_order_responses_per_month")).toBeNull();
+    expect(usageAttention(free, "workforce_listings")).toBe("over_limit");
   });
 });
 
