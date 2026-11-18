@@ -22,7 +22,7 @@ function message(result: { success: boolean; error?: { issues: { message: string
 describe("the search term", () => {
   it("is trimmed, then needs 3 to 100 characters", () => {
     expect(searchTermSchema.safeParse("ab")).toMatchObject({ success: false });
-    expect(message(searchTermSchema.safeParse("  ab  "))).toBe("Enter at least 3 characters");
+    expect(message(searchTermSchema.safeParse("  ab  "))).toBe("Enter at least 3 characters.");
     expect(searchTermSchema.parse("  abc  ")).toBe("abc");
     expect(searchTermSchema.safeParse("a".repeat(100)).success).toBe(true);
     expect(searchTermSchema.safeParse("a".repeat(101)).success).toBe(false);
@@ -60,7 +60,7 @@ describe("the moderation of a vacancy", () => {
     expect(jobModerationInputSchema.safeParse({ ...valid, action: "unhide" }).success).toBe(true);
     expect(jobModerationInputSchema.safeParse({ ...valid, action: "delete" }).success).toBe(false);
     expect(jobModerationInputSchema.safeParse({ ...valid, id: "1" }).success).toBe(false);
-    expect(message(jobModerationInputSchema.safeParse({ ...valid, reason: "short" }))).toBe("Give a reason of at least 10 characters");
+    expect(message(jobModerationInputSchema.safeParse({ ...valid, reason: "short" }))).toBe("Give a reason of at least 10 characters.");
   });
 
   it("pages by a time and an id, or from the start", () => {
@@ -80,12 +80,12 @@ describe("the audit filter", () => {
   });
 
   it("names a user id that is not one", () => {
-    expect(message(auditFilterSchema.safeParse({ ...empty, actor: "bob" }))).toBe("Enter a valid user id");
+    expect(message(auditFilterSchema.safeParse({ ...empty, actor: "bob" }))).toBe("Enter a valid user id.");
   });
 
   it("names a start after the end, and a date that is not a day", () => {
     expect(message(auditFilterSchema.safeParse({ ...empty, from: "2026-02-01", to: "2026-01-31" }))).toBe(
-      "The start date must not be after the end date",
+      "The start date must not be after the end date.",
     );
     expect(auditFilterSchema.safeParse({ ...empty, from: "2026-02-30" }).success).toBe(false);
     expect(auditFilterSchema.safeParse({ ...empty, to: "tomorrow" }).success).toBe(false);
@@ -107,7 +107,7 @@ describe("the statistics range", () => {
   it("refuses 367 days, a start after the end and a date that does not exist", () => {
     expect(message(rangeSchema.safeParse({ from: "2024-01-01", to: "2025-01-01" }))).toBe("Choose at most 366 days");
     expect(message(rangeSchema.safeParse({ from: "2026-03-02", to: "2026-03-01" }))).toBe(
-      "The start date must not be after the end date",
+      "The start date must not be after the end date.",
     );
     expect(rangeSchema.safeParse({ from: "2026-13-01", to: "2026-13-02" }).success).toBe(false);
   });
@@ -150,7 +150,7 @@ describe("the staff forms", () => {
   it("grant a role to an email address, normalised, with a role from the list", () => {
     const parsed = grantFormSchema.parse({ email: " Nia@Example.TEST ", role: "trust_safety", reason: "New hire, ticket 4812" });
     expect(parsed).toEqual({ email: "nia@example.test", role: "trust_safety", reason: "New hire, ticket 4812" });
-    expect(message(grantFormSchema.safeParse({ email: "nia@example.test", role: "", reason: "New hire, ticket 4812" }))).toBe("Choose a role");
+    expect(message(grantFormSchema.safeParse({ email: "nia@example.test", role: "", reason: "New hire, ticket 4812" }))).toBe("Choose a role.");
     expect(grantFormSchema.safeParse({ email: "nia@example.test", role: "owner", reason: "New hire, ticket 4812" }).success).toBe(false);
   });
 
@@ -158,9 +158,9 @@ describe("the staff forms", () => {
     const valid = { userId: ID, identityChecked: true, reason: "Lost the phone, identity checked" };
     expect(mfaResetFormSchema.safeParse(valid).success).toBe(true);
     expect(message(mfaResetFormSchema.safeParse({ ...valid, identityChecked: false }))).toBe(
-      "Confirm that you verified this person's identity",
+      "Confirm that you verified this person's identity.",
     );
-    expect(message(mfaResetFormSchema.safeParse({ ...valid, userId: "x" }))).toBe("Enter a valid user id");
+    expect(message(mfaResetFormSchema.safeParse({ ...valid, userId: "x" }))).toBe("Enter a valid user id.");
     expect(mfaResetFormSchema.safeParse({ ...valid, reason: "123456789" }).success).toBe(false);
   });
 });

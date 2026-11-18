@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { AccountStatusBadge } from "@/components/admin/account-status-badge";
-import { PartnerDecisionControls } from "@/components/admin/partner-decision";
+import { PartnerDecisionControls, ReviewChecklist } from "@/components/admin/partner-decision";
 import { PartnerEvidenceButton } from "@/components/admin/partner-evidence-button";
 import { cell, ResultsTable } from "@/components/admin/results-table";
 import { StatusBadge } from "@/components/feedback/status-badge";
@@ -23,7 +23,6 @@ import {
   infoStepStaffLabels,
   reviewOverdue,
   reviewStatusLabels,
-  STAFF_REVIEW_CHECKS,
 } from "@/lib/validation/partner-review";
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
@@ -212,30 +211,22 @@ export async function PartnerReviewView({ lang, id, roles }: PartnerReviewViewPr
         </p>
       </Section>
 
-      <Section id="decision" title="Decision" description="Check each point before you decide. The list is not saved.">
-        <fieldset className="grid gap-2">
-          <legend className="sr-only">Review checklist</legend>
-          {STAFF_REVIEW_CHECKS.map((check, index) => (
-            <div key={check} className="flex items-center gap-3">
-              <input id={`review-check-${index}`} type="checkbox" className="size-5 accent-foreground" />
-              <label htmlFor={`review-check-${index}`} className="text-body">
-                {check}
-              </label>
-            </div>
-          ))}
-        </fieldset>
-        {awaitingReview(review.status) ? (
-          canDecide ? (
-            <PartnerDecisionControls lang={lang} organizationId={review.id} companyName={review.legalName} />
-          ) : (
-            <Notice tone="info" role="status">
-              Read only. Trust &amp; Safety decides on partners.
-            </Notice>
-          )
+      <Section
+        id="decision"
+        title="Decision"
+        description="Tick each point before you approve. The list is not saved."
+      >
+        {awaitingReview(review.status) && canDecide ? (
+          <PartnerDecisionControls lang={lang} organizationId={review.id} companyName={review.legalName} />
         ) : (
-          <Notice tone="info" role="status">
-            This company is not waiting for a decision: {reviewStatusLabels[review.status].toLowerCase()}.
-          </Notice>
+          <>
+            <ReviewChecklist />
+            <Notice tone="info" role="status">
+              {awaitingReview(review.status)
+                ? "Read only. Trust & Safety decides on partners."
+                : `This company is not waiting for a decision: ${reviewStatusLabels[review.status].toLowerCase()}.`}
+            </Notice>
+          </>
         )}
       </Section>
 

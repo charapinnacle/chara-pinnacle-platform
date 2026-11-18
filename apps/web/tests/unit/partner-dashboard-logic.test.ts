@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { shownLimit } from "@/lib/billing/limits";
 import {
   dashboardTarget,
   nextActions,
@@ -123,7 +124,7 @@ describe("usageAttention (FR-R1 AC2, AC8)", () => {
   const usage = {
     planName: "Free",
     items: {
-      members: { used: 1, limit: 0, applies: true, resetsAt: null },
+      members: { used: 1, limit: shownLimit("members", 0), applies: true, resetsAt: null },
       workforce_listings: { used: 10, limit: 10, applies: true, resetsAt: null },
       markets: { used: 2, limit: 3, applies: true, resetsAt: null },
       listed_occupations: { used: 40, limit: null, applies: true, resetsAt: null },
@@ -131,8 +132,11 @@ describe("usageAttention (FR-R1 AC2, AC8)", () => {
   };
 
   it("marks a limit the usage is over or at, so the card names it with the way to upgrade, and nothing within or without a limit", () => {
-    expect(usageLine(usage, "members", "staffing_company")).toBe("1 of 0 team members");
-    expect(usageAttention(usage, "members")).toBe("over_limit");
+    expect(usageLine(usage, "members", "staffing_company")).toBe("1 of 1 team member");
+    expect(usageAttention(usage, "members")).toBe("at_limit");
+    const lapsed = { ...usage, items: { ...usage.items, members: { ...usage.items.members, used: 4 } } };
+    expect(usageLine(lapsed, "members", "staffing_company")).toBe("4 of 1 team member");
+    expect(usageAttention(lapsed, "members")).toBe("over_limit");
     expect(usageAttention(usage, "workforce_listings")).toBe("at_limit");
     expect(usageAttention(usage, "markets")).toBeNull();
     expect(usageAttention(usage, "listed_occupations")).toBeNull();
