@@ -207,6 +207,9 @@ describe("the submission components", () => {
   it("the badge says the status in the reader's words", () => {
     expect(renderToStaticMarkup(<SubmissionStatusBadge status="awaiting_candidate" view="partner" />)).toContain("Awaiting candidate");
     expect(renderToStaticMarkup(<SubmissionStatusBadge status="awaiting_candidate" view="candidate" />)).toContain("Waiting for your answer");
+    expect(renderToStaticMarkup(<SubmissionStatusBadge status="expired" view="candidate" />)).toContain("Expired");
+    expect(renderToStaticMarkup(<SubmissionStatusBadge status="expired" view="candidate" closed />)).toContain("Closed");
+    expect(renderToStaticMarkup(<SubmissionStatusBadge status="expired" view="partner" closed />)).toContain("Closed");
   });
 
   it("reports the fee demand on the submission itself, whether or not the partner's profile is public (FR-J3 AC8, V57)", () => {

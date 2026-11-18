@@ -50,4 +50,28 @@ describe("the comparison of responses", () => {
     expect(html).toMatch(/^<div class="relative overflow-x-auto[^"]*" role="region"/);
     expect(html).toContain('<span class="sr-only"> of Nordic Staff</span>');
   });
+
+  it("names its scrolling region", () => {
+    expect(html).toMatch(/role="region" aria-label="Responses compared side by side"/);
+  });
+
+  it("shows the decision a selected or declined response has, not that it was decided", () => {
+    const decided = renderToStaticMarkup(
+      <ResponseComparison
+        lang="en"
+        slug="acme"
+        requirementId="00000000-0000-4000-8000-000000000003"
+        responses={[
+          { ...response, status: "selected", decidedAt: "2026-11-02T10:00:00Z" },
+          { ...response, id: "00000000-0000-4000-8000-000000000004", partnerName: "Nordic Staff", status: "declined", decidedAt: "2026-11-02T10:00:00Z" },
+        ]}
+        documents={[]}
+        countryNames={new Map()}
+        canDecide
+      />,
+    );
+    const decisionRow = decided.slice(decided.indexOf(">Decision</th>"));
+    expect(decisionRow).toMatch(/<td[^>]*>Selected<\/td><td[^>]*>Declined<\/td>/);
+    expect(decided).not.toContain("Decided");
+  });
 });
