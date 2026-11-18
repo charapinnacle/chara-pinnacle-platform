@@ -202,7 +202,7 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
 
   it("says a suspended partner's details are not available", async () => {
     requireOrgRoleMock.mockResolvedValue(organization("owner", "staffing_company", true));
-    expect(await render()).toContain("This organization is suspended, so its details are not available.");
+    expect(await render()).toContain("This organisation is suspended, so its details are not available.");
   });
 
   it("FR-S1 AC12: shows every member the badge and the statement of reasons of a hidden profile, and nothing while it is visible", async () => {

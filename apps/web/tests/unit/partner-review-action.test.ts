@@ -80,7 +80,7 @@ describe("submitForReview (FR-J1 AC10)", () => {
   it("explains a suspended organisation and shows the state as it is after a staff decision", async () => {
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", "organization_suspended"));
     await expect(submitForReview("manila-skills")).resolves.toEqual({
-      message: "This organization is suspended, so it cannot be submitted for review.",
+      message: "This organisation is suspended, so it cannot be submitted for review.",
     });
     rpcMock.mockResolvedValue(refusal("CHARA_INVALID_TRANSITION", "listed"));
     await expect(submitForReview("manila-skills")).rejects.toThrow("REDIRECT:/en/onboarding");

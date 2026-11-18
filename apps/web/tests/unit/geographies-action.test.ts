@@ -73,7 +73,7 @@ describe("saveOrganizationGeographies (FR-K1)", () => {
 
   it.each([
     ["CHARA_INVALID_INPUT", "country_code", "Choose countries from the list."],
-    ["CHARA_FORBIDDEN", "organization_suspended", "This organization is suspended, so its countries cannot be changed."],
+    ["CHARA_FORBIDDEN", "organization_suspended", "This organisation is suspended, so its countries cannot be changed."],
     ["CHARA_FORBIDDEN", "release_off", "Registration for recruitment and staffing companies is not open at the moment."],
   ])("explains the refusal %s %s", async (message, details, text) => {
     rpcMock.mockResolvedValue(refusal(message, details));

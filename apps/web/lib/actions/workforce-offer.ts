@@ -20,7 +20,7 @@ import {
 export type SaveWorkforceOfferResult = { errors?: FieldErrors; message?: string; saved?: true };
 
 const RELEASE_OFF = "Registration for recruitment and staffing companies is not open at the moment.";
-const SUSPENDED = "This organization is suspended, so its workforce offer cannot be changed.";
+const SUSPENDED = "This organisation is suspended, so its workforce offer cannot be changed.";
 const FROM_LIST = "Choose from the list.";
 
 // The database names the refused value; the form shows the message at its field.

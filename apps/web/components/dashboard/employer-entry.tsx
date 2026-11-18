@@ -70,7 +70,7 @@ export async function employerEntry(lang: string, user: { id: string; aal: strin
       <div className="grid gap-section">
         {header}
         <Notice tone="error" role="alert">
-          This organization is suspended, so its figures are not available.
+          This organisation is suspended, so its figures are not available.
         </Notice>
       </div>
     );

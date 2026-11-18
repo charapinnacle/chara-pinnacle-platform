@@ -103,7 +103,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
   });
 
   it.each([
-    ["organization_suspended", "This organization is suspended, so its workforce offer cannot be changed."],
+    ["organization_suspended", "This organisation is suspended, so its workforce offer cannot be changed."],
     ["release_off", "Registration for recruitment and staffing companies is not open at the moment."],
   ])("explains the refusal CHARA_FORBIDDEN %s", async (details, text) => {
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", details));

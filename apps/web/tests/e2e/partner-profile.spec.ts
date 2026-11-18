@@ -845,7 +845,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await page.context().clearCookies();
     await signInAtAal2(page, company.owner, secret, `/en/appeals/${suspended}`);
     await page.goto(`/en/org/${company.slug}/jobs`);
-    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended" })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "This organisation is suspended" })).toBeVisible();
     await page.getByRole("link", { name: "See the decision and appeal" }).click();
     await expect(page).toHaveURL("/en/appeals");
     await page.getByRole("link", { name: `Organisation suspended: ${displayName(company.id)}` }).click();

@@ -65,8 +65,8 @@ describe("addInternalNote", () => {
   });
 
   it.each([
-    ["read_only_free_plan", "Your organization has no active paid plan, so notes cannot be added."],
-    ["organization_suspended", "Your organization is suspended, so notes cannot be added."],
+    ["read_only_free_plan", "Your organisation has no active paid plan, so notes cannot be added."],
+    ["organization_suspended", "Your organisation is suspended, so notes cannot be added."],
     ["not_found", "This applicant could not be found."],
     ["invalid", "The note could not be saved. Check it and try again."],
     ["rate_limited", "Too many changes were made today. Try again tomorrow."],

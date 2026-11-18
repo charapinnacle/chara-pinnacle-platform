@@ -14,7 +14,7 @@ import { slugSchema } from "@/lib/validation/team";
 export type SubmitForReviewResult = { message?: string; errors?: Record<string, string> };
 
 const RELEASE_OFF = "Registration for recruitment and staffing companies is not open at the moment.";
-const SUSPENDED = "This organization is suspended, so it cannot be submitted for review.";
+const SUSPENDED = "This organisation is suspended, so it cannot be submitted for review.";
 
 // The owner or an admin submits the partner for review from the Ready step (FR-J1 AC10). The organisation comes from the
 // slug, checked against the caller's membership and role. The database checks all of it again, two-step verification
