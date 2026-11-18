@@ -8,12 +8,13 @@ export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
 // The steps staff may reopen with a request for information (organizations.info_step), with their places in the step
 // indicator of partner onboarding (Company, Where you serve, What you offer, Commitments, Security, Ready): where_you_serve
-// reopens both pages of the workforce profile.
-export const infoStepSchema = z.enum(["company", "where_you_serve", "commitments"]);
+// reopens both pages of the workforce profile. The licences are no onboarding step (they are optional before submission and
+// kept on the workforce profile), so a request about them reopens none.
+export const infoStepSchema = z.enum(["company", "where_you_serve", "commitments", "licences"]);
 
 export type InfoStep = z.infer<typeof infoStepSchema>;
 
-export const infoStepIndexes = { company: [0], where_you_serve: [1, 2], commitments: [3] } as const satisfies Record<
+export const infoStepIndexes = { company: [0], where_you_serve: [1, 2], commitments: [3], licences: [] } as const satisfies Record<
   InfoStep,
   readonly number[]
 >;
@@ -22,6 +23,7 @@ export const infoStepLabels = {
   company: "your company details",
   where_you_serve: "where you serve and what you offer",
   commitments: "the employer-pays commitment",
+  licences: "your licences",
 } as const satisfies Record<InfoStep, string>;
 
 // The organisation is in the staff queue: submitted, and not yet decided.
@@ -113,6 +115,7 @@ export const infoStepStaffLabels = {
   company: "Company details",
   where_you_serve: "Where you serve and what you offer",
   commitments: "Employer-pays commitment",
+  licences: "Licences",
 } as const satisfies Record<InfoStep, string>;
 
 // What staff tick before they decide (FR-J4 AC2); a reminder on the page, not stored.

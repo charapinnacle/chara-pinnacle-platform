@@ -243,6 +243,13 @@ test.describe("Partner reviews (FR-J4)", () => {
     const request = page.getByRole("dialog", { name: "Request information" });
     await request.getByRole("button", { name: "Send request" }).click();
     await expect(request.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Choose the step to reopen");
+    await expect(request.getByLabel("Step to reopen").getByRole("option")).toHaveText([
+      "Choose a step",
+      "Company details",
+      "Where you serve and what you offer",
+      "Employer-pays commitment",
+      "Licences",
+    ]);
     await request.getByLabel("Step to reopen").selectOption("where_you_serve");
     await request.getByLabel("Message to the company").fill("Please add every country you source workers from.");
     await request.getByRole("button", { name: "Send request" }).click();

@@ -135,6 +135,10 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expect(currentStep(page)).toContainText("Step 6 of 6: Ready");
     await expect(page.getByText(/A review usually takes one working day\.$/)).toBeVisible();
     await expectChecks(page);
+    await expect(page.getByRole("link", { name: "Add your licences" })).toHaveAttribute(
+      "href",
+      /\/en\/org\/[^/]+\/workforce-profile#licences-heading$/,
+    );
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
     expect(reviewRow(id)).toEqual({ review_status: "onboarding", submitted: false, info_step: null });

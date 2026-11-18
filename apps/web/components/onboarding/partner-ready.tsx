@@ -23,12 +23,18 @@ import {
 
 type Organization = { slug: string; displayName: string };
 
-// Where a request for information about a step leads (FR-J4 AC7): the step itself, reopened.
+// Where a request for information about a step leads (FR-J4 AC7): the step itself, reopened, or for the licences their
+// section of the workforce profile.
 const reopenLinks = {
   company: (lang: string) => ({ href: partnerStepPath(lang, "company"), label: "Change your company details" }),
   where_you_serve: (lang: string) => ({ href: whereYouServePath(lang), label: "Change where you serve" }),
   commitments: (lang: string) => ({ href: partnerStepPath(lang, "commitments"), label: "Review the commitment" }),
-} as const satisfies Record<InfoStep, (lang: string) => { href: string; label: string }>;
+  licences: (lang: string, slug: string) => ({ href: licencesPath(lang, slug), label: "Update your licences" }),
+} as const satisfies Record<InfoStep, (lang: string, slug: string) => { href: string; label: string }>;
+
+function licencesPath(lang: string, slug: string): string {
+  return `${workforceProfilePath(lang, slug)}#licences-heading`;
+}
 
 type PartnerReadyStepProps = {
   lang: string;
@@ -46,7 +52,7 @@ type PartnerReadyStepProps = {
 // Ready, the last step of partner onboarding (FR-J1 AC10, AC11): what staff check, how long it takes, and the submission
 // by the owner or an admin. After a request for information it names the step staff reopened and links to it.
 export function PartnerReadyStep({ lang, organization, manager, targetDays, infoRequested, infoStep, message }: PartnerReadyStepProps) {
-  const reopen = infoStep ? reopenLinks[infoStep](lang) : null;
+  const reopen = infoStep ? reopenLinks[infoStep](lang, organization.slug) : null;
   return (
     <OnboardingPanel
       steps={<OnboardingSteps kind="partner" current={5} reopened={infoStep ? infoStepIndexes[infoStep] : undefined} />}
@@ -73,6 +79,11 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
         </Notice>
       ) : null}
       <ReviewChecks id="review-checks" />
+      <p className="text-body">
+        Licences are optional before you submit. Add the licence or registration you hold for each country where you work
+        on your workforce profile, so our team can check it in the review.{" "}
+        <TextLink href={licencesPath(lang, organization.slug)}>Add your licences</TextLink>
+      </p>
       {manager ? (
         <SubmitForReview slug={organization.slug} again={infoRequested} />
       ) : (

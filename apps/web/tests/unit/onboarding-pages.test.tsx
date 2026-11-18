@@ -582,6 +582,26 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(reopened).toContain("Manila Skills has accepted the employer-pays commitment.");
     expect(reopened).not.toContain("<form");
     expect(reopened).toMatch(/<a[^>]*href="\/en\/onboarding\?step=ready"[^>]*>Back to Ready/);
+
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "licences" });
+    const licences = await render(OnboardingPage);
+    expect(licences).toContain("Our team asked for more information about your licences.");
+    expect(licences).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/workforce-profile#licences-heading"[^>]*>Update your licences/);
+    expect(licences).not.toContain("(more information requested)");
+  });
+
+  it("FR-J1 AC11: Ready says the licences are optional and links to their section of the workforce profile", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    commitmentMock.mockResolvedValue({ ...openCommitment, accepted: true, acceptedVersion: 0 });
+    twoStepMock.mockResolvedValue(true);
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain("The licences you declare");
+    expect(html).toContain("Licences are optional before you submit.");
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/workforce-profile#licences-heading"[^>]*>Add your licences<\/a>/);
   });
 
   it("reopens the company details for the owner at aal2, and asks for the code first at aal1", async () => {

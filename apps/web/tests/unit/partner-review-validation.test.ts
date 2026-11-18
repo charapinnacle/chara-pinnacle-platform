@@ -25,7 +25,7 @@ describe("the review state of a partner (FR-J1, FR-J4)", () => {
   });
 
   it("places the reopened steps on the step indicator of partner onboarding", () => {
-    expect(infoStepIndexes).toEqual({ company: [0], where_you_serve: [1, 2], commitments: [3] });
+    expect(infoStepIndexes).toEqual({ company: [0], where_you_serve: [1, 2], commitments: [3], licences: [] });
   });
 
   it("reads the review target of decision 7.2 from its setting, one working day when it is not a sensible number", () => {
