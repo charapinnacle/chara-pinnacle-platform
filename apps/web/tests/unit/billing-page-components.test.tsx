@@ -69,6 +69,15 @@ describe("the usage bars (FR-G5 AC7, AC12)", () => {
     expect(text(html)).toContain("Team members Unlimited");
     expect(html).not.toContain("progressbar");
   });
+
+  it("says a limit of 0 not in use is not included in the plan, without a bar or Limit reached", () => {
+    const html = render([{ key: "active_jobs", used: 0, limit: 0 }]);
+    expect(text(html)).toContain("Open vacancies Not included in your plan");
+    expect(html).not.toContain("progressbar");
+    expect(html).not.toContain("Limit reached");
+    expect(html).not.toContain("<a");
+    expect(text(render([{ key: "workforce_listings", used: 2, limit: 0 }]))).toContain("Workforce listings 2 of 0 Over the limit");
+  });
 });
 
 describe("the plan summary (FR-G5 AC1, AC4, AC5, AC9)", () => {

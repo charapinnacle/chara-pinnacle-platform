@@ -129,7 +129,7 @@ describe("the submission refusals in words", () => {
     expect(answerRefusal({ message: "CHARA_INVALID_STATE", details: "requirement_not_open" })).toEqual({ kind: "message", message: SUBMISSION_MESSAGES.closed });
     expect(answerRefusal({ message: "CHARA_INVALID_STATE", details: "submissions_closed" })).toEqual({
       kind: "message",
-      message: "This request is no longer open because the employer closed submissions for this partner.",
+      message: "This request is no longer open because the employer is no longer taking candidates from this partner.",
     });
     expect(answerRefusal({ message: "CHARA_INVALID_INPUT", details: "p_document_ids" })).toEqual({ kind: "field", message: SUBMISSION_MESSAGES.documents });
     expect(answerRefusal({ message: "CHARA_DOCUMENT_NOT_SCANNED", details: null })).toEqual({ kind: "message", message: SUBMISSION_MESSAGES.scanning });
