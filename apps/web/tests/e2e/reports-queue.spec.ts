@@ -186,6 +186,9 @@ test.describe("working the reports queue", () => {
     await expect(table(page).getByRole("columnheader", { name: "First look due" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
+    // An unknown report is not found before the page streams, so the answer is a real 404.
+    expect((await page.request.get("/en/admin/reports/999999999999")).status()).toBe(404);
+
     await page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(fee)}`);
     const feeRow = rows.nth(1);
     await expect(feeRow).toContainText(referenceOf(fee));

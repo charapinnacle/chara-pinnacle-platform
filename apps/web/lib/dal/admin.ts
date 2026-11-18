@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
 import * as z from "zod";
@@ -212,7 +213,8 @@ export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promi
   return paged(rows, (row) => ({ at: row.createdAt, id: row.id }));
 }
 
-export async function getUser(id: string): Promise<UserDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getUser = cache(async (id: string): Promise<UserDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_user", { p_user_id: id });
   if (error) {
@@ -233,9 +235,10 @@ export async function getUser(id: string): Promise<UserDetail | null> {
     applicationsSubmitted: row.applications_submitted,
     vacanciesCreated: row.vacancies_created,
   };
-}
+});
 
-export async function getOrganization(id: string): Promise<OrganizationDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getOrganization = cache(async (id: string): Promise<OrganizationDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_organization", { p_org: id });
   if (error) {
@@ -256,7 +259,7 @@ export async function getOrganization(id: string): Promise<OrganizationDetail | 
       .parse(row.vacancies)
       .map((vacancy) => ({ id: vacancy.id, title: vacancy.title, status: vacancy.status, moderationState: vacancy.moderation_state })),
   };
-}
+});
 
 export async function applicationCounts(from: string, to: string): Promise<StageCount[]> {
   const supabase = await adminClient();
