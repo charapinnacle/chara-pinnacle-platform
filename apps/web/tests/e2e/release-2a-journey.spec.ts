@@ -202,8 +202,12 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await expect(visitor.page.getByRole("heading", { level: 1 })).toHaveText(displayName);
     const where = visitor.page.getByRole("region", { name: "Where we serve" });
     await expect(where.getByRole("definition")).toHaveText(["Philippines", "Philippines", "Germany, Iceland"]);
-    await expect(visitor.page.getByRole("region", { name: "Workforce capacity" })).toContainText(
-      "Building and related electricians from Philippines",
+    const capacity = visitor.page.getByRole("region", { name: "Workforce capacity" });
+    await expect(capacity.getByRole("listitem"), "FR-K3 AC4: a visitor reads no listing").toHaveCount(0);
+    await expect(capacity).toContainText("Sign in to see the workers available");
+    await expect(capacity.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      `/en/login?next=${encodeURIComponent(`/en/partners/${organization.slug}`)}`,
     );
     await expect(visitor.page.getByRole("region", { name: "Languages" })).toContainText("English");
     const text = await visitor.page.locator("main").innerText();
