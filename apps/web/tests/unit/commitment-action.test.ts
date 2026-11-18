@@ -90,7 +90,7 @@ describe("acceptUpdatedCommitment (FR-J3 AC4, FR-S4 AC7)", () => {
 
   it("refuses an unticked box and a newer version like the onboarding step", async () => {
     await expect(acceptUpdatedCommitment("manila-skills", 2, { confirmed: false })).resolves.toEqual({
-      errors: { confirmed: "Please confirm the commitment to continue" },
+      errors: { confirmed: "Please confirm the commitment to continue." },
     });
     rpcMock.mockResolvedValue(refusal("CHARA_INVALID_INPUT", "version"));
     await expect(acceptUpdatedCommitment("manila-skills", 2, { confirmed: true })).resolves.toEqual({
