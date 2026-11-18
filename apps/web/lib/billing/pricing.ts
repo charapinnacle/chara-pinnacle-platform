@@ -68,11 +68,11 @@ export const PLAN_LIMIT_KEYS = {
 
 // What a card on the pricing page lists besides: the workforce requirements and partner invitations of an employer plan,
 // and the job order responses and candidate submissions of a partner plan (FR-R1 AC3), read from the plan records like
-// the others. A staffing company submits no candidates, so its plans do not list that key.
+// the others.
 const PRICING_LIMIT_KEYS = {
   employer: [...PLAN_LIMIT_KEYS.employer, "active_requirements", "partner_invitations_per_requirement"],
   recruitment_company: [...PLAN_LIMIT_KEYS.recruitment_company, "job_order_responses_per_month", "candidate_submissions_per_month"],
-  staffing_company: [...PLAN_LIMIT_KEYS.staffing_company, "job_order_responses_per_month"],
+  staffing_company: [...PLAN_LIMIT_KEYS.staffing_company, "job_order_responses_per_month", "candidate_submissions_per_month"],
 } as const satisfies Record<OrganizationType, readonly (keyof typeof limitLabels)[]>;
 
 export type PlanLimitKey = (typeof PLAN_LIMIT_KEYS)[OrganizationType][number];
