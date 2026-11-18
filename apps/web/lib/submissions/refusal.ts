@@ -18,6 +18,7 @@ export const SUBMISSION_MESSAGES = {
   requestNotFound: "This request could not be found, or a document you chose was removed. Reload the page.",
   answered: "This request was already answered. Reload the page to see its status.",
   expired: "This request expired, so it can no longer be answered.",
+  submissionsClosed: "This request is no longer open because the employer closed submissions for this partner.",
   closed: "The requirement is no longer open, so the request can no longer be approved. You can still decline it.",
   alreadySubmitted: "You have already been submitted for this requirement by another company, so you can only decline this request.",
   scanning: "A document you chose is still being checked. Try again in a minute, or approve without it.",
@@ -91,6 +92,7 @@ export function answerRefusal(error: RefusalError): AnswerRefusal {
       return error.details === "already_submitted" ? { kind: "message", message: SUBMISSION_MESSAGES.alreadySubmitted } : { kind: "fault" };
     case "CHARA_INVALID_STATE":
       if (error.details === "expired") return { kind: "message", message: SUBMISSION_MESSAGES.expired };
+      if (error.details === "submissions_closed") return { kind: "message", message: SUBMISSION_MESSAGES.submissionsClosed };
       if (error.details === "requirement_not_open") return { kind: "message", message: SUBMISSION_MESSAGES.closed };
       return { kind: "message", message: SUBMISSION_MESSAGES.answered };
     case "CHARA_NOT_FOUND":
