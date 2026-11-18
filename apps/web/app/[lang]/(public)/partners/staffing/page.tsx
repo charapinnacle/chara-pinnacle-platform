@@ -39,7 +39,7 @@ export default async function StaffingPartnersPage({ params, searchParams }: Pag
 
   return (
     <PageContainer layout="page" className="grid gap-8">
-      <PageHeader title="Find Staffing Partners" className="animate-rise">
+      <PageHeader title="Find staffing partners" className="animate-rise">
         <p className="text-body text-muted-foreground">
           Staffing companies, and recruitment companies that also supply staff, for your markets, occupations and staffing
           types. Results are ordered by the filters they match and by how recently they updated their profile; no company

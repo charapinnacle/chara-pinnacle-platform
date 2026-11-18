@@ -216,7 +216,7 @@ test.describe("Continue with Google switched on", () => {
     await chooseAndAccept(page, "worker", ["age-18-plus"]);
     await expect(ageBox(page)).toBeVisible();
     await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(page.getByText("Confirm that you are 18 or older to create an account")).toBeVisible();
+    await expect(page.getByText("Confirm that you are 18 or older to create an account.")).toBeVisible();
     expect(accountRows(user.id).account.account_kind).toBeNull();
     expect(accountRows(user.id).consents).toEqual([]);
 
