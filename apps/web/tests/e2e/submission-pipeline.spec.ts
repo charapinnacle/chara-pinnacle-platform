@@ -61,6 +61,17 @@ function seedRequirement(team: Pick<Team, "id" | "owner">, title: string): strin
   return id;
 }
 
+// The partner's response as decide_response leaves a selection: the partner's candidates page of the requirement needs it.
+function seedSelectedResponse(team: Pick<Team, "id" | "owner">, requirement: string, partner: Partner): void {
+  execute(
+    `insert into public.partner_responses (requirement_id, organization_id, employer_organization_id, status, capacity, available_from,
+       experience_note, fee_model, created_at, updated_at, decided_at, decided_by, submissions_allowed)
+     values (${literal(requirement)}, ${literal(partner.id)}, ${literal(team.id)}, 'selected', 20, date '2027-01-10',
+       'Welding crews placed in Andorra for ten years', 'on_request', now() - interval '1 hour', now() - interval '1 hour', now(),
+       ${literal(team.owner.id)}, true)`,
+  );
+}
+
 // A submission as approve_submission leaves it (consent, share of the documents, snapshot, events) in p_status, or a
 // request the candidate has not answered (awaiting_candidate) or declined.
 function seedSubmission(requirement: string, partner: Partner, employer: string, worker: TestUser, status: string, documents: string[] = []): string {
@@ -122,6 +133,7 @@ test.describe("Submission review pipeline (FR-O5)", () => {
     const s1 = await listedPartner();
     const p1 = await listedPartner();
     const requirement = seedRequirement(team, "Andorra hotel welders");
+    seedSelectedResponse(team, requirement, s1);
     const [w1, w2, w3, waiting, declined] = await Promise.all([newApplicant(), newApplicant(), newApplicant(), newApplicant(), newApplicant()]);
     const certificate = await seedDocument(w1.id, { title: "Welding certificate", type: "certificate", scanStatus: "clean" });
     const id1 = seedSubmission(requirement, s1, team.id, w1, "submitted", [certificate.id]);
@@ -176,7 +188,7 @@ test.describe("Submission review pipeline (FR-O5)", () => {
       await dialog.getByLabel("New stage").selectOption({ label: stage });
       await dialog.getByRole("button", { name: "Review" }).click();
       await dialog.getByRole("button", { name: "Confirm" }).click();
-      await expect(page.getByText(`Stage changed to ${toast}`)).toBeVisible();
+      await expect(page.getByText(`Stage changed to ${toast}`, { exact: true })).toBeVisible();
     }
     expect(statusOf(id1)).toBe("offer");
     expect(
