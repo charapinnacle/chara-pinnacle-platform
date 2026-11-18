@@ -17,7 +17,7 @@ test.describe.configure({ mode: "serial" });
 
 const NO_SHORTLISTING = "employer_e2e_noshort";
 const PROMPT = "Upgrade to shortlist applicants";
-const CONTACT = "Contact an owner or admin of your organization to upgrade the plan.";
+const CONTACT = "Contact an owner or admin of your organisation to upgrade the plan.";
 
 test.beforeAll(() => {
   enforceLimits();

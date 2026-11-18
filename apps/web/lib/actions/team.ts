@@ -43,7 +43,7 @@ const REFUSALS: Record<string, string> = {
   not_a_member: "This person is no longer a member of the team.",
   new_owner: "Choose another member of the team as the new owner.",
   no_pending_transfer: "No ownership transfer is waiting. It may have expired or been cancelled.",
-  organization_suspended: "This organization is suspended, so its team cannot be changed.",
+  organization_suspended: "This organisation is suspended, so its team cannot be changed.",
 };
 
 function membersPath(slug: string): string {

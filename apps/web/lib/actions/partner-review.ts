@@ -2,24 +2,30 @@
 
 import { redirect } from "next/navigation";
 import { GENERIC_FAILURE } from "@/lib/auth-errors";
+import { getPartnerReview } from "@/lib/dal/partner-review";
 import { isReleased } from "@/lib/dal/release";
 import { requireOrgRole } from "@/lib/dal/session";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { mfaPath, onboardingPath, partnerStepPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { missingFieldMessages } from "@/lib/validation/partner-review";
+import { missingFieldMessages, RESUBMIT_REQUIRED, resubmitSchema, type ResubmitInput } from "@/lib/validation/partner-review";
 import { slugSchema } from "@/lib/validation/team";
 
-export type SubmitForReviewResult = { message: string };
+export type SubmitForReviewResult = { message?: string; errors?: Record<string, string> };
 
 const RELEASE_OFF = "Registration for recruitment and staffing companies is not open at the moment.";
-const SUSPENDED = "This organization is suspended, so it cannot be submitted for review.";
+const SUSPENDED = "This organisation is suspended, so it cannot be submitted for review.";
 
 // The owner or an admin submits the partner for review from the Ready step (FR-J1 AC10). The organisation comes from the
 // slug, checked against the caller's membership and role. The database checks all of it again, two-step verification
 // included: a session at aal1 is sent to enter its code and comes back to Ready, which is open at aal1 (AC9). An
-// incomplete profile is answered with its first missing field. Onboarding then shows the pending state.
-export async function submitForReview(slug: string): Promise<SubmitForReviewResult | undefined> {
+// incomplete profile is answered with its first missing field. After a request for information the partner must confirm
+// that it changed what staff asked about, or that nothing needs to change (FR-J4 AC7). Onboarding then shows the pending
+// state.
+export async function submitForReview(
+  slug: string,
+  input: ResubmitInput = { checked: false },
+): Promise<SubmitForReviewResult | undefined> {
   const parsedSlug = slugSchema.safeParse(slug);
   if (!parsedSlug.success) return { message: GENERIC_FAILURE };
   if (!(await isReleased("release_partner_directories"))) return { message: RELEASE_OFF };
@@ -28,6 +34,10 @@ export async function submitForReview(slug: string): Promise<SubmitForReviewResu
     hideFromOutsiders: true,
     partner: true,
   });
+  const review = await getPartnerReview(organization.id);
+  if (!resubmitSchema(review?.status === "info_requested").safeParse(input).success) {
+    return { errors: { checked: RESUBMIT_REQUIRED } };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("submit_partner_for_review", { p_org: organization.id });
