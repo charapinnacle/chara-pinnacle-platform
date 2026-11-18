@@ -118,13 +118,13 @@ isOneToOne: false
                   ]
                 },"candidate_submissions": {
                   Row: {
-                    "created_at": string,"decided_at": string | null,"employer_organization_id": string,"id": string,"invitation_emailed_at": string | null,"invited_email": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"note": string | null,"organization_id": string,"passport_share_id": string | null,"profile_snapshot": Json | null,"requirement_id": string,"response_id": string | null,"status": Database["public"]['Enums']["submission_status"],"submitted_by": string | null,"updated_at": string,"withdrawn_at": string | null,"worker_approved_at": string | null,"worker_user_id": string | null
+                    "created_at": string,"decided_at": string | null,"employer_organization_id": string,"id": string,"invitation_emailed_at": string | null,"invited_email": string,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"note": string | null,"organization_id": string,"passport_share_id": string | null,"profile_snapshot": Json | null,"requirement_id": string,"response_id": string | null,"status": Database["public"]['Enums']["submission_status"],"submitted_by": string | null,"submissions_closed": boolean,"updated_at": string,"withdrawn_at": string | null,"worker_approved_at": string | null,"worker_user_id": string | null
                   }
                   Insert: {
-                    "created_at"?: string,"decided_at"?: string | null,"employer_organization_id": string,"id"?: string,"invitation_emailed_at"?: string | null,"invited_email": string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"note"?: string | null,"organization_id": string,"passport_share_id"?: string | null,"profile_snapshot"?: Json | null,"requirement_id": string,"response_id"?: string | null,"status"?: Database["public"]['Enums']["submission_status"],"submitted_by"?: string | null,"updated_at"?: string,"withdrawn_at"?: string | null,"worker_approved_at"?: string | null,"worker_user_id"?: string | null
+                    "created_at"?: string,"decided_at"?: string | null,"employer_organization_id": string,"id"?: string,"invitation_emailed_at"?: string | null,"invited_email": string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"note"?: string | null,"organization_id": string,"passport_share_id"?: string | null,"profile_snapshot"?: Json | null,"requirement_id": string,"response_id"?: string | null,"status"?: Database["public"]['Enums']["submission_status"],"submitted_by"?: string | null,"submissions_closed"?: boolean,"updated_at"?: string,"withdrawn_at"?: string | null,"worker_approved_at"?: string | null,"worker_user_id"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"decided_at"?: string | null,"employer_organization_id"?: string,"id"?: string,"invitation_emailed_at"?: string | null,"invited_email"?: string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"note"?: string | null,"organization_id"?: string,"passport_share_id"?: string | null,"profile_snapshot"?: Json | null,"requirement_id"?: string,"response_id"?: string | null,"status"?: Database["public"]['Enums']["submission_status"],"submitted_by"?: string | null,"updated_at"?: string,"withdrawn_at"?: string | null,"worker_approved_at"?: string | null,"worker_user_id"?: string | null
+                    "created_at"?: string,"decided_at"?: string | null,"employer_organization_id"?: string,"id"?: string,"invitation_emailed_at"?: string | null,"invited_email"?: string,"moderation_state"?: Database["public"]['Enums']["job_moderation_state"],"note"?: string | null,"organization_id"?: string,"passport_share_id"?: string | null,"profile_snapshot"?: Json | null,"requirement_id"?: string,"response_id"?: string | null,"status"?: Database["public"]['Enums']["submission_status"],"submitted_by"?: string | null,"submissions_closed"?: boolean,"updated_at"?: string,"withdrawn_at"?: string | null,"worker_approved_at"?: string | null,"worker_user_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -2581,7 +2581,7 @@ isOneToOne: false
                            },
 "billing_usage":
 { Args: { "p_org": string }; Returns: {
-              "limit_key": string,"limit_value": number,"used": number
+              "applies": boolean,"limit_key": string,"limit_value": number,"used": number
             }[]
                            },
 "billing_webhook_rejected":
@@ -2933,7 +2933,7 @@ isOneToOne: false
                            },
 "list_my_submissions":
 { Args: Record<PropertyKey, never>; Returns: {
-              "country_code": string,"country_name": string,"created_at": string,"decided_at": string,"employer_name": string,"id": string,"partner_name": string,"partner_slug": string,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
+              "country_code": string,"country_name": string,"created_at": string,"decided_at": string,"employer_name": string,"id": string,"partner_name": string,"partner_slug": string,"status": Database["public"]['Enums']["submission_status"],"submissions_closed": boolean,"title": string,"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "list_organization_invitations":
@@ -2953,7 +2953,7 @@ isOneToOne: false
                            },
 "list_partner_submissions":
 { Args: { "p_cursor"?: string,"p_limit"?: number,"p_org": string,"p_requirement"?: string }; Returns: {
-              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"moderation_action_id": number,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"next_cursor": string,"note": string,"requirement_id": string,"stage_changed_at": string,"stages": Json,"status": Database["public"]['Enums']["submission_status"],"title": string,"withdrawn_at": string,"worker_approved_at": string
+              "candidate_name": string,"created_at": string,"decided_at": string,"id": string,"invited_email": string,"moderation_action_id": number,"moderation_state": Database["public"]['Enums']["job_moderation_state"],"next_cursor": string,"note": string,"requirement_id": string,"stage_changed_at": string,"stages": Json,"status": Database["public"]['Enums']["submission_status"],"submissions_closed": boolean,"title": string,"withdrawn_at": string,"worker_approved_at": string
             }[]
                            },
 "list_platform_staff":

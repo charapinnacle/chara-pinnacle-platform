@@ -195,16 +195,16 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expect(selectDialog).toContainText(NOT_A_PARTY_AGREEMENT);
     await expect(selectDialog).toContainText("can then submit candidates for this requirement");
     await expectNoAxeViolations(page);
-    await selectDialog.getByRole("button", { name: "Select", exact: true }).click();
+    await selectDialog.getByRole("button", { name: `Select ${s1.displayName}`, exact: true }).click();
     await expect(page.getByText("Partner selected", { exact: true })).toBeVisible();
     await expect(headers.nth(1)).toBeFocused();
     await expect(cell(page, "Status", 1)).toContainText("Selected");
-    await expect(cell(page, "Decision", 1)).toHaveText("Decided");
+    await expect(cell(page, "Decision", 1)).toHaveText("Selected");
 
     // Shortlist P1 and allow it to submit candidates (AC8).
     await page.getByRole("button", { name: `Shortlist ${p1.displayName}`, exact: true }).click();
     const shortlistDialog = page.getByRole("dialog", { name: `Shortlist ${p1.displayName}?` });
-    await shortlistDialog.getByRole("button", { name: "Shortlist", exact: true }).click();
+    await shortlistDialog.getByRole("button", { name: `Shortlist ${p1.displayName}`, exact: true }).click();
     await expect(page.getByText("Response shortlisted", { exact: true })).toBeVisible();
     await expect(cell(page, "Status", 0)).toContainText("Shortlisted");
     await expect(page.getByRole("button", { name: `Shortlist ${p1.displayName}`, exact: true })).toHaveCount(0);
@@ -220,12 +220,12 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     const note = declineDialog.getByLabel("Note to the partner");
     await expect(declineDialog).toContainText("The partner will see this note");
     await note.fill("x".repeat(1001));
-    await declineDialog.getByRole("button", { name: "Decline", exact: true }).click();
+    await declineDialog.getByRole("button", { name: `Decline ${p2.displayName}`, exact: true }).click();
     await expect(declineDialog.getByText("The note must have 1,000 characters or fewer.").first()).toBeVisible();
     expect(responseRow(r2).status).toBe("submitted");
     await note.fill("Fee above budget");
     await expectNoAxeViolations(page);
-    await declineDialog.getByRole("button", { name: "Decline", exact: true }).click();
+    await declineDialog.getByRole("button", { name: `Decline ${p2.displayName}`, exact: true }).click();
     await expect(page.getByText("Response declined", { exact: true })).toBeVisible();
     await expect(headers.nth(2)).toBeFocused();
     await expect(cell(page, "Status", 2)).toContainText("Declined");
@@ -238,7 +238,7 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
         await expect(page.getByRole("button", { name: `${verb} ${partner.displayName}`, exact: true })).toHaveCount(0);
       }
     }
-    await expect(cell(page, "Decision", 2)).toHaveText("Decided");
+    await expect(cell(page, "Decision", 2)).toHaveText("Declined");
     for (const decided of [rs, r2]) {
       await page.goto(`${responsesUrl(team.slug, id)}/${decided}`);
       await expect(page.getByRole("heading", { name: "Status", level: 2 })).toBeVisible();
@@ -299,7 +299,9 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expectAccessibleAtBothWidths(page);
     await page.goto(`${responsesUrl(team.slug, id)}/${r1}`);
     await expect(page.getByText("Your note to the partner: Welcome aboard")).toBeVisible();
-    await expect(page.getByText("The partner can submit candidates.", { exact: false })).toBeVisible();
+    await expect(page.getByText("You selected this partner. It can submit candidates for this requirement.")).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /^Selected / })).toBeVisible();
+    await expect(page.getByText("The partner can submit candidates.", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^(Shortlist|Select|Decline) / })).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
   });
@@ -320,7 +322,7 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expectAccessibleAtBothWidths(page);
 
     const one = seedJobOrder(team, "Monaco single welders");
-    seedResponse(team, one, p1.id, { capacity: 30, from: "2027-01-20", fee: "fee_per_hire", amount: 900 }, 5);
+    const onlyResponse = seedResponse(team, one, p1.id, { capacity: 30, from: "2027-01-20", fee: "fee_per_hire", amount: 900 }, 5);
     await page.goto(compareUrl(team.slug, one));
     await expect(comparison(page).getByRole("columnheader")).toHaveCount(1);
     await expect(page.getByRole("button", { name: `Select ${p1.displayName}`, exact: true })).toBeVisible();
@@ -337,5 +339,10 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await waitForHydration(retry);
     await retry.click();
     await expect(comparison(page).getByRole("columnheader")).toHaveCount(1);
+
+    // The only response offers no comparison with others.
+    await page.goto(`${responsesUrl(team.slug, one)}/${onlyResponse}`);
+    await expect(page.getByRole("heading", { name: "Status", level: 2 })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Compare with the other responses" })).toHaveCount(0);
   });
 });
