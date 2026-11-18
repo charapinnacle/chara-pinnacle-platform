@@ -3,6 +3,7 @@ import { chosenCount } from "@/lib/chips";
 import {
   fromServiceTypes,
   occupationNoun,
+  recruitmentTypeLabels,
   toServiceTypes,
   workforceOfferSchema,
   type WorkforceOfferInput,
@@ -29,6 +30,10 @@ const issues = (input: WorkforceOfferInput, type: "recruitment_company" | "staff
     .error?.issues.map(({ path, message }) => [path.join("."), message]);
 
 describe("What you offer (FR-K2)", () => {
+  it("names the recruitment types in words a profile can show alone, never \"Both\"", () => {
+    expect(recruitmentTypeLabels).toEqual({ local: "Local", international: "International", both: "Local and international" });
+  });
+
   it("trims, cases and merges the codes as their code lists hold them (AC1, AC3)", () => {
     expect(workforceOfferSchema("recruitment_company").parse(offer)).toMatchObject({
       occupations: ["7212", "7126"],
@@ -39,8 +44,8 @@ describe("What you offer (FR-K2)", () => {
 
   it("asks for an occupation and the recruitment type; industries and languages are optional", () => {
     expect(issues({ ...offer, occupations: [], industries: [], languages: [], recruitmentType: "" })).toEqual([
-      ["occupations", "Choose at least one occupation"],
-      ["recruitmentType", "Choose a recruitment type"],
+      ["occupations", "Choose at least one occupation."],
+      ["recruitmentType", "Choose a recruitment type."],
     ]);
   });
 
@@ -49,13 +54,13 @@ describe("What you offer (FR-K2)", () => {
       ["occupations.0", "Choose from the list."],
       ["industries.0", "Choose from the list."],
       ["languages.0", "Choose from the list."],
-      ["recruitmentType", "Choose a recruitment type"],
+      ["recruitmentType", "Choose a recruitment type."],
     ]);
   });
 
   it("requires a staffing type of a staffing company, and of a recruitment company that supplies staff (AC5)", () => {
-    expect(issues(offer, "staffing_company")).toEqual([["staffingTypes", "Choose at least one staffing type"]]);
-    expect(issues({ ...offer, staffingService: true })).toEqual([["staffingTypes", "Choose at least one staffing type"]]);
+    expect(issues(offer, "staffing_company")).toEqual([["staffingTypes", "Choose at least one staffing type."]]);
+    expect(issues({ ...offer, staffingService: true })).toEqual([["staffingTypes", "Choose at least one staffing type."]]);
     expect(issues({ ...offer, staffingTypes: ["temporary"] }, "staffing_company")).toBeUndefined();
     expect(issues(offer)).toBeUndefined();
   });

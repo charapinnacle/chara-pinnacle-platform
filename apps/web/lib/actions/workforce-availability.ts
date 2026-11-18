@@ -16,7 +16,7 @@ import { listingFormSchema, listingIdSchema, type ListingInput } from "@/lib/val
 export type ListingResult = { errors?: FieldErrors; message?: string; saved?: true };
 
 const RELEASE_OFF = "Availability cannot be changed at the moment.";
-const SUSPENDED = "This organization is suspended, so its availability cannot be changed.";
+const SUSPENDED = "This organisation is suspended, so its availability cannot be changed.";
 const GONE = "This listing no longer exists.";
 
 type ManagedOrganization = { id: string; type: string };

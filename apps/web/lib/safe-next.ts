@@ -1,4 +1,5 @@
-import { onboardingPath } from "@/lib/routes";
+import type { Database } from "@chara-pinnacle/db-types";
+import { homePath, onboardingPath } from "@/lib/routes";
 
 const PLACEHOLDER_ORIGIN = "http://localhost";
 
@@ -23,4 +24,15 @@ export function consentReturnPath(lang: string, next: string): string {
 export function mfaReturnPath(lang: string, next: string | null | undefined, fallback: string): string {
   const target = safeNextPath(next);
   return target === "/" || target.startsWith(`/${lang}/mfa`) ? fallback : target;
+}
+
+// Where a signed-in person who opens the login page goes instead: the page they were sent to log in for, else their
+// home (the dashboard of their account kind, or onboarding while it has none).
+export function signedInLoginTarget(
+  lang: string,
+  next: string | null | undefined,
+  accountKind: Database["public"]["Enums"]["account_kind"] | null,
+): string {
+  const target = safeNextPath(next);
+  return target === "/" || target.startsWith(`/${lang}/login`) ? homePath(lang, accountKind) : target;
 }
