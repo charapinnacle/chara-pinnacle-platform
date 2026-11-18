@@ -564,8 +564,8 @@ test.describe("The monthly limit's upgrade prompt (FR-R1 AC10, AC11)", () => {
     const id = seedJobOrder(team, "Private Vaduz riggers", { visibility: "private" });
     const invitation = randomUUID();
     execute(
-      `insert into public.requirement_invitations (id, requirement_id, organization_id, employer_organization_id, source, status)
-       values (${literal(invitation)}, ${literal(id)}, ${literal(l.id)}, ${literal(team.id)}, 'directory', 'viewed');
+      `insert into public.requirement_invitations (id, requirement_id, organization_id, employer_organization_id, source, status, viewed_at)
+       values (${literal(invitation)}, ${literal(id)}, ${literal(l.id)}, ${literal(team.id)}, 'directory', 'viewed', now());
        update billing.subscriptions set status = 'canceled' where organization_id = ${literal(l.id)}`,
     );
     const [{ name: planName }] = query<{ name: string }>(`select name from billing.plans where code = 'free_recruitment_company'`);
