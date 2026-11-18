@@ -167,10 +167,11 @@ export function usageLine(usage: OrgUsage, key: string, type: PartnerType): stri
 
 // Whether a usage line needs the plan's attention: a limit of 0 already reached by the owner alone ("1 of 0 team
 // members" on a free plan, where team_size counts the owner, FR-R1 AC2 and AC8) or listings kept after a lapse are over
-// the limit, and the card says so with the way to upgrade instead of leaving the figure alone. Null when within it.
+// the limit, and the card says so with the way to upgrade instead of leaving the figure alone. Null when within it, and
+// for a limit of 0 not in use, which the line already says the plan does not include.
 export function usageAttention(usage: OrgUsage, key: string): "at_limit" | "over_limit" | null {
   const item = usage.items[key];
-  if (!item) return null;
+  if (!item || (item.limit === 0 && item.used === 0)) return null;
   const { state } = classifyUsage(item.used, item.limit);
   return state === "at_limit" || state === "over_limit" ? state : null;
 }

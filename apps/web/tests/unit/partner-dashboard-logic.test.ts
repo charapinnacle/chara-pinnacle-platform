@@ -142,6 +142,18 @@ describe("usageAttention (FR-R1 AC2, AC8)", () => {
     expect(usageAttention(usage, "listed_occupations")).toBeNull();
     expect(usageAttention(usage, "active_jobs")).toBeNull();
   });
+
+  it("marks nothing for a limit of 0 not in use, and usage kept above a limit of 0 as over it", () => {
+    const free = {
+      planName: "Free",
+      items: {
+        job_order_responses_per_month: { used: 0, limit: 0, applies: true, resetsAt: null },
+        workforce_listings: { used: 3, limit: 0, applies: true, resetsAt: null },
+      },
+    };
+    expect(usageAttention(free, "job_order_responses_per_month")).toBeNull();
+    expect(usageAttention(free, "workforce_listings")).toBe("over_limit");
+  });
 });
 
 describe("profileViewsText (FR-R3 AC10)", () => {
