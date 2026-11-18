@@ -15,7 +15,7 @@ import { seedJob } from "./support/jobs";
 import { waitForHydration } from "./support/hydration";
 import { overflow } from "./support/login-page";
 import { uniqueName } from "./support/organizations";
-import { addMember, newTeam, seedInvitation, signInAtAal2, type Team } from "./support/team";
+import { addMember, enforceLimits, newTeam, restoreLimits, seedInvitation, signInAtAal2, type Team } from "./support/team";
 import { expect, test } from "./support/test";
 
 const usageRow = (page: Page, name: string): Locator =>
@@ -82,13 +82,19 @@ test.describe("billing page: usage against limits (FR-G5 AC7)", () => {
     seedSubscription(team, "employer_starter", "active", { currentPeriodEnd: fromNow(20 * DAY) });
     await seedJobs(team, "open", 5);
 
-    await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
-    const row = usageRow(page, "Open vacancies");
-    await expect(row).toContainText("5 of 3");
-    await expect(row).toContainText("Over the limit");
-    await expect(row).toContainText("Existing vacancies stay open. No more can be opened until usage is below the limit.");
-    await expect(page.getByRole("progressbar", { name: "Open vacancies" })).toHaveAttribute("aria-valuenow", "3");
-    await expectNoAxeViolations(page);
+    // The page claims a block only while the limits are enforced, as they are once billing is live.
+    enforceLimits();
+    try {
+      await signInAtAal2(page, team.owner, team.ownerSecret, billingPath(team.slug));
+      const row = usageRow(page, "Open vacancies");
+      await expect(row).toContainText("5 of 3");
+      await expect(row).toContainText("Over the limit");
+      await expect(row).toContainText("Existing vacancies stay open. No more can be opened until usage is below the limit.");
+      await expect(page.getByRole("progressbar", { name: "Open vacancies" })).toHaveAttribute("aria-valuenow", "3");
+      await expectNoAxeViolations(page);
+    } finally {
+      restoreLimits();
+    }
   });
 
   test("an Enterprise organisation is shown its plan and offered no plan change", async ({ page }) => {
