@@ -62,8 +62,9 @@ select is(
 );
 select is(
   (select value #>> '{}' from private.settings where key = 'direct_hiring_general_notice'),
-  (select array_to_string((string_to_array(body, E'\n\n'))[2:3], ' ') from public.legal_documents where slug = 'platform-rules' and version = 1),
-  'Default: the general notice is the worker statement of the Platform Rules (version 1, both paragraphs) word for word'
+  (select replace(array_to_string((string_to_array(body, E'\n\n'))[2:3], ' '), 'CHARA', 'Chara Pinnacle')
+   from public.legal_documents where slug = 'platform-rules' and version = 1),
+  'Default: the general notice is the worker statement of the Platform Rules (version 1, both paragraphs), naming Chara Pinnacle'
 );
 
 -- AC2: who may change and read rules ---------------------------------------------------------------------------------
