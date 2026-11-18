@@ -7,7 +7,7 @@ export const DAILY_SUMMARY_TIME_TEXT = "08:00 Central European time";
 export type EmailDelivery = (typeof emailDeliveries)[number];
 
 export const notificationSettingsSchema = z.strictObject({
-  delivery: z.enum(emailDeliveries, { error: "Choose how to receive new-application emails" }),
+  delivery: z.enum(emailDeliveries, { error: "Choose how to receive new-application emails." }),
 });
 
 export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
@@ -16,7 +16,7 @@ export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
 export const emailKindsSchema = z.strictObject({
   kinds: z
     .record(z.string().regex(/^[a-z][a-z_]{1,62}$/), z.boolean())
-    .refine((kinds) => Object.keys(kinds).length > 0, { error: "Choose at least one kind" }),
+    .refine((kinds) => Object.keys(kinds).length > 0, { error: "Choose at least one kind." }),
 });
 
 export type EmailKinds = z.infer<typeof emailKindsSchema>;

@@ -18,7 +18,7 @@ import type { TestUser } from "./support/test-user";
 
 const SLUG = "employer-pays-commitment";
 const COMMITMENT = "We charge workers no recruitment fees or related costs";
-const REQUIRED = "Please confirm the commitment to continue";
+const REQUIRED = "Please confirm the commitment to continue.";
 const DRAFT_NOTICE = "Draft - not yet approved by legal counsel. The commitment below is a draft; you accept the version shown.";
 const OUTDATED_FOR_MEMBERS =
   "Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates.";
@@ -99,7 +99,7 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
     await openPartnerOnboarding(page, user);
 
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     await expect(page.getByText("Workers never pay fees to get a job through Chara Pinnacle.").first()).toBeVisible();
     await expect(page.getByRole("note").filter({ hasText: DRAFT_NOTICE })).toBeVisible();
     const document = page.getByRole("region", { name: /^Employer-pays commitment/ });
@@ -127,7 +127,7 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
     await page.keyboard.press("Enter");
 
     await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 4 of 5: Security");
+    await expect(currentStep(page)).toContainText("Step 5 of 6: Security");
     expect(commitmentRows(user.id)).toEqual([{ purpose: SLUG, version: 0, action: "granted", user_id: user.id }]);
     expect(acceptanceAudits(id)).toEqual([expect.objectContaining({ actor_id: user.id, metadata: { version: 0 } })]);
     await expectAccessibleAtBothWidths(page);

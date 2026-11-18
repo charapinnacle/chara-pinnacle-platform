@@ -18,7 +18,7 @@ import { slugSchema } from "@/lib/validation/team";
 export type SaveGeographiesResult = { errors?: FieldErrors; message?: string; saved?: true; licencePrompts?: string[] };
 
 const RELEASE_OFF = "Registration for recruitment and staffing companies is not open at the moment.";
-const SUSPENDED = "This organization is suspended, so its countries cannot be changed.";
+const SUSPENDED = "This organisation is suspended, so its countries cannot be changed.";
 const UNKNOWN_COUNTRY = "Choose countries from the list.";
 
 // Where you serve (FR-K1), from the onboarding step or the workforce profile page. The organisation comes from the slug,

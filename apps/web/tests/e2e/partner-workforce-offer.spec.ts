@@ -68,12 +68,12 @@ test.describe("What you offer (FR-K2)", () => {
     await openPartnerOnboarding(page, user);
 
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 3 of 6: What you offer");
     await expect(page.getByText("No occupations chosen yet.")).toBeVisible();
     // AC7: a recruitment company sees the staffing checkbox, not the staffing types, and recruitment type as radios.
     const recruitmentType = page.getByRole("radiogroup", { name: "Recruitment type" });
     await expect(recruitmentType.getByRole("radio")).toHaveCount(3);
-    for (const name of ["Local", "International", "Both"]) {
+    for (const name of ["Local", "International", "Local and international"]) {
       await expect(recruitmentType.getByRole("radio", { name, exact: true })).toBeVisible();
     }
     await expect(page.getByRole("checkbox", { name: STAFFING_SERVICE })).not.toBeChecked();
@@ -82,8 +82,8 @@ test.describe("What you offer (FR-K2)", () => {
 
     // Nothing chosen: the summary lists the missing occupation and recruitment type.
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one occupation").first()).toBeVisible();
-    await expect(page.getByText("Choose a recruitment type").first()).toBeVisible();
+    await expect(page.getByText("Choose at least one occupation.").first()).toBeVisible();
+    await expect(page.getByText("Choose a recruitment type.").first()).toBeVisible();
     expect(offer(id)).toBe("||||");
 
     // AC2: "weld" lists Welders and flame cutters; arrows and Enter take it, and the chip has its own remove button.
@@ -109,7 +109,7 @@ test.describe("What you offer (FR-K2)", () => {
     await pickWithKeys(page, LANGUAGES, "engl", "English");
     await pickWithKeys(page, LANGUAGES, "filip", "Filipino");
     await pickWithKeys(page, LANGUAGES, "arab", "Arabic");
-    await recruitmentType.getByRole("radio", { name: "International" }).check();
+    await recruitmentType.getByRole("radio", { name: "International", exact: true }).check();
 
     // AC7: ticking the staffing service shows the staffing types and keeps the focus on the checkbox.
     const staffingService = page.getByRole("checkbox", { name: STAFFING_SERVICE });
@@ -120,7 +120,7 @@ test.describe("What you offer (FR-K2)", () => {
     const staffingTypes = page.getByRole("group", { name: STAFFING_TYPES });
     await expect(staffingTypes.getByRole("checkbox")).toHaveCount(4);
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one staffing type").first()).toBeVisible();
+    await expect(page.getByText("Choose at least one staffing type.").first()).toBeVisible();
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).check();
     await expectAccessibleAtBothWidths(page);
 
@@ -140,7 +140,7 @@ test.describe("What you offer (FR-K2)", () => {
     // AC1: the save stores the rows, audits them once, stamps the profile date and moves on to Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     expect(offer(id)).toBe("7126,7212|C,F|ar,en,tl|staffing,temporary|international");
     expect(offerAudits(id)).toEqual([
       expect.objectContaining({
@@ -217,7 +217,7 @@ test.describe("What you offer (FR-K2)", () => {
     for (const name of ["Contract", "Project", "Permanent"]) {
       await expect(staffingTypes.getByRole("checkbox", { name })).not.toBeChecked();
     }
-    await expect(page.getByRole("radio", { name: "Local" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Local", exact: true })).toBeChecked();
     await expectAccessibleAtBothWidths(page);
 
     // AC10: an eleventh occupation is not added; the limit is announced with the way to upgrade.
@@ -250,9 +250,9 @@ test.describe("What you offer (FR-K2)", () => {
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).uncheck();
     await page.getByRole("button", { name: "Save what you offer" }).click();
-    await expect(page.getByText("Choose at least one staffing type").first()).toBeVisible();
+    await expect(page.getByText("Choose at least one staffing type.").first()).toBeVisible();
     await staffingTypes.getByRole("checkbox", { name: "Contract" }).check();
-    await page.getByRole("radio", { name: "Both" }).check();
+    await page.getByRole("radio", { name: "Local and international" }).check();
     await page.getByRole("button", { name: "Save what you offer" }).click();
     await expect(page.getByText("Workforce offer saved", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(path);

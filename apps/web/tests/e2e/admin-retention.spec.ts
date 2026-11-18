@@ -91,11 +91,11 @@ test.describe("the retention periods of the console (FR-S3)", () => {
     await period.fill("0");
     await reason.fill(REASON);
     await dialog.getByRole("button", { name: "Review change" }).click();
-    await expect(dialog.getByText("Enter a whole number of days from 1 to 3,650").first()).toBeVisible();
+    await expect(dialog.getByText("Enter a whole number of days from 1 to 3,650.").first()).toBeVisible();
     await expect(period).toHaveAttribute("aria-invalid", "true");
     await period.fill("40000");
     await dialog.getByRole("button", { name: "Review change" }).click();
-    await expect(dialog.getByText("Enter a whole number of days from 1 to 3,650").first()).toBeVisible();
+    await expect(dialog.getByText("Enter a whole number of days from 1 to 3,650.").first()).toBeVisible();
     expect(days("conversations")).toBe(730);
     expect(updates()).toBe(before);
     await expectNoAxeViolations(page);
