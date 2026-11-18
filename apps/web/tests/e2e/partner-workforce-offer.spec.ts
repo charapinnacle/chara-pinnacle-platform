@@ -73,7 +73,7 @@ test.describe("What you offer (FR-K2)", () => {
     // AC7: a recruitment company sees the staffing checkbox, not the staffing types, and recruitment type as radios.
     const recruitmentType = page.getByRole("radiogroup", { name: "Recruitment type" });
     await expect(recruitmentType.getByRole("radio")).toHaveCount(3);
-    for (const name of ["Local", "International", "Both"]) {
+    for (const name of ["Local", "International", "Local and international"]) {
       await expect(recruitmentType.getByRole("radio", { name, exact: true })).toBeVisible();
     }
     await expect(page.getByRole("checkbox", { name: STAFFING_SERVICE })).not.toBeChecked();
@@ -109,7 +109,7 @@ test.describe("What you offer (FR-K2)", () => {
     await pickWithKeys(page, LANGUAGES, "engl", "English");
     await pickWithKeys(page, LANGUAGES, "filip", "Filipino");
     await pickWithKeys(page, LANGUAGES, "arab", "Arabic");
-    await recruitmentType.getByRole("radio", { name: "International" }).check();
+    await recruitmentType.getByRole("radio", { name: "International", exact: true }).check();
 
     // AC7: ticking the staffing service shows the staffing types and keeps the focus on the checkbox.
     const staffingService = page.getByRole("checkbox", { name: STAFFING_SERVICE });
@@ -217,7 +217,7 @@ test.describe("What you offer (FR-K2)", () => {
     for (const name of ["Contract", "Project", "Permanent"]) {
       await expect(staffingTypes.getByRole("checkbox", { name })).not.toBeChecked();
     }
-    await expect(page.getByRole("radio", { name: "Local" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Local", exact: true })).toBeChecked();
     await expectAccessibleAtBothWidths(page);
 
     // AC10: an eleventh occupation is not added; the limit is announced with the way to upgrade.
@@ -252,7 +252,7 @@ test.describe("What you offer (FR-K2)", () => {
     await page.getByRole("button", { name: "Save what you offer" }).click();
     await expect(page.getByText("Choose at least one staffing type").first()).toBeVisible();
     await staffingTypes.getByRole("checkbox", { name: "Contract" }).check();
-    await page.getByRole("radio", { name: "Both" }).check();
+    await page.getByRole("radio", { name: "Local and international" }).check();
     await page.getByRole("button", { name: "Save what you offer" }).click();
     await expect(page.getByText("Workforce offer saved", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(path);

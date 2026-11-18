@@ -81,7 +81,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, OCCUPATIONS, "weld", "7212 · Welders and flame cutters");
     await pickWithKeys(page, OCCUPATIONS, "electricians", "7411 · Building and related electricians");
     await pickWithKeys(page, "Which languages do your candidates speak? (optional)", "engl", "English");
-    await page.getByRole("radiogroup", { name: "Recruitment type" }).getByRole("radio", { name: "International" }).check();
+    await page.getByRole("radiogroup", { name: "Recruitment type" }).getByRole("radio", { name: "International", exact: true }).check();
     await page.getByRole("button", { name: "Continue" }).click();
 
     // Commitments: the employer-pays commitment, accepted by the owner.

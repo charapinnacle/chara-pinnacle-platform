@@ -14,7 +14,7 @@ export const sizeBands = ["1_49", "50_249", "250_999", "1000_plus"] as const sat
 export const recruitmentTypeLabels: Record<RecruitmentType, string> = {
   local: "Local",
   international: "International",
-  both: "Both",
+  both: "Local and international",
 };
 
 export const staffingTypeLabels: Record<(typeof staffingTypes)[number], string> = {

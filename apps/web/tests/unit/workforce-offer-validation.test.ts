@@ -3,6 +3,7 @@ import { chosenCount } from "@/lib/chips";
 import {
   fromServiceTypes,
   occupationNoun,
+  recruitmentTypeLabels,
   toServiceTypes,
   workforceOfferSchema,
   type WorkforceOfferInput,
@@ -29,6 +30,10 @@ const issues = (input: WorkforceOfferInput, type: "recruitment_company" | "staff
     .error?.issues.map(({ path, message }) => [path.join("."), message]);
 
 describe("What you offer (FR-K2)", () => {
+  it("names the recruitment types in words a profile can show alone, never \"Both\"", () => {
+    expect(recruitmentTypeLabels).toEqual({ local: "Local", international: "International", both: "Local and international" });
+  });
+
   it("trims, cases and merges the codes as their code lists hold them (AC1, AC3)", () => {
     expect(workforceOfferSchema("recruitment_company").parse(offer)).toMatchObject({
       occupations: ["7212", "7126"],
