@@ -5,7 +5,7 @@ import { useState } from "react";
 import { FormProvider, useController, useForm, useFormContext, useWatch } from "react-hook-form";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toastError, toastNetworkError } from "@/components/feedback/toast-store";
-import { Checkbox } from "@/components/forms/checkbox-field";
+import { Checkbox } from "@/components/forms/checkbox";
 import { FieldMessage } from "@/components/forms/field-message";
 import { FormButton } from "@/components/forms/form-button";
 import { Notice } from "@/components/forms/notice";
