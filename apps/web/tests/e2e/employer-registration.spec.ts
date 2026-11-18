@@ -314,7 +314,7 @@ test.describe("employer registration", () => {
     await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.getByText("Could not create the company", { exact: true })).toBeVisible();
-    await expect(summary(page)).toContainText("You have reached the number of organizations one account can own.");
+    await expect(summary(page)).toContainText("You have reached the number of organisations one account can own.");
     await expect(page.getByLabel("Legal company name")).toHaveValue(legalName);
     await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveValue("Germany");
     await expect(page.getByLabel(IDENTIFIER_LABEL)).toHaveValue("DE 123 456 789");

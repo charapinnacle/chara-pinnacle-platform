@@ -27,7 +27,7 @@ export type CreateOrganizationResult = {
   duplicateLegalName?: true;
 };
 
-const LIMIT_REACHED = "You have reached the number of organizations one account can own.";
+const LIMIT_REACHED = "You have reached the number of organisations one account can own.";
 
 const fieldByConstraint: Record<string, keyof OrganizationFormInput | keyof OrganizationProfileInput> = {
   legal_name: "legalName",
@@ -124,7 +124,7 @@ export async function createPartnerOrganization(
 type UpdateOrganizationResult = CreateOrganizationResult & ({ saved?: undefined } | { saved: true; displayName: string });
 
 const LEGAL_NAME_LOCKED = "The legal name cannot be changed once a payment has been started for the company.";
-const SUSPENDED = "This organization is suspended, so its profile cannot be changed.";
+const SUSPENDED = "This organisation is suspended, so its profile cannot be changed.";
 
 // The organization comes from the slug in the address, checked against the caller's membership and role; the function
 // checks the role, two-step verification and the lock of the legal name again in the database. A recruitment or staffing

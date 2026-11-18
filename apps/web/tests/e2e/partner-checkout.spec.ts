@@ -60,6 +60,8 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     await expect(basic).toContainText("One free trial is granted for each legal entity.");
     await expect(basic).toContainText("3 countries served");
     await expect(basic, "the limit the recruitment dashboard counts").toContainText("10 workforce listings");
+    await expect(basic).toContainText("10 job order responses per month");
+    await expect(basic).toContainText("25 candidate submissions per month");
     await expect(basic.getByRole("link", { name: "Sign up for Basic" })).toHaveAttribute("href", "/en/signup?kind=recruitment_company");
     await expect(recruitment.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Professional" }) })).toContainText(
       "EUR 99.00",
@@ -79,6 +81,9 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     await expect(staffing).toContainText("EUR 129.00");
     await expect(staffing).toContainText("From EUR 249.00");
     await expect(staffing).toContainText("10 workforce listings");
+    const staffingBasic = staffing.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Basic" }) });
+    await expect(staffingBasic).toContainText("10 responses to workforce requests per month");
+    await expect(staffingBasic).not.toContainText("candidate submissions");
     await expect(page.getByText("A paid plan does not make a recruitment or staffing company verified")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 

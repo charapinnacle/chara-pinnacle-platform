@@ -28,12 +28,12 @@ export function InternalNotes({ slug, applicationId, notes, blocked, olderHref, 
         <h2 id="notes-heading" className="text-h2">
           Internal notes
         </h2>
-        <p className="text-small text-muted-foreground">Visible to your organization only. The candidate never sees them.</p>
+        <p className="text-small text-muted-foreground">Visible to your organisation only. The candidate never sees them.</p>
       </div>
       {blocked ? (
         <div className="grid gap-3">
           <Notice tone="info" role="status">
-            Your organization has no active paid plan, so notes cannot be added. The notes written before stay readable.
+            Your organisation has no active paid plan, so notes cannot be added. The notes written before stay readable.
           </Notice>
           <div className="grid gap-1.5">
             <Label htmlFor="internal-note-read-only">Add an internal note</Label>
