@@ -143,7 +143,7 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await inviteDialog.getByRole("radio", { name: title }).check();
     await expectNoAxeViolations(page);
     await inviteDialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${partner.displayName} is invited by ${employer}`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Invitation sent to ${partner.displayName}`, { exact: true })).toBeVisible();
     const [invitation] = query<{ id: string; status: string }>(
       `select id, status::text from public.requirement_invitations where requirement_id = ${literal(requirement)}
          and organization_id = ${literal(partner.id)}`,
