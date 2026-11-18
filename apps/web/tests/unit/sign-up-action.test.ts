@@ -198,7 +198,7 @@ describe("signUp action", () => {
     });
     expect(result).toEqual({
       errors: {
-        "accepted.age-18-plus": "Confirm that you are 18 or older to create an account",
+        "accepted.age-18-plus": "Confirm that you are 18 or older to create an account.",
       },
     });
     const privacy = await signUp({

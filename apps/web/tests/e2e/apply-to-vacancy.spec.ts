@@ -216,7 +216,7 @@ test.describe("apply to a vacancy", () => {
     await page.getByLabel("CV.pdf").check();
     await submit.click();
     const summary = page.getByRole("alert").filter({ hasText: "There is a problem" });
-    await expect(summary).toContainText("Confirm that you agree to share the selected documents");
+    await expect(summary).toContainText("Confirm that you agree to share the selected documents.");
     expect(applicationRows(candidate.id)).toEqual([]);
     await expect(page.getByLabel("Cover note (optional)")).toHaveValue("My note");
     await expect(page.getByLabel("CV.pdf")).toBeChecked();
