@@ -127,6 +127,10 @@ describe("the submission refusals in words", () => {
     expect(answerRefusal({ message: "CHARA_INVALID_STATE", details: "expired" })).toEqual({ kind: "message", message: SUBMISSION_MESSAGES.expired });
     expect(answerRefusal({ message: "CHARA_INVALID_STATE", details: "declined_by_candidate" })).toEqual({ kind: "message", message: SUBMISSION_MESSAGES.answered });
     expect(answerRefusal({ message: "CHARA_INVALID_STATE", details: "requirement_not_open" })).toEqual({ kind: "message", message: SUBMISSION_MESSAGES.closed });
+    expect(answerRefusal({ message: "CHARA_INVALID_STATE", details: "submissions_closed" })).toEqual({
+      kind: "message",
+      message: "This request is no longer open because the employer closed submissions for this partner.",
+    });
     expect(answerRefusal({ message: "CHARA_INVALID_INPUT", details: "p_document_ids" })).toEqual({ kind: "field", message: SUBMISSION_MESSAGES.documents });
     expect(answerRefusal({ message: "CHARA_DOCUMENT_NOT_SCANNED", details: null })).toEqual({ kind: "message", message: SUBMISSION_MESSAGES.scanning });
     expect(answerRefusal({ message: "CHARA_SETTING_MISSING", details: "sharing-notice" })).toEqual({ kind: "fault" });
@@ -280,13 +284,20 @@ describe("the submission reads", () => {
       name === "list_my_submission_requests"
         ? { data: [requestRow], error: null }
         : {
-            data: [{ ...requestRow, id: REQUIREMENT, status: "submitted", decided_at: null, worker_approved_at: "2026-11-11T00:00:00Z", withdrawn_at: null }],
+            data: [
+              { ...requestRow, id: REQUIREMENT, status: "submitted", decided_at: null, worker_approved_at: "2026-11-11T00:00:00Z", withdrawn_at: null, submissions_closed: false },
+              { ...requestRow, id: DOCUMENT, status: "expired", decided_at: "2026-11-12T00:00:00Z", worker_approved_at: null, withdrawn_at: null, submissions_closed: true },
+            ],
             error: null,
           },
     );
     expect(await getMySubmission(SUBMISSION)).toMatchObject({ kind: "request", request: { partnerName: "Manila Recruit", employerName: null } });
-    expect(await getMySubmission(REQUIREMENT)).toMatchObject({ kind: "answered", submission: { status: "submitted", approvedAt: "2026-11-11T00:00:00Z" } });
-    expect(await getMySubmission(DOCUMENT)).toBeNull();
+    expect(await getMySubmission(REQUIREMENT)).toMatchObject({
+      kind: "answered",
+      submission: { status: "submitted", approvedAt: "2026-11-11T00:00:00Z", submissionsClosed: false },
+    });
+    expect(await getMySubmission(DOCUMENT)).toMatchObject({ kind: "answered", submission: { status: "expired", submissionsClosed: true } });
+    expect(await getMySubmission(PARTNER.id)).toBeNull();
   });
 
   it("pages the partner's submissions and shows the first page for an unknown cursor", async () => {
@@ -316,11 +327,22 @@ describe("the submission reads", () => {
     const row = {
       id: SUBMISSION, requirement_id: REQUIREMENT, title: "Welders", status: "submitted", invited_email: null, candidate_name: "Cara Lim",
       note: null, created_at: "2026-11-10T00:00:00Z", decided_at: null, worker_approved_at: "2026-11-11T00:00:00Z", withdrawn_at: null,
-      next_cursor: null, moderation_state: "hidden", moderation_action_id: 42,
+      next_cursor: null, moderation_state: "hidden", moderation_action_id: 42, submissions_closed: false,
     };
     rpcMock.mockResolvedValue({ data: [row, { ...row, id: DOCUMENT, moderation_state: "visible", moderation_action_id: null }], error: null });
     const page = await listPartnerSubmissions(PARTNER.id, null, null);
     expect(page.submissions.map((submission) => submission.hidden)).toEqual([{ decisionId: 42 }, null]);
+  });
+
+  it("tells the partner which requests ended because submissions were closed for it", async () => {
+    const row = {
+      id: SUBMISSION, requirement_id: REQUIREMENT, title: "Welders", status: "expired", invited_email: "w@example.com", candidate_name: null,
+      note: null, created_at: "2026-11-10T00:00:00Z", decided_at: "2026-11-12T00:00:00Z", worker_approved_at: null, withdrawn_at: null,
+      next_cursor: null, moderation_state: "visible", moderation_action_id: null, submissions_closed: true,
+    };
+    rpcMock.mockResolvedValue({ data: [row, { ...row, id: DOCUMENT, submissions_closed: false }], error: null });
+    const page = await listPartnerSubmissions(PARTNER.id, null, null);
+    expect(page.submissions.map((submission) => submission.submissionsClosed)).toEqual([true, false]);
   });
 
   it("reads the employer's approved submissions", async () => {

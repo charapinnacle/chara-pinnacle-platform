@@ -55,7 +55,8 @@ describe("the invite choices of a profile and the saved partners (FR-O1 AC12)", 
           ],
           error: null,
         }),
-      );
+      )
+      .mockReturnValueOnce(query({ data: [{ requirement_id: "r2", organization_id: P1 }], error: null }));
     rpcMock.mockResolvedValue({ data: [{ used: 1, limit_value: 3, applies: true, plan_name: "Basic" }], error: null });
     expect(await getInviteChoices([P1], "second")).toEqual({
       employers: [
@@ -72,7 +73,7 @@ describe("the invite choices of a profile and the saved partners (FR-O1 AC12)", 
           planName: "Basic",
         },
       ],
-      invited: { [P1]: { r1: "withdrawn" } },
+      invited: { [P1]: { r1: "withdrawn", r2: "responded" } },
     });
   });
 
@@ -92,7 +93,8 @@ describe("the invite choices of a profile and the saved partners (FR-O1 AC12)", 
 describe("the invitations of the suggestions page", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("answers the statuses by partner and the allowance", async () => {
+  it("answers the statuses by partner and the allowance, a partner that responded from the marketplace as Responded", async () => {
+    fromMock.mockReturnValueOnce(query({ data: [{ requirement_id: "r1", organization_id: "marketplace" }], error: null }));
     rpcMock
       .mockResolvedValueOnce({
         data: [
@@ -112,12 +114,13 @@ describe("the invitations of the suggestions page", () => {
       })
       .mockResolvedValueOnce({ data: [{ used: 1, limit_value: 3, applies: true, plan_name: "Basic" }], error: null });
     expect(await getSuggestionInvitations("e1", "r1")).toEqual({
-      invitations: { [P1]: "viewed" },
+      invitations: { [P1]: "viewed", marketplace: "responded" },
       usage: { used: 1, limit: 3, applies: true, planName: "Basic" },
     });
   });
 
   it("answers nothing when a read fails, so the page hides the invite controls", async () => {
+    fromMock.mockReturnValue(query({ data: [], error: null }));
     rpcMock.mockResolvedValue({ data: null, error: { message: "CHARA_FORBIDDEN", code: "42501" } });
     expect(await getSuggestionInvitations("e1", "r1")).toBeNull();
   });

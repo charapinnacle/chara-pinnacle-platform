@@ -6,7 +6,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { SubmissionStatusBadge } from "@/components/submissions/submission-status";
 import { listPartnerSubmissions } from "@/lib/dal/submissions";
 import { formatDate } from "@/lib/i18n/format";
-import { partnerNextSteps, partnerSubmissionLabels, submissionCountText } from "@/lib/submissions/presentation";
+import { PARTNER_CLOSED_NEXT_STEP, partnerNextSteps, partnerSubmissionLabels, submissionCountText } from "@/lib/submissions/presentation";
 import { appealPath, appealsPath, partnerSubmissionsPath, requirementSubmissionsPath, responsesPath } from "@/lib/routes";
 
 type PartnerSubmissionListProps = {
@@ -58,7 +58,7 @@ export async function PartnerSubmissionList({ lang, slug, organizationId, requir
           <li key={submission.id} className="grid gap-2 py-5">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
               <h2 className="text-h3 min-w-0 break-words">{submission.candidateName ?? submission.invitedEmail ?? "Candidate"}</h2>
-              <SubmissionStatusBadge status={submission.status} view="partner" />
+              <SubmissionStatusBadge status={submission.status} view="partner" closed={submission.submissionsClosed} />
             </div>
             {requirementId ? null : (
               <p className="text-body break-words">
@@ -74,7 +74,7 @@ export async function PartnerSubmissionList({ lang, slug, organizationId, requir
                 </TextLink>
               </p>
             ) : null}
-            <p className="max-w-[65ch] text-body leading-relaxed">{partnerNextSteps[submission.status]}</p>
+            <p className="max-w-[65ch] text-body leading-relaxed">{submission.submissionsClosed ? PARTNER_CLOSED_NEXT_STEP : partnerNextSteps[submission.status]}</p>
             {submission.note ? <p className="text-small break-words whitespace-pre-line text-muted-foreground">Your note: {submission.note}</p> : null}
             <p className="text-small text-muted-foreground">
               Request sent <time dateTime={submission.createdAt}>{formatDate(submission.createdAt)}</time>
@@ -86,7 +86,7 @@ export async function PartnerSubmissionList({ lang, slug, organizationId, requir
               ) : submission.decidedAt ? (
                 <>
                   {" "}
-                  · {submission.status === "expired" ? "Expired" : "Answered"} <time dateTime={submission.decidedAt}>{formatDate(submission.decidedAt)}</time>
+                  · {submission.submissionsClosed ? "Closed" : submission.status === "expired" ? "Expired" : "Answered"} <time dateTime={submission.decidedAt}>{formatDate(submission.decidedAt)}</time>
                 </>
               ) : null}
               {submission.withdrawnAt ? (

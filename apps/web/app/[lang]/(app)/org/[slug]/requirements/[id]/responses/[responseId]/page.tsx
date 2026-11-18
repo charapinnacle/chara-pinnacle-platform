@@ -12,10 +12,10 @@ import { ResponseVersions } from "@/components/responses/response-versions";
 import { ResponseView } from "@/components/responses/response-view";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { isReleased } from "@/lib/dal/release";
-import { getResponse, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
+import { getResponse, listRequirementResponses, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
-import { employerNextSteps, submissionsOpen } from "@/lib/responses/presentation";
+import { employerNextSteps, employerStatusLabels, submissionsOpen } from "@/lib/responses/presentation";
 import {
   partnerProfileForPath,
   requirementPath,
@@ -45,10 +45,13 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
   if (!parsedRequirement.success || !parsedResponse.success) notFound();
   const response = await getResponse(organization.id, parsedResponse.data);
   if (!response || response.requirementId !== parsedRequirement.data) notFound();
-  const [versions, documents] = await Promise.all([
+  const [versions, documents, responses] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
+    listRequirementResponses(organization.id, response.requirementId).catch(() => null),
   ]);
+  // The comparison needs another response that is not withdrawn; when the list could not be read the link stays.
+  const comparable = responses === null || responses.some((other) => other.id !== response.id && other.status !== "withdrawn");
   const partnerName = response.partnerName ?? "Partner";
 
   return (
@@ -107,8 +110,10 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
         {response.decidedAt ? (
           <Notice tone="info" role="status">
             <p>
-              Decided <time dateTime={response.decidedAt}>{formatDate(response.decidedAt)}</time>
-              {submissionsOpen(response.status, response.submissionsAllowed) ? ". The partner can submit candidates." : null}
+              {employerStatusLabels[response.status]} <time dateTime={response.decidedAt}>{formatDate(response.decidedAt)}</time>
+              {response.status === "shortlisted" && submissionsOpen(response.status, response.submissionsAllowed)
+                ? ". You allowed this partner to submit candidates."
+                : null}
             </p>
             <p className="break-words whitespace-pre-line">
               {response.decisionNote ? `Your note to the partner: ${response.decisionNote}` : "No note to the partner."}
@@ -126,7 +131,7 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
             focusTargetId="response-status-heading"
           />
         ) : null}
-        {response.status !== "withdrawn" ? (
+        {response.status !== "withdrawn" && comparable ? (
           <p>
             <TextLink href={requirementResponsesComparePath(lang, slug, response.requirementId)}>Compare with the other responses</TextLink>
           </p>
