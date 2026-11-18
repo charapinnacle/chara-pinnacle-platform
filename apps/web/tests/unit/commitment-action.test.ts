@@ -39,7 +39,7 @@ describe("acceptCommitment (FR-J3)", () => {
 
   it("refuses an unticked box at the box and sends nothing (AC1)", async () => {
     await expect(acceptCommitment("manila-skills", 1, { confirmed: false })).resolves.toEqual({
-      errors: { confirmed: "Please confirm the commitment to continue" },
+      errors: { confirmed: "Please confirm the commitment to continue." },
     });
     expect(rpcMock).not.toHaveBeenCalled();
   });
@@ -59,7 +59,7 @@ describe("acceptCommitment (FR-J3)", () => {
 
   it.each([
     ["CHARA_INVALID_INPUT", "version", "The commitment has changed since this page was opened. Reload the page to read the current version."],
-    ["CHARA_FORBIDDEN", "organization_suspended", "This organization is suspended, so the commitment cannot be accepted."],
+    ["CHARA_FORBIDDEN", "organization_suspended", "This organisation is suspended, so the commitment cannot be accepted."],
     ["CHARA_FORBIDDEN", "release_off", "Registration for recruitment and staffing companies is not open at the moment."],
   ])("explains the refusal %s %s and stays on the step", async (message, details, text) => {
     rpcMock.mockResolvedValue(refusal(message, details));

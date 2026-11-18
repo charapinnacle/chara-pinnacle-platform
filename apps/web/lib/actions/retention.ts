@@ -9,7 +9,7 @@ import { adminPath } from "@/lib/routes";
 import { retentionInputSchema, type RetentionInput } from "@/lib/validation/retention";
 import { fieldErrors } from "@/lib/validation/sign-up";
 
-const DAYS = { errors: { days: "Enter a whole number of days from 1 to 3,650" } };
+const DAYS = { errors: { days: "Enter a whole number of days from 1 to 3,650." } };
 
 // One retention period with a reason (FR-S3 AC1, AC10). The daily retention run reads the new period the next time.
 export async function saveRetentionPolicy(input: RetentionInput): Promise<AdminResult> {

@@ -35,7 +35,7 @@ import { todayUtc } from "@/lib/validation/passport";
 
 export const metadata: Metadata = { title: "Applicant", robots: { index: false } };
 
-const blockedText = "Your organization has no active paid plan, so the stage cannot be changed.";
+const blockedText = "Your organisation has no active paid plan, so the stage cannot be changed.";
 
 const notesCursorSchema = z.string().regex(/^[0-9]{1,15}$/).transform(Number);
 

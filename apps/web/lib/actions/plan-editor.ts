@@ -50,8 +50,8 @@ export async function savePlan(input: SavePlanInput): Promise<AdminResult> {
   if (error) {
     return adminRefusal(error, path, {
       ...REASON,
-      "CHARA_INVALID_INPUT:name": { errors: { name: "Enter a name of 1 to 60 characters" } },
-      "CHARA_INVALID_INPUT:trial_days": { errors: { trialDays: "Enter a whole number of days from 0 to 365" } },
+      "CHARA_INVALID_INPUT:name": { errors: { name: "Enter a name of 1 to 60 characters." } },
+      "CHARA_INVALID_INPUT:trial_days": { errors: { trialDays: "Enter a whole number of days from 0 to 365." } },
       "CHARA_INVALID_INPUT:is_public": { errors: { isPublic: "Only a paid plan can be public" } },
       "CHARA_INVALID_INPUT:limit_value": { message: "A limit must be a whole number from 0 to 1,000,000." },
       "CHARA_INVALID_INPUT:plan_code": { message: "This plan no longer exists." },
@@ -68,8 +68,8 @@ const PRICE_FAILURE = "The payment provider could not create the new price. Noth
 
 const PRICE_REFUSALS: Record<string, AdminResult> = {
   reason: REASON["CHARA_INVALID_INPUT:reason"],
-  price_minor: { errors: { amount: "Enter an amount from 1.00 to 100,000.00, for example 54.00" } },
-  price_unchanged: { errors: { amount: "Enter a price other than the current one" } },
+  price_minor: { errors: { amount: "Enter an amount from 1.00 to 100,000.00, for example 54.00." } },
+  price_unchanged: { errors: { amount: "Enter a price other than the current one." } },
   free_plan: { message: "A free plan stays free. Nothing was changed." },
   plan_code: { message: "This plan no longer exists." },
   plan_not_synced: { message: "This plan is not set up at the payment provider yet. Nothing was changed." },
@@ -113,8 +113,8 @@ export async function setLimitOverride(input: OverrideInput): Promise<AdminResul
       ...REASON,
       "CHARA_FORBIDDEN:override_enterprise_only": { errors: { organizationId: "Only an organisation on an Enterprise plan can get an override" } },
       "CHARA_INVALID_INPUT:unknown_limit_key": { errors: { limitKey: "This limit does not apply to this organisation" } },
-      "CHARA_INVALID_INPUT:limit_value": { errors: { value: "Enter a whole number from 0 to 1,000,000" } },
-      "CHARA_INVALID_INPUT:expires_at": { errors: { expiresOn: "Enter a date after today as year-month-day" } },
+      "CHARA_INVALID_INPUT:limit_value": { errors: { value: "Enter a whole number from 0 to 1,000,000." } },
+      "CHARA_INVALID_INPUT:expires_at": { errors: { expiresOn: "Enter a date after today as year-month-day." } },
       CHARA_NOT_FOUND: { errors: { organizationId: "This organisation no longer exists" } },
     });
   }

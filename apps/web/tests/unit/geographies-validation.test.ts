@@ -10,13 +10,13 @@ describe("Where you serve (FR-K1)", () => {
   });
 
   it.each([
-    ["recruitment_company", "Choose at least one country you recruit for"],
-    ["staffing_company", "Choose at least one country you supply workers for"],
+    ["recruitment_company", "Choose at least one country you recruit for."],
+    ["staffing_company", "Choose at least one country you supply workers for."],
   ] as const)("asks a %s for at least one country in each list, in its own words", (type, served) => {
     const result = geographiesSchema(type).safeParse({ sourcesFrom: [], servesMarket: [] });
     expect(result.success).toBe(false);
     expect(result.error?.issues.map(({ path, message }) => [path.join("."), message])).toEqual([
-      ["sourcesFrom", "Choose at least one country you source workers from"],
+      ["sourcesFrom", "Choose at least one country you source workers from."],
       ["servesMarket", served],
     ]);
   });
