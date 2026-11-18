@@ -90,7 +90,7 @@ export default async function SubmissionsPage({ params }: PageProps<"/[lang]/sub
                           {submission.title}
                         </TextLink>
                       </h3>
-                      <SubmissionStatusBadge status={submission.status} view="candidate" />
+                      <SubmissionStatusBadge status={submission.status} view="candidate" closed={submission.submissionsClosed} />
                     </div>
                     <p className="text-body wrap-anywhere">
                       From {submission.partnerName} · {submission.employerName ? `${submission.employerName}, ` : ""}
