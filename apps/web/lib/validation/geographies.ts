@@ -12,8 +12,8 @@ export const servedQuestion: Record<PartnerType, string> = {
 };
 
 const servedRequired: Record<PartnerType, string> = {
-  recruitment_company: "Choose at least one country you recruit for",
-  staffing_company: "Choose at least one country you supply workers for",
+  recruitment_company: "Choose at least one country you recruit for.",
+  staffing_company: "Choose at least one country you supply workers for.",
 };
 
 const countryList = (required: string) =>
@@ -25,7 +25,7 @@ const countryList = (required: string) =>
 
 export function geographiesSchema(type: PartnerType) {
   return z.object({
-    sourcesFrom: countryList("Choose at least one country you source workers from"),
+    sourcesFrom: countryList("Choose at least one country you source workers from."),
     servesMarket: countryList(servedRequired[type]),
   });
 }

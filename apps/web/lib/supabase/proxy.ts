@@ -34,6 +34,6 @@ export async function updateSession(
   );
   // Nothing may run between client creation and this call: it verifies the JWT
   // against the JWKS and refreshes an expired session into the cookies above.
-  await supabase.auth.getClaims();
-  return response;
+  const { data } = await supabase.auth.getClaims();
+  return { response, supabase, userId: data?.claims.sub ?? null };
 }

@@ -58,7 +58,7 @@ describe("applyToVacancy", () => {
 
   it("does not call the database when the consent is not ticked", async () => {
     expect(await applyToVacancy(jobId, { ...valid, consent: false })).toEqual({
-      errors: { consent: "Confirm that you agree to share the selected documents" },
+      errors: { consent: "Confirm that you agree to share the selected documents." },
     });
     expect(applyMock).not.toHaveBeenCalled();
   });
