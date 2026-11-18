@@ -39,6 +39,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Reserve the local stack's ports
+        # The runner hands out 32768-60999 to outgoing connections, the image pulls of db:start among them, and a port of
+        # the stack or of an Edge Function (544xx) taken that way fails its bind with "address already in use".
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54420-54439
       - run: npm run db:start
       - run: npm run db:test
       - run: npm run db:lint
@@ -87,6 +91,10 @@ jobs:
           deno-version: v2.x
       - run: npm ci
       - run: cp apps/web/.env.example apps/web/.env.local
+      - name: Reserve the local stack's ports
+        # The runner hands out 32768-60999 to outgoing connections, the image pulls of db:start among them, and a port of
+        # the stack or of an Edge Function (544xx) taken that way fails its bind with "address already in use".
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54420-54439
       - run: npm run db:start
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web

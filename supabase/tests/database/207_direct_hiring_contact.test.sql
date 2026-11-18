@@ -14,8 +14,11 @@ select plan(29);
 \set urb '00000000-0000-0000-0000-0000000f7301'
 \set upl '00000000-0000-0000-0000-0000000f7302'
 
+-- The settings this file depends on are set here, not assumed: the parallel tests commit theirs through dblink and leave
+-- them behind when they stop early.
 update private.settings set value = 'true' where key in ('release_find_workers', 'release_messaging');
-update private.settings set value = 'false' where key = 'release_job_orders';
+update private.settings set value = 'false' where key in ('release_job_orders', 'entitlements_enforced');
+update private.settings set value = '25' where key = 'contact_requests_per_org_day_max';
 insert into billing.subscriptions (organization_id, plan_code, status, provider) values
   (current_setting('t.a')::uuid, 'employer_starter', 'active', 'null'),
   (current_setting('t.b')::uuid, 'employer_professional', 'active', 'null');
