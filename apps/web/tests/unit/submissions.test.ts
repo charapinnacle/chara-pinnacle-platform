@@ -40,6 +40,7 @@ vi.mock("@/lib/dal/responses", () => ({ getResponseEligibility: eligibilityMock,
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
 const { approveSubmission, declineSubmission, submitCandidate, withdrawSubmission } = await import("@/lib/actions/submissions");
+const { revalidatePath } = await import("next/cache");
 const { getMySubmission, getSubmissionTarget, listPartnerSubmissions, listRequirementSubmissions, submissionsReleased } = await import(
   "@/lib/dal/submissions"
 );
@@ -186,12 +187,15 @@ describe("the partner's submission action", () => {
   });
 
   it("answers the monthly limit with the upgrade prompt, or in words without one (AC3)", async () => {
+    vi.mocked(revalidatePath).mockClear();
     const prompt = { limitKey: "candidate_submissions_per_month", used: 25, limit: 25, resetsAt: null, planName: "Partner", comparison: null };
     promptsMock.mockResolvedValue({ candidate_submissions_per_month: prompt });
     rpcMock.mockResolvedValue(refusal("CHARA_LIMIT_REACHED", "candidate_submissions_per_month"));
     expect(await submitCandidate("s1", REQUIREMENT, { email: "w@example.com", note: "" })).toEqual({ limitReached: prompt });
     promptsMock.mockRejectedValue(new Error("down"));
     expect(await submitCandidate("s1", REQUIREMENT, { email: "w@example.com", note: "" })).toEqual({ message: SUBMISSION_MESSAGES.limit });
+    // The form keeps what was typed: nothing re-renders the page into the limit panel (FR-R1 AC11).
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it("refuses while the release is off, and logs an unexpected error with a reference", async () => {
