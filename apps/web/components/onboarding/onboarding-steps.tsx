@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 // 640 px only the current step is named beside the circles, under "Step 2 of 3"; the other names stay for screen readers.
 // A recruitment or staffing company (FR-J1) has the six steps of its own journey, Where you serve and What you offer each
 // a page of its own: too many for a name beside the circles at 360 px, so there the current name joins the "Step 2 of 6"
-// line instead. The steps that staff reopened with a request for information (FR-J4) are shown as not done again, and
+// line instead; at any width only the current one is named, as six names do not fit beside the circles in the 512 px
+// column either. The steps that staff reopened with a request for information (FR-J4) are shown as not done again, and
 // say so to screen readers.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
@@ -48,8 +49,9 @@ export function OnboardingSteps({ kind, current, reopened = [] }: OnboardingStep
               <span
                 className={cn(
                   "text-small whitespace-nowrap",
-                  state === "current" ? "font-semibold text-foreground" : "text-muted-foreground max-sm:sr-only",
-                  long && "max-sm:sr-only",
+                  state === "current"
+                    ? cn("font-semibold text-foreground", long && "max-sm:sr-only")
+                    : cn("text-muted-foreground", long ? "sr-only" : "max-sm:sr-only"),
                 )}
               >
                 <span className="sr-only">{`Step ${index + 1} of ${steps.length}: `}</span>
