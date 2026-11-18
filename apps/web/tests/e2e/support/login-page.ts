@@ -15,6 +15,8 @@ export function loginResponse(page: Page) {
 }
 
 export async function logIn(page: Page, user: TestUser, next?: string): Promise<void> {
+  // The login page sends a signed-in browser straight on (FR-A3), so signing in as someone else starts signed out.
+  await page.context().clearCookies({ name: /^sb-/ });
   await page.goto(next ? `/en/login?next=${encodeURIComponent(next)}` : "/en/login");
   await fillLogin(page, user.email, user.password);
   await page.getByRole("button", { name: "Log in" }).click();
