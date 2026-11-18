@@ -42,6 +42,11 @@ select extensions.dblink_exec('setup', format($$
   commit;
 $$, :'m1', :'m2', :'w1', :'w2', :'emp'));
 
+-- The cards are read here, as the database owner: inside the sessions below the employer's members cannot read the
+-- workers' passports.
+select card_id as c1 from public.worker_profiles where user_id = :'w1' \gset
+select card_id as c2 from public.worker_profiles where user_id = :'w2' \gset
+
 create function pg_temp.send_sql(p_user uuid) returns text
 language sql as $$
   select format($f$
@@ -54,14 +59,14 @@ $$;
 
 select extensions.dblink_exec('holder', pg_temp.send_sql(:'m1')) as began \gset
 select t as held from extensions.dblink('holder', format(
-  $$select 'ok' from public.send_contact_request(%L, (select card_id from public.worker_profiles where user_id = %L), 'The first request of the day')$$,
-  :'emp', :'w1')) as r (t text) \gset
+  $$select 'ok' from public.send_contact_request(%L, %L, 'The first request of the day')$$,
+  :'emp', :'c1')) as r (t text) \gset
 select is(:'held', 'ok', 'FR-Q3 AC3: the owner sends the last request of the day and keeps the transaction open');
 
 select extensions.dblink_exec('blocked', pg_temp.send_sql(:'m2')) as began \gset
 select extensions.dblink_send_query('blocked', format(
-  $$select 'ok'::text from public.send_contact_request(%L, (select card_id from public.worker_profiles where user_id = %L), 'One too many')$$,
-  :'emp', :'w2')) as sent \gset
+  $$select 'ok'::text from public.send_contact_request(%L, %L, 'One too many')$$,
+  :'emp', :'c2')) as sent \gset
 select pg_sleep(0.3) as slept \gset
 select is(extensions.dblink_is_busy('blocked'), 1,
   'NFR-A4: a member sending to another worker at the same time waits on the organisation''s lock');
