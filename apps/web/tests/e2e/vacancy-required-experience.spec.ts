@@ -40,7 +40,10 @@ test.describe("required experience on vacancies (FR-Q4 AC11)", () => {
     await expect(details(page)).toContainText("At least 3 years of experience");
     expect(execute(`select required_experience_years from public.jobs where id = ${literal(job.id)}`).trim()).toBe("3");
 
-    execute(`update public.jobs set status = 'open' where id = ${literal(job.id)}`);
+    execute(
+      `select set_config('request.jwt.claims', json_build_object('sub', ${literal(admin.id)}, 'role', 'authenticated')::text, true);
+       update public.jobs set status = 'open' where id = ${literal(job.id)}`,
+    );
     await page.goto(publicUrl(job.id));
     await expect(details(page).getByText("Experience", { exact: true })).toBeVisible();
     await expect(details(page)).toContainText("At least 3 years of experience");
@@ -114,7 +117,7 @@ test.describe("required experience on vacancies (FR-Q4 AC11)", () => {
     try {
       const page = await context.newPage();
       await page.goto("/en/jobs?experience=41");
-      await expect(page.getByRole("alert")).toContainText("Enter your experience as a whole number of years from 0 to 40.");
+      await expect(page.getByRole("alert").filter({ hasText: "Enter your experience as a whole number of years from 0 to 40." })).toBeVisible();
       await openMoreFilters(page);
       await expect(page.getByLabel(MY_EXPERIENCE)).toHaveValue("");
       await expect(page.getByRole("list", { name: "Active filters" })).toHaveCount(0);
