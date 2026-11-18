@@ -55,6 +55,12 @@ describe("OnboardingSteps", () => {
     expect(markup).toMatch(/<li aria-current="step"[^>]*>.*Step 3 of 6: <\/span>What you offer/);
   });
 
+  it("names only the current step of the six beside the circles at every width, so they fit the panel (FR-J1)", () => {
+    const [company, , offer] = items(html(<OnboardingSteps kind="partner" current={2} />));
+    expect(company).toMatch(/<span class="[^"]*text-muted-foreground sr-only"><span class="sr-only">Step 1 of 6: /);
+    expect(offer).toMatch(/<span class="[^"]*font-semibold text-foreground max-sm:sr-only"><span class="sr-only">Step 3 of 6: /);
+  });
+
   it("says which step it is in words for phones, hidden from screen readers that read the list", () => {
     expect(html(<OnboardingSteps kind="company" current={0} />)).toMatch(/<p aria-hidden="true" class="[^"]*sm:hidden[^"]*">Step 1 of 3<\/p>/);
   });
