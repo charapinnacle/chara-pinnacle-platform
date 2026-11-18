@@ -3,22 +3,22 @@ import { cn } from "@/lib/utils";
 
 // The steps that are left once the email is confirmed and the account type is committed: what the person did on an earlier
 // page (the account, the account type) is not a step here. An owner must set up two-step verification (FR-A4). Each step
-// is a column with its name under the circle, so the five steps of a recruitment or staffing company (FR-J1) fit the panel
-// as well as three; below 640 px the names give way to a "Step 2 of 5: Where you serve" line and stay for screen readers.
-// A step that staff reopened with a request for information (FR-J4) is shown as not done again, and says so to screen
-// readers.
+// is a column with its name under the circle, so the six steps of a recruitment or staffing company (FR-J1), Where you
+// serve and What you offer each a page of its own, fit the panel as well as three; below 640 px the names give way to a
+// "Step 2 of 6: Where you serve" line and stay for screen readers. The steps that staff reopened with a request for
+// information (FR-J4) are shown as not done again, and say so to screen readers.
 const onboardingJourneys = {
   company: ["Company", "Security", "Ready"],
-  partner: ["Company", "Where you serve", "Commitments", "Security", "Ready"],
+  partner: ["Company", "Where you serve", "What you offer", "Commitments", "Security", "Ready"],
   worker: ["Your profile", "Ready"],
 } as const;
 
 // Classes, not an inline style: the content security policy refuses style attributes in the served page.
-const columns: Record<number, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 5: "grid-cols-5" };
+const columns: Record<number, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 6: "grid-cols-6" };
 
-type OnboardingStepsProps ={ kind: keyof typeof onboardingJourneys; current: number; reopened?: number };
+type OnboardingStepsProps = { kind: keyof typeof onboardingJourneys; current: number; reopened?: readonly number[] };
 
-export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProps) {
+export function OnboardingSteps({ kind, current, reopened = [] }: OnboardingStepsProps) {
   const steps = onboardingJourneys[kind];
   return (
     <div className="grid gap-3">
@@ -28,7 +28,7 @@ export function OnboardingSteps({ kind, current, reopened }: OnboardingStepsProp
       <ol aria-label="Setting up your account" className={cn("grid", columns[steps.length])}>
         {steps.map((label, index) => {
           const state =
-            index === current ? "current" : index === reopened ? "reopened" : index < current ? "done" : "upcoming";
+            index === current ? "current" : reopened.includes(index) ? "reopened" : index < current ? "done" : "upcoming";
           return (
             <li
               key={label}

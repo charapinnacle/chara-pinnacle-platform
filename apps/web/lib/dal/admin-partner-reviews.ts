@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { adminClient, failure, paged, type Page } from "@/lib/dal/admin";
@@ -144,7 +145,8 @@ export async function listPartnerReviews(after: QueueCursor | null): Promise<Pag
 }
 
 // What staff check about one partner, with its licences (admin_list_partner_licences); null when it is not a partner.
-export async function getPartnerReviewDetail(id: string): Promise<PartnerReviewDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getPartnerReviewDetail = cache(async (id: string): Promise<PartnerReviewDetail | null> => {
   const supabase = await adminClient();
   const [review, licences] = await Promise.all([
     supabase.rpc("admin_get_partner_review", { p_org: id }),
@@ -223,4 +225,4 @@ export async function getPartnerReviewDetail(id: string): Promise<PartnerReviewD
           : null,
     })),
   };
-}
+});
