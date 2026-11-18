@@ -133,7 +133,7 @@ describe("the access rules of the employer dashboard (FR-E5 AC9)", () => {
 
     requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...manila, suspended: true } });
     const html = await render("recruitment");
-    expect(html).toContain("This organization is suspended, so its figures are not available.");
+    expect(html).toContain("This organisation is suspended, so its figures are not available.");
     expect(html).not.toContain("PARTNER");
   });
 
@@ -279,7 +279,7 @@ describe("what each role sees", () => {
   it("shows no figure of a suspended organization", async () => {
     requireOrgRoleMock.mockResolvedValue(access({ suspended: true }));
     const html = await render();
-    expect(html).toContain("This organization is suspended, so its figures are not available.");
+    expect(html).toContain("This organisation is suspended, so its figures are not available.");
     expect(html).not.toContain("FIGURES");
   });
 
