@@ -190,19 +190,6 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
-                },"consents": {
-                  Row: {
-                    "action": Database["public"]['Enums']["consent_action"],"created_at": string,"id": number,"purpose": string,"user_id": string,"version": number
-                  }
-                  Insert: {
-                    "action": Database["public"]['Enums']["consent_action"],"created_at"?: string,"id"?: never,"purpose": string,"user_id": string,"version": number
-                  }
-                  Update: {
-                    "action"?: Database["public"]['Enums']["consent_action"],"created_at"?: string,"id"?: never,"purpose"?: string,"user_id"?: string,"version"?: number
-                  }
-                  Relationships: [
-                    
-                  ]
                 },"connections": {
                   Row: {
                     "conversation_id": string,"created_at": string,"created_by": string | null,"from_organization_id": string,"id": string,"job_id": string | null,"kind": Database["public"]['Enums']["connection_kind"],"requirement_id": string | null,"status": Database["public"]['Enums']["connection_status"],"status_changed_at": string | null,"to_organization_id": string | null,"to_user_id": string | null
@@ -269,6 +256,19 @@ isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
+                  ]
+                },"consents": {
+                  Row: {
+                    "action": Database["public"]['Enums']["consent_action"],"created_at": string,"id": number,"purpose": string,"user_id": string,"version": number
+                  }
+                  Insert: {
+                    "action": Database["public"]['Enums']["consent_action"],"created_at"?: string,"id"?: never,"purpose": string,"user_id": string,"version": number
+                  }
+                  Update: {
+                    "action"?: Database["public"]['Enums']["consent_action"],"created_at"?: string,"id"?: never,"purpose"?: string,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    
                   ]
                 },"contact_requests": {
                   Row: {
