@@ -14,6 +14,7 @@ import {
   suspendProfile,
 } from "./support/login";
 import { alertText, fillLogin, loginResponse, logIn, SUSPENDED } from "./support/login-page";
+import { partnerWithCompany } from "./support/partners";
 import { signInBrowser } from "./support/session";
 import { captureActionRequests } from "./support/server-action";
 
@@ -84,6 +85,24 @@ test.describe("login", () => {
     await page.goto(`/en/login?next=${encodeURIComponent("//evil.example")}`);
     await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
     await context.close();
+  });
+
+  test("FR-A3: a signed-in recruitment or staffing company is redirected from the login page to the dashboard of its type", async ({
+    browser,
+  }) => {
+    for (const [type, segment] of [
+      ["recruitment_company", "recruitment"],
+      ["staffing_company", "staffing"],
+    ] as const) {
+      const partner = await partnerWithCompany(type);
+      const context = await browser.newContext();
+      await signInBrowser(context, partner.user);
+      const page = await context.newPage();
+      const response = await page.request.get("/en/login", { maxRedirects: 0 });
+      expect(response.status()).toBe(307);
+      expect(response.headers().location).toMatch(new RegExp(`/en/dashboard/${segment}\\?org=${partner.slug}$`));
+      await context.close();
+    }
   });
 
   test("FR-A3 AC3: a suspended account cannot log in and one with a session is held on the suspended page", async ({
