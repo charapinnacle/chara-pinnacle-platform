@@ -14,7 +14,7 @@ import { slugSchema } from "@/lib/validation/team";
 export type AcceptCommitmentResult = { errors?: FieldErrors; message?: string; accepted?: boolean };
 
 const RELEASE_OFF = "Registration for recruitment and staffing companies is not open at the moment.";
-const SUSPENDED = "This organization is suspended, so the commitment cannot be accepted.";
+const SUSPENDED = "This organisation is suspended, so the commitment cannot be accepted.";
 const CHANGED = "The commitment has changed since this page was opened. Reload the page to read the current version.";
 
 // The owner accepts the employer-pays commitment (FR-J3) in the version the page showed. The organisation comes from the

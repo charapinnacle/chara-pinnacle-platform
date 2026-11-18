@@ -67,10 +67,10 @@ describe("startCheckout", () => {
   it.each([
     [refusal(403, "terms_version_mismatch"), "The Subscription and Billing Terms changed. Reload this page to read the current version."],
     [refusal(409, "trial_changed"), "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue."],
-    [refusal(403, "already_subscribed"), "Your organization already has a subscription. Use Manage billing to change it."],
+    [refusal(403, "already_subscribed"), "Your organisation already has a subscription. Use Manage billing to change it."],
     [refusal(403, "plan_not_sold"), "This plan cannot be bought online."],
     [refusal(403, "plan_not_for_org_type"), "This plan is for another type of company. Choose one of the plans on your billing page."],
-    [refusal(403, "organization_suspended"), "This organization is suspended, so it cannot start a subscription."],
+    [refusal(403, "organization_suspended"), "This organisation is suspended, so it cannot start a subscription."],
     [refusal(502), "We could not start the checkout. Nothing was charged. Try again."],
     [refusal(0), "We could not start the checkout. Nothing was charged. Try again."],
     [refusal(403, "something the page does not know"), "We could not start the checkout. Nothing was charged. Try again."],
