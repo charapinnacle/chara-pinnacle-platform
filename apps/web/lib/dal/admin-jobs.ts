@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Database } from "@chara-pinnacle/db-types";
 import * as z from "zod";
 import { adminClient, failure, paged, type Page } from "@/lib/dal/admin";
@@ -47,7 +48,8 @@ export async function searchJobs(term: string, after: JobCursor): Promise<Page<J
   return paged(rows, (row) => ({ at: row.createdAt, id: row.id }));
 }
 
-export async function getModerationJob(id: string): Promise<JobDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getModerationJob = cache(async (id: string): Promise<JobDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_job", { p_job: id });
   if (error) {
@@ -68,4 +70,4 @@ export async function getModerationJob(id: string): Promise<JobDetail | null> {
     createdAt: row.created_at,
     history: historySchema.parse(row.history),
   };
-}
+});
