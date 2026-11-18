@@ -400,7 +400,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     const report = staff.page.locator("#report");
     await expect(report).toContainText("Partner profile");
     await expect(report).toContainText("Fee demand");
-    await expect(report).toContainText("Due");
+    await expect(report).toContainText("First look due");
     await expect(report).toContainText("A signed-in account");
     await expect(report).not.toContainText(worker.email);
     const target = staff.page.locator("#target");
@@ -513,7 +513,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(dialog).toContainText("9 of 2000 characters used");
     await dialog.getByRole("button", { name: "Hide" }).focus();
     await staff.page.keyboard.press("Enter");
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await dialog.getByLabel("Statement of reasons").fill(reasons);
     await expectNoAxeViolations(staff.page);
     await dialog.getByRole("button", { name: "Hide" }).focus();
@@ -848,7 +848,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await page.context().clearCookies();
     await signInAtAal2(page, company.owner, secret, `/en/appeals/${suspended}`);
     await page.goto(`/en/org/${company.slug}/jobs`);
-    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended" })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "This organisation is suspended" })).toBeVisible();
     await page.getByRole("link", { name: "See the decision and appeal" }).click();
     await expect(page).toHaveURL("/en/appeals");
     await page.getByRole("link", { name: `Organisation suspended: ${displayName(company.id)}` }).click();

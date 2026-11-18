@@ -1,6 +1,6 @@
 import "server-only";
 import * as z from "zod";
-import type { OrganizationType } from "@/lib/billing/limits";
+import { shownLimit, type OrganizationType } from "@/lib/billing/limits";
 import type { SoldPlan, SubscriptionStatus } from "@/lib/billing/presentation";
 import { PLAN_LIMIT_KEYS, type PlanLimitKey } from "@/lib/billing/pricing";
 import { listPublicPlans } from "@/lib/dal/pricing";
@@ -105,7 +105,7 @@ export async function getUsage(
   const rows = usageSchema.parse(data);
   return keys.flatMap((key) => {
     const row = rows.find((candidate) => candidate.limit_key === key);
-    return row ? [{ key, used: row.used, limit: row.limit_value, applies: row.applies }] : [];
+    return row ? [{ key, used: row.used, limit: shownLimit(key, row.limit_value), applies: row.applies }] : [];
   });
 }
 

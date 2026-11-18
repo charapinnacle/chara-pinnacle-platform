@@ -108,7 +108,7 @@ describe("the applicant page of FR-D5", () => {
   it("shows no applicant of a suspended organization and reads nothing about one", async () => {
     requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, suspended: true } });
     const html = renderToStaticMarkup(await ApplicantPage(props()));
-    expect(html).toContain("This organization is suspended, so its applicants are not available.");
+    expect(html).toContain("This organisation is suspended, so its applicants are not available.");
     expect(html).not.toContain("Ana Silva");
     expect(getApplicantMock).not.toHaveBeenCalled();
     expect(markApplicationViewedMock).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe("the applicant page of FR-D5", () => {
   it("lists the internal notes with the author and the label, and the form", async () => {
     listNotesMock.mockResolvedValue({ notes: [{ id: 1, authorName: "Mia Member", body: "<b>x</b>", createdAt: "2026-10-04T09:00:00Z" }], hasMore: false });
     const html = renderToStaticMarkup(await ApplicantPage(props()));
-    expect(html).toContain("Visible to your organization only");
+    expect(html).toContain("Visible to your organisation only");
     expect(html).toContain("Internal note");
     expect(html).toContain("Mia Member");
     expect(html).toContain("&lt;b&gt;x&lt;/b&gt;");
@@ -268,7 +268,7 @@ describe("the applicant page of FR-D5", () => {
     getApplicantMock.mockResolvedValue({ ...applicant, status: "viewed", shortlistingAvailable: false });
     const member = renderToStaticMarkup(await ApplicantPage(props()));
     expect(member).toContain(prompt);
-    expect(member).toContain("Contact an owner or admin of your organization to upgrade the plan.");
+    expect(member).toContain("Contact an owner or admin of your organisation to upgrade the plan.");
     expect(member).not.toContain("/billing");
     requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, role: "owner" } });
     const owner = renderToStaticMarkup(await ApplicantPage(props()));

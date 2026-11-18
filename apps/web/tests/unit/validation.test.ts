@@ -87,9 +87,9 @@ describe("sign-up schema (FR-A1)", () => {
 
   it("requires the kind and accepts worker, company and the two partner types (FR-J1)", () => {
     const withoutKind = { email: valid.email, password: valid.password };
-    expect(messages(withoutKind).kind).toBe("Choose your account type");
-    expect(messages({ ...valid, kind: "admin" }).kind).toBe("Choose your account type");
-    expect(messages({ ...valid, kind: "employer" }).kind).toBe("Choose your account type");
+    expect(messages(withoutKind).kind).toBe("Choose your account type.");
+    expect(messages({ ...valid, kind: "admin" }).kind).toBe("Choose your account type.");
+    expect(messages({ ...valid, kind: "employer" }).kind).toBe("Choose your account type.");
     for (const kind of ["worker", "company", "recruitment_company", "staffing_company"]) {
       expect(messages({ ...valid, kind }), kind).toEqual({});
     }
@@ -100,8 +100,8 @@ describe("sign-up schema (FR-A1)", () => {
       const result = signUpFormSchema([], partners).safeParse({ email: valid.email, password: valid.password, accepted: {} });
       return result.success ? undefined : fieldErrors(result.error).kind;
     };
-    expect(kindError(false)).toBe("Choose worker or employer");
-    expect(kindError(true)).toBe("Choose your account type");
+    expect(kindError(false)).toBe("Choose worker or employer.");
+    expect(kindError(true)).toBe("Choose your account type.");
     expect(signUpFormSchema([], false).safeParse({ ...valid, kind: "staffing_company", accepted: {} }).success).toBe(false);
     expect(signUpFormSchema([], true).safeParse({ ...valid, kind: "staffing_company", accepted: {} }).success).toBe(true);
   });
@@ -171,7 +171,7 @@ describe("consent boxes (FR-A8, FR-A9)", () => {
     const errors = fieldErrors(result.error!);
     expect(errors["accepted.terms-of-service"]).toBe("Accept the Title of terms-of-service to continue");
     expect(errors["accepted.age-18-plus"]).toBe(
-      "Confirm that you are 18 or older to create an account",
+      "Confirm that you are 18 or older to create an account.",
     );
   });
 
