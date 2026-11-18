@@ -144,7 +144,7 @@ test.describe("the console with account-ops and notify running", () => {
     ];
     for (const { tab, path } of pages) {
       await tab.goto(path);
-      await expect(tab.getByRole("alert").filter({ hasText: "This organization is suspended, so its" })).toBeVisible();
+      await expect(tab.getByRole("alert").filter({ hasText: "This organisation is suspended, so its" })).toBeVisible();
       await expect(tab.getByText("Suspended welder")).toHaveCount(0);
       await expect(tab.getByText(company.owner.email)).toHaveCount(0);
       await expect(tab.getByRole("button", { name: /Create|Save|Invite/ })).toHaveCount(0);

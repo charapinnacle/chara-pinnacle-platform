@@ -16,7 +16,7 @@ test.describe("the internal notes of the applicant detail page", () => {
 
     await logIn(page, member, applicantUrl(company.slug, applicationId));
     const notes = page.getByRole("region", { name: "Internal notes" });
-    await expect(notes.getByText("Visible to your organization only. The candidate never sees them.", { exact: true })).toBeVisible();
+    await expect(notes.getByText("Visible to your organisation only. The candidate never sees them.", { exact: true })).toBeVisible();
     await expect(notes.getByText("No internal notes yet.")).toBeVisible();
     const field = notes.getByLabel("Add an internal note");
     await waitForHydration(field);
@@ -30,7 +30,7 @@ test.describe("the internal notes of the applicant detail page", () => {
 
     await field.fill("   ");
     await add.click();
-    await expect(notes.getByRole("alert").first()).toContainText("Enter a note");
+    await expect(notes.getByRole("alert").first()).toContainText("Enter a note.");
     await field.fill("a".repeat(2001));
     await expect(notes.getByText("2001/2000")).toBeVisible();
     await add.click();
@@ -77,7 +77,7 @@ test.describe("the internal notes of the applicant detail page", () => {
     await logIn(page, member, applicantUrl(company.slug, applicationId));
     const notes = page.getByRole("region", { name: "Internal notes" });
     await expect(notes.getByText("Secret opinion of the team")).toBeVisible();
-    await expect(notes.getByText("Your organization has no active paid plan, so notes cannot be added.", { exact: false })).toBeVisible();
+    await expect(notes.getByText("Your organisation has no active paid plan, so notes cannot be added.", { exact: false })).toBeVisible();
     await expect(notes.getByLabel("Add an internal note")).toHaveAttribute("aria-disabled", "true");
     await expect(notes.getByRole("button", { name: "Add note" })).toBeDisabled();
     await expect(page.getByRole("region", { name: "Profile as submitted" })).toBeVisible();

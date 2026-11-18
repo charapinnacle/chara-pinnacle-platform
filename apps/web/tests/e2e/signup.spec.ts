@@ -264,7 +264,7 @@ test.describe("sign-up form", () => {
     await page.getByLabel("Email address").fill(newEmail());
     await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
     await page.getByRole("button", { name: "Create account" }).click();
-    await expect(summary(page)).toContainText("Choose worker or employer");
+    await expect(summary(page)).toContainText("Choose worker or employer.");
     await expect(page).toHaveURL(/\/en\/signup$/);
   });
 
@@ -315,7 +315,7 @@ test.describe("sign-up form", () => {
       });
     });
     await page.getByRole("button", { name: "Create account" }).click();
-    await expect(summary(page)).toContainText("Confirm that you are 18 or older to create an account");
+    await expect(summary(page)).toContainText("Confirm that you are 18 or older to create an account.");
     expect(userByEmail(email)).toEqual([]);
   });
 });

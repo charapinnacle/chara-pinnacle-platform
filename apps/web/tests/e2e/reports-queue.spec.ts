@@ -100,7 +100,7 @@ test.describe("working the reports queue", () => {
     await review.click();
     const reviewDialog = staff.page.getByRole("dialog", { name: "Put the report in review" });
     await reviewDialog.getByRole("button", { name: "Mark in review" }).click();
-    await expect(reviewDialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(reviewDialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await reviewDialog.getByLabel("Reason").fill(REVIEW_REASON);
     await reviewDialog.getByRole("button", { name: "Mark in review" }).click();
     await expect(staff.page.getByText("The report is in review", { exact: true })).toBeVisible();
@@ -115,7 +115,7 @@ test.describe("working the reports queue", () => {
     const dialog = staff.page.getByRole("dialog", { name: "Mark the report actioned" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Mark actioned" }).click();
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await dialog.getByLabel("Note").fill(NOTE);
     await dialog.getByRole("button", { name: "Mark actioned" }).click();
     await expect(staff.page.getByText("The report is marked actioned", { exact: true })).toBeVisible();
@@ -183,8 +183,11 @@ test.describe("working the reports queue", () => {
     const categories = await table(page).locator("tbody tr td:nth-child(3)").allInnerTexts();
     const firstOther = categories.findIndex((text) => !text.includes("Fee demand"));
     expect(firstOther === -1 || categories.slice(firstOther).every((text) => !text.includes("Fee demand")), "no fee demand after another report").toBe(true);
-    await expect(table(page).getByRole("columnheader", { name: "Due" })).toBeVisible();
+    await expect(table(page).getByRole("columnheader", { name: "First look due" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
+
+    // An unknown report is not found before the page streams, so the answer is a real 404.
+    expect((await page.request.get("/en/admin/reports/999999999999")).status()).toBe(404);
 
     await page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(fee)}`);
     const feeRow = rows.nth(1);

@@ -287,7 +287,7 @@ test.describe("in-app notifications (FR-T1)", () => {
     await signInBrowser(context, company.owner);
     await page.goto(LIST);
     const item = page.getByRole("list", { name: "Notifications" }).getByRole("listitem").first();
-    await expect(item).toContainText("was hidden by moderation");
+    await expect(item).toContainText("Your public profile was hidden by moderation");
     await expect(item).toContainText("Moderation");
     await expect(item.getByRole("link")).toHaveAttribute("href", `/en/org/${company.slug}/workforce-profile#moderation-heading`);
     await expect(item).not.toContainText("The profile claims placements");

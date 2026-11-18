@@ -78,7 +78,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
     releasedMock.mockResolvedValue(true);
     await expect(saveWorkforceOffer("../x", input, { onboarding: true })).resolves.toEqual({ message: expect.any(String) });
     await expect(saveWorkforceOffer("manila-skills", { ...input, occupations: [] }, { onboarding: true })).resolves.toEqual({
-      errors: { occupations: "Choose at least one occupation" },
+      errors: { occupations: "Choose at least one occupation." },
     });
     expect(rpcMock).not.toHaveBeenCalled();
   });
@@ -94,7 +94,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
     ["occupation_id", "occupations", "Choose from the list."],
     ["industry_code", "industries", "Choose from the list."],
     ["language_code", "languages", "Choose from the list."],
-    ["staffing_types", "staffingTypes", "Choose at least one staffing type"],
+    ["staffing_types", "staffingTypes", "Choose at least one staffing type."],
     ["staffing_service_required", "staffingTypes", "Tick that you also supply staff to choose staffing types"],
   ])("shows the refused value %s at its field (AC3, AC5)", async (details, field, text) => {
     rpcMock.mockResolvedValue(refusal("CHARA_INVALID_INPUT", details));
@@ -103,7 +103,7 @@ describe("saveWorkforceOffer (FR-K2)", () => {
   });
 
   it.each([
-    ["organization_suspended", "This organization is suspended, so its workforce offer cannot be changed."],
+    ["organization_suspended", "This organisation is suspended, so its workforce offer cannot be changed."],
     ["release_off", "Registration for recruitment and staffing companies is not open at the moment."],
   ])("explains the refusal CHARA_FORBIDDEN %s", async (details, text) => {
     rpcMock.mockResolvedValue(refusal("CHARA_FORBIDDEN", details));
