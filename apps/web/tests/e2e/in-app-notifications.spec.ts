@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { expectNoAxeViolations } from "./support/axe";
 import { execute, literal, query } from "./support/db";
@@ -149,15 +149,30 @@ test.describe("in-app notifications (FR-T1)", () => {
   test("a skeleton shows while the list loads", async ({ context, page }) => {
     const candidate = await createCommittedUser("worker");
     await signInBrowser(context, candidate);
-    let prefetched = false;
+    const pending = new Set<Request>();
+    let answered = 0;
     page.on("request", (request) => {
-      if (request.url().includes("/en/notifications")) prefetched = true;
+      if (request.url().includes("/en/notifications")) pending.add(request);
     });
+    const settle = (request: Request) => {
+      if (pending.delete(request)) answered += 1;
+    };
+    page.on("requestfinished", settle);
+    page.on("requestfailed", settle);
     await page.goto("/en/dashboard/worker");
     const link = bell(page);
     await waitForHydration(link);
-    // The loading screen of a route is fetched when its link comes into view; only then can it show at once.
-    await expect.poll(() => prefetched).toBe(true);
+    // The dashboard's own blocks stream their skeletons first; once they are gone the only loading status is the page's.
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
+    // The loading screen of a route is fetched in several requests when its link comes into view; only once all of them
+    // are answered, with none following for a moment, can it show at once.
+    await expect
+      .poll(async () => {
+        const before = answered;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return answered > 0 && pending.size === 0 && answered === before;
+      })
+      .toBe(true);
     await page.route("**/en/notifications*", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       await route.continue();
@@ -180,12 +195,15 @@ test.describe("in-app notifications (FR-T1)", () => {
     const applications = section.getByRole("switch", { name: "New applications" });
     await expect(applications).toBeChecked();
     // New applications, the follower digest that every account may receive (FR-L4, V24), the closing reminder of
-    // workforce requirements (FR-M2, V33) and the new and withdrawn partner responses (FR-O2, FR-N2, V44).
-    await expect(section.getByRole("switch")).toHaveCount(5);
+    // workforce requirements (FR-M2, V33), the new and withdrawn partner responses (FR-O2, FR-N2, V44) and the approved and
+    // withdrawn candidate submissions (FR-O4, V48).
+    await expect(section.getByRole("switch")).toHaveCount(7);
     await expect(section.getByRole("switch", { name: "New vacancies of companies you follow" })).toBeChecked();
     await expect(section.getByRole("switch", { name: "Workforce requirement closing reminders" })).toBeChecked();
     await expect(section.getByRole("switch", { name: "Responses to your workforce requirements", exact: true })).toBeChecked();
     await expect(section.getByRole("switch", { name: "Withdrawn responses to your workforce requirements" })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Candidates who approved a submission" })).toBeChecked();
+    await expect(section.getByRole("switch", { name: "Candidates who withdrew a submission" })).toBeChecked();
     for (const label of ["Vacancy hidden by moderation", "Failed payments", "Team invitations", "New versions of legal documents"]) {
       const row = section.getByRole("listitem").filter({ hasText: label });
       await expect(row).toContainText("Always sent");
@@ -208,7 +226,7 @@ test.describe("in-app notifications (FR-T1)", () => {
     await applications.focus();
     await page.keyboard.press("Space");
     await expect(applications).not.toBeChecked();
-    // Past the four other switches to the save button.
+    // Past the four switches listed after it to the save button.
     for (let presses = 0; presses < 5; presses += 1) {
       await page.keyboard.press("Tab");
     }
@@ -228,6 +246,8 @@ test.describe("in-app notifications (FR-T1)", () => {
       requirement_closing_soon: true,
       response_received: true,
       response_withdrawn: true,
+      submission_approved: true,
+      submission_withdrawn: true,
     });
 
     await page.reload();
