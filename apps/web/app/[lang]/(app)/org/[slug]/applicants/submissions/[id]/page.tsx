@@ -29,7 +29,7 @@ import {
   markSubmissionViewed,
 } from "@/lib/dal/submission-pipeline";
 import { submissionsReleased } from "@/lib/dal/submissions";
-import { formatDateTime, formatShortDate } from "@/lib/i18n/format";
+import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { billingPath, employerSubmissionPath, homePath, requirementPath, requirementsPath, submissionPipelinePath } from "@/lib/routes";
 import { employerSubmissionLabels, submittedByLabel } from "@/lib/submissions/presentation";
 import { submissionTargets } from "@/lib/submissions/stage-machine";
@@ -116,7 +116,7 @@ export default async function EmployerSubmissionPage({ params, searchParams }: P
         <div className="grid gap-0.5">
           <dt className="text-small text-muted-foreground">Submitted</dt>
           <dd className="font-medium">
-            <time dateTime={submission.approvedAt}>{formatShortDate(submission.approvedAt)}</time>
+            <time dateTime={submission.approvedAt}>{formatDate(submission.approvedAt)}</time>
           </dd>
         </div>
       </dl>
