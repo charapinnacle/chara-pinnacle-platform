@@ -35,7 +35,7 @@ test.describe("the applicant detail page", () => {
     await logIn(page, member, applicantUrl(company.slug, applicationId));
     await expect(page.getByRole("heading", { name: "Ana Silva", level: 1 })).toBeVisible();
     const profile = page.getByRole("region", { name: "Profile as submitted" });
-    await expect(profile.getByText(`Submitted ${DETAIL.submitted}`, { exact: true })).toBeVisible();
+    await expect(profile.getByText(`Submitted ${formatDate(DETAIL.submitted)}`, { exact: true })).toBeVisible();
     const row = (label: string) => profile.locator(`div:has(> dt:text-is('${label}')) > dd`);
     await expect(row("Headline")).toHaveText("Welder");
     await expect(row("Occupation")).toHaveText("Welders and flame cutters");
