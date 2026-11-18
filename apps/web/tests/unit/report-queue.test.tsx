@@ -38,7 +38,7 @@ describe("the report queue (FR-S1 AC3, AC10)", () => {
     const html = await render();
     expect(html.match(/Fee demand/g)).toHaveLength(1);
     expect(html.match(/Overdue/g)).toHaveLength(1);
-    expect(html).toContain(">Due<");
+    expect(html).toContain(">First look due<");
     expect(html).toContain('dateTime="2026-10-06T08:00:00+00:00"');
     expect(html).toContain("Partner profile: </span>Manila Skills");
     expect(html.indexOf("R-000007")).toBeLessThan(html.indexOf("R-000003"));

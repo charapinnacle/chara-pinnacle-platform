@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Database, Json } from "@chara-pinnacle/db-types";
 import { headers } from "next/headers";
 import * as z from "zod";
@@ -212,7 +213,8 @@ export async function searchAudit(filter: AuditFilter, after: TimeCursor): Promi
   return paged(rows, (row) => ({ at: row.createdAt, id: row.id }));
 }
 
-export async function getUser(id: string): Promise<UserDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getUser = cache(async (id: string): Promise<UserDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_user", { p_user_id: id });
   if (error) {
@@ -233,9 +235,10 @@ export async function getUser(id: string): Promise<UserDetail | null> {
     applicationsSubmitted: row.applications_submitted,
     vacanciesCreated: row.vacancies_created,
   };
-}
+});
 
-export async function getOrganization(id: string): Promise<OrganizationDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getOrganization = cache(async (id: string): Promise<OrganizationDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_organization", { p_org: id });
   if (error) {
@@ -256,7 +259,7 @@ export async function getOrganization(id: string): Promise<OrganizationDetail | 
       .parse(row.vacancies)
       .map((vacancy) => ({ id: vacancy.id, title: vacancy.title, status: vacancy.status, moderationState: vacancy.moderation_state })),
   };
-}
+});
 
 export async function applicationCounts(from: string, to: string): Promise<StageCount[]> {
   const supabase = await adminClient();
@@ -267,12 +270,22 @@ export async function applicationCounts(from: string, to: string): Promise<Stage
 
 const zeroByDestinationSchema = z.array(z.object({ code: z.string(), name: z.string(), searches: z.number() }));
 
+// A count below minCount is null (the database suppresses it, FR-S2 AC9).
 export type PartnerSearchCounts = {
-  searches: number;
-  withResults: number;
-  zeroResults: number;
+  searches: number | null;
+  withResults: number | null;
+  zeroResults: number | null;
   zeroByDestination: z.infer<typeof zeroByDestinationSchema>;
+  minCount: number;
 };
+
+const partnerSearchRowSchema = z.object({
+  searches: z.number().nullable(),
+  with_results: z.number().nullable(),
+  zero_results: z.number().nullable(),
+  zero_by_destination: zeroByDestinationSchema,
+  min_count: z.number().int(),
+});
 
 export type PartnerSearchKind = "recruitment" | "staffing" | "available_workforce" | "employers";
 
@@ -282,12 +295,13 @@ export async function partnerSearchCounts(kind: PartnerSearchKind, from: string,
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: kind, p_from: from, p_to: to });
   if (error) throw failure("The partner search statistics", error);
-  const [row] = data;
+  const [row] = z.array(partnerSearchRowSchema).length(1).parse(data);
   return {
     searches: row.searches,
     withResults: row.with_results,
     zeroResults: row.zero_results,
-    zeroByDestination: zeroByDestinationSchema.parse(row.zero_by_destination),
+    zeroByDestination: row.zero_by_destination,
+    minCount: row.min_count,
   };
 }
 

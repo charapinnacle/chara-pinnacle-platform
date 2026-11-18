@@ -169,7 +169,7 @@ test.describe("moving an application to another stage", () => {
     await expect(stageDialog(page)).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await stageDialog(page).getByRole("button", { name: "Review" }).click();
-    await expect(stageDialog(page).getByText("Choose a stage").first()).toBeVisible();
+    await expect(stageDialog(page).getByText("Choose a stage.").first()).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await page.keyboard.press("Escape");
     await expect(stageDialog(page)).toBeHidden();

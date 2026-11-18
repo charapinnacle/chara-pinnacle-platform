@@ -15,14 +15,14 @@ import { slugSchema } from "@/lib/validation/team";
 type BillingResult = { errors?: FieldErrors; message?: string };
 
 const REASONS: Record<string, string> = {
-  organization_suspended: "This organization is suspended, so it cannot start a subscription.",
+  organization_suspended: "This organisation is suspended, so it cannot start a subscription.",
   unknown_plan: "This plan cannot be bought online.",
   plan_not_sold: "This plan cannot be bought online.",
   plan_not_for_org_type: "This plan is for another type of company. Choose one of the plans on your billing page.",
   terms_not_published: "The Subscription and Billing Terms are not available yet. Try again later.",
   terms_version_mismatch: "The Subscription and Billing Terms changed. Reload this page to read the current version.",
   trial_changed: "The free trial that applies to your company changed. Read the updated terms above, accept them again and continue.",
-  already_subscribed: "Your organization already has a subscription. Use Manage billing to change it.",
+  already_subscribed: "Your organisation already has a subscription. Use Manage billing to change it.",
   no_customer: "There is no billing account to manage yet.",
   portal_not_configured: "Managing billing online is not available for your type of company yet. Contact us to change or cancel your plan.",
 };
@@ -82,7 +82,7 @@ export async function openPortal(slug: string): Promise<BillingResult | undefine
 
 const IDENTIFIER_REFUSALS: Record<string, string> = {
   legal_entity_identifier_locked: "The identifier cannot be changed once a payment has been started for the company.",
-  organization_suspended: "This organization is suspended, so its identifier cannot be changed.",
+  organization_suspended: "This organisation is suspended, so its identifier cannot be changed.",
 };
 
 function identifierRefusal(error: PostgrestError, back: string): BillingResult {
