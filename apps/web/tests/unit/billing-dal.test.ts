@@ -74,16 +74,16 @@ describe("getUsage (FR-G5 AC7)", () => {
   it("asks for the usage of the organisation and returns the used count and the limit of each key the page shows", async () => {
     rpcMock.mockResolvedValue({
       data: [
-        { limit_key: "active_jobs", used: 7, limit_value: 15 },
-        { limit_key: "active_requirements", used: 0, limit_value: 15 },
-        { limit_key: "members", used: 3, limit_value: null },
-        { limit_key: "messages_per_month", used: 0, limit_value: 500 },
+        { limit_key: "active_jobs", used: 7, limit_value: 15, applies: false },
+        { limit_key: "active_requirements", used: 0, limit_value: 15, applies: false },
+        { limit_key: "members", used: 3, limit_value: null, applies: false },
+        { limit_key: "messages_per_month", used: 0, limit_value: 500, applies: false },
       ],
       error: null,
     });
     expect(await getUsage("org-1")).toEqual([
-      { key: "active_jobs", used: 7, limit: 15 },
-      { key: "members", used: 3, limit: null },
+      { key: "active_jobs", used: 7, limit: 15, applies: false },
+      { key: "members", used: 3, limit: null, applies: false },
     ]);
     expect(rpcMock).toHaveBeenCalledWith("billing_usage", { p_org: "org-1" });
   });
@@ -91,19 +91,19 @@ describe("getUsage (FR-G5 AC7)", () => {
   it("returns the workforce profile and team keys of a partner type, in the order of its plans (FR-R1)", async () => {
     rpcMock.mockResolvedValue({
       data: [
-        { limit_key: "members", used: 1, limit_value: 1 },
-        { limit_key: "markets", used: 2, limit_value: 3 },
-        { limit_key: "listed_occupations", used: 4, limit_value: 10 },
-        { limit_key: "workforce_listings", used: 0, limit_value: 10 },
-        { limit_key: "job_order_responses_per_month", used: 0, limit_value: 10 },
+        { limit_key: "members", used: 1, limit_value: 1, applies: false },
+        { limit_key: "markets", used: 2, limit_value: 3, applies: false },
+        { limit_key: "listed_occupations", used: 4, limit_value: 10, applies: false },
+        { limit_key: "workforce_listings", used: 0, limit_value: 10, applies: false },
+        { limit_key: "job_order_responses_per_month", used: 0, limit_value: 10, applies: false },
       ],
       error: null,
     });
     expect(await getUsage("org-1", "staffing_company")).toEqual([
-      { key: "markets", used: 2, limit: 3 },
-      { key: "listed_occupations", used: 4, limit: 10 },
-      { key: "workforce_listings", used: 0, limit: 10 },
-      { key: "members", used: 1, limit: 1 },
+      { key: "markets", used: 2, limit: 3, applies: false },
+      { key: "listed_occupations", used: 4, limit: 10, applies: false },
+      { key: "workforce_listings", used: 0, limit: 10, applies: false },
+      { key: "members", used: 1, limit: 1, applies: false },
     ]);
     expect((await getUsage("org-1", "recruitment_company")).map((item) => item.key)).toEqual(["markets", "listed_occupations", "workforce_listings", "members"]);
   });
@@ -114,7 +114,7 @@ describe("getUsage (FR-G5 AC7)", () => {
   });
 
   it("refuses an answer of another shape instead of showing a wrong figure", async () => {
-    rpcMock.mockResolvedValue({ data: [{ limit_key: "members", used: "1", limit_value: 2 }], error: null });
+    rpcMock.mockResolvedValue({ data: [{ limit_key: "members", used: "1", limit_value: 2, applies: true }], error: null });
     await expect(getUsage("org-1")).rejects.toThrow();
   });
 });

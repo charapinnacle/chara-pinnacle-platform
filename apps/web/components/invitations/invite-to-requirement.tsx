@@ -15,7 +15,7 @@ import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { invitePartners } from "@/lib/actions/invitations";
 import type { UsagePrompt } from "@/lib/billing/limits";
 import type { InviteEmployer } from "@/lib/dal/invitations";
-import { employerStatusLabels, invitationUsageText, type InvitationStatus } from "@/lib/invitations/presentation";
+import { employerStatusLabels, invitationUsageText, inviteSentText, type InvitationStatus } from "@/lib/invitations/presentation";
 import { billingPath } from "@/lib/routes";
 import { inviteToRequirementSchema, type InviteToRequirementInput } from "@/lib/validation/invitation";
 
@@ -43,6 +43,8 @@ function choiceValue(employer: InviteEmployer, requirementId: string): string {
 // the employer of the chosen requirement; at the plan's limit nothing is written.
 export function InviteToRequirement({ lang, partner, employers, invited, source }: InviteToRequirementProps) {
   const [open, setOpen] = useState(false);
+  // The confirmation stays next to the button after the dialog closed, besides the toast (NFR-U4).
+  const [sent, setSent] = useState("");
   const close = () => setOpen(false);
   const offered = employers
     .map((employer) => ({ ...employer, requirements: employer.requirements.filter(({ id }) => !invited[id]) }))
@@ -56,6 +58,9 @@ export function InviteToRequirement({ lang, partner, employers, invited, source 
         <Send aria-hidden className="size-4" />
         Invite<span className="sr-only normal-case"> {partner.name}</span>
       </FormButton>
+      <p role="status" className="text-small text-muted-foreground empty:hidden">
+        {sent}
+      </p>
       <ModalDialog open={open} onClose={close} title={`Invite ${partner.name} to a requirement`}>
         {already.length > 0 ? (
           <ul aria-label="Requirements this partner is invited to" className="grid gap-1 text-small text-muted-foreground">
@@ -75,16 +80,16 @@ export function InviteToRequirement({ lang, partner, employers, invited, source 
             </FormButton>
           </>
         ) : (
-          <InviteForm lang={lang} partner={partner} employers={offered} source={source} onClose={close} />
+          <InviteForm lang={lang} partner={partner} employers={offered} source={source} onClose={close} onSent={setSent} />
         )}
       </ModalDialog>
     </>
   );
 }
 
-type InviteFormProps = Omit<InviteToRequirementProps, "invited"> & { onClose: () => void };
+type InviteFormProps = Omit<InviteToRequirementProps, "invited"> & { onClose: () => void; onSent: (confirmation: string) => void };
 
-function InviteForm({ lang, partner, employers, source, onClose }: InviteFormProps) {
+function InviteForm({ lang, partner, employers, source, onClose, onSent }: InviteFormProps) {
   const [first] = employers;
   const form = useForm<InviteToRequirementInput>({
     resolver: zodResolver(inviteToRequirementSchema),
@@ -115,8 +120,11 @@ function InviteForm({ lang, partner, employers, source, onClose }: InviteFormPro
           toastError(`${partner.name} already has an invitation to this requirement`, `Status: ${employerStatusLabels[outcome.status]}.`);
           return;
         }
+        const title = employer.requirements.find(({ id }) => id === requirementId)?.title;
+        const confirmation = inviteSentText(partner.name, employer.name, title);
+        onSent(confirmation);
         toast({
-          title: `${partner.name} is invited by ${employer.name}`,
+          title: `Invitation sent to ${partner.name}`,
           description: result.usage ? `${invitationUsageText(result.usage)}.` : undefined,
         });
       },

@@ -9,6 +9,7 @@ import {
   inboxQuery,
   invitationStatuses,
   invitationUsageText,
+  inviteSentText,
   inviteConfirmation,
   isFullInvitation,
   parseInboxParams,
@@ -78,6 +79,8 @@ describe("the invitation allowance (FR-O1 AC9, AC12)", () => {
   it("counts the invitations used against the plan, or those sent without a limit", () => {
     expect(invitationUsageText({ used: 5, limit: 10, applies: true, planName: "Professional" })).toBe("5 of 10 invitations used");
     expect(invitationUsageText({ used: 3, limit: 3, applies: true, planName: "Basic" })).toBe("3 of 3 invitations used");
+    expect(inviteSentText("Manila Recruit", "Acme Bau", "Hamburg welders")).toBe("Invitation sent to Manila Recruit for Hamburg welders by Acme Bau.");
+    expect(inviteSentText("Manila Recruit", "Acme Bau", undefined)).toBe("Invitation sent to Manila Recruit by Acme Bau.");
     expect(invitationUsageText({ used: 1, limit: null, applies: true, planName: "Enterprise" })).toBe("1 invitation sent");
     expect(invitationUsageText({ used: 4, limit: 3, applies: false, planName: "Basic" })).toBe("4 invitations sent");
     expect(atInvitationLimit({ used: 3, limit: 3, applies: true, planName: "Basic" })).toBe(true);
