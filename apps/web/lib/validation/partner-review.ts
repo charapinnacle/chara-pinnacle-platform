@@ -6,19 +6,37 @@ export const reviewStatusSchema = z.enum(["onboarding", "pending_review", "info_
 
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
-// The steps staff may reopen with a request for information (organizations.info_step), with their place in the step
-// indicator of partner onboarding (Company, Where you serve, Commitments, Security, Ready).
-export const infoStepSchema = z.enum(["company", "where_you_serve", "commitments"]);
+// The steps staff may reopen with a request for information (organizations.info_step), with their places in the step
+// indicator of partner onboarding (Company, Where you serve, What you offer, Commitments, Security, Ready): where_you_serve
+// reopens both pages of the workforce profile. The licences are no onboarding step (they are optional before submission and
+// kept on the workforce profile), so a request about them reopens none.
+export const infoStepSchema = z.enum(["company", "where_you_serve", "commitments", "licences"]);
 
 export type InfoStep = z.infer<typeof infoStepSchema>;
 
-export const infoStepIndex = { company: 0, where_you_serve: 1, commitments: 2 } as const satisfies Record<InfoStep, number>;
+export const infoStepIndexes = { company: [0], where_you_serve: [1, 2], commitments: [3], licences: [] } as const satisfies Record<
+  InfoStep,
+  readonly number[]
+>;
 
 export const infoStepLabels = {
   company: "your company details",
   where_you_serve: "where you serve and what you offer",
   commitments: "the employer-pays commitment",
+  licences: "your licences",
 } as const satisfies Record<InfoStep, string>;
+
+// After a request for information (FR-J4 AC7) the partner confirms that it changed what staff asked about, or that nothing
+// needs to change, before it submits again: a resubmission of the unchanged profile would only return the same request.
+export const RESUBMIT_REQUIRED = "Confirm that you have updated what our team asked about, or that nothing needs to change.";
+
+export const RESUBMIT_LABEL = "I have updated what our team asked about, or checked that nothing needs to change.";
+
+export function resubmitSchema(again: boolean) {
+  return z.object({ checked: again ? z.boolean().refine(Boolean, { error: RESUBMIT_REQUIRED }) : z.boolean() });
+}
+
+export type ResubmitInput = z.input<ReturnType<typeof resubmitSchema>>;
 
 // The organisation is in the staff queue: submitted, and not yet decided.
 export function awaitingReview(status: ReviewStatus): status is "pending_review" | "re_review" {
@@ -68,7 +86,7 @@ export type PartnerDecision = z.infer<typeof partnerDecisionSchema>;
 export function decisionFormSchema(decision: PartnerDecision) {
   return z.object({
     reason: statementSchema,
-    infoStep: decision === "request_info" ? infoStepSchema.or(z.literal("")).refine((step) => step !== "", "Choose the step to reopen") : z.literal(""),
+    infoStep: decision === "request_info" ? infoStepSchema.or(z.literal("")).refine((step) => step !== "", "Choose the step to reopen.") : z.literal(""),
   });
 }
 
@@ -83,7 +101,7 @@ export const decisionInputSchema = z
   })
   .refine((value) => (value.decision === "request_info") === (value.infoStep !== null), {
     path: ["infoStep"],
-    message: "Choose the step to reopen",
+    message: "Choose the step to reopen.",
   });
 
 export type DecisionInput = z.input<typeof decisionInputSchema>;
@@ -109,6 +127,7 @@ export const infoStepStaffLabels = {
   company: "Company details",
   where_you_serve: "Where you serve and what you offer",
   commitments: "Employer-pays commitment",
+  licences: "Licences",
 } as const satisfies Record<InfoStep, string>;
 
 // What staff tick before they decide (FR-J4 AC2); a reminder on the page, not stored.
@@ -117,6 +136,14 @@ export const STAFF_REVIEW_CHECKS = [
   "Website belongs to the company",
   "Licences reviewed",
 ] as const;
+
+// Approve and list needs every point ticked: the index of the first point that is not, or null when all are.
+export function firstUncheckedPoint(checked: readonly boolean[]): number | null {
+  const index = STAFF_REVIEW_CHECKS.findIndex((_check, position) => !checked[position]);
+  return index === -1 ? null : index;
+}
+
+export const CHECKLIST_REQUIRED = "Tick every point of the checklist before you approve.";
 
 // Whether the review target of a partner in the queue has passed (decision 7.2).
 export function reviewOverdue(dueAt: string | null, now: Date): boolean {

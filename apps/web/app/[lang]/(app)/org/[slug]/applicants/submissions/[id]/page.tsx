@@ -38,11 +38,11 @@ import { SUBMISSION_REASON_MIN_CHARS } from "@/lib/validation/submission-pipelin
 
 export const metadata: Metadata = { title: "Submitted candidate", robots: { index: false } };
 
-const blockedText = "Your organization has no active paid plan, so the stage cannot be changed.";
+const blockedText = "Your organisation has no active paid plan, so the stage cannot be changed.";
 
 const notesCursorSchema = z.string().regex(/^[0-9]{1,15}$/).transform(Number);
 
-const actorText = { candidate: "Candidate", employer: "Your organization", system: "System" } as const;
+const actorText = { candidate: "Candidate", employer: "Your organisation", system: "System" } as const;
 
 // A candidate a partner submitted, as the employer reviews it (FR-O5 steps Review, Move; AC5 to AC7), while candidate
 // submissions are released: the partner that proposed the candidate, the stage with the moves of an application, the
@@ -123,7 +123,7 @@ export default async function EmployerSubmissionPage({ params, searchParams }: P
 
       {submission.status === "withdrawn" ? (
         <Notice tone="info" role="status">
-          The candidate withdrew this submission. Their profile and documents are no longer shared with your organization.
+          The candidate withdrew this submission. Their profile and documents are no longer shared with your organisation.
         </Notice>
       ) : frozen ? (
         <>

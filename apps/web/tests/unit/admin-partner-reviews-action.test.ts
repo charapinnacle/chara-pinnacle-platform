@@ -56,10 +56,10 @@ describe("decidePartner (FR-J4 AC3, AC4)", () => {
 
   it("refuses a short reason or a missing step with the field error and calls nothing", async () => {
     expect((await decidePartner({ organizationId: ORG, decision: "decline", reason: "Too short", infoStep: null })).errors).toEqual({
-      reason: "Give a reason of at least 10 characters",
+      reason: "Give a reason of at least 10 characters.",
     });
     expect((await decidePartner({ organizationId: ORG, decision: "request_info", reason: "Please add a country.", infoStep: null })).errors).toEqual({
-      infoStep: "Choose the step to reopen",
+      infoStep: "Choose the step to reopen.",
     });
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();

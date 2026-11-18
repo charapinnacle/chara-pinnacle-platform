@@ -57,7 +57,7 @@ describe("in-app notification items (FR-T1)", () => {
     ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", org_slug: "manila", decision: "hide", reasons: "x" }, company, "Manila Recruit was hidden by moderation", `${workforceProfilePath("en", "manila")}#moderation-heading`],
     ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", org_slug: "manila", decision: "unhide" }, company, "Manila Recruit is shown again", workforceProfilePath("en", "manila")],
     ["moderation_decision", { reference: "R-000123", outcome: "actioned" }, worker, "Your report R-000123 was closed", myReportsPath("en")],
-    ["moderation_decision", {}, company, "Your partner profile was hidden by moderation", null],
+    ["moderation_decision", {}, company, "Your public profile was hidden by moderation", null],
     ["moderation_decision", { target_type: "partner_profile", title: "Manila Recruit", appeal_id: 7, appeal_outcome: "restored", moderation_action_id: 42 }, company, "Your appeal about Manila Recruit was decided: the decision was reversed", appealPath("en", 42)],
     ["moderation_decision", { target_type: "job", appeal_id: 7, appeal_outcome: "upheld" }, company, "Your appeal was decided: the decision was upheld", null],
     ["moderation_decision", { target_type: "requirement", target_id: JOB, title: "Hamburg welders", org_slug: "acme", decision: "hide" }, company, "Your requirement Hamburg welders was hidden by moderation", requirementPath("en", "acme", JOB)],
