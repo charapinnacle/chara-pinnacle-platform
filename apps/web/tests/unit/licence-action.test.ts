@@ -77,7 +77,7 @@ describe("saveLicence (FR-J2)", () => {
       [refusal("CHARA_INVALID_INPUT", "confirmation"), { errors: { confirmed: "Confirm that this entry is accurate." } }],
       [refusal("CHARA_INVALID_INPUT", "valid_until"), { errors: { validUntil: "Choose today or a later date within the allowed range." } }],
       [refusal("insert or update violates foreign key constraint", "", "23503"), { errors: { country: "Choose a country from the list." } }],
-      [refusal("CHARA_FORBIDDEN", "organization_suspended"), { message: "This organization is suspended, so its licences cannot be changed." }],
+      [refusal("CHARA_FORBIDDEN", "organization_suspended"), { message: "This organisation is suspended, so its licences cannot be changed." }],
       [refusal("CHARA_NOT_FOUND", "", "P0002"), { message: "This licence no longer exists." }],
     ];
     for (const [answer, expected] of cases) {

@@ -221,7 +221,7 @@ export async function ReportView({ lang, id, canAct }: { lang: string; id: numbe
             ...(report.status === "new" || report.status === "in_review"
               ? [
                   {
-                    label: "Due",
+                    label: "First look due",
                     value: (
                       <>
                         {report.overdue ? (

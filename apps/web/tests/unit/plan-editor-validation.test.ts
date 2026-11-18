@@ -65,9 +65,9 @@ describe("the plan edit form (FR-R2 AC4, AC10)", () => {
 
   it("asks for a reason of 10 to 500 characters", () => {
     const errors = (value: string) => planFormSchema.safeParse({ ...planFormValues(plan), reason: value }).error?.issues.map((issue) => issue.message);
-    expect(errors("")).toEqual(["Give a reason of at least 10 characters"]);
-    expect(errors("  short  ")).toEqual(["Give a reason of at least 10 characters"]);
-    expect(errors("r".repeat(501))).toEqual(["The reason can have at most 500 characters"]);
+    expect(errors("")).toEqual(["Give a reason of at least 10 characters."]);
+    expect(errors("  short  ")).toEqual(["Give a reason of at least 10 characters."]);
+    expect(errors("r".repeat(501))).toEqual(["The reason can have at most 500 characters."]);
     expect(errors("r".repeat(10))).toBeUndefined();
     expect(errors("r".repeat(500))).toBeUndefined();
   });
@@ -80,9 +80,9 @@ describe("the plan edit form (FR-R2 AC4, AC10)", () => {
       limits: { ...planFormValues(plan).limits, markets: { unlimited: false, value: "1000001" }, job_order_responses_per_month: { unlimited: false, value: "-1" } },
     }).error?.issues;
     expect(issues?.map((issue) => [issue.path.join("."), issue.message])).toEqual([
-      ["trialDays", "Enter a whole number of days from 0 to 365"],
-      ["limits.job_order_responses_per_month.value", "Enter a whole number from 0 to 1,000,000"],
-      ["limits.markets.value", "Enter a whole number from 0 to 1,000,000"],
+      ["trialDays", "Enter a whole number of days from 0 to 365."],
+      ["limits.job_order_responses_per_month.value", "Enter a whole number from 0 to 1,000,000."],
+      ["limits.markets.value", "Enter a whole number from 0 to 1,000,000."],
     ]);
     expect(planFormSchema.safeParse({ ...planFormValues(plan), reason, trialDays: "0" }).success).toBe(true);
     expect(planFormSchema.safeParse({ ...planFormValues(plan), reason, trialDays: "365" }).success).toBe(true);
@@ -140,7 +140,7 @@ describe("the changes a plan edit makes (FR-R2 AC10)", () => {
 
   it("is refused by the action input when nothing changes", () => {
     expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [], features: [], reason }).error?.issues[0]?.message).toBe(
-      "Change at least one value",
+      "Change at least one value.",
     );
     expect(savePlanInputSchema.safeParse({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 1_000_001, expected: 3 }], features: [], reason }).success).toBe(
       false,
@@ -174,10 +174,10 @@ describe("settings (FR-R2 AC7)", () => {
     expect(settingValueError(stats, "5")).toBeNull();
     expect(settingValueError(stats, "20")).toBeNull();
     expect(settingValueError({ valueType: "integer", min: 1, max: 20 }, "three")).toBe("Enter a whole number from 1 to 20");
-    expect(settingValueError({ valueType: "boolean", min: null, max: null }, "yes")).toBe("Choose on or off");
+    expect(settingValueError({ valueType: "boolean", min: null, max: null }, "yes")).toBe("Choose on or off.");
     expect(settingValueError({ valueType: "boolean", min: null, max: null }, "true")).toBeNull();
     expect(settingValueError({ valueType: "email", min: null, max: null }, "legal@chara.example")).toBeNull();
-    expect(settingValueError({ valueType: "email", min: null, max: null }, "not-an-address")).toBe("Enter an email address");
+    expect(settingValueError({ valueType: "email", min: null, max: null }, "not-an-address")).toBe("Enter an email address.");
     expect(settingValueError({ valueType: "text", min: 1, max: 5 }, "abcdef")).toBe("Enter 1 to 5 characters");
     expect(settingFormSchema(stats).safeParse({ value: "4", reason }).success).toBe(false);
   });
@@ -241,9 +241,9 @@ describe("the price change form (FR-R2 AC8)", () => {
     expect(schema.safeParse({ amount: "54.00", reason: "Price review after the first quarter" }).success).toBe(true);
     const errors = (amount: string, reasonText: string) =>
       schema.safeParse({ amount, reason: reasonText }).error?.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
-    expect(errors("49", "Price review after the first quarter")).toEqual(["amount: Enter a price other than the current one"]);
-    expect(errors("0.50", "Price review")).toEqual(["amount: Enter an amount from 1.00 to 100,000.00, for example 54.00"]);
-    expect(errors("54", "too short")).toEqual(["reason: Give a reason of at least 10 characters"]);
+    expect(errors("49", "Price review after the first quarter")).toEqual(["amount: Enter a price other than the current one."]);
+    expect(errors("0.50", "Price review")).toEqual(["amount: Enter an amount from 1.00 to 100,000.00, for example 54.00."]);
+    expect(errors("54", "too short")).toEqual(["reason: Give a reason of at least 10 characters."]);
   });
 
   it("is checked again by the action input", () => {
