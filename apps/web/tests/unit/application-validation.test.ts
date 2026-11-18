@@ -55,7 +55,7 @@ describe("the apply form schema", () => {
   it("refuses a form whose consent is not ticked, or missing, with the message of the criteria", () => {
     expect(messages({ consent: false })).toEqual({ consent: CONSENT_REQUIRED });
     expect(messages({ consent: undefined })).toEqual({ consent: CONSENT_REQUIRED });
-    expect(CONSENT_REQUIRED).toBe("Confirm that you agree to share the selected documents");
+    expect(CONSENT_REQUIRED).toBe("Confirm that you agree to share the selected documents.");
   });
 
   it("takes the limits it quotes from the settings", () => {
