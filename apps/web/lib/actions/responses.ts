@@ -142,8 +142,10 @@ export async function respondToRequirement(slug: string, requirementId: string, 
     p_requirement: id.data,
     ...toResponseArgs(parsed.data),
   });
-  revalidateResponse(organization.slug, id.data, data ?? null);
+  // A refusal writes nothing, and revalidating would re-render the page into its limit panel in place of the form
+  // whose entries the refusal keeps (FR-R1 AC11).
   if (error) return refusalResult(organization, responseRefusal(error), error, "Sending the response");
+  revalidateResponse(organization.slug, id.data, data);
   return { responseId: data };
 }
 
