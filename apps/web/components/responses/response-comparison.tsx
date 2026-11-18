@@ -4,7 +4,7 @@ import { ResponseDocumentList } from "@/components/responses/response-document-l
 import { ResponseStatusBadge } from "@/components/responses/response-status";
 import type { ComparedResponse, ResponseDocument } from "@/lib/dal/responses";
 import { formatDate } from "@/lib/i18n/format";
-import { feeModelLabels, feeText, workersOfferedText } from "@/lib/responses/presentation";
+import { employerStatusLabels, feeModelLabels, feeText, workersOfferedText } from "@/lib/responses/presentation";
 import { partnerProfileForPath, requirementResponsePath } from "@/lib/routes";
 
 type ResponseComparisonProps = {
@@ -18,6 +18,8 @@ type ResponseComparisonProps = {
 };
 
 const columnId = (id: string) => `response-column-${id}`;
+
+const COMPARISON_NAME = "Responses compared side by side";
 
 type Row = { label: string; cell: (response: ComparedResponse) => React.ReactNode };
 
@@ -66,7 +68,7 @@ export function ResponseComparison({ lang, slug, requirementId, responses, docum
       label: "Decision",
       cell: (response) =>
         response.status === "selected" || response.status === "declined" ? (
-          "Decided"
+          employerStatusLabels[response.status]
         ) : (
           <DecisionControls
             slug={slug}
@@ -82,11 +84,9 @@ export function ResponseComparison({ lang, slug, requirementId, responses, docum
   }
 
   return (
-    <div className="relative overflow-x-auto rounded-xl border" role="region" aria-labelledby="comparison-caption" tabIndex={0}>
+    <div className="relative overflow-x-auto rounded-xl border" role="region" aria-label={COMPARISON_NAME} tabIndex={0}>
       <table className="w-full border-collapse text-start text-body">
-        <caption id="comparison-caption" className="sr-only">
-          Responses compared side by side
-        </caption>
+        <caption className="sr-only">{COMPARISON_NAME}</caption>
         <thead>
           <tr>
             <td className="sticky start-0 z-10 min-w-36 border-b bg-card p-3" />
