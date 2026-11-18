@@ -7,7 +7,7 @@ export type PlatformRole = Database["public"]["Enums"]["platform_role"];
 export const ADMIN_PAGE_SIZE = 25;
 
 export const platformRoleSchema = z.enum(["admin", "verification_reviewer", "trust_safety"] as const satisfies readonly PlatformRole[], {
-  error: "Choose a role",
+  error: "Choose a role.",
 });
 
 export const platformRoleLabels = {
@@ -19,8 +19,8 @@ export const platformRoleLabels = {
 export const searchTermSchema = z
   .string()
   .trim()
-  .min(3, "Enter at least 3 characters")
-  .max(100, "Use at most 100 characters");
+  .min(3, "Enter at least 3 characters.")
+  .max(100, "Use at most 100 characters.");
 
 export const searchFormSchema = z.object({ term: searchTermSchema });
 
@@ -40,16 +40,16 @@ export type TimeCursor = z.infer<typeof timeCursorSchema>;
 
 // The statement of reasons of a suspension or a reinstatement; the staff actions of FR-A7 keep their shorter limit.
 export const statementSchema = z
-  .string({ error: "Enter the reason" })
+  .string({ error: "Enter the reason." })
   .trim()
-  .min(10, "Give a reason of at least 10 characters")
-  .max(2000, "The reason can have at most 2000 characters");
+  .min(10, "Give a reason of at least 10 characters.")
+  .max(2000, "The reason can have at most 2000 characters.");
 
 export const staffReasonSchema = z
-  .string({ error: "Enter the reason" })
+  .string({ error: "Enter the reason." })
   .trim()
-  .min(10, "Give a reason of at least 10 characters")
-  .max(500, "The reason can have at most 500 characters");
+  .min(10, "Give a reason of at least 10 characters.")
+  .max(500, "The reason can have at most 500 characters.");
 
 export const moderationFormSchema = z.object({ reason: statementSchema });
 
@@ -65,7 +65,7 @@ export const moderationInputSchema = moderationFormSchema.extend({
 
 export const jobModerationInputSchema = moderationFormSchema.extend({ id: z.uuid(), action: z.enum(["hide", "unhide"]) });
 
-const userIdSchema = z.uuid({ error: "Enter a valid user id" });
+const userIdSchema = z.uuid({ error: "Enter a valid user id." });
 
 const dayPattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -74,20 +74,20 @@ function isDay(value: string): boolean {
   return dayPattern.test(value) && !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
 }
 
-const dayField = z.string().trim().refine((value) => value === "" || isDay(value), "Enter a date as year-month-day");
+const dayField = z.string().trim().refine((value) => value === "" || isDay(value), "Enter a date as year-month-day.");
 
 export const auditFilterSchema = z
   .object({
-    actor: z.string().trim().refine((value) => value === "" || userIdSchema.safeParse(value).success, "Enter a valid user id"),
-    action: z.string().trim().max(100, "Use at most 100 characters"),
-    entityType: z.string().trim().max(100, "Use at most 100 characters"),
-    entityId: z.string().trim().max(200, "Use at most 200 characters"),
+    actor: z.string().trim().refine((value) => value === "" || userIdSchema.safeParse(value).success, "Enter a valid user id."),
+    action: z.string().trim().max(100, "Use at most 100 characters."),
+    entityType: z.string().trim().max(100, "Use at most 100 characters."),
+    entityId: z.string().trim().max(200, "Use at most 200 characters."),
     from: dayField,
     to: dayField,
   })
   .refine((value) => value.from === "" || value.to === "" || value.from <= value.to, {
     path: ["from"],
-    error: "The start date must not be after the end date",
+    error: "The start date must not be after the end date.",
   });
 
 export type AuditFilterForm = z.input<typeof auditFilterSchema>;
@@ -108,11 +108,11 @@ export function lastSixMonths(now = new Date()): { from: string; to: string } {
   return { from: start.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
 }
 
-const dayString = z.string().refine(isDay, "Enter a date as year-month-day");
+const dayString = z.string().refine(isDay, "Enter a date as year-month-day.");
 
 function checkRange(value: { from: string; to: string }, ctx: z.RefinementCtx): void {
   const days = (Date.parse(value.to) - Date.parse(value.from)) / 86_400_000 + 1;
-  if (days < 1) ctx.addIssue({ code: "custom", path: ["from"], message: "The start date must not be after the end date" });
+  if (days < 1) ctx.addIssue({ code: "custom", path: ["from"], message: "The start date must not be after the end date." });
   else if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: "custom", path: ["to"], message: `Choose at most ${MAX_RANGE_DAYS} days` });
 }
 
@@ -128,9 +128,9 @@ export const networkPeriodLabels = {
 } as const satisfies Record<(typeof networkPeriods)[number], string>;
 
 export const networkStatisticsSchema = z
-  .object({ from: dayString, to: dayString, period: z.enum(networkPeriods, { error: "Choose a period" }) })
+  .object({ from: dayString, to: dayString, period: z.enum(networkPeriods, { error: "Choose a period." }) })
   .superRefine(checkRange)
-  .refine((value) => value.to <= new Date().toISOString().slice(0, 10), { path: ["to"], error: "The end date must not be after today" });
+  .refine((value) => value.to <= new Date().toISOString().slice(0, 10), { path: ["to"], error: "The end date must not be after today." });
 
 export type NetworkStatisticsForm = z.input<typeof networkStatisticsSchema>;
 export type NetworkStatisticsQuery = z.output<typeof networkStatisticsSchema>;
@@ -139,12 +139,12 @@ export const legalDocumentSchema = z.object({
   slug: z
     .string()
     .trim()
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lower-case letters, digits and single hyphens")
-    .min(3, "Use at least 3 characters")
-    .max(60, "Use at most 60 characters"),
-  title: z.string().trim().min(3, "Enter a title of 3 to 200 characters").max(200, "Enter a title of 3 to 200 characters"),
-  body: z.string().refine((value) => value.trim() !== "", "Enter the text of the document").refine((value) => value.length <= 200_000, "The text can have at most 200,000 characters"),
-  changeSummary: z.string().trim().min(10, "Describe the change in 10 to 1000 characters").max(1000, "Describe the change in 10 to 1000 characters"),
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lower-case letters, digits and single hyphens.")
+    .min(3, "Use at least 3 characters.")
+    .max(60, "Use at most 60 characters."),
+  title: z.string().trim().min(3, "Enter a title of 3 to 200 characters.").max(200, "Enter a title of 3 to 200 characters."),
+  body: z.string().refine((value) => value.trim() !== "", "Enter the text of the document.").refine((value) => value.length <= 200_000, "The text can have at most 200,000 characters."),
+  changeSummary: z.string().trim().min(10, "Describe the change in 10 to 1000 characters.").max(1000, "Describe the change in 10 to 1000 characters."),
   isDraft: z.boolean(),
 });
 
@@ -165,7 +165,7 @@ export const revokeInputSchema = revokeFormSchema.extend({ userId: z.uuid(), rol
 
 export const mfaResetFormSchema = z.object({
   userId: userIdSchema,
-  identityChecked: z.boolean().refine((checked) => checked, "Confirm that you verified this person's identity"),
+  identityChecked: z.boolean().refine((checked) => checked, "Confirm that you verified this person's identity."),
   reason: staffReasonSchema,
 });
 

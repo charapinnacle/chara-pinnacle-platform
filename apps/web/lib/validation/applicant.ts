@@ -2,7 +2,7 @@ import * as z from "zod";
 
 export const employerStages = ["shortlisted", "interview", "offer", "hired", "rejected"] as const;
 
-const stage = z.string({ error: "Choose a stage" }).pipe(z.enum(employerStages, { error: "Choose a stage" }));
+const stage = z.string({ error: "Choose a stage." }).pipe(z.enum(employerStages, { error: "Choose a stage." }));
 
 // The wording of the decline reasons is fixed text of the application, not user data (FR-E2, FR-E3): the candidate sees it
 // in the journey tracker. The wording is reviewed with legal, as all text the candidate reads.
@@ -16,7 +16,7 @@ export const declineReasonOptions = [
   { value: "other", label: "Other" },
 ] as const;
 
-const DECLINE_REASON_REQUIRED = "Enter a reason";
+const DECLINE_REASON_REQUIRED = "Enter a reason.";
 
 // What the Server Action parses: the length of the note is the setting of the database, which set_application_status
 // enforces, so the action does not repeat the number. A decline carries a reason, which is its note (1 to 1000
@@ -34,7 +34,7 @@ export function stageChangeFormSchema(noteMaxChars: number, reasonMinChars = 1) 
     .superRefine((value, context) => {
       const template = value.status === "rejected" && value.reason !== "other";
       if (template && !Object.hasOwn(declineReasonTexts, value.reason)) {
-        context.addIssue({ code: "custom", path: ["reason"], message: "Choose a reason" });
+        context.addIssue({ code: "custom", path: ["reason"], message: "Choose a reason." });
       } else if (value.status === "rejected" && !template && value.note === "") {
         context.addIssue({ code: "custom", path: ["note"], message: DECLINE_REASON_REQUIRED });
       } else if (value.status === "rejected" && !template && value.note.length < reasonMinChars) {
@@ -77,7 +77,7 @@ export const noteInputSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: "Enter a note" })
+    .min(1, { error: "Enter a note." })
     .max(NOTE_MAX_CHARS, { error: `Note must be at most ${NOTE_MAX_CHARS} characters` }),
 });
 
