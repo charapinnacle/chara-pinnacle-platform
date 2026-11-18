@@ -127,7 +127,7 @@ test.describe("partner registration (FR-J1)", () => {
 
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(page.getByRole("heading", { name: "Tell us about your company", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 1 of 5: Company");
+    await expect(currentStep(page)).toContainText("Step 1 of 6: Company");
     await expect(onboardingSteps(page)).toContainText("Where you serve");
     await expect(page.getByText("Company type: Recruitment company.")).toBeVisible();
     await fillPartnerCompany(page, {
@@ -140,7 +140,7 @@ test.describe("partner registration (FR-J1)", () => {
 
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 2 of 6: Where you serve");
     await expect(page.getByRole("combobox", { name: "Where do you recruit for?" })).toBeVisible();
     await expect(page.getByText(/approved|verified/i)).toHaveCount(0);
     await expectAccessibleAtBothWidths(page);
