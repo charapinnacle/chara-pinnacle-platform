@@ -44,7 +44,7 @@ export function NoteForm({ slug, applicationId }: { slug: string; applicationId:
         name="body"
         id={NOTE_ID}
         label="Add an internal note"
-        description={`Visible to your organization only. ${length}/${NOTE_MAX_CHARS}`}
+        description={`Visible to your organisation only. ${length}/${NOTE_MAX_CHARS}`}
       />
       <div>
         <FormButton type="submit" busy={formState.isSubmitting} className="w-full sm:w-auto">

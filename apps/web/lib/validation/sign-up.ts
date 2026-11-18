@@ -9,7 +9,7 @@ export const PASSWORD_MIN_LENGTH = 12;
 const MAX_PASSWORD_BYTES = 72;
 
 export const accountKindSchema = z.enum(["worker", "company"], {
-  error: "Choose worker or employer",
+  error: "Choose worker or employer.",
 });
 
 export const partnerTypeSchema = z.enum(["recruitment_company", "staffing_company"]);
@@ -18,7 +18,7 @@ export type PartnerType = z.infer<typeof partnerTypeSchema>;
 
 // The choice of the sign-up form (FR-J1): the account kind, or a partner type, which is a company account of that type.
 export const accountChoiceSchema = z.enum(["worker", "company", ...partnerTypeSchema.options], {
-  error: "Choose your account type",
+  error: "Choose your account type.",
 });
 
 export type AccountChoice = z.infer<typeof accountChoiceSchema>;

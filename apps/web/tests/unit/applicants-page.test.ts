@@ -76,7 +76,7 @@ describe("the access rules of the applicants page", () => {
   it("shows no applicant of a suspended organization and reads nothing about one", async () => {
     requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization: { ...organization, suspended: true } });
     const html = await render();
-    expect(html).toContain("This organization is suspended, so its applicants are not available.");
+    expect(html).toContain("This organisation is suspended, so its applicants are not available.");
     expect(getAccessMock).not.toHaveBeenCalled();
     expect(listApplicantsMock).not.toHaveBeenCalled();
   });
@@ -151,7 +151,7 @@ describe("the list", () => {
     requireOrgRoleMock.mockResolvedValue({ user: { id: "user-1" }, organization });
     const html = await render({ job });
     expect(html).toContain("Upgrade to shortlist applicants. Your plan does not include shortlisting");
-    expect(html).toContain("Contact an owner or admin of your organization to upgrade the plan.");
+    expect(html).toContain("Contact an owner or admin of your organisation to upgrade the plan.");
     expect(html).not.toContain("/billing");
     expect(html).toContain("TOOLBAR acme-bau shortlisting=false");
     getAccessMock.mockResolvedValue(access);
@@ -314,7 +314,7 @@ describe("the bulk actions of the applicants page", () => {
   it("keeps the text of the plan for an organization that never subscribed and reads no subscription state for an active one", async () => {
     getAccessMock.mockResolvedValue({ ...access, stageChangeBlocked: "read_only_free_plan" });
     const html = await render({ job });
-    expect(html).toContain("Your organization has no active paid plan. Applicant changes and the CSV export are disabled until a plan is chosen.");
+    expect(html).toContain("Your organisation has no active paid plan. Applicant changes and the CSV export are disabled until a plan is chosen.");
     expect(html).not.toContain("Your subscription has ended");
     getAccessMock.mockResolvedValue(access);
     endedMock.mockClear();

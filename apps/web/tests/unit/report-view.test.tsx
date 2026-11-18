@@ -95,7 +95,7 @@ describe("the page of a partner profile report (FR-S1)", () => {
     getMock.mockResolvedValue(partnerReport({ status: "dismissed", category: "other", resolutionNote: "Nothing in it breaks the rules.", handledAt: "2026-10-06T10:00:00+00:00" }));
     const html = renderToStaticMarkup(await ReportView({ lang: "en", id: 5, canAct: false }));
     expect(html).not.toContain("Overdue");
-    expect(html).not.toContain(">Due<");
+    expect(html).not.toContain(">First look due<");
     expect(html).not.toContain("Fee demand");
   });
 });
@@ -121,6 +121,8 @@ describe("the decision on a report (FR-S1 AC10)", () => {
     expect(html).not.toContain(">Mark actioned<");
     expect(html).not.toContain(">Mark in review<");
     expect(html).toContain("Decision due");
+    expect(html).toContain(">First look due<");
+    expect(html).not.toContain(">Due<");
     expect(html).toContain('dateTime="2026-10-08T10:00:00+00:00"');
   });
 

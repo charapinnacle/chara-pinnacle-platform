@@ -49,7 +49,7 @@ describe("changeStanding", () => {
 
   it("refuses a short reason with the field error and calls nothing", async () => {
     const result = await changeStanding({ target: "user", id: ID, to: "suspended", reason: "short" });
-    expect(result.errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+    expect(result.errors).toEqual({ reason: "Give a reason of at least 10 characters." });
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();
   });
@@ -99,7 +99,7 @@ describe("moderateJob", () => {
   });
 
   it("refuses a short reason with the field error and an action that is none, and calls nothing", async () => {
-    expect((await moderateJob({ id: ID, action: "hide", reason: "short" })).errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+    expect((await moderateJob({ id: ID, action: "hide", reason: "short" })).errors).toEqual({ reason: "Give a reason of at least 10 characters." });
     expect((await moderateJob({ id: ID, action: "delete" as "hide", reason: REASON })).errors).toBeDefined();
     expect((await moderateJob({ id: "1", action: "hide", reason: REASON })).errors).toBeDefined();
     expect(requireRoleMock).not.toHaveBeenCalled();
@@ -171,7 +171,7 @@ describe("grantRole", () => {
   });
 
   it("refuses a role that is not one of the three before anything is called", async () => {
-    expect((await grantRole({ ...input, role: "owner" })).errors).toEqual({ role: "Choose a role" });
+    expect((await grantRole({ ...input, role: "owner" })).errors).toEqual({ role: "Choose a role." });
     expect(rpcMock).not.toHaveBeenCalled();
   });
 });
@@ -187,7 +187,7 @@ describe("revokeRole, resetMfa and publishLegalDocument", () => {
     expect(await revokeRole(input)).toEqual({ message: "The last administrator cannot be revoked." });
     rpcMock.mockResolvedValue(failure("CHARA_CONFLICT", "role_revoked"));
     expect(await revokeRole(input)).toEqual({ message: "This role was already revoked." });
-    expect((await revokeRole({ ...input, role: "king" })).errors).toEqual({ role: "Choose a role" });
+    expect((await revokeRole({ ...input, role: "king" })).errors).toEqual({ role: "Choose a role." });
   });
 
   it("reset two-step verification of another person only with the box ticked", async () => {
@@ -196,7 +196,7 @@ describe("revokeRole, resetMfa and publishLegalDocument", () => {
     expect(rpcMock).toHaveBeenCalledWith("reset_mfa", { p_user_id: ID, p_reason: "Lost the phone, identity checked" });
     rpcMock.mockClear();
     expect((await resetMfa({ ...input, identityChecked: false })).errors).toEqual({
-      identityChecked: "Confirm that you verified this person's identity",
+      identityChecked: "Confirm that you verified this person's identity.",
     });
     expect(rpcMock).not.toHaveBeenCalled();
     rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN", "own_account"));
