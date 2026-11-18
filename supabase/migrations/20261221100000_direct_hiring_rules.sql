@@ -20,16 +20,18 @@
 create type public.direct_hiring_rule_value as enum ('allowed', 'licensed_partner_required', 'blocked');
 
 insert into private.settings (key, value) values
-  -- The two paragraphs of the worker statement of the Platform Rules (version 1, migration 20261104110000) word for word,
-  -- joined by a space because a setting holds no line break. Like that statement it is a draft for counsel
-  -- (OPEN_QUESTIONS.md L5) and is changed in the settings editor when counsel approves the Platform Rules.
+  -- The two paragraphs of the worker statement of the Platform Rules (version 1, migration 20261104110000), joined by a
+  -- space because a setting holds no line break, with the product named Chara Pinnacle where that statement still says
+  -- CHARA. Like that statement it is a draft for counsel (OPEN_QUESTIONS.md L5) and is changed in the settings editor
+  -- when counsel approves the Platform Rules.
   ('direct_hiring_general_notice', to_jsonb(
-    'Workers never pay. A worker never pays CHARA, an employer, a recruitment company, a staffing company or anyone else '
-    || 'a fee, a deposit or any other payment for finding work, for applying for a vacancy or for using CHARA. CHARA does '
-    || 'not offer a paid plan to workers. '
+    'Workers never pay. A worker never pays Chara Pinnacle, an employer, a recruitment company, a staffing company or '
+    || 'anyone else a fee, a deposit or any other payment for finding work, for applying for a vacancy or for using Chara '
+    || 'Pinnacle. Chara Pinnacle does not offer a paid plan to workers. '
     || 'Reporting a request for a fee. If anyone asks you for money in connection with finding work, applying or using '
-    || 'CHARA, do not pay. Report the request to the Trust & Safety Administrator of CHARA through the complaints and '
-    || 'dispute process. CHARA reviews the report and may restrict the account of the person who made the request.'::text)),
+    || 'Chara Pinnacle, do not pay. Report the request to the Trust & Safety Administrator of Chara Pinnacle through the '
+    || 'complaints and dispute process. Chara Pinnacle reviews the report and may restrict the account of the person who '
+    || 'made the request.'::text)),
   ('direct_hiring_review_days', '365')
 on conflict (key) do nothing;
 
