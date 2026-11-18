@@ -124,7 +124,7 @@ test.describe("billing page: plan, state and dates (FR-G5 AC4, AC5, AC9)", () =>
     seedSubscription(team, "employer_professional", "active", { currentPeriodEnd: "2026-12-04T12:00:00Z" });
     await show();
     await expectPlan(page, "Professional", "Active");
-    await expect(page.getByText("Next invoice 4 Dec 2026")).toBeVisible();
+    await expect(page.getByText("Next invoice 4 December 2026")).toBeVisible();
     await expect(page.getByText("EUR 79.00 per month excl. VAT")).toBeVisible();
 
     resetSubscriptions(team);
