@@ -147,6 +147,9 @@ test.describe("release 2a journey (NFR-O4)", () => {
     // Trust & Safety list the partner with a statement of reasons.
     const staff = await newVisitor(browser);
     const { user: trust } = await signInStaff(staff.page, "trust_safety", `/en/admin/partners/${organization.id}`);
+    for (const check of ["Legal entity matches public register", "Website belongs to the company", "Licences reviewed"]) {
+      await staff.page.getByRole("checkbox", { name: check }).check();
+    }
     await staff.page.getByRole("button", { name: "Approve and list" }).click();
     const approve = staff.page.getByRole("dialog", { name: "List partner" });
     await approve.getByLabel("Reason").fill("Registry entry, website and licence match");

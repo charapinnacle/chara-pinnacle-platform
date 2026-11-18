@@ -137,6 +137,14 @@ export const STAFF_REVIEW_CHECKS = [
   "Licences reviewed",
 ] as const;
 
+// Approve and list needs every point ticked: the index of the first point that is not, or null when all are.
+export function firstUncheckedPoint(checked: readonly boolean[]): number | null {
+  const index = STAFF_REVIEW_CHECKS.findIndex((_check, position) => !checked[position]);
+  return index === -1 ? null : index;
+}
+
+export const CHECKLIST_REQUIRED = "Tick every point of the checklist before you approve.";
+
 // Whether the review target of a partner in the queue has passed (decision 7.2).
 export function reviewOverdue(dueAt: string | null, now: Date): boolean {
   return dueAt !== null && new Date(dueAt).getTime() < now.getTime();
