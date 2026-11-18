@@ -78,6 +78,12 @@ export const profileFields: Record<string, { label: string; section: string }> =
 
 export const HIRING_RULES_REGION = "Hiring rules for your country";
 export const FIND_LICENSED_PARTNERS = "Find licensed recruitment partners";
+// What a candidate reads where a rule restricts direct hiring; the console's own labels are for staff. Where hiring is
+// allowed the candidate reads only the general notice.
+export const CANDIDATE_RULE_HEADINGS = {
+  licensed_partner_required: "Apply through a licensed recruitment partner",
+  blocked: "Direct applications are not possible from your country",
+} as const;
 
 // Find Recruitment Partners for a worker from p_source going to p_destination (FR-Q5 AC7); without them, the directory.
 export function licensedPartnersPath(lang: string, source?: string, destination?: string): string {
