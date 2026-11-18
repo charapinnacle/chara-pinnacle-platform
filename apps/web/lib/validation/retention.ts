@@ -15,7 +15,7 @@ export type RetentionPolicy = {
   editable: boolean;
 };
 
-const DAYS_MESSAGE = `Enter a whole number of days from ${RETENTION_DAYS_MIN} to ${RETENTION_DAYS_MAX.toLocaleString("en-GB")}`;
+const DAYS_MESSAGE = `Enter a whole number of days from ${RETENTION_DAYS_MIN} to ${RETENTION_DAYS_MAX.toLocaleString("en-GB")}.`;
 
 const daysSchema = z
   .string({ error: DAYS_MESSAGE })

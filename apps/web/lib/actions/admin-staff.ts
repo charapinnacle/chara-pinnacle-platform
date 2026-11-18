@@ -99,9 +99,9 @@ export async function publishLegalDocument(input: LegalDocumentForm): Promise<Ad
   if (error) {
     return adminRefusal(error, path, {
       "CHARA_INVALID_INPUT:slug": { errors: { slug: "This is not a valid document name" } },
-      "CHARA_INVALID_INPUT:title": { errors: { title: "Enter a title of 3 to 200 characters" } },
-      "CHARA_INVALID_INPUT:body": { errors: { body: "Enter the text of the document" } },
-      "CHARA_INVALID_INPUT:change_summary": { errors: { changeSummary: "Describe the change in 10 to 1000 characters" } },
+      "CHARA_INVALID_INPUT:title": { errors: { title: "Enter a title of 3 to 200 characters." } },
+      "CHARA_INVALID_INPUT:body": { errors: { body: "Enter the text of the document." } },
+      "CHARA_INVALID_INPUT:change_summary": { errors: { changeSummary: "Describe the change in 10 to 1000 characters." } },
       CHARA_CONFLICT: { message: "This text is already the current version of the document." },
     });
   }

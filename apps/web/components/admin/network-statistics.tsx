@@ -12,6 +12,7 @@ import { Notice } from "@/components/forms/notice";
 import { SelectField } from "@/components/forms/select-field";
 import type { NetworkStatisticsAnswer } from "@/lib/actions/admin-statistics";
 import {
+  baseText,
   countedRange,
   countText,
   dayLabel,
@@ -48,7 +49,7 @@ function FiguresTable({ caption, figures, minCount }: { caption: string; figures
             {label}
           </th>
           <td className={cell}>{figureText(figure, minCount)}</td>
-          <td className={cell}>{figure.base === null ? "-" : figure.base}</td>
+          <td className={cell}>{baseText(figure.base)}</td>
         </tr>
       ))}
     </ResultsTable>
@@ -100,7 +101,7 @@ export function NetworkStatistics({ defaults, initial }: { defaults: NetworkStat
                 Key figures
               </h3>
               <FiguresTable
-                caption={`Key figures from ${query.from} to ${query.to}`}
+                caption={`Key figures from ${dayLabel(query.from)} to ${dayLabel(query.to)}`}
                 figures={statistics.figures.filter((figure) => figure.rangeFigure)}
                 minCount={statistics.minCount}
               />
