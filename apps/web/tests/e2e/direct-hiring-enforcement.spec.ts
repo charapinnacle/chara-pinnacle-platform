@@ -61,7 +61,7 @@ test.describe("Direct-hiring rules in applications (FR-Q5 AC7)", () => {
 
     await logIn(page, candidate, applyUrl(jobId));
     const region = page.getByRole("region", { name: REGION });
-    await expect(region).toContainText("Direct hiring blocked");
+    await expect(region).toContainText("Direct applications are not possible from your country");
     await expect(region).toContainText(BLOCKED);
     await expect(region.getByRole("link", { name: "Find licensed recruitment partners" })).toHaveAttribute(
       "href",
@@ -85,7 +85,7 @@ test.describe("Direct-hiring rules in applications (FR-Q5 AC7)", () => {
 
     await page.goto(applyUrl(jobId));
     const region = page.getByRole("region", { name: REGION });
-    await expect(region).toContainText("Licensed partner required");
+    await expect(region).toContainText("Apply through a licensed recruitment partner");
     await expect(region).toContainText(PARTNER);
     const submit = page.getByRole("button", { name: "Submit application" });
     const [regionBox, submitBox] = await Promise.all([region.boundingBox(), submit.boundingBox()]);

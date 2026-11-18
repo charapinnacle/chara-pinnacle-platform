@@ -52,7 +52,7 @@ describe("ApplyForm with a direct-hiring rule (FR-Q5 AC7)", () => {
   it("shows a partner-required rule above Submit in the named region, with the way to licensed partners", () => {
     const html = render(documents, { rule: "licensed_partner_required", notice: PARTNER_NOTICE, source: "NP", destination: "DE" });
     expect(html).toContain('aria-label="Hiring rules for your country"');
-    expect(html).toContain("Licensed partner required");
+    expect(html).toContain("Apply through a licensed recruitment partner");
     expect(html.indexOf(PARTNER_NOTICE)).toBeGreaterThan(-1);
     expect(html.indexOf(PARTNER_NOTICE)).toBeLessThan(html.indexOf("Submit application"));
     expect(html).toContain('href="/en/partners/recruitment?sources_from=NP&amp;destination=DE"');
@@ -64,6 +64,7 @@ describe("ApplyForm with a direct-hiring rule (FR-Q5 AC7)", () => {
     expect(html).toContain('aria-label="Hiring rules for your country"');
     expect(html).toContain("Workers never pay.");
     expect(html).not.toContain("Find licensed recruitment partners");
+    expect(html).not.toContain("Direct hiring allowed");
   });
 
   it("shows no region while the rules are not enforced", () => {
