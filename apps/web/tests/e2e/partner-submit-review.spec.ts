@@ -259,10 +259,23 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expect(page.getByRole("heading", { name: "Submit your company again", level: 1 })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Our team asked for more information about your company details." })).toBeVisible();
     await expect(onboardingSteps(page).getByRole("listitem").first()).toHaveText("1Step 1 of 6: Company (more information requested)");
-    await expect(page.getByRole("link", { name: "Change your company details" }).first()).toHaveAttribute("href", "/en/onboarding?step=company");
+    await expect(page.getByRole("link", { name: "Change your company details" })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Change your company details" })).toHaveAttribute("href", "/en/onboarding?step=company");
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
 
+    // The resubmission waits for the confirmation that the reopened step was updated or needs no change.
+    await page.getByRole("button", { name: "Submit again for review" }).click();
+    const confirmation = page.getByRole("checkbox", {
+      name: "I have updated what our team asked about, or checked that nothing needs to change.",
+    });
+    await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(
+      "Confirm that you have updated what our team asked about, or that nothing needs to change.",
+    );
+    expect(reviewRow(partner.id).review_status).toBe("info_requested");
+    await expectAccessibleAtBothWidths(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await confirmation.check();
     await page.getByRole("button", { name: "Submit again for review" }).click();
     await expect(page.getByRole("heading", { name: WAITING, level: 1 })).toBeVisible();
     // Listed before, so it returns to re-review; the reopened step is answered.

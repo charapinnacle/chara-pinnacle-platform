@@ -26,6 +26,18 @@ export const infoStepLabels = {
   licences: "your licences",
 } as const satisfies Record<InfoStep, string>;
 
+// After a request for information (FR-J4 AC7) the partner confirms that it changed what staff asked about, or that nothing
+// needs to change, before it submits again: a resubmission of the unchanged profile would only return the same request.
+export const RESUBMIT_REQUIRED = "Confirm that you have updated what our team asked about, or that nothing needs to change.";
+
+export const RESUBMIT_LABEL = "I have updated what our team asked about, or checked that nothing needs to change.";
+
+export function resubmitSchema(again: boolean) {
+  return z.object({ checked: again ? z.boolean().refine(Boolean, { error: RESUBMIT_REQUIRED }) : z.boolean() });
+}
+
+export type ResubmitInput = z.input<ReturnType<typeof resubmitSchema>>;
+
 // The organisation is in the staff queue: submitted, and not yet decided.
 export function awaitingReview(status: ReviewStatus): status is "pending_review" | "re_review" {
   return status === "pending_review" || status === "re_review";

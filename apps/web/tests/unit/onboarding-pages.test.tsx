@@ -469,7 +469,8 @@ describe("the partner journey of onboarding (FR-J1)", () => {
       expect(html).toContain("A review usually takes one working day.");
       expect(html).toContain(">What our team checks</h2>");
       expect(html).toContain("<li>Your company name and registration number</li><li>Your website</li><li>The licences you declare</li>");
-      expect(html).toMatch(/<button[^>]*type="button"[^>]*>Submit for review<\/button>/);
+      expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Submit for review<\/button>/);
+      expect(html).not.toContain('id="resubmit-checked"');
       expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=company"[^>]*>Change your company details/);
       expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
       expect(html).not.toMatch(/approved|verified/i);
@@ -573,6 +574,12 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
     expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toMatch(/<button[^>]*>Submit again for review<\/button>/);
+    expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*id="resubmit-checked"/);
+    expect(html).toContain(
+      "I have updated what our team asked about, or checked that nothing needs to change.",
+    );
+    expect(html.match(/>Change where you serve</g)).toHaveLength(1);
+    expect(html).toMatch(/>Change your company details</);
 
     reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "commitments" });
     const commitments = await render(OnboardingPage);

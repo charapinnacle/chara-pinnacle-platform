@@ -92,19 +92,20 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
         </Notice>
       )}
       <div className="flex flex-wrap gap-x-6 gap-y-3">
-        {manager ? (
-          <>
-            <TextLink standalone href={partnerStepPath(lang, "company")}>
-              Change your company details
-            </TextLink>
-            <TextLink standalone href={whereYouServePath(lang)}>
-              Change where you serve
-            </TextLink>
-            <TextLink standalone href={whatYouOfferPath(lang)}>
-              Change what you offer
-            </TextLink>
-          </>
-        ) : null}
+        {manager
+          ? [
+              { href: partnerStepPath(lang, "company"), label: "Change your company details" },
+              { href: whereYouServePath(lang), label: "Change where you serve" },
+              { href: whatYouOfferPath(lang), label: "Change what you offer" },
+            ]
+              // The step staff reopened is linked in their notice already.
+              .filter(({ href }) => href !== reopen?.href)
+              .map(({ href, label }) => (
+                <TextLink key={href} standalone href={href}>
+                  {label}
+                </TextLink>
+              ))
+          : null}
         <TextLink standalone href={`/${lang}`}>
           Go to the home page
         </TextLink>
