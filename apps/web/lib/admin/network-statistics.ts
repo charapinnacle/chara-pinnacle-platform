@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/i18n/format";
 import type { NetworkStatisticsQuery } from "@/lib/validation/admin";
 
 export type NetworkPeriod = NetworkStatisticsQuery["period"];
@@ -145,8 +146,10 @@ export function countText(count: number | null, minCount: number): string {
   return count === null ? hiddenText(minCount) : numberFormat.format(count);
 }
 
+// A hidden figure says why without a count: the database hides a share whose part or rest is below the threshold even when
+// its base is not (complementary suppression), so "based on fewer than 5" would be wrong next to a base of 7 elsewhere.
 export function figureText(figure: NetworkFigure, minCount: number): string {
-  if (figure.value === null) return `Not shown: based on ${hiddenText(minCount)}`;
+  if (figure.value === null) return `Not shown: below the privacy threshold of ${minCount}`;
   switch (figure.unit) {
     case "percent":
       return `${numberFormat.format(figure.value)} %`;
@@ -173,10 +176,14 @@ function isStateMetric(metric: string): boolean {
 }
 
 const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const dayFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-
+// A day of the statistics (a UTC date, as the form and the database give it) in the shared date format, as 1 March 2025.
 export function dayLabel(day: string): string {
-  return dayFormat.format(new Date(`${day}T00:00:00Z`));
+  return formatDate(`${day}T00:00:00Z`);
+}
+
+// The base of a shown figure; a hidden figure has none (the database hides its base too).
+export function baseText(base: number | null): string {
+  return base === null ? "-" : numberFormat.format(base);
 }
 
 // The last day of the UTC period that starts on periodStart.
@@ -199,7 +206,7 @@ export function periodLabel(periodStart: string, period: NetworkPeriod): string 
   const date = new Date(`${periodStart}T00:00:00Z`);
   switch (period) {
     case "week":
-      return `Week of ${dayFormat.format(date)}`;
+      return `Week of ${dayLabel(periodStart)}`;
     case "quarter":
       return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
     case "year":

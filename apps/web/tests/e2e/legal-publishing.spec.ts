@@ -42,7 +42,7 @@ test.describe("publishing and exporting legal documents", () => {
     await expect(slug).toHaveValue(terms);
     await page.getByLabel("Change summary").fill("Adds the scope of the service.");
     await page.getByRole("button", { name: "Publish new version" }).click();
-    await expect(page.getByText("Enter the text of the document").first()).toBeVisible();
+    await expect(page.getByText("Enter the text of the document.").first()).toBeVisible();
     expect(versionsOf(terms)).toHaveLength(3);
 
     await page.getByLabel("Text of the document").fill("## Scope\n\nThe new text.");

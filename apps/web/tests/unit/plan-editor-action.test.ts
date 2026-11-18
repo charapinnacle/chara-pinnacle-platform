@@ -70,10 +70,10 @@ describe("savePlan (FR-R2 AC2, AC10)", () => {
 
   it("refuses a short reason or an edit without changes before calling anything", async () => {
     expect((await savePlan({ code: "recruitment_partner", plan: null, limits: [{ key: "markets", value: 4, expected: 3 }], features: [], reason: "short" })).errors).toEqual({
-      reason: "Give a reason of at least 10 characters",
+      reason: "Give a reason of at least 10 characters.",
     });
     expect((await savePlan({ code: "recruitment_partner", plan: null, limits: [], features: [], reason })).errors).toEqual({
-      reason: "Change at least one value",
+      reason: "Change at least one value.",
     });
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe("setLimitOverride and removeLimitOverride (FR-R2 AC5)", () => {
 
   it("refuses a past expiry before calling, and tells why an organisation not on Enterprise is refused", async () => {
     expect((await setLimitOverride({ organizationId: ORG, limitKey: "members", value: 40, expiresOn: "2020-01-01", reason })).errors).toEqual({
-      expiresOn: "Enter a date after today as year-month-day",
+      expiresOn: "Enter a date after today as year-month-day.",
     });
     expect(rpcMock).not.toHaveBeenCalled();
     rpcMock.mockResolvedValue(failure("CHARA_FORBIDDEN", "override_enterprise_only"));
@@ -190,7 +190,7 @@ describe("changePlanPrice (FR-R2 AC8)", () => {
     const cases: [ReturnType<typeof refused>, object][] = [
       [refused(403), { message: "You are not allowed to do this." }],
       [refused(400, null, "reason"), { errors: { reason: "Give a reason of 10 to 500 characters" } }],
-      [refused(400, null, "price_unchanged"), { errors: { amount: "Enter a price other than the current one" } }],
+      [refused(400, null, "price_unchanged"), { errors: { amount: "Enter a price other than the current one." } }],
       [refused(409, "plan_not_synced"), { message: "This plan is not set up at the payment provider yet. Nothing was changed." }],
       [refused(502), { message: "The payment provider could not create the new price. Nothing was changed. Try again later." }],
       [refused(0), { message: "The payment provider could not create the new price. Nothing was changed. Try again later." }],

@@ -106,7 +106,7 @@ describe("setCompanyPageVisibility (FR-K5 AC2, AC9)", () => {
     await expect(setCompanyPageVisibility("acme-bau", true)).rejects.toThrow("redirect:/en/mfa?next=%2Fen%2Forg%2Facme-bau%2Fprofile");
     rpcMock.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "CHARA_FORBIDDEN", details: "organization_suspended" } });
     await expect(setCompanyPageVisibility("acme-bau", false)).resolves.toEqual({
-      message: "This organization is suspended, so its company page cannot be changed.",
+      message: "This organisation is suspended, so its company page cannot be changed.",
     });
     expect(logFaultMock).not.toHaveBeenCalled();
   });
