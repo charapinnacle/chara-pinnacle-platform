@@ -10,6 +10,7 @@ const welcomeDueMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const geographiesMock = vi.hoisted(() => vi.fn());
 const marketsLimitMock = vi.hoisted(() => vi.fn<() => number | null>());
+const marketsAllowanceMock = vi.hoisted(() => vi.fn<() => number | null>());
 const offerMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const legalDocumentMock = vi.hoisted(() => vi.fn());
@@ -53,6 +54,14 @@ vi.mock("@/lib/dal/usage", () => ({
       keys.map((limitKey) => {
         const limit = limitKey === "markets" ? marketsLimitMock() : 10;
         return [limitKey, limit === null ? null : { limitKey, used: 0, limit, resetsAt: null, planName: "Free", comparison: null }];
+      }),
+    ),
+  // The limit of marketsAllowanceMock while the limits are not enforced.
+  getUnenforcedAllowances: async (_organizationId: string, keys: string[]) =>
+    Object.fromEntries(
+      keys.map((key) => {
+        const limit = key === "markets" ? marketsAllowanceMock() : null;
+        return [key, limit === null ? null : { limit, planName: "Free" }];
       }),
     ),
 }));
@@ -150,6 +159,7 @@ beforeEach(() => {
   releasedMock.mockResolvedValue(true);
   geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: [] });
   marketsLimitMock.mockReturnValue(3);
+  marketsAllowanceMock.mockReturnValue(null);
   offerMock.mockResolvedValue(emptyOffer);
   commitmentMock.mockResolvedValue(openCommitment);
   legalDocumentMock.mockResolvedValue(commitmentDraft);
@@ -283,6 +293,21 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain('aria-label="Remove Austria"');
     expect(html).toContain(">1 country</p>");
     expect(html).toContain(">0 countries</p>");
+  });
+
+  it("FR-R1: warns about served countries beyond the plan while limits are not enforced, and not within it", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
+    marketsLimitMock.mockReturnValue(null);
+    marketsAllowanceMock.mockReturnValue(1);
+    geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: ["DE", "AT"] });
+    const over = await render(OnboardingPage);
+    expect(over).toContain("2 of 1 country served on your Free plan.");
+    expect(over).toContain("Plan limits are not enforced yet, so you can save these countries.");
+    expect(over).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/billing"[^>]*>Compare plans<\/a>/);
+
+    geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: ["DE"] });
+    expect(await render(OnboardingPage)).not.toContain("Plan limits are not enforced yet");
   });
 
   it("asks for what the partner offers once both lists hold a country, still within Where you serve", async () => {

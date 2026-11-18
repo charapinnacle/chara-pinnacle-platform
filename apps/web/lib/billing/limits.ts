@@ -98,6 +98,16 @@ export function appliedLimit(usage: OrgUsage, key: string): number | null {
   return item?.applies ? item.limit : null;
 }
 
+// The plan's limit while the limits are not enforced yet (entitlements_enforced off): a form warns beyond it instead of
+// refusing, so the partner knows what it will have to upgrade for. Null when the limit applies or the plan has none.
+export type PlanAllowance = { limit: number; planName: string | null };
+
+export function unenforcedAllowance(usage: OrgUsage, key: string): PlanAllowance | null {
+  const item = usage.items[key];
+  if (!item || item.applies || item.limit === null) return null;
+  return { limit: item.limit, planName: usage.planName };
+}
+
 // The prompt for a limit that applies, null when it does not. The plans of the organisation's type are compared when
 // they are given, next to the link to the billing page.
 export function limitPrompt(

@@ -24,7 +24,7 @@ vi.mock("@/lib/dal/organizations", () => ({ getOrganizationProfile: async () => 
 vi.mock("@/lib/dal/geographies", () => ({
   getOrganizationGeographies: async () => ({ sourcesFrom: ["NP", "PH"], servesMarket: ["DE"] }),
 }));
-vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock }));
+vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock, getUnenforcedAllowances: async () => ({ markets: null }) }));
 vi.mock("@/lib/actions/limits", () => ({ recordLimitPrompt: vi.fn() }));
 vi.mock("@/lib/dal/reference", () => ({
   getCountries: async () => [

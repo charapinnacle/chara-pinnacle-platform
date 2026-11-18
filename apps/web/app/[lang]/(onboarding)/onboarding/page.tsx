@@ -33,7 +33,7 @@ import { getInvitationPreview } from "@/lib/dal/team";
 import { getCountries, getIndustries, getLanguages, getOccupations, type ReferenceItem } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { requireUser } from "@/lib/dal/session";
-import { getUsagePrompts } from "@/lib/dal/usage";
+import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
 import { getWorkforceOffer, workforceOfferComplete, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
 import { countryFromAcceptLanguage } from "@/lib/i18n/locale";
 import { pendingInvitationToken } from "@/lib/invitation-cookie";
@@ -315,9 +315,10 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
   }
 
   if (!geographiesDone || (!member && step === "where-you-serve")) {
-    const [profile, prompts] = await Promise.all([
+    const [profile, prompts, allowances] = await Promise.all([
       getOrganizationProfile(organization.id),
       getUsagePrompts(organization.id, organization.type, ["markets"]),
+      getUnenforcedAllowances(organization.id, ["markets"]),
     ]);
     const basedIn = countries.find(({ code }) => code === profile?.country)?.name ?? profile?.country ?? "";
     return (
@@ -334,6 +335,7 @@ async function PartnerNextStep({ lang, aal, organization, countries, industries,
           countries={countries}
           defaults={geographies}
           marketsPrompt={prompts.markets}
+          marketsAllowance={allowances.markets}
           billingHref={billingPath(lang, organization.slug)}
           onboarding
         />

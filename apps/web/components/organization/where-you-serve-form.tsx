@@ -8,10 +8,12 @@ import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { toast, toastError } from "@/components/feedback/toast-store";
 import { ChipsField } from "@/components/forms/chips-field";
 import { FormButton } from "@/components/forms/form-button";
+import { Notice } from "@/components/forms/notice";
+import { TextLink } from "@/components/forms/text-link";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
 import { ListingRemovalNotice } from "@/components/organization/listing-removal-notice";
 import { saveOrganizationGeographies } from "@/lib/actions/geographies";
-import type { UsagePrompt } from "@/lib/billing/limits";
+import { usageText, type PlanAllowance, type UsagePrompt } from "@/lib/billing/limits";
 import type { ReferenceItem } from "@/lib/dal/reference";
 import { toOptions } from "@/lib/reference-options";
 import {
@@ -31,6 +33,8 @@ type WhereYouServeFormProps = {
   defaults: GeographiesInput;
   // The served-countries limit when it applies.
   marketsPrompt: UsagePrompt | null;
+  // The served-countries limit of the plan while limits are not enforced: more may be saved, with a warning.
+  marketsAllowance: PlanAllowance | null;
   billingHref: string;
   // Onboarding continues with the next step; the workforce profile page stays and confirms the save.
   onboarding: boolean;
@@ -50,6 +54,7 @@ export function WhereYouServeForm({
   countries,
   defaults,
   marketsPrompt,
+  marketsAllowance,
   billingHref,
   onboarding,
   listingCounts,
@@ -62,6 +67,8 @@ export function WhereYouServeForm({
   const { control, formState, handleSubmit } = form;
   const { submit } = useServerFormSubmit(form, { failureTitle: FAILURE_TITLE });
   const sourcesFrom = useWatch({ control, name: "sourcesFrom" });
+  const servesMarket = useWatch({ control, name: "servesMarket" });
+  const exceeded = marketsAllowance !== null && servesMarket.length > marketsAllowance.limit ? marketsAllowance : null;
   const countryList = {
     options: toOptions(countries),
     placeholder: "Type a country",
@@ -125,6 +132,18 @@ export function WhereYouServeForm({
           )
         }
       />
+      {exceeded ? (
+        <Notice tone="warning" role="status">
+          <p className="font-medium">
+            {usageText("markets", partnerType, servesMarket.length, exceeded.limit)} on your{" "}
+            {exceeded.planName ? `${exceeded.planName} plan` : "plan"}.
+          </p>
+          <p>
+            Plan limits are not enforced yet, so you can save these countries. Once they are, you cannot add a country until
+            you are within your plan. <TextLink href={billingHref}>Compare plans</TextLink>
+          </p>
+        </Notice>
+      ) : null}
       {listingCounts ? (
         <Suspense fallback={null}>
           <ListingRemovalNotice

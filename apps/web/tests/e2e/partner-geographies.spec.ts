@@ -164,6 +164,33 @@ test.describe("Where you serve (FR-K1)", () => {
     expect(geographies(id)).toBe("NP,PH|AE,DE");
   });
 
+  test("AC5: while the limits are not enforced, more served countries than the plan includes are saved with a warning", async ({
+    page,
+  }) => {
+    const { user, id } = await partnerWithCompany("recruitment_company");
+    await openPartnerOnboarding(page, user);
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
+
+    await pickWithKeys(page, SOURCES, "phil", "Philippines");
+    for (const [typed, country] of [
+      ["ger", "Germany"],
+      ["united arab", "United Arab Emirates"],
+      ["saudi", "Saudi Arabia"],
+    ] as const) {
+      await pickWithKeys(page, RECRUITS_FOR, typed, country);
+    }
+    const warning = page.getByRole("status").filter({ hasText: "Plan limits are not enforced yet" });
+    await expect(warning).toHaveCount(0);
+    await pickWithKeys(page, RECRUITS_FOR, "fran", "France");
+    await expect(chips(page, RECRUITS_FOR)).toHaveCount(4);
+    await expect(warning).toContainText("4 of 3 countries served on your Free plan.");
+    await expect(warning.getByRole("link", { name: "Compare plans" })).toHaveAttribute("href", /\/en\/org\/[^/]+\/billing$/);
+    await expectAccessibleAtBothWidths(page);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toHaveCount(0);
+    expect(geographies(id)).toBe("PH|AE,DE,FR,SA");
+  });
+
   test("AC10: a skeleton shows while the saved countries load", async ({ page }) => {
     const { user } = await partnerWithCompany("recruitment_company");
     await openPartnerOnboarding(page, user);
