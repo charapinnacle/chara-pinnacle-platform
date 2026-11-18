@@ -1,5 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import { homePath, onboardingPath } from "@/lib/routes";
+import { segmentOf } from "@/lib/dashboard/partner-dashboard";
+import { companyDashboardPath, homePath, onboardingPath } from "@/lib/routes";
 
 const PLACEHOLDER_ORIGIN = "http://localhost";
 
@@ -27,12 +28,18 @@ export function mfaReturnPath(lang: string, next: string | null | undefined, fal
 }
 
 // Where a signed-in person who opens the login page goes instead: the page they were sent to log in for, else their
-// home (the dashboard of their account kind, or onboarding while it has none).
+// home (the dashboard of their account kind, or onboarding while it has none). A company account goes to the dashboard
+// of the type of its first organisation, so a recruitment or staffing company does not pass through the employer one.
 export function signedInLoginTarget(
   lang: string,
   next: string | null | undefined,
   accountKind: Database["public"]["Enums"]["account_kind"] | null,
+  firstOrganization?: { slug: string; type: Database["public"]["Enums"]["organization_type"] } | null,
 ): string {
   const target = safeNextPath(next);
-  return target === "/" || target.startsWith(`/${lang}/login`) ? homePath(lang, accountKind) : target;
+  if (target !== "/" && !target.startsWith(`/${lang}/login`)) return target;
+  if (accountKind === "company" && firstOrganization && firstOrganization.type !== "employer") {
+    return companyDashboardPath(lang, segmentOf(firstOrganization.type), firstOrganization.slug);
+  }
+  return homePath(lang, accountKind);
 }
