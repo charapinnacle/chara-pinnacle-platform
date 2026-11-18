@@ -402,7 +402,6 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
           href: item.href,
         };
       }
-      const title = text(payload, "title") ?? "Your partner profile";
       return {
         title: unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation",
         href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
