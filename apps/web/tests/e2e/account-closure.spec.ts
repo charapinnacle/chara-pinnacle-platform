@@ -4,6 +4,7 @@ import { expectNoAxeViolations } from "./support/axe";
 import { backdateRequest, closureAudit, profileState, queuedNotifications } from "./support/closure";
 import { createCommittedUser } from "./support/login";
 import { logIn, overflow } from "./support/login-page";
+import { formatDate } from "@/lib/i18n/format";
 import { daysFromToday, signIn } from "./support/passport";
 import { expect, test } from "./support/test";
 
@@ -26,7 +27,7 @@ test.describe("candidate account closure: settings page", () => {
     await dialog(page).getByRole("button", { name: "Request deletion" }).click();
     const banner = page.getByRole("status").filter({ hasText: "Deletion requested on" });
     await expect(banner).toHaveText(
-      `Deletion requested on ${daysFromToday(0)}. Your data will be erased on ${daysFromToday(30)}.`,
+      `Deletion requested on ${formatDate(daysFromToday(0))}. Your data will be erased on ${formatDate(daysFromToday(30))}.`,
     );
     await expect(page.getByRole("button", { name: "Cancel deletion" })).toBeVisible();
     await expect(deleteButton(page)).toHaveCount(0);
@@ -138,7 +139,7 @@ test.describe("candidate account closure: settings page", () => {
     backdateRequest(user.id, "31 days");
     await page.reload();
     await expect(page.getByRole("status")).toHaveText(
-      `Deletion requested on ${daysFromToday(-31)}. Your data will be erased on ${daysFromToday(-1)}. The time to cancel is over and the erasure is in progress.`,
+      `Deletion requested on ${formatDate(daysFromToday(-31))}. Your data will be erased on ${formatDate(daysFromToday(-1))}. The time to cancel is over and the erasure is in progress.`,
     );
     await expect(page.getByRole("button", { name: "Cancel deletion" })).toHaveCount(0);
   });

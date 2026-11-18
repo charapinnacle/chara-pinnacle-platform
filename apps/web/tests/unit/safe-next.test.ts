@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { consentReturnPath, mfaReturnPath, safeNextPath } from "@/lib/safe-next";
+import { consentReturnPath, mfaReturnPath, safeNextPath, signedInLoginTarget } from "@/lib/safe-next";
 
 describe("safeNextPath", () => {
   it.each([
@@ -65,5 +65,16 @@ describe("mfaReturnPath", () => {
   it("never returns to the MFA page itself, so a verified user cannot loop", () => {
     expect(mfaReturnPath("en", "/en/mfa", home)).toBe(home);
     expect(mfaReturnPath("en", "/en/mfa?next=/en/mfa", home)).toBe(home);
+  });
+});
+
+describe("signedInLoginTarget", () => {
+  it("sends a signed-in person from the login page to the page asked for, else to their home", () => {
+    expect(signedInLoginTarget("en", "/en/org/acme/jobs?x=1", "company")).toBe("/en/org/acme/jobs?x=1");
+    expect(signedInLoginTarget("en", null, "worker")).toBe("/en/dashboard/worker");
+    expect(signedInLoginTarget("en", undefined, "company")).toBe("/en/dashboard/employer");
+    expect(signedInLoginTarget("en", null, null)).toBe("/en/onboarding");
+    expect(signedInLoginTarget("en", "//evil.example", "worker")).toBe("/en/dashboard/worker");
+    expect(signedInLoginTarget("en", "/en/login?next=/en/jobs", "worker")).toBe("/en/dashboard/worker");
   });
 });
