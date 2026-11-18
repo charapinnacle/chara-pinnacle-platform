@@ -158,7 +158,7 @@ test.describe("Submission review pipeline (FR-O5)", () => {
     await expect(page.getByText(`Submitted by ${s1.displayName}`).first()).toBeVisible();
     await expect(page.getByText("Viewed", { exact: true }).first()).toBeVisible();
     expect(statusOf(id1)).toBe("viewed");
-    await expect(page.getByText("Welding certificate")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Welding certificate" })).toBeVisible();
     await expect(page.getByText("Internal, not visible to the candidate or the partner.").first()).toBeVisible();
     const add = page.getByRole("button", { name: "Add note" });
     await waitForHydration(add);
