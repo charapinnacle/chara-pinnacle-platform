@@ -104,7 +104,7 @@ describe("the dates and amounts of a live subscription (FR-G5 AC4, AC5)", () => 
 
   it("shows the next invoice date and the price of an active subscription", () => {
     expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-04T00:00:00Z" }, PROFESSIONAL)).toEqual([
-      "Next invoice 4 Dec 2026",
+      "Next invoice 4 December 2026",
       "EUR 79.00 per month excl. VAT",
     ]);
   });
@@ -126,12 +126,12 @@ describe("the dates and amounts of a live subscription (FR-G5 AC4, AC5)", () => 
   });
 
   it("leaves the amount out for a plan that is not sold online", () => {
-    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-04T00:00:00Z" }, undefined)).toEqual(["Next invoice 4 Dec 2026"]);
+    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-04T00:00:00Z" }, undefined)).toEqual(["Next invoice 4 December 2026"]);
     expect(planFacts({ ...NO_DATES, status: "trialing", trialEndsAt: "2026-11-04T00:00:00Z" }, undefined)).toEqual(["Trial ends 4 Nov 2026"]);
   });
 
   it("reads dates as UTC calendar days, not the day of the server", () => {
-    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-03T23:30:00-05:00" }, undefined)).toEqual(["Next invoice 4 Dec 2026"]);
+    expect(planFacts({ ...NO_DATES, status: "active", currentPeriodEnd: "2026-12-03T23:30:00-05:00" }, undefined)).toEqual(["Next invoice 4 December 2026"]);
   });
 
   it("says that the free plan applies to a paused subscription, with no next invoice", () => {
