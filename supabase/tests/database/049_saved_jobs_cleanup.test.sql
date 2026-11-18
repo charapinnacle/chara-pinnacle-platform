@@ -47,9 +47,10 @@ select is(
   pg_temp.kept(), 'closed89,closed90,deleted89,hidden120,open,paused120,reopened', 'and changes nothing'
 );
 
--- One audit row per run, with the period and the number removed.
+-- One audit row per run, with the period and the number removed. Only this transaction's rows count: the pg_cron job
+-- commits its own row when the test runs at 03:47 UTC.
 select is(
-  (select jsonb_agg(metadata order by id) from audit.log where action = 'saved_jobs.cleanup'),
+  (select jsonb_agg(metadata order by id) from audit.log where action = 'saved_jobs.cleanup' and created_at = now()),
   '[{"days": 90, "removed": 4}, {"days": 90, "removed": 0}]'::jsonb, 'each run writes one audit row with the period and the number of rows removed'
 );
 
@@ -64,7 +65,7 @@ select throws_ok(
   'select private.cleanup_saved_jobs()', 'P0001', 'CHARA_SETTING_MISSING', 'a run without the retention policy fails'
 );
 select is(
-  (select count(*) from audit.log where action = 'saved_jobs.cleanup'), 3::bigint, 'and writes no audit row'
+  (select count(*) from audit.log where action = 'saved_jobs.cleanup' and created_at = now()), 3::bigint, 'and writes no audit row'
 );
 
 -- The job and who can run it.
