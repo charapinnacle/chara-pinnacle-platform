@@ -184,10 +184,15 @@ export function planUsageKeys(released: { jobOrders: boolean; submissions: boole
 }
 
 // "7 of 10 workforce listings", or "7 workforce listings (no limit)" when the plan has none (FR-R4 AC8): the limit of the
-// plan, as the billing page shows it, whether or not the limits are enforced yet.
+// plan, as the billing page shows it, whether or not the limits are enforced yet. A limit of 0 not in use is something the
+// plan leaves out, so the line says that rather than "0 of 0".
 export function usageLine(usage: OrgUsage, key: string, type: PartnerType): string | null {
   const item = usage.items[key];
   if (!item) return null;
+  if (item.limit === 0 && item.used === 0) {
+    const noun = limitNoun(key, type).replace(/ this month$/, "");
+    return `${noun.charAt(0).toUpperCase()}${noun.slice(1)}: not included in your plan`;
+  }
   return item.limit === null
     ? `${formatCount(item.used)} ${limitNoun(key, type, item.used)} (no limit)`
     : usageText(key, type, item.used, item.limit);
@@ -195,10 +200,11 @@ export function usageLine(usage: OrgUsage, key: string, type: PartnerType): stri
 
 // Whether a usage line needs the plan's attention: a limit of 0 already reached by the owner alone ("1 of 0 team
 // members" on a free plan, where team_size counts the owner, FR-R1 AC2 and AC8) or listings kept after a lapse are over
-// the limit, and the card says so with the way to upgrade instead of leaving the figure alone. Null when within it.
+// the limit, and the card says so with the way to upgrade instead of leaving the figure alone. Null when within it, and
+// for a limit of 0 not in use, which the line already says the plan does not include.
 export function usageAttention(usage: OrgUsage, key: string): "at_limit" | "over_limit" | null {
   const item = usage.items[key];
-  if (!item) return null;
+  if (!item || (item.limit === 0 && item.used === 0)) return null;
   const { state } = classifyUsage(item.used, item.limit);
   return state === "at_limit" || state === "over_limit" ? state : null;
 }
