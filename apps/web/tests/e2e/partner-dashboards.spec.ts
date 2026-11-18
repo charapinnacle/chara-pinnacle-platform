@@ -1,4 +1,4 @@
-import type { Browser, Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page, Request } from "@playwright/test";
 import { expectAccessibleAtBothWidths } from "./support/applications";
 import { execute, executeAsync, literal, query } from "./support/db";
 import { newCompany } from "./support/jobs";
@@ -169,10 +169,16 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await expect(one.page).toHaveURL(dashboardUrl("recruitment", r.slug));
     await one.page.goto(dashboardUrl("staffing", s.slug));
     await expect(one.page).toHaveURL(dashboardUrl("recruitment", r.slug));
+    // Only the responses whose body was received, and none after the check: a prefetch the browser cancels never
+    // finishes, and a read of its body left pending holds the closing of the context.
     const bodies: Promise<string>[] = [];
-    one.page.on("response", (response) => bodies.push(response.text().catch(() => "")));
+    const collect = (request: Request) => {
+      bodies.push(request.response().then((response) => response?.text() ?? "").catch(() => ""));
+    };
+    one.page.on("requestfinished", collect);
     await one.page.goto(dashboardUrl("staffing", s.slug));
     await one.page.waitForLoadState("networkidle");
+    one.page.off("requestfinished", collect);
     const names = query<{ id: string; display_name: string }>(
       `select id, display_name from public.organizations where id in (${literal(r.id)}, ${literal(s.id)})`,
     );
