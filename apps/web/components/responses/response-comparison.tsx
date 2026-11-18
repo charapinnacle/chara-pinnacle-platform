@@ -81,7 +81,7 @@ export function ResponseComparison({ lang, slug, requirementId, responses, docum
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border" role="region" aria-labelledby="comparison-caption" tabIndex={0}>
+    <div className="relative overflow-x-auto rounded-xl border" role="region" aria-labelledby="comparison-caption" tabIndex={0}>
       <table className="w-full border-collapse text-start text-body">
         <caption id="comparison-caption" className="sr-only">
           Responses compared side by side
