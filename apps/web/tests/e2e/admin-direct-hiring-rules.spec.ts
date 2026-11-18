@@ -163,6 +163,9 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     await edit.getByRole("textbox", { name: "Reason for the change" }).fill(REASON);
     await expectNoAxeViolations(page);
     await edit.getByRole("button", { name: "Save rule" }).click();
+    // The dialog sits in the row with every rule among its options, and the first save's notice may still show: only its
+    // closing says this save is done.
+    await expect(edit).toBeHidden();
     await expect(page.getByText("The rule is saved", { exact: true })).toBeVisible();
     await expect(row(page, "Philippines", "All destinations")).toContainText("Direct hiring blocked");
     expect(rules()).toContain("PH>*:blocked:LO-2026-12 PH");
