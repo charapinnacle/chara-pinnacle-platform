@@ -39,7 +39,7 @@ export default async function RecruitmentPartnersPage({ params, searchParams }: 
 
   return (
     <PageContainer layout="page" className="grid gap-8">
-      <PageHeader title="Find Recruitment Partners" className="animate-rise">
+      <PageHeader title="Find recruitment partners" className="animate-rise">
         <p className="text-body text-muted-foreground">
           Recruitment companies that recruit for your country and occupations. Results are ordered by the filters they match
           and by how recently they updated their profile; no company pays to rank higher.{" "}

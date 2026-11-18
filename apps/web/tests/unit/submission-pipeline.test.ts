@@ -183,7 +183,7 @@ describe("the actions of the pipeline (FR-O5 AC3, AC5, AC6, AC8, AC11)", () => {
   it("says why a stage did not change", async () => {
     rpcMock.mockResolvedValueOnce({ data: [detailRow], error: null }).mockResolvedValueOnce(refusal("CHARA_FEATURE_NOT_IN_PLAN", "read_only_free_plan"));
     expect(await changeSubmissionStage("acme-bau", SUBMISSION, { status: "offer", note: "" })).toEqual({
-      message: "Your organization has no active paid plan, so stages cannot be changed.",
+      message: "Your organisation has no active paid plan, so stages cannot be changed.",
     });
     rpcMock.mockResolvedValueOnce({ data: [detailRow], error: null }).mockResolvedValueOnce(refusal("CHARA_INVALID_TRANSITION", "interview to shortlisted"));
     expect((await changeSubmissionStage("acme-bau", SUBMISSION, { status: "shortlisted", note: "" })).message).toContain("already moved");

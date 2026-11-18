@@ -78,7 +78,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     test.setTimeout(120_000);
     const batch = await listedBatch(22);
     await page.goto(DIRECTORY);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find Recruitment Partners");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find recruitment partners");
     const destination = page.getByRole("combobox", { name: "Destination country" });
     await waitForHydration(destination);
     await destination.fill("Germany");
@@ -243,7 +243,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
       execute(`grant execute on function ${SEARCH_PARTNERS} to anon, authenticated`);
     }
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("heading", { name: "Find Recruitment Partners" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Find recruitment partners" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "shown" })).toBeVisible();
   });
 
@@ -271,11 +271,12 @@ test.describe("Find recruitment partners (FR-L1)", () => {
   test("KPIs: a Platform Administrator reads the partner searches on the statistics page", async ({ page }) => {
     const ids = execute(
       `insert into stats.partner_searches (kind, filter_names, destination_country, result_count)
-       values ('recruitment', '{destination}', 'IS', 0), ('recruitment', '{destination}', 'IS', 0) returning id`,
+       select 'recruitment', '{destination}', 'IS', 0 from generate_series(1, 5) returning id`,
     )
       .trim()
       .split("\n");
-    expect(ids).toHaveLength(2);
+    // Five: a destination below the privacy threshold (stats_min_count, 5) is not listed (FR-S2 AC9).
+    expect(ids).toHaveLength(5);
     try {
       await signInStaff(page, "admin", "/en/admin/statistics");
       const section = page.getByRole("region", { name: "Partner searches" });
@@ -283,6 +284,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
       await expect(section.getByRole("region", { name: /^Recruitment partner searches from/ })).toContainText("Without results");
       const destinations = section.getByRole("region", { name: /^Recruitment partner searches without results by destination/ });
       await expect(destinations.getByRole("row", { name: /Iceland/ })).toBeVisible();
+      await expect(section.getByRole("region", { name: /^Recruitment partner searches from \d{1,2} [A-Z][a-z]+ \d{4} to / })).toBeVisible();
       await expectAccessibleAtBothWidths(page);
       setPartnerRelease(false);
       await page.reload();

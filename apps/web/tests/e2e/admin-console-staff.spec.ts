@@ -37,7 +37,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await open.click();
     const dialog = page.getByRole("dialog", { name: "Grant a platform role" });
     await dialog.getByRole("button", { name: "Grant role" }).click();
-    await expect(dialog.getByText("Choose a role").first()).toBeVisible();
+    await expect(dialog.getByText("Choose a role.").first()).toBeVisible();
     await dialog.getByLabel("Email address of the person").fill(admin.user.email);
     await dialog.getByLabel("Role").selectOption("trust_safety");
     await dialog.getByLabel("Reason").fill(REASON);
@@ -56,7 +56,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await dialog.getByLabel("Email address of the person").fill(person.email);
     await dialog.getByLabel("Reason").fill("short");
     await dialog.getByRole("button", { name: "Grant role" }).click();
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await dialog.getByLabel("Reason").fill(REASON);
     await dialog.getByRole("button", { name: "Grant role" }).click();
     await expect(dialog).toBeHidden();
@@ -69,7 +69,7 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await table.getByRole("row", { name: new RegExp(person.email) }).getByRole("button", { name: /Revoke/ }).click();
     const revoke = page.getByRole("dialog", { name: "Revoke a platform role" });
     await revoke.getByRole("button", { name: "Revoke role" }).click();
-    await expect(revoke.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(revoke.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await revoke.getByLabel("Reason").fill("Left the support team, ticket 4813");
     await revoke.getByRole("button", { name: "Revoke role" }).click();
     await expect(revoke).toBeHidden();
@@ -100,15 +100,15 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     const slug = page.getByLabel("Document name");
     await waitForHydration(slug);
     await page.getByRole("button", { name: "Publish new version" }).click();
-    await expect(page.getByText("Enter a title of 3 to 200 characters").first()).toBeVisible();
-    await expect(page.getByText("Enter the text of the document").first()).toBeVisible();
+    await expect(page.getByText("Enter a title of 3 to 200 characters.").first()).toBeVisible();
+    await expect(page.getByText("Enter the text of the document.").first()).toBeVisible();
     await slug.fill("Bad_Slug");
     await page.getByLabel("Title").fill("Cookie policy");
     await page.getByLabel("Text of the document").fill("The text of the cookie policy.");
     await page.getByLabel("Change summary").fill("short");
     await page.getByRole("button", { name: "Publish new version" }).click();
-    await expect(page.getByText("Describe the change in 10 to 1000 characters").first()).toBeVisible();
-    await expect(page.getByText("Use lower-case letters, digits and single hyphens").first()).toBeVisible();
+    await expect(page.getByText("Describe the change in 10 to 1000 characters.").first()).toBeVisible();
+    await expect(page.getByText("Use lower-case letters, digits and single hyphens.").first()).toBeVisible();
 
     const name = `e2e-${uniqueTag()}`;
     await slug.fill(name);
@@ -158,11 +158,11 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await page.getByLabel("From", { exact: true }).fill("2026-12-31");
     await page.getByLabel("To", { exact: true }).fill("2026-01-01");
     await page.getByRole("button", { name: "Show" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("The start date must not be after the end date");
+    await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("The start date must not be after the end date.");
     await page.goto("/en/admin/statistics?from=2024-01-01&to=2025-06-01");
     await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("Choose at most 366 days");
     await page.goto("/en/admin/statistics?from=2026-13-01&to=2026-13-02");
-    await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("Enter a date as year-month-day");
+    await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("Enter a date as year-month-day.");
   });
 
   test("FR-F1 AC10: the reset form refuses an unticked box, a short reason and a bad id, refuses the own account, and queues the reset and the email for another user", async ({
@@ -177,11 +177,11 @@ test.describe("the staff page, the legal documents, the statistics and the two-s
     await userId.fill(target.id);
     await page.getByLabel("Reason").fill("123456789");
     await page.getByRole("button", { name: "Reset two-step verification" }).click();
-    await expect(page.getByText("Confirm that you verified this person's identity").first()).toBeVisible();
-    await expect(page.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(page.getByText("Confirm that you verified this person's identity.").first()).toBeVisible();
+    await expect(page.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await userId.fill("not-an-id");
     await page.getByRole("button", { name: "Reset two-step verification" }).click();
-    await expect(page.getByText("Enter a valid user id").first()).toBeVisible();
+    await expect(page.getByText("Enter a valid user id.").first()).toBeVisible();
     await page.getByLabel("I have verified this person's identity").check();
     await page.getByLabel("Reason").fill("Lost the phone, identity checked");
 
