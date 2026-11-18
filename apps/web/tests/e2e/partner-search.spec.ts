@@ -175,7 +175,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     await page.goto(address);
     await expect(page.getByText("Sign in to filter by workforce capacity.")).toBeVisible();
     await expect(page.getByText("These filters need a plan with advanced partner search.")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", `/en/login?next=${encodeURIComponent(address)}`);
+    await expect(page.getByRole("alert").getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", `/en/login?next=${encodeURIComponent(address)}`);
     await expect(page.getByRole("group", { name: "Workforce capacity" })).toBeVisible();
     await page.getByRole("link", { name: "Search without them" }).click();
     await expect(page).toHaveURL(`${DIRECTORY}?destination=DE`);
