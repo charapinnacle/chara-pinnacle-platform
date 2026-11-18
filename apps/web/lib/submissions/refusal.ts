@@ -18,7 +18,7 @@ export const SUBMISSION_MESSAGES = {
   requestNotFound: "This request could not be found, or a document you chose was removed. Reload the page.",
   answered: "This request was already answered. Reload the page to see its status.",
   expired: "This request expired, so it can no longer be answered.",
-  submissionsClosed: "This request is no longer open because the employer closed submissions for this partner.",
+  submissionsClosed: "This request is no longer open because the employer is no longer taking candidates from this partner.",
   closed: "The requirement is no longer open, so the request can no longer be approved. You can still decline it.",
   alreadySubmitted: "You have already been submitted for this requirement by another company, so you can only decline this request.",
   scanning: "A document you chose is still being checked. Try again in a minute, or approve without it.",
