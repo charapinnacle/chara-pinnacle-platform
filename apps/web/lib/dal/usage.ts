@@ -1,6 +1,6 @@
 import "server-only";
 import * as z from "zod";
-import { limitPrompt, type OrganizationType, type OrgUsage, type UsagePrompt } from "@/lib/billing/limits";
+import { limitPrompt, shownLimit, type OrganizationType, type OrgUsage, type UsagePrompt } from "@/lib/billing/limits";
 import { listPublicPlans } from "@/lib/dal/pricing";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,7 +27,7 @@ export async function getOrgUsage(organizationId: string, keys: readonly string[
     items: Object.fromEntries(
       rows.map((row) => [
         row.limit_key,
-        { used: row.used, limit: row.limit_value, applies: row.applies, resetsAt: row.period_resets_at },
+        { used: row.used, limit: shownLimit(row.limit_key, row.limit_value), applies: row.applies, resetsAt: row.period_resets_at },
       ]),
     ),
   };
