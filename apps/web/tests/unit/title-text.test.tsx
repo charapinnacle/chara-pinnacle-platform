@@ -20,6 +20,17 @@ describe("the Title Case of button labels", () => {
     expect(markup("Save changes")).toBe("Save changes");
   });
 
+  it("keeps the unit of a countdown lower case, and the short words of a label next to an icon or a spinner", () => {
+    expect(markup("Resend in 54 s")).toBe('<span>Resend <span class="normal-case">in</span> 54 <span class="normal-case">s</span></span>');
+    expect(markup("Plans s")).toBe("Plans s");
+    expect(renderToStaticMarkup(<>{titleText([null, "Resend in 5 s"])}</>)).toBe(
+      '<span>Resend <span class="normal-case">in</span> 5 <span class="normal-case">s</span></span>',
+    );
+    expect(renderToStaticMarkup(<>{titleText([<svg key="icon" />, "Submit a candidate"])}</>)).toBe(
+      '<svg></svg><span>Submit <span class="normal-case">a</span> candidate</span>',
+    );
+  });
+
   it("passes anything but a plain string through", () => {
     const node = <strong>Post a job</strong>;
     expect(titleText(node)).toBe(node);
