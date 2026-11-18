@@ -211,7 +211,7 @@ test.describe("release 2b journeys (NFR-O4, NFR-U4)", () => {
     await select.click();
     const selectDialog = page.getByRole("dialog", { name: `Select ${partner.displayName}?` });
     await expect(selectDialog).toContainText("can then submit candidates for this requirement");
-    await selectDialog.getByRole("button", { name: "Select", exact: true }).click();
+    await selectDialog.getByRole("button", { name: `Select ${partner.displayName}`, exact: true }).click();
     await expect(page.getByText("Partner selected", { exact: true })).toBeVisible();
     await page.goto(`/en/org/${team.slug}/requirements/${requirement}/responses/${response}`);
     await expect(page.getByRole("main")).toContainText("You selected this partner. It can submit candidates for this requirement.");
