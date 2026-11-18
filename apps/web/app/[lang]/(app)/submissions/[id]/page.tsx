@@ -19,6 +19,7 @@ import { getMySubmission, type SubmissionRequest } from "@/lib/dal/submissions";
 import { formatCount, formatDate, formatShortDate } from "@/lib/i18n/format";
 import { submissionsPath } from "@/lib/routes";
 import {
+  CANDIDATE_CLOSED_NEXT_STEP,
   candidateNextSteps,
   candidateSubmissionLabels,
   isWithdrawable,
@@ -78,10 +79,14 @@ export default async function SubmissionPage({ params }: PageProps<"/[lang]/subm
             Status
           </h2>
           <p>
-            <SubmissionStatusBadge status={submission.status} view="candidate" />
+            <SubmissionStatusBadge status={submission.status} view="candidate" closed={submission.submissionsClosed} />
           </p>
           <p className="max-w-[65ch] text-body leading-relaxed">
-            {submission.status === "awaiting_candidate" ? null : candidateNextSteps[submission.status]}
+            {submission.submissionsClosed
+              ? CANDIDATE_CLOSED_NEXT_STEP
+              : submission.status === "awaiting_candidate"
+                ? null
+                : candidateNextSteps[submission.status]}
           </p>
           <p className="text-small text-muted-foreground">
             Received <time dateTime={submission.createdAt}>{formatDate(submission.createdAt)}</time>
