@@ -72,7 +72,7 @@ describe("the rule form (FR-Q5 AC3, AC10)", () => {
     expect(issues({ notice: `${"n".repeat(20)}\n${"n".repeat(5)}` })).toEqual({ notice: "Write the notice as one paragraph without line breaks" });
     expect(issues({ legalOpinionRef: "   " })).toEqual({ legalOpinionRef: "Enter the legal opinion reference" });
     expect(issues({ legalOpinionRef: "r".repeat(201) })).toEqual({ legalOpinionRef: "The reference can have at most 200 characters" });
-    expect(issues({ reason: "too short" })).toEqual({ reason: "Give a reason of at least 10 characters" });
+    expect(issues({ reason: "too short" })).toEqual({ reason: "Give a reason of at least 10 characters." });
   });
 });
 
