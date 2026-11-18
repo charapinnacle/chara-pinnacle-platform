@@ -78,7 +78,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
     test.setTimeout(120_000);
     const batch = await listedBatch(22);
     await page.goto(DIRECTORY);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find Recruitment Partners");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find recruitment partners");
     const destination = page.getByRole("combobox", { name: "Destination country" });
     await waitForHydration(destination);
     await destination.fill("Germany");
@@ -243,7 +243,7 @@ test.describe("Find recruitment partners (FR-L1)", () => {
       execute(`grant execute on function ${SEARCH_PARTNERS} to anon, authenticated`);
     }
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("heading", { name: "Find Recruitment Partners" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Find recruitment partners" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "shown" })).toBeVisible();
   });
 

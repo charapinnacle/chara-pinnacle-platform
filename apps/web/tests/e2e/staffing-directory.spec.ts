@@ -132,7 +132,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     test.setTimeout(120_000);
     const batch = await staffingBatch();
     await page.goto(DIRECTORY);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find Staffing Partners");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find staffing partners");
     await expect(page.getByRole("region", { name: "Available workforce" })).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Language" })).toHaveCount(0);
     const destination = page.getByRole("combobox", { name: "Destination country" });
@@ -266,7 +266,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
       execute(`grant execute on function ${SEARCH_PARTNERS} to anon, authenticated`);
     }
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("heading", { name: "Find Staffing Partners" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Find staffing partners" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "shown" })).toBeVisible();
   });
 
@@ -391,7 +391,7 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
 
   test("FR-K3: an employer finds the available workforce search on the recruitment directory too", async ({ page, browser }) => {
     await page.goto("/en/partners/recruitment");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find Recruitment Partners");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find recruitment partners");
     await expect(page.getByRole("region", { name: "Available workforce" })).toHaveCount(0);
 
     const { context, page: employerPage } = await signedIn(browser, await newEmployer());
