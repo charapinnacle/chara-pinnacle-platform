@@ -1,5 +1,5 @@
 import { graceEnd } from "@/lib/dashboard/plan-status";
-import { formatShortDate } from "@/lib/i18n/format";
+import { formatDate, formatShortDate } from "@/lib/i18n/format";
 import type { StatusTone } from "@/lib/status-tone";
 
 export type SoldPlan = {
@@ -93,7 +93,7 @@ export function planFacts(subscription: PlanFactsInput, plan: SoldPlan | undefin
   } else if (status === "trialing" && trialEndsAt && plan) {
     facts.push(`First payment of ${formatPrice(plan.priceMinor, plan.currency)} excl. VAT on ${formatShortDate(trialEndsAt)}`);
   } else if (status === "active" && currentPeriodEnd) {
-    facts.push(`Next invoice ${formatShortDate(currentPeriodEnd)}`);
+    facts.push(`Next invoice ${formatDate(currentPeriodEnd)}`);
     if (plan) facts.push(shortPriceLine(plan));
   }
   return facts;

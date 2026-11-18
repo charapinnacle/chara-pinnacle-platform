@@ -130,6 +130,7 @@ describe("the cards of the partner plans (FR-R1 AC3)", () => {
       "10 workforce listings",
       "1 team member",
       "10 responses to workforce requests per month",
+      "25 candidate submissions per month",
     ]);
     expect(planCard({ ...PARTNER_BASIC, code: "recruitment_partner" }, "recruitment_company").limits).toEqual([
       "3 countries served",
