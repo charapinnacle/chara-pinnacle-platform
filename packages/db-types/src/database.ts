@@ -2155,7 +2155,7 @@ isOneToOne: false
                            },
 "billing_usage":
 { Args: { "p_org": string }; Returns: {
-              "limit_key": string,"limit_value": number,"used": number
+              "applies": boolean,"limit_key": string,"limit_value": number,"used": number
             }[]
                            },
 "billing_webhook_rejected":
