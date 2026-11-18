@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { BRAND_NAME } from "@/lib/brand";
 import { countryInSentence } from "@/lib/i18n/format";
 import { checkFile, acceptedExtensions } from "@/lib/validation/documents";
 import type { LicenceStatus } from "@/lib/validation/licence-status";
@@ -11,7 +12,7 @@ const NUMBER_MIN = 3;
 const NUMBER_MAX = 64;
 const CONTROL_CHARACTER = /[\p{Cc}\p{Zl}\p{Zp}]/u;
 
-export const LICENCE_STAFF_ONLY = "Seen only by Chara Pinnacle staff until verification is available";
+export const LICENCE_STAFF_ONLY = `Seen only by ${BRAND_NAME} staff until verification is available`;
 export const evidenceAccept = acceptedExtensions;
 
 // What the form needs to know besides the field values: the country list, the number formats per country and the date

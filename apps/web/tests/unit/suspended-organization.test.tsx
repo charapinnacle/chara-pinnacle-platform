@@ -20,7 +20,7 @@ describe("the page of a suspended organisation", () => {
   it("links to the decision and appeal while release 2a is on", async () => {
     releasedMock.mockResolvedValue(true);
     const page = await html();
-    expect(page).toContain("This organization is suspended, so its vacancies are not available.");
+    expect(page).toContain("This organisation is suspended, so its vacancies are not available.");
     expect(page).toContain('href="/en/appeals"');
     expect(page).toContain("See the decision and appeal");
     expect(releasedMock).toHaveBeenCalledWith("release_partner_directories");
@@ -29,7 +29,7 @@ describe("the page of a suspended organisation", () => {
   it("stays as in Phase 1 before it", async () => {
     releasedMock.mockResolvedValue(false);
     const page = await html();
-    expect(page).toContain("This organization is suspended");
+    expect(page).toContain("This organisation is suspended");
     expect(page).not.toContain("/en/appeals");
   });
 });

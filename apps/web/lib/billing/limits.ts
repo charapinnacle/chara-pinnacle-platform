@@ -86,10 +86,27 @@ export function planComparison(plans: PublicPlan[], key: string, type: Organizat
   return `${parts.join("; ")}.`;
 }
 
+// The team size counts the owner (FR-R1 AC8), who cannot leave, so a members limit below 1 (the free partner plans carry
+// 0, AC2) allows the owner alone, as the database does when it refuses an invitation: the pages say "1 of 1", never
+// "1 of 0", and a team beyond the owner on such a plan is still over the limit.
+export function shownLimit(key: string, limit: number | null): number | null {
+  return key === "members" && limit !== null ? Math.max(limit, 1) : limit;
+}
+
 // The limit the database refuses at, or null when it does not apply (not enforced, or the plan has none).
 export function appliedLimit(usage: OrgUsage, key: string): number | null {
   const item = usage.items[key];
   return item?.applies ? item.limit : null;
+}
+
+// The plan's limit while the limits are not enforced yet (entitlements_enforced off): a form warns beyond it instead of
+// refusing, so the partner knows what it will have to upgrade for. Null when the limit applies or the plan has none.
+export type PlanAllowance = { limit: number; planName: string | null };
+
+export function unenforcedAllowance(usage: OrgUsage, key: string): PlanAllowance | null {
+  const item = usage.items[key];
+  if (!item || item.applies || item.limit === null) return null;
+  return { limit: item.limit, planName: usage.planName };
 }
 
 // The prompt for a limit that applies, null when it does not. The plans of the organisation's type are compared when
