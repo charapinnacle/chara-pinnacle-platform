@@ -62,12 +62,12 @@ test.describe("the price change of the plan editor (FR-R2 AC8, AC9)", () => {
     const reason = dialog.getByRole("textbox", { name: "Reason for the change" });
 
     await dialog.getByRole("button", { name: "Review change" }).click();
-    await expect(dialog.getByText("Enter an amount from 1.00 to 100,000.00, for example 54.00").first()).toBeVisible();
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Enter an amount from 1.00 to 100,000.00, for example 54.00.").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await amount.fill("10.00");
     await reason.fill(REASON);
     await dialog.getByRole("button", { name: "Review change" }).click();
-    await expect(dialog.getByText("Enter a price other than the current one").first()).toBeVisible();
+    await expect(dialog.getByText("Enter a price other than the current one.").first()).toBeVisible();
 
     await amount.fill("12.50");
     await dialog.getByRole("button", { name: "Review change" }).click();

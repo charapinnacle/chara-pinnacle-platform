@@ -472,8 +472,10 @@ update private.settings set value = '60' where key = 'workforce_listing_stale_da
 -- Statistics ---------------------------------------------------------------------------------------------------------------------
 select is(pg_temp.call_as(:'stf', 'authenticated', $$select set_config('t.result', (select to_jsonb(s) from public.admin_partner_search_stats('available_workforce', current_date, current_date) s)::text, true)$$),
   'ok', 'KPI: a Platform Administrator reads the available-workforce searches');
-select is(pg_temp.result() ->> 'searches', (select count(*)::text from stats.partner_searches where kind = 'available_workforce'),
-  'KPI: every available-workforce search of the day is counted');
+select is(pg_temp.result() ->> 'searches',
+  (select case when count(*) >= private.stats_min_count() then count(*)::text end from stats.partner_searches
+   where kind = 'available_workforce'),
+  'KPI: every available-workforce search of the day is counted, shown from the privacy threshold on');
 select is(pg_temp.call_as(:'stf', 'authenticated', $$select * from public.admin_partner_search_stats('staffing', current_date, current_date)$$),
   'ok', 'KPI: and the staffing directory searches');
 select is(pg_temp.call_as(:'stf', 'authenticated', $$select * from public.admin_partner_search_stats('workers', current_date, current_date)$$),

@@ -38,7 +38,7 @@ describe("notificationSettingsSchema", () => {
   it.each(["", "weekly", "Immediate", "true", undefined])("refuses the value %s with a message for the field", (delivery) => {
     const result = notificationSettingsSchema.safeParse({ delivery });
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0].message).toBe("Choose how to receive new-application emails");
+    expect(result.error?.issues[0].message).toBe("Choose how to receive new-application emails.");
   });
 
   it("refuses an unknown field", () => {
@@ -95,7 +95,7 @@ describe("saveNotificationSettings", () => {
   it("does not call the database for an invalid value or an unknown field", async () => {
     const { saveNotificationSettings } = await import("@/lib/actions/notifications");
     const invalid = { delivery: "weekly" } as unknown as NotificationSettings;
-    expect((await saveNotificationSettings(invalid)).errors).toEqual({ delivery: "Choose how to receive new-application emails" });
+    expect((await saveNotificationSettings(invalid)).errors).toEqual({ delivery: "Choose how to receive new-application emails." });
     const extra = { delivery: "immediate", digest: true } as unknown as NotificationSettings;
     expect((await saveNotificationSettings(extra)).errors).toBeDefined();
     expect(saveMock).not.toHaveBeenCalled();

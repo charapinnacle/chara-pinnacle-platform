@@ -54,8 +54,8 @@ function refusalMessage(refusal: StageRefusal): ActionResult {
       return {
         message:
           refusal.reason === "organization_suspended"
-            ? "Your organization is suspended, so stages cannot be changed."
-            : "Your organization has no active paid plan, so stages cannot be changed.",
+            ? "Your organisation is suspended, so stages cannot be changed."
+            : "Your organisation has no active paid plan, so stages cannot be changed.",
       };
     case "shortlisting_not_in_plan":
       return { message: "Your plan does not include shortlisting." };
@@ -115,8 +115,8 @@ export async function bulkChangeSubmissionStage(
 
 const noteRefusals = {
   not_found: NOT_FOUND,
-  read_only_free_plan: "Your organization has no active paid plan, so notes cannot be added.",
-  organization_suspended: "Your organization is suspended, so notes cannot be added.",
+  read_only_free_plan: "Your organisation has no active paid plan, so notes cannot be added.",
+  organization_suspended: "Your organisation is suspended, so notes cannot be added.",
   invalid: "The note could not be saved. Check it and try again.",
   rate_limited: "Too many changes were made today. Try again tomorrow.",
   failed: GENERIC_FAILURE,
