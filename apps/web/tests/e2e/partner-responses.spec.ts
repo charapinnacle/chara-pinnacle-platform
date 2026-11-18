@@ -521,7 +521,7 @@ test.describe("The monthly limit's upgrade prompt (FR-R1 AC10, AC11)", () => {
     const id = seedJobOrder(team, "Vaduz limit welders");
     const [{ name: planName }] = query<{ name: string }>(`select name from billing.plans where code = 'recruitment_partner'`);
 
-    await signInAtAal2(page, admin.user, admin.secret ?? "", respondUrl(r.slug, id));
+    await signInAtAal1(page, admin.user, respondUrl(r.slug, id));
     const send = page.getByRole("button", { name: "Send response" });
     await waitForHydration(send);
     await fillResponse(page);
