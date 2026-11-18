@@ -155,10 +155,15 @@ export function nextActions(figures: PartnerFigures, canManage: boolean): NextAc
 export const planUsageKeys = ["markets", "listed_occupations", "workforce_listings"] as const;
 
 // "7 of 10 workforce listings", or "7 workforce listings (no limit)" when the plan has none (FR-R4 AC8): the limit of the
-// plan, as the billing page shows it, whether or not the limits are enforced yet.
+// plan, as the billing page shows it, whether or not the limits are enforced yet. A limit of 0 not in use is something the
+// plan leaves out, so the line says that rather than "0 of 0".
 export function usageLine(usage: OrgUsage, key: string, type: PartnerType): string | null {
   const item = usage.items[key];
   if (!item) return null;
+  if (item.limit === 0 && item.used === 0) {
+    const noun = limitNoun(key, type).replace(/ this month$/, "");
+    return `${noun.charAt(0).toUpperCase()}${noun.slice(1)}: not included in your plan`;
+  }
   return item.limit === null
     ? `${formatCount(item.used)} ${limitNoun(key, type, item.used)} (no limit)`
     : usageText(key, type, item.used, item.limit);
