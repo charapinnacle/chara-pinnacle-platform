@@ -62,8 +62,7 @@ export const moderationDecision: Template = {
     if (sent) return field(payload, "decision") === "unhide" ? `Your ${sent.name} is shown again` : `Your ${sent.name} was hidden by moderation`;
     const item = moderatedItem(payload);
     if (item) return field(payload, "decision") === "unhide" ? `Your ${item.name} is shown again` : `Your ${item.name} was hidden by moderation`;
-    const title = field(payload, "title") ?? "Your partner profile";
-    return field(payload, "decision") === "unhide" ? `${title} is shown again` : `${title} was hidden by moderation`;
+    return field(payload, "decision") === "unhide" ? "Your public profile is shown again" : "Your public profile was hidden by moderation";
   },
   Body: ({ payload, siteUrl }) => {
     const decision = field(payload, "moderation_action_id");
@@ -169,8 +168,8 @@ export const moderationDecision: Template = {
     const slug = field(payload, "org_slug");
     return (
       <Layout
-        preview={unhidden ? `${title} is shown again` : `${title} was hidden by moderation`}
-        heading={unhidden ? "Your partner profile is shown again" : "Your partner profile was hidden"}
+        preview={unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation"}
+        heading={unhidden ? "Your public profile is shown again" : "Your public profile was hidden"}
       >
         <Paragraph>
           {unhidden

@@ -440,7 +440,7 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       }
       const title = text(payload, "title") ?? "Your partner profile";
       return {
-        title: unhidden ? `${title} is shown again` : `${title} was hidden by moderation`,
+        title: unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation",
         href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
       };
     },

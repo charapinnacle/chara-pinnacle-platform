@@ -109,7 +109,7 @@ test.describe("the plan and settings editor of the console (FR-R2)", () => {
     await expect(reason).toHaveValue("");
 
     await dialog.getByRole("button", { name: "Review changes" }).click();
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await expect(reason).toBeFocused();
 
     await dialog.getByRole("textbox", { name: "Job order responses per month" }).fill("12");

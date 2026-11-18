@@ -48,9 +48,9 @@ function inRange(value: string, max: number): boolean {
 
 export const planFormSchema = z
   .object({
-    name: z.string().trim().min(1, "Enter a name of 1 to 60 characters").max(60, "Enter a name of 1 to 60 characters"),
+    name: z.string().trim().min(1, "Enter a name of 1 to 60 characters.").max(60, "Enter a name of 1 to 60 characters."),
     isPublic: z.boolean(),
-    trialDays: z.string().refine((value) => inRange(value, 365), "Enter a whole number of days from 0 to 365"),
+    trialDays: z.string().refine((value) => inRange(value, 365), "Enter a whole number of days from 0 to 365."),
     limits: z.record(z.string(), z.object({ unlimited: z.boolean(), value: z.string() })),
     features: z.record(z.string(), z.boolean()),
     reason: staffReasonSchema,
@@ -58,7 +58,7 @@ export const planFormSchema = z
   .superRefine((values, ctx) => {
     for (const [key, limit] of Object.entries(values.limits)) {
       if (!limit.unlimited && !inRange(limit.value, LIMIT_MAX)) {
-        ctx.addIssue({ code: "custom", path: ["limits", key, "value"], message: "Enter a whole number from 0 to 1,000,000" });
+        ctx.addIssue({ code: "custom", path: ["limits", key, "value"], message: "Enter a whole number from 0 to 1,000,000." });
       }
     }
   });
@@ -132,7 +132,7 @@ const planCodeSchema = z.string().regex(/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/).max(64)
 const keySchema = z.string().regex(/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/).max(64);
 
 const planFieldsSchema = z.object({
-  name: z.string().trim().min(1, "Enter a name of 1 to 60 characters").max(60, "Enter a name of 1 to 60 characters"),
+  name: z.string().trim().min(1, "Enter a name of 1 to 60 characters.").max(60, "Enter a name of 1 to 60 characters."),
   isPublic: z.boolean(),
   trialDays: z.number().int().min(0).max(365),
 });
@@ -149,7 +149,7 @@ export const savePlanInputSchema = z
   })
   .refine((input) => input.plan !== null || input.limits.length > 0 || input.features.length > 0, {
     path: ["reason"],
-    error: "Change at least one value",
+    error: "Change at least one value.",
   });
 
 export type SavePlanInput = z.input<typeof savePlanInputSchema>;
@@ -159,7 +159,7 @@ export type SavePlanInput = z.input<typeof savePlanInputSchema>;
 export const PRICE_MIN_MINOR = 100;
 export const PRICE_MAX_MINOR = 10_000_000;
 const amountPattern = /^\d{1,6}(\.\d{1,2})?$/;
-const AMOUNT_RANGE = "Enter an amount from 1.00 to 100,000.00, for example 54.00";
+const AMOUNT_RANGE = "Enter an amount from 1.00 to 100,000.00, for example 54.00.";
 
 // The amount typed in the form in minor units, or null when it is not an amount in range.
 export function amountMinor(value: string): number | null {
@@ -175,7 +175,7 @@ export function priceFormSchema(currentMinor: number) {
     amount: z.string().superRefine((value, ctx) => {
       const minor = amountMinor(value);
       if (minor === null) ctx.addIssue({ code: "custom", message: AMOUNT_RANGE });
-      else if (minor === currentMinor) ctx.addIssue({ code: "custom", message: "Enter a price other than the current one" });
+      else if (minor === currentMinor) ctx.addIssue({ code: "custom", message: "Enter a price other than the current one." });
     }),
     reason: staffReasonSchema,
   });
@@ -204,10 +204,10 @@ export function expiryInstant(day: string): string {
 }
 
 export const overrideFormSchema = z.object({
-  organizationId: z.uuid({ error: "Choose an organisation" }),
-  limitKey: z.string().min(1, "Choose a limit"),
-  value: z.string().refine((value) => inRange(value, LIMIT_MAX), "Enter a whole number from 0 to 1,000,000"),
-  expiresOn: z.string().refine((value) => isFutureDay(value), "Enter a date after today as year-month-day"),
+  organizationId: z.uuid({ error: "Choose an organisation." }),
+  limitKey: z.string().min(1, "Choose a limit."),
+  value: z.string().refine((value) => inRange(value, LIMIT_MAX), "Enter a whole number from 0 to 1,000,000."),
+  expiresOn: z.string().refine((value) => isFutureDay(value), "Enter a date after today as year-month-day."),
   reason: staffReasonSchema,
 });
 
@@ -217,7 +217,7 @@ export const overrideInputSchema = z.object({
   organizationId: z.uuid(),
   limitKey: keySchema,
   value: z.number().int().min(0).max(LIMIT_MAX),
-  expiresOn: z.string().refine((value) => isFutureDay(value), "Enter a date after today as year-month-day"),
+  expiresOn: z.string().refine((value) => isFutureDay(value), "Enter a date after today as year-month-day."),
   reason: staffReasonSchema,
 });
 
@@ -250,8 +250,8 @@ export function settingValueError(rule: Pick<SettingRule, "valueType" | "min" | 
     const max = rule.max ?? 0;
     return /^-?\d{1,9}$/.test(value) && Number(value) >= min && Number(value) <= max ? null : `Enter a whole number from ${min} to ${max}`;
   }
-  if (rule.valueType === "boolean") return value === "true" || value === "false" ? null : "Choose on or off";
-  if (rule.valueType === "email") return value.length <= 254 && emailPattern.test(value) ? null : "Enter an email address";
+  if (rule.valueType === "boolean") return value === "true" || value === "false" ? null : "Choose on or off.";
+  if (rule.valueType === "email") return value.length <= 254 && emailPattern.test(value) ? null : "Enter an email address.";
   return value.length >= (rule.min ?? 1) && value.length <= (rule.max ?? 0)
     ? null
     : `Enter ${rule.min ?? 1} to ${rule.max ?? 0} characters`;

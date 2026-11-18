@@ -14,7 +14,7 @@ import { slugSchema } from "@/lib/validation/team";
 export type CompanyPageResult = { message: string } | { message?: undefined; enabled: boolean; href: string };
 
 const RELEASE_OFF = "The company page cannot be changed at the moment.";
-const SUSPENDED = "This organization is suspended, so its company page cannot be changed.";
+const SUSPENDED = "This organisation is suspended, so its company page cannot be changed.";
 
 const storedSchema = z.object({ enabled: z.boolean(), slug: z.string() });
 
