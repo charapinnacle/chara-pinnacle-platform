@@ -170,7 +170,7 @@ describe("createOrganization", () => {
       error: { message: "CHARA_LIMIT_REACHED", details: "organizations", code: "P0001" },
     });
     await expect(createOrganization(input)).resolves.toEqual({
-      message: "You have reached the number of organizations one account can own.",
+      message: "You have reached the number of organisations one account can own.",
     });
   });
 
@@ -261,7 +261,7 @@ describe("updateOrganizationProfile", () => {
   it("says a suspended organisation cannot be changed, and maps a constraint to its field", async () => {
     rpcMock.mockResolvedValue(refused("CHARA_FORBIDDEN", "organization_suspended"));
     await expect(updateOrganizationProfile("acme-bau", profile)).resolves.toEqual({
-      message: "This organization is suspended, so its profile cannot be changed.",
+      message: "This organisation is suspended, so its profile cannot be changed.",
     });
     rpcMock.mockResolvedValue({
       data: null,

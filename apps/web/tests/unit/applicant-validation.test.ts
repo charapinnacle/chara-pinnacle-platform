@@ -16,7 +16,7 @@ describe("stageChangeInputSchema", () => {
   it.each(["", "applied", "viewed", "withdrawn", "Interview", "elsewhere"])("refuses the target '%s'", (status) => {
     const result = stageChangeInputSchema.safeParse({ status, note: "" });
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0].message).toBe("Choose a stage");
+    expect(result.error?.issues[0].message).toBe("Choose a stage.");
   });
 
   it("trims the note and keeps an empty one empty", () => {
@@ -33,7 +33,7 @@ describe("stageChangeInputSchema", () => {
     for (const note of ["", "   ", "\n\t"]) {
       const result = stageChangeInputSchema.safeParse({ status: "rejected", note });
       expect(result.success).toBe(false);
-      expect(result.error?.issues[0]).toMatchObject({ path: ["note"], message: "Enter a reason" });
+      expect(result.error?.issues[0]).toMatchObject({ path: ["note"], message: "Enter a reason." });
     }
   });
 });
@@ -89,10 +89,10 @@ describe("stageChangeFormSchema", () => {
   it("blocks a decline with no reason, an unknown reason, or Other with blank text", () => {
     for (const reason of ["", "bogus"]) {
       const result = schema.safeParse({ status: "rejected", reason, note: "typed text is not enough" });
-      expect(result.error?.issues[0]).toMatchObject({ path: ["reason"], message: "Choose a reason" });
+      expect(result.error?.issues[0]).toMatchObject({ path: ["reason"], message: "Choose a reason." });
     }
     const blank = schema.safeParse({ status: "rejected", reason: "other", note: "   " });
-    expect(blank.error?.issues[0]).toMatchObject({ path: ["note"], message: "Enter a reason" });
+    expect(blank.error?.issues[0]).toMatchObject({ path: ["note"], message: "Enter a reason." });
   });
 });
 
@@ -103,7 +103,7 @@ describe("noteInputSchema", () => {
 
   it("blocks an empty or blank note", () => {
     for (const body of ["", "   ", "\n \t"]) {
-      expect(noteInputSchema.safeParse({ body }).error?.issues[0].message).toBe("Enter a note");
+      expect(noteInputSchema.safeParse({ body }).error?.issues[0].message).toBe("Enter a note.");
     }
   });
 
@@ -130,6 +130,6 @@ describe("bulkActionInputSchema", () => {
     expect(bulkActionInputSchema.parse({ applicationIds: idList(100), status: "offer", note: " Week 41 " }).note).toBe("Week 41");
     expect(bulkActionInputSchema.safeParse({ applicationIds: idList(101), status: "offer", note: "" }).success).toBe(false);
     expect(bulkActionInputSchema.safeParse({ applicationIds: [], status: "offer", note: "" }).success).toBe(false);
-    expect(bulkActionInputSchema.safeParse({ applicationIds: idList(1), status: "rejected", note: " " }).error?.issues[0].message).toBe("Enter a reason");
+    expect(bulkActionInputSchema.safeParse({ applicationIds: idList(1), status: "rejected", note: " " }).error?.issues[0].message).toBe("Enter a reason.");
   });
 });

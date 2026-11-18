@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/unit/**/*.test.{ts,tsx}"],
+    setupFiles: ["tests/unit/support/labels-as-written.ts"],
     env: {
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test_key",
