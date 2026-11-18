@@ -162,8 +162,11 @@ test.describe("which plans and what they list (FR-H2 AC5, AC6, AC11)", () => {
       await expect(card.getByText("Shortlisting of applicants")).toBeVisible();
     }
     const basic = await planCard(page, "Basic").innerText();
-    expect(basic).not.toMatch(/match|corridor|worker search|requirement|analytics/i);
-    await expect(planCard(page, "Basic").getByRole("listitem")).toHaveCount(4);
+    expect(basic).not.toMatch(/match|corridor|worker search|analytics/i);
+    // The workforce requirements and partner invitations are limits of the plan record like the others (FR-R1 AC3).
+    await expect(planCard(page, "Basic").getByRole("listitem").filter({ hasText: "4 active workforce requirements" })).toHaveCount(1);
+    await expect(planCard(page, "Basic").getByRole("listitem").filter({ hasText: "3 partner invitations per requirement" })).toHaveCount(1);
+    await expect(planCard(page, "Basic").getByRole("listitem")).toHaveCount(6);
   });
 
   test("AC11: no public plan shows the unavailable notice and the worker statement, a failed read shows the error page", async ({ page }) => {

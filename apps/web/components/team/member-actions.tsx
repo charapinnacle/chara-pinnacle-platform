@@ -37,7 +37,7 @@ export function MemberActions({ slug, userId, name, role }: MemberActionsProps) 
       </FormButton>
       <ModalDialog open={confirming} onClose={() => setConfirming(false)} title={`Remove ${name}?`}>
         <p className="text-body leading-relaxed">
-          {name} loses access to this organization at once and is signed out of {BRAND_NAME}.
+          {name} loses access to this organisation at once and is signed out of {BRAND_NAME}.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <FormButton type="button" variant="secondary" className="w-full" onClick={() => setConfirming(false)}>

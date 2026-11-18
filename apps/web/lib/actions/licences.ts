@@ -24,7 +24,7 @@ export type EvidenceUploadResult = { message?: string; upload?: { path: string; 
 export type EvidenceDownloadResult = { message?: string; url?: string };
 
 const RELEASE_OFF = "Licences cannot be changed at the moment.";
-const SUSPENDED = "This organization is suspended, so its licences cannot be changed.";
+const SUSPENDED = "This organisation is suspended, so its licences cannot be changed.";
 const GONE = "This licence no longer exists.";
 
 // The database names the refused field; the form shows the message at it.

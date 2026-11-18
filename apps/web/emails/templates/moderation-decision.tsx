@@ -22,8 +22,7 @@ export const moderationDecision: Template = {
       const about = field(payload, "title");
       return about ? `Your appeal about ${about} was decided` : "Your appeal was decided";
     }
-    const title = field(payload, "title") ?? "Your partner profile";
-    return field(payload, "decision") === "unhide" ? `${title} is shown again` : `${title} was hidden by moderation`;
+    return field(payload, "decision") === "unhide" ? "Your public profile is shown again" : "Your public profile was hidden by moderation";
   },
   Body: ({ payload, siteUrl }) => {
     const decision = field(payload, "moderation_action_id");
@@ -73,8 +72,8 @@ export const moderationDecision: Template = {
     const unhidden = field(payload, "decision") === "unhide";
     return (
       <Layout
-        preview={unhidden ? `${title} is shown again` : `${title} was hidden by moderation`}
-        heading={unhidden ? "Your partner profile is shown again" : "Your partner profile was hidden"}
+        preview={unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation"}
+        heading={unhidden ? "Your public profile is shown again" : "Your public profile was hidden"}
       >
         <Paragraph>
           {unhidden
