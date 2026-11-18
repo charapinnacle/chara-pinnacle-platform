@@ -83,7 +83,7 @@ test.describe("Partner plans on the pricing page and the partner checkout (FR-R1
     await expect(staffing).toContainText("10 workforce listings");
     const staffingBasic = staffing.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Basic" }) });
     await expect(staffingBasic).toContainText("10 responses to workforce requests per month");
-    await expect(staffingBasic).not.toContainText("candidate submissions");
+    await expect(staffingBasic).toContainText("25 candidate submissions per month");
     await expect(page.getByText("A paid plan does not make a recruitment or staffing company verified")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
