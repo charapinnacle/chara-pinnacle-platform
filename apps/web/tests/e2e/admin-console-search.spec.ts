@@ -49,7 +49,7 @@ test.describe("the search of users, organisations and the audit log", () => {
       if (request.method() === "POST" && request.url().endsWith("/en/admin/users")) posts.push(request.url());
     });
     await search(page, "Search users", "ab");
-    await expect(page.getByText("Enter at least 3 characters")).toBeVisible();
+    await expect(page.getByText("Enter at least 3 characters.")).toBeVisible();
     await expect(page.getByLabel("Search users", { exact: true })).toHaveAttribute("aria-invalid", "true");
     expect(posts).toEqual([]);
     await page.getByLabel("Search users", { exact: true }).fill("x".repeat(150));
@@ -169,14 +169,14 @@ test.describe("the search of users, organisations and the audit log", () => {
 
     await page.getByLabel("Actor (user id)").fill("not-a-user");
     await page.getByRole("button", { name: "Search" }).click();
-    await expect(page.getByText("Enter a valid user id").first()).toBeVisible();
+    await expect(page.getByText("Enter a valid user id.").first()).toBeVisible();
     await expect(page.getByLabel("Actor (user id)")).toHaveAttribute("aria-describedby", /error/);
     await page.getByLabel("Actor (user id)").fill("");
 
     await page.getByLabel("From (UTC)").fill("2026-12-31");
     await page.getByLabel("To (UTC)").fill("2026-01-01");
     await page.getByRole("button", { name: "Search" }).click();
-    await expect(page.getByText("The start date must not be after the end date").first()).toBeVisible();
+    await expect(page.getByText("The start date must not be after the end date.").first()).toBeVisible();
     await page.getByLabel("From (UTC)").fill("");
     await page.getByLabel("To (UTC)").fill("");
 

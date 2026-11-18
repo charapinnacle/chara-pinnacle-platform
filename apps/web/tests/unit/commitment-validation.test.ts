@@ -11,7 +11,7 @@ describe("the employer-pays commitment (FR-J3)", () => {
     expect(commitmentSchema.safeParse({ confirmed: true }).success).toBe(true);
     const refused = commitmentSchema.safeParse({ confirmed: false });
     expect(refused.success).toBe(false);
-    expect(refused.error?.issues[0]).toMatchObject({ path: ["confirmed"], message: "Please confirm the commitment to continue" });
+    expect(refused.error?.issues[0]).toMatchObject({ path: ["confirmed"], message: "Please confirm the commitment to continue." });
     expect(commitmentSchema.safeParse({}).success).toBe(false);
   });
 

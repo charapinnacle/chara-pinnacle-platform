@@ -98,7 +98,7 @@ test.describe("suspending and reinstating from the console", () => {
     await waitForHydration(field);
     await field.fill("too short");
     await page.getByRole("button", { name: "Suspend user", exact: true }).click();
-    await expect(page.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(page.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     expect(moderationRows(user.id)).toEqual([]);
 
     const posts: string[] = [];

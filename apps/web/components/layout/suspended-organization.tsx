@@ -22,7 +22,7 @@ export function SuspendedOrganization({ title = "Applicants", subject = "applica
     <div className="grid w-full max-w-3xl gap-4">
       <PageHeader title={title} />
       <Notice tone="error" role="alert">
-        This organization is suspended, so its {subject} are not available.
+        This organisation is suspended, so its {subject} are not available.
       </Notice>
       <Suspense fallback={null}>
         <AppealLink />

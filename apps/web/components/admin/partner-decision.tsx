@@ -2,12 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { toastError } from "@/components/feedback/toast-store";
 import { FormButton } from "@/components/forms/form-button";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
+import { Notice } from "@/components/forms/notice";
 import { TextareaField } from "@/components/forms/form-field";
 import { SelectField } from "@/components/forms/select-field";
 import { useServerFormSubmit } from "@/components/forms/use-server-form-submit";
@@ -15,7 +16,10 @@ import { decidePartner } from "@/lib/actions/admin-partner-reviews";
 import { adminPath } from "@/lib/routes";
 import {
   decisionFormSchema,
+  CHECKLIST_REQUIRED,
+  firstUncheckedPoint,
   infoStepStaffLabels,
+  STAFF_REVIEW_CHECKS,
   type DecisionForm,
   type PartnerDecision,
 } from "@/lib/validation/partner-review";
@@ -49,23 +53,88 @@ const stepOptions = Object.entries(infoStepStaffLabels).map(([value, label]) => 
 
 type PartnerDecisionProps = { lang: string; organizationId: string; companyName: string };
 
+type ReviewChecklistProps = {
+  checked?: readonly boolean[];
+  onChange?: (index: number, value: boolean) => void;
+  inputRefs?: React.RefObject<(HTMLInputElement | null)[]>;
+  errorId?: string;
+};
+
+// What staff check before they decide (FR-J4 AC2); the ticks are not stored.
+export function ReviewChecklist({ checked, onChange, inputRefs, errorId }: ReviewChecklistProps) {
+  return (
+    <fieldset className="grid gap-2" aria-describedby={errorId}>
+      <legend className="sr-only">Review checklist</legend>
+      {STAFF_REVIEW_CHECKS.map((check, index) => (
+        <div key={check} className="flex items-center gap-3">
+          <input
+            ref={(element) => {
+              if (inputRefs) inputRefs.current[index] = element;
+            }}
+            id={`review-check-${index}`}
+            type="checkbox"
+            className="size-5 accent-foreground"
+            checked={checked?.[index]}
+            onChange={onChange ? (event) => onChange(index, event.target.checked) : undefined}
+          />
+          <label htmlFor={`review-check-${index}`} className="text-body">
+            {check}
+          </label>
+        </div>
+      ))}
+    </fieldset>
+  );
+}
+
 // The three decisions of a Trust & Safety Administrator (FR-J4 AC3, AC11), each in a dialog that asks for the statement of
-// reasons, and for a request for information the step it reopens. The dialog keeps the text when the call fails; after a
-// decision the reviewer returns to the queue with focus on the next partner.
+// reasons, and for a request for information the step it reopens. Approve and list opens only once every point of the
+// checklist is ticked (the review control of FR-J4); a request for information or a decline is what staff do when a point
+// does not hold, so they stay open. The dialog keeps the text when the call fails; after a decision the reviewer returns
+// to the queue with focus on the next partner.
 export function PartnerDecisionControls({ lang, organizationId, companyName }: PartnerDecisionProps) {
   const [decision, setDecision] = useState<PartnerDecision | null>(null);
+  const [checked, setChecked] = useState<boolean[]>(() => STAFF_REVIEW_CHECKS.map(() => false));
+  const [checklistError, setChecklistError] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  function approve() {
+    const missing = firstUncheckedPoint(checked);
+    if (missing !== null) {
+      setChecklistError(true);
+      inputRefs.current[missing]?.focus();
+      return;
+    }
+    setDecision("approve");
+  }
 
   return (
-    <div className="flex flex-wrap gap-3">
-      <FormButton type="button" className="w-full sm:w-auto" onClick={() => setDecision("approve")}>
-        {words.approve.open}
-      </FormButton>
-      <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setDecision("request_info")}>
-        {words.request_info.open}
-      </FormButton>
-      <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setDecision("decline")}>
-        {words.decline.open}
-      </FormButton>
+    <div className="grid gap-4">
+      <ReviewChecklist
+        checked={checked}
+        onChange={(index, value) => {
+          const next = checked.map((item, position) => (position === index ? value : item));
+          setChecked(next);
+          if (firstUncheckedPoint(next) === null) setChecklistError(false);
+        }}
+        inputRefs={inputRefs}
+        errorId={checklistError ? "review-checklist-error" : undefined}
+      />
+      {checklistError ? (
+        <Notice id="review-checklist-error" tone="error" role="alert">
+          {CHECKLIST_REQUIRED}
+        </Notice>
+      ) : null}
+      <div className="flex flex-wrap gap-3">
+        <FormButton type="button" className="w-full sm:w-auto" onClick={approve}>
+          {words.approve.open}
+        </FormButton>
+        <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setDecision("request_info")}>
+          {words.request_info.open}
+        </FormButton>
+        <FormButton type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setDecision("decline")}>
+          {words.decline.open}
+        </FormButton>
+      </div>
       <ModalDialog open={decision !== null} onClose={() => setDecision(null)} title={decision ? words[decision].title : ""}>
         {decision ? (
           <DecisionFormView
