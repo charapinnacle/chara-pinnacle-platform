@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  baseText,
   countedRange,
   countText,
+  dayLabel,
   figureLabel,
   figureText,
   hasNoActivity,
@@ -104,7 +106,18 @@ describe("the partner network statistics", () => {
     expect(figureText(figure({ unit: "hours", value: 1 }), 5)).toBe("1 hour");
     expect(figureText(figure({ unit: "ratio", value: 1.25 }), 5)).toBe("1.25");
     expect(figureText(figure({ unit: "count", value: 14 }), 5)).toBe("14");
-    expect(figureText(figure({ value: null, base: null }), 5)).toBe("Not shown: based on fewer than 5");
+    expect(figureText(figure({ value: null, base: null }), 5)).toBe("Not shown: below the privacy threshold of 5");
+  });
+
+  it("show the base of a shown figure with digit grouping, and none for a hidden one", () => {
+    expect(baseText(1240)).toBe("1,240");
+    expect(baseText(7)).toBe("7");
+    expect(baseText(null)).toBe("-");
+  });
+
+  it("write the days of the statistics in the shared date format, not as ISO dates", () => {
+    expect(dayLabel("2025-03-01")).toBe("1 March 2025");
+    expect(periodLabel("2025-03-03", "week")).toBe("Week of 3 March 2025");
   });
 
   it("name a plan figure by its partner type and plan, and no figure it does not know", () => {

@@ -118,7 +118,7 @@ test.describe("Network statistics for administrators (FR-S2, release 2a)", () =>
       const searches = metricTable(page, "Searches, saves and follows: Recruitment partner searches");
       await expect(searches.getByRole("row", { name: /March 2025/ })).toContainText("240");
       await expect(searches.getByRole("row", { name: /April 2025/ })).toContainText("down from 240");
-      await expect(section(page).getByRole("region", { name: `Key figures from ${MARCH} to ${APRIL_END}` })).toContainText(
+      await expect(section(page).getByRole("region", { name: "Key figures from 1 March 2025 to 30 April 2025" })).toContainText(
         "Saves and follows of partners per 100 partner searches",
       );
       await expect(section(page).getByText("Whole periods from 1 March 2025 to 30 April 2025.")).toBeVisible();

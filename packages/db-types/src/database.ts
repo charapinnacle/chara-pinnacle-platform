@@ -1447,7 +1447,7 @@ isOneToOne: false
                            },
 "admin_partner_search_stats":
 { Args: { "p_from": string,"p_kind": string,"p_to": string }; Returns: {
-              "searches": number,"with_results": number,"zero_by_destination": Json,"zero_results": number
+              "min_count": number,"searches": number,"with_results": number,"zero_by_destination": Json,"zero_results": number
             }[]
                            },
 "admin_record_plan_price":

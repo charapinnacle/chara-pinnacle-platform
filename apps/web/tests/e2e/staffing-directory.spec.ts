@@ -428,12 +428,15 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
   test("KPIs: a Platform Administrator reads the staffing and available workforce searches", async ({ page }) => {
     const ids = execute(
       `insert into stats.partner_searches (kind, filter_names, destination_country, result_count)
-       values ('staffing', '{destination}', 'IS', 0), ('available_workforce', '{destination,occupation,capacity,timeframe}', 'MT', 0)
+       select kind, filter_names::text[], destination, 0
+       from (values ('staffing', '{destination}', 'IS'), ('available_workforce', '{destination,occupation,capacity,timeframe}', 'MT')) v (kind, filter_names, destination),
+         generate_series(1, 5)
        returning id`,
     )
       .trim()
       .split("\n");
-    expect(ids).toHaveLength(2);
+    // Five of each: a destination below the privacy threshold (stats_min_count, 5) is not listed (FR-S2 AC9).
+    expect(ids).toHaveLength(10);
     try {
       await signInStaff(page, "admin", "/en/admin/statistics");
       const section = page.getByRole("region", { name: "Partner searches" });

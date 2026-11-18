@@ -267,12 +267,22 @@ export async function applicationCounts(from: string, to: string): Promise<Stage
 
 const zeroByDestinationSchema = z.array(z.object({ code: z.string(), name: z.string(), searches: z.number() }));
 
+// A count below minCount is null (the database suppresses it, FR-S2 AC9).
 export type PartnerSearchCounts = {
-  searches: number;
-  withResults: number;
-  zeroResults: number;
+  searches: number | null;
+  withResults: number | null;
+  zeroResults: number | null;
   zeroByDestination: z.infer<typeof zeroByDestinationSchema>;
+  minCount: number;
 };
+
+const partnerSearchRowSchema = z.object({
+  searches: z.number().nullable(),
+  with_results: z.number().nullable(),
+  zero_results: z.number().nullable(),
+  zero_by_destination: zeroByDestinationSchema,
+  min_count: z.number().int(),
+});
 
 export type PartnerSearchKind = "recruitment" | "staffing" | "available_workforce";
 
@@ -282,12 +292,13 @@ export async function partnerSearchCounts(kind: PartnerSearchKind, from: string,
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_partner_search_stats", { p_kind: kind, p_from: from, p_to: to });
   if (error) throw failure("The partner search statistics", error);
-  const [row] = data;
+  const [row] = z.array(partnerSearchRowSchema).length(1).parse(data);
   return {
     searches: row.searches,
     withResults: row.with_results,
     zeroResults: row.zero_results,
-    zeroByDestination: zeroByDestinationSchema.parse(row.zero_by_destination),
+    zeroByDestination: row.zero_by_destination,
+    minCount: row.min_count,
   };
 }
 
