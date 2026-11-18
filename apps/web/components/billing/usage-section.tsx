@@ -44,14 +44,15 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
       <ul className="grid gap-5">
         {usage.map(({ key, used, limit, applies }) => {
           const level = classifyUsage(used, limit);
-          const stateText = STATE_TEXT[level.state];
+          const notIncluded = limit === 0 && used === 0;
+          const stateText = notIncluded ? null : STATE_TEXT[level.state];
           return (
             <li key={key} className="grid gap-2">
               <p className="flex flex-wrap items-baseline justify-between gap-x-4">
                 <span className="font-medium">{USAGE_NAMES[key]}</span>
-                <span>{level.label}</span>
+                <span>{notIncluded ? "Not included in your plan" : level.label}</span>
               </p>
-              {limit !== null && level.percent !== null ? (
+              {limit !== null && level.percent !== null && !notIncluded ? (
                 <div
                   role="progressbar"
                   aria-label={USAGE_NAMES[key]}

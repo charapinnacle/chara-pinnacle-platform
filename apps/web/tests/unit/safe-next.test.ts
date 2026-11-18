@@ -77,4 +77,16 @@ describe("signedInLoginTarget", () => {
     expect(signedInLoginTarget("en", "//evil.example", "worker")).toBe("/en/dashboard/worker");
     expect(signedInLoginTarget("en", "/en/login?next=/en/jobs", "worker")).toBe("/en/dashboard/worker");
   });
+
+  it("sends a company account straight to the dashboard of the type of its first organisation", () => {
+    expect(signedInLoginTarget("en", null, "company", { slug: "manila", type: "recruitment_company" })).toBe(
+      "/en/dashboard/recruitment?org=manila",
+    );
+    expect(signedInLoginTarget("en", null, "company", { slug: "cebu", type: "staffing_company" })).toBe(
+      "/en/dashboard/staffing?org=cebu",
+    );
+    expect(signedInLoginTarget("en", null, "company", { slug: "acme", type: "employer" })).toBe("/en/dashboard/employer");
+    expect(signedInLoginTarget("en", null, "company", null)).toBe("/en/dashboard/employer");
+    expect(signedInLoginTarget("en", "/en/messages", "company", { slug: "manila", type: "recruitment_company" })).toBe("/en/messages");
+  });
 });

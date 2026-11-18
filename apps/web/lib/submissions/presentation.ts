@@ -56,7 +56,7 @@ export const submissionTones: Record<SubmissionStatus, StatusTone> = {
 export const CLOSED_SUBMISSION_LABEL = "Closed";
 
 export const CANDIDATE_CLOSED_NEXT_STEP =
-  "This request is no longer open because the employer closed submissions for this partner. Nothing was shared with the employer.";
+  "This request is no longer open because the employer is no longer taking candidates from this partner. Nothing was shared with the employer.";
 
 export const PARTNER_CLOSED_NEXT_STEP =
   "Candidate submissions are closed for your company on this requirement, so this request ended before the candidate answered. Nothing was shared with the employer.";
