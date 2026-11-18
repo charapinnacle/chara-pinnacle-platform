@@ -221,7 +221,8 @@ test.describe("Inviting a saved partner (FR-O1 AC12, FR-L4)", () => {
     const dialog = page.getByRole("dialog", { name: `Invite ${saved.displayName} to a requirement` });
     await expect(dialog.getByRole("radio", { name: "Kyrenia welders" })).toBeChecked();
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${saved.displayName} is invited by ${displayName(team.id)}`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Invitation sent to ${saved.displayName}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: `Invitation sent to ${saved.displayName} for Kyrenia welders by ${displayName(team.id)}.` })).toBeVisible();
     await expect(page.getByText("1 of 10 invitations used.", { exact: true })).toBeVisible();
     expect(invitationRows(id)).toMatchObject([{ organization_id: saved.id, status: "invited", source: "saved" }]);
 
@@ -258,7 +259,8 @@ test.describe("Inviting for the right employer (FR-O1 AC12)", () => {
     await expect(group.getByRole("radio", { name: "Famagusta welders" })).toBeChecked();
     await expect(group).toContainText("0 of 10 invitations used");
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${p1.displayName} is invited by ${secondName}`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Invitation sent to ${p1.displayName}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: `Invitation sent to ${p1.displayName} for Famagusta welders by ${secondName}.` })).toBeVisible();
     expect(
       query<{ employer: string; source: string }>(
         `select employer_organization_id as employer, source from public.requirement_invitations where organization_id = ${literal(p1.id)}`,
@@ -381,13 +383,13 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     let dialog = page.getByRole("dialog", { name: `Invite ${p1.displayName} to a requirement` });
     await dialog.getByRole("radio", { name: "Private Larnaca welders" }).check();
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${p1.displayName} is invited by ${employer}`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Invitation sent to ${p1.displayName}`, { exact: true })).toBeVisible();
     await invite.click();
     dialog = page.getByRole("dialog", { name: `Invite ${p1.displayName} to a requirement` });
     await expect(dialog.getByRole("list", { name: "Requirements this partner is invited to" })).toHaveText("Private Larnaca welders: Invited");
     await expect(dialog.getByRole("radio")).toHaveCount(1);
     await dialog.getByRole("button", { name: "Send invitation" }).click();
-    await expect(page.getByText(`${p1.displayName} is invited by ${employer}`, { exact: true }).last()).toBeVisible();
+    await expect(page.getByText(`Invitation sent to ${p1.displayName}`, { exact: true }).last()).toBeVisible();
     const [privateInvitation] = query<{ id: string; source: string }>(
       `select id, source from public.requirement_invitations where requirement_id = ${literal(privateId)} and organization_id = ${literal(p1.id)}`,
     );

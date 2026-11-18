@@ -133,3 +133,8 @@ export function inboxQuery({ status, cursor }: InboxParams): string {
 export function inboxCountText(count: number, more: boolean): string {
   return `${formatCount(count)} ${count === 1 ? "invitation" : "invitations"} shown${more ? ", more on the next page" : ""}`;
 }
+
+// The confirmation of one partner invited from its profile or the saved partners (FR-O1 AC12, NFR-U4).
+export function inviteSentText(partner: string, employer: string, requirement: string | undefined): string {
+  return `Invitation sent to ${partner}${requirement ? ` for ${requirement}` : ""} by ${employer}.`;
+}

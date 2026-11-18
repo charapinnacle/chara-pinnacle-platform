@@ -52,6 +52,8 @@ const ids = {
   notes: "response-notes",
 } as const;
 
+const sendingId = "response-document-sending";
+
 const feeIcons = {
   fee_per_hire: UserCheck,
   percent_first_year_salary: Percent,
@@ -127,6 +129,7 @@ export function ResponseForm({
   const [limitReached, setLimitReached] = useState<UsagePrompt | null>(null);
   const [stale, setStale] = useState(false);
   const [pollKey, setPollKey] = useState(0);
+  const [sendingFile, setSendingFile] = useState(false);
   // The summary takes the focus after a refusal of the server; after a check of the form the first invalid field does.
   const [refused, setRefused] = useState(false);
   const feeModel = useWatch({ control, name: "feeModel" }) as FeeModel | "";
@@ -134,6 +137,7 @@ export function ResponseForm({
   const currencyOptions = useMemo(() => toOptions(currencies), [currencies]);
 
   function onSubmit(values: ResponseFormValues) {
+    if (sendingFile) return;
     setLimitReached(null);
     setStale(false);
     setRefused(false);
@@ -236,7 +240,14 @@ export function ResponseForm({
           description={`Anything else the employer should know about your proposal. Up to ${formatCount(NOTES_MAX)} characters.`}
         />
       </fieldset>
-      <ResponseDocuments slug={slug} requirementId={requirementId} initial={documents} max={documentsMax} pollKey={pollKey} />
+      <ResponseDocuments
+        slug={slug}
+        requirementId={requirementId}
+        initial={documents}
+        max={documentsMax}
+        pollKey={pollKey}
+        onSendingChange={setSendingFile}
+      />
       {limitReached ? (
         <Notice tone="warning" role="status">
           <UpgradePrompt
@@ -249,13 +260,16 @@ export function ResponseForm({
           />
         </Notice>
       ) : null}
+      <p id={sendingId} role="status" className="text-small text-muted-foreground empty:hidden">
+        {sendingFile ? `A document is still being sent. You can ${edit ? "save your changes" : "send your response"} once it has arrived.` : ""}
+      </p>
       <div className="flex flex-wrap gap-3">
         <FormButton
           type="submit"
           className="w-auto"
           busy={formState.isSubmitting}
-          disabled={blockedBy !== undefined}
-          aria-describedby={blockedBy}
+          disabled={blockedBy !== undefined || sendingFile}
+          aria-describedby={[blockedBy, sendingFile ? sendingId : undefined].filter(Boolean).join(" ") || undefined}
         >
           {edit ? "Save changes" : "Send response"}
         </FormButton>
