@@ -169,7 +169,7 @@ test.describe("checkout: when the state changed since the page was shown", () =>
     startTrial(team);
     await proceed(page).click();
     await expect(page.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText(
-      "Your organization already has a subscription. Use Manage billing to change it.",
+      "Your organisation already has a subscription. Use Manage billing to change it.",
     );
     await expect(page.getByText("Could not start the checkout", { exact: true })).toBeVisible();
     expect(customerRows(team)).toEqual([]);

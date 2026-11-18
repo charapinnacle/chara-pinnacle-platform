@@ -112,7 +112,7 @@ test.describe("who may open an application", () => {
 
     execute(`update public.organizations set status = 'suspended' where id = ${literal(companyA.id)}`);
     await member.goto(url);
-    await expect(member.getByRole("alert").filter({ hasText: "This organization is suspended, so its applicants are not available." })).toBeVisible();
+    await expect(member.getByRole("alert").filter({ hasText: "This organisation is suspended, so its applicants are not available." })).toBeVisible();
     await expect(member.getByText("Ana Silva")).toHaveCount(0);
     await expectAccessibleAtBothWidths(member);
     await memberContext.close();
