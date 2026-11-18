@@ -160,7 +160,7 @@ test.describe("Comparing and deciding responses (FR-O3)", () => {
     await expect(headers.nth(0)).toContainText(p1.displayName);
     await expect(headers.nth(1)).toContainText(s1.displayName);
     await expect(headers.nth(2)).toContainText(p2.displayName);
-    await expect(headers.nth(0).getByRole("link", { name: p1.displayName })).toHaveAttribute("href", `/en/partners/${p1.slug}?for=${team.slug}`);
+    await expect(headers.nth(0).getByRole("link", { name: p1.displayName, exact: true })).toHaveAttribute("href", `/en/partners/${p1.slug}?for=${team.slug}`);
     await expect(comparison(page).getByRole("rowheader")).toHaveText(ROWS);
     await expect(cell(page, "Workers offered", 0)).toHaveText("80 workers");
     await expect(cell(page, "Fee", 0)).toHaveText("EUR 1,500.00 per hire");
