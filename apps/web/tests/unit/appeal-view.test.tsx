@@ -76,7 +76,12 @@ describe("the appeal page of the console", () => {
     expect(decided).toContain("Decision reversed");
     expect(decided).toContain("The documents match the claims.");
     expect(decided).not.toContain(">Reverse the decision</button>");
+    expect(decided.match(/>Outcome</g)).toHaveLength(1);
+    expect(decided).toContain(">Result<");
     expect(await render(appeal({ overdue: true }))).toContain("Overdue");
+    const replaced = await render(appeal({ inEffect: false }));
+    expect(replaced).toContain("No: a later decision changed it");
+    expect(replaced).not.toContain("or the vacancy was deleted");
   });
 });
 
@@ -119,5 +124,8 @@ describe("the reversal statement of an appeal", () => {
     expect(gone).toContain("or the vacancy was deleted");
     expect(gone).toContain("nothing is undone");
     expect(undoOf(appeal({ action: "something_else" }))).toBe("What the decision took away is restored.");
+    const profile = undoOf(appeal({ inEffect: false }));
+    expect(profile).toContain("(a later decision changed it)");
+    expect(profile).not.toContain("vacancy");
   });
 });

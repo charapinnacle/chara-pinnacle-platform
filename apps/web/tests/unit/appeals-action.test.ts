@@ -87,7 +87,7 @@ describe("decideAppeal", () => {
   });
 
   it("refuses a short statement or an unknown outcome and calls nothing", async () => {
-    expect((await decideAppeal({ id: 7, outcome: "uphold", reason: "Too short" })).errors).toEqual({ reason: "Give a reason of at least 10 characters" });
+    expect((await decideAppeal({ id: 7, outcome: "uphold", reason: "Too short" })).errors).toEqual({ reason: "Give a reason of at least 10 characters." });
     expect(await decideAppeal({ id: 7, outcome: "reverse" as "restore", reason: "A reason that is long enough." })).toHaveProperty("errors.outcome");
     expect(rpcMock).not.toHaveBeenCalled();
   });

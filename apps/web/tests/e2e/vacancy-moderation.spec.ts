@@ -94,7 +94,7 @@ test.describe("moderating a vacancy from the console", () => {
     const staff = await signInStaff(page, "trust_safety", "/en/admin/moderation");
     await waitForHydration(page.getByLabel("Search vacancies"));
     await search(page, "ab");
-    await expect(page.getByText("Enter at least 3 characters")).toBeVisible();
+    await expect(page.getByText("Enter at least 3 characters.")).toBeVisible();
     await expect(rows(page)).toHaveCount(0);
 
     await search(page, tag);
@@ -133,7 +133,7 @@ test.describe("moderating a vacancy from the console", () => {
     await expect(dialog).toContainText(displayName(company.id));
     await expectNoAxeViolations(page);
     await pressEnterOn(page, "Hide vacancy");
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     expect(moderationRows(open)).toEqual([]);
 
     await dialog.getByLabel("Statement of reasons").fill(REASON);
