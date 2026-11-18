@@ -163,9 +163,9 @@ test.describe("Find staffing partners and available workforce (FR-L2, FR-K3)", (
     expect(html).not.toContain(`Staff Legal ${batch.token}`);
     expect(html).not.toContain(batch.owner.email);
 
+    await expect(page).toHaveTitle(/Find staffing partners/);
     const head = await readHead(page);
     expect(head.canonical).toBe(`${SITE}${DIRECTORY}`);
-    expect(head.title).toContain("Find staffing partners");
     await expectAccessibleAtBothWidths(page);
 
     await page.goto("/en/partners/recruitment?destination=DE");
