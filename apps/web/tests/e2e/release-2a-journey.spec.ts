@@ -62,7 +62,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
 
     // Company.
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(currentStep(page)).toContainText("Step 1 of 5: Company");
+    await expect(currentStep(page)).toContainText("Step 1 of 6: Company");
     await fillPartnerCompany(page, {
       legalName,
       displayName,
@@ -81,7 +81,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
     await pickWithKeys(page, OCCUPATIONS, "weld", "7212 · Welders and flame cutters");
     await pickWithKeys(page, OCCUPATIONS, "electricians", "7411 · Building and related electricians");
     await pickWithKeys(page, "Which languages do your candidates speak? (optional)", "engl", "English");
-    await page.getByRole("radiogroup", { name: "Recruitment type" }).getByRole("radio", { name: "International" }).check();
+    await page.getByRole("radiogroup", { name: "Recruitment type" }).getByRole("radio", { name: "International", exact: true }).check();
     await page.getByRole("button", { name: "Continue" }).click();
 
     // Commitments: the employer-pays commitment, accepted by the owner.
@@ -147,6 +147,9 @@ test.describe("release 2a journey (NFR-O4)", () => {
     // Trust & Safety list the partner with a statement of reasons.
     const staff = await newVisitor(browser);
     const { user: trust } = await signInStaff(staff.page, "trust_safety", `/en/admin/partners/${organization.id}`);
+    for (const check of ["Legal entity matches public register", "Website belongs to the company", "Licences reviewed"]) {
+      await staff.page.getByRole("checkbox", { name: check }).check();
+    }
     await staff.page.getByRole("button", { name: "Approve and list" }).click();
     const approve = staff.page.getByRole("dialog", { name: "List partner" });
     await approve.getByLabel("Reason").fill("Registry entry, website and licence match");

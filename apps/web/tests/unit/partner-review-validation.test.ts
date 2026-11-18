@@ -4,7 +4,7 @@ import {
   decisionFormSchema,
   decisionInputSchema,
   decisionLabels,
-  infoStepIndex,
+  infoStepIndexes,
   missingFieldMessages,
   parseReviewTarget,
   queueCursorParam,
@@ -14,6 +14,7 @@ import {
   reviewStatusSchema,
   reviewTimeText,
   STAFF_REVIEW_CHECKS,
+  firstUncheckedPoint,
   submittable,
 } from "@/lib/validation/partner-review";
 
@@ -25,7 +26,7 @@ describe("the review state of a partner (FR-J1, FR-J4)", () => {
   });
 
   it("places the reopened steps on the step indicator of partner onboarding", () => {
-    expect(infoStepIndex).toEqual({ company: 0, where_you_serve: 1, commitments: 2 });
+    expect(infoStepIndexes).toEqual({ company: [0], where_you_serve: [1, 2], commitments: [3], licences: [] });
   });
 
   it("reads the review target of decision 7.2 from its setting, one working day when it is not a sensible number", () => {
@@ -52,6 +53,14 @@ describe("the review state of a partner (FR-J1, FR-J4)", () => {
 });
 
 describe("the staff decision on a partner (FR-J4 AC3, AC11)", () => {
+  it("lets staff approve only once every point of the checklist is ticked", () => {
+    expect(STAFF_REVIEW_CHECKS).toEqual(["Legal entity matches public register", "Website belongs to the company", "Licences reviewed"]);
+    expect(firstUncheckedPoint([false, false, false])).toBe(0);
+    expect(firstUncheckedPoint([true, false, true])).toBe(1);
+    expect(firstUncheckedPoint([true, true])).toBe(2);
+    expect(firstUncheckedPoint([true, true, true])).toBeNull();
+  });
+
   it("asks for a statement of reasons of 10 to 2,000 characters, trimmed", () => {
     const schema = decisionFormSchema("decline");
     expect(schema.safeParse({ reason: "Too short", infoStep: "" }).success).toBe(false);

@@ -68,7 +68,7 @@ const ids = {
 const recruitmentTypeOptions = [
   { value: "local", label: recruitmentTypeLabels.local, icon: MapPin, description: "Workers who already live in the country of the job." },
   { value: "international", label: recruitmentTypeLabels.international, icon: Plane, description: "Workers who move to the country of the job." },
-  { value: "both", label: recruitmentTypeLabels.both, icon: Earth, description: "Local and international workers." },
+  { value: "both", label: recruitmentTypeLabels.both, icon: Earth, description: "Workers who live in the country of the job and workers who move there." },
 ];
 
 const staffingTypeOptions = staffingTypes.map((value) => ({ value, label: staffingTypeLabels[value] }));

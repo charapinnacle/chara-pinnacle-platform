@@ -37,7 +37,7 @@ export async function decidePartner(input: DecisionInput): Promise<AdminResult> 
       "CHARA_FORBIDDEN:own_organization": { message: "You are a member of this company, so another reviewer decides." },
       "CHARA_FORBIDDEN:release_off": { message: RELEASE_OFF },
       "CHARA_INVALID_INPUT:reason": { errors: { reason: "Give a reason of 10 to 2000 characters" } },
-      "CHARA_INVALID_INPUT:info_step": { errors: { infoStep: "Choose the step to reopen" } },
+      "CHARA_INVALID_INPUT:info_step": { errors: { infoStep: "Choose the step to reopen." } },
     });
   }
   revalidatePath(adminPath(defaultLocale, "partners"));

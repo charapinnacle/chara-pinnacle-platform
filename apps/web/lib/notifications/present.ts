@@ -287,11 +287,11 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
           href: decision ? appealPath(lang, decision) : null,
         };
       }
-      const title = text(payload, "title") ?? "Your partner profile";
+      // Only the public profile is hidden, not the company: the title names the profile, never the company alone.
       const slug = text(payload, "org_slug");
       const unhidden = text(payload, "decision") === "unhide";
       return {
-        title: unhidden ? `${title} is shown again` : `${title} was hidden by moderation`,
+        title: unhidden ? "Your public profile is shown again" : "Your public profile was hidden by moderation",
         href: slug ? `${workforceProfilePath(lang, slug)}${unhidden ? "" : "#moderation-heading"}` : null,
       };
     },
