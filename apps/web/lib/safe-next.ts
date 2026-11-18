@@ -1,5 +1,5 @@
 import type { Database } from "@chara-pinnacle/db-types";
-import { segmentOf } from "@/lib/dashboard/partner-dashboard";
+import { segmentOf } from "@/lib/dashboard/segments";
 import { companyDashboardPath, homePath, onboardingPath } from "@/lib/routes";
 
 const PLACEHOLDER_ORIGIN = "http://localhost";
