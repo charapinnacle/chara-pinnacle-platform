@@ -27,7 +27,7 @@ export function InternalNotes({ slug, subject, notes, blocked, olderHref, newest
   const visibility =
     subject.kind === "submission"
       ? "Internal, not visible to the candidate or the partner."
-      : "Visible to your organization only. The candidate never sees them.";
+      : "Visible to your organisation only. The candidate never sees them.";
   return (
     <section aria-labelledby="notes-heading" className="grid gap-3">
       <div className="grid gap-1">
@@ -39,7 +39,7 @@ export function InternalNotes({ slug, subject, notes, blocked, olderHref, newest
       {blocked ? (
         <div className="grid gap-3">
           <Notice tone="info" role="status">
-            Your organization has no active paid plan, so notes cannot be added. The notes written before stay readable.
+            Your organisation has no active paid plan, so notes cannot be added. The notes written before stay readable.
           </Notice>
           <div className="grid gap-1.5">
             <Label htmlFor="internal-note-read-only">Add an internal note</Label>

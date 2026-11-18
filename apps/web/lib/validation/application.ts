@@ -6,7 +6,7 @@ type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 export type ApplyLimits = { coverNoteMaxChars: number; documentsMax: number };
 
-export const CONSENT_REQUIRED = "Confirm that you agree to share the selected documents";
+export const CONSENT_REQUIRED = "Confirm that you agree to share the selected documents.";
 
 // The form and the Server Action parse with this schema. The limits are the settings of the database, so the text the
 // form quotes is the limit apply_to_job enforces. The note is plain text, kept as typed after trimming.
