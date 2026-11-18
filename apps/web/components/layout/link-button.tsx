@@ -1,6 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import Link from "next/link";
 import { formButtonVariants } from "@/components/forms/form-button";
+import { titleText } from "@/components/forms/title-text";
 import { cn } from "@/lib/utils";
 
 // The sizes and the base of the Button primitive, which does not export them; the variants are those of FormButton.
@@ -17,11 +18,10 @@ type LinkButtonProps = React.ComponentProps<typeof Link> &
   Pick<VariantProps<typeof formButtonVariants>, "variant">;
 
 // A link that looks like a button: for navigation that must read as an action. Use FormButton for anything that submits.
-export function LinkButton({ variant, size, className, ...props }: LinkButtonProps) {
+export function LinkButton({ variant, size, className, children, ...props }: LinkButtonProps) {
   return (
-    <Link
-      className={cn(linkButtonVariants({ size }), formButtonVariants({ variant }), "w-auto", className)}
-      {...props}
-    />
+    <Link className={cn(linkButtonVariants({ size }), formButtonVariants({ variant }), "w-auto", className)} {...props}>
+      {titleText(children)}
+    </Link>
   );
 }

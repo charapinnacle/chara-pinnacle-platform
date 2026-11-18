@@ -184,7 +184,7 @@ test.describe("organisation profile", () => {
 
     execute(`update public.organizations set status = 'suspended' where id = ${literal(team.id)}`);
     await page.reload();
-    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended, so its details are not available." })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "This organisation is suspended, so its details are not available." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
     await expectNoAxeViolations(page);
   });

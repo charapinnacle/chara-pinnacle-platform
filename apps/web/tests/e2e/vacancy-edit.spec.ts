@@ -150,7 +150,7 @@ test.describe("vacancy edit", () => {
 
     execute(`update public.organizations set status = 'suspended' where id = ${literal(acme.id)}`);
     await page.goto(editUrl(acme.slug, id));
-    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended, so its vacancies are not available." })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "This organisation is suspended, so its vacancies are not available." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
     expect(query<{ n: number }>(`select count(*)::int as n from audit.log where action = 'job.updated' and entity_id = ${literal(id)}`)[0].n).toBe(1);
   });
