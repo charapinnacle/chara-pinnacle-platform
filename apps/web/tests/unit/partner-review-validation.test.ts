@@ -4,7 +4,7 @@ import {
   decisionFormSchema,
   decisionInputSchema,
   decisionLabels,
-  infoStepIndex,
+  infoStepIndexes,
   missingFieldMessages,
   parseReviewTarget,
   queueCursorParam,
@@ -25,7 +25,7 @@ describe("the review state of a partner (FR-J1, FR-J4)", () => {
   });
 
   it("places the reopened steps on the step indicator of partner onboarding", () => {
-    expect(infoStepIndex).toEqual({ company: 0, where_you_serve: 1, commitments: 2 });
+    expect(infoStepIndexes).toEqual({ company: [0], where_you_serve: [1, 2], commitments: [3] });
   });
 
   it("reads the review target of decision 7.2 from its setting, one working day when it is not a sensible number", () => {

@@ -45,7 +45,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await openPartnerOnboarding(page, user);
 
     await expect(page.getByRole("heading", { name: "Where you serve", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 2 of 6: Where you serve");
     await expect(page.getByRole("term").filter({ hasText: "Where are you based?" })).toBeVisible();
     await expect(page.getByRole("definition").filter({ hasText: /^Philippines$/ })).toBeVisible();
     await expect(page.getByText("No countries chosen yet.")).toHaveCount(2);
@@ -128,7 +128,7 @@ test.describe("Where you serve (FR-K1)", () => {
     // offer is saved the partner continues with Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 2 of 6: Where you serve");
     await callAs(user, "set_organization_workforce_offer", {
       p_org: id,
       p_occupations: ["7212"],
@@ -139,7 +139,7 @@ test.describe("Where you serve (FR-K1)", () => {
     });
     await page.goto("/en/onboarding");
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     expect(geographies(id)).toBe("NP,PH|AE,DE,SA");
     const [organization] = organizationRows(user.id);
     expect(organization.based_in_country).toBe("PH");

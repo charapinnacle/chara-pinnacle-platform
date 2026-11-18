@@ -94,14 +94,15 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     // AC8: onboarding opens at the first step not done, the completed ones announced as done.
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     const steps = onboardingSteps(page).getByRole("listitem");
     await expect(steps).toHaveText([
-      "Step 1 of 5: Company (done)",
-      "Step 2 of 5: Where you serve (done)",
-      "3Step 3 of 5: Commitments",
-      "4Step 4 of 5: Security",
-      "5Step 5 of 5: Ready",
+      "Step 1 of 6: Company (done)",
+      "Step 2 of 6: Where you serve (done)",
+      "Step 3 of 6: What you offer (done)",
+      "4Step 4 of 6: Commitments",
+      "5Step 5 of 6: Security",
+      "6Step 6 of 6: Ready",
     ]);
     // The address of Ready leads to the first step not done.
     await page.goto("/en/onboarding?step=ready");
@@ -121,7 +122,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     // Security: the Phase 1 enrolment, as a step of partner onboarding.
     await expect(page.getByRole("heading", { name: "Secure your account", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 4 of 5: Security");
+    await expect(currentStep(page)).toContainText("Step 5 of 6: Security");
     await expect(page.getByText(/^As the owner of Manila Skills .+ you will manage its team, billing, job orders and candidates/)).toBeVisible();
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -131,7 +132,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await expect(page.getByRole("heading", { name: "Submit your company for review", level: 1 })).toBeVisible();
     await expect(page).toHaveURL(/\/en\/onboarding$/);
     expect((await sessionClaims(page.context())).aal).toBe("aal2");
-    await expect(currentStep(page)).toContainText("Step 5 of 5: Ready");
+    await expect(currentStep(page)).toContainText("Step 6 of 6: Ready");
     await expect(page.getByText(/A review usually takes one working day\.$/)).toBeVisible();
     await expectChecks(page);
     await expectAccessibleAtBothWidths(page);
@@ -242,7 +243,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
     await signInAtAal2(page, partner.user, secret, "/en/onboarding?step=company");
 
     await expect(page.getByRole("heading", { name: "Your company details", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 1 of 5: Company");
+    await expect(currentStep(page)).toContainText("Step 1 of 6: Company");
     await expect(page.getByLabel("Legal company name")).toHaveValue(/^Manila Skills .+ Inc\.$/);
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -253,7 +254,7 @@ test.describe("submission for review (FR-J1 AC8 to AC11)", () => {
 
     await expect(page.getByRole("heading", { name: "Submit your company again", level: 1 })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Our team asked for more information about your company details." })).toBeVisible();
-    await expect(onboardingSteps(page).getByRole("listitem").first()).toHaveText("1Step 1 of 5: Company (more information requested)");
+    await expect(onboardingSteps(page).getByRole("listitem").first()).toHaveText("1Step 1 of 6: Company (more information requested)");
     await expect(page.getByRole("link", { name: "Change your company details" }).first()).toHaveAttribute("href", "/en/onboarding?step=company");
     await expectAccessibleAtBothWidths(page);
     await page.setViewportSize({ width: 1280, height: 900 });

@@ -222,12 +222,12 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     intendedOrganizationType: type,
   });
 
-  it("asks a recruitment company for its company on step 1 of 5, with the type fixed and the identifier required", async () => {
+  it("asks a recruitment company for its company on step 1 of 6, with the type fixed and the identifier required", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Company");
-    expect(html).toContain("Step 5 of 5: </span>Ready");
-    expect(html).toContain("Step 2 of 5: </span>Where you serve");
+    expect(html).toContain("Step 6 of 6: </span>Ready");
+    expect(html).toContain("Step 2 of 6: </span>Where you serve");
     expect(html).toContain("Company type: <strong");
     expect(html).toContain(">Recruitment company</strong>");
     expect(html).toContain("Country where you are based");
@@ -265,9 +265,9 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Where you serve");
-    expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Where you serve</h1>");
-    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 5: Where you serve<\/p>/);
+    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 6: Where you serve<\/p>/);
     expect(html).toMatch(/<dt[^>]*>Where are you based\?<\/dt><dd[^>]*>Austria<\/dd>/);
     expect(html).toContain("Where do you source workers from?");
     expect(html).toContain("Where do you supply workers for?");
@@ -310,12 +310,14 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(await render(OnboardingPage)).not.toContain("Plan limits are not enforced yet");
   });
 
-  it("asks for what the partner offers once both lists hold a country, still within Where you serve", async () => {
+  it("asks for what the partner offers once both lists hold a country, on the step What you offer", async () => {
     requireUserMock.mockResolvedValue(partner("staffing_company"));
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
     const html = await render(OnboardingPage);
-    expect(currentStep(html)).toBe("Where you serve");
+    expect(currentStep(html)).toBe("What you offer");
+    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 3 of 6: What you offer<\/p>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">What you offer</h1>");
     expect(html).toContain("Which occupations do you recruit or supply?");
     expect(html).toContain(">0 of 10 occupations</p>");
@@ -343,7 +345,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     offerMock.mockResolvedValue(savedOffer);
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Commitments");
-    expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Commitments</h1>");
     expect(html).toContain("Workers never pay fees to get a job through Chara Pinnacle. Every recruitment and staffing company");
     expect(html).toContain("Draft - not yet approved by legal counsel.");
@@ -443,7 +445,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Security");
-    expect(html).toMatch(/Step 3 of 5: <\/span>Commitments<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 4 of 6: <\/span>Commitments<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Secure your account</h1>");
     expect(html).toContain("As the owner of Manila Skills you will manage its team, billing, job orders and candidates");
     expect(html).toContain("Show the QR code");
@@ -462,7 +464,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     twoStepMock.mockResolvedValue(true);
     for (const html of [await render(OnboardingPage), await render(OnboardingPage, { step: "ready" })]) {
       expect(currentStep(html)).toBe("Ready");
-      expect(html).toMatch(/Step 4 of 5: <\/span>Security<span class="sr-only"> \(done\)<\/span>/);
+      expect(html).toMatch(/Step 5 of 6: <\/span>Security<span class="sr-only"> \(done\)<\/span>/);
       expect(html).toContain(">Submit your company for review</h1>");
       expect(html).toContain("A review usually takes one working day.");
       expect(html).toContain(">What our team checks</h2>");
@@ -568,8 +570,8 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("Message from our team");
     expect(html).toContain("Please add the countries you source workers from.");
     expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
-    expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
-    expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toMatch(/<button[^>]*>Submit again for review<\/button>/);
 
     reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "commitments" });

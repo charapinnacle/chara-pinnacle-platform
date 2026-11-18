@@ -15,7 +15,7 @@ import {
   workforceProfilePath,
 } from "@/lib/routes";
 import {
-  infoStepIndex,
+  infoStepIndexes,
   infoStepLabels,
   reviewTimeText,
   type InfoStep,
@@ -49,7 +49,7 @@ export function PartnerReadyStep({ lang, organization, manager, targetDays, info
   const reopen = infoStep ? reopenLinks[infoStep](lang) : null;
   return (
     <OnboardingPanel
-      steps={<OnboardingSteps kind="partner" current={4} reopened={infoStep ? infoStepIndex[infoStep] : undefined} />}
+      steps={<OnboardingSteps kind="partner" current={5} reopened={infoStep ? infoStepIndexes[infoStep] : undefined} />}
       title={infoRequested ? "Submit your company again" : "Submit your company for review"}
       description={`Our team reviews ${organization.displayName} before it is listed in the partner directories. A review usually takes ${reviewTimeText(targetDays)}.`}
     >
@@ -117,7 +117,7 @@ type PartnerReviewPendingProps = {
 export function PartnerReviewPending({ lang, organization, targetDays, wasListed, manager }: PartnerReviewPendingProps) {
   return (
     <OnboardingPanel
-      steps={<OnboardingSteps kind="partner" current={4} />}
+      steps={<OnboardingSteps kind="partner" current={5} />}
       title="Your company is waiting for review"
       description={`Our team is reviewing ${organization.displayName}. A review usually takes ${reviewTimeText(targetDays)}. ${wasListed ? "Your company stays listed while our team reviews the change." : "Until it is done, your company is not shown to employers."}`}
     >

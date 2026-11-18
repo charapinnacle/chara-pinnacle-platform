@@ -68,7 +68,7 @@ test.describe("What you offer (FR-K2)", () => {
     await openPartnerOnboarding(page, user);
 
     await expect(page.getByRole("heading", { name: "What you offer", level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 2 of 5: Where you serve");
+    await expect(currentStep(page)).toContainText("Step 3 of 6: What you offer");
     await expect(page.getByText("No occupations chosen yet.")).toBeVisible();
     // AC7: a recruitment company sees the staffing checkbox, not the staffing types, and recruitment type as radios.
     const recruitmentType = page.getByRole("radiogroup", { name: "Recruitment type" });
@@ -140,7 +140,7 @@ test.describe("What you offer (FR-K2)", () => {
     // AC1: the save stores the rows, audits them once, stamps the profile date and moves on to Commitments.
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-    await expect(currentStep(page)).toContainText("Step 3 of 5: Commitments");
+    await expect(currentStep(page)).toContainText("Step 4 of 6: Commitments");
     expect(offer(id)).toBe("7126,7212|C,F|ar,en,tl|staffing,temporary|international");
     expect(offerAudits(id)).toEqual([
       expect.objectContaining({

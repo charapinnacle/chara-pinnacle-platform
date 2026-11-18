@@ -6,13 +6,17 @@ export const reviewStatusSchema = z.enum(["onboarding", "pending_review", "info_
 
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
-// The steps staff may reopen with a request for information (organizations.info_step), with their place in the step
-// indicator of partner onboarding (Company, Where you serve, Commitments, Security, Ready).
+// The steps staff may reopen with a request for information (organizations.info_step), with their places in the step
+// indicator of partner onboarding (Company, Where you serve, What you offer, Commitments, Security, Ready): where_you_serve
+// reopens both pages of the workforce profile.
 export const infoStepSchema = z.enum(["company", "where_you_serve", "commitments"]);
 
 export type InfoStep = z.infer<typeof infoStepSchema>;
 
-export const infoStepIndex = { company: 0, where_you_serve: 1, commitments: 2 } as const satisfies Record<InfoStep, number>;
+export const infoStepIndexes = { company: [0], where_you_serve: [1, 2], commitments: [3] } as const satisfies Record<
+  InfoStep,
+  readonly number[]
+>;
 
 export const infoStepLabels = {
   company: "your company details",

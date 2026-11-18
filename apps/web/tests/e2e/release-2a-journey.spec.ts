@@ -62,7 +62,7 @@ test.describe("release 2a journey (NFR-O4)", () => {
 
     // Company.
     await expect(page).toHaveURL(/\/en\/onboarding$/);
-    await expect(currentStep(page)).toContainText("Step 1 of 5: Company");
+    await expect(currentStep(page)).toContainText("Step 1 of 6: Company");
     await fillPartnerCompany(page, {
       legalName,
       displayName,
