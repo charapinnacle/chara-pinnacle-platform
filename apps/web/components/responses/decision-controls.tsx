@@ -151,7 +151,7 @@ function DecisionForm({
           Cancel
         </FormButton>
         <FormButton type="submit" variant={decision === "declined" ? "destructive" : "primary"} busy={formState.isSubmitting}>
-          {decisionVerbs[decision]}
+          {decisionVerbs[decision]} {target.partnerName}
         </FormButton>
       </div>
     </form>

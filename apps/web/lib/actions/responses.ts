@@ -175,8 +175,10 @@ export async function updateMyResponse(
     p_expected_version: expectedVersion,
     ...toResponseArgs(parsed.data),
   });
-  revalidateResponse(organization.slug, null, responseId);
+  // A refusal writes nothing, and the form keeps what was entered and the files (a document still being checked or
+  // sent above all).
   if (error) return refusalResult(organization, responseRefusal(error), error, "Changing the response");
+  revalidateResponse(organization.slug, null, responseId);
   return { responseId };
 }
 
