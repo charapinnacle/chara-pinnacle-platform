@@ -145,7 +145,7 @@ test.describe("the pipeline board", () => {
     await expect(dialog).toBeVisible();
     expect(statusOf(chiId)).toBe("applied");
     await dialog.getByRole("button", { name: "Review" }).click();
-    await expect(dialog.getByRole("alert").first()).toContainText("Choose a reason");
+    await expect(dialog.getByRole("alert").first()).toContainText("Choose a reason.");
     expect(statusOf(chiId)).toBe("applied");
     await dialog.getByLabel("Reason (visible to the candidate)", { exact: true }).selectOption({ label: "Position filled" });
     await dialog.getByRole("button", { name: "Review" }).click();

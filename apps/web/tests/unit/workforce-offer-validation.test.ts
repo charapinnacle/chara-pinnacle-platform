@@ -44,8 +44,8 @@ describe("What you offer (FR-K2)", () => {
 
   it("asks for an occupation and the recruitment type; industries and languages are optional", () => {
     expect(issues({ ...offer, occupations: [], industries: [], languages: [], recruitmentType: "" })).toEqual([
-      ["occupations", "Choose at least one occupation"],
-      ["recruitmentType", "Choose a recruitment type"],
+      ["occupations", "Choose at least one occupation."],
+      ["recruitmentType", "Choose a recruitment type."],
     ]);
   });
 
@@ -54,13 +54,13 @@ describe("What you offer (FR-K2)", () => {
       ["occupations.0", "Choose from the list."],
       ["industries.0", "Choose from the list."],
       ["languages.0", "Choose from the list."],
-      ["recruitmentType", "Choose a recruitment type"],
+      ["recruitmentType", "Choose a recruitment type."],
     ]);
   });
 
   it("requires a staffing type of a staffing company, and of a recruitment company that supplies staff (AC5)", () => {
-    expect(issues(offer, "staffing_company")).toEqual([["staffingTypes", "Choose at least one staffing type"]]);
-    expect(issues({ ...offer, staffingService: true })).toEqual([["staffingTypes", "Choose at least one staffing type"]]);
+    expect(issues(offer, "staffing_company")).toEqual([["staffingTypes", "Choose at least one staffing type."]]);
+    expect(issues({ ...offer, staffingService: true })).toEqual([["staffingTypes", "Choose at least one staffing type."]]);
     expect(issues({ ...offer, staffingTypes: ["temporary"] }, "staffing_company")).toBeUndefined();
     expect(issues(offer)).toBeUndefined();
   });

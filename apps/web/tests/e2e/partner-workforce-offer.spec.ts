@@ -82,8 +82,8 @@ test.describe("What you offer (FR-K2)", () => {
 
     // Nothing chosen: the summary lists the missing occupation and recruitment type.
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one occupation").first()).toBeVisible();
-    await expect(page.getByText("Choose a recruitment type").first()).toBeVisible();
+    await expect(page.getByText("Choose at least one occupation.").first()).toBeVisible();
+    await expect(page.getByText("Choose a recruitment type.").first()).toBeVisible();
     expect(offer(id)).toBe("||||");
 
     // AC2: "weld" lists Welders and flame cutters; arrows and Enter take it, and the chip has its own remove button.
@@ -120,7 +120,7 @@ test.describe("What you offer (FR-K2)", () => {
     const staffingTypes = page.getByRole("group", { name: STAFFING_TYPES });
     await expect(staffingTypes.getByRole("checkbox")).toHaveCount(4);
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one staffing type").first()).toBeVisible();
+    await expect(page.getByText("Choose at least one staffing type.").first()).toBeVisible();
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).check();
     await expectAccessibleAtBothWidths(page);
 
@@ -250,7 +250,7 @@ test.describe("What you offer (FR-K2)", () => {
     await expect(chips(page, OCCUPATIONS)).toHaveCount(10);
     await staffingTypes.getByRole("checkbox", { name: "Temporary" }).uncheck();
     await page.getByRole("button", { name: "Save what you offer" }).click();
-    await expect(page.getByText("Choose at least one staffing type").first()).toBeVisible();
+    await expect(page.getByText("Choose at least one staffing type.").first()).toBeVisible();
     await staffingTypes.getByRole("checkbox", { name: "Contract" }).check();
     await page.getByRole("radio", { name: "Local and international" }).check();
     await page.getByRole("button", { name: "Save what you offer" }).click();

@@ -30,7 +30,7 @@ test.describe("the internal notes of the applicant detail page", () => {
 
     await field.fill("   ");
     await add.click();
-    await expect(notes.getByRole("alert").first()).toContainText("Enter a note");
+    await expect(notes.getByRole("alert").first()).toContainText("Enter a note.");
     await field.fill("a".repeat(2001));
     await expect(notes.getByText("2001/2000")).toBeVisible();
     await add.click();

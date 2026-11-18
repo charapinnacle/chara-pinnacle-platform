@@ -510,7 +510,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     await expect(dialog).toContainText("9 of 2000 characters used");
     await dialog.getByRole("button", { name: "Hide" }).focus();
     await staff.page.keyboard.press("Enter");
-    await expect(dialog.getByText("Give a reason of at least 10 characters").first()).toBeVisible();
+    await expect(dialog.getByText("Give a reason of at least 10 characters.").first()).toBeVisible();
     await dialog.getByLabel("Statement of reasons").fill(reasons);
     await expectNoAxeViolations(staff.page);
     await dialog.getByRole("button", { name: "Hide" }).focus();

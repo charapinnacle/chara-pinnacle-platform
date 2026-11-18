@@ -59,7 +59,7 @@ describe("saveOrganizationGeographies (FR-K1)", () => {
     await expect(saveOrganizationGeographies("../x", input, { onboarding: true })).resolves.toEqual({ message: expect.any(String) });
     await expect(
       saveOrganizationGeographies("manila-skills", { ...input, servesMarket: [] }, { onboarding: true }),
-    ).resolves.toEqual({ errors: { servesMarket: "Choose at least one country you recruit for" } });
+    ).resolves.toEqual({ errors: { servesMarket: "Choose at least one country you recruit for." } });
     expect(rpcMock).not.toHaveBeenCalled();
   });
 

@@ -86,7 +86,7 @@ export type PartnerDecision = z.infer<typeof partnerDecisionSchema>;
 export function decisionFormSchema(decision: PartnerDecision) {
   return z.object({
     reason: statementSchema,
-    infoStep: decision === "request_info" ? infoStepSchema.or(z.literal("")).refine((step) => step !== "", "Choose the step to reopen") : z.literal(""),
+    infoStep: decision === "request_info" ? infoStepSchema.or(z.literal("")).refine((step) => step !== "", "Choose the step to reopen.") : z.literal(""),
   });
 }
 
@@ -101,7 +101,7 @@ export const decisionInputSchema = z
   })
   .refine((value) => (value.decision === "request_info") === (value.infoStep !== null), {
     path: ["infoStep"],
-    message: "Choose the step to reopen",
+    message: "Choose the step to reopen.",
   });
 
 export type DecisionInput = z.input<typeof decisionInputSchema>;

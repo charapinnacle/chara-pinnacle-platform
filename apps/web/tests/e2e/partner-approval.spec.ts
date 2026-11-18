@@ -228,7 +228,7 @@ test.describe("Partner reviews (FR-J4)", () => {
     await expect(decline).toBeVisible();
     await decline.getByRole("button", { name: "Decline partner" }).focus();
     await page.keyboard.press("Enter");
-    await expect(decline.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Give a reason of at least 10 characters");
+    await expect(decline.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Give a reason of at least 10 characters.");
     await expect(decline.getByLabel("Reason")).toBeFocused();
     const reason = "The registry has no company with this registration number.";
     await page.keyboard.type(reason);
@@ -254,7 +254,7 @@ test.describe("Partner reviews (FR-J4)", () => {
     await page.getByRole("button", { name: "Request information" }).click();
     const request = page.getByRole("dialog", { name: "Request information" });
     await request.getByRole("button", { name: "Send request" }).click();
-    await expect(request.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Choose the step to reopen");
+    await expect(request.getByRole("alert").filter({ hasText: "There is a problem" })).toContainText("Choose the step to reopen.");
     await expect(request.getByLabel("Step to reopen").getByRole("option")).toHaveText([
       "Choose a step",
       "Company details",

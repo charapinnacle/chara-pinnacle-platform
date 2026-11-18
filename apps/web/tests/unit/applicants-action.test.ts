@@ -35,14 +35,14 @@ describe("changeApplicantStage", () => {
 
   it("does not call the database for a target an employer cannot choose", async () => {
     for (const status of ["applied", "viewed", "withdrawn", "", "bogus"]) {
-      expect((await changeApplicantStage("acme", applicationId, { status, note: "" })).errors).toEqual({ status: "Choose a stage" });
+      expect((await changeApplicantStage("acme", applicationId, { status, note: "" })).errors).toEqual({ status: "Choose a stage." });
     }
     expect(setStatusMock).not.toHaveBeenCalled();
   });
 
   it("needs a reason for a decline and sends it as the note", async () => {
     for (const note of ["", "   "]) {
-      expect((await changeApplicantStage("acme", applicationId, { status: "rejected", note })).errors).toEqual({ note: "Enter a reason" });
+      expect((await changeApplicantStage("acme", applicationId, { status: "rejected", note })).errors).toEqual({ note: "Enter a reason." });
     }
     expect(setStatusMock).not.toHaveBeenCalled();
     expect(await changeApplicantStage("acme", applicationId, { status: "rejected", note: " Position filled " })).toEqual({ done: true });
@@ -145,8 +145,8 @@ describe("bulkChangeApplicantStage", () => {
     expect((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: [] })).errors).toEqual({ applicationIds: range });
     expect((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: ids(101) })).errors).toEqual({ applicationIds: range });
     expect(Object.keys((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: ["nope"] })).errors ?? {})).toEqual(["applicationIds.0"]);
-    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, status: "withdrawn" })).errors).toEqual({ status: "Choose a stage" });
-    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, note: "  " })).errors).toEqual({ note: "Enter a reason" });
+    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, status: "withdrawn" })).errors).toEqual({ status: "Choose a stage." });
+    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, note: "  " })).errors).toEqual({ note: "Enter a reason." });
     expect(bulkMock).not.toHaveBeenCalled();
   });
 

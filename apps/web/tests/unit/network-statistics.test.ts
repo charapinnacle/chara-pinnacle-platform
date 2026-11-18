@@ -151,7 +151,7 @@ describe("the partner network range", () => {
   it("puts a start after the end on From, refuses 367 days and accepts 366, and knows four periods", () => {
     const after = networkStatisticsSchema.safeParse({ from: "2026-05-01", to: "2026-04-30", period: "month" });
     expect(after.success).toBe(false);
-    expect(after.error?.issues).toEqual([expect.objectContaining({ path: ["from"], message: "The start date must not be after the end date" })]);
+    expect(after.error?.issues).toEqual([expect.objectContaining({ path: ["from"], message: "The start date must not be after the end date." })]);
     expect(networkStatisticsSchema.safeParse({ from: "2025-03-01", to: "2026-03-02", period: "month" }).error?.issues[0].message).toBe(
       "Choose at most 366 days",
     );
@@ -160,12 +160,12 @@ describe("the partner network range", () => {
       expect(networkStatisticsSchema.safeParse({ from: "2026-03-01", to: "2026-03-31", period }).success).toBe(true);
     }
     expect(networkStatisticsSchema.safeParse({ from: "2026-03-01", to: "2026-03-31", period: "day" }).error?.issues[0].message).toBe(
-      "Choose a period",
+      "Choose a period.",
     );
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
     const today = new Date().toISOString().slice(0, 10);
     expect(networkStatisticsSchema.safeParse({ from: today, to: tomorrow, period: "month" }).error?.issues).toEqual([
-      expect.objectContaining({ path: ["to"], message: "The end date must not be after today" }),
+      expect.objectContaining({ path: ["to"], message: "The end date must not be after today." }),
     ]);
     expect(networkStatisticsSchema.safeParse({ from: today, to: today, period: "month" }).success).toBe(true);
   });

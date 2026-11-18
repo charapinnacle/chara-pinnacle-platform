@@ -18,7 +18,7 @@ import type { TestUser } from "./support/test-user";
 
 const SLUG = "employer-pays-commitment";
 const COMMITMENT = "We charge workers no recruitment fees or related costs";
-const REQUIRED = "Please confirm the commitment to continue";
+const REQUIRED = "Please confirm the commitment to continue.";
 const DRAFT_NOTICE = "Draft - not yet approved by legal counsel. The commitment below is a draft; you accept the version shown.";
 const OUTDATED_FOR_MEMBERS =
   "Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates.";

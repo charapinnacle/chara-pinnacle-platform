@@ -36,7 +36,7 @@ export const industryNoun: Noun = { one: "industry", other: "industries" };
 export const languageNoun: Noun = { one: "language", other: "languages" };
 
 const FROM_LIST = "Choose from the list.";
-const STAFFING_TYPE_REQUIRED = "Choose at least one staffing type";
+const STAFFING_TYPE_REQUIRED = "Choose at least one staffing type.";
 
 const codeList = (pattern: RegExp, normalise: (code: string) => string) =>
   z
@@ -59,13 +59,13 @@ export function workforceOfferSchema(type: PartnerType) {
   return z
     .object({
       occupations: codeList(/^\d{4}$/, (code) => code).refine((codes) => codes.length > 0, {
-        error: "Choose at least one occupation",
+        error: "Choose at least one occupation.",
       }),
       industries: codeList(/^[A-Z]$/, (code) => code.toUpperCase()),
       languages: codeList(/^[a-z]{2}$/, (code) => code.toLowerCase()),
       recruitmentType: z
-        .string({ error: "Choose a recruitment type" })
-        .pipe(z.enum(recruitmentTypes, { error: "Choose a recruitment type" })),
+        .string({ error: "Choose a recruitment type." })
+        .pipe(z.enum(recruitmentTypes, { error: "Choose a recruitment type." })),
       staffingService: z.boolean(),
       staffingTypes: z.array(z.enum(staffingTypes, { error: FROM_LIST })).transform((codes) => [...new Set(codes)]),
       sizeBand: z.string().pipe(z.enum(["", ...sizeBands], { error: FROM_LIST })),

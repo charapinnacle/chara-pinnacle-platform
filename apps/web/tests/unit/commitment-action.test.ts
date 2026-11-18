@@ -39,7 +39,7 @@ describe("acceptCommitment (FR-J3)", () => {
 
   it("refuses an unticked box at the box and sends nothing (AC1)", async () => {
     await expect(acceptCommitment("manila-skills", 1, { confirmed: false })).resolves.toEqual({
-      errors: { confirmed: "Please confirm the commitment to continue" },
+      errors: { confirmed: "Please confirm the commitment to continue." },
     });
     expect(rpcMock).not.toHaveBeenCalled();
   });

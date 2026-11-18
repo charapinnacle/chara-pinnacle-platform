@@ -64,7 +64,7 @@ describe("the period form (FR-S3 AC10)", () => {
 
   it("asks for a reason of 10 to 500 characters", () => {
     expect(retentionFormSchema.safeParse({ days: "365", reason: "too short" }).error?.issues[0].message).toBe(
-      "Give a reason of at least 10 characters",
+      "Give a reason of at least 10 characters.",
     );
     expect(retentionFormSchema.safeParse({ days: "365", reason: "r".repeat(501) }).success).toBe(false);
   });
@@ -89,7 +89,7 @@ describe("saveRetentionPolicy (FR-S3 AC1, AC10)", () => {
     expect((await saveRetentionPolicy({ entity: "conversations", days: 0, reason })).errors).toHaveProperty("days");
     expect((await saveRetentionPolicy({ entity: "conversations", days: 40000, reason })).errors).toHaveProperty("days");
     expect((await saveRetentionPolicy({ entity: "conversations", days: 365, reason: "short" })).errors).toEqual({
-      reason: "Give a reason of at least 10 characters",
+      reason: "Give a reason of at least 10 characters.",
     });
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();

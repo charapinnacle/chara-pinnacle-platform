@@ -40,7 +40,7 @@ describe("addInternalNote", () => {
   });
 
   it("does not call the database for a blank note or one over 2000 characters", async () => {
-    expect((await addInternalNote("acme", applicationId, { body: "   " })).errors).toEqual({ body: "Enter a note" });
+    expect((await addInternalNote("acme", applicationId, { body: "   " })).errors).toEqual({ body: "Enter a note." });
     expect((await addInternalNote("acme", applicationId, { body: "a".repeat(2001) })).errors).toEqual({
       body: "Note must be at most 2000 characters",
     });

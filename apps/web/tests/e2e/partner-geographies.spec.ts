@@ -54,8 +54,9 @@ test.describe("Where you serve (FR-K1)", () => {
 
     // AC10: nothing chosen. The errors stand next to the fields and the focus moves to the first of them.
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one country you source workers from")).toBeVisible();
-    await expect(page.getByText("Choose at least one country you recruit for")).toBeVisible();
+    const problem = page.getByRole("alert").filter({ hasText: "There is a problem" });
+    await expect(problem.getByRole("link", { name: "Choose at least one country you source workers from." })).toBeVisible();
+    await expect(problem.getByRole("link", { name: "Choose at least one country you recruit for." })).toBeVisible();
     await expect(page.getByRole("combobox", { name: SOURCES })).toBeFocused();
 
     await pickWithKeys(page, SOURCES, "phil", "Philippines");
@@ -63,7 +64,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await expect(chips(page, SOURCES)).toHaveText(["Philippines", "Nepal"]);
     await expect(page.getByText("2 countries", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByText("Choose at least one country you recruit for")).toBeVisible();
+    await expect(page.getByText("Choose at least one country you recruit for.").first()).toBeVisible();
     await expect(page.getByRole("combobox", { name: RECRUITS_FOR })).toBeFocused();
     expect(geographies(id)).toBe("|");
 
@@ -74,7 +75,7 @@ test.describe("Where you serve (FR-K1)", () => {
     await pickWithKeys(page, RECRUITS_FOR, "saudi", "Saudi Arabia");
     await expect(chips(page, RECRUITS_FOR)).toHaveText(["Germany", "United Arab Emirates", "Saudi Arabia"]);
     await expect(page.getByText("3 of 3 countries", { exact: true })).toBeVisible();
-    await expect(page.getByText("Choose at least one country you recruit for")).toHaveCount(0);
+    await expect(page.getByText("Choose at least one country you recruit for.")).toHaveCount(0);
 
     // AC5: a fourth country is not added; the limit is announced with the way to upgrade.
     await pickWithKeys(page, RECRUITS_FOR, "fran", "France");
