@@ -68,6 +68,8 @@ type ResponseDocumentsProps = {
   // Changed by the form when the response was refused because a file is still being checked or sent: the follow-up of
   // the scan starts again.
   pollKey: number;
+  // Told whether a file is being sent: the response must wait for it, or the file would not be part of it.
+  onSendingChange?: (sending: boolean) => void;
 };
 
 // The supporting PDFs of the response (FR-O2 step Attach, AC5): chosen one or several at a time, checked here for the
@@ -76,7 +78,7 @@ type ResponseDocumentsProps = {
 // wait staged on the requirement and the response takes them; on a live response a file belongs to it at once. A file
 // can be removed while it may change, once its upload settled. Rejected files do not count against the limit. Leaving the
 // page stops the uploads still running and releases their places.
-export function ResponseDocuments({ slug, requirementId, initial, max, pollKey }: ResponseDocumentsProps) {
+export function ResponseDocuments({ slug, requirementId, initial, max, pollKey, onSendingChange }: ResponseDocumentsProps) {
   const id = useId();
   const [documents, setDocuments] = useState(initial);
   const [uploads, setUploads] = useState<Upload[]>([]);
@@ -94,6 +96,11 @@ export function ResponseDocuments({ slug, requirementId, initial, max, pollKey }
     setSeenPollKey(pollKey);
     setRounds(0);
   }
+
+  const sending = uploads.length > 0;
+  useEffect(() => {
+    onSendingChange?.(sending);
+  }, [sending, onSendingChange]);
 
   useEffect(() => {
     const active = running.current;
