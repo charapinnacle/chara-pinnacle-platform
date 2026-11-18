@@ -42,7 +42,23 @@ export async function proxy(request: NextRequest) {
   if (login && userId && !request.nextUrl.searchParams.has("error")) {
     const { data: profile } = await supabase.from("profiles").select("account_kind, status").eq("id", userId).maybeSingle();
     if (profile && profile.status !== "suspended") {
-      const target = signedInLoginTarget(login[1], request.nextUrl.searchParams.get("next"), profile.account_kind);
+      const { data: membership } =
+        profile.account_kind === "company"
+          ? await supabase
+              .from("organization_members")
+              .select("organizations(slug, type)")
+              .eq("user_id", userId)
+              .not("accepted_at", "is", null)
+              .order("accepted_at")
+              .limit(1)
+              .maybeSingle()
+          : { data: null };
+      const target = signedInLoginTarget(
+        login[1],
+        request.nextUrl.searchParams.get("next"),
+        profile.account_kind,
+        membership?.organizations,
+      );
       const redirect = NextResponse.redirect(new URL(target, request.url));
       response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
       redirect.headers.set("x-robots-tag", "noindex, nofollow");
