@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Database } from "@chara-pinnacle/db-types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import * as z from "zod";
@@ -144,7 +145,8 @@ export async function listReports(
   return paged(rows, (row): ReportQueueCursor => (open ? { priority: row.priority, dueAt: row.dueAt, id: row.id } : { id: row.id }));
 }
 
-export async function getReport(id: number): Promise<ReportDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getReport = cache(async (id: number): Promise<ReportDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_report", { p_id: id });
   if (error) {
@@ -190,7 +192,7 @@ export async function getReport(id: number): Promise<ReportDetail | null> {
         }
       : null,
   };
-}
+});
 
 const listingSchema = z.object({
   id: z.string(),

@@ -23,7 +23,7 @@ function hrefs(html: string): string[] {
 describe("moderation_decision email", () => {
   it("a hide names the profile, quotes the reasons and links to the appeal of the decision and the workforce profile", async () => {
     const email = await renderEmail("moderation_decision", { ...affected, decision: "hide" }, SITE);
-    expect(email.subject).toBe("Manila Recruit was hidden by moderation");
+    expect(email.subject).toBe("Your public profile was hidden by moderation");
     expect(email.text).toContain(REASONS);
     expect(email.text).toContain("the owner or an admin can appeal");
     expect(hrefs(email.html)).toEqual([`${SITE}${appealPath("en", 42)}`, `${SITE}/en/org/manila-recruit/workforce-profile#moderation-heading`]);
@@ -32,7 +32,7 @@ describe("moderation_decision email", () => {
 
   it("an unhide quotes the reasons and offers no appeal", async () => {
     const email = await renderEmail("moderation_decision", { ...affected, decision: "unhide" }, SITE);
-    expect(email.subject).toBe("Manila Recruit is shown again");
+    expect(email.subject).toBe("Your public profile is shown again");
     expect(email.text).toContain(REASONS);
     expect(email.text).not.toContain("appeal");
     expect(hrefs(email.html)).toEqual([`${SITE}/en/org/manila-recruit/workforce-profile`]);
