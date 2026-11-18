@@ -194,9 +194,11 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await expect(page.getByText("2 of 25 submissions used this month")).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
-    // At the month's limit Send request is disabled with the upgrade prompt as its reason, shown once (FR-R1).
+    // At the month's limit Send request is disabled with the upgrade prompt as its reason, shown once (FR-R1). A limit
+    // override only applies on an Enterprise plan (private.org_limit).
     execute(
-      `insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value)
+      `update billing.subscriptions set plan_code = 'recruitment_enterprise' where organization_id = ${literal(s1.id)};
+       insert into billing.organization_limit_overrides (organization_id, limit_key, limit_value)
        values (${literal(s1.id)}, 'candidate_submissions_per_month', 2)`,
     );
     try {
@@ -207,7 +209,10 @@ test.describe("Candidate submissions (FR-O4)", () => {
       await expect(page.getByRole("link", { name: "Upgrade your plan" })).toHaveCount(1);
       await expectAccessibleAtBothWidths(page);
     } finally {
-      execute(`delete from billing.organization_limit_overrides where organization_id = ${literal(s1.id)} and limit_key = 'candidate_submissions_per_month'`);
+      execute(
+        `delete from billing.organization_limit_overrides where organization_id = ${literal(s1.id)} and limit_key = 'candidate_submissions_per_month';
+         update billing.subscriptions set plan_code = 'recruitment_partner' where organization_id = ${literal(s1.id)}`,
+      );
     }
 
     // The list shows the address entered until the candidate approves, with the status in words (AC2, AC12).
