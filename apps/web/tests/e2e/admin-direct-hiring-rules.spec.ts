@@ -40,7 +40,7 @@ function audits(): { action: string; reason: string }[] {
 }
 
 function table(page: Page) {
-  return page.getByRole("region", { name: "Direct-hiring rules" });
+  return page.getByRole("region", { name: "Direct-hiring rules", exact: true });
 }
 
 function row(page: Page, source: string, destination: string) {
@@ -116,7 +116,7 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     await expectAccessibleAtBothWidths(page);
     // At about 820 px the columns keep their width and the table scrolls in its region, never the page.
     await page.setViewportSize({ width: 820, height: 900 });
-    const table = page.getByRole("region", { name: "Direct-hiring rules" });
+    const table = page.getByRole("region", { name: "Direct-hiring rules", exact: true });
     expect(await table.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     expect(await nepal.getByText("Hiring from Nepal needs a licensed recruitment partner.").evaluate((cell) => cell.getBoundingClientRect().width >= 176)).toBe(true);

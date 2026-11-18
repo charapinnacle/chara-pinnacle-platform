@@ -212,6 +212,7 @@ test.describe("create vacancy", () => {
     await page.keyboard.press("Tab");
     await page.keyboard.type("Full");
     await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
     await page.keyboard.type("2800");
     await page.keyboard.press("Tab");
     await page.keyboard.type("3400");
