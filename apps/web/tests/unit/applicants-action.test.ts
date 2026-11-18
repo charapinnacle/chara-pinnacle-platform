@@ -35,14 +35,14 @@ describe("changeApplicantStage", () => {
 
   it("does not call the database for a target an employer cannot choose", async () => {
     for (const status of ["applied", "viewed", "withdrawn", "", "bogus"]) {
-      expect((await changeApplicantStage("acme", applicationId, { status, note: "" })).errors).toEqual({ status: "Choose a stage" });
+      expect((await changeApplicantStage("acme", applicationId, { status, note: "" })).errors).toEqual({ status: "Choose a stage." });
     }
     expect(setStatusMock).not.toHaveBeenCalled();
   });
 
   it("needs a reason for a decline and sends it as the note", async () => {
     for (const note of ["", "   "]) {
-      expect((await changeApplicantStage("acme", applicationId, { status: "rejected", note })).errors).toEqual({ note: "Enter a reason" });
+      expect((await changeApplicantStage("acme", applicationId, { status: "rejected", note })).errors).toEqual({ note: "Enter a reason." });
     }
     expect(setStatusMock).not.toHaveBeenCalled();
     expect(await changeApplicantStage("acme", applicationId, { status: "rejected", note: " Position filled " })).toEqual({ done: true });
@@ -73,8 +73,8 @@ describe("changeApplicantStage", () => {
   it.each([
     [{ kind: "already_moved" }, { message: "This applicant was already moved. Reload to see the current stage" }],
     [{ kind: "not_found" }, { message: "This applicant could not be found." }],
-    [{ kind: "blocked", reason: "organization_suspended" }, { message: "Your organization is suspended, so stages cannot be changed." }],
-    [{ kind: "blocked", reason: "read_only_free_plan" }, { message: "Your organization has no active paid plan, so stages cannot be changed." }],
+    [{ kind: "blocked", reason: "organization_suspended" }, { message: "Your organisation is suspended, so stages cannot be changed." }],
+    [{ kind: "blocked", reason: "read_only_free_plan" }, { message: "Your organisation has no active paid plan, so stages cannot be changed." }],
     [{ kind: "shortlisting_not_in_plan" }, { message: "Your plan does not include shortlisting." }],
     [{ kind: "note_too_long" }, { errors: { note: "The note is too long." } }],
     [{ kind: "failed" }, { message: "We could not complete this request. Try again." }],
@@ -129,7 +129,7 @@ describe("bulkChangeApplicantStage", () => {
   it.each([
     ["CHARA_NOT_FOUND", null, "This applicant could not be found."],
     ["CHARA_FEATURE_NOT_IN_PLAN", null, "Your plan does not include shortlisting."],
-    ["CHARA_FORBIDDEN", null, "Your organization is suspended, so stages cannot be changed."],
+    ["CHARA_FORBIDDEN", null, "Your organisation is suspended, so stages cannot be changed."],
     ["CHARA_INVALID_TRANSITION", null, "Not allowed from its current stage"],
     ["P0001", null, "We could not complete this request. Try again."],
   ])("words the refused item %s without database text", async (errorCode, status, message) => {
@@ -145,8 +145,8 @@ describe("bulkChangeApplicantStage", () => {
     expect((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: [] })).errors).toEqual({ applicationIds: range });
     expect((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: ids(101) })).errors).toEqual({ applicationIds: range });
     expect(Object.keys((await bulkChangeApplicantStage("acme", { ...bulkInput, applicationIds: ["nope"] })).errors ?? {})).toEqual(["applicationIds.0"]);
-    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, status: "withdrawn" })).errors).toEqual({ status: "Choose a stage" });
-    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, note: "  " })).errors).toEqual({ note: "Enter a reason" });
+    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, status: "withdrawn" })).errors).toEqual({ status: "Choose a stage." });
+    expect((await bulkChangeApplicantStage("acme", { ...bulkInput, note: "  " })).errors).toEqual({ note: "Enter a reason." });
     expect(bulkMock).not.toHaveBeenCalled();
   });
 
@@ -160,12 +160,12 @@ describe("bulkChangeApplicantStage", () => {
   it("refuses an address that is not valid and a suspended organization before the database", async () => {
     expect(await bulkChangeApplicantStage("Not A Slug", bulkInput)).toEqual({ message: "This applicant could not be found." });
     requireOrgRoleMock.mockResolvedValue({ organization: { id: "o", slug: "acme", suspended: true } });
-    expect(await bulkChangeApplicantStage("acme", bulkInput)).toEqual({ message: "Your organization is suspended, so stages cannot be changed." });
+    expect(await bulkChangeApplicantStage("acme", bulkInput)).toEqual({ message: "Your organisation is suspended, so stages cannot be changed." });
     expect(bulkMock).not.toHaveBeenCalled();
   });
 
   it.each([
-    [{ kind: "blocked", reason: "read_only_free_plan" }, { message: "Your organization has no active paid plan, so stages cannot be changed." }],
+    [{ kind: "blocked", reason: "read_only_free_plan" }, { message: "Your organisation has no active paid plan, so stages cannot be changed." }],
     [{ kind: "note_too_long" }, { errors: { note: "The note is too long." } }],
     [{ kind: "failed" }, { message: "We could not complete this request. Try again." }],
   ])("answers the refusal of the whole call %j as %j", async (refusal, expected) => {

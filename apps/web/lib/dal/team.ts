@@ -1,5 +1,6 @@
 import "server-only";
 import * as z from "zod";
+import { shownLimit } from "@/lib/billing/limits";
 import { createClient } from "@/lib/supabase/server";
 import { invitableRoleSchema, roleSchema, type OrganizationType } from "@/lib/validation/team";
 
@@ -105,7 +106,7 @@ export async function getAllowance(organizationId: string): Promise<{ limit: num
   const { data, error } = await supabase.rpc("team_member_allowance", { p_org: organizationId });
   if (error) throw new Error("The team size could not be loaded", { cause: error });
   const [row] = z.array(allowanceSchema).length(1).parse(data);
-  return { limit: row.member_limit, used: row.used };
+  return { limit: shownLimit("members", row.member_limit), used: row.used };
 }
 
 // Row level security shows the open transfer to the owner and to the member it designates, and to nobody else.

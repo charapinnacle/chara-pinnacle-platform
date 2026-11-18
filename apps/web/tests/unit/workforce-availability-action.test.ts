@@ -65,7 +65,7 @@ describe("saveListing (FR-K3)", () => {
       [refusal("CHARA_INVALID_INPUT", "available_from"), { errors: { availableFrom: "Choose a date within the allowed range." } }],
       [refusal("CHARA_CONFLICT", "listing"), { errors: { country: "You already list this occupation from this country." } }],
       [refusal("CHARA_LIMIT_REACHED", "workforce_listings"), { message: "Your plan's limit of workforce listings is reached." }],
-      [refusal("CHARA_FORBIDDEN", "organization_suspended"), { message: "This organization is suspended, so its availability cannot be changed." }],
+      [refusal("CHARA_FORBIDDEN", "organization_suspended"), { message: "This organisation is suspended, so its availability cannot be changed." }],
       [refusal("CHARA_FORBIDDEN", "release_off"), { message: "Availability cannot be changed at the moment." }],
       [refusal("CHARA_NOT_FOUND", "", "P0002"), { message: "This listing no longer exists." }],
     ];
@@ -103,7 +103,7 @@ describe("confirmListing and deleteListing (FR-K3 AC4, AC6, AC10)", () => {
     expect(await deleteListing("manila-skills", LISTING)).toEqual({});
     rpcMock.mockResolvedValueOnce(refusal("CHARA_FORBIDDEN", "organization_suspended"));
     expect(await deleteListing("manila-skills", LISTING)).toEqual({
-      message: "This organization is suspended, so its availability cannot be changed.",
+      message: "This organisation is suspended, so its availability cannot be changed.",
     });
     expect(rpcMock).toHaveBeenCalledWith("delete_workforce_availability", { p_listing: LISTING });
   });
