@@ -22,6 +22,9 @@ const OVER_LIMIT_TEXT = {
   active_requirements: "Open requirements stay open. No more can be published or reopened until usage is below the limit.",
 } as const satisfies Record<Usage["key"], string>;
 
+// Over a limit that is not enforced at the moment: nothing is refused, so the page claims no block.
+const OVER_LIMIT_NOT_ENFORCED_TEXT = "This is more than your plan includes. Nothing is blocked at the moment.";
+
 const STATE_TEXT: Record<UsageState, string | null> = {
   ok: null,
   unlimited: null,
@@ -39,7 +42,7 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
         Usage
       </h2>
       <ul className="grid gap-5">
-        {usage.map(({ key, used, limit }) => {
+        {usage.map(({ key, used, limit, applies }) => {
           const level = classifyUsage(used, limit);
           const stateText = STATE_TEXT[level.state];
           return (
@@ -77,7 +80,9 @@ export function UsageSection({ usage, upgradeHref }: UsageSectionProps) {
                   ) : null}
                 </p>
               ) : null}
-              {level.state === "over_limit" ? <p className="text-small text-muted-foreground">{OVER_LIMIT_TEXT[key]}</p> : null}
+              {level.state === "over_limit" ? (
+                <p className="text-small text-muted-foreground">{applies ? OVER_LIMIT_TEXT[key] : OVER_LIMIT_NOT_ENFORCED_TEXT}</p>
+              ) : null}
             </li>
           );
         })}

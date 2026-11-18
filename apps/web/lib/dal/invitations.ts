@@ -228,18 +228,39 @@ function failureOf(error: unknown): Failure {
   return { message: error instanceof Error ? error.message : "unknown" };
 }
 
+// The partners that responded to the requirements, invited or from the job order marketplace: inviting them again offers
+// nothing, so the pages show them as Responded instead of offering Invite (FR-O1 AC12).
+async function listResponders(requirementIds: readonly string[]): Promise<{ requirementId: string; partnerId: string }[]> {
+  if (requirementIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("partner_responses")
+    .select("requirement_id, organization_id")
+    .in("requirement_id", [...requirementIds]);
+  if (error) throw new Error("The responses could not be loaded", { cause: error });
+  return data.map((row) => ({ requirementId: row.requirement_id, partnerId: row.organization_id }));
+}
+
 // The invitations of a requirement by partner and its allowance, for the suggestions page; null when either read fails,
-// so the page shows the suggestions without the invite controls instead of an error.
+// so the page shows the suggestions without the invite controls instead of an error. A partner that responded without
+// an invitation shows as Responded.
 export async function getSuggestionInvitations(
   organizationId: string,
   requirementId: string,
 ): Promise<{ invitations: Record<string, InvitationStatus>; usage: InvitationUsage } | null> {
   try {
-    const [invitations, usage] = await Promise.all([
+    const [invitations, usage, responders] = await Promise.all([
       listRequirementInvitations(organizationId, requirementId),
       getInvitationUsage(organizationId, requirementId),
+      listResponders([requirementId]),
     ]);
-    return { invitations: Object.fromEntries(invitations.map((invitation) => [invitation.partnerId, invitation.status])), usage };
+    return {
+      invitations: {
+        ...Object.fromEntries(invitations.map((invitation) => [invitation.partnerId, invitation.status])),
+        ...Object.fromEntries(responders.map(({ partnerId }) => [partnerId, "responded" as const])),
+      },
+      usage,
+    };
   } catch (error) {
     logFault("Reading the invitations of the suggestions", failureOf(error));
     return null;
@@ -310,6 +331,7 @@ async function readInviteChoices(partnerIds: readonly string[], preferredSlug?: 
       requirements.map(({ id }) => id),
     );
   if (invitationsError) throw new Error("The invitations could not be loaded", { cause: invitationsError });
+  const responders = await listResponders(requirements.map(({ id }) => id));
 
   const used = new Map<string, number>();
   const invited: InviteChoices["invited"] = {};
@@ -318,6 +340,9 @@ async function readInviteChoices(partnerIds: readonly string[], preferredSlug?: 
     if (partnerIds.includes(row.organization_id)) {
       invited[row.organization_id] = { ...invited[row.organization_id], [row.requirement_id]: row.status };
     }
+  }
+  for (const { requirementId, partnerId } of responders) {
+    if (partnerIds.includes(partnerId)) invited[partnerId] = { ...invited[partnerId], [requirementId]: "responded" };
   }
   const withRequirements = managed.filter(({ id }) => requirements.some((requirement) => requirement.organization_id === id));
   const employers = await Promise.all(
