@@ -70,7 +70,7 @@ function MenuActions({ lang, area, postJobHref }: { lang: string; area: string |
   return (
     <div className="sticky bottom-0 -mx-5 mt-auto grid grid-cols-2 gap-2.5 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {postJobHref ? (
-        <LinkButton href={postJobHref} className="col-span-2 xs:hidden">
+        <LinkButton href={postJobHref} prefetch={false} className="col-span-2 xs:hidden">
           <PostJobLabel />
         </LinkButton>
       ) : null}
@@ -111,9 +111,10 @@ export async function PublicNav({ lang }: { lang: string }) {
               {howItWorksLink.label}
             </Link>
           </li>
+          {/* Post a job leads into the signed-in area: prefetching it would load the whole app shell on every public page. */}
           {postJobHref ? (
             <li className="max-xs:hidden">
-              <LinkButton href={postJobHref} size="default" className="min-h-11 px-4 md:mx-1">
+              <LinkButton href={postJobHref} prefetch={false} size="default" className="min-h-11 px-4 md:mx-1">
                 <PostJobLabel />
               </LinkButton>
             </li>
