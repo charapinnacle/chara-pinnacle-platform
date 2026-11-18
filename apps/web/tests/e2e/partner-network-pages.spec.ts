@@ -101,20 +101,22 @@ test.describe("the public partner network pages (FR-L5)", () => {
     await partner.context.close();
   });
 
-  test("AC3: the pages of 2b and 2c do not exist and neither the sitemap nor the menu names them; with their switches on only the pages built so far (Job orders, V40) appear", async ({ request }) => {
+  test("AC3: the pages of 2b and 2c do not exist and neither the sitemap nor the menu names them; with their switches on only the pages built so far (Job orders, V40; Find companies, V53; Find workers, V69) appear", async ({ request }) => {
     for (const path of UNRELEASED_PATHS) expect((await request.get(path)).status(), path).toBe(404);
     const sitemap = await (await request.get("/sitemap.xml")).text();
     for (const path of ["/en/partners/recruitment", "/en/partners/staffing"]) expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`);
     for (const path of UNRELEASED_PATHS) expect(sitemap).not.toContain(`<loc>${SITE}${path}</loc>`);
 
     // Their switches alone publish nothing: each page's own unit adds its link and sitemap entry (job-orders.spec.ts
-    // checks the Job orders page, its link and its entry).
-    const notBuilt = UNRELEASED_PATHS.filter((path) => path !== "/en/job-orders");
+    // checks the Job orders page, its link and its entry, find-employers.spec.ts the Find companies page,
+    // find-workers.spec.ts the Find workers page).
+    const built = ["/en/job-orders", "/en/companies", "/en/find-workers"];
+    const notBuilt = UNRELEASED_PATHS.filter((path) => !built.includes(path));
     setRelease("release_job_orders", true);
     setRelease("release_find_workers", true);
     try {
       for (const path of notBuilt) expect((await request.get(path)).status(), path).toBe(404);
-      expect((await request.get("/en/job-orders")).status()).toBe(200);
+      for (const path of built) expect((await request.get(path)).status(), path).toBe(200);
       const switched = await (await request.get("/sitemap.xml")).text();
       for (const path of notBuilt) expect(switched).not.toContain(`<loc>${SITE}${path}</loc>`);
       const menu = await (await request.get("/en")).text();

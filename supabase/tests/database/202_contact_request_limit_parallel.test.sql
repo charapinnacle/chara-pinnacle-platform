@@ -61,7 +61,7 @@ select extensions.dblink_exec('holder', pg_temp.send_sql(:'m1')) as began \gset
 select t as held from extensions.dblink('holder', format(
   $$select 'ok' from public.send_contact_request(%L, %L, 'The first request of the day')$$,
   :'emp', :'c1')) as r (t text) \gset
-select is(:'held', 'ok', 'FR-Q3 AC3: the owner sends the last request of the day and keeps the transaction open');
+select is(:'held'::text, 'ok', 'FR-Q3 AC3: the owner sends the last request of the day and keeps the transaction open');
 
 select extensions.dblink_exec('blocked', pg_temp.send_sql(:'m2')) as began \gset
 select extensions.dblink_send_query('blocked', format(
