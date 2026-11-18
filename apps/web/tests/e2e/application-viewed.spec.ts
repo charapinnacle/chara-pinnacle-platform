@@ -111,7 +111,7 @@ test.describe("the first open of an application", () => {
     const { company, member, applicationId } = await setup();
     execute(`update public.organizations set status = 'suspended' where id = ${literal(company.id)}`);
     await logIn(page, member, applicantUrl(company.slug, applicationId));
-    await expect(page.getByRole("alert").filter({ hasText: "This organization is suspended, so its applicants are not available." })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "This organisation is suspended, so its applicants are not available." })).toBeVisible();
     await expect(page.getByText("Ana Silva")).toHaveCount(0);
     await expect(changeStageButton(page)).toHaveCount(0);
     expect(query<{ n: number }>(`select count(*)::int as n from public.application_events where application_id = ${literal(applicationId)}`)[0].n).toBe(1);

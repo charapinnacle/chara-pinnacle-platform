@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AppealView } from "@/components/admin/appeal-view";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
+import { getAppeal } from "@/lib/dal/admin-appeals";
 import { isReleased } from "@/lib/dal/release";
 import { requirePlatformRole } from "@/lib/dal/session";
 import { idParam } from "@/lib/validation/appeal";
@@ -15,7 +16,8 @@ export default async function AppealPage({ params }: PageProps<"/[lang]/admin/ap
   const { roles } = await requirePlatformRole(lang, ["trust_safety", "admin"]);
   if (!(await isReleased("release_partner_directories"))) notFound();
   const appealId = idParam(id);
-  if (appealId === null) notFound();
+  // Checked before the Suspense boundary, so that an unknown id answers 404 rather than 200 with the not-found page.
+  if (appealId === null || !(await getAppeal(appealId))) notFound();
   return (
     <Suspense fallback={<LoadingSkeleton rows={4} />}>
       <AppealView lang={lang} id={appealId} canAct={roles.includes("trust_safety")} />

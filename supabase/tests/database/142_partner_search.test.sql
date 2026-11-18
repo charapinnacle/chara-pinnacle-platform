@@ -1,5 +1,5 @@
 begin;
-select plan(110);
+select plan(114);
 
 \ir organizations_fixture.inc
 
@@ -438,18 +438,36 @@ insert into private.settings (key, value) values ('rate_limit_partner_search_max
 -- The search statistics ---------------------------------------------------------------------------------------------------------
 delete from stats.partner_searches;
 insert into stats.partner_searches (kind, filter_names, destination_country, result_count, created_at)
-values ('recruitment', '{destination}', 'NO', 0, now()), ('recruitment', '{destination}', 'NO', 0, now()),
-       ('recruitment', '{destination}', 'SE', 0, now()), ('recruitment', '{destination}', 'DE', 3, now()),
-       ('recruitment', '{}', null, 20, now()), ('recruitment', '{destination}', 'NO', 0, now() - interval '40 days'),
-       ('staffing', '{destination}', 'NO', 0, now());
+select 'recruitment', '{destination}', d, r, now()
+from (values ('NO', 0), ('NO', 0), ('NO', 0), ('NO', 0), ('NO', 0), ('SE', 0), ('SE', 0), ('DE', 3), ('DE', 3), ('DE', 3),
+  ('DE', 3), ('DE', 3), ('DE', 3)) v (d, r);
+insert into stats.partner_searches (kind, filter_names, destination_country, result_count, created_at)
+values ('recruitment', '{destination}', 'NO', 0, now() - interval '40 days'), ('staffing', '{destination}', 'NO', 0, now());
 select is(
   pg_temp.call_as(:'stf', 'authenticated', format(
     'select set_config(''t.result'', to_jsonb(s)::text, true) from public.admin_partner_search_stats(''recruitment'', %L, %L) s',
     current_date - 29, current_date)),
   'ok', 'a Platform Administrator reads the statistics');
 select is(pg_temp.result(),
-  '{"searches": 5, "with_results": 2, "zero_results": 3, "zero_by_destination": [{"code": "NO", "name": "Norway", "searches": 2}, {"code": "SE", "name": "Sweden", "searches": 1}]}'::jsonb,
-  'KPIs: searches, with at least one result, zero results and zero-result searches by destination, within the days and the kind');
+  '{"searches": 13, "with_results": 6, "zero_results": 7, "zero_by_destination": [{"code": "NO", "name": "Norway", "searches": 5}], "min_count": 5}'::jsonb,
+  'KPIs: searches, with at least one result, zero results and zero-result searches by destination, within the days and the kind; Sweden (2) is below the threshold and left out');
+delete from stats.partner_searches where ctid in (
+  select ctid from stats.partner_searches where kind = 'recruitment' and destination_country = 'DE' limit 2);
+select is(
+  pg_temp.call_as(:'stf', 'authenticated', format(
+    'select set_config(''t.result'', to_jsonb(s)::text, true) from public.admin_partner_search_stats(''recruitment'', %L, %L) s',
+    current_date - 29, current_date)),
+  'ok', 'and again with 4 searches with results');
+select is(pg_temp.result(),
+  '{"searches": 11, "with_results": null, "zero_results": null, "zero_by_destination": [{"code": "NO", "name": "Norway", "searches": 5}], "min_count": 5}'::jsonb,
+  'FR-S2 AC9: a count below the threshold is null, and so is its complement, which would give it back');
+delete from stats.partner_searches where kind = 'recruitment' and destination_country = 'DE';
+select is(
+  pg_temp.call_as(:'stf', 'authenticated', format(
+    'select set_config(''t.result'', to_jsonb(s)::text, true) from public.admin_partner_search_stats(''recruitment'', %L, %L) s',
+    current_date, current_date)),
+  'ok', 'and for today with 7 searches, all without results');
+select is(pg_temp.result() ->> 'searches', '7', 'the total reaches the threshold and is shown');
 select is(pg_temp.call_as(:'acm', 'authenticated', format('select * from public.admin_partner_search_stats(''recruitment'', %L, %L)', current_date, current_date)),
   'P0001|CHARA_FORBIDDEN|', 'an employer admin cannot read them');
 select is(pg_temp.call_as(:'stf', 'authenticated', format('select * from public.admin_partner_search_stats(''recruitment'', %L, %L)', current_date - 366, current_date)),
@@ -461,7 +479,7 @@ select is((select days || '/' || editable from private.retention_policies where 
 update stats.partner_searches set created_at = now() - interval '731 days' where destination_country = 'SE';
 select private.apply_retention();
 select is((select count(*)::integer from stats.partner_searches where destination_country = 'SE'), 0, 'apply_retention removes rows past the period');
-select is((select count(*)::integer from stats.partner_searches), 6, 'and keeps the others');
+select is((select count(*)::integer from stats.partner_searches), 7, 'and keeps the others');
 
 -- Reserved directory slugs ---------------------------------------------------------------------------------------------------------
 select throws_ok(

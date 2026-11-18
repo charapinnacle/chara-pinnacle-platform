@@ -8,7 +8,7 @@ import { ModalDialog } from "@/components/feedback/modal-dialog";
 import { useActionCall } from "@/components/feedback/use-action-call";
 import { cancelAccountDeletion, requestAccountDeletion } from "@/lib/actions/account-closure";
 import type { DeletionStatus } from "@/lib/dal/account-closure";
-import { formatIsoDate } from "@/lib/i18n/format";
+import { formatDate } from "@/lib/i18n/format";
 
 export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays }: DeletionStatus) {
   const router = useRouter();
@@ -29,7 +29,7 @@ export function DeleteAccount({ requestedAt, erasesOn, canCancel, coolingOffDays
     return (
       <div className="grid gap-4">
         <Notice ref={banner} tabIndex={-1} tone="info" role="status" className="outline-none">
-          Deletion requested on {formatIsoDate(requestedAt)}. Your data will be erased on {formatIsoDate(erasesOn)}.
+          Deletion requested on {formatDate(requestedAt)}. Your data will be erased on {formatDate(erasesOn)}.
           {canCancel ? null : " The time to cancel is over and the erasure is in progress."}
         </Notice>
         {canCancel ? (
