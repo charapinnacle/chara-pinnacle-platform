@@ -67,6 +67,25 @@ test.describe("login", () => {
     await context.close();
   });
 
+  test("FR-A3: a signed-in person who opens the login page is redirected to their dashboard or to the page asked for", async ({
+    browser,
+  }) => {
+    const user = await createCommittedUser("worker");
+    const context = await browser.newContext();
+    await signInBrowser(context, user);
+    const page = await context.newPage();
+    const response = await page.request.get("/en/login", { maxRedirects: 0 });
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toMatch(/\/en\/dashboard\/worker$/);
+    await page.goto("/en/login");
+    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+    await page.goto(`/en/login?next=${encodeURIComponent("/en/passport")}`);
+    await expect(page).toHaveURL(/\/en\/passport$/);
+    await page.goto(`/en/login?next=${encodeURIComponent("//evil.example")}`);
+    await expect(page).toHaveURL(/\/en\/dashboard\/worker$/);
+    await context.close();
+  });
+
   test("FR-A3 AC3: a suspended account cannot log in and one with a session is held on the suspended page", async ({
     browser,
   }) => {

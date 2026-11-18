@@ -41,12 +41,14 @@ comment on table stats.partner_searches is
 
 -- admin_partner_search_stats of 20261203100100 with the kind employers among the kinds it reads.
 create or replace function public.admin_partner_search_stats(p_kind text, p_from date, p_to date)
-returns table (searches bigint, with_results bigint, zero_results bigint, zero_by_destination jsonb)
+returns table (searches bigint, with_results bigint, zero_results bigint, zero_by_destination jsonb, min_count integer)
 language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+declare
+  v_min integer;
 begin
   perform private.assert_staff(array['admin']::public.platform_role[]);
   if not private.release_on('release_partner_directories') then
@@ -58,6 +60,7 @@ begin
   if p_from is null or p_to is null or p_from > p_to or p_to - p_from > 365 then
     raise exception 'CHARA_INVALID_INPUT' using detail = 'range';
   end if;
+  v_min := private.stats_min_count();
 
   return query
   with period as (
@@ -65,11 +68,18 @@ begin
     from stats.partner_searches s
     where s.kind = p_kind
       and s.created_at >= p_from::timestamp at time zone 'UTC' and s.created_at < (p_to + 1)::timestamp at time zone 'UTC'
+  ),
+  totals as (
+    select
+      count(*) as n,
+      count(*) filter (where p.result_count > 0) as found,
+      count(*) filter (where p.result_count = 0) as zero
+    from period p
   )
   select
-    count(*),
-    count(*) filter (where p.result_count > 0),
-    count(*) filter (where p.result_count = 0),
+    case when t.n >= v_min then t.n end,
+    case when t.found >= v_min and t.zero >= v_min then t.found end,
+    case when t.found >= v_min and t.zero >= v_min then t.zero end,
     (select coalesce(jsonb_agg(jsonb_build_object('code', z.code, 'name', z.name, 'searches', z.n) order by z.n desc, z.name), '[]'::jsonb)
      from (
        select c.code, c.name, count(*) as n
@@ -77,10 +87,12 @@ begin
        join public.countries c on c.code = q.destination_country
        where q.result_count = 0
        group by c.code, c.name
+       having count(*) >= v_min
        order by n desc, c.name
        limit 10
-     ) z)
-  from period p;
+     ) z),
+    v_min
+  from totals t;
 end;
 $$;
 
