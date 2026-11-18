@@ -59,9 +59,12 @@ test.describe("candidate passport: onboarding", () => {
     await page.getByRole("button", { name: "Create CHARA Passport" }).click();
 
     await expect(page.getByLabel("First name", { exact: true })).toBeFocused();
-    await expect(page.getByText("Enter your first name.")).toBeVisible();
-    await expect(page.getByText("Last name can only contain letters")).toBeVisible();
-    await expect(page.getByText("Choose a country.")).toBeVisible();
+    await expect(page.getByText("Enter your first name.").first()).toBeVisible();
+    await expect(page.getByText("Last name can only contain letters").first()).toBeVisible();
+    await expect(page.getByText("Choose a country.").first()).toBeVisible();
+    // The onboarding form lists its errors like the other forms.
+    const problem = page.getByRole("alert").filter({ hasText: "There is a problem" });
+    await expect(problem.getByRole("link")).toHaveText([/^Enter your first name\.$/, /^Last name can only contain letters/, /^Choose a country\.$/]);
     await expect(page.getByLabel("Last name", { exact: true })).toHaveValue("Okafor1");
     expect(profileRows(user.id)).toEqual([]);
   });

@@ -58,13 +58,13 @@ describe("the period form (FR-S3 AC10)", () => {
     for (const value of ["0", "3651", "40000", "12.5", "-5", "+5", "a year", ""]) {
       const result = days(value);
       expect(result.success, value).toBe(false);
-      expect(result.error?.issues[0].message, value).toBe("Enter a whole number of days from 1 to 3,650");
+      expect(result.error?.issues[0].message, value).toBe("Enter a whole number of days from 1 to 3,650.");
     }
   });
 
   it("asks for a reason of 10 to 500 characters", () => {
     expect(retentionFormSchema.safeParse({ days: "365", reason: "too short" }).error?.issues[0].message).toBe(
-      "Give a reason of at least 10 characters",
+      "Give a reason of at least 10 characters.",
     );
     expect(retentionFormSchema.safeParse({ days: "365", reason: "r".repeat(501) }).success).toBe(false);
   });
@@ -89,7 +89,7 @@ describe("saveRetentionPolicy (FR-S3 AC1, AC10)", () => {
     expect((await saveRetentionPolicy({ entity: "conversations", days: 0, reason })).errors).toHaveProperty("days");
     expect((await saveRetentionPolicy({ entity: "conversations", days: 40000, reason })).errors).toHaveProperty("days");
     expect((await saveRetentionPolicy({ entity: "conversations", days: 365, reason: "short" })).errors).toEqual({
-      reason: "Give a reason of at least 10 characters",
+      reason: "Give a reason of at least 10 characters.",
     });
     expect(requireRoleMock).not.toHaveBeenCalled();
     expect(rpcMock).not.toHaveBeenCalled();
@@ -98,11 +98,11 @@ describe("saveRetentionPolicy (FR-S3 AC1, AC10)", () => {
   it("names the field the database refused and keeps the cause to itself", async () => {
     rpcMock.mockResolvedValueOnce(refusal("CHARA_INVALID_INPUT", "days"));
     expect(await saveRetentionPolicy({ entity: "conversations", days: 365, reason })).toEqual({
-      errors: { days: "Enter a whole number of days from 1 to 3,650" },
+      errors: { days: "Enter a whole number of days from 1 to 3,650." },
     });
     rpcMock.mockResolvedValueOnce(refusal("new row violates check constraint", "", "23514"));
     expect(await saveRetentionPolicy({ entity: "conversations", days: 365, reason })).toEqual({
-      errors: { days: "Enter a whole number of days from 1 to 3,650" },
+      errors: { days: "Enter a whole number of days from 1 to 3,650." },
     });
     rpcMock.mockResolvedValueOnce(refusal("CHARA_INVALID_INPUT", "reason"));
     expect(await saveRetentionPolicy({ entity: "conversations", days: 365, reason })).toEqual({

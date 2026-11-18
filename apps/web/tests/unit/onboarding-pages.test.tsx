@@ -10,6 +10,7 @@ const welcomeDueMock = vi.hoisted(() => vi.fn());
 const releasedMock = vi.hoisted(() => vi.fn());
 const geographiesMock = vi.hoisted(() => vi.fn());
 const marketsLimitMock = vi.hoisted(() => vi.fn<() => number | null>());
+const marketsAllowanceMock = vi.hoisted(() => vi.fn<() => number | null>());
 const offerMock = vi.hoisted(() => vi.fn());
 const commitmentMock = vi.hoisted(() => vi.fn());
 const legalDocumentMock = vi.hoisted(() => vi.fn());
@@ -53,6 +54,14 @@ vi.mock("@/lib/dal/usage", () => ({
       keys.map((limitKey) => {
         const limit = limitKey === "markets" ? marketsLimitMock() : 10;
         return [limitKey, limit === null ? null : { limitKey, used: 0, limit, resetsAt: null, planName: "Free", comparison: null }];
+      }),
+    ),
+  // The limit of marketsAllowanceMock while the limits are not enforced.
+  getUnenforcedAllowances: async (_organizationId: string, keys: string[]) =>
+    Object.fromEntries(
+      keys.map((key) => {
+        const limit = key === "markets" ? marketsAllowanceMock() : null;
+        return [key, limit === null ? null : { limit, planName: "Free" }];
       }),
     ),
 }));
@@ -150,6 +159,7 @@ beforeEach(() => {
   releasedMock.mockResolvedValue(true);
   geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: [] });
   marketsLimitMock.mockReturnValue(3);
+  marketsAllowanceMock.mockReturnValue(null);
   offerMock.mockResolvedValue(emptyOffer);
   commitmentMock.mockResolvedValue(openCommitment);
   legalDocumentMock.mockResolvedValue(commitmentDraft);
@@ -212,12 +222,12 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     intendedOrganizationType: type,
   });
 
-  it("asks a recruitment company for its company on step 1 of 5, with the type fixed and the identifier required", async () => {
+  it("asks a recruitment company for its company on step 1 of 6, with the type fixed and the identifier required", async () => {
     requireUserMock.mockResolvedValue(partner("recruitment_company"));
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Company");
-    expect(html).toContain("Step 5 of 5: </span>Ready");
-    expect(html).toContain("Step 2 of 5: </span>Where you serve");
+    expect(html).toContain("Step 6 of 6: </span>Ready");
+    expect(html).toContain("Step 2 of 6: </span>Where you serve");
     expect(html).toContain("Company type: <strong");
     expect(html).toContain(">Recruitment company</strong>");
     expect(html).toContain("Country where you are based");
@@ -255,9 +265,9 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Where you serve");
-    expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Where you serve</h1>");
-    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 5: Where you serve<\/p>/);
+    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 2 of 6: Where you serve<\/p>/);
     expect(html).toMatch(/<dt[^>]*>Where are you based\?<\/dt><dd[^>]*>Austria<\/dd>/);
     expect(html).toContain("Where do you source workers from?");
     expect(html).toContain("Where do you supply workers for?");
@@ -285,12 +295,29 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain(">0 countries</p>");
   });
 
-  it("asks for what the partner offers once both lists hold a country, still within Where you serve", async () => {
+  it("FR-R1: warns about served countries beyond the plan while limits are not enforced, and not within it", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
+    marketsLimitMock.mockReturnValue(null);
+    marketsAllowanceMock.mockReturnValue(1);
+    geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: ["DE", "AT"] });
+    const over = await render(OnboardingPage);
+    expect(over).toContain("2 of 1 country served on your Free plan.");
+    expect(over).toContain("Plan limits are not enforced yet, so you can save these countries.");
+    expect(over).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/billing"[^>]*>Compare plans<\/a>/);
+
+    geographiesMock.mockResolvedValue({ sourcesFrom: [], servesMarket: ["DE"] });
+    expect(await render(OnboardingPage)).not.toContain("Plan limits are not enforced yet");
+  });
+
+  it("asks for what the partner offers once both lists hold a country, on the step What you offer", async () => {
     requireUserMock.mockResolvedValue(partner("staffing_company"));
     organizationMock.mockResolvedValue({ ...owner, displayName: "Manila Staff", type: "staffing_company" });
     geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
     const html = await render(OnboardingPage);
-    expect(currentStep(html)).toBe("Where you serve");
+    expect(currentStep(html)).toBe("What you offer");
+    expect(html).toMatch(/<p aria-hidden="true"[^>]*>Step 3 of 6: What you offer<\/p>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">What you offer</h1>");
     expect(html).toContain("Which occupations do you recruit or supply?");
     expect(html).toContain(">0 of 10 occupations</p>");
@@ -318,7 +345,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     offerMock.mockResolvedValue(savedOffer);
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Commitments");
-    expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Commitments</h1>");
     expect(html).toContain("Workers never pay fees to get a job through Chara Pinnacle. Every recruitment and staffing company");
     expect(html).toContain("Draft - not yet approved by legal counsel.");
@@ -418,7 +445,7 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     commitmentMock.mockResolvedValue({ version: 0, isDraft: true, accepted: true, acceptedVersion: 0 });
     const html = await render(OnboardingPage);
     expect(currentStep(html)).toBe("Security");
-    expect(html).toMatch(/Step 3 of 5: <\/span>Commitments<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 4 of 6: <\/span>Commitments<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toContain(">Secure your account</h1>");
     expect(html).toContain("As the owner of Manila Skills you will manage its team, billing, job orders and candidates");
     expect(html).toContain("Show the QR code");
@@ -437,12 +464,13 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     twoStepMock.mockResolvedValue(true);
     for (const html of [await render(OnboardingPage), await render(OnboardingPage, { step: "ready" })]) {
       expect(currentStep(html)).toBe("Ready");
-      expect(html).toMatch(/Step 4 of 5: <\/span>Security<span class="sr-only"> \(done\)<\/span>/);
+      expect(html).toMatch(/Step 5 of 6: <\/span>Security<span class="sr-only"> \(done\)<\/span>/);
       expect(html).toContain(">Submit your company for review</h1>");
       expect(html).toContain("A review usually takes one working day.");
       expect(html).toContain(">What our team checks</h2>");
       expect(html).toContain("<li>Your company name and registration number</li><li>Your website</li><li>The licences you declare</li>");
-      expect(html).toMatch(/<button[^>]*type="button"[^>]*>Submit for review<\/button>/);
+      expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Submit for review<\/button>/);
+      expect(html).not.toContain('id="resubmit-checked"');
       expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=company"[^>]*>Change your company details/);
       expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
       expect(html).not.toMatch(/approved|verified/i);
@@ -543,9 +571,15 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(html).toContain("Message from our team");
     expect(html).toContain("Please add the countries you source workers from.");
     expect(html).toMatch(/<a[^>]*href="\/en\/onboarding\?step=where-you-serve"[^>]*>Change where you serve/);
-    expect(html).toMatch(/Step 2 of 5: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
-    expect(html).toMatch(/Step 1 of 5: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
+    expect(html).toMatch(/Step 2 of 6: <\/span>Where you serve<span class="sr-only"> \(more information requested\)<\/span>/);
+    expect(html).toMatch(/Step 1 of 6: <\/span>Company<span class="sr-only"> \(done\)<\/span>/);
     expect(html).toMatch(/<button[^>]*>Submit again for review<\/button>/);
+    expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*id="resubmit-checked"/);
+    expect(html).toContain(
+      "I have updated what our team asked about, or checked that nothing needs to change.",
+    );
+    expect(html.match(/>Change where you serve</g)).toHaveLength(1);
+    expect(html).toMatch(/>Change your company details</);
 
     reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "commitments" });
     const commitments = await render(OnboardingPage);
@@ -555,6 +589,26 @@ describe("the partner journey of onboarding (FR-J1)", () => {
     expect(reopened).toContain("Manila Skills has accepted the employer-pays commitment.");
     expect(reopened).not.toContain("<form");
     expect(reopened).toMatch(/<a[^>]*href="\/en\/onboarding\?step=ready"[^>]*>Back to Ready/);
+
+    reviewMock.mockResolvedValue({ status: "info_requested", submittedAt: null, infoStep: "licences" });
+    const licences = await render(OnboardingPage);
+    expect(licences).toContain("Our team asked for more information about your licences.");
+    expect(licences).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/workforce-profile#licences-heading"[^>]*>Update your licences/);
+    expect(licences).not.toContain("(more information requested)");
+  });
+
+  it("FR-J1 AC11: Ready says the licences are optional and links to their section of the workforce profile", async () => {
+    requireUserMock.mockResolvedValue(partner("recruitment_company"));
+    organizationMock.mockResolvedValue({ ...owner, type: "recruitment_company" });
+    geographiesMock.mockResolvedValue({ sourcesFrom: ["AT"], servesMarket: ["DE"] });
+    offerMock.mockResolvedValue(savedOffer);
+    commitmentMock.mockResolvedValue({ ...openCommitment, accepted: true, acceptedVersion: 0 });
+    twoStepMock.mockResolvedValue(true);
+    const html = await render(OnboardingPage);
+    expect(currentStep(html)).toBe("Ready");
+    expect(html).toContain("The licences you declare");
+    expect(html).toContain("Licences are optional before you submit.");
+    expect(html).toMatch(/<a[^>]*href="\/en\/org\/acme-bau\/workforce-profile#licences-heading"[^>]*>Add your licences<\/a>/);
   });
 
   it("reopens the company details for the owner at aal2, and asks for the code first at aal1", async () => {

@@ -52,7 +52,7 @@ export function consentVerb(slug: string): string {
 export function consentMessage(
   document: Pick<LegalDocumentSummary, "slug" | "title">,
 ): string {
-  if (document.slug === AGE_ATTESTATION_SLUG) return "Confirm that you are 18 or older to create an account";
+  if (document.slug === AGE_ATTESTATION_SLUG) return "Confirm that you are 18 or older to create an account.";
   const title = displayTitle(document.title);
   return document.slug === NOTICE_SLUG ? `Confirm that you have read the ${title} to continue` : `Accept the ${title} to continue`;
 }
