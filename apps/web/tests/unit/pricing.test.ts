@@ -52,13 +52,13 @@ describe("the card of a plan record (FR-H2 AC1, AC3, AC6)", () => {
     expect(planCard({ ...BASIC, limits: { active_jobs: 1, members: 5 } }).limits).toEqual(["1 active vacancy", "5 team members"]);
   });
 
-  it("leaves out a limit without a number, a limit of a later phase and a feature of a later phase", () => {
+  it("leaves out a limit without a number, a limit without a label and a feature of a later phase", () => {
     const card = planCard({
       ...BASIC,
-      limits: { active_jobs: null, members: 15, active_requirements: 4 },
+      limits: { active_jobs: null, members: 15, active_requirements: 4, partner_invitations_per_requirement: null, corridors: 2 },
       features: ["chara_match", "corridors", "advanced_worker_search", "shortlisting"],
     });
-    expect(card.limits).toEqual(["15 team members"]);
+    expect(card.limits).toEqual(["15 team members", "4 active workforce requirements"]);
     expect(card.features).toEqual(["Shortlisting of applicants"]);
   });
 
@@ -120,26 +120,48 @@ const PARTNER_BASIC: PublicPlan = {
 };
 
 describe("the cards of the partner plans (FR-R1 AC3)", () => {
-  it("shows the price, the trial and the limits of the workforce profile and the team, and nothing of a later release", () => {
+  it("shows the price, the trial, the limits of the workforce profile and the team, and the responses and submissions", () => {
     const card = planCard(PARTNER_BASIC, "staffing_company");
     expect(card).toMatchObject({ price: "EUR 59.00", per: "per month", features: [] });
     expect(card.trial[0]).toBe("30 days free trial");
-    expect(card.limits).toEqual(["3 countries served", "10 occupations", "10 workforce listings", "1 team member"]);
+    expect(card.limits).toEqual([
+      "3 countries served",
+      "10 occupations",
+      "10 workforce listings",
+      "1 team member",
+      "10 responses to workforce requests per month",
+    ]);
     expect(planCard({ ...PARTNER_BASIC, code: "recruitment_partner" }, "recruitment_company").limits).toEqual([
       "3 countries served",
       "10 occupations",
       "10 workforce listings",
       "1 team member",
+      "10 job order responses per month",
+      "25 candidate submissions per month",
     ]);
-    expect(card.limits.join(" ")).not.toMatch(/response|submission|message/i);
+    expect(card.limits.join(" ")).not.toMatch(/message/i);
+  });
+
+  it("lists the workforce requirements and partner invitations of an employer plan from its record", () => {
+    const card = planCard({ ...BASIC, limits: { active_jobs: 3, members: 1, active_requirements: 3, partner_invitations_per_requirement: 1 } });
+    expect(card.limits).toEqual(["3 active vacancies", "1 team member", "3 active workforce requirements", "1 partner invitation per requirement"]);
   });
 
   it("lists a partner limit without a value as unlimited", () => {
     const card = planCard(
-      { ...PARTNER_BASIC, limits: { markets: null, listed_occupations: null, workforce_listings: null, members: 15 } },
+      {
+        ...PARTNER_BASIC,
+        limits: { markets: null, listed_occupations: null, workforce_listings: null, members: 15, job_order_responses_per_month: null },
+      },
       "staffing_company",
     );
-    expect(card.limits).toEqual(["Unlimited countries served", "Unlimited occupations", "Unlimited workforce listings", "15 team members"]);
+    expect(card.limits).toEqual([
+      "Unlimited countries served",
+      "Unlimited occupations",
+      "Unlimited workforce listings",
+      "15 team members",
+      "Unlimited responses to workforce requests per month",
+    ]);
   });
 
   it("states the price a contact-sales partner plan starts from, without a trial, and keeps the employer one without a price", () => {

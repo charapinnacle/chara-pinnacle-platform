@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Database } from "@chara-pinnacle/db-types";
 import { adminClient, failure, paged, type Page } from "@/lib/dal/admin";
 import { ADMIN_PAGE_SIZE } from "@/lib/validation/admin";
@@ -76,7 +77,8 @@ export async function listAppeals(status: AppealListStatus, after: AppealCursor 
   return paged(rows, (row): AppealCursor => (open ? { dueAt: row.dueAt, id: row.id } : { id: row.id }));
 }
 
-export async function getAppeal(id: number): Promise<AppealDetail | null> {
+// Cached per request: the page reads it to answer 404 before its Suspense boundary, and the view reads it again.
+export const getAppeal = cache(async (id: number): Promise<AppealDetail | null> => {
   const supabase = await adminClient();
   const { data, error } = await supabase.rpc("admin_get_appeal", { p_id: id });
   if (error) {
@@ -106,7 +108,7 @@ export async function getAppeal(id: number): Promise<AppealDetail | null> {
     reasons: row.reasons ?? null,
     decidedAt: row.decided_at ?? null,
   };
-}
+});
 
 // The KPI "Decisions reversed on appeal" of the last year, with the open and overdue appeals.
 export async function getAppealStats(): Promise<AppealStats> {

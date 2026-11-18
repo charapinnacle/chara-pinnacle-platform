@@ -66,12 +66,13 @@ describe("the partner network section", () => {
 
   it("shows the key figures of the range and of now with what they are based on", () => {
     const html = render(ready);
-    expect(html).toContain('aria-label="Key figures from 2026-03-01 to 2026-04-30"');
+    expect(html).toContain('aria-label="Key figures from 1 March 2026 to 30 April 2026"');
     expect(html).toContain("Median time from submission to review decision");
     expect(html).toContain("9 hours");
     expect(html).toContain('aria-label="Key figures now"');
     expect(html).toContain("Listed staffing companies");
-    expect(html).toContain("Not shown: based on fewer than 5");
+    expect(html).toContain("Not shown: below the privacy threshold of 5");
+    expect(html).not.toContain("based on fewer than");
   });
 
   it("says the counts are hidden below the threshold when every count is hidden, not that nothing happened", () => {

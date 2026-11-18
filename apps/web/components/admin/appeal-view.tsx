@@ -18,11 +18,15 @@ const undoText: Record<string, string> = {
   organization_suspended: "The organisation is reinstated: its vacancies and partner profile come back and its team can act again.",
 };
 
-const NOTHING_TO_UNDO =
-  "The decision is no longer in effect (a later decision changed it, or the vacancy was deleted), so nothing is undone; the outcome is recorded and sent.";
+// Why a decision is no longer in effect, for what it is about: only a vacancy can also have been deleted since.
+export function notInEffectWhy(appeal: Pick<AppealDetail, "targetType">): string {
+  return appeal.targetType === "job" ? "a later decision changed it, or the vacancy was deleted" : "a later decision changed it";
+}
 
 export function undoOf(appeal: AppealDetail): string {
-  if (!appeal.inEffect) return NOTHING_TO_UNDO;
+  if (!appeal.inEffect) {
+    return `The decision is no longer in effect (${notInEffectWhy(appeal)}), so nothing is undone; the outcome is recorded and sent.`;
+  }
   return undoText[appeal.action] ?? "What the decision took away is restored.";
 }
 
@@ -57,7 +61,7 @@ export async function AppealView({ lang, id, canAct }: { lang: string; id: numbe
             ...(appeal.decisionReportId
               ? [{ label: "Report", value: <TextLink href={adminPath(lang, `reports/${appeal.decisionReportId}`)}>Open the report</TextLink> }]
               : []),
-            { label: "In effect", value: appeal.inEffect ? "Yes" : "No: a later decision changed it, or the vacancy was deleted" },
+            { label: "In effect", value: appeal.inEffect ? "Yes" : `No: ${notInEffectWhy(appeal)}` },
           ]}
         />
         <div>{targetLink(lang, appeal)}</div>
@@ -96,7 +100,7 @@ export async function AppealView({ lang, id, canAct }: { lang: string; id: numbe
         {appeal.status !== "open" ? (
           <DetailList
             items={[
-              { label: "Outcome", value: appealStatusLabels[appeal.status] },
+              { label: "Result", value: appealStatusLabels[appeal.status] },
               { label: "Decided", value: appeal.decidedAt ? formatDateTime(appeal.decidedAt) : "" },
               { label: "Statement of reasons", value: <p className="whitespace-pre-line wrap-anywhere">{appeal.reasons}</p> },
             ]}
