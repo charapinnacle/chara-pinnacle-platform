@@ -43,7 +43,15 @@ jobs:
         # The runner hands out 32768-60999 to outgoing connections, the image pulls of db:start among them, and a port of
         # the stack or of an Edge Function (544xx) taken that way fails its bind with "address already in use".
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54420-54439
-      - run: npm run db:start
+      - name: Start the local stack
+        # The reservation cannot free a port that a socket opened before it already holds (54424 has failed this way), so a
+        # failed start lists the sockets on the stack's ports and starts once more.
+        run: |
+          npm run db:start && exit 0
+          sudo ss -tanp | grep -E ':544[23][0-9]\b' || true
+          npm run db:stop -- --no-backup
+          sleep 20
+          npm run db:start
       - run: npm run db:test
       - run: npm run db:lint
       - run: npm run db:types
@@ -95,7 +103,15 @@ jobs:
         # The runner hands out 32768-60999 to outgoing connections, the image pulls of db:start among them, and a port of
         # the stack or of an Edge Function (544xx) taken that way fails its bind with "address already in use".
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54420-54439
-      - run: npm run db:start
+      - name: Start the local stack
+        # The reservation cannot free a port that a socket opened before it already holds (54424 has failed this way), so a
+        # failed start lists the sockets on the stack's ports and starts once more.
+        run: |
+          npm run db:start && exit 0
+          sudo ss -tanp | grep -E ':544[23][0-9]\b' || true
+          npm run db:stop -- --no-backup
+          sleep 20
+          npm run db:start
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - run: npm run e2e
