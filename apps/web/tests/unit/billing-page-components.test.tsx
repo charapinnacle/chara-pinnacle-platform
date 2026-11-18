@@ -30,8 +30,8 @@ describe("the usage bars (FR-G5 AC7, AC12)", () => {
 
   it("gives each bar the role, the label, the value and the maximum, and the figures in words", () => {
     const html = render([
-      { key: "active_jobs", used: 7, limit: 15 },
-      { key: "members", used: 3, limit: 5 },
+      { key: "active_jobs", used: 7, limit: 15, applies: true },
+      { key: "members", used: 3, limit: 5, applies: true },
     ]);
     expect(html).toContain('role="progressbar" aria-label="Open vacancies" aria-valuemin="0" aria-valuemax="15" aria-valuenow="7" aria-valuetext="7 of 15"');
     expect(html).toContain('aria-label="Team members" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3"');
@@ -41,22 +41,31 @@ describe("the usage bars (FR-G5 AC7, AC12)", () => {
   });
 
   it("says Limit reached with an Upgrade link at the limit, and no link when no upgrade exists", () => {
-    const at = [{ key: "active_jobs", used: 3, limit: 3 }] satisfies Usage[];
+    const at = [{ key: "active_jobs", used: 3, limit: 3, applies: true }] satisfies Usage[];
     expect(text(render(at))).toContain("3 of 3 Limit reached");
     expect(render(at)).toContain('aria-label="Upgrade (Open vacancies)" href="#plan-actions"');
     expect(render(at, null)).not.toContain("<a");
   });
 
   it("says that a plan over its limit keeps its data, and keeps the bar at the maximum", () => {
-    const html = render([{ key: "active_jobs", used: 5, limit: 3 }]);
+    const html = render([{ key: "active_jobs", used: 5, limit: 3, applies: true }]);
     expect(text(html)).toContain("5 of 3 Over the limit");
     expect(text(html)).toContain("Existing vacancies stay open. No more can be opened until usage is below the limit.");
     expect(html).toContain('aria-valuemax="3" aria-valuenow="3"');
     expect(html).toContain('<rect width="100"');
   });
 
+  it("claims no block over a limit that is not enforced, and the block once it is (FR-M4)", () => {
+    const over = (applies: boolean) => text(render([{ key: "active_requirements", used: 4, limit: 3, applies }]));
+    expect(over(false)).toContain("Open workforce requirements 4 of 3 Over the limit");
+    expect(over(false)).toContain("This is more than your plan includes. Nothing is blocked at the moment.");
+    expect(over(false)).not.toContain("No more can be published");
+    expect(over(true)).toContain("Open requirements stay open. No more can be published or reopened until usage is below the limit.");
+    expect(over(true)).not.toContain("Nothing is blocked");
+  });
+
   it("shows Unlimited as text without a bar", () => {
-    const html = render([{ key: "members", used: 4, limit: null }]);
+    const html = render([{ key: "members", used: 4, limit: null, applies: true }]);
     expect(text(html)).toContain("Team members Unlimited");
     expect(html).not.toContain("progressbar");
   });
