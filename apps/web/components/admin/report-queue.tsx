@@ -73,7 +73,7 @@ export async function ReportQueue({ lang, filter, after }: { lang: string; filte
           description={filter.status === "open" && !filter.type && !after ? "Every report has been decided." : "Nothing matches these filters."}
         />
       ) : (
-        <ResultsTable caption="Reports" columns={["Reference", "About", "Category", "Status", "Reported", "Due"]}>
+        <ResultsTable caption="Reports" columns={["Reference", "About", "Category", "Status", "Reported", "First look due"]}>
           {page.rows.map((row) => (
             <tr key={row.id}>
               <td className={cell}>

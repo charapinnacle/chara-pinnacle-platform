@@ -183,7 +183,7 @@ test.describe("working the reports queue", () => {
     const categories = await table(page).locator("tbody tr td:nth-child(3)").allInnerTexts();
     const firstOther = categories.findIndex((text) => !text.includes("Fee demand"));
     expect(firstOther === -1 || categories.slice(firstOther).every((text) => !text.includes("Fee demand")), "no fee demand after another report").toBe(true);
-    await expect(table(page).getByRole("columnheader", { name: "Due" })).toBeVisible();
+    await expect(table(page).getByRole("columnheader", { name: "First look due" })).toBeVisible();
     await expectAccessibleAtBothWidths(page);
 
     await page.goto(`/en/admin/reports?status=open&after=${openQueueAfter(fee)}`);

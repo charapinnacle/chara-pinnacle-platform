@@ -397,7 +397,7 @@ test.describe("Public partner profile (FR-K4)", () => {
     const report = staff.page.locator("#report");
     await expect(report).toContainText("Partner profile");
     await expect(report).toContainText("Fee demand");
-    await expect(report).toContainText("Due");
+    await expect(report).toContainText("First look due");
     await expect(report).toContainText("A signed-in account");
     await expect(report).not.toContainText(worker.email);
     const target = staff.page.locator("#target");
