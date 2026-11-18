@@ -23,7 +23,7 @@ import {
 import { uniqueName } from "./support/organizations";
 import { newTeam, signInAtAal2, teamAudit } from "./support/team";
 import { expect, test } from "./support/test";
-import { formatShortDate } from "@/lib/i18n/format";
+import { formatDate, formatShortDate } from "@/lib/i18n/format";
 
 const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
@@ -82,7 +82,7 @@ test.describe("payment webhook: the provider's events keep the billing page corr
     await deliverBillingEvent({ ...subscribed, kind: "subscription.updated", status: "active", trialEndsAt: trialEnd, currentPeriodEnd: periodEnd });
     await page.goto(billingPath(team.slug));
     await expectPlan(page, "Basic", "Active");
-    await expect(page.getByText(`Next invoice ${formatShortDate(periodEnd)}`)).toBeVisible();
+    await expect(page.getByText(`Next invoice ${formatDate(periodEnd)}`)).toBeVisible();
 
     // A failed payment: Past due, and one email however often it fails again.
     const failure = { kind: "payment.failed", orgId: team.id, providerSubscriptionRef: subscription, providerPaymentRef: `in_failed_${subscription}` };
