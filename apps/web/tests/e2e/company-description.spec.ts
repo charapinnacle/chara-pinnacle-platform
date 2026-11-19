@@ -78,7 +78,8 @@ test.describe("the company description", () => {
     await field.fill("  \n ");
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Company profile saved", { exact: true })).toBeVisible();
-    expect(stored(team.id)).toBeNull();
+    // The notice of the first save may still be showing, so the clearing save is waited for in the database.
+    await expect.poll(() => stored(team.id)).toBeNull();
     await page.goto(publicUrl(job));
     await expect(page.getByText("d".repeat(40))).toHaveCount(0);
   });
