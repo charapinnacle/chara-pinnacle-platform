@@ -164,7 +164,7 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
     expect(acceptanceAudits(partner.id)).toEqual([]);
   });
 
-  test("a new version: members see that the owner must accept it, and the owner accepts it from the workforce profile", async ({
+  test("a new version: members see that the owner must accept it, and the owner accepts it in the dialog of the workforce profile", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -183,37 +183,37 @@ test.describe("the employer-pays commitment (FR-J3)", () => {
     try {
       await page.reload();
       await expect(page.getByRole("status").filter({ hasText: OUTDATED_FOR_MEMBERS })).toBeVisible();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
       await expectAccessibleAtBothWidths(page);
       await page.context().clearCookies();
 
       const secret = await enrollTotp(partner.user);
       await signInAtAal2(page, partner.user, secret, profilePath);
+      // V52: the dialog opens at once; the notice behind it says the same and opens it again.
+      const dialog = page.getByRole("dialog", { name: "The employer-pays commitment has changed" });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText("What changed: The text approved by legal counsel replaces the draft.", { exact: true })).toBeVisible();
+      await expect(dialog.getByText(new RegExp(`version ${version} · `))).toBeVisible();
+      await expect(dialog.getByText(/Draft - not yet approved/)).toHaveCount(0);
+      await expectAccessibleAtBothWidths(page);
+      await dialog.getByRole("button", { name: "Not now" }).click();
       const notice = page.getByRole("status").filter({ hasText: "The employer-pays commitment has changed." });
       await expect(notice).toBeVisible();
-      await expectAccessibleAtBothWidths(page);
-      await notice.getByRole("link", { name: "Review and accept the commitment" }).click();
-
-      await expect(page.getByRole("heading", { name: "Commitments", exact: true, level: 1 })).toBeVisible();
-      await expect(page.getByText(/has changed since Manila Skills .+ accepted it\./)).toBeVisible();
-      await expect(page.getByText("What changed: The text approved by legal counsel replaces the draft.", { exact: true })).toBeVisible();
-      await expect(page.getByText(new RegExp(`^Version ${version} · `))).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Reporting a fee demand", level: 3 })).toBeVisible();
-      await expect(page.getByText(DRAFT_NOTICE)).toHaveCount(0);
-      await expectAccessibleAtBothWidths(page);
-      const box = page.getByRole("checkbox", { name: COMMITMENT, exact: true });
+      await notice.getByRole("button", { name: "Review and accept" }).click();
+      const box = dialog.getByRole("checkbox", { name: COMMITMENT, exact: true });
       await box.focus();
       await page.keyboard.press("Space");
       await expect(box).toBeChecked();
-      await page.getByRole("button", { name: "Accept and continue" }).focus();
+      await dialog.getByRole("button", { name: "Accept the commitment" }).focus();
       await page.keyboard.press("Enter");
-      // The owner has set up two-step verification already, so onboarding continues with Ready (V09).
-      await expect(page.getByRole("heading", { name: "Submit your company for review", level: 1 })).toBeVisible();
+      await expect(page.getByText("Commitment accepted", { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Workforce profile", level: 1 })).toBeVisible();
       const rows = commitmentRows(partner.user.id);
       expect(rows.map((row) => row.version)).toEqual([0, version]);
       expect(rows.at(-1)).toEqual({ purpose: SLUG, version, action: "granted", user_id: partner.user.id });
       expect(acceptanceAudits(partner.id).map(({ metadata }) => metadata)).toEqual([{ version: 0 }, { version }]);
 
-      await page.goto(profilePath);
+      await page.reload();
       await expect(page.getByRole("heading", { name: "Workforce profile", level: 1 })).toBeVisible();
       await expect(page.getByText(/commitment/)).toHaveCount(0);
     } finally {

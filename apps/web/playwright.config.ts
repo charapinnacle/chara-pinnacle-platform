@@ -160,6 +160,10 @@ const config = defineConfig({
         "**/invitations.spec.ts",
         "**/requirement-changes.spec.ts",
         "**/partner-responses.spec.ts",
+        "**/response-decisions.spec.ts",
+        "**/candidate-submissions.spec.ts",
+        "**/submission-pipeline.spec.ts",
+        "**/commitment-reconsent.spec.ts",
       ],
     },
     {
@@ -589,13 +593,46 @@ const config = defineConfig({
       testMatch: "**/partner-responses.spec.ts",
       dependencies: ["requirement-changes-release"],
     },
+    // The comparison and the decisions (FR-O3, V47) set releases 2a and 2b and the plan limits for the whole database and
+    // withdraw compare_responses for a moment, so they follow the response pages.
+    {
+      name: "decisions-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/response-decisions.spec.ts",
+      dependencies: ["responses-release"],
+    },
+    // The candidate submission pages (FR-O4, V49) set releases 2a and 2b, candidate submissions and the plan limits for
+    // the whole database and withdraw list_partner_submissions for a moment, so they follow the decisions.
+    {
+      name: "submissions-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/candidate-submissions.spec.ts",
+      dependencies: ["decisions-release"],
+    },
+    // The submission pipeline (FR-O5, V50) sets releases 2a and 2b and candidate submissions for the whole database and
+    // withdraws list_employer_submissions for a moment, so it follows the submission pages.
+    {
+      name: "pipeline-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/submission-pipeline.spec.ts",
+      dependencies: ["submissions-release"],
+    },
+    // The outdated employer-pays commitment (V52) publishes a version of the commitment, which blocks the responses and
+    // submissions of every partner of the database for a while, and sets releases 2a and 2b and candidate submissions, so
+    // it follows the pipeline.
+    {
+      name: "commitment-reconsent-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/commitment-reconsent.spec.ts",
+      dependencies: ["pipeline-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["responses-release"],
+      dependencies: ["commitment-reconsent-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

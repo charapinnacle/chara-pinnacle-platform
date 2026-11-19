@@ -9,7 +9,7 @@ import { InvitationStatusBadge } from "@/components/invitations/invitation-statu
 import { JobOrderView } from "@/components/job-orders/job-order-view";
 import { EligibilityError } from "@/components/responses/eligibility-error";
 import { EligibilityPanel } from "@/components/responses/eligibility-panel";
-import { limitPromptFor } from "@/components/responses/respond-section";
+import { commitmentBlockFor, limitPromptFor } from "@/components/responses/respond-section";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
@@ -56,6 +56,7 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
   const responding = requirement && (invitation.status === "accepted" || invitation.status === "responded");
   const eligibility = responding ? await getResponseEligibility(organization.id, requirement.id).catch(() => "failed" as const) : null;
   const limitPrompt = eligibility && eligibility !== "failed" ? await limitPromptFor(organization, eligibility) : null;
+  const commitment = eligibility && eligibility !== "failed" ? await commitmentBlockFor(organization.id, eligibility) : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -114,6 +115,7 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
           destinationName={names.countries.get(requirement.countryCode) ?? requirement.countryCode}
           respondHref={invitationRespondPath(lang, slug, invitation.id)}
           limitPrompt={limitPrompt}
+          commitment={commitment}
         />
       ) : null}
 

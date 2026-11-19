@@ -89,7 +89,7 @@ export const missingPartLabels: Readonly<Record<string, string>> = {
   employer_pays_commitment: "the employer-pays commitment",
 };
 
-export type NextActionTarget = "profile" | "availability" | "licences" | "onboarding" | "company";
+export type NextActionTarget = "profile" | "availability" | "licences" | "onboarding" | "company" | "commitment";
 
 export type NextAction = { id: string; text: string; target: NextActionTarget };
 
@@ -97,7 +97,8 @@ const plural = (count: number, one: string, other: string) => `${formatCount(cou
 
 function missingTarget(part: string): NextActionTarget {
   if (part === "legal_entity_identifier") return "company";
-  if (part === "employer_pays_commitment") return "onboarding";
+  // The commitment is accepted in the dashboard's own dialog (V52): onboarding sends a submitted company back here.
+  if (part === "employer_pays_commitment") return "commitment";
   return "profile";
 }
 

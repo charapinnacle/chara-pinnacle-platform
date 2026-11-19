@@ -16,7 +16,7 @@ test.describe("the internal notes of the applicant detail page", () => {
 
     await logIn(page, member, applicantUrl(company.slug, applicationId));
     const notes = page.getByRole("region", { name: "Internal notes" });
-    await expect(notes.getByText("Visible to your organisation only. The candidate never sees them.")).toBeVisible();
+    await expect(notes.getByText("Visible to your organisation only. The candidate never sees them.", { exact: true })).toBeVisible();
     await expect(notes.getByText("No internal notes yet.")).toBeVisible();
     const field = notes.getByLabel("Add an internal note");
     await waitForHydration(field);

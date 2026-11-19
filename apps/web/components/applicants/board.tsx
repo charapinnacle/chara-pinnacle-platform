@@ -171,7 +171,7 @@ export function Board({ lang, slug, jobId, columns, frozen, shortlisting, noteMa
         onClose={closeDecline}
         title="Not selected"
         slug={slug}
-        applicationId={declining?.id ?? ""}
+        subject={{ kind: "application", id: declining?.id ?? "" }}
         applicantName={declining?.candidateName ?? FORMER_CANDIDATE}
         targets={declining ? targetsOf(declining) : []}
         noteMaxChars={noteMaxChars}

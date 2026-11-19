@@ -6,6 +6,8 @@ const listMyApplicationsMock = vi.hoisted(() => vi.fn());
 const getMyApplicationMock = vi.hoisted(() => vi.fn());
 const listTimelineMock = vi.hoisted(() => vi.fn());
 const logTrackerViewMock = vi.hoisted(() => vi.fn());
+const releasedMock = vi.hoisted(() => vi.fn());
+const listMySubmissionsMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -21,6 +23,8 @@ vi.mock("@/lib/dal/applications", () => ({
   listTimeline: listTimelineMock,
 }));
 vi.mock("@/lib/applications/tracker-log", () => ({ logTrackerView: logTrackerViewMock }));
+vi.mock("@/lib/dal/release", () => ({ isReleased: releasedMock }));
+vi.mock("@/lib/dal/submissions", () => ({ listMySubmissions: listMySubmissionsMock }));
 
 const { default: ApplicationsPage } = await import("@/app/[lang]/(app)/applications/page");
 const { default: ApplicationPage } = await import("@/app/[lang]/(app)/applications/[id]/page");
@@ -46,6 +50,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   requireCandidateMock.mockResolvedValue(undefined);
   listMyApplicationsMock.mockResolvedValue({ applications: [], hasNext: false });
+  releasedMock.mockResolvedValue(false);
+  listMySubmissionsMock.mockResolvedValue([]);
   getMyApplicationMock.mockResolvedValue(detail);
   listTimelineMock.mockResolvedValue([]);
 });
@@ -84,5 +90,39 @@ describe("the note of a timeline event", () => {
     expect(items[1]).not.toContain("Message from the employer");
     expect(items[2]).toContain(">Note<");
     expect(items[2]).not.toContain("Message from the employer");
+  });
+});
+
+describe("the submissions in the journey tracker (FR-O5 AC9)", () => {
+  const submission = (status: string, approvedAt: string | null) => ({
+    id: "8b1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d33",
+    status,
+    partnerName: "Manila Recruit",
+    partnerSlug: "manila-recruit",
+    title: "Welders for a shipyard",
+    countryCode: "DE",
+    countryName: "Germany",
+    employerName: "Acme Bau",
+    createdAt: "2026-11-01T00:00:00Z",
+    decidedAt: "2026-11-02T00:00:00Z",
+    approvedAt,
+    withdrawnAt: null,
+  });
+
+  it("lists the approved submissions next to the applications, named by the partner, while released", async () => {
+    releasedMock.mockResolvedValue(true);
+    listMySubmissionsMock.mockResolvedValue([submission("interview", "2026-11-02T00:00:00Z"), submission("declined_by_candidate", null)]);
+    const html = renderToStaticMarkup(await ApplicationsPage(listProps()));
+    expect(releasedMock).toHaveBeenCalledWith("release_candidate_submissions");
+    expect(html).toContain("Proposed by Manila Recruit for Welders for a shipyard");
+    expect(html).toContain('href="/en/submissions/8b1c2d52-8a64-4d0e-a1c4-6b0b1d7b4d33"');
+    expect(html).toContain("Interview");
+    expect(html.match(/Proposed by Manila Recruit/g)).toHaveLength(1);
+  });
+
+  it("reads no submission while the release is off", async () => {
+    const html = renderToStaticMarkup(await ApplicationsPage(listProps()));
+    expect(listMySubmissionsMock).not.toHaveBeenCalled();
+    expect(html).not.toContain("Proposed by");
   });
 });

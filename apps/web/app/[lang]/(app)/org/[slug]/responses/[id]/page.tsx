@@ -19,9 +19,16 @@ import { getResponse, listResponseChanges, listResponseDocuments, listResponseVe
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { employerLabel } from "@/lib/job-orders/presentation";
-import { isLive, partnerNextSteps } from "@/lib/responses/presentation";
+import { isLive, partnerNextSteps, submissionsOpen } from "@/lib/responses/presentation";
 import { requirementStatusLabels } from "@/lib/requirements/presentation";
-import { invitationPath, jobOrderPath, responseEditPath, responsesPath } from "@/lib/routes";
+import {
+  invitationPath,
+  jobOrderPath,
+  newSubmissionPath,
+  requirementSubmissionsPath,
+  responseEditPath,
+  responsesPath,
+} from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 // The tab names no requirement or employer (NFR-S11).
@@ -30,8 +37,9 @@ export const metadata: Metadata = { title: "Response", robots: { index: false } 
 // One response of the partner in read view (FR-O2 AC1, AC8, AC10; FR-N2 AC8, AC10; NFR-U4), for every member while
 // release 2b is on: the status with the next step, the proposal with the statement that the platform is not a party,
 // the documents, the history of versions and the employer's changes to the requirement since the response; Change and
-// Withdraw while the employer has not decided. The requirement is named as the partner knows it (NFR-S11). Another
-// company's response and an unknown id end in the same 404.
+// Withdraw while the employer has not decided; the employer's decision with its note and whether the company may submit
+// candidates (FR-O3 step Inform, AC5, AC7, AC8). The requirement is named as the partner knows it (NFR-S11): a shortlist or
+// selection names the employer. Another company's response and an unknown id end in the same 404.
 export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[slug]/responses/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -41,12 +49,13 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
   if (!parsedId.success) notFound();
   const response = await getResponse(organization.id, parsedId.data);
   if (!response) notFound();
-  const [versions, documents, changes, countries, industries] = await Promise.all([
+  const [versions, documents, changes, countries, industries, submissions] = await Promise.all([
     listResponseVersions(organization.id, response.id).catch(() => null),
     listResponseDocuments({ responseId: response.id }).catch(() => null),
     listResponseChanges(organization.id, response.id).catch(() => null),
     getCountries(),
     getIndustries(),
+    isReleased("release_candidate_submissions"),
   ]);
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
@@ -82,6 +91,29 @@ export default async function ResponsePage({ params }: PageProps<"/[lang]/org/[s
             Withdrawn <time dateTime={response.withdrawnAt}>{formatDate(response.withdrawnAt)}</time>
             {response.withdrawalReason ? `. Your reason: ${response.withdrawalReason}` : null}
           </p>
+        ) : null}
+        {response.decidedAt ? (
+          <Notice tone="info" role="status">
+            <p>
+              Decided <time dateTime={response.decidedAt}>{formatDate(response.decidedAt)}</time>.
+              {submissionsOpen(response.status, response.submissionsAllowed)
+                ? " The employer allows your company to submit candidates for this requirement."
+                : null}
+            </p>
+            {response.decisionNote ? <p className="break-words whitespace-pre-line">Note from the employer: {response.decisionNote}</p> : null}
+          </Notice>
+        ) : null}
+        {submissions && submissionsOpen(response.status, response.submissionsAllowed) ? (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            {response.requirementStatus === "open" ? (
+              <LinkButton href={newSubmissionPath(lang, slug, response.requirementId)} size="default">
+                Submit a candidate
+              </LinkButton>
+            ) : null}
+            <TextLink standalone href={requirementSubmissionsPath(lang, slug, response.requirementId)}>
+              See your candidates
+            </TextLink>
+          </div>
         ) : null}
         {isLive(response.status) && response.requirementStatus !== "open" ? (
           <Notice tone="info" role="status">

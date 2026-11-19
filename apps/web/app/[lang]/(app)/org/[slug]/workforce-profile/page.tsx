@@ -3,16 +3,16 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
-import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
 import { AvailabilitySection } from "@/components/organization/availability-section";
+import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { LicencesSection } from "@/components/organization/licences-section";
 import { ModerationNotice } from "@/components/organization/moderation-notice";
 import { WhereYouServeForm } from "@/components/organization/where-you-serve-form";
 import { WorkforceOfferForm } from "@/components/organization/workforce-offer-form";
-import { getCommitmentStatus } from "@/lib/dal/commitment";
+import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getOrganizationGeographies } from "@/lib/dal/geographies";
 import { getLicenceSettings, getPartnerLicences } from "@/lib/dal/licences";
 import { getOrganizationProfile } from "@/lib/dal/organizations";
@@ -25,8 +25,7 @@ import { requireOrgRole } from "@/lib/dal/session";
 import { getUnenforcedAllowances, getUsagePrompts } from "@/lib/dal/usage";
 import { getAvailabilityRules, getListingCounts, getWorkforceListings } from "@/lib/dal/workforce-availability";
 import { getWorkforceOffer, workforceOfferDefaults } from "@/lib/dal/workforce-offer";
-import { billingPath, onboardingPath, workforceProfilePreviewPath } from "@/lib/routes";
-import { commitmentOutdated } from "@/lib/validation/commitment";
+import { billingPath, workforceProfilePreviewPath } from "@/lib/routes";
 import { servedQuestion } from "@/lib/validation/geographies";
 import { LICENCE_STAFF_ONLY } from "@/lib/validation/licences";
 import { partnerTypeSchema, type PartnerType } from "@/lib/validation/sign-up";
@@ -34,30 +33,6 @@ import type { AvailabilityRules } from "@/lib/validation/workforce-availability"
 import { recruitmentTypeLabels, sizeBandLabels, staffingTypeLabels } from "@/lib/validation/workforce-offer";
 
 export const metadata: Metadata = { title: "Workforce profile", robots: { index: false } };
-
-// The employer-pays commitment of the partner is not accepted in its current version (FR-J3): a new version was published
-// or the ownership changed. The owner is led to the Commitments step; everyone else is told that only the owner can
-// accept, and what waits on it.
-function CommitmentNotice({ lang, owner, outdated }: { lang: string; owner: boolean; outdated: boolean }) {
-  return (
-    <Notice tone="warning" role="status">
-      {owner ? (
-        <p>
-          {outdated
-            ? "The employer-pays commitment has changed. Accept the updated version so that your company can keep responding to job orders and submitting candidates."
-            : "Accept the employer-pays commitment before your company can respond to job orders or submit candidates."}{" "}
-          <TextLink href={onboardingPath(lang)}>Review and accept the commitment</TextLink>
-        </p>
-      ) : (
-        <p>
-          {outdated
-            ? "Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates."
-            : "Your owner needs to accept the employer-pays commitment before you can respond to job orders or submit candidates."}
-        </p>
-      )}
-    </Notice>
-  );
-}
 
 // The licences are read in their own boundary, so the rest of the page does not wait for them.
 async function Licences({
@@ -159,7 +134,7 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
       getOccupations(),
       getIndustries(),
       getLanguages(),
-      getCommitmentStatus(organization.id),
+      getCommitmentBlock(organization.id),
       getAvailabilityRules(),
       getPartnerProfileModeration(organization.id),
       getUnenforcedAllowances(organization.id, ["markets"]),
@@ -200,9 +175,9 @@ export default async function WorkforceProfilePage({ params }: PageProps<"/[lang
         </TextLink>
       </PageHeader>
       <ModerationNotice lang={lang} moderation={moderation} appeal={appeal} />
-      {commitment.accepted ? null : (
-        <CommitmentNotice lang={lang} owner={organization.role === "owner"} outdated={commitmentOutdated(commitment)} />
-      )}
+      {commitment ? (
+        <CommitmentGate slug={slug} owner={organization.role === "owner"} commitment={commitment} reasonId="commitment-reason" />
+      ) : null}
       <section aria-labelledby="where-you-serve-heading" className="grid gap-6">
         <h2 id="where-you-serve-heading" className="text-h2">
           Where you serve

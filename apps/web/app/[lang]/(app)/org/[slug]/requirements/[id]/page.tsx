@@ -12,6 +12,7 @@ import { RequirementStatusNotice } from "@/components/requirements/requirement-s
 import { RequirementVacancies } from "@/components/requirements/requirement-vacancies";
 import { RequirementView } from "@/components/requirements/requirement-view";
 import { CapacityToleranceForm } from "@/components/responses/capacity-tolerance-form";
+import { RequirementSubmissions } from "@/components/submissions/requirement-submissions";
 import { RequirementResponses } from "@/components/responses/requirement-responses";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { getInvitationUsage } from "@/lib/dal/invitations";
@@ -20,6 +21,7 @@ import { isReleased } from "@/lib/dal/release";
 import { getRequirement, getRequirementDurations, listRequirementVacancies, listRequirementVersions } from "@/lib/dal/requirements";
 import { getCapacityTolerance, listRequirementResponses } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
+import { listRequirementSubmissions, submissionsReleased } from "@/lib/dal/submissions";
 import { isRequirementEditable } from "@/lib/requirements/presentation";
 import { canSuggestPartners } from "@/lib/requirements/suggestions";
 import { canCreateVacancies } from "@/lib/requirements/vacancies";
@@ -32,8 +34,9 @@ export const metadata: Metadata = { title: "Workforce requirement", robots: { in
 // the status actions (FR-M1 AC1, FR-M2 AC12, NFR-U4), and the vacancies for direct applications copied from it (FR-M1
 // AC10), the way to the suggested partners when it needs partners (FR-M3, V36) and, once published, to its invitations
 // (FR-O1, V42) and the partners' responses (FR-O2, V46), the change history of a published requirement (FR-M2 step Edit,
-// V43), and for an owner or admin the capacity tolerance partners' offers must keep within (FR-O2 AC4). A failed read of
-// the responses leaves their count out, and of the tolerance its form.
+// V43), and for an owner or admin the capacity tolerance partners' offers must keep within (FR-O2 AC4), and while
+// submissions are released the candidates partners submitted (FR-O5 AC1). A failed read of the responses or the
+// submissions leaves their count out, and of the tolerance its form.
 export default async function RequirementPage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -42,7 +45,7 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
   if (organization.suspended) return <SuspendedOrganization title="Workforce requirement" subject="workforce requirements" />;
   const parsedId = requirementIdSchema.safeParse(id);
   if (!parsedId.success) notFound();
-  const [requirement, durations, vacancies, directories, usage, versions, countries, industries, responses, tolerance] = await Promise.all([
+  const [requirement, durations, vacancies, directories, usage, versions, countries, industries, responses, tolerance, submissions] = await Promise.all([
     getRequirement(organization.id, parsedId.data),
     getRequirementDurations(),
     listRequirementVacancies(organization.id, parsedId.data).catch(() => null),
@@ -53,6 +56,9 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
     getIndustries(),
     listRequirementResponses(organization.id, parsedId.data).catch(() => null),
     getCapacityTolerance(organization.id, parsedId.data).catch(() => null),
+    submissionsReleased().then((released) =>
+      released ? listRequirementSubmissions(organization.id, parsedId.data).catch(() => null) : undefined,
+    ),
   ]);
   if (!requirement) notFound();
   const names = {
@@ -103,6 +109,16 @@ export default async function RequirementPage({ params }: PageProps<"/[lang]/org
           requirementId={requirement.id}
           count={responses?.length ?? null}
           updated={responses?.filter((response) => response.updatedUnseen).length ?? 0}
+          selected={responses?.filter((response) => response.status === "selected").map((response) => response.partnerName) ?? []}
+          comparable={responses?.some((response) => response.status !== "withdrawn") ?? false}
+        />
+      ) : null}
+      {requirement.status !== "draft" && submissions !== undefined ? (
+        <RequirementSubmissions
+          lang={lang}
+          slug={slug}
+          requirementId={requirement.id}
+          partners={submissions?.filter((submission) => submission.status !== "withdrawn").map((submission) => submission.partnerName) ?? null}
         />
       ) : null}
       {manager && isRequirementEditable(requirement.status) && tolerance !== null ? (

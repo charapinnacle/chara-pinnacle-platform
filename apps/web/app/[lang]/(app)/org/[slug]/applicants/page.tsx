@@ -24,10 +24,24 @@ import {
 } from "@/lib/dal/applicant-list";
 import { FORMER_CANDIDATE } from "@/lib/applications/presentation";
 import { getJob, isSubscriptionEnded } from "@/lib/dal/hiring";
+import { getRequirement } from "@/lib/dal/requirements";
+import { submissionsReleased } from "@/lib/dal/submissions";
 import { organizationCrumb } from "@/lib/app/navigation";
 import { requireOrgRole, requireUser } from "@/lib/dal/session";
-import { applicantsExportPath, applicantsPath, billingPath, homePath, jobPath, jobsPath } from "@/lib/routes";
+import {
+  applicantsExportPath,
+  applicantsPath,
+  billingPath,
+  homePath,
+  jobPath,
+  jobsPath,
+  requirementPath,
+  requirementsPath,
+  submissionPipelinePath,
+} from "@/lib/routes";
 import { parseApplicantListParams } from "@/lib/validation/applicant-list";
+import { parseSubmissionListParams } from "@/lib/validation/submission-pipeline";
+import { SubmissionPipelineView } from "@/components/submissions/submission-pipeline-view";
 
 export const metadata: Metadata = { title: "Applicants", robots: { index: false } };
 
@@ -39,7 +53,8 @@ const frozenText =
 // The list and the board of the applicants of one vacancy, or the list of all the vacancies of the organization. The
 // address holds the whole state (vacancy, view, sort, stage, page), and every value is checked before it is used. A
 // candidate is sent to their own home whatever the address; a member of another organization gets the page of an unknown
-// slug.
+// slug. While candidate submissions are released, the source filter switches to the candidates partners submitted
+// (FR-O5): of every requirement (?source=submissions) or of one (?requirement=), in the same stages, list and board.
 export default async function ApplicantsPage({ params, searchParams }: PageProps<"/[lang]/org/[slug]/applicants">) {
   const [{ lang, slug }, query] = await Promise.all([params, searchParams]);
   const user = await requireUser(lang);
@@ -54,12 +69,91 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
   ]);
   if (!access || (parsed.job && !job)) notFound();
 
+  const pipeline = (await submissionsReleased()) ? parseSubmissionListParams(query) : null;
+  const frozen = access.stageChangeBlocked !== null;
+  const ended = frozen && (await isSubscriptionEnded(organization.id));
+  const frozenNotice = frozen ? (
+    <ReadOnlyPlanNotice ended={ended} billingHref={organization.role === "member" ? null : billingPath(lang, slug)} otherwise={frozenText} />
+  ) : null;
+  const sourceNav = pipeline && !parsed.job ? (
+    <nav aria-label="Source" className="flex flex-wrap gap-x-6">
+      {(["direct", "submissions"] as const).map((source) => (
+        <TextLink
+          key={source}
+          standalone
+          href={source === "direct" ? applicantsPath(lang, slug) : submissionPipelinePath(lang, slug)}
+          aria-current={pipeline.source === source && !pipeline.requirement ? "page" : undefined}
+          className={pipeline.source === source && !pipeline.requirement ? "no-underline" : undefined}
+        >
+          {source === "direct" ? "Direct applications" : "Partner submissions"}
+        </TextLink>
+      ))}
+    </nav>
+  ) : null;
+
+  if (pipeline?.source === "submissions" && !parsed.job) {
+    const requirement = pipeline.requirement ? await getRequirement(organization.id, pipeline.requirement) : null;
+    if (pipeline.requirement && !requirement) notFound();
+    return (
+      <div className="grid w-full gap-section">
+        <PageHeader
+          title="Applicants"
+          description={
+            requirement ? (
+              <TextLink href={requirementPath(lang, slug, requirement.id)}>{requirement.title}</TextLink>
+            ) : (
+              `Candidates partners submitted for the workforce requirements of ${organization.displayName}`
+            )
+          }
+          breadcrumb={
+            <Breadcrumbs
+              items={[
+                organizationCrumb(lang, organization),
+                ...(requirement
+                  ? [
+                      { label: "Workforce requirements", href: requirementsPath(lang, slug) },
+                      { label: requirement.title, href: requirementPath(lang, slug, requirement.id) },
+                    ]
+                  : []),
+                { label: "Applicants" },
+              ]}
+            />
+          }
+        />
+        {frozenNotice}
+        {sourceNav}
+        {requirement ? (
+          <nav aria-label="View" className="flex flex-wrap gap-x-6">
+            {(["list", "board"] as const).map((view) => (
+              <TextLink
+                key={view}
+                standalone
+                href={submissionPipelinePath(lang, slug, { requirement: requirement.id, view, stage: view === "list" ? pipeline.stage : null })}
+                aria-current={pipeline.view === view ? "page" : undefined}
+                className={pipeline.view === view ? "no-underline" : undefined}
+              >
+                {view === "list" ? "List" : "Board"}
+              </TextLink>
+            ))}
+          </nav>
+        ) : null}
+        <SubmissionPipelineView
+          lang={lang}
+          slug={slug}
+          organizationId={organization.id}
+          params={pipeline}
+          frozen={frozen}
+          shortlisting={access.shortlistingAvailable}
+          noteMaxChars={access.noteMaxChars}
+        />
+      </div>
+    );
+  }
+
   const board = parsed.view === "board" && parsed.job ? { jobId: parsed.job, columns: await listBoard(organization.id, parsed.job) } : null;
   const list = board ? null : await listApplicants(organization.id, parsed);
   const total = board ? board.columns.reduce((sum, column) => sum + column.total, 0) : (list?.total ?? 0);
   const empty = total === 0 && (board !== null || parsed.stage === null);
-  const frozen = access.stageChangeBlocked !== null;
-  const ended = frozen && (await isSubscriptionEnded(organization.id));
   const withoutStage = { ...parsed, stage: null, page: 1 };
   const kept = Object.fromEntries(new URL(applicantsPath(lang, slug, withoutStage), "http://localhost").searchParams);
   const visibleRows = board ? board.columns.flatMap((column) => column.rows) : (list?.rows ?? []);
@@ -85,13 +179,8 @@ export default async function ApplicantsPage({ params, searchParams }: PageProps
         }
       />
 
-      {frozen ? (
-        <ReadOnlyPlanNotice
-          ended={ended}
-          billingHref={organization.role === "member" ? null : billingPath(lang, slug)}
-          otherwise={frozenText}
-        />
-      ) : null}
+      {frozenNotice}
+      {sourceNav}
 
       {!frozen && shortlistable && !access.shortlistingAvailable ? (
         <ShortlistingUpgrade role={organization.role} billingHref={billingPath(lang, slug)} />

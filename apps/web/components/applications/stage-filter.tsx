@@ -1,14 +1,18 @@
-import type { Database } from "@chara-pinnacle/db-types";
 import { FormButton } from "@/components/forms/form-button";
 import { NativeSelect } from "@/components/forms/native-select";
 import { applicationStageOptions } from "@/lib/applications/presentation";
 
-// basePath is the address of the list with everything but the stage and the page (it may carry a query).
-type StageFilterProps = { basePath: string; stage: Database["public"]["Enums"]["application_status"] | null };
+// basePath is the address of the list with everything but the stage and the page (it may carry a query). A list of
+// submitted candidates passes its own stages (Submitted in place of Applied).
+type StageFilterProps = {
+  basePath: string;
+  stage: string | null;
+  options?: readonly { value: string; label: string }[];
+};
 
 // The address is the state of the list: the form is a plain GET, so it works without JavaScript, and nothing changes
 // until the reader presses Apply (WCAG 3.2.2). It shows the first page of the chosen stage.
-export function StageFilter({ basePath, stage }: StageFilterProps) {
+export function StageFilter({ basePath, stage, options = applicationStageOptions }: StageFilterProps) {
   const [path, query = ""] = basePath.split("?");
 
   return (
@@ -22,7 +26,7 @@ export function StageFilter({ basePath, stage }: StageFilterProps) {
         </label>
         <NativeSelect id="stage-filter" name="stage" defaultValue={stage ?? ""}>
           <option value="">All stages</option>
-          {applicationStageOptions.map(({ value, label }) => (
+          {options.map(({ value, label }) => (
             <option key={value} value={value}>
               {label}
             </option>

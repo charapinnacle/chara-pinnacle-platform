@@ -1,7 +1,9 @@
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { Notice } from "@/components/forms/notice";
+import { FormButton } from "@/components/forms/form-button";
 import { TextLink } from "@/components/forms/text-link";
 import { LinkButton } from "@/components/layout/link-button";
+import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { ResponseStatusBadge } from "@/components/responses/response-status";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
 import { jobOrderReasons, type JobOrderReason } from "@/lib/dal/job-orders";
@@ -10,6 +12,7 @@ import { formatCount, formatDate } from "@/lib/i18n/format";
 import { reasonOf } from "@/lib/job-orders/presentation";
 import { workersOfferedText } from "@/lib/responses/presentation";
 import { billingPath, responsePath, workforceProfilePath } from "@/lib/routes";
+import type { CommitmentBlock } from "@/lib/validation/commitment";
 
 export const ELIGIBILITY_HEADING = "Your eligibility to respond";
 
@@ -26,6 +29,8 @@ type EligibilityPanelProps = {
   respondHref: string;
   // The upgrade prompt of the monthly limit, read by the page when that is the refusal.
   limitPrompt: UsagePrompt | null;
+  // The commitment as the owner accepts it, read by the page when that is the refusal.
+  commitment: CommitmentBlock | null;
 };
 
 function isJobOrderReason(detail: string | null): detail is JobOrderReason {
@@ -59,6 +64,7 @@ function PanelBody({
   destinationName,
   respondHref,
   limitPrompt,
+  commitment,
   usage,
 }: EligibilityPanelProps & { usage: string | null }) {
   const { refusal, detail, responseId, responseStatus } = eligibility;
@@ -111,22 +117,26 @@ function PanelBody({
           ) : null}
         </Notice>
       );
-    // Only the owner accepts the commitment (FR-J3), on the workforce profile of this company, whose notice leads to the
-    // acceptance (the pattern of that page); everyone else is told who acts.
+    // Only the owner accepts the commitment (FR-J3 AC4, FR-S4 AC7): the owner gets the dialog, everyone else is told who
+    // acts; Respond stays in view, disabled, with the reason as its description.
     case "CHARA_CONSENT_REQUIRED":
       return (
-        <Notice tone="warning" role="status">
-          {organization.owner ? (
-            <>
-              <p className="font-medium">Accept the current employer-pays commitment to respond.</p>
-              <p className="mt-1">
-                <TextLink href={workforceProfilePath(lang, slug)}>Review the commitment</TextLink>
-              </p>
-            </>
+        <>
+          {commitment ? (
+            <CommitmentGate slug={slug} owner={organization.owner} commitment={commitment} reasonId="respond-blocked-reason" />
           ) : (
-            <p className="font-medium">Your owner needs to accept the employer-pays commitment before you can respond to job orders.</p>
+            <Notice tone="warning" role="status">
+              <p id="respond-blocked-reason" className="font-medium">
+                The employer-pays commitment must be accepted by your company&apos;s owner before your company can respond.
+              </p>
+            </Notice>
           )}
-        </Notice>
+          <div className="flex flex-wrap gap-3">
+            <FormButton type="button" className="w-auto" disabled aria-describedby="respond-blocked-reason">
+              Respond
+            </FormButton>
+          </div>
+        </>
       );
     case "CHARA_FEATURE_NOT_IN_PLAN":
       return (

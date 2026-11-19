@@ -5,6 +5,7 @@ import { TextLink } from "@/components/forms/text-link";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { DecisionControls } from "@/components/responses/decision-controls";
 import { ResponseDocumentList } from "@/components/responses/response-document-list";
 import { ResponseStatusBadge } from "@/components/responses/response-status";
 import { ResponseVersions } from "@/components/responses/response-versions";
@@ -14,16 +15,23 @@ import { isReleased } from "@/lib/dal/release";
 import { getResponse, listResponseDocuments, listResponseVersions } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
-import { employerNextSteps } from "@/lib/responses/presentation";
-import { partnerProfileForPath, requirementPath, requirementResponsesPath, requirementsPath } from "@/lib/routes";
+import { employerNextSteps, submissionsOpen } from "@/lib/responses/presentation";
+import {
+  partnerProfileForPath,
+  requirementPath,
+  requirementResponsesComparePath,
+  requirementResponsesPath,
+  requirementsPath,
+} from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Response", robots: { index: false } };
 
 // One response to a requirement of the employer (FR-O2 AC6, AC9; FR-N2 AC9), for every member while release 2b is on:
 // the partner, the status, the proposal, the documents (each opened through a 60-second link, the opening logged) and the
-// versions with what changed. Opening it marks the current version seen, so the badge Updated goes. A response to another
-// requirement or of another employer ends in the 404.
+// versions with what changed. Opening it marks the current version seen, so the badge Updated goes. Owners and admins
+// decide it here as on the comparison while the requirement is open or paused (FR-O3). A response to another requirement
+// or of another employer ends in the 404.
 export default async function RequirementResponsePage({ params }: PageProps<"/[lang]/org/[slug]/requirements/[id]/responses/[responseId]">) {
   const { lang, slug, id, responseId } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -69,7 +77,7 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
       </PageHeader>
 
       <section aria-labelledby="response-status-heading" className="grid gap-3">
-        <h2 id="response-status-heading" className="text-h2">
+        <h2 id="response-status-heading" tabIndex={-1} className="text-h2">
           Status
         </h2>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -93,6 +101,33 @@ export default async function RequirementResponsePage({ params }: PageProps<"/[l
               {response.withdrawalReason ? `Reason: ${response.withdrawalReason}` : "No reason given."}
             </p>
           </Notice>
+        ) : null}
+        {response.decidedAt ? (
+          <Notice tone="info" role="status">
+            <p>
+              Decided <time dateTime={response.decidedAt}>{formatDate(response.decidedAt)}</time>
+              {submissionsOpen(response.status, response.submissionsAllowed) ? ". The partner can submit candidates." : null}
+            </p>
+            <p className="break-words whitespace-pre-line">
+              {response.decisionNote ? `Your note to the partner: ${response.decisionNote}` : "No note to the partner."}
+            </p>
+          </Notice>
+        ) : null}
+        {organization.role !== "member" && (response.requirementStatus === "open" || response.requirementStatus === "paused") ? (
+          <DecisionControls
+            slug={slug}
+            requirementId={response.requirementId}
+            responseId={response.id}
+            partnerName={partnerName}
+            status={response.status}
+            submissionsAllowed={response.submissionsAllowed}
+            focusTargetId="response-status-heading"
+          />
+        ) : null}
+        {response.status !== "withdrawn" ? (
+          <p>
+            <TextLink href={requirementResponsesComparePath(lang, slug, response.requirementId)}>Compare with the other responses</TextLink>
+          </p>
         ) : null}
       </section>
 

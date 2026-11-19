@@ -32,8 +32,31 @@ export const commitmentStatusSchema = z
 
 export type CommitmentStatus = z.output<typeof commitmentStatusSchema>;
 
+// A commitment the organisation has not accepted in its current version, with that version as the owner accepts it.
+export type CommitmentBlock = {
+  outdated: boolean;
+  title: string;
+  version: number;
+  changeSummary: string;
+  publishedAt: string;
+  isDraft: boolean;
+};
+
 // An earlier version was accepted but the current one is not: the commitment changed (or the owner withdrew it). After a
 // transfer of ownership the new owner has accepted no version, which is "not accepted", not "outdated".
 export function commitmentOutdated(status: CommitmentStatus): boolean {
   return !status.accepted && status.acceptedVersion !== null;
+}
+
+// Why responses and submissions are blocked while the commitment is not accepted in its current version, and who acts
+// (FR-J3 AC4, FR-S4 AC7, NFR-U4): the owner accepts, everyone else asks the owner.
+export function commitmentBlockedText(owner: boolean, outdated: boolean): string {
+  if (owner) {
+    return outdated
+      ? "The employer-pays commitment has changed. Accept the updated version so that your company can respond to job orders and submit candidates again."
+      : "Accept the employer-pays commitment so that your company can respond to job orders and submit candidates.";
+  }
+  return outdated
+    ? "Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates."
+    : "Your owner needs to accept the employer-pays commitment before you can respond to job orders or submit candidates.";
 }

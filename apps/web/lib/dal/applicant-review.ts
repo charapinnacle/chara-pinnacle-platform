@@ -104,8 +104,12 @@ const linkSchema = z.object({ url: z.url({ protocol: /^https?$/ }) });
 
 // A 60-second link to a shared document from the document-url function, which runs document_access_grant with the
 // member's own token: the share, the scan state, the allowance and the access log are the database's. The function is
-// the only holder of the key that signs the link; this server only forwards the member's session.
-export async function requestDocumentLink(documentId: string): Promise<DocumentLink> {
+// the only holder of the key that signs the link; this server only forwards the member's session. A submitted
+// candidate's document is opened for submission_review (FR-O5 AC6).
+export async function requestDocumentLink(
+  documentId: string,
+  purpose: "application_review" | "submission_review" = "application_review",
+): Promise<DocumentLink> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getSession();
   if (!data.session) return { refusal: "failed" };
@@ -115,7 +119,7 @@ export async function requestDocumentLink(documentId: string): Promise<DocumentL
     response = await fetch(endpoint, {
       method: "POST",
       headers: { authorization: `Bearer ${data.session.access_token}`, "content-type": "application/json" },
-      body: JSON.stringify({ documentId, purpose: "application_review" }),
+      body: JSON.stringify({ documentId, purpose }),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });

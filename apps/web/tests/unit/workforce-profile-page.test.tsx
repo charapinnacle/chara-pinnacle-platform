@@ -59,7 +59,13 @@ vi.mock("@/lib/dal/workforce-offer", async () => ({
   }),
 }));
 vi.mock("@/lib/actions/workforce-offer", () => ({ saveWorkforceOffer: vi.fn() }));
-vi.mock("@/lib/dal/commitment", () => ({ getCommitmentStatus: commitmentMock }));
+vi.mock("@/lib/dal/commitment", () => ({ getCommitmentBlock: commitmentMock }));
+vi.mock("@/lib/actions/commitment", () => ({ acceptCommitment: vi.fn(), acceptUpdatedCommitment: vi.fn() }));
+// The owner's form loads when the dialog opens; static markup renders it in place so the dialog's content is read whole.
+vi.mock("next/dynamic", async () => {
+  const { CommitmentForm } = await import("@/components/organization/commitment-form");
+  return { default: (loader: () => unknown) => (String(loader).includes("commitment-form") ? CommitmentForm : () => null) };
+});
 vi.mock("@/lib/dal/partner-profile", () => ({ getPartnerProfileModeration: moderationMock }));
 vi.mock("@/lib/dal/appeals", () => ({ listMyAppeals: appealMock }));
 vi.mock("@/lib/actions/appeals", () => ({ submitAppeal: vi.fn() }));
@@ -112,11 +118,20 @@ const organization = (role: string, type = "staffing_company", suspended = false
   organization: { id: "org-1", slug: "manila-skills", displayName: "Manila Staff", type, role, suspended },
 });
 
+const block = (outdated: boolean) => ({
+  outdated,
+  title: "Employer-pays commitment",
+  version: 2,
+  changeSummary: "Fees for travel are named.",
+  publishedAt: "2026-11-10T00:00:00Z",
+  isDraft: false,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   releasedMock.mockResolvedValue(true);
   requireOrgRoleMock.mockResolvedValue(organization("owner"));
-  commitmentMock.mockResolvedValue({ version: 1, isDraft: false, accepted: true, acceptedVersion: 1 });
+  commitmentMock.mockResolvedValue(null);
   licencesMock.mockResolvedValue([]);
   listingsMock.mockResolvedValue([]);
   promptsMock.mockResolvedValue(prompts({ markets: 3, listed_occupations: 10, workforce_listings: null }));
@@ -238,11 +253,13 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
     expect(commitmentMock).toHaveBeenCalledWith("org-1");
   });
 
-  it("FR-J3: leads the owner to accept an outdated commitment and tells an admin and a member what waits on it", async () => {
-    commitmentMock.mockResolvedValue({ version: 2, isDraft: false, accepted: false, acceptedVersion: 1 });
+  it("FR-J3 AC4: opens the owner's dialog on an outdated commitment and tells an admin and a member what waits on it", async () => {
+    commitmentMock.mockResolvedValue(block(true));
     let html = await render();
     expect(html).toMatch(/<div[^>]*role="status"[^>]*>.*The employer-pays commitment has changed\. Accept the updated version/);
-    expect(html).toMatch(/<a[^>]*href="\/en\/onboarding"[^>]*>Review and accept the commitment<\/a>/);
+    expect(html).toContain("Review and accept");
+    expect(html).toMatch(/<dialog[^>]*>.*The employer-pays commitment has changed.*What changed:.*Fees for travel are named\./);
+    expect(html).toContain("We charge workers no recruitment fees or related costs");
 
     for (const role of ["admin", "member"]) {
       requireOrgRoleMock.mockResolvedValue(organization(role));
@@ -250,14 +267,17 @@ describe("the workforce profile page (FR-K1, FR-K2)", () => {
       expect(html).toMatch(
         /<div[^>]*role="status"[^>]*>.*Your owner needs to accept the updated commitment before you can respond to job orders or submit candidates\./,
       );
-      expect(html).not.toContain("Review and accept the commitment");
+      expect(html).not.toContain("Review and accept");
+      expect(html).not.toContain("What changed:");
     }
   });
 
   it("FR-J3: asks for the commitment after a transfer of ownership, when the new owner has accepted no version", async () => {
-    commitmentMock.mockResolvedValue({ version: 2, isDraft: false, accepted: false, acceptedVersion: null });
+    commitmentMock.mockResolvedValue(block(false));
     let html = await render();
-    expect(html).toContain("Accept the employer-pays commitment before your company can respond to job orders or submit candidates.");
+    expect(html).toContain("Accept the employer-pays commitment so that your company can respond to job orders and submit candidates.");
+    expect(html).toContain("Review and accept");
+    expect(html).not.toContain("What changed:");
     requireOrgRoleMock.mockResolvedValue(organization("member"));
     html = await render();
     expect(html).toContain("Your owner needs to accept the employer-pays commitment before you can respond to job orders");

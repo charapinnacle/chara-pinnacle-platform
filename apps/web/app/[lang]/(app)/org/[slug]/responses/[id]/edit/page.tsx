@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
+import { CommitmentGate } from "@/components/organization/commitment-gate";
 import { ResponseForm } from "@/components/responses/response-form";
 import { organizationCrumb } from "@/lib/app/navigation";
+import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getCurrencies } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
 import { getResponse, getResponseDocumentsMax, listResponseDocuments } from "@/lib/dal/responses";
@@ -15,9 +17,12 @@ import { requirementIdSchema } from "@/lib/validation/requirement";
 
 export const metadata: Metadata = { title: "Change response", robots: { index: false } };
 
+const BLOCKED_REASON_ID = "edit-blocked-reason";
+
 // The edit of a live response (FR-O2 step Edit, AC8), from the version the page was loaded with: a save after someone
 // else's change is refused as stale and asks to reload. A response the employer decided on, a withdrawn one, or one of a
-// closed or filled requirement goes back to its read view.
+// closed or filled requirement goes back to its read view. While the employer-pays commitment is not accepted in its
+// current version, Save changes is disabled with the reason and who acts (V52).
 export default async function EditResponsePage({ params }: PageProps<"/[lang]/org/[slug]/responses/[id]/edit">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -30,10 +35,11 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
   if (!isLive(response.status) || response.requirementStatus === "closed" || response.requirementStatus === "filled") {
     redirect(responsePath(lang, slug, response.id));
   }
-  const [currencies, documents, documentsMax] = await Promise.all([
+  const [currencies, documents, documentsMax, commitment] = await Promise.all([
     getCurrencies(),
     listResponseDocuments({ organizationId: organization.id, requirementId: response.requirementId }),
     getResponseDocumentsMax(),
+    getCommitmentBlock(organization.id),
   ]);
 
   return (
@@ -55,6 +61,9 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
       <p className="max-w-[65ch] text-body leading-relaxed text-muted-foreground">
         Saving a change writes a new version; the employer sees that your response was updated and can read every version.
       </p>
+      {commitment ? (
+        <CommitmentGate slug={slug} owner={organization.role === "owner"} commitment={commitment} reasonId={BLOCKED_REASON_ID} />
+      ) : null}
       <ResponseForm
         lang={lang}
         slug={slug}
@@ -81,6 +90,7 @@ export default async function EditResponsePage({ params }: PageProps<"/[lang]/or
         documentsMax={documentsMax}
         organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member" }}
         billingHref={billingPath(lang, slug)}
+        blockedBy={commitment ? BLOCKED_REASON_ID : undefined}
       />
     </div>
   );

@@ -25,6 +25,18 @@ describe("the header links of a candidate", () => {
       ["Passport", "/en/passport"],
     ]);
   });
+
+  it("FR-O4: add Submissions after Applications while candidate submissions are released", () => {
+    expect(workerLinks("en", { submissions: true }).map(({ label }) => label)).toEqual([
+      "Dashboard",
+      "Find jobs",
+      "Saved",
+      "Applications",
+      "Submissions",
+      "Passport",
+    ]);
+    expect(workerLinks("en", { submissions: true }).find(({ label }) => label === "Submissions")?.href).toBe("/en/submissions");
+  });
 });
 
 describe("the header links of an organisation", () => {
@@ -98,6 +110,19 @@ describe("the header links of an organisation", () => {
       ["Responses", "/en/org/manila/responses"],
       ["Team", "/en/org/manila/members"],
     ]);
+    expect(
+      organizationLinks("en", {
+        slug: "manila",
+        role: "member",
+        suspended: false,
+        partnerSegment: "recruitment",
+        jobOrders: true,
+        candidateSubmissions: true,
+      }).map(({ label, href }) => [label, href]),
+    ).toContainEqual(["Submissions", "/en/org/manila/submissions"]);
+    expect(labels(organizationLinks("en", { slug: "acme", role: "member", suspended: false, jobOrders: true, candidateSubmissions: true }))).not.toContain(
+      "Submissions",
+    );
     expect(labels(organizationLinks("en", { slug: "acme", role: "owner", suspended: false }))).not.toContain("Requirements");
     expect(organizationLinks("en", { slug: "manila", role: "owner", suspended: true, partnerSegment: "recruitment", jobOrders: true })).toEqual([]);
   });

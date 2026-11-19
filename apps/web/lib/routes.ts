@@ -1,5 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import type { ApplicantListParams } from "@/lib/validation/applicant-list";
+import type { SubmissionListParams } from "@/lib/validation/submission-pipeline";
 
 type AccountKind = Database["public"]["Enums"]["account_kind"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -157,6 +158,28 @@ export function requirementResponsePath(lang: string, slug: string, id: string, 
   return `${requirementResponsesPath(lang, slug, id)}/${responseId}`;
 }
 
+// The candidates submitted for one requirement: the partner's own and the employer's (FR-O4, FR-O5).
+export function requirementSubmissionsPath(lang: string, slug: string, id: string, cursor?: string): string {
+  const path = `${requirementPath(lang, slug, id)}/submissions`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+}
+
+// The partner's form to ask a candidate's permission to submit them for one requirement (FR-O4 step Request).
+export function newSubmissionPath(lang: string, slug: string, id: string): string {
+  return `${requirementSubmissionsPath(lang, slug, id)}/new`;
+}
+
+// Every candidate the partner asked to submit, newest first (FR-O4 AC12).
+export function partnerSubmissionsPath(lang: string, slug: string, cursor?: string): string {
+  const path = `/${lang}/org/${slug}/submissions`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+}
+
+// The responses to one requirement side by side, with the decisions (FR-O3).
+export function requirementResponsesComparePath(lang: string, slug: string, id: string): string {
+  return `${requirementResponsesPath(lang, slug, id)}/compare`;
+}
+
 // The partners suggested for one requirement (FR-M3).
 export function requirementPartnersPath(lang: string, slug: string, id: string): string {
   return `${requirementPath(lang, slug, id)}/partners`;
@@ -243,6 +266,15 @@ export function applicationPath(lang: string, id: string): string {
   return `/${lang}/applications/${id}`;
 }
 
+// The candidate's submission requests and submissions (FR-O4), and one of them.
+export function submissionsPath(lang: string): string {
+  return `/${lang}/submissions`;
+}
+
+export function submissionPath(lang: string, id: string): string {
+  return `${submissionsPath(lang)}/${id}`;
+}
+
 export function applicantPath(lang: string, slug: string, id: string): string {
   return `/${lang}/org/${slug}/applicants/${id}`;
 }
@@ -261,6 +293,23 @@ export function applicantsPath(lang: string, slug: string, params: Partial<Appli
   if (page && page > 1) query.set("page", String(page));
   const text = query.toString();
   return text ? `/${lang}/org/${slug}/applicants?${text}` : `/${lang}/org/${slug}/applicants`;
+}
+
+// The submitted candidates on the applicants page (FR-O5): of one requirement, or of every requirement with the source
+// filter; a value that is the default of the page is left out of the address.
+export function submissionPipelinePath(lang: string, slug: string, params: Partial<SubmissionListParams> = {}): string {
+  const { requirement, view, stage, page } = params;
+  const query = new URLSearchParams();
+  if (requirement) query.set("requirement", requirement);
+  else query.set("source", "submissions");
+  if (requirement && view === "board") query.set("view", "board");
+  if (stage) query.set("stage", stage);
+  if (page && page > 1) query.set("page", String(page));
+  return `/${lang}/org/${slug}/applicants?${query.toString()}`;
+}
+
+export function employerSubmissionPath(lang: string, slug: string, id: string): string {
+  return `/${lang}/org/${slug}/applicants/submissions/${id}`;
 }
 
 export function applicantsExportPath(lang: string, slug: string): string {

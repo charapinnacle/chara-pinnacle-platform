@@ -1,20 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addDocument, countedDocuments, mergePolled, STRANDED_AFTER_MS } from "@/lib/responses/documents";
 import {
+  decisionsFor,
+  decisionVerbs,
   documentsLimitText,
   feeText,
   isLive,
   partnerStatusLabels,
   responseStatuses,
+  submissionsOpen,
   versionChangeLines,
   type ResponseVersion,
 } from "@/lib/responses/presentation";
-import { documentRefusalMessage, documentRefusals, RESPONSE_MESSAGES, responseRefusal, withdrawRefusal } from "@/lib/responses/refusal";
+import {
+  DECISION_MESSAGES,
+  decisionRefusal,
+  documentRefusalMessage,
+  documentRefusals,
+  RESPONSE_MESSAGES,
+  responseRefusal,
+  withdrawRefusal,
+} from "@/lib/responses/refusal";
 import {
   AMOUNT_REQUIRED,
   AVAILABLE_FROM_LATE,
   AVAILABLE_FROM_PAST,
   CAPACITY_WHOLE,
+  decisionFormSchema,
   CURRENCY_REQUIRED,
   documentFileIssue,
   DOCUMENT_NAME,
@@ -45,7 +57,9 @@ vi.mock("@/lib/dal/usage", () => ({ getUsagePrompts: promptsMock }));
 vi.mock("@/lib/dal/reference", () => ({ getCountries: countriesMock }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: rpcMock }) }));
 
-const { respondToRequirement, setCapacityTolerance, updateMyResponse, withdrawMyResponse } = await import("@/lib/actions/responses");
+const { decideResponse, respondToRequirement, setCapacityTolerance, setResponseSubmissions, updateMyResponse, withdrawMyResponse } = await import(
+  "@/lib/actions/responses"
+);
 
 const TODAY = "2026-10-17";
 const schema = responseFormSchema({ maxCapacity: 100, today: TODAY });
@@ -368,6 +382,96 @@ describe("the response actions", () => {
     expect(await setCapacityTolerance("acme", REQUIREMENT, { percent: "10" })).toEqual({ changed: true });
     expect(rpcMock).toHaveBeenCalledWith("set_requirement_capacity_tolerance", { p_org: PARTNER.id, p_requirement: REQUIREMENT, p_percent: 10 });
     expect(await setCapacityTolerance("acme", REQUIREMENT, { percent: "101" })).toMatchObject({ errors: { percent: expect.any(String) } });
+  });
+
+  it("decides a response with the trimmed note, or none when it is empty (FR-O3 AC3, AC5)", async () => {
+    const owner = { ...PARTNER, type: "employer", role: "owner" };
+    requireOrgRoleMock.mockResolvedValue({ user: { id: "u" }, organization: owner });
+    rpcMock.mockResolvedValue({ data: "declined", error: null });
+    const target = { requirementId: REQUIREMENT, responseId: RESPONSE };
+    expect(await decideResponse("acme", target, "declined", { note: "  Fee above budget " })).toEqual({ done: true });
+    expect(rpcMock).toHaveBeenLastCalledWith("decide_response", {
+      p_org: owner.id,
+      p_response: RESPONSE,
+      p_decision: "declined",
+      p_note: "Fee above budget",
+    });
+    expect(requireOrgRoleMock).toHaveBeenLastCalledWith("en", "acme", "admin", { hideFromOutsiders: true });
+    await decideResponse("acme", target, "shortlisted", { note: "" });
+    expect(rpcMock).toHaveBeenLastCalledWith("decide_response", expect.objectContaining({ p_decision: "shortlisted", p_note: undefined }));
+  });
+
+  it("refuses a long note and an unknown decision without calling the database", async () => {
+    const target = { requirementId: REQUIREMENT, responseId: RESPONSE };
+    expect((await decideResponse("acme", target, "declined", { note: "x".repeat(1001) })).errors).toEqual({
+      note: "The note must have 1,000 characters or fewer.",
+    });
+    expect(await decideResponse("acme", target, "withdrawn" as never, { note: "" })).toMatchObject({ message: expect.any(String) });
+    expect(await decideResponse("acme", { ...target, responseId: "abc" }, "selected", { note: "" })).toMatchObject({ message: expect.any(String) });
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("says why a decision was refused (FR-O3 AC3, AC9)", async () => {
+    const target = { requirementId: REQUIREMENT, responseId: RESPONSE };
+    rpcMock.mockResolvedValue(refusal("CHARA_INVALID_TRANSITION", "selected to declined"));
+    expect(await decideResponse("acme", target, "declined", { note: "" })).toEqual({ message: DECISION_MESSAGES.decided });
+    rpcMock.mockResolvedValue(refusal("CHARA_INVALID_STATE", "requirement_not_open"));
+    expect(await decideResponse("acme", target, "selected", { note: "" })).toEqual({ message: DECISION_MESSAGES.notOpen });
+    rpcMock.mockResolvedValue(refusal("CHARA_INVALID_INPUT", "p_note"));
+    expect(await decideResponse("acme", target, "selected", { note: "ok" })).toEqual({ errors: { note: DECISION_MESSAGES.note } });
+    releasedMock.mockResolvedValue(false);
+    expect(await decideResponse("acme", target, "selected", { note: "" })).toEqual({ message: RESPONSE_MESSAGES.releaseOff });
+  });
+
+  it("opens and closes candidate submissions for a shortlisted partner (FR-O3 AC8)", async () => {
+    const target = { requirementId: REQUIREMENT, responseId: RESPONSE };
+    rpcMock.mockResolvedValue({ data: true, error: null });
+    expect(await setResponseSubmissions("acme", target, true)).toEqual({ done: true });
+    expect(rpcMock).toHaveBeenLastCalledWith("set_submissions_allowed", { p_org: PARTNER.id, p_response: RESPONSE, p_allowed: true });
+    rpcMock.mockResolvedValue(refusal("CHARA_INVALID_STATE", "declined"));
+    expect(await setResponseSubmissions("acme", target, true)).toEqual({ message: DECISION_MESSAGES.notShortlisted });
+  });
+});
+
+describe("the decisions on a response (FR-O3)", () => {
+  it("offers the moves of decide_response: all three while live, selected or declined once shortlisted, none after (AC3)", () => {
+    expect(Object.fromEntries(responseStatuses.map((status) => [status, decisionsFor(status)]))).toEqual({
+      submitted: ["shortlisted", "selected", "declined"],
+      updated: ["shortlisted", "selected", "declined"],
+      shortlisted: ["selected", "declined"],
+      selected: [],
+      declined: [],
+      withdrawn: [],
+    });
+    expect(Object.values(decisionVerbs)).toEqual(["Shortlist", "Select", "Decline"]);
+  });
+
+  it("opens submissions on a selection, and on a shortlist only when allowed (AC8)", () => {
+    expect(submissionsOpen("selected", false)).toBe(true);
+    expect(submissionsOpen("shortlisted", false)).toBe(false);
+    expect(submissionsOpen("shortlisted", true)).toBe(true);
+    expect(submissionsOpen("declined", true)).toBe(false);
+  });
+
+  it("bounds the note to 1,000 characters after trimming, without control characters (AC5)", () => {
+    expect(decisionFormSchema.safeParse({ note: ` ${"x".repeat(1000)} ` }).success).toBe(true);
+    expect(decisionFormSchema.safeParse({ note: "" }).success).toBe(true);
+    expect(decisionFormSchema.safeParse({ note: "x".repeat(1001) }).success).toBe(false);
+    expect(decisionFormSchema.safeParse({ note: "Fee\u0007" }).success).toBe(false);
+  });
+
+  it("maps the refusals of the decision functions", () => {
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "aal2_required" })).toEqual({ kind: "message", message: DECISION_MESSAGES.notAllowed });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: null })).toEqual({ kind: "message", message: DECISION_MESSAGES.notAllowed });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "organization_suspended" })).toEqual({
+      kind: "message",
+      message: RESPONSE_MESSAGES.suspended,
+    });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "release_off" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.releaseOff });
+    expect(decisionRefusal({ message: "CHARA_FORBIDDEN", details: "employer_only" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.notAllowed });
+    expect(decisionRefusal({ message: "CHARA_NOT_FOUND", code: "P0002" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.responseNotFound });
+    expect(decisionRefusal({ message: "CHARA_RATE_LIMITED" })).toEqual({ kind: "message", message: RESPONSE_MESSAGES.tooManyChanges });
+    expect(decisionRefusal({ message: "boom" })).toEqual({ kind: "fault" });
   });
 });
 

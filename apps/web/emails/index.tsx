@@ -27,9 +27,15 @@ import { paymentFailed } from "./templates/payment-failed.tsx";
 import { requirementChanged } from "./templates/requirement-changed.tsx";
 import { requirementClosed } from "./templates/requirement-closed.tsx";
 import { requirementClosingSoon } from "./templates/requirement-closing-soon.tsx";
+import { responseDecided } from "./templates/response-decided.tsx";
 import { responseReceived } from "./templates/response-received.tsx";
 import { responseWithdrawn } from "./templates/response-withdrawn.tsx";
 import { statusChanged } from "./templates/status-changed.tsx";
+import { submissionApproved } from "./templates/submission-approved.tsx";
+import { submissionRequest } from "./templates/submission-request.tsx";
+import { submissionRequestSignup } from "./templates/submission-request-signup.tsx";
+import { submissionStageChanged } from "./templates/submission-stage-changed.tsx";
+import { submissionWithdrawn } from "./templates/submission-withdrawn.tsx";
 import { trialEnding } from "./templates/trial-ending.tsx";
 import { vacancyHidden } from "./templates/vacancy-hidden.tsx";
 
@@ -65,6 +71,12 @@ const TEMPLATES = {
   requirement_closed: requirementClosed,
   response_received: responseReceived,
   response_withdrawn: responseWithdrawn,
+  response_decided: responseDecided,
+  submission_request: submissionRequest,
+  submission_request_signup: submissionRequestSignup,
+  submission_approved: submissionApproved,
+  submission_withdrawn: submissionWithdrawn,
+  submission_stage_changed: submissionStageChanged,
 } as const satisfies Record<string, Template>;
 
 export type NotificationKind = keyof typeof TEMPLATES;

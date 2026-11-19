@@ -6,7 +6,7 @@ import { ResponseStatusBadge } from "@/components/responses/response-status";
 import type { RequirementResponse } from "@/lib/dal/responses";
 import { formatDate } from "@/lib/i18n/format";
 import { feeText, workersOfferedText } from "@/lib/responses/presentation";
-import { requirementInvitationsPath, requirementResponsePath } from "@/lib/routes";
+import { requirementInvitationsPath, requirementPartnersPath, requirementPath, requirementResponsePath } from "@/lib/routes";
 
 type RequirementResponseListProps = { lang: string; slug: string; requirementId: string; responses: RequirementResponse[] };
 
@@ -17,9 +17,17 @@ export function RequirementResponseList({ lang, slug, requirementId, responses }
   if (responses.length === 0) {
     return (
       <EmptyState icon={Inbox} title="No responses yet" description="Partners you invite, and partners that see this requirement on the job order marketplace, respond here.">
-        <TextLink standalone href={requirementInvitationsPath(lang, slug, requirementId)}>
-          See invitations
-        </TextLink>
+        <span className="flex flex-wrap justify-center gap-x-6">
+          <TextLink standalone href={requirementPartnersPath(lang, slug, requirementId)}>
+            Invite partners
+          </TextLink>
+          <TextLink standalone href={requirementInvitationsPath(lang, slug, requirementId)}>
+            See invitations
+          </TextLink>
+          <TextLink standalone href={requirementPath(lang, slug, requirementId)}>
+            See the job order status
+          </TextLink>
+        </span>
       </EmptyState>
     );
   }

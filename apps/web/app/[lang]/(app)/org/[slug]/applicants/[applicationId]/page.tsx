@@ -125,7 +125,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
         <div>
           <StageChange
             slug={slug}
-            applicationId={applicant.id}
+            subject={{ kind: "application", id: applicant.id }}
             applicantName={name}
             targets={targets}
             noteMaxChars={applicant.noteMaxChars}
@@ -150,7 +150,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
 
       <SharedDocuments
         slug={slug}
-        applicationId={applicant.id}
+        subject={{ kind: "application", id: applicant.id }}
         documents={documents}
         shareEnded={changed === null}
         today={todayUtc()}
@@ -158,7 +158,7 @@ export default async function ApplicantPage({ params, searchParams }: PageProps<
 
       <InternalNotes
         slug={slug}
-        applicationId={applicant.id}
+        subject={{ kind: "application", id: applicant.id }}
         notes={notesPage.notes}
         blocked={applicant.stageChangeBlocked !== null}
         olderHref={notesPage.hasMore ? `${applicantPath(lang, slug, applicant.id)}?notesBefore=${notesPage.notes.at(-1)?.id}` : null}

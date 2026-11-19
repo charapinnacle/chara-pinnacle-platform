@@ -20,8 +20,9 @@ import { env } from "@/lib/env";
 import { faultMessage, logFault } from "@/lib/fault";
 import { defaultLocale } from "@/lib/i18n/locale";
 import { reportQuotaRefused } from "@/lib/quota-refused";
-import { documentsLimitText } from "@/lib/responses/presentation";
+import { documentsLimitText, responseDecisions, type ResponseDecision } from "@/lib/responses/presentation";
 import {
+  decisionRefusal,
   documentRefusalMessage,
   RESPONSE_LIMIT_KEY,
   RESPONSE_MESSAGES,
@@ -33,17 +34,21 @@ import {
   invitationsPath,
   jobOrderPath,
   requirementPath,
+  requirementResponsePath,
+  requirementResponsesComparePath,
   requirementResponsesPath,
   responsePath,
   responsesPath,
 } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
+  decisionFormSchema,
   documentFileIssue,
   responseFormSchema,
   toleranceFormSchema,
   toResponseArgs,
   withdrawFormSchema,
+  type DecisionFormInput,
   type DocumentFile,
   type KeptValues,
   type ResponseFormInput,
@@ -137,8 +142,10 @@ export async function respondToRequirement(slug: string, requirementId: string, 
     p_requirement: id.data,
     ...toResponseArgs(parsed.data),
   });
-  revalidateResponse(organization.slug, id.data, data ?? null);
+  // A refusal writes nothing, and revalidating would re-render the page into its limit panel in place of the form
+  // whose entries the refusal keeps (FR-R1 AC11).
   if (error) return refusalResult(organization, responseRefusal(error), error, "Sending the response");
+  revalidateResponse(organization.slug, id.data, data);
   return { responseId: data };
 }
 
@@ -308,3 +315,89 @@ export async function setCapacityTolerance(slug: string, requirementId: string, 
   return { message: faultMessage(logFault("Setting the capacity tolerance", error)) };
 }
 
+
+export type DecisionResult = { errors?: FieldErrors; message?: string; done?: boolean };
+
+const decisionSchema = z.enum(responseDecisions);
+
+// The employer's owner or admin at aal2 (the functions check it again), while release 2b is on.
+async function decidingEmployer(slug: string) {
+  const parsed = slugSchema.safeParse(slug);
+  if (!parsed.success) return null;
+  if (!(await isReleased("release_job_orders"))) return "release_off" as const;
+  const { organization } = await requireOrgRole(defaultLocale, parsed.data, "admin", { hideFromOutsiders: true });
+  return organization;
+}
+
+function revalidateDecision(slug: string, requirementId: string, responseId: string): void {
+  revalidatePath(requirementPath(defaultLocale, slug, requirementId));
+  revalidatePath(requirementResponsesPath(defaultLocale, slug, requirementId));
+  revalidatePath(requirementResponsesComparePath(defaultLocale, slug, requirementId));
+  revalidatePath(requirementResponsePath(defaultLocale, slug, requirementId, responseId));
+}
+
+function decisionFailure(error: { code?: string; message: string; details?: string | null }, action: string): DecisionResult {
+  const refusal = decisionRefusal(error);
+  if (refusal.kind === "field") return { errors: { note: refusal.message } };
+  if (refusal.kind === "message") {
+    if (error.message === "CHARA_RATE_LIMITED") reportQuotaRefused("audited_write", "response");
+    return { message: refusal.message };
+  }
+  return { message: faultMessage(logFault(action, error)) };
+}
+
+// Shortlists, selects or declines a response with an optional note to the partner (FR-O3 steps Decide, Reveal, Inform,
+// Open submissions; AC3 to AC5, AC10), after the confirmation of the page. decide_response checks the role, the
+// requirement and the move again, reveals the employer on a shortlist or selection and tells the partner.
+export async function decideResponse(
+  slug: string,
+  target: { requirementId: string; responseId: string },
+  decision: ResponseDecision,
+  input: DecisionFormInput,
+): Promise<DecisionResult> {
+  const requirement = idSchema.safeParse(target.requirementId);
+  const response = idSchema.safeParse(target.responseId);
+  const parsedDecision = decisionSchema.safeParse(decision);
+  if (!requirement.success || !response.success || !parsedDecision.success) return { message: GENERIC_FAILURE };
+  const parsed = decisionFormSchema.safeParse(input);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const organization = await decidingEmployer(slug);
+  if (organization === null) return { message: GENERIC_FAILURE };
+  if (organization === "release_off") return { message: RESPONSE_MESSAGES.releaseOff };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_response", {
+    p_org: organization.id,
+    p_response: response.data,
+    p_decision: parsedDecision.data,
+    p_note: parsed.data.note === "" ? undefined : parsed.data.note,
+  });
+  revalidateDecision(organization.slug, requirement.data, response.data);
+  if (!error) return { done: true };
+  return decisionFailure(error, "Deciding the response");
+}
+
+// Opens or closes candidate submissions for a shortlisted partner (FR-O3 step Open submissions, AC8); a selection opens
+// them by itself.
+export async function setResponseSubmissions(
+  slug: string,
+  target: { requirementId: string; responseId: string },
+  allowed: boolean,
+): Promise<DecisionResult> {
+  const requirement = idSchema.safeParse(target.requirementId);
+  const response = idSchema.safeParse(target.responseId);
+  if (!requirement.success || !response.success || typeof allowed !== "boolean") return { message: GENERIC_FAILURE };
+  const organization = await decidingEmployer(slug);
+  if (organization === null) return { message: GENERIC_FAILURE };
+  if (organization === "release_off") return { message: RESPONSE_MESSAGES.releaseOff };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_submissions_allowed", {
+    p_org: organization.id,
+    p_response: response.data,
+    p_allowed: allowed,
+  });
+  revalidateDecision(organization.slug, requirement.data, response.data);
+  if (!error) return { done: true };
+  return decisionFailure(error, "Changing the candidate submissions of the response");
+}

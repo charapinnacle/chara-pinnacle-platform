@@ -12,7 +12,9 @@ import {
   notificationSettingsPath,
   requirementsPath,
   responsesPath,
+  partnerSubmissionsPath,
   settingsPath,
+  submissionsPath,
   workforceProfilePath,
 } from "@/lib/routes";
 import type { MemberRole } from "@/lib/validation/team";
@@ -31,6 +33,7 @@ export type NavIcon =
   | "requirements"
   | "invitations"
   | "responses"
+  | "submissions"
   | "billing"
   | "reports"
   | "settings";
@@ -52,16 +55,22 @@ export type NavOrganization = {
   // Set while release 2b is on: the workforce requirements of an employer, the invitations and responses of a partner
   // (FR-O1, FR-O2).
   jobOrders?: true;
+  // Set while candidate submissions are released: the candidates a partner asked to submit (FR-O4).
+  candidateSubmissions?: true;
 };
 
-// The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered.
-export function workerLinks(lang: string): NavLink[] {
+// The pages of a candidate. Each of them asks for the candidate itself; the list only decides what is offered. While
+// candidate submissions are released, the requests of partners to submit the candidate follow the applications (FR-O4).
+export function workerLinks(lang: string, { submissions = false }: { submissions?: boolean } = {}): NavLink[] {
   const dashboard = homePath(lang, "worker");
   return [
     { label: "Dashboard", href: dashboard, match: dashboard, icon: "dashboard" },
     { label: "Find jobs", href: `/${lang}/jobs`, match: `/${lang}/jobs`, icon: "jobs" },
     { label: "Saved", href: `/${lang}/saved`, match: `/${lang}/saved`, icon: "saved" },
     { label: "Applications", href: applicationsPath(lang), match: `/${lang}/applications`, icon: "applications" },
+    ...(submissions
+      ? [{ label: "Submissions", href: submissionsPath(lang), match: submissionsPath(lang), icon: "submissions" } as const]
+      : []),
     { label: "Passport", href: `/${lang}/passport`, match: `/${lang}/passport`, icon: "passport" },
   ];
 }
@@ -73,7 +82,14 @@ export function workerLinks(lang: string): NavLink[] {
 // invitations it received and the responses it sent (FR-O1, FR-O2).
 export function organizationLinks(
   lang: string,
-  { slug, role, suspended, partnerSegment, jobOrders }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders">,
+  {
+    slug,
+    role,
+    suspended,
+    partnerSegment,
+    jobOrders,
+    candidateSubmissions,
+  }: Pick<NavOrganization, "slug" | "role" | "suspended" | "partnerSegment" | "jobOrders" | "candidateSubmissions">,
 ): NavLink[] {
   if (suspended) return [];
   const team: NavLink = { label: "Team", href: membersPath(lang, slug), match: membersPath(lang, slug), icon: "team" };
@@ -91,6 +107,16 @@ export function organizationLinks(
               { label: "Invitations", href: invitationsPath(lang, slug), match: invitationsPath(lang, slug), icon: "invitations" },
               { label: "Responses", href: responsesPath(lang, slug), match: responsesPath(lang, slug), icon: "responses" },
             ] as const)
+          : []),
+        ...(jobOrders && candidateSubmissions
+          ? [
+              {
+                label: "Submissions",
+                href: partnerSubmissionsPath(lang, slug),
+                match: partnerSubmissionsPath(lang, slug),
+                icon: "submissions",
+              } as const,
+            ]
           : []),
         team,
       ]

@@ -1,5 +1,6 @@
 import type { Database } from "@chara-pinnacle/db-types";
 import { applicationStatusLabels } from "@/lib/applications/presentation";
+import { employerSubmissionLabels, isPipelineSubmissionStage } from "@/lib/submissions/presentation";
 import { formatDate } from "@/lib/i18n/format";
 import { changedFieldsText } from "@/lib/requirements/change-fields";
 import {
@@ -18,8 +19,10 @@ import {
   myReportsPath,
   requirementPath,
   requirementResponsesPath,
+  requirementSubmissionsPath,
   responsePath,
   settingsPath,
+  submissionPath,
   workforceProfilePath,
 } from "@/lib/routes";
 import { infoStepLabels, infoStepSchema } from "@/lib/validation/partner-review";
@@ -96,6 +99,13 @@ function requirementResponsesHref(lang: string, payload: Record<string, unknown>
   return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementResponsesPath(lang, slug, id) : null;
 }
 
+// The candidates of the requirement a submission notice names, on the recipient organisation's page (FR-O4).
+function requirementSubmissionsHref(lang: string, payload: Record<string, unknown>): string | null {
+  const slug = text(payload, "org_slug");
+  const id = text(payload, "requirement_id");
+  return slug && id && /^[0-9a-f-]{36}$/.test(id) ? requirementSubmissionsPath(lang, slug, id) : null;
+}
+
 function licencePath(lang: string, payload: Record<string, unknown>): string | null {
   const slug = text(payload, "org_slug");
   return slug ? `${workforceProfilePath(lang, slug)}#licences-heading` : null;
@@ -121,6 +131,17 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       const status = text(payload, "status");
       const job = text(payload, "job_title") ?? "your application";
       const id = text(payload, "application_id");
+      // FR-O5 AC9: a submission's stage, named by the partner that proposed the candidate.
+      const submissionId = text(payload, "submission_id");
+      if (submissionId) {
+        const partner = text(payload, "partner_name") ?? "a recruitment company";
+        return {
+          title: isPipelineSubmissionStage(status)
+            ? `Your submission by ${partner} for ${job} is now ${employerSubmissionLabels[status]}`
+            : `There is an update on your submission by ${partner} for ${job}`,
+          href: /^[0-9a-f-]{36}$/.test(submissionId) ? submissionPath(lang, submissionId) : null,
+        };
+      }
       return {
         title:
           status === "withdrawn"
@@ -418,6 +439,74 @@ const PRESENTERS: Record<string, { label: string; present: Presenter }> = {
       return {
         title: `${text(payload, "partner_name") ?? "A partner"} withdrew its response to ${title ? `"${title}"` : "your workforce requirement"}`,
         href: requirementResponsesHref(lang, payload),
+      };
+    },
+  },
+  // FR-O3 step Inform, to the partner: its own decision only, the requirement as the partner knows it.
+  response_decided: {
+    label: "Responses",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const employer = text(payload, "employer_name") ?? "The employer";
+      const requirement = title ? `"${title}"` : "a workforce requirement";
+      const sentences: Record<string, string> = {
+        shortlisted: `${employer} shortlisted your response to ${requirement}`,
+        selected: `${employer} selected your company for ${requirement}`,
+        declined: `${employer} declined your response to ${requirement}`,
+        submissions_allowed: `${employer} allows your company to submit candidates for ${requirement}`,
+      };
+      const decision = text(payload, "decision");
+      return {
+        title: decision && Object.hasOwn(sentences, decision) ? sentences[decision] : `${employer} decided your response to ${requirement}`,
+        href: responseHref(lang, payload),
+      };
+    },
+  },
+  // FR-O4 step Invite, to the candidate: the partner asks to propose them; the request page answers it.
+  submission_request: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const id = text(payload, "submission_id");
+      return {
+        title: `${text(payload, "partner_name") ?? "A recruitment company"} would like to propose you for ${title ? `"${title}"` : "a job"}`,
+        href: id && /^[0-9a-f-]{36}$/.test(id) ? submissionPath(lang, id) : null,
+      };
+    },
+  },
+  // FR-O4 steps Approve and Withdraw, to the partner and the employer: never the candidate.
+  submission_approved: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"} was submitted for ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: requirementSubmissionsHref(lang, payload),
+      };
+    },
+  },
+  submission_withdrawn: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      return {
+        title: `A candidate proposed by ${text(payload, "partner_name") ?? "a partner"} withdrew from ${title ? `"${title}"` : "a workforce requirement"}`,
+        href: requirementSubmissionsHref(lang, payload),
+      };
+    },
+  },
+  // FR-O5 AC10, to the partner: the stage its candidate reached, never the candidate, the note or the reason.
+  submission_stage_changed: {
+    label: "Submissions",
+    present: (payload, { lang }) => {
+      const title = text(payload, "title");
+      const status = text(payload, "status");
+      const requirement = title ? `"${title}"` : "a workforce requirement";
+      return {
+        title: isPipelineSubmissionStage(status)
+          ? `A candidate you submitted for ${requirement} is now ${employerSubmissionLabels[status]}`
+          : `The stage of a candidate you submitted for ${requirement} changed`,
+        href: requirementSubmissionsHref(lang, payload),
       };
     },
   },

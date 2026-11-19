@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { EligibilityPanel } from "@/components/responses/eligibility-panel";
 import { ResponseForm } from "@/components/responses/response-form";
 import type { OrganizationType, UsagePrompt } from "@/lib/billing/limits";
+import { getCommitmentBlock } from "@/lib/dal/commitment";
 import { getCountries, getCurrencies } from "@/lib/dal/reference";
 import { getResponseDocumentsMax, listResponseDocuments, type ResponseEligibility } from "@/lib/dal/responses";
 import { getUsagePrompts } from "@/lib/dal/usage";
 import { RESPONSE_LIMIT_KEY } from "@/lib/responses/refusal";
 import { billingPath, responsePath } from "@/lib/routes";
+import type { CommitmentBlock } from "@/lib/validation/commitment";
 
 type Organization = { id: string; type: OrganizationType; role: "owner" | "admin" | "member" };
 
@@ -16,6 +18,13 @@ export async function limitPromptFor(organization: Organization, eligibility: Re
   if (eligibility.refusal !== "CHARA_LIMIT_REACHED") return null;
   const prompts = await getUsagePrompts(organization.id, organization.type, [RESPONSE_LIMIT_KEY]).catch(() => null);
   return prompts?.[RESPONSE_LIMIT_KEY] ?? null;
+}
+
+// The commitment as the owner accepts it when an outdated or missing acceptance is what stops the partner (FR-J3 AC4);
+// null otherwise or when it cannot be read, and the panel then says the reason without the dialog.
+export async function commitmentBlockFor(organizationId: string, eligibility: ResponseEligibility): Promise<CommitmentBlock | null> {
+  if (eligibility.refusal !== "CHARA_CONSENT_REQUIRED") return null;
+  return getCommitmentBlock(organizationId).catch(() => null);
 }
 
 type RespondSectionProps = {
@@ -35,7 +44,11 @@ export async function RespondSection({ lang, slug, organization, requirement, el
   if (eligibility.responseId) redirect(responsePath(lang, slug, eligibility.responseId));
   const canManage = organization.role !== "member";
   if (!eligibility.canRespond || eligibility.maxCapacity === null) {
-    const [countries, limitPrompt] = await Promise.all([getCountries(), limitPromptFor(organization, eligibility)]);
+    const [countries, limitPrompt, commitment] = await Promise.all([
+      getCountries(),
+      limitPromptFor(organization, eligibility),
+      commitmentBlockFor(organization.id, eligibility),
+    ]);
     const countryName = (code: string) => countries.find((country) => country.code === code)?.name ?? code;
     return (
       <EligibilityPanel
@@ -47,6 +60,7 @@ export async function RespondSection({ lang, slug, organization, requirement, el
         destinationName={countryName(requirement.countryCode)}
         respondHref={selfHref}
         limitPrompt={limitPrompt}
+        commitment={commitment}
       />
     );
   }

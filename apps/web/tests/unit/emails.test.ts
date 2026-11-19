@@ -14,8 +14,11 @@ import {
   jobPath,
   requirementPath,
   requirementResponsesPath,
+  requirementSubmissionsPath,
   responsePath,
   settingsPath,
+  signUpPath,
+  submissionPath,
 } from "@/lib/routes";
 
 const SITE = "https://chara.example";
@@ -132,6 +135,12 @@ const SAMPLES: Record<NotificationKind, Record<string, unknown>> = {
   requirement_closed: { invitation_id: APP, title: "Hamburg yard welders", employer_name: "Acme Bau", close_reason: "filled", org_slug: "manila-recruit" },
   response_received: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
   response_withdrawn: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  response_decided: { response_id: APP, requirement_id: JOB, title: "Hamburg yard welders", employer_name: "Acme Bau", decision: "selected", org_slug: "manila-recruit" },
+  submission_request: { submission_id: APP, partner_name: "Manila Recruit", title: "Hamburg yard welders", country_name: "Germany", start_date: "2027-03-01", employer_name: "Acme Bau" },
+  submission_request_signup: { partner_name: "Manila Recruit", title: "Germany, 10 Welders", country_name: "Germany", start_date: "2027-03-01" },
+  submission_approved: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  submission_withdrawn: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", partner_name: "Manila Recruit", org_slug: "acme-bau" },
+  submission_stage_changed: { submission_id: APP, requirement_id: JOB, title: "Hamburg yard welders", status: "interview", org_slug: "manila-recruit" },
 };
 
 const LEAKS = {
@@ -145,6 +154,7 @@ const LEAKS = {
   fee_amount: "SECRET-FEE-1500",
   withdrawal_reason: "SECRET-WITHDRAWAL",
   experience_note: "SECRET-EXPERIENCE",
+  decision_note: "SECRET-DECISION-NOTE",
 };
 
 const KINDS = Object.keys(SAMPLES) as NotificationKind[];
@@ -245,6 +255,12 @@ describe("notification templates", () => {
       requirement_closed: invitationPath("en", "manila-recruit", APP),
       response_received: requirementResponsesPath("en", "acme-bau", JOB),
       response_withdrawn: requirementResponsesPath("en", "acme-bau", JOB),
+      response_decided: responsePath("en", "manila-recruit", APP),
+      submission_request: submissionPath("en", APP),
+      submission_request_signup: signUpPath("en", "worker"),
+      submission_approved: requirementSubmissionsPath("en", "acme-bau", JOB),
+      submission_withdrawn: requirementSubmissionsPath("en", "acme-bau", JOB),
+      submission_stage_changed: requirementSubmissionsPath("en", "manila-recruit", JOB),
     };
     for (const [kind, path] of Object.entries(links)) {
       const email = await renderEmail(kind as NotificationKind, SAMPLES[kind as NotificationKind], SITE);
@@ -353,6 +369,77 @@ describe("notification templates", () => {
     expect(foreign.html).not.toContain("billing");
     const untitled = await renderEmail("response_withdrawn", {}, SITE);
     expect(untitled.subject).toBe("A partner withdrew its response to your workforce requirement");
+  });
+
+  it("response_decided tells the partner its own decision, never the note, and names the employer only when the payload does (FR-O3 AC7, NFR-S11)", async () => {
+    const selected = await renderEmail("response_decided", SAMPLES.response_decided, SITE);
+    expect(selected.subject).toBe("Your company is selected: Hamburg yard welders");
+    expect(selected.text).toContain('Acme Bau selected your company for "Hamburg yard welders". Your company can now submit candidates for it.');
+    expect(selected.text).toContain("Chara Pinnacle is not a party to any agreement or payment between you and the employer.");
+    expect(selected.text).toContain(`See your response ${SITE}${responsePath("en", "manila-recruit", APP)}`);
+    const declined = await renderEmail(
+      "response_decided",
+      { response_id: APP, title: "Germany, 10 Welders", decision: "declined", org_slug: "manila-recruit", decision_note: "Fee above budget" },
+      SITE,
+    );
+    expect(declined.subject).toBe("Your response is declined: Germany, 10 Welders");
+    expect(declined.text).toContain('The employer declined your company\'s response to "Germany, 10 Welders".');
+    expect(declined.text).not.toContain("Fee above budget");
+    expect(declined.text).not.toContain("not a party");
+    const shortlisted = await renderEmail("response_decided", { ...SAMPLES.response_decided, decision: "shortlisted" }, SITE);
+    expect(shortlisted.text).toContain('Acme Bau shortlisted your company\'s response to "Hamburg yard welders".');
+    const allowed = await renderEmail("response_decided", { ...SAMPLES.response_decided, decision: "submissions_allowed" }, SITE);
+    expect(allowed.subject).toBe("You can submit candidates: Hamburg yard welders");
+    const odd = await renderEmail("response_decided", { decision: "constructor", response_id: "../billing" }, SITE);
+    expect(odd.subject).toBe("The employer decided your response");
+    expect(odd.html).not.toContain("billing");
+  });
+
+  it("the submission request asks the candidate first, names the employer only when the payload does and says workers never pay (FR-O4 AC1, AC10, AC11)", async () => {
+    const request = await renderEmail("submission_request", SAMPLES.submission_request, SITE);
+    expect(request.subject).toBe("Manila Recruit would like to propose you for a job");
+    expect(request.text).toContain('Manila Recruit would like to submit you as a candidate for "Hamburg yard welders" at Acme Bau in Germany, starting on 1 March 2027.');
+    expect(request.text).toContain("Nothing is shared with the employer until you approve the request and choose which documents to share.");
+    expect(request.text).toContain("Workers never pay fees to get a job through Chara Pinnacle.");
+    const unnamed = await renderEmail("submission_request", { submission_id: APP, partner_name: "Manila Recruit", title: "Germany, 10 Welders" }, SITE);
+    expect(unnamed.text).toContain('for "Germany, 10 Welders".');
+    expect(unnamed.text).not.toContain("Acme");
+    const odd = await renderEmail("submission_request", { submission_id: "../billing" }, SITE);
+    expect(odd.html).not.toContain("billing");
+  });
+
+  it("the invitation to an address without an account offers a worker account and shares nothing yet (FR-O4 AC2, AC10)", async () => {
+    const email = await renderEmail("submission_request_signup", SAMPLES.submission_request_signup, SITE);
+    expect(email.subject).toBe("Manila Recruit would like to propose you for a job");
+    expect(email.text).toContain("create a free worker account on Chara Pinnacle with this email address");
+    expect(email.text).toContain("Nothing is shared with the employer until you approve.");
+    expect(email.text).toContain(`Create your account ${SITE}${signUpPath("en", "worker")}`);
+  });
+
+  it("the approval and the withdrawal name the partner and the requirement, never the candidate (FR-O4 AC5, AC9, NFR-S9)", async () => {
+    const approved = await renderEmail("submission_approved", { ...SAMPLES.submission_approved, candidate_name: "SECRET-NAME" }, SITE);
+    expect(approved.subject).toBe("Candidate submitted: Hamburg yard welders");
+    expect(approved.text).toContain('A candidate proposed by Manila Recruit approved the submission for "Hamburg yard welders".');
+    expect(approved.text).not.toContain("SECRET-NAME");
+    const withdrawn = await renderEmail("submission_withdrawn", SAMPLES.submission_withdrawn, SITE);
+    expect(withdrawn.subject).toBe("Candidate withdrawn: Hamburg yard welders");
+    expect(withdrawn.text).toContain("The documents the candidate shared can no longer be opened.");
+  });
+
+  it("a submitted candidate's stage names the partner to the candidate and the stage alone to the partner (FR-O5 AC9, AC10)", async () => {
+    const candidate = await renderEmail(
+      "status_changed",
+      { submission_id: APP, job_title: "Hamburg yard welders", org_name: "Acme Bau", partner_name: "Manila Recruit", status: "interview", ...LEAKS },
+      SITE,
+    );
+    expect(candidate.subject).toBe("Update on your submission for Hamburg yard welders");
+    expect(candidate.text).toContain("Your submission by Manila Recruit for Hamburg yard welders at Acme Bau is now: Interview.");
+    expect(candidate.text).toContain(`${SITE}${submissionPath("en", APP)}`);
+    expect(candidate.text).not.toContain("SECRET-STAGE-NOTE");
+    const partner = await renderEmail("submission_stage_changed", { ...SAMPLES.submission_stage_changed, ...LEAKS }, SITE);
+    expect(partner.subject).toBe("Candidate update: Hamburg yard welders");
+    expect(partner.text).toContain('A candidate you submitted for "Hamburg yard welders" is now: Interview.');
+    for (const secret of ["SECRET-STAGE-NOTE", "SECRET-DECLINE"]) expect(partner.text).not.toContain(secret);
   });
 
   it("the notices of V43 to a company that responded on the marketplace link its response and name no employer (FR-M2 AC6 P5, V44)", async () => {
