@@ -254,7 +254,7 @@ test.describe("Candidate submissions (FR-O4)", () => {
     await expect(page.getByText(displayName(team.id))).toHaveCount(0);
     await expect(page.getByText(WORKERS_NEVER_PAY)).toBeVisible();
     const report = page.getByRole("link", { name: `Report a fee demand by ${s1.displayName}` });
-    await expect(report).toHaveAttribute("href", `/en/report?type=partner_profile&partner=${s1.slug}&category=fee_demanded_from_worker`);
+    await expect(report).toHaveAttribute("href", `/en/report?type=candidate_submission&submission=${id}&category=fee_demanded_from_worker`);
     await expectAccessibleAtBothWidths(page);
 
     const approve = page.getByRole("button", { name: "Approve and share" });
