@@ -214,6 +214,22 @@ test.describe("Partner dashboards (FR-R3, FR-R4, release 2a)", () => {
     await expect(page).toHaveURL(`/en/login?next=${encodeURIComponent("/en/dashboard/recruitment")}`);
   });
 
+  test("FR-A3: a signed-in recruitment or staffing company is redirected from the login page to the dashboard of its type", async ({
+    browser,
+  }) => {
+    for (const [type, segment] of [
+      ["recruitment_company", "recruitment"],
+      ["staffing_company", "staffing"],
+    ] as const) {
+      const partner = await partnerWithCompany(type);
+      const { page, close } = await signedIn(browser, partner.user);
+      const response = await page.request.get("/en/login", { maxRedirects: 0 });
+      expect(response.status()).toBe(307);
+      expect(response.headers().location).toMatch(new RegExp(`/en/dashboard/${segment}\\?org=${partner.slug}$`));
+      await close();
+    }
+  });
+
   test("FR-R4 AC1, AC5: the staffing admin confirms a stale listing by keyboard and a member sees it without Confirm", async ({ page, browser }) => {
     test.setTimeout(150_000);
     const s = await listedPartner("staffing_company");
