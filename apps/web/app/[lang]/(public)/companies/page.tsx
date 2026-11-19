@@ -50,7 +50,7 @@ export default async function FindCompaniesPage({ params }: PageProps<"/[lang]/c
             <p>Sign in with your recruitment or staffing company to find employers, or register your company.</p>
             <div className="flex flex-wrap gap-3">
               <LinkButton href={loginPath(lang, `/${lang}/${FIND_COMPANIES_PATH}`)}>Sign in</LinkButton>
-              <LinkButton href={signUpPath(lang, "company")} variant="secondary">
+              <LinkButton href={signUpPath(lang, "company")} variant="secondary" className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal">
                 Sign up as a recruitment or staffing company
               </LinkButton>
             </div>
