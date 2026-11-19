@@ -329,6 +329,9 @@ test.describe("Partner reviews (FR-J4)", () => {
     await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.getByRole("heading", { name: "Submit your company again", level: 1 })).toBeVisible();
+    await page
+      .getByRole("checkbox", { name: "I have updated what our team asked about, or checked that nothing needs to change." })
+      .check();
     await page.getByRole("button", { name: "Submit again for review" }).click();
     await expect(page.getByRole("heading", { name: "Your company is waiting for review", level: 1 })).toBeVisible();
     const [row] = query<{ review_status: string; fresh: boolean; info_step: string | null; last: boolean }>(
