@@ -280,7 +280,8 @@ test.describe("Responding to a job order (FR-N2, FR-O2)", () => {
     await page.unroute("**/storage/v1/object/upload/sign/**");
     const attached = page.getByRole("list", { name: "Attached documents" });
     await expect(attached.getByText("exactly-15.pdf", { exact: false })).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByRole("button", { name: "Send response" })).toBeEnabled();
+    // The name shows while the file is still being sent; the button waits for the whole 15 MB.
+    await expect(page.getByRole("button", { name: "Send response" })).toBeEnabled({ timeout: 60_000 });
 
     // A PNG renamed to .pdf is sent and refused by the scan's content check.
     await files.setInputFiles([{ name: "photo.pdf", mimeType: "application/pdf", buffer: Buffer.from("\x89PNG\r\n\x1a\nnot a pdf at all") }]);
