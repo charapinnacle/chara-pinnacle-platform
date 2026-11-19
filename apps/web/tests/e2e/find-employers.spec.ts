@@ -131,7 +131,7 @@ test.describe("Find Employers (FR-L3)", () => {
     const save = page.getByRole("button", { name: "Save search" });
     await waitForHydration(save);
     await save.click();
-    await expect(page.getByText("Search saved")).toBeVisible();
+    await expect(page.getByText("Search saved", { exact: true })).toBeVisible();
     const saved = page.getByRole("region", { name: "Saved searches" });
     await expect(saved.getByRole("link", { name: "Iceland · 7212 Welders and flame cutters" })).toHaveAttribute(
       "href",
