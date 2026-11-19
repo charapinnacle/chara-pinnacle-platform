@@ -153,6 +153,8 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     await expect(philippines).toContainText("Last changed today");
     expect(rules()).toContain("PH>*:licensed_partner_required:LO-2026-11 PH");
     expect(audits().slice(before)).toEqual([{ action: "direct_hiring_rule.created", reason: REASON }]);
+    // The notice closes by itself, so the one of the next save is the only one on the page.
+    await expect(page.getByText("The rule is saved", { exact: true })).toBeHidden();
 
     await philippines.getByRole("button", { name: "Edit the rule for Philippines, All destinations" }).click();
     const edit = page.getByRole("dialog", { name: "Edit the rule for Philippines, All destinations" });
@@ -163,8 +165,7 @@ test.describe("the direct-hiring rules of the console (FR-Q5)", () => {
     await edit.getByRole("textbox", { name: "Reason for the change" }).fill(REASON);
     await expectNoAxeViolations(page);
     await edit.getByRole("button", { name: "Save rule" }).click();
-    // The dialog sits in the row with every rule among its options, and the first save's notice may still show: only its
-    // closing says this save is done.
+    // The dialog sits in the row with every rule among its options: only its closing says this save is done.
     await expect(edit).toBeHidden();
     await expect(page.getByText("The rule is saved", { exact: true })).toBeVisible();
     await expect(row(page, "Philippines", "All destinations")).toContainText("Direct hiring blocked");
