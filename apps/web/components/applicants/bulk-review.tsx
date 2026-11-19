@@ -19,14 +19,16 @@ export function BulkReviewBody({ review, busy, onCancel, onConfirm }: BulkReview
         <p className="text-small text-muted-foreground">
           {rows.length} {rows.length === 1 ? "applicant" : "applicants"}
         </p>
-        <ul role="region" aria-label="Selected applicants" tabIndex={0} className="grid max-h-56 gap-1 overflow-y-auto rounded-lg border p-3">
+        <div role="region" aria-label="Selected applicants" tabIndex={0} className="max-h-56 overflow-y-auto rounded-lg border p-3">
+          <ul className="grid gap-1">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap justify-between gap-x-3 text-body">
               <span className="font-medium wrap-anywhere">{row.name}</span>
               <span className="text-muted-foreground">{applicationStatusLabels[row.status]}</span>
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       </div>
       <dl className="grid gap-3">
         <div className="grid gap-0.5">
