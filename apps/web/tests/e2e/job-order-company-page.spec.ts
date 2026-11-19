@@ -85,7 +85,7 @@ test.describe("Named job orders on the company page (V54)", () => {
   test("release 2b off: the job orders leave the page", async ({ page }) => {
     setJobOrderRelease(false);
     await page.goto(companyUrl(acme.slug));
-    await expect(page.getByRole("heading", { name: "Open vacancies", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Open vacancies", level: 2, exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Job orders" })).toHaveCount(0);
     await expect(page.getByText("Acme welders for Vaduz")).toHaveCount(0);
     setJobOrderRelease(true);
