@@ -6,7 +6,7 @@ import { execute, literal } from "./support/db";
 import { logIn } from "./support/login-page";
 import { waitForHydration } from "./support/hydration";
 import { partnerWithCompany, setPartnerRelease } from "./support/partners";
-import { newTeam, newVisitor, signInAtAal1, type Team } from "./support/team";
+import { enforceLimits, newTeam, newVisitor, restoreLimits, signInAtAal1, type Team } from "./support/team";
 import type { TestUser } from "./support/test-user";
 import { expect, test } from "./support/test";
 
@@ -69,6 +69,7 @@ test.beforeAll(() => {
   setJobOrderRelease(true);
 });
 test.afterAll(() => {
+  restoreLimits();
   execute(`grant execute on function ${FUNCTION} to authenticated`);
   execute(`delete from public.workforce_requirements where country_code = ${literal(ICELAND)}`);
   setJobOrderRelease(false);
@@ -131,7 +132,7 @@ test.describe("Find Employers (FR-L3)", () => {
     const save = page.getByRole("button", { name: "Save search" });
     await waitForHydration(save);
     await save.click();
-    await expect(page.getByText("Search saved")).toBeVisible();
+    await expect(page.getByText("Search saved", { exact: true })).toBeVisible();
     const saved = page.getByRole("region", { name: "Saved searches" });
     await expect(saved.getByRole("link", { name: "Iceland · 7212 Welders and flame cutters" })).toHaveAttribute(
       "href",
@@ -140,6 +141,8 @@ test.describe("Find Employers (FR-L3)", () => {
     await saved.getByRole("button", { name: "Delete saved search: Iceland · 7212 Welders and flame cutters" }).click();
     await expect(saved.getByText("No saved searches yet.")).toBeVisible();
 
+    // Until billing is live every plan has every feature; the Basic plan is locked once the limits apply.
+    enforceLimits();
     const basic = await listedPartner("recruitment_partner");
     const other = await newVisitor(browser);
     await signInAtAal1(other.page, basic.owner, searchUrl(basic.slug));
@@ -155,6 +158,7 @@ test.describe("Find Employers (FR-L3)", () => {
     await other.page.goto(searchUrl(basic.slug, "occupation=7212"));
     await expect(other.page.getByText("Occupation and size filters are available on Professional.")).toBeVisible();
     await other.context.close();
+    restoreLimits();
   });
 
   test("AC11: no result, a failure with a retry, and a company that is not listed", async ({ page }) => {
