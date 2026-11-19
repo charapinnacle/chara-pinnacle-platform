@@ -148,9 +148,13 @@ export function requirementInvitationsPath(lang: string, slug: string, id: strin
   return `${requirementPath(lang, slug, id)}/invitations`;
 }
 
-// The responses of partners to one requirement, as its employer reads them (FR-O2; the page arrives with V46).
+// The responses of partners to one requirement, as its employer reads them (FR-O2), and one of them.
 export function requirementResponsesPath(lang: string, slug: string, id: string): string {
   return `${requirementPath(lang, slug, id)}/responses`;
+}
+
+export function requirementResponsePath(lang: string, slug: string, id: string, responseId: string): string {
+  return `${requirementResponsesPath(lang, slug, id)}/${responseId}`;
 }
 
 // The partners suggested for one requirement (FR-M3).
@@ -168,6 +172,11 @@ export function jobOrderPath(lang: string, slug: string, id: string): string {
   return `${jobOrdersPath(lang, slug)}/${id}`;
 }
 
+// The response form for a job order of the marketplace (FR-N2 step Respond, FR-O2).
+export function jobOrderRespondPath(lang: string, slug: string, id: string): string {
+  return `${jobOrderPath(lang, slug, id)}/respond`;
+}
+
 // The invitations a recruitment or staffing company received (FR-O1), with the query of the status filter and the page,
 // and one of them.
 export function invitationsPath(lang: string, slug: string, query = ""): string {
@@ -179,13 +188,23 @@ export function invitationPath(lang: string, slug: string, id: string): string {
   return `${invitationsPath(lang, slug)}/${id}`;
 }
 
-// The responses a recruitment or staffing company sent (FR-O2; the pages arrive with V46), and one of them.
-export function responsesPath(lang: string, slug: string): string {
-  return `/${lang}/org/${slug}/responses`;
+// The response form for the requirement of an invitation (FR-O1 AC8: Accept opens it).
+export function invitationRespondPath(lang: string, slug: string, id: string): string {
+  return `${invitationPath(lang, slug, id)}/respond`;
+}
+
+// The responses a recruitment or staffing company sent (FR-O2), one of them, and its edit form.
+export function responsesPath(lang: string, slug: string, cursor?: string): string {
+  const path = `/${lang}/org/${slug}/responses`;
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
 }
 
 export function responsePath(lang: string, slug: string, id: string): string {
   return `${responsesPath(lang, slug)}/${id}`;
+}
+
+export function responseEditPath(lang: string, slug: string, id: string): string {
+  return `${responsePath(lang, slug, id)}/edit`;
 }
 
 // The partners an employer saved (FR-L4), optionally from a keyset cursor on.

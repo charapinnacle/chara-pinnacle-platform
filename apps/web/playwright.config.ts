@@ -159,6 +159,7 @@ const config = defineConfig({
         "**/job-orders.spec.ts",
         "**/invitations.spec.ts",
         "**/requirement-changes.spec.ts",
+        "**/partner-responses.spec.ts",
       ],
     },
     {
@@ -580,13 +581,21 @@ const config = defineConfig({
       testMatch: "**/requirement-changes.spec.ts",
       dependencies: ["invitations-release"],
     },
+    // The response pages (FR-N2, FR-O2, V46) set releases 2a and 2b and the plan limits for the whole database and change
+    // the documents limit and a direct-hiring rule while they run, so they follow the requirement changes.
+    {
+      name: "responses-release",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/partner-responses.spec.ts",
+      dependencies: ["requirement-changes-release"],
+    },
     // The sitemap is compared with every public vacancy of the database, so no other spec may open or close one while
     // these tests run: they follow every other project.
     {
       name: "sitemap",
       use: { ...devices["Desktop Chrome"] },
       testMatch: "**/search-engine-sitemap.spec.ts",
-      dependencies: ["requirement-changes-release"],
+      dependencies: ["responses-release"],
     },
     // The load times of the performance smoke are measured when no other spec loads the server: last of all.
     {

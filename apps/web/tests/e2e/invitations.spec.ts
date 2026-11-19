@@ -453,9 +453,11 @@ test.describe("The invited partner (FR-O1 AC8, AC11, NFR-S11)", () => {
     await waitForHydration(accept);
     await accept.focus();
     await pp.keyboard.press("Enter");
-    await expect(pp.getByText("You accepted the invitation", { exact: true })).toBeVisible();
+    // Accept opens the response form of FR-O2 (V46); the invitation page then shows the new status.
+    await expect(pp).toHaveURL(`${invitationUrl(p1.slug, privateInvitation.id)}/respond`);
+    await expect(pp.getByRole("heading", { name: "Respond to this invitation", level: 1 })).toBeVisible();
+    await pp.goto(invitationUrl(p1.slug, privateInvitation.id));
     await expect(pp.getByRole("region", { name: "Status" }).getByText("Accepted", { exact: true })).toBeVisible();
-    await expect(pp.getByRole("heading", { name: "Status", level: 2 })).toBeFocused();
     await expect(pp.getByRole("button", { name: "Accept", exact: true })).toHaveCount(0);
     expect(query<{ status: string }>(`select status from public.requirement_invitations where id = ${literal(privateInvitation.id)}`)[0].status).toBe("accepted");
     expect(audits("requirement.invitation_accepted", privateInvitation.id)).toBe(1);

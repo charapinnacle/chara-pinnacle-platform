@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { ModalDialog } from "@/components/feedback/modal-dialog";
@@ -16,13 +17,16 @@ import { DECLINE_REASON_MAX, declineFormSchema, type DeclineFormInput, type Decl
 const REASON_ID = "decline-reason";
 
 type InvitationAnswerProps = { slug: string; invitationId: string; employerName: string };
+type AnswerProps = InvitationAnswerProps & { respondHref: string };
 
 // Accept or decline an invitation that has no answer yet (FR-O1 step Answer, AC8), for any member of the invited
-// company. Accept answers at once; Decline asks for an optional reason (up to 500 characters, shown to the employer) and
-// is confirmed in the dialog. Both are final, and the page is drawn again with the new status.
-export function InvitationAnswer({ slug, invitationId, employerName }: InvitationAnswerProps) {
+// company. Accept answers at once and opens the response form (AC8); Decline asks for an optional reason (up to 500
+// characters, shown to the employer) and is confirmed in the dialog, and the page is drawn again with the new status.
+// Both are final.
+export function InvitationAnswer({ slug, invitationId, employerName, respondHref }: AnswerProps) {
   const [declining, setDeclining] = useState(false);
   const accept = useActionCall("The invitation was not accepted");
+  const router = useRouter();
   const close = () => setDeclining(false);
   return (
     <section aria-labelledby="invitation-answer-heading" className="grid gap-3">
@@ -38,7 +42,13 @@ export function InvitationAnswer({ slug, invitationId, employerName }: Invitatio
           className="w-auto"
           busy={accept.pending}
           disabled={accept.pending}
-          onClick={() => accept.run(() => answerInvitation(slug, { invitationId, answer: "accepted", reason: "" }), "You accepted the invitation")}
+          onClick={() =>
+            accept.run(async () => {
+              const result = await answerInvitation(slug, { invitationId, answer: "accepted", reason: "" });
+              if (result.done) router.push(respondHref);
+              return result;
+            }, "You accepted the invitation")
+          }
         >
           Accept
         </FormButton>

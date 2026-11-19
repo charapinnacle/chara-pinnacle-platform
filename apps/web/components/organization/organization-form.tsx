@@ -129,7 +129,11 @@ export function OrganizationForm({ lang, countries, industries, defaultCountry, 
           name="displayName"
           id={ids.displayName}
           label="Display name (optional)"
-          description="The name candidates see. Defaults to the legal name."
+          description={
+            partnerType
+              ? "The name employers and other companies see. Defaults to the legal name."
+              : "The name candidates see. Defaults to the legal name."
+          }
         />
         <ComboboxField
           control={control}

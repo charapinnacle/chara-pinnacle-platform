@@ -173,7 +173,14 @@ function ChipsControl({
           ))}
         </ul>
       )}
-      <p id={countId} aria-live="polite" className="-mt-0.5 text-small text-muted-foreground tabular-nums">
+      {/* With nothing chosen and no limit, "0 occupations" only repeats the line above; screen readers still hear it. */}
+      <p
+        id={countId}
+        aria-live="polite"
+        className={
+          value.length === 0 && limit === null ? "sr-only" : "-mt-0.5 text-small text-muted-foreground tabular-nums"
+        }
+      >
         {chosenCount(value.length, limit, noun)}
       </p>
       <div role="status" className="empty:hidden">

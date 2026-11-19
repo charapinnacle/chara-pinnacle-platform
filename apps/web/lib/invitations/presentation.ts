@@ -59,13 +59,13 @@ export function isFullInvitation(status: InvitationStatus): boolean {
   return status === "invited" || status === "viewed" || status === "accepted" || status === "responded";
 }
 
-// The partner's next step on its invitation page (NFR-U4). Responding to an accepted invitation is the form of V46.
+// The partner's next step on its invitation page (NFR-U4).
 export const partnerNextSteps: Record<InvitationStatus, string> = {
   invited: "Read the requirement, then accept or decline the invitation. The employer sees your answer.",
   viewed: "Read the requirement, then accept or decline the invitation. The employer sees your answer.",
-  accepted: "You accepted this invitation and the employer can see that. You can send your response once responses to requirements open.",
+  accepted: "You accepted this invitation and the employer can see that. Send your response with your proposal.",
   declined: "You declined this invitation. The employer can see your answer and your reason.",
-  responded: "You responded to this invitation.",
+  responded: "You responded to this invitation. Open your response to read, change or withdraw it.",
   withdrawn: "The employer withdrew this invitation, so it can no longer be answered.",
   expired: "The requirement closed before the invitation was answered, so it expired.",
 };

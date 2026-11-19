@@ -7,6 +7,9 @@ import { FocusOnHash } from "@/components/invitations/focus-on-hash";
 import { InvitationAnswer } from "@/components/invitations/invitation-answer";
 import { InvitationStatusBadge } from "@/components/invitations/invitation-status";
 import { JobOrderView } from "@/components/job-orders/job-order-view";
+import { EligibilityError } from "@/components/responses/eligibility-error";
+import { EligibilityPanel } from "@/components/responses/eligibility-panel";
+import { limitPromptFor } from "@/components/responses/respond-section";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
@@ -15,11 +18,12 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { getInvitation, listInvitationChanges } from "@/lib/dal/invitations";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
+import { getResponseEligibility } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { formatDate } from "@/lib/i18n/format";
 import { canAnswer, partnerNextSteps } from "@/lib/invitations/presentation";
 import { requirementStatusLabels } from "@/lib/requirements/presentation";
-import { companyPagePath, invitationsPath } from "@/lib/routes";
+import { companyPagePath, invitationRespondPath, invitationsPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 // The title of the tab says only "Invitation": nothing of the requirement or the employer leaves the page in its
@@ -29,7 +33,8 @@ export const metadata: Metadata = { title: "Invitation", robots: { index: false 
 // One invitation of a recruitment or staffing company (FR-O1 AC8), for every member while release 2b is on: the
 // requirement in full, even private, and the employer's name (the invitation reveals it) while it is pending, accepted
 // or responded, with the changes since the invitation (FR-M2 step Edit, V43); only the title and the employer once it is
-// declined, withdrawn or expired. The first open marks it seen.
+// declined, withdrawn or expired. The first open marks it seen. Once accepted, the eligibility panel offers Respond (the
+// response form, FR-O1 AC8) or names the missing condition; once responded, it links the response (V46).
 // An invitation of another company and an unknown id end in the same notFound(), so a competing partner learns nothing.
 export default async function InvitationPage({ params }: PageProps<"/[lang]/org/[slug]/invitations/[id]">) {
   const { lang, slug, id } = await params;
@@ -48,6 +53,9 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
   };
+  const responding = requirement && (invitation.status === "accepted" || invitation.status === "responded");
+  const eligibility = responding ? await getResponseEligibility(organization.id, requirement.id).catch(() => "failed" as const) : null;
+  const limitPrompt = eligibility && eligibility !== "failed" ? await limitPromptFor(organization, eligibility) : null;
 
   return (
     <div className="grid w-full max-w-3xl gap-section">
@@ -94,7 +102,22 @@ export default async function InvitationPage({ params }: PageProps<"/[lang]/org/
         ) : null}
       </section>
 
-      {canAnswer(invitation.status) ? <InvitationAnswer slug={slug} invitationId={invitation.id} employerName={invitation.employerName} /> : null}
+      {eligibility === "failed" ? (
+        <EligibilityError />
+      ) : eligibility && requirement ? (
+        <EligibilityPanel
+          lang={lang}
+          slug={slug}
+          organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member", owner: organization.role === "owner" }}
+          eligibility={eligibility}
+          countryName={(code) => names.countries.get(code) ?? code}
+          destinationName={names.countries.get(requirement.countryCode) ?? requirement.countryCode}
+          respondHref={invitationRespondPath(lang, slug, invitation.id)}
+          limitPrompt={limitPrompt}
+        />
+      ) : null}
+
+      {canAnswer(invitation.status) ? <InvitationAnswer slug={slug} invitationId={invitation.id} employerName={invitation.employerName} respondHref={invitationRespondPath(lang, slug, invitation.id)} /> : null}
 
       {requirement ? <FocusOnHash targetId="changes" /> : null}
       {requirement ? (

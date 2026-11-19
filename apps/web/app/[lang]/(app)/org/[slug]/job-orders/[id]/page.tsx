@@ -4,6 +4,9 @@ import { Notice } from "@/components/forms/notice";
 import { TextLink } from "@/components/forms/text-link";
 import { JobOrderRefusalNotice } from "@/components/job-orders/job-order-refusal";
 import { JobOrderView } from "@/components/job-orders/job-order-view";
+import { EligibilityError } from "@/components/responses/eligibility-error";
+import { EligibilityPanel } from "@/components/responses/eligibility-panel";
+import { limitPromptFor } from "@/components/responses/respond-section";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageHeader } from "@/components/layout/page-header";
 import { SuspendedOrganization } from "@/components/layout/suspended-organization";
@@ -11,9 +14,10 @@ import { organizationCrumb } from "@/lib/app/navigation";
 import { getJobOrder } from "@/lib/dal/job-orders";
 import { getCountries, getIndustries } from "@/lib/dal/reference";
 import { isReleased } from "@/lib/dal/release";
+import { getResponseEligibility } from "@/lib/dal/responses";
 import { requireOrgRole } from "@/lib/dal/session";
 import { employerLabel } from "@/lib/job-orders/presentation";
-import { companyPagePath, jobOrdersPath } from "@/lib/routes";
+import { companyPagePath, jobOrderRespondPath, jobOrdersPath } from "@/lib/routes";
 import { requirementIdSchema } from "@/lib/validation/requirement";
 
 // The title of the tab and every tag of the page say only "Job order": no title, employer or place leaves the page in
@@ -21,7 +25,9 @@ import { requirementIdSchema } from "@/lib/validation/requirement";
 export const metadata: Metadata = { title: "Job order", robots: { index: false } };
 
 // One job order for a member of a recruitment or staffing company (FR-N1 AC2, AC3, AC5, AC9), while release 2b is on. A
-// job order that is no longer open says so and shows none of its fields; responding arrives with V46.
+// job order that is no longer open says so and shows none of its fields. A job order shown in full has the eligibility
+// panel (FR-N2 AC1, AC4, AC12): Respond, or the condition that is missing; a failed read of it shows a toast and a retry
+// instead of Respond.
 export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[slug]/job-orders/[id]">) {
   const { lang, slug, id } = await params;
   if (!(await isReleased("release_job_orders"))) notFound();
@@ -61,6 +67,8 @@ export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[s
   }
 
   const { order } = result;
+  const eligibility = order.eligible ? await getResponseEligibility(organization.id, order.id).catch(() => "failed" as const) : null;
+  const limitPrompt = eligibility && eligibility !== "failed" ? await limitPromptFor(organization, eligibility) : null;
   const names = {
     countries: new Map(countries.map(({ code, name }) => [code, name])),
     industries: new Map(industries.map(({ code, name }) => [code, name])),
@@ -80,6 +88,20 @@ export default async function JobOrderPage({ params }: PageProps<"/[lang]/org/[s
           <p className="text-body text-muted-foreground">{order.employerName}</p>
         ) : null}
       </PageHeader>
+      {eligibility === "failed" ? (
+        <EligibilityError />
+      ) : eligibility ? (
+        <EligibilityPanel
+          lang={lang}
+          slug={slug}
+          organization={{ id: organization.id, type: organization.type, canManage: organization.role !== "member", owner: organization.role === "owner" }}
+          eligibility={eligibility}
+          countryName={(code) => names.countries.get(code) ?? code}
+          destinationName={names.countries.get(order.countryCode) ?? order.countryCode}
+          respondHref={jobOrderRespondPath(lang, slug, order.id)}
+          limitPrompt={limitPrompt}
+        />
+      ) : null}
       <JobOrderView order={order} names={names} context={{ lang, slug, canManage: organization.role !== "member" }} />
     </div>
   );
