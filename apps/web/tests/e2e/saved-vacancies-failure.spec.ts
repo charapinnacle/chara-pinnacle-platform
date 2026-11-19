@@ -88,6 +88,7 @@ test.describe("saved vacancies when the database fails", () => {
     execute(`grant ${DELETE} to authenticated`);
     await unsave.click();
     await expect(page.getByRole("heading", { name: "No saved vacancies yet" })).toBeVisible();
-    expect(savedJobIds(candidate.id)).toEqual([]);
+    // The row leaves the page before the delete has finished.
+    await expect.poll(() => savedJobIds(candidate.id)).toEqual([]);
   });
 });
